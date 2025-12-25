@@ -15,7 +15,11 @@ public class DriveServiceTestFactory {
 
   public static DriveService createGoogleDrive(TestNamespace ns) {
     String uniqueId = UUID.randomUUID().toString().substring(0, 8);
-    String name = ns.prefix("googleDrive_" + uniqueId);
+    return createGoogleDrive(ns, "googleDrive_" + uniqueId);
+  }
+
+  public static DriveService createGoogleDrive(TestNamespace ns, String suffix) {
+    String name = ns.prefix(suffix);
 
     GoogleDriveConnection googleConn = new GoogleDriveConnection();
 

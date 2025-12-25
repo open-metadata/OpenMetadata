@@ -527,4 +527,410 @@ public class ColumnResourceIT {
     assertEquals(ColumnDataType.INT, table2.getColumns().get(0).getDataType());
     assertEquals(ColumnDataType.UUID, table3.getColumns().get(0).getDataType());
   }
+
+  @Test
+  void testCreateTableWithNestedStructColumns(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column personalDetailsColumn =
+        Columns.build("personal_details").withType(ColumnDataType.STRING).create();
+
+    Column otherInfoColumn = Columns.build("other_info").withType(ColumnDataType.STRING).create();
+
+    Column nestedStructColumn =
+        Columns.build("customer_info")
+            .withType(ColumnDataType.STRUCT)
+            .withChildren(List.of(personalDetailsColumn, otherInfoColumn))
+            .create();
+
+    Column topLevelStructColumn =
+        Columns.build("data")
+            .withType(ColumnDataType.STRUCT)
+            .withChildren(List.of(nestedStructColumn))
+            .create();
+
+    Table table =
+        Tables.create()
+            .name(ns.prefix("nested_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(topLevelStructColumn))
+            .execute();
+
+    assertNotNull(table);
+    assertEquals(1, table.getColumns().size());
+
+    Column retrievedTopLevel = table.getColumns().get(0);
+    assertEquals("data", retrievedTopLevel.getName());
+    assertEquals(ColumnDataType.STRUCT, retrievedTopLevel.getDataType());
+    assertEquals(1, retrievedTopLevel.getChildren().size());
+
+    Column retrievedNested = retrievedTopLevel.getChildren().get(0);
+    assertEquals("customer_info", retrievedNested.getName());
+    assertEquals(ColumnDataType.STRUCT, retrievedNested.getDataType());
+    assertEquals(2, retrievedNested.getChildren().size());
+  }
+
+  @Test
+  void testCreateTableWithEnumAndSetColumns(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column enumColumn = Columns.build("status").withType(ColumnDataType.ENUM).create();
+
+    Column setColumn = Columns.build("permissions").withType(ColumnDataType.SET).create();
+
+    Table table =
+        Tables.create()
+            .name(ns.prefix("enum_set_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(enumColumn, setColumn))
+            .execute();
+
+    assertNotNull(table);
+    assertEquals(2, table.getColumns().size());
+    assertEquals(ColumnDataType.ENUM, table.getColumns().get(0).getDataType());
+    assertEquals(ColumnDataType.SET, table.getColumns().get(1).getDataType());
+  }
+
+  @Test
+  void testCreateTableWithMapColumn(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column mapColumn = Columns.build("metadata").withType(ColumnDataType.MAP).create();
+
+    Table table =
+        Tables.create()
+            .name(ns.prefix("map_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(mapColumn))
+            .execute();
+
+    assertNotNull(table);
+    assertEquals(1, table.getColumns().size());
+    assertEquals(ColumnDataType.MAP, table.getColumns().get(0).getDataType());
+  }
+
+  @Test
+  void testCreateTableWithSpatialColumns(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column geometryColumn = Columns.build("location").withType(ColumnDataType.GEOMETRY).create();
+
+    Column geographyColumn = Columns.build("region").withType(ColumnDataType.GEOGRAPHY).create();
+
+    Column pointColumn = Columns.build("coordinates").withType(ColumnDataType.POINT).create();
+
+    Table table =
+        Tables.create()
+            .name(ns.prefix("spatial_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(geometryColumn, geographyColumn, pointColumn))
+            .execute();
+
+    assertNotNull(table);
+    assertEquals(3, table.getColumns().size());
+    assertEquals(ColumnDataType.GEOMETRY, table.getColumns().get(0).getDataType());
+    assertEquals(ColumnDataType.GEOGRAPHY, table.getColumns().get(1).getDataType());
+    assertEquals(ColumnDataType.POINT, table.getColumns().get(2).getDataType());
+  }
+
+  @Test
+  void testCreateTableWithIntervalColumn(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column intervalColumn = Columns.build("duration").withType(ColumnDataType.INTERVAL).create();
+
+    Table table =
+        Tables.create()
+            .name(ns.prefix("interval_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(intervalColumn))
+            .execute();
+
+    assertNotNull(table);
+    assertEquals(1, table.getColumns().size());
+    assertEquals(ColumnDataType.INTERVAL, table.getColumns().get(0).getDataType());
+  }
+
+  @Test
+  void testCreateTableWithUnionColumn(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column unionColumn = Columns.build("mixed_data").withType(ColumnDataType.UNION).create();
+
+    Table table =
+        Tables.create()
+            .name(ns.prefix("union_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(unionColumn))
+            .execute();
+
+    assertNotNull(table);
+    assertEquals(1, table.getColumns().size());
+    assertEquals(ColumnDataType.UNION, table.getColumns().get(0).getDataType());
+  }
+
+  @Test
+  void testCreateTableWithBytesColumn(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column bytesColumn =
+        Columns.build("raw_data").withType(ColumnDataType.BYTES).withLength(2048).create();
+
+    Table table =
+        Tables.create()
+            .name(ns.prefix("bytes_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(bytesColumn))
+            .execute();
+
+    assertNotNull(table);
+    assertEquals(1, table.getColumns().size());
+
+    Column retrievedBytes = table.getColumns().get(0);
+    assertEquals("raw_data", retrievedBytes.getName());
+    assertEquals(ColumnDataType.BYTES, retrievedBytes.getDataType());
+    assertEquals(2048, retrievedBytes.getDataLength());
+  }
+
+  @Test
+  void testCreateTableWithBlobColumns(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column blobColumn = Columns.build("blob_data").withType(ColumnDataType.BLOB).create();
+
+    Column longblobColumn =
+        Columns.build("longblob_data").withType(ColumnDataType.LONGBLOB).create();
+
+    Column mediumblobColumn =
+        Columns.build("mediumblob_data").withType(ColumnDataType.MEDIUMBLOB).create();
+
+    Table table =
+        Tables.create()
+            .name(ns.prefix("blob_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(blobColumn, longblobColumn, mediumblobColumn))
+            .execute();
+
+    assertNotNull(table);
+    assertEquals(3, table.getColumns().size());
+    assertEquals(ColumnDataType.BLOB, table.getColumns().get(0).getDataType());
+    assertEquals(ColumnDataType.LONGBLOB, table.getColumns().get(1).getDataType());
+    assertEquals(ColumnDataType.MEDIUMBLOB, table.getColumns().get(2).getDataType());
+  }
+
+  @Test
+  void testCreateTableWithTextVariantColumns(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column longtextColumn = Columns.build("longtext_data").withType(ColumnDataType.TEXT).create();
+
+    Column tinytextColumn =
+        Columns.build("tinytext_data").withType(ColumnDataType.MEDIUMTEXT).create();
+
+    Table table =
+        Tables.create()
+            .name(ns.prefix("text_variants_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(longtextColumn, tinytextColumn))
+            .execute();
+
+    assertNotNull(table);
+    assertEquals(2, table.getColumns().size());
+    assertEquals(ColumnDataType.TEXT, table.getColumns().get(0).getDataType());
+    assertEquals(ColumnDataType.MEDIUMTEXT, table.getColumns().get(1).getDataType());
+  }
+
+  @Test
+  void testCreateTableWithOrdinalPositions(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column col1 =
+        Columns.build("first_col").withType(ColumnDataType.INT).withOrdinalPosition(1).create();
+
+    Column col2 =
+        Columns.build("second_col")
+            .withType(ColumnDataType.VARCHAR)
+            .withLength(100)
+            .withOrdinalPosition(2)
+            .create();
+
+    Column col3 =
+        Columns.build("third_col").withType(ColumnDataType.BOOLEAN).withOrdinalPosition(3).create();
+
+    Table table =
+        Tables.create()
+            .name(ns.prefix("ordinal_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(col1, col2, col3))
+            .execute();
+
+    assertNotNull(table);
+    assertEquals(3, table.getColumns().size());
+    assertEquals(1, table.getColumns().get(0).getOrdinalPosition());
+    assertEquals(2, table.getColumns().get(1).getOrdinalPosition());
+    assertEquals(3, table.getColumns().get(2).getOrdinalPosition());
+  }
+
+  @Test
+  void testCreateTableWithMultipleConstraints(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column pkColumn = Columns.build("id").withType(ColumnDataType.INT).primaryKey().create();
+
+    Column notNullColumn =
+        Columns.build("required_name")
+            .withType(ColumnDataType.VARCHAR)
+            .withLength(100)
+            .notNull()
+            .create();
+
+    Column uniqueColumn =
+        Columns.build("email").withType(ColumnDataType.VARCHAR).withLength(255).unique().create();
+
+    Column nullableColumn =
+        Columns.build("optional_field")
+            .withType(ColumnDataType.VARCHAR)
+            .withLength(50)
+            .nullable()
+            .create();
+
+    Table table =
+        Tables.create()
+            .name(ns.prefix("multi_constraint_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(pkColumn, notNullColumn, uniqueColumn, nullableColumn))
+            .execute();
+
+    assertNotNull(table);
+    assertEquals(4, table.getColumns().size());
+    assertEquals(ColumnConstraint.PRIMARY_KEY, table.getColumns().get(0).getConstraint());
+    assertEquals(ColumnConstraint.NOT_NULL, table.getColumns().get(1).getConstraint());
+    assertEquals(ColumnConstraint.UNIQUE, table.getColumns().get(2).getConstraint());
+    assertEquals(ColumnConstraint.NULL, table.getColumns().get(3).getConstraint());
+  }
+
+  @Test
+  void testCreateTableWithComplexDataTypes(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column xmlColumn = Columns.build("xml_data").withType(ColumnDataType.XML).create();
+
+    Column hllColumn = Columns.build("hll_sketch").withType(ColumnDataType.HLL).create();
+
+    Column rowtypeColumn = Columns.build("row_data").withType(ColumnDataType.STRUCT).create();
+
+    Table table =
+        Tables.create()
+            .name(ns.prefix("complex_types_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(xmlColumn, hllColumn, rowtypeColumn))
+            .execute();
+
+    assertNotNull(table);
+    assertEquals(3, table.getColumns().size());
+    assertEquals(ColumnDataType.XML, table.getColumns().get(0).getDataType());
+    assertEquals(ColumnDataType.HLL, table.getColumns().get(1).getDataType());
+    assertEquals(ColumnDataType.STRUCT, table.getColumns().get(2).getDataType());
+  }
+
+  @Test
+  void testCreateTableWithAggregateStateColumn(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column aggStateColumn =
+        Columns.build("agg_state").withType(ColumnDataType.AGGREGATEFUNCTION).create();
+
+    Table table =
+        Tables.create()
+            .name(ns.prefix("aggregate_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(aggStateColumn))
+            .execute();
+
+    assertNotNull(table);
+    assertEquals(1, table.getColumns().size());
+    assertEquals(ColumnDataType.AGGREGATEFUNCTION, table.getColumns().get(0).getDataType());
+  }
+
+  @Test
+  void testCreateTableWithFixedAndLowCardinalityColumns(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column fixedColumn =
+        Columns.build("fixed_data").withType(ColumnDataType.FIXED).withLength(16).create();
+
+    Column lowCardColumn =
+        Columns.build("category").withType(ColumnDataType.LOWCARDINALITY).create();
+
+    Table table =
+        Tables.create()
+            .name(ns.prefix("fixed_lowcard_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(fixedColumn, lowCardColumn))
+            .execute();
+
+    assertNotNull(table);
+    assertEquals(2, table.getColumns().size());
+    assertEquals(ColumnDataType.FIXED, table.getColumns().get(0).getDataType());
+    assertEquals(16, table.getColumns().get(0).getDataLength());
+    assertEquals(ColumnDataType.LOWCARDINALITY, table.getColumns().get(1).getDataType());
+  }
+
+  @Test
+  void testCreateTableWithColumnDescriptionsAndFullyQualifiedNames(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column idColumn =
+        Columns.build("id")
+            .withType(ColumnDataType.BIGINT)
+            .primaryKey()
+            .withDescription("Unique identifier")
+            .withDisplayName("ID")
+            .create();
+
+    Column nameColumn =
+        Columns.build("user_name")
+            .withType(ColumnDataType.VARCHAR)
+            .withLength(200)
+            .withDescription("Full name of the user")
+            .withDisplayName("User Name")
+            .create();
+
+    Table table =
+        Tables.create()
+            .name(ns.prefix("fqn_test_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(idColumn, nameColumn))
+            .execute();
+
+    assertNotNull(table);
+    assertEquals(2, table.getColumns().size());
+
+    Column retrievedId = table.getColumns().get(0);
+    assertEquals("Unique identifier", retrievedId.getDescription());
+    assertEquals("ID", retrievedId.getDisplayName());
+    assertNotNull(retrievedId.getFullyQualifiedName());
+    assertTrue(retrievedId.getFullyQualifiedName().contains("id"));
+
+    Column retrievedName = table.getColumns().get(1);
+    assertEquals("Full name of the user", retrievedName.getDescription());
+    assertEquals("User Name", retrievedName.getDisplayName());
+    assertNotNull(retrievedName.getFullyQualifiedName());
+    assertTrue(retrievedName.getFullyQualifiedName().contains("user_name"));
+  }
 }

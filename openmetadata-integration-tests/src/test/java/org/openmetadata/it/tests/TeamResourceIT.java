@@ -47,8 +47,14 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
 
+  {
+    supportsImportExport = true;
+  }
+
   private static final Profile PROFILE =
       new Profile().withImages(new ImageList().withImage(URI.create("https://image.com")));
+
+  private Team lastCreatedTeam;
 
   public TeamResourceIT() {
     supportsFollowers = false;
@@ -961,5 +967,20 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   @Override
   protected Team getVersion(UUID id, Double version) {
     return SdkClients.adminClient().teams().getVersion(id.toString(), version);
+  }
+
+  @Override
+  protected org.openmetadata.sdk.services.EntityServiceBase<Team> getEntityService() {
+    return SdkClients.adminClient().teams();
+  }
+
+  @Override
+  protected String getImportExportContainerName(TestNamespace ns) {
+    if (lastCreatedTeam == null) {
+      CreateTeam request = createMinimalRequest(ns);
+      request.setName(ns.prefix("export_team"));
+      lastCreatedTeam = createEntity(request);
+    }
+    return lastCreatedTeam.getFullyQualifiedName();
   }
 }

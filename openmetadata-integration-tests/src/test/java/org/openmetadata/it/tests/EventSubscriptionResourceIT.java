@@ -14,6 +14,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.api.events.CreateNotificationTemplate;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventSubscription;
@@ -794,6 +795,270 @@ public class EventSubscriptionResourceIT
   }
 
   @Test
+  void test_updateEndpointURL(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("update_endpoint_sub"))
+            .withDescription("Subscription to update endpoint")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription.getDestinations());
+    assertEquals(1, subscription.getDestinations().size());
+
+    Webhook updatedWebhook =
+        new Webhook().withEndpoint(URI.create("http://localhost:8585/api/v1/test/webhook/updated"));
+
+    List<SubscriptionDestination> updatedDestination =
+        List.of(
+            new SubscriptionDestination()
+                .withId(subscription.getDestinations().get(0).getId())
+                .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
+                .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+                .withConfig(updatedWebhook));
+
+    subscription.setDestinations(updatedDestination);
+    EventSubscription updated = patchEntity(subscription.getId().toString(), subscription);
+    assertNotNull(updated.getDestinations());
+    assertEquals(1, updated.getDestinations().size());
+  }
+
+  @Test
+  void test_updateAlertFilteringRules(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ArgumentsInput filter1 =
+        new ArgumentsInput()
+            .withName("filterByEventType")
+            .withArguments(
+                List.of(
+                    new Argument()
+                        .withName("eventTypeList")
+                        .withInput(List.of(EventType.ENTITY_CREATED.value()))));
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("update_filter_sub"))
+            .withDescription("Subscription to update filters")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withInput(new AlertFilteringInput().withFilters(List.of(filter1)));
+
+    EventSubscription subscription = createEntity(request);
+    assertEquals(1, subscription.getInput().getFilters().size());
+
+    ArgumentsInput filter2 =
+        new ArgumentsInput()
+            .withName("filterByEventType")
+            .withArguments(
+                List.of(
+                    new Argument()
+                        .withName("eventTypeList")
+                        .withInput(
+                            List.of(
+                                EventType.ENTITY_CREATED.value(),
+                                EventType.ENTITY_UPDATED.value(),
+                                EventType.ENTITY_DELETED.value()))));
+
+    subscription.setInput(new AlertFilteringInput().withFilters(List.of(filter2)));
+    EventSubscription updated = patchEntity(subscription.getId().toString(), subscription);
+    assertEquals(1, updated.getInput().getFilters().size());
+  }
+
+  @Test
+  void test_createAndFetchEventSubscription(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("fetch_test_sub"))
+            .withDescription("Subscription for fetch testing")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withBatchSize(10)
+            .withRetries(0)
+            .withPollInterval(1)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription created = createEntity(request);
+    assertNotNull(created);
+
+    EventSubscription fetchedById = getEntity(created.getId().toString());
+    assertNotNull(fetchedById);
+    assertEquals(created.getName(), fetchedById.getName());
+
+    EventSubscription fetchedByName = getEntityByName(created.getFullyQualifiedName());
+    assertNotNull(fetchedByName);
+    assertEquals(created.getName(), fetchedByName.getName());
+    assertEquals(created.getId(), fetchedByName.getId());
+  }
+
+  @Test
+  void test_deleteEventSubscription(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("delete_test_sub"))
+            .withDescription("Subscription for delete testing")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription created = createEntity(request);
+    String id = created.getId().toString();
+
+    deleteEntity(id);
+
+    assertThrows(OpenMetadataException.class, () -> getEntity(id));
+  }
+
+  @Test
+  void test_filterByOwnerNameExclude(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ArgumentsInput excludeOwner =
+        createFilterByOwnerArgumentsInput(List.of("admin"), ArgumentsInput.Effect.EXCLUDE);
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("exclude_owner_sub"))
+            .withDescription("Subscription with owner exclude filter")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withInput(new AlertFilteringInput().withFilters(List.of(excludeOwner)));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertEquals(
+        ArgumentsInput.Effect.EXCLUDE, subscription.getInput().getFilters().get(0).getEffect());
+  }
+
+  @Test
+  void test_filterByDomainExclude(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ArgumentsInput excludeDomain =
+        createFilterByDomainArgumentsInput(List.of("Engineering"), ArgumentsInput.Effect.EXCLUDE);
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("exclude_domain_sub"))
+            .withDescription("Subscription with domain exclude filter")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withInput(new AlertFilteringInput().withFilters(List.of(excludeDomain)));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertEquals(
+        ArgumentsInput.Effect.EXCLUDE, subscription.getInput().getFilters().get(0).getEffect());
+  }
+
+  @Test
+  void test_multipleResourceTypesRejected(TestNamespace ns) {
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("multi_resource_sub"))
+            .withDescription("Subscription for multiple resource types")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("table", "topic", "dashboard"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Multiple resources are not supported - only one resource can be specified");
+  }
+
+  @Test
+  void test_updatePollInterval(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("update_poll_sub"))
+            .withDescription("Subscription to update poll interval")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withPollInterval(1)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    assertEquals(1, subscription.getPollInterval());
+
+    subscription.setPollInterval(10);
+    EventSubscription updated = patchEntity(subscription.getId().toString(), subscription);
+    assertEquals(10, updated.getPollInterval());
+  }
+
+  @Test
+  void test_combinedOwnerAndDomainFilters(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ArgumentsInput filterByOwner =
+        createFilterByOwnerArgumentsInput(List.of("admin"), ArgumentsInput.Effect.INCLUDE);
+    ArgumentsInput filterByDomain =
+        createFilterByDomainArgumentsInput(List.of("Engineering"), ArgumentsInput.Effect.INCLUDE);
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("combined_filter_sub"))
+            .withDescription("Subscription with combined owner and domain filters")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withInput(
+                new AlertFilteringInput().withFilters(List.of(filterByOwner, filterByDomain)));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertEquals(2, subscription.getInput().getFilters().size());
+  }
+
+  @Test
+  void test_filterByFqnWithMultipleValues(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ArgumentsInput filterByFqn =
+        createFilterByFqnArgumentsInput(
+            List.of(
+                "sample_data.ecommerce_db.shopify.dim_customer",
+                "sample_data.ecommerce_db.shopify.fact_order"),
+            ArgumentsInput.Effect.INCLUDE);
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("multi_fqn_filter_sub"))
+            .withDescription("Subscription with multiple FQN filters")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withInput(new AlertFilteringInput().withFilters(List.of(filterByFqn)));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertEquals(1, subscription.getInput().getFilters().size());
+  }
+
+  @Test
   @org.junit.jupiter.api.Disabled("EventSubscription resource does not support restore operation")
   void test_deleteAndRestoreSubscription(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -817,6 +1082,441 @@ public class EventSubscriptionResourceIT
     restoreEntity(id);
     EventSubscription restored = getEntityIncludeDeleted(id);
     assertNotNull(restored);
+  }
+
+  @Test
+  void test_createSubscriptionWithUserTemplate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateNotificationTemplate createTemplate =
+        new CreateNotificationTemplate()
+            .withName(ns.prefix("user_template"))
+            .withDescription("User notification template")
+            .withTemplateSubject("Notification Subject")
+            .withTemplateBody("<div>Custom template content</div>");
+
+    org.openmetadata.schema.entity.events.NotificationTemplate userTemplate =
+        client.notificationTemplates().create(createTemplate);
+
+    org.openmetadata.schema.type.EntityReference templateRef =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(userTemplate.getId())
+            .withType("notificationTemplate");
+
+    CreateEventSubscription createSub =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_with_template"))
+            .withDescription("Subscription with notification template")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withNotificationTemplate(templateRef);
+
+    EventSubscription subscription = createEntity(createSub);
+
+    assertNotNull(subscription.getNotificationTemplate());
+    assertEquals(userTemplate.getId(), subscription.getNotificationTemplate().getId());
+
+    EventSubscription fetched = getEntity(subscription.getId().toString());
+    assertNotNull(fetched.getNotificationTemplate());
+    assertEquals(userTemplate.getId(), fetched.getNotificationTemplate().getId());
+
+    deleteEntity(subscription.getId().toString());
+    client.notificationTemplates().delete(userTemplate.getId().toString());
+  }
+
+  @Test
+  void test_createSubscriptionWithoutTemplate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription createSub =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_without_template"))
+            .withDescription("Subscription without template")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(createSub);
+
+    assertNull(subscription.getNotificationTemplate());
+
+    deleteEntity(subscription.getId().toString());
+  }
+
+  @Test
+  void test_rejectSystemTemplateOnCreate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    org.openmetadata.schema.entity.events.NotificationTemplate systemTemplate =
+        getSystemTemplate(client);
+
+    if (systemTemplate == null) {
+      return;
+    }
+
+    assertEquals(org.openmetadata.schema.type.ProviderType.SYSTEM, systemTemplate.getProvider());
+
+    org.openmetadata.schema.type.EntityReference systemTemplateRef =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(systemTemplate.getId())
+            .withType("notificationTemplate");
+
+    CreateEventSubscription createSub =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_system_template"))
+            .withDescription("Subscription with system template - should fail")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withNotificationTemplate(systemTemplateRef);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(createSub),
+        "System templates cannot be assigned to EventSubscriptions");
+  }
+
+  @Test
+  void test_updateSubscriptionAddTemplate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription createSub =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_add_template"))
+            .withDescription("Subscription to add template")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(createSub);
+    assertNull(subscription.getNotificationTemplate());
+
+    CreateNotificationTemplate createTemplate =
+        new CreateNotificationTemplate()
+            .withName(ns.prefix("template_to_add"))
+            .withDescription("Template to add to subscription")
+            .withTemplateSubject("Added Template Subject")
+            .withTemplateBody("<div>Added template</div>");
+
+    org.openmetadata.schema.entity.events.NotificationTemplate template =
+        client.notificationTemplates().create(createTemplate);
+
+    org.openmetadata.schema.type.EntityReference templateRef =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(template.getId())
+            .withType("notificationTemplate");
+
+    subscription.setNotificationTemplate(templateRef);
+    EventSubscription updated = patchEntity(subscription.getId().toString(), subscription);
+
+    assertNotNull(updated.getNotificationTemplate());
+    assertEquals(template.getId(), updated.getNotificationTemplate().getId());
+
+    EventSubscription fetched = getEntity(subscription.getId().toString());
+    assertNotNull(fetched.getNotificationTemplate());
+    assertEquals(template.getId(), fetched.getNotificationTemplate().getId());
+
+    deleteEntity(subscription.getId().toString());
+    client.notificationTemplates().delete(template.getId().toString());
+  }
+
+  @Test
+  void test_updateSubscriptionChangeTemplate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateNotificationTemplate createTemplate1 =
+        new CreateNotificationTemplate()
+            .withName(ns.prefix("template1"))
+            .withDescription("First template")
+            .withTemplateSubject("Template 1 Subject")
+            .withTemplateBody("<div>Template 1</div>");
+
+    org.openmetadata.schema.entity.events.NotificationTemplate template1 =
+        client.notificationTemplates().create(createTemplate1);
+
+    CreateNotificationTemplate createTemplate2 =
+        new CreateNotificationTemplate()
+            .withName(ns.prefix("template2"))
+            .withDescription("Second template")
+            .withTemplateSubject("Template 2 Subject")
+            .withTemplateBody("<div>Template 2</div>");
+
+    org.openmetadata.schema.entity.events.NotificationTemplate template2 =
+        client.notificationTemplates().create(createTemplate2);
+
+    org.openmetadata.schema.type.EntityReference template1Ref =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(template1.getId())
+            .withType("notificationTemplate");
+
+    CreateEventSubscription createSub =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_change_template"))
+            .withDescription("Subscription to change template")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withNotificationTemplate(template1Ref);
+
+    EventSubscription subscription = createEntity(createSub);
+    assertEquals(template1.getId(), subscription.getNotificationTemplate().getId());
+
+    org.openmetadata.schema.type.EntityReference template2Ref =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(template2.getId())
+            .withType("notificationTemplate");
+
+    subscription.setNotificationTemplate(template2Ref);
+    EventSubscription updated = patchEntity(subscription.getId().toString(), subscription);
+
+    assertEquals(template2.getId(), updated.getNotificationTemplate().getId());
+
+    deleteEntity(subscription.getId().toString());
+    client.notificationTemplates().delete(template1.getId().toString());
+    client.notificationTemplates().delete(template2.getId().toString());
+  }
+
+  @Test
+  void test_updateSubscriptionRemoveTemplate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateNotificationTemplate createTemplate =
+        new CreateNotificationTemplate()
+            .withName(ns.prefix("template_to_remove"))
+            .withDescription("Template to be removed")
+            .withTemplateSubject("To Be Removed Subject")
+            .withTemplateBody("<div>Will be removed</div>");
+
+    org.openmetadata.schema.entity.events.NotificationTemplate template =
+        client.notificationTemplates().create(createTemplate);
+
+    org.openmetadata.schema.type.EntityReference templateRef =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(template.getId())
+            .withType("notificationTemplate");
+
+    CreateEventSubscription createSub =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_remove_template"))
+            .withDescription("Subscription to remove template")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withNotificationTemplate(templateRef);
+
+    EventSubscription subscription = createEntity(createSub);
+    assertNotNull(subscription.getNotificationTemplate());
+
+    subscription.setNotificationTemplate(null);
+    EventSubscription updated = patchEntity(subscription.getId().toString(), subscription);
+
+    assertNull(updated.getNotificationTemplate());
+
+    deleteEntity(subscription.getId().toString());
+    client.notificationTemplates().delete(template.getId().toString());
+  }
+
+  @Test
+  void test_rejectSystemTemplateOnUpdate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateEventSubscription createSub =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_system_update"))
+            .withDescription("Subscription for system template update test")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(createSub);
+
+    org.openmetadata.schema.entity.events.NotificationTemplate systemTemplate =
+        getSystemTemplate(client);
+
+    if (systemTemplate == null) {
+      deleteEntity(subscription.getId().toString());
+      return;
+    }
+
+    assertEquals(org.openmetadata.schema.type.ProviderType.SYSTEM, systemTemplate.getProvider());
+
+    org.openmetadata.schema.type.EntityReference systemTemplateRef =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(systemTemplate.getId())
+            .withType("notificationTemplate");
+
+    subscription.setNotificationTemplate(systemTemplateRef);
+    assertThrows(
+        Exception.class,
+        () -> patchEntity(subscription.getId().toString(), subscription),
+        "System templates cannot be assigned to EventSubscriptions");
+
+    deleteEntity(subscription.getId().toString());
+  }
+
+  @Test
+  void test_deleteSubscriptionPreservesTemplate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateNotificationTemplate createTemplate =
+        new CreateNotificationTemplate()
+            .withName(ns.prefix("template_preserved"))
+            .withDescription("Template that should survive")
+            .withTemplateSubject("Preserved Template Subject")
+            .withTemplateBody("<div>Should survive</div>");
+
+    org.openmetadata.schema.entity.events.NotificationTemplate template =
+        client.notificationTemplates().create(createTemplate);
+
+    org.openmetadata.schema.type.EntityReference templateRef =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(template.getId())
+            .withType("notificationTemplate");
+
+    CreateEventSubscription createSub =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_to_delete"))
+            .withDescription("Subscription to delete")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withNotificationTemplate(templateRef);
+
+    EventSubscription subscription = createEntity(createSub);
+
+    deleteEntity(subscription.getId().toString());
+
+    org.openmetadata.schema.entity.events.NotificationTemplate templateAfterDelete =
+        client.notificationTemplates().get(template.getId().toString());
+    assertNotNull(templateAfterDelete, "Template should exist after subscription deletion");
+
+    ListParams params =
+        new ListParams().addFilter("notificationTemplate", template.getId().toString());
+    ListResponse<EventSubscription> subscriptions = listEntities(params);
+    assertTrue(subscriptions.getData().isEmpty(), "No subscriptions should reference template");
+
+    client.notificationTemplates().delete(template.getId().toString());
+  }
+
+  @Test
+  void test_querySubscriptionsByTemplate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateNotificationTemplate createTemplate1 =
+        new CreateNotificationTemplate()
+            .withName(ns.prefix("query_template1"))
+            .withDescription("Template 1 for query test")
+            .withTemplateSubject("Query Template 1 Subject")
+            .withTemplateBody("<div>Template 1 for query</div>");
+
+    org.openmetadata.schema.entity.events.NotificationTemplate template1 =
+        client.notificationTemplates().create(createTemplate1);
+
+    CreateNotificationTemplate createTemplate2 =
+        new CreateNotificationTemplate()
+            .withName(ns.prefix("query_template2"))
+            .withDescription("Template 2 for query test")
+            .withTemplateSubject("Query Template 2 Subject")
+            .withTemplateBody("<div>Template 2 for query</div>");
+
+    org.openmetadata.schema.entity.events.NotificationTemplate template2 =
+        client.notificationTemplates().create(createTemplate2);
+
+    org.openmetadata.schema.type.EntityReference template1Ref =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(template1.getId())
+            .withType("notificationTemplate");
+
+    org.openmetadata.schema.type.EntityReference template2Ref =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(template2.getId())
+            .withType("notificationTemplate");
+
+    CreateEventSubscription createSub1 =
+        new CreateEventSubscription()
+            .withName(ns.prefix("query_sub1"))
+            .withDescription("Query subscription 1")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withNotificationTemplate(template1Ref);
+
+    EventSubscription sub1 = createEntity(createSub1);
+
+    CreateEventSubscription createSub2 =
+        new CreateEventSubscription()
+            .withName(ns.prefix("query_sub2"))
+            .withDescription("Query subscription 2")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withNotificationTemplate(template1Ref);
+
+    EventSubscription sub2 = createEntity(createSub2);
+
+    CreateEventSubscription createSub3 =
+        new CreateEventSubscription()
+            .withName(ns.prefix("query_sub3"))
+            .withDescription("Query subscription 3")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns))
+            .withNotificationTemplate(template2Ref);
+
+    EventSubscription sub3 = createEntity(createSub3);
+
+    CreateEventSubscription createSub4 =
+        new CreateEventSubscription()
+            .withName(ns.prefix("query_sub4"))
+            .withDescription("Query subscription 4")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription sub4 = createEntity(createSub4);
+
+    ListParams params1 =
+        new ListParams().addFilter("notificationTemplate", template1.getId().toString());
+    ListResponse<EventSubscription> results1 = listEntities(params1);
+
+    assertTrue(
+        results1.getData().size() >= 2, "Should find at least 2 subscriptions with template1");
+    long countWithTemplate1 =
+        results1.getData().stream()
+            .filter(
+                s ->
+                    s.getNotificationTemplate() != null
+                        && s.getNotificationTemplate().getId().equals(template1.getId()))
+            .count();
+    assertTrue(
+        countWithTemplate1 >= 2, "Should have at least 2 results with template1 in this namespace");
+
+    ListParams params2 =
+        new ListParams().addFilter("notificationTemplate", template2.getId().toString());
+    ListResponse<EventSubscription> results2 = listEntities(params2);
+
+    assertTrue(
+        results2.getData().size() >= 1, "Should find at least 1 subscription with template2");
+
+    deleteEntity(sub1.getId().toString());
+    deleteEntity(sub2.getId().toString());
+    deleteEntity(sub3.getId().toString());
+    deleteEntity(sub4.getId().toString());
+    client.notificationTemplates().delete(template1.getId().toString());
+    client.notificationTemplates().delete(template2.getId().toString());
   }
 
   // ===================================================================
@@ -896,5 +1596,14 @@ public class EventSubscriptionResourceIT
         .withEffect(effect)
         .withArguments(List.of(fqnArgument))
         .withPrefixCondition(ArgumentsInput.PrefixCondition.AND);
+  }
+
+  private org.openmetadata.schema.entity.events.NotificationTemplate getSystemTemplate(
+      OpenMetadataClient client) {
+    try {
+      return client.notificationTemplates().getByName("system-notification-entity-default");
+    } catch (Exception e) {
+      return null;
+    }
   }
 }

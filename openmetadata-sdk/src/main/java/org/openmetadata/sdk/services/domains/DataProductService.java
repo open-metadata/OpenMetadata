@@ -27,4 +27,14 @@ public class DataProductService
         request,
         org.openmetadata.schema.entity.domains.DataProduct.class);
   }
+
+  // Upsert using CreateDataProduct request
+  public org.openmetadata.schema.entity.domains.DataProduct upsert(CreateDataProduct request)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.PUT,
+        basePath,
+        request,
+        org.openmetadata.schema.entity.domains.DataProduct.class);
+  }
 }

@@ -107,6 +107,11 @@ public final class Columns {
       return this;
     }
 
+    public ColumnBuilder withOrdinalPosition(Integer ordinalPosition) {
+      column.setOrdinalPosition(ordinalPosition);
+      return this;
+    }
+
     public Column create() {
       if (column.getDataType() == null) {
         column.setDataType(ColumnDataType.VARCHAR);

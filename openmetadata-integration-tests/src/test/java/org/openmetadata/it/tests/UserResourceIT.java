@@ -21,11 +21,15 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -50,8 +54,14 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
+  {
+    supportsImportExport = true;
+  }
+
   private static final Profile PROFILE =
       new Profile().withImages(new ImageList().withImage(URI.create("https://image.com")));
+
+  private Team lastCreatedTeam;
 
   public UserResourceIT() {
     supportsFollowers = false;
@@ -173,6 +183,23 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   @Override
   protected ListResponse<User> listEntities(ListParams params) {
     return Users.list(params);
+  }
+
+  @Override
+  protected org.openmetadata.sdk.services.EntityServiceBase<User> getEntityService() {
+    return SdkClients.adminClient().users();
+  }
+
+  @Override
+  protected String getImportExportContainerName(TestNamespace ns) {
+    if (lastCreatedTeam == null) {
+      CreateTeam teamRequest = new CreateTeam();
+      teamRequest.setName(ns.prefix("export_team"));
+      teamRequest.setDescription("Team for user export testing");
+      teamRequest.setTeamType(CreateTeam.TeamType.GROUP);
+      lastCreatedTeam = SdkClients.adminClient().teams().create(teamRequest);
+    }
+    return lastCreatedTeam.getFullyQualifiedName();
   }
 
   // ===================================================================
@@ -1201,6 +1228,646 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
     User user = createEntity(createRequest);
     assertNotNull(user.getHref());
+  }
+
+  @Test
+  void post_userWithoutEmail_400_badRequest(TestNamespace ns) {
+
+    String name = ns.prefix("noEmailUser");
+    CreateUser create = new CreateUser().withName(name).withEmail(null);
+
+    assertThrows(
+        Exception.class, () -> createEntity(create), "Creating user without email should fail");
+
+    create.withEmail("");
+    assertThrows(
+        Exception.class, () -> createEntity(create), "Creating user with empty email should fail");
+  }
+
+  @Test
+  void patch_userAttributes_as_admin_200_ok(TestNamespace ns) {
+
+    String name = ns.prefix("patchAttrsUser");
+    CreateUser createRequest =
+        new CreateUser().withName(name).withEmail(toValidEmail(name)).withProfile(null);
+
+    User user = createEntity(createRequest);
+    assertNull(user.getDisplayName());
+    assertNull(user.getTimezone());
+
+    EntityReference team1Ref = testTeam1().getEntityReference();
+    EntityReference roleRef = dataStewardRole().getEntityReference();
+
+    User fetched = Users.get(user.getId().toString(), "teams,roles");
+
+    fetched.setDisplayName("Updated Display Name");
+    fetched.setTimezone("America/Los_Angeles");
+    fetched.setTeams(List.of(team1Ref));
+    fetched.setRoles(List.of(roleRef));
+    fetched.setProfile(PROFILE);
+
+    User updated = patchEntity(fetched.getId().toString(), fetched);
+
+    assertEquals("Updated Display Name", updated.getDisplayName());
+    assertEquals("America/Los_Angeles", updated.getTimezone());
+
+    User verify = Users.get(updated.getId().toString(), "teams,roles,profile");
+    assertNotNull(verify.getDisplayName());
+    assertNotNull(verify.getTimezone());
+    assertNotNull(verify.getProfile());
+  }
+
+  @Test
+  void delete_validUser_as_admin_200(TestNamespace ns) {
+
+    String userName = ns.prefix("deleteUser");
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(toValidEmail(userName))
+            .withTeams(List.of(testTeam1().getId()))
+            .withDescription("User to delete");
+
+    User user = createEntity(createRequest);
+    assertNotNull(user.getId());
+
+    deleteEntity(user.getId().toString());
+
+    assertThrows(Exception.class, () -> getEntity(user.getId().toString()));
+
+    User deleted = getEntityIncludeDeleted(user.getId().toString());
+    assertTrue(deleted.getDeleted());
+  }
+
+  @Test
+  void test_inheritDomain(TestNamespace ns) {
+
+    String domainFqn = testDomain().getFullyQualifiedName();
+
+    String teamName = ns.prefix("domainTeam");
+    org.openmetadata.schema.api.teams.CreateTeam teamRequest =
+        new org.openmetadata.schema.api.teams.CreateTeam()
+            .withName(teamName)
+            .withDomains(List.of(domainFqn))
+            .withDescription("Team with domain");
+    org.openmetadata.schema.entity.teams.Team team =
+        org.openmetadata.sdk.fluent.Teams.create(teamRequest);
+
+    String userName = ns.prefix("inheritDomainUser");
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(toValidEmail(userName))
+            .withTeams(List.of(team.getId()))
+            .withDescription("User inheriting domain from team");
+
+    User user = createEntity(createRequest);
+
+    User fetched = Users.get(user.getId().toString(), "domains,teams");
+    assertNotNull(fetched.getDomains());
+  }
+
+  @Test
+  void test_versionConsolidationWithDeletedDomains(TestNamespace ns) {
+
+    String domainName = ns.prefix("versionDomain");
+    CreateDomain domainRequest =
+        new CreateDomain()
+            .withName(domainName)
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
+            .withDescription("Domain for version consolidation test");
+    org.openmetadata.schema.entity.domains.Domain domain =
+        org.openmetadata.sdk.fluent.Domains.create(domainRequest);
+
+    String userName = ns.prefix("versionDomainUser");
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(toValidEmail(userName))
+            .withDomains(List.of(domain.getFullyQualifiedName()))
+            .withDescription("User for version consolidation test");
+
+    User user = createEntity(createRequest);
+    assertEquals(0.1, user.getVersion(), 0.001);
+
+    user.setDescription("Updated description");
+    User v2 = patchEntity(user.getId().toString(), user);
+    assertEquals(0.2, v2.getVersion(), 0.001);
+
+    org.openmetadata.sdk.fluent.Domains.delete(
+        domain.getId().toString(), java.util.Map.of("hardDelete", "true", "recursive", "true"));
+
+    User v3 = Users.get(user.getId().toString(), "domains");
+    assertNotNull(v3);
+  }
+
+  @Test
+  void test_versionConsolidationWithDeletedTeams(TestNamespace ns) {
+
+    String teamName = ns.prefix("versionTeam");
+    org.openmetadata.schema.api.teams.CreateTeam teamRequest =
+        new org.openmetadata.schema.api.teams.CreateTeam()
+            .withName(teamName)
+            .withDescription("Team for version consolidation test");
+    org.openmetadata.schema.entity.teams.Team team =
+        org.openmetadata.sdk.fluent.Teams.create(teamRequest);
+
+    String userName = ns.prefix("versionTeamUser");
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(toValidEmail(userName))
+            .withTeams(List.of(team.getId()))
+            .withDescription("User for version consolidation test");
+
+    User user = createEntity(createRequest);
+    assertEquals(0.1, user.getVersion(), 0.001);
+
+    user.setDescription("Updated description");
+    User v2 = patchEntity(user.getId().toString(), user);
+    assertEquals(0.2, v2.getVersion(), 0.001);
+
+    org.openmetadata.sdk.fluent.Teams.delete(
+        team.getId().toString(), java.util.Map.of("hardDelete", "true", "recursive", "true"));
+
+    User v3 = Users.get(user.getId().toString(), "teams");
+    assertNotNull(v3);
+  }
+
+  @Test
+  void test_userCanBeFetchedAfterPersonaDeletion(TestNamespace ns) {
+
+    String personaName = ns.prefix("personaDelete");
+    org.openmetadata.schema.api.teams.CreatePersona personaRequest =
+        new org.openmetadata.schema.api.teams.CreatePersona()
+            .withName(personaName)
+            .withDescription("Persona to delete");
+    org.openmetadata.schema.entity.teams.Persona persona = Personas.create(personaRequest);
+
+    String userName = ns.prefix("personaUser");
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(toValidEmail(userName))
+            .withPersonas(List.of(persona.getEntityReference()))
+            .withDescription("User with persona");
+
+    User user = createEntity(createRequest);
+    assertNotNull(user.getId());
+
+    User fetched = Users.get(user.getId().toString(), "personas");
+    assertNotNull(fetched.getPersonas());
+    assertFalse(fetched.getPersonas().isEmpty());
+
+    Personas.delete(persona.getId().toString());
+
+    User afterDelete = Users.get(user.getId().toString(), "personas");
+    assertNotNull(afterDelete);
+  }
+
+  @Test
+  void get_listUsersWithFalseBotFilterPagination(TestNamespace ns) {
+
+    for (int i = 0; i < 5; i++) {
+      String name = ns.prefix("nonBotPageUser" + i);
+      CreateUser createRequest =
+          new CreateUser()
+              .withName(name)
+              .withEmail(toValidEmail(name))
+              .withIsBot(false)
+              .withDescription("Non-bot user for pagination");
+      createEntity(createRequest);
+    }
+
+    ListParams params = new ListParams();
+    params.setLimit(3);
+    params.addFilter("isBot", "false");
+    ListResponse<User> page1 = listEntities(params);
+
+    assertNotNull(page1.getData());
+    assertTrue(page1.getData().size() > 0);
+
+    if (page1.getPaging() != null && page1.getPaging().getAfter() != null) {
+      params.setAfter(page1.getPaging().getAfter());
+      ListResponse<User> page2 = listEntities(params);
+      assertNotNull(page2.getData());
+    }
+  }
+
+  @Test
+  void patch_userPersonaPreferences_200_ok(TestNamespace ns) {
+
+    String personaName = ns.prefix("personaPrefs");
+    org.openmetadata.schema.api.teams.CreatePersona personaRequest =
+        new org.openmetadata.schema.api.teams.CreatePersona()
+            .withName(personaName)
+            .withDescription("Persona for preferences test");
+    org.openmetadata.schema.entity.teams.Persona persona = Personas.create(personaRequest);
+
+    String userName = ns.prefix("userPrefs");
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(toValidEmail(userName))
+            .withPersonas(List.of(persona.getEntityReference()))
+            .withDescription("User for persona preferences test");
+
+    User user = createEntity(createRequest);
+
+    org.openmetadata.schema.type.PersonaPreferences preferences =
+        new org.openmetadata.schema.type.PersonaPreferences()
+            .withPersonaId(persona.getId())
+            .withPersonaName(persona.getName())
+            .withLandingPageSettings(
+                new org.openmetadata.schema.type.LandingPageSettings()
+                    .withHeaderColor("#FF5733")
+                    .withHeaderImage("http://example.com/assets/custom-header.png"));
+
+    User fetched = Users.get(user.getId().toString(), "personas");
+    List<org.openmetadata.schema.type.PersonaPreferences> prefsList = new java.util.ArrayList<>();
+    prefsList.add(preferences);
+    fetched.setPersonaPreferences(prefsList);
+
+    User updated = patchEntity(fetched.getId().toString(), fetched);
+
+    assertNotNull(updated.getPersonaPreferences());
+    assertEquals(1, updated.getPersonaPreferences().size());
+    org.openmetadata.schema.type.PersonaPreferences savedPref =
+        updated.getPersonaPreferences().get(0);
+    assertEquals(persona.getId(), savedPref.getPersonaId());
+    assertEquals(persona.getName(), savedPref.getPersonaName());
+    assertEquals("#FF5733", savedPref.getLandingPageSettings().getHeaderColor());
+    assertEquals(
+        "http://example.com/assets/custom-header.png",
+        savedPref.getLandingPageSettings().getHeaderImage());
+
+    org.openmetadata.schema.type.PersonaPreferences updatedPreferences =
+        new org.openmetadata.schema.type.PersonaPreferences()
+            .withPersonaId(persona.getId())
+            .withPersonaName(persona.getName())
+            .withLandingPageSettings(
+                new org.openmetadata.schema.type.LandingPageSettings()
+                    .withHeaderColor("#00FF00")
+                    .withHeaderImage("http://example.com/assets/custom-header.png"));
+
+    User refetched = Users.get(updated.getId().toString(), "personas");
+    refetched.setPersonaPreferences(List.of(updatedPreferences));
+
+    User updated2 = patchEntity(refetched.getId().toString(), refetched);
+
+    assertEquals(
+        "#00FF00",
+        updated2.getPersonaPreferences().get(0).getLandingPageSettings().getHeaderColor());
+    assertEquals(
+        "http://example.com/assets/custom-header.png",
+        updated2.getPersonaPreferences().get(0).getLandingPageSettings().getHeaderImage());
+  }
+
+  @Test
+  void patch_ProfileWithSubscription(TestNamespace ns) {
+
+    String userName = ns.prefix("profileSubUser");
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(toValidEmail(userName))
+            .withDescription("User for profile subscription test");
+
+    User user = createEntity(createRequest);
+
+    Profile profile1 =
+        new Profile()
+            .withSubscription(
+                new org.openmetadata.schema.type.profile.SubscriptionConfig()
+                    .withSlack(
+                        new org.openmetadata.schema.type.Webhook()
+                            .withEndpoint(URI.create("https://example.com"))));
+
+    user.setProfile(profile1);
+    User updated = patchEntity(user.getId().toString(), user);
+
+    assertNotNull(updated.getProfile());
+    assertNotNull(updated.getProfile().getSubscription());
+    assertNotNull(updated.getProfile().getSubscription().getSlack());
+
+    User fetched = Users.get(updated.getId().toString(), "profile");
+    fetched.setProfile(null);
+    User updated2 = patchEntity(fetched.getId().toString(), fetched);
+
+    assertTrue(updated2.getProfile() == null || updated2.getProfile().getSubscription() == null);
+  }
+
+  @Test
+  void test_personaDeletion_cleansUpAllRelationships(TestNamespace ns) {
+
+    String personaName = ns.prefix("personaCleanup");
+    org.openmetadata.schema.api.teams.CreatePersona personaRequest =
+        new org.openmetadata.schema.api.teams.CreatePersona()
+            .withName(personaName)
+            .withDescription("Persona for cleanup test");
+    org.openmetadata.schema.entity.teams.Persona persona = Personas.create(personaRequest);
+
+    String user1Name = ns.prefix("cleanupUser1");
+    CreateUser request1 =
+        new CreateUser()
+            .withName(user1Name)
+            .withEmail(toValidEmail(user1Name))
+            .withPersonas(List.of(persona.getEntityReference()))
+            .withDefaultPersona(persona.getEntityReference())
+            .withDescription("User 1 for persona cleanup test");
+    User user1 = createEntity(request1);
+
+    String user2Name = ns.prefix("cleanupUser2");
+    CreateUser request2 =
+        new CreateUser()
+            .withName(user2Name)
+            .withEmail(toValidEmail(user2Name))
+            .withPersonas(List.of(persona.getEntityReference()))
+            .withDescription("User 2 for persona cleanup test");
+    User user2 = createEntity(request2);
+
+    User fetchedUser1 = Users.get(user1.getId().toString(), "personas,defaultPersona");
+    assertNotNull(fetchedUser1.getPersonas());
+    assertFalse(fetchedUser1.getPersonas().isEmpty());
+    assertNotNull(fetchedUser1.getDefaultPersona());
+
+    User fetchedUser2 = Users.get(user2.getId().toString(), "personas");
+    assertNotNull(fetchedUser2.getPersonas());
+    assertFalse(fetchedUser2.getPersonas().isEmpty());
+
+    Personas.delete(persona.getId().toString());
+
+    User afterDelete1 = Users.get(user1.getId().toString(), "personas,defaultPersona");
+    assertTrue(
+        afterDelete1.getPersonas() == null || afterDelete1.getPersonas().isEmpty(),
+        "Personas should be cleaned up after persona deletion");
+    assertTrue(
+        afterDelete1.getDefaultPersona() == null,
+        "Default persona should be cleaned up after persona deletion");
+
+    User afterDelete2 = Users.get(user2.getId().toString(), "personas");
+    assertTrue(
+        afterDelete2.getPersonas() == null || afterDelete2.getPersonas().isEmpty(),
+        "Personas should be cleaned up after persona deletion");
+  }
+
+  @Test
+  void test_updateDefaultPersona(TestNamespace ns) {
+
+    String persona1Name = ns.prefix("defaultPersona1");
+    org.openmetadata.schema.api.teams.CreatePersona persona1Request =
+        new org.openmetadata.schema.api.teams.CreatePersona()
+            .withName(persona1Name)
+            .withDescription("First persona");
+    org.openmetadata.schema.entity.teams.Persona persona1 = Personas.create(persona1Request);
+
+    String persona2Name = ns.prefix("defaultPersona2");
+    org.openmetadata.schema.api.teams.CreatePersona persona2Request =
+        new org.openmetadata.schema.api.teams.CreatePersona()
+            .withName(persona2Name)
+            .withDescription("Second persona");
+    org.openmetadata.schema.entity.teams.Persona persona2 = Personas.create(persona2Request);
+
+    String userName = ns.prefix("defaultPersonaUser");
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(toValidEmail(userName))
+            .withPersonas(List.of(persona1.getEntityReference(), persona2.getEntityReference()))
+            .withDefaultPersona(persona1.getEntityReference())
+            .withDescription("User for default persona test");
+
+    User user = createEntity(createRequest);
+
+    User fetched = Users.get(user.getId().toString(), "personas,defaultPersona");
+    assertNotNull(fetched.getDefaultPersona());
+    assertEquals(persona1.getId(), fetched.getDefaultPersona().getId());
+
+    fetched.setDefaultPersona(persona2.getEntityReference());
+    User updated = patchEntity(fetched.getId().toString(), fetched);
+
+    User verify = Users.get(updated.getId().toString(), "defaultPersona");
+    assertNotNull(verify.getDefaultPersona());
+    assertEquals(persona2.getId(), verify.getDefaultPersona().getId());
+  }
+
+  @Test
+  void test_removeTeamFromUser(TestNamespace ns) {
+
+    EntityReference teamRef = testTeam1().getEntityReference();
+
+    String userName = ns.prefix("removeTeamUser");
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(toValidEmail(userName))
+            .withTeams(List.of(teamRef.getId()))
+            .withDescription("User for team removal test");
+
+    User user = createEntity(createRequest);
+
+    User fetched = Users.get(user.getId().toString(), "teams");
+    assertNotNull(fetched.getTeams());
+    assertTrue(fetched.getTeams().size() >= 1);
+
+    fetched.setTeams(List.of());
+    User updated = patchEntity(fetched.getId().toString(), fetched);
+
+    User verify = Users.get(updated.getId().toString(), "teams");
+    assertTrue(verify.getTeams() == null || verify.getTeams().isEmpty());
+  }
+
+  @Test
+  void test_userWithMultipleDomains(TestNamespace ns) {
+
+    String domain1Name = ns.prefix("domain1");
+    org.openmetadata.schema.api.domains.CreateDomain domain1Request =
+        new org.openmetadata.schema.api.domains.CreateDomain()
+            .withName(domain1Name)
+            .withDomainType(org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
+            .withDescription("First domain");
+    org.openmetadata.schema.entity.domains.Domain domain1 =
+        org.openmetadata.sdk.fluent.Domains.create(domain1Request);
+
+    String domain2Name = ns.prefix("domain2");
+    org.openmetadata.schema.api.domains.CreateDomain domain2Request =
+        new org.openmetadata.schema.api.domains.CreateDomain()
+            .withName(domain2Name)
+            .withDomainType(org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
+            .withDescription("Second domain");
+    org.openmetadata.schema.entity.domains.Domain domain2 =
+        org.openmetadata.sdk.fluent.Domains.create(domain2Request);
+
+    String userName = ns.prefix("multiDomainUser");
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(toValidEmail(userName))
+            .withDomains(List.of(domain1.getFullyQualifiedName(), domain2.getFullyQualifiedName()))
+            .withDescription("User with multiple domains");
+
+    User user = createEntity(createRequest);
+    assertNotNull(user.getId());
+
+    User fetched = Users.get(user.getId().toString(), "domains");
+    assertNotNull(fetched.getDomains());
+    assertTrue(fetched.getDomains().size() >= 2);
+  }
+
+  @Test
+  void test_updateUserIsAdmin(TestNamespace ns) {
+
+    String userName = ns.prefix("adminToggleUser");
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(toValidEmail(userName))
+            .withIsAdmin(false)
+            .withDescription("User for admin toggle test");
+
+    User user = createEntity(createRequest);
+    assertFalse(user.getIsAdmin());
+
+    user.setIsAdmin(true);
+    User updated = patchEntity(user.getId().toString(), user);
+
+    assertTrue(updated.getIsAdmin());
+
+    updated.setIsAdmin(false);
+    User updated2 = patchEntity(updated.getId().toString(), updated);
+    assertFalse(updated2.getIsAdmin());
+  }
+
+  @Test
+  void test_userEmailCaseInsensitive(TestNamespace ns) {
+
+    String userName = ns.prefix("emailCaseUser");
+    String email = "MixedCase@Test.Com";
+
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(email)
+            .withDescription("User for email case test");
+
+    User user = createEntity(createRequest);
+
+    assertEquals(email.toLowerCase(), user.getEmail());
+  }
+
+  @Test
+  void test_updateUserEmail(TestNamespace ns) {
+
+    String userName = ns.prefix("emailUpdateUser");
+    String originalEmail = toValidEmail(userName);
+
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(originalEmail)
+            .withDescription("User for email update test");
+
+    User user = createEntity(createRequest);
+    assertEquals(originalEmail.toLowerCase(), user.getEmail().toLowerCase());
+
+    String newEmail = toValidEmail(userName + "new");
+    user.setEmail(newEmail);
+    User updated = patchEntity(user.getId().toString(), user);
+
+    assertEquals(newEmail.toLowerCase(), updated.getEmail().toLowerCase());
+  }
+
+  @Test
+  void test_userWithIsBot(TestNamespace ns) {
+
+    String botName = ns.prefix("simpleBot");
+    AuthenticationMechanism authMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+            .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(botName)
+            .withEmail(toValidEmail(botName))
+            .withIsBot(true)
+            .withAuthenticationMechanism(authMechanism)
+            .withDescription("Simple bot user");
+
+    User bot = createEntity(createRequest);
+    assertTrue(bot.getIsBot());
+
+    User fetched = Users.get(bot.getId().toString());
+    assertTrue(fetched.getIsBot());
+  }
+
+  @Test
+  void test_listUsersWithDomainFilter(TestNamespace ns) {
+
+    String domainFqn = testDomain().getFullyQualifiedName();
+
+    String user1Name = ns.prefix("domainFilterUser1");
+    CreateUser request1 =
+        new CreateUser()
+            .withName(user1Name)
+            .withEmail(toValidEmail(user1Name))
+            .withDomains(List.of(domainFqn))
+            .withDescription("User in domain");
+    User user1 = createEntity(request1);
+
+    String user2Name = ns.prefix("domainFilterUser2");
+    CreateUser request2 =
+        new CreateUser()
+            .withName(user2Name)
+            .withEmail(toValidEmail(user2Name))
+            .withDescription("User not in domain");
+    createEntity(request2);
+
+    ListParams params = new ListParams();
+    params.setLimit(100);
+    params.addFilter("domain", testDomain().getName());
+    ListResponse<User> domainUsers = listEntities(params);
+
+    assertNotNull(domainUsers.getData());
+    assertTrue(
+        domainUsers.getData().stream().anyMatch(u -> u.getId().equals(user1.getId())),
+        "User in domain should be in filtered list");
+  }
+
+  @Test
+  void test_userVersionIncrement(TestNamespace ns) {
+
+    CreateUser createRequest = createMinimalRequest(ns);
+    User user = createEntity(createRequest);
+    assertEquals(0.1, user.getVersion(), 0.001);
+
+    user.setDescription("First update");
+    User v2 = patchEntity(user.getId().toString(), user);
+    assertEquals(0.2, v2.getVersion(), 0.001);
+
+    v2.setDescription("Second update");
+    User v3 = patchEntity(v2.getId().toString(), v2);
+    assertTrue(v3.getVersion() >= 0.2);
+
+    v3.setDisplayName("New display name");
+    User v4 = patchEntity(v3.getId().toString(), v3);
+    assertTrue(v4.getVersion() > v3.getVersion());
+  }
+
+  @Test
+  void test_createUserMinimalFields(TestNamespace ns) {
+
+    String userName = ns.prefix("minimalUser");
+    CreateUser createRequest =
+        new CreateUser().withName(userName).withEmail(toValidEmail(userName));
+
+    User user = createEntity(createRequest);
+
+    assertNotNull(user.getId());
+    assertEquals(userName.toLowerCase(), user.getName().toLowerCase());
+    assertNotNull(user.getEmail());
+    assertFalse(user.getIsBot() != null && user.getIsBot());
+    assertFalse(user.getIsAdmin() != null && user.getIsAdmin());
   }
 
   // ===================================================================

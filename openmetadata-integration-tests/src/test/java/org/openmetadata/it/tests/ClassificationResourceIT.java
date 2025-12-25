@@ -2,16 +2,22 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.classification.AutoClassificationConfig;
 import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 
@@ -212,5 +218,265 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
         Exception.class,
         () -> createEntity(request2),
         "Creating duplicate classification should fail");
+  }
+
+  @Test
+  void put_classificationInvalidRequest_400(TestNamespace ns) {
+    // Classification with missing description
+    CreateClassification createWithoutDesc = new CreateClassification();
+    createWithoutDesc.setName(ns.prefix("invalid_no_desc"));
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> createEntity(createWithoutDesc),
+        "Creating classification without description should fail");
+
+    // Classification with name too long
+    String longName = "a".repeat(300);
+    CreateClassification createWithLongName = new CreateClassification();
+    createWithLongName.setName(longName);
+    createWithLongName.setDescription("description");
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> createEntity(createWithLongName),
+        "Creating classification with long name should fail");
+  }
+
+  @Test
+  void delete_systemClassification(TestNamespace ns) {
+    // Get system classification "Tier"
+    Classification tier = SdkClients.adminClient().classifications().getByName("Tier");
+    assertNotNull(tier);
+    assertEquals(ProviderType.SYSTEM, tier.getProvider());
+
+    // Attempt to delete system classification should fail
+    String tierId = tier.getId().toString();
+    assertThrows(
+        InvalidRequestException.class,
+        () -> deleteEntity(tierId),
+        "Deleting system classification should fail");
+  }
+
+  @Test
+  void test_classificationOwnerPermissions(TestNamespace ns) {
+    // Create classification without owners
+    CreateClassification request = new CreateClassification();
+    request.setName(ns.prefix("classification_owner_test"));
+    request.setDescription("Classification for testing owner permissions");
+
+    Classification classification = createEntity(request);
+    assertNotNull(classification);
+    assertTrue(
+        classification.getOwners() == null || classification.getOwners().isEmpty(),
+        "Classification should have no owners initially");
+
+    // Update classification owners as admin using PATCH
+    classification.setOwners(List.of(testUser1Ref()));
+    Classification updated = patchEntity(classification.getId().toString(), classification);
+    assertEquals(1, updated.getOwners().size(), "Classification should have one owner");
+    assertEquals(testUser1().getId(), updated.getOwners().get(0).getId(), "Owner should be USER1");
+
+    // Attempt to update owners as USER2 (should fail with forbidden)
+    Classification fetchedClassification = getEntity(classification.getId().toString());
+    fetchedClassification.setOwners(List.of(testUser2Ref()));
+
+    String classificationId = fetchedClassification.getId().toString();
+    assertThrows(
+        Exception.class,
+        () ->
+            SdkClients.user2Client()
+                .classifications()
+                .update(classificationId, fetchedClassification),
+        "USER2 should not be able to update owners");
+
+    // Verify the above change did not modify owners
+    Classification retrievedClassification =
+        getEntityWithFields(classification.getId().toString(), "owners");
+    assertEquals(
+        1,
+        retrievedClassification.getOwners().size(),
+        "Classification should still have one owner");
+    assertEquals(
+        testUser1().getId(),
+        retrievedClassification.getOwners().get(0).getId(),
+        "Owner should still be USER1");
+  }
+
+  @Test
+  void testClassificationTermCount(TestNamespace ns) {
+    // Create a new classification
+    CreateClassification createClassification = new CreateClassification();
+    createClassification.setName(ns.prefix("classification_termcount"));
+    createClassification.setDescription("Classification for testing term count");
+
+    Classification classification = createEntity(createClassification);
+
+    // Initially, termCount should be 0 when requested with termCount field
+    Classification withTermCount =
+        getEntityWithFields(classification.getId().toString(), "termCount");
+    assertEquals(0, withTermCount.getTermCount(), "New classification should have 0 tags");
+
+    // Create tags under this classification
+    for (int i = 1; i <= 3; i++) {
+      CreateTag createTag = new CreateTag();
+      createTag.setName(ns.prefix("tag" + i));
+      createTag.setDescription("Test tag " + i);
+      createTag.setClassification(classification.getFullyQualifiedName());
+      SdkClients.adminClient().tags().create(createTag);
+    }
+
+    // Now check termCount again
+    withTermCount = getEntityWithFields(classification.getId().toString(), "termCount");
+    assertEquals(3, withTermCount.getTermCount(), "Classification should have 3 tags");
+  }
+
+  @Test
+  void test_entityStatusUpdateAndPatch(TestNamespace ns) {
+    // Create a classification
+    CreateClassification createClassification = new CreateClassification();
+    createClassification.setName(ns.prefix("classification_status"));
+    createClassification.setDescription("Classification for testing entity status");
+
+    Classification classification = createEntity(createClassification);
+
+    // Verify the classification is created with UNPROCESSED status
+    assertEquals(
+        EntityStatus.UNPROCESSED,
+        classification.getEntityStatus(),
+        "Classification should be created with UNPROCESSED status");
+
+    // Update the entityStatus using PATCH operation
+    classification.setEntityStatus(EntityStatus.IN_REVIEW);
+    Classification updatedClassification =
+        patchEntity(classification.getId().toString(), classification);
+
+    // Verify the entityStatus was updated correctly
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        updatedClassification.getEntityStatus(),
+        "Classification should be updated to IN_REVIEW status");
+
+    // Get the classification again to confirm the status is persisted
+    Classification retrievedClassification = getEntity(updatedClassification.getId().toString());
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        retrievedClassification.getEntityStatus(),
+        "Retrieved classification should maintain IN_REVIEW status");
+  }
+
+  @Test
+  void test_autoClassificationConfig_CRUD(TestNamespace ns) {
+    // Create a classification without auto-classification config
+    CreateClassification createClassification = new CreateClassification();
+    createClassification.setName(ns.prefix("classification_autoconfig"));
+    createClassification.setDescription("Classification for testing auto-classification config");
+
+    Classification classification = createEntity(createClassification);
+
+    // Verify no auto-classification config initially
+    assertNull(
+        classification.getAutoClassificationConfig(),
+        "Classification should not have auto-classification config initially");
+
+    // Add auto-classification config using PATCH
+    org.openmetadata.schema.entity.classification.AutoClassificationConfig config =
+        new org.openmetadata.schema.entity.classification.AutoClassificationConfig()
+            .withEnabled(true)
+            .withConflictResolution(
+                org.openmetadata.schema.entity.classification.AutoClassificationConfig
+                    .ConflictResolution.HIGHEST_CONFIDENCE)
+            .withMinimumConfidence(0.7)
+            .withRequireExplicitMatch(true);
+    classification.setAutoClassificationConfig(config);
+
+    Classification updatedClassification =
+        patchEntity(classification.getId().toString(), classification);
+
+    // Verify config was added
+    assertNotNull(updatedClassification.getAutoClassificationConfig());
+    assertTrue(updatedClassification.getAutoClassificationConfig().getEnabled());
+    assertEquals(0.7, updatedClassification.getAutoClassificationConfig().getMinimumConfidence());
+
+    // Update the config
+    config.setMinimumConfidence(0.8);
+    config.setConflictResolution(
+        org.openmetadata.schema.entity.classification.AutoClassificationConfig.ConflictResolution
+            .HIGHEST_PRIORITY);
+    updatedClassification.setAutoClassificationConfig(config);
+
+    Classification finalClassification =
+        patchEntity(updatedClassification.getId().toString(), updatedClassification);
+
+    // Verify updates
+    assertEquals(0.8, finalClassification.getAutoClassificationConfig().getMinimumConfidence());
+    assertEquals(
+        org.openmetadata.schema.entity.classification.AutoClassificationConfig.ConflictResolution
+            .HIGHEST_PRIORITY,
+        finalClassification.getAutoClassificationConfig().getConflictResolution());
+
+    // Read with autoClassificationConfig field
+    Classification retrievedClassification =
+        getEntityWithFields(finalClassification.getId().toString(), "autoClassificationConfig");
+    assertNotNull(retrievedClassification.getAutoClassificationConfig());
+    assertTrue(retrievedClassification.getAutoClassificationConfig().getEnabled());
+  }
+
+  @Test
+  void test_createClassificationWithAutoConfig(TestNamespace ns) {
+    // Create classification with auto-classification config upfront
+    CreateClassification createClassification = new CreateClassification();
+    createClassification.setName(ns.prefix("classification_with_autoconfig"));
+    createClassification.setDescription("Classification created with auto-classification config");
+
+    AutoClassificationConfig config =
+        new AutoClassificationConfig()
+            .withEnabled(true)
+            .withConflictResolution(AutoClassificationConfig.ConflictResolution.MOST_SPECIFIC)
+            .withMinimumConfidence(0.65)
+            .withRequireExplicitMatch(false);
+    createClassification.setAutoClassificationConfig(config);
+    createClassification.setMutuallyExclusive(true);
+
+    Classification classification = createEntity(createClassification);
+
+    // Verify config was created
+    assertNotNull(classification.getAutoClassificationConfig());
+    assertTrue(classification.getAutoClassificationConfig().getEnabled());
+    assertEquals(0.65, classification.getAutoClassificationConfig().getMinimumConfidence());
+    assertEquals(
+        org.openmetadata.schema.entity.classification.AutoClassificationConfig.ConflictResolution
+            .MOST_SPECIFIC,
+        classification.getAutoClassificationConfig().getConflictResolution());
+    assertFalse(classification.getAutoClassificationConfig().getRequireExplicitMatch());
+    assertTrue(classification.getMutuallyExclusive());
+  }
+
+  @Test
+  void test_deleteAutoClassificationConfig(TestNamespace ns) {
+    // Create classification with auto-classification config
+    CreateClassification createClassification = new CreateClassification();
+    createClassification.setName(ns.prefix("classification_delete_autoconfig"));
+    createClassification.setDescription("Classification for testing auto-config deletion");
+
+    AutoClassificationConfig config =
+        new AutoClassificationConfig().withEnabled(true).withMinimumConfidence(0.6);
+    createClassification.setAutoClassificationConfig(config);
+
+    Classification classification = createEntity(createClassification);
+    assertNotNull(classification.getAutoClassificationConfig());
+
+    // Remove auto-classification config using PATCH
+    classification.setAutoClassificationConfig(null);
+    Classification updatedClassification =
+        patchEntity(classification.getId().toString(), classification);
+
+    // Verify config was removed
+    assertNull(updatedClassification.getAutoClassificationConfig());
+
+    // Verify it's still null when retrieved
+    Classification retrievedClassification =
+        getEntityWithFields(updatedClassification.getId().toString(), "autoClassificationConfig");
+    assertNull(retrievedClassification.getAutoClassificationConfig());
   }
 }

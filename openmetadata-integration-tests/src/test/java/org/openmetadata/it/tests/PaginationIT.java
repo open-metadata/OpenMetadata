@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
@@ -15,7 +16,6 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -68,8 +68,7 @@ public class PaginationIT {
       CreateTable request = new CreateTable();
       request.setName(ns.prefix("pagination_table_" + i));
       request.setDatabaseSchema(schema.getFullyQualifiedName());
-      request.setColumns(List.of(
-          ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+      request.setColumns(List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
 
       Table table = client.tables().create(request);
       createdIds.add(table.getId());
@@ -85,10 +84,7 @@ public class PaginationIT {
    * Generic pagination test that works for any entity type.
    */
   private void testPaginationForEntityType(
-      OpenMetadataClient client,
-      String entityType,
-      List<UUID> expectedIds,
-      int limit) {
+      OpenMetadataClient client, String entityType, List<UUID> expectedIds, int limit) {
 
     ListParams params = new ListParams();
     params.setLimit(limit);
@@ -112,25 +108,28 @@ public class PaginationIT {
 
       // First page should NOT have 'before' cursor
       if (pageCount == 0) {
-        assertNull(page.getPaging().getBefore(),
+        assertNull(
+            page.getPaging().getBefore(),
             "First page should not have 'before' cursor (limit=" + limit + ")");
       }
 
       // Verify page size respects limit
-      assertTrue(page.getData().size() <= limit,
+      assertTrue(
+          page.getData().size() <= limit,
           "Page size " + page.getData().size() + " exceeds limit " + limit);
 
       // If not last page, should have exactly 'limit' items
       if (page.getPaging().getAfter() != null && page.getData().size() > 0) {
-        assertEquals(limit, page.getData().size(),
+        assertEquals(
+            limit,
+            page.getData().size(),
             "Non-last page should have exactly 'limit' items (limit=" + limit + ")");
       }
 
       // Check for duplicates and collect IDs
       for (Object entity : page.getData()) {
         UUID id = getEntityId(entity);
-        assertFalse(seenIds.contains(id),
-            "Duplicate entity found in forward pagination: " + id);
+        assertFalse(seenIds.contains(id), "Duplicate entity found in forward pagination: " + id);
         seenIds.add(id);
       }
 
@@ -142,8 +141,13 @@ public class PaginationIT {
 
     // === VERIFY ALL CREATED ENTITIES FOUND ===
     for (UUID expectedId : expectedIds) {
-      assertTrue(seenIds.contains(expectedId),
-          "Created entity " + expectedId + " should appear in pagination results (limit=" + limit + ")");
+      assertTrue(
+          seenIds.contains(expectedId),
+          "Created entity "
+              + expectedId
+              + " should appear in pagination results (limit="
+              + limit
+              + ")");
     }
 
     // === BACKWARD PAGINATION ===
@@ -160,14 +164,12 @@ public class PaginationIT {
         ListResponse<?> page = listByType(client, entityType, params);
 
         assertNotNull(page, "Backward page should not be null");
-        assertTrue(page.getData().size() <= limit,
-            "Backward page should respect limit " + limit);
+        assertTrue(page.getData().size() <= limit, "Backward page should respect limit " + limit);
 
         // Check for duplicates
         for (Object entity : page.getData()) {
           UUID id = getEntityId(entity);
-          assertFalse(backwardIds.contains(id),
-              "Duplicate in backward pagination: " + id);
+          assertFalse(backwardIds.contains(id), "Duplicate in backward pagination: " + id);
           backwardIds.add(id);
         }
 
@@ -183,7 +185,8 @@ public class PaginationIT {
   /**
    * List entities by type using the appropriate SDK method.
    */
-  private ListResponse<?> listByType(OpenMetadataClient client, String entityType, ListParams params) {
+  private ListResponse<?> listByType(
+      OpenMetadataClient client, String entityType, ListParams params) {
     switch (entityType) {
       case "table":
         return client.tables().list(params);

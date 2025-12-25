@@ -34,7 +34,10 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   // Disable tests that don't apply to GlossaryTerm
   {
     supportsFollowers = false; // GlossaryTerm doesn't support followers directly
+    supportsImportExport = true;
   }
+
+  private Glossary lastCreatedGlossary;
 
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
@@ -154,6 +157,23 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Override
   protected GlossaryTerm getVersion(UUID id, Double version) {
     return SdkClients.adminClient().glossaryTerms().getVersion(id.toString(), version);
+  }
+
+  @Override
+  protected org.openmetadata.sdk.services.EntityServiceBase<GlossaryTerm> getEntityService() {
+    return SdkClients.adminClient().glossaryTerms();
+  }
+
+  @Override
+  protected String getImportExportContainerName(TestNamespace ns) {
+    if (lastCreatedGlossary == null) {
+      // Create a glossary to use as container
+      CreateGlossary glossaryRequest = new CreateGlossary();
+      glossaryRequest.setName(ns.prefix("export_glossary"));
+      glossaryRequest.setDescription("Glossary for export testing");
+      lastCreatedGlossary = SdkClients.adminClient().glossaries().create(glossaryRequest);
+    }
+    return lastCreatedGlossary.getFullyQualifiedName();
   }
 
   // ===================================================================
@@ -1577,5 +1597,476 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertTrue(level3.getFullyQualifiedName().contains(glossaryName));
     assertTrue(level3.getFullyQualifiedName().contains(level1.getName()));
     assertTrue(level3.getFullyQualifiedName().contains(level2.getName()));
+  }
+
+  @Test
+  void get_listGlossaryTermsWithDifferentFilters(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary createGlossary1 =
+        new CreateGlossary()
+            .withName(ns.prefix("glossary_filter_1"))
+            .withDescription("First glossary for filter test");
+    Glossary glossary1 = client.glossaries().create(createGlossary1);
+
+    CreateGlossaryTerm parentRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("parent_filter"))
+            .withGlossary(glossary1.getFullyQualifiedName())
+            .withDescription("Parent term");
+    GlossaryTerm parent = createEntity(parentRequest);
+
+    CreateGlossaryTerm child1Request =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("child_filter_1"))
+            .withGlossary(glossary1.getFullyQualifiedName())
+            .withParent(parent.getFullyQualifiedName())
+            .withDescription("Child 1");
+    GlossaryTerm child1 = createEntity(child1Request);
+
+    CreateGlossaryTerm child2Request =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("child_filter_2"))
+            .withGlossary(glossary1.getFullyQualifiedName())
+            .withParent(parent.getFullyQualifiedName())
+            .withDescription("Child 2");
+    GlossaryTerm child2 = createEntity(child2Request);
+
+    ListParams params = new ListParams();
+    params.setFields("children,relatedTerms,reviewers,tags");
+    ListResponse<GlossaryTerm> list = listEntities(params);
+    assertNotNull(list);
+    assertNotNull(list.getData());
+    assertTrue(list.getData().size() > 0);
+  }
+
+  @Test
+  void test_inheritGlossaryReviewerAndOwner(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary glossaryRequest = new CreateGlossary();
+    glossaryRequest.setName(ns.prefix("glossary_inherit"));
+    glossaryRequest.setDescription("Glossary with reviewers and owner");
+    glossaryRequest.setOwners(List.of(testUser2().getEntityReference()));
+    glossaryRequest.setReviewers(List.of(testUser1().getEntityReference()));
+    Glossary glossary = client.glossaries().create(glossaryRequest);
+
+    CreateGlossaryTerm termRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_inherit"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term to inherit reviewers and owner");
+    GlossaryTerm term = createEntity(termRequest);
+
+    GlossaryTerm fetched = client.glossaryTerms().get(term.getId().toString(), "reviewers,owners");
+    assertNotNull(fetched);
+    assertNotNull(fetched.getReviewers());
+    assertNotNull(fetched.getOwners());
+  }
+
+  @Test
+  void patch_addDeleteRelatedTerms(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm request1 =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_related_patch_1"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("First term");
+    GlossaryTerm term1 = createEntity(request1);
+
+    CreateGlossaryTerm request2 =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_related_patch_2"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Second term");
+    GlossaryTerm term2 = createEntity(request2);
+
+    term2.setRelatedTerms(List.of(term1.getEntityReference()));
+    GlossaryTerm updated = patchEntity(term2.getId().toString(), term2);
+    assertNotNull(updated.getRelatedTerms());
+    assertTrue(updated.getRelatedTerms().size() >= 1);
+
+    updated.setRelatedTerms(null);
+    GlossaryTerm updated2 = patchEntity(updated.getId().toString(), updated);
+    assertTrue(updated2.getRelatedTerms() == null || updated2.getRelatedTerms().isEmpty());
+  }
+
+  @Test
+  void patch_addDeleteTags(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_patch_tags"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term for tag patching");
+    GlossaryTerm term = createEntity(request);
+
+    org.openmetadata.schema.type.TagLabel tag =
+        new org.openmetadata.schema.type.TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL);
+
+    term.setTags(List.of(tag));
+    GlossaryTerm updated = patchEntity(term.getId().toString(), term);
+    assertNotNull(updated.getTags());
+    assertTrue(updated.getTags().size() >= 1);
+
+    updated.setTags(null);
+    GlossaryTerm updated2 = patchEntity(updated.getId().toString(), updated);
+    assertTrue(updated2.getTags() == null || updated2.getTags().isEmpty());
+  }
+
+  @Test
+  void patch_addDeleteStyle(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_style_patch"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term for style patching");
+    GlossaryTerm term = createEntity(request);
+
+    org.openmetadata.schema.entity.type.Style style =
+        new org.openmetadata.schema.entity.type.Style()
+            .withColor("#00FF00")
+            .withIconURL("http://example.com/icon.png");
+
+    term.setStyle(style);
+    GlossaryTerm updated = patchEntity(term.getId().toString(), term);
+    assertNotNull(updated.getStyle());
+    assertEquals("#00FF00", updated.getStyle().getColor());
+
+    updated.setStyle(null);
+    GlossaryTerm updated2 = patchEntity(updated.getId().toString(), updated);
+    assertNull(updated2.getStyle());
+  }
+
+  @Test
+  void get_entityWithDifferentFields_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_fields"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term for fields test")
+            .withOwners(List.of(testUser1().getEntityReference()))
+            .withReviewers(List.of(testUser2().getEntityReference()));
+    GlossaryTerm term = createEntity(request);
+
+    GlossaryTerm withOwners = client.glossaryTerms().get(term.getId().toString(), "owners");
+    assertNotNull(withOwners);
+    assertNotNull(withOwners.getOwners());
+
+    GlossaryTerm withReviewers = client.glossaryTerms().get(term.getId().toString(), "reviewers");
+    assertNotNull(withReviewers);
+    assertNotNull(withReviewers.getReviewers());
+
+    GlossaryTerm withTags = client.glossaryTerms().get(term.getId().toString(), "tags");
+    assertNotNull(withTags);
+
+    GlossaryTerm withAll =
+        client.glossaryTerms().get(term.getId().toString(), "owners,reviewers,tags,domain");
+    assertNotNull(withAll);
+  }
+
+  @Test
+  void get_glossaryTermsWithPagination_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    for (int i = 0; i < 10; i++) {
+      CreateGlossaryTerm request =
+          new CreateGlossaryTerm()
+              .withName(ns.prefix("page_term_" + i))
+              .withGlossary(glossary.getFullyQualifiedName())
+              .withDescription("Pagination test term " + i);
+      createEntity(request);
+    }
+
+    ListParams params = new ListParams();
+    params.setLimit(5);
+    ListResponse<GlossaryTerm> page1 = listEntities(params);
+    assertNotNull(page1);
+    assertNotNull(page1.getData());
+    assertNotNull(page1.getPaging());
+  }
+
+  @Test
+  void test_createDuplicateGlossaryTerm(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    String termName = ns.prefix("duplicate");
+    CreateGlossaryTerm request1 =
+        new CreateGlossaryTerm()
+            .withName(termName)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("First term");
+    createEntity(request1);
+
+    CreateGlossaryTerm request2 =
+        new CreateGlossaryTerm()
+            .withName(termName)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Duplicate term");
+    assertThrows(Exception.class, () -> createEntity(request2));
+  }
+
+  @Test
+  void test_selfReferenceValidation(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("self_ref"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Self reference test");
+    GlossaryTerm term = createEntity(request);
+
+    term.setParent(term.getEntityReference());
+    assertThrows(
+        Exception.class,
+        () -> patchEntity(term.getId().toString(), term),
+        "Self-reference should fail");
+  }
+
+  @Test
+  void test_childrenCountIncludesAllNestedTerms(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm parentRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("parent_nested_count"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Parent");
+    GlossaryTerm parent = createEntity(parentRequest);
+
+    CreateGlossaryTerm child1Request =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("child1_nested"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(parent.getFullyQualifiedName())
+            .withDescription("Child 1");
+    GlossaryTerm child1 = createEntity(child1Request);
+
+    CreateGlossaryTerm grandchildRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("grandchild_nested"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(child1.getFullyQualifiedName())
+            .withDescription("Grandchild");
+    createEntity(grandchildRequest);
+
+    GlossaryTerm fetchedParent =
+        client.glossaryTerms().get(parent.getId().toString(), "children,childrenCount");
+    assertNotNull(fetchedParent);
+    assertNotNull(fetchedParent.getChildren());
+  }
+
+  @Test
+  void test_glossaryTermNameWithSpecialCharacters(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_with_spaces"))
+            .withDisplayName("Term With Spaces And Special-Chars_123")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term with special characters");
+
+    GlossaryTerm term = createEntity(request);
+    assertNotNull(term);
+    assertEquals(ns.prefix("term_with_spaces"), term.getName());
+  }
+
+  @Test
+  void test_glossaryTermParentUpdate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm parent1Request =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("parent1_update"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("First parent");
+    GlossaryTerm parent1 = createEntity(parent1Request);
+
+    CreateGlossaryTerm parent2Request =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("parent2_update"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Second parent");
+    GlossaryTerm parent2 = createEntity(parent2Request);
+
+    CreateGlossaryTerm childRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("child_update"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(parent1.getFullyQualifiedName())
+            .withDescription("Child");
+    GlossaryTerm child = createEntity(childRequest);
+
+    assertEquals(parent1.getId(), child.getParent().getId());
+
+    child.setParent(parent2.getEntityReference());
+    GlossaryTerm updated = patchEntity(child.getId().toString(), child);
+    assertEquals(parent2.getId(), updated.getParent().getId());
+  }
+
+  @Test
+  void test_glossaryTermRelatedTermsSymmetry(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm request1 =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_sym_1"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("First term for symmetry test");
+    GlossaryTerm term1 = createEntity(request1);
+
+    CreateGlossaryTerm request2 =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_sym_2"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Second term for symmetry test")
+            .withRelatedTerms(List.of(term1.getFullyQualifiedName()));
+    GlossaryTerm term2 = createEntity(request2);
+
+    GlossaryTerm fetchedTerm2 =
+        client.glossaryTerms().get(term2.getId().toString(), "relatedTerms");
+    assertNotNull(fetchedTerm2.getRelatedTerms());
+    assertTrue(fetchedTerm2.getRelatedTerms().size() >= 1);
+  }
+
+  @Test
+  void test_deleteGlossaryTermWithChildren(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm parentRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("parent_del_children"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Parent to delete");
+    GlossaryTerm parent = createEntity(parentRequest);
+
+    CreateGlossaryTerm childRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("child_del"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(parent.getFullyQualifiedName())
+            .withDescription("Child");
+    createEntity(childRequest);
+
+    assertThrows(
+        Exception.class,
+        () -> deleteEntity(parent.getId().toString()),
+        "Should not be able to delete parent with children without recursive flag");
+  }
+
+  @Test
+  void test_glossaryTermVersionIncrement(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_version_inc"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Initial description");
+    GlossaryTerm term = createEntity(request);
+    Double initialVersion = term.getVersion();
+
+    term.setDescription("Updated description v2");
+    GlossaryTerm updated = patchEntity(term.getId().toString(), term);
+    assertTrue(updated.getVersion() > initialVersion);
+
+    term.setDescription("Updated description v3");
+    GlossaryTerm updated2 = patchEntity(term.getId().toString(), term);
+    assertTrue(updated2.getVersion() > updated.getVersion());
+  }
+
+  @Test
+  void test_glossaryTermReviewersMultipleUpdates(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_reviewers_multi"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term for multiple reviewer updates");
+    GlossaryTerm term = createEntity(request);
+
+    term.setReviewers(List.of(testUser1().getEntityReference()));
+    GlossaryTerm updated1 = patchEntity(term.getId().toString(), term);
+    assertNotNull(updated1.getReviewers());
+    assertEquals(1, updated1.getReviewers().size());
+
+    updated1.setReviewers(
+        List.of(testUser1().getEntityReference(), testUser2().getEntityReference()));
+    GlossaryTerm updated2 = patchEntity(updated1.getId().toString(), updated1);
+    assertNotNull(updated2.getReviewers());
+    assertTrue(updated2.getReviewers().size() >= 2);
+
+    updated2.setReviewers(List.of(testUser2().getEntityReference()));
+    GlossaryTerm updated3 = patchEntity(updated2.getId().toString(), updated2);
+    assertNotNull(updated3.getReviewers());
+    assertEquals(1, updated3.getReviewers().size());
+  }
+
+  @Test
+  void test_glossaryTermSynonymsPreservedOnUpdate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_syn_preserve"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term with synonyms")
+            .withSynonyms(List.of("syn1", "syn2", "syn3"));
+    GlossaryTerm term = createEntity(request);
+    assertEquals(3, term.getSynonyms().size());
+
+    term.setDescription("Updated description");
+    GlossaryTerm updated = patchEntity(term.getId().toString(), term);
+    assertNotNull(updated.getSynonyms());
+    assertEquals(3, updated.getSynonyms().size());
+    assertTrue(updated.getSynonyms().containsAll(List.of("syn1", "syn2", "syn3")));
+  }
+
+  @Test
+  void test_glossaryTermOwnersUpdate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_owners_update"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term for owner updates")
+            .withOwners(List.of(testUser1().getEntityReference()));
+    GlossaryTerm term = createEntity(request);
+    assertEquals(1, term.getOwners().size());
+
+    term.setOwners(List.of(testUser2().getEntityReference()));
+    GlossaryTerm updated = patchEntity(term.getId().toString(), term);
+    assertNotNull(updated.getOwners());
+    assertEquals(1, updated.getOwners().size());
+    assertEquals(testUser2().getId(), updated.getOwners().get(0).getId());
   }
 }

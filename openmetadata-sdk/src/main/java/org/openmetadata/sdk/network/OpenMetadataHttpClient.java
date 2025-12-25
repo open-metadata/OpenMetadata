@@ -208,11 +208,20 @@ public class OpenMetadataHttpClient implements HttpClient {
     if (requestBody != null) {
       // Check if this is a string request (for CSV import, etc.)
       if (requestBody instanceof String) {
+        String stringBody = (String) requestBody;
         String contentType = "text/plain";
+        // Check if options has a specific Content-Type
         if (options != null && options.getHeaders() != null) {
           contentType = options.getHeaders().getOrDefault("Content-Type", contentType);
         }
-        body = RequestBody.create((String) requestBody, MediaType.parse(contentType));
+        // If no explicit content type and the string looks like JSON, use application/json
+        if (contentType.equals("text/plain") && stringBody.length() > 0) {
+          char firstChar = stringBody.trim().charAt(0);
+          if (firstChar == '{' || firstChar == '[') {
+            contentType = "application/json; charset=utf-8";
+          }
+        }
+        body = RequestBody.create(stringBody, MediaType.parse(contentType));
       } else {
         try {
           String jsonBody = objectMapper.writeValueAsString(requestBody);

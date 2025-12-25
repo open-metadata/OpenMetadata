@@ -79,6 +79,50 @@ public class ListParams {
     return this;
   }
 
+  public ListParams setDomain(String domain) {
+    filters.put("domains", domain);
+    return this;
+  }
+
+  public ListParams withDomain(String domain) {
+    return setDomain(domain);
+  }
+
+  public ListParams setDomains(String domains) {
+    filters.put("domains", domains);
+    return this;
+  }
+
+  public ListParams withService(String service) {
+    return setService(service);
+  }
+
+  public ListParams setDirectory(String directory) {
+    filters.put("directory", directory);
+    return this;
+  }
+
+  public ListParams withDirectory(String directory) {
+    return setDirectory(directory);
+  }
+
+  public ListParams setRoot(String root) {
+    filters.put("root", root);
+    return this;
+  }
+
+  public ListParams withRoot(String root) {
+    return setRoot(root);
+  }
+
+  public ListParams withLimit(Integer limit) {
+    return setLimit(limit);
+  }
+
+  public ListParams withAfter(String after) {
+    return setAfter(after);
+  }
+
   public ListParams addQueryParam(String key, String value) {
     queryParams.put(key, value);
     return this;

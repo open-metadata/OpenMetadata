@@ -84,6 +84,16 @@ public final class Directories {
       return this;
     }
 
+    public DirectoryCreator withPath(String path) {
+      request.setPath(path);
+      return this;
+    }
+
+    public DirectoryCreator withParent(String parentFqn) {
+      request.setParent(parentFqn);
+      return this;
+    }
+
     public Directory execute() {
       return client.directories().create(request);
     }

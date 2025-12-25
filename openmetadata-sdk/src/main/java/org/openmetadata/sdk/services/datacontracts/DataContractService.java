@@ -4,6 +4,7 @@ import java.util.UUID;
 import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -99,5 +100,73 @@ public class DataContractService extends EntityServiceBase<DataContract> {
   public void deleteResultsBefore(UUID contractId, Long timestamp) throws OpenMetadataException {
     httpClient.executeForString(
         HttpMethod.DELETE, basePath + "/" + contractId + "/results/before/" + timestamp, null);
+  }
+
+  /**
+   * Export data contract to ODCS format by ID.
+   */
+  public ODCSDataContract exportToODCS(UUID contractId) throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.GET, basePath + "/" + contractId + "/odcs", null, ODCSDataContract.class);
+  }
+
+  /**
+   * Export data contract to ODCS format by FQN.
+   */
+  public ODCSDataContract exportToODCSByFqn(String fqn) throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.GET, basePath + "/name/" + fqn + "/odcs", null, ODCSDataContract.class);
+  }
+
+  /**
+   * Export data contract to ODCS YAML format by ID.
+   */
+  public String exportToODCSYaml(UUID contractId) throws OpenMetadataException {
+    RequestOptions options = RequestOptions.builder().header("Accept", "application/yaml").build();
+    return httpClient.executeForString(
+        HttpMethod.GET, basePath + "/" + contractId + "/odcs/yaml", null, options);
+  }
+
+  /**
+   * Import data contract from ODCS format.
+   */
+  public DataContract importFromODCS(ODCSDataContract odcs, UUID entityId, String entityType)
+      throws OpenMetadataException {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityId", entityId.toString())
+            .queryParam("entityType", entityType)
+            .build();
+    return httpClient.execute(
+        HttpMethod.POST, basePath + "/odcs", odcs, DataContract.class, options);
+  }
+
+  /**
+   * Import data contract from ODCS YAML format.
+   */
+  public DataContract importFromODCSYaml(String yamlContent, UUID entityId, String entityType)
+      throws OpenMetadataException {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityId", entityId.toString())
+            .queryParam("entityType", entityType)
+            .header("Content-Type", "application/yaml")
+            .build();
+    return httpClient.execute(
+        HttpMethod.POST, basePath + "/odcs/yaml", yamlContent, DataContract.class, options);
+  }
+
+  /**
+   * Create or update data contract from ODCS format.
+   */
+  public DataContract createOrUpdateFromODCS(
+      ODCSDataContract odcs, UUID entityId, String entityType) throws OpenMetadataException {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityId", entityId.toString())
+            .queryParam("entityType", entityType)
+            .build();
+    return httpClient.execute(
+        HttpMethod.PUT, basePath + "/odcs", odcs, DataContract.class, options);
   }
 }

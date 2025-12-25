@@ -26,6 +26,7 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -33,8 +34,12 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnProfile;
+import org.openmetadata.schema.type.DmlOperationType;
+import org.openmetadata.schema.type.EntityProfile;
+import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -300,6 +305,302 @@ public class EntityProfileResourceIT {
     assertEquals(2000.0, recentTable.getProfile().getRowCount());
   }
 
+  @Test
+  void testAddSystemProfile(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Table table = createTestTable(ns);
+
+    Long timestamp = System.currentTimeMillis();
+    SystemProfile systemProfile =
+        new SystemProfile()
+            .withOperation(DmlOperationType.INSERT)
+            .withRowsAffected(100)
+            .withTimestamp(timestamp);
+
+    CreateEntityProfile createProfile =
+        new CreateEntityProfile()
+            .withTimestamp(timestamp)
+            .withProfileData(systemProfile)
+            .withProfileType(CreateEntityProfile.ProfileTypeEnum.SYSTEM);
+
+    String path = "/v1/entity/profiles/id/table/" + table.getId();
+    EntityProfile profile =
+        client.getHttpClient().execute(HttpMethod.POST, path, createProfile, EntityProfile.class);
+
+    assertNotNull(profile);
+    assertEquals(CreateEntityProfile.ProfileTypeEnum.SYSTEM, profile.getProfileType());
+    assertEquals(table.getEntityReference().getId(), profile.getEntityReference().getId());
+  }
+
+  @Test
+  void testGetProfileDataWithPIIAdminUser(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Table piiTable = createPIITestTable(ns);
+
+    Long timestamp = System.currentTimeMillis();
+    ColumnProfile piiColumnProfile =
+        new ColumnProfile()
+            .withName("email")
+            .withTimestamp(timestamp)
+            .withValuesCount(1000.0)
+            .withNullCount(0.0)
+            .withDistinctCount(1000.0)
+            .withUniqueCount(1000.0);
+
+    CreateEntityProfile createProfile =
+        new CreateEntityProfile()
+            .withTimestamp(timestamp)
+            .withProfileData(piiColumnProfile)
+            .withProfileType(CreateEntityProfile.ProfileTypeEnum.COLUMN);
+
+    String createPath = "/v1/entity/profiles/id/table/" + piiTable.getId();
+    client.getHttpClient().execute(HttpMethod.POST, createPath, createProfile, EntityProfile.class);
+
+    String getPath =
+        "/v1/entity/profiles/table/"
+            + piiTable.getFullyQualifiedName()
+            + "?startTs="
+            + (timestamp - 1000)
+            + "&endTs="
+            + (timestamp + 1000)
+            + "&profileType=COLUMN";
+
+    String response = client.getHttpClient().executeForString(HttpMethod.GET, getPath, null, null);
+
+    assertNotNull(response);
+    assertTrue(response.contains("email"));
+    assertTrue(response.contains("1000"));
+  }
+
+  @Test
+  void testGetProfileDataByProfileType(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Table table = createTestTable(ns);
+
+    Long timestamp = System.currentTimeMillis();
+
+    TableProfile tableProfile =
+        new TableProfile()
+            .withTimestamp(timestamp)
+            .withRowCount(500.0)
+            .withColumnCount(5.0)
+            .withSizeInByte(25000.0);
+
+    CreateEntityProfile tableCreateProfile =
+        new CreateEntityProfile()
+            .withTimestamp(timestamp)
+            .withProfileData(tableProfile)
+            .withProfileType(CreateEntityProfile.ProfileTypeEnum.TABLE);
+
+    String createPath = "/v1/entity/profiles/id/table/" + table.getId();
+    client
+        .getHttpClient()
+        .execute(HttpMethod.POST, createPath, tableCreateProfile, EntityProfile.class);
+
+    ColumnProfile columnProfile =
+        new ColumnProfile()
+            .withName("id")
+            .withTimestamp(timestamp)
+            .withValuesCount(500.0)
+            .withUniqueCount(500.0);
+
+    CreateEntityProfile columnCreateProfile =
+        new CreateEntityProfile()
+            .withTimestamp(timestamp)
+            .withProfileData(columnProfile)
+            .withProfileType(CreateEntityProfile.ProfileTypeEnum.COLUMN);
+
+    client
+        .getHttpClient()
+        .execute(HttpMethod.POST, createPath, columnCreateProfile, EntityProfile.class);
+
+    String getPath =
+        "/v1/entity/profiles/table/"
+            + table.getFullyQualifiedName()
+            + "?startTs="
+            + (timestamp - 1000)
+            + "&endTs="
+            + (timestamp + 1000)
+            + "&profileType=TABLE";
+
+    String response = client.getHttpClient().executeForString(HttpMethod.GET, getPath, null, null);
+
+    assertNotNull(response);
+    assertTrue(response.contains("TABLE"));
+    assertTrue(response.contains("rowCount"));
+  }
+
+  @Test
+  void testInvalidTimestamp(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Table table = createTestTable(ns);
+
+    ColumnProfile columnProfile =
+        new ColumnProfile().withName("test_column").withValuesCount(100.0);
+
+    CreateEntityProfile createProfile =
+        new CreateEntityProfile()
+            .withTimestamp(-1L)
+            .withProfileData(columnProfile)
+            .withProfileType(CreateEntityProfile.ProfileTypeEnum.COLUMN);
+
+    String path = "/v1/entity/profiles/id/table/" + table.getId();
+
+    assertThrows(
+        ApiException.class,
+        () ->
+            client
+                .getHttpClient()
+                .execute(HttpMethod.POST, path, createProfile, EntityProfile.class));
+  }
+
+  @Test
+  void testDeleteEntityProfile(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Table table = createTestTable(ns);
+
+    Long timestamp = System.currentTimeMillis();
+    TableProfile tableProfile =
+        new TableProfile()
+            .withTimestamp(timestamp)
+            .withRowCount(500.0)
+            .withColumnCount(5.0)
+            .withSizeInByte(25000.0);
+
+    CreateEntityProfile createProfile =
+        new CreateEntityProfile()
+            .withTimestamp(timestamp)
+            .withProfileData(tableProfile)
+            .withProfileType(CreateEntityProfile.ProfileTypeEnum.TABLE);
+
+    String createPath = "/v1/entity/profiles/id/table/" + table.getId();
+    client.getHttpClient().execute(HttpMethod.POST, createPath, createProfile, EntityProfile.class);
+
+    String deletePath =
+        "/v1/entity/profiles/name/table/" + table.getFullyQualifiedName() + "/" + timestamp;
+    client.getHttpClient().execute(HttpMethod.DELETE, deletePath, null, String.class);
+
+    String getPath =
+        "/v1/entity/profiles/table/"
+            + table.getFullyQualifiedName()
+            + "?startTs="
+            + (timestamp - 1000)
+            + "&endTs="
+            + (timestamp + 1000)
+            + "&profileType=TABLE";
+
+    String response = client.getHttpClient().executeForString(HttpMethod.GET, getPath, null, null);
+
+    assertTrue(response.contains("\"data\":[]") || !response.contains(String.valueOf(timestamp)));
+  }
+
+  @Test
+  void testDeleteEntityProfileByType(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Table table = createTestTable(ns);
+
+    Long timestamp = System.currentTimeMillis();
+    ColumnProfile columnProfile =
+        new ColumnProfile()
+            .withName("id")
+            .withTimestamp(timestamp)
+            .withValuesCount(800.0)
+            .withNullCount(0.0);
+
+    CreateEntityProfile createProfile =
+        new CreateEntityProfile()
+            .withTimestamp(timestamp)
+            .withProfileData(columnProfile)
+            .withProfileType(CreateEntityProfile.ProfileTypeEnum.COLUMN);
+
+    String createPath = "/v1/entity/profiles/id/table/" + table.getId();
+    client.getHttpClient().execute(HttpMethod.POST, createPath, createProfile, EntityProfile.class);
+
+    String deletePath =
+        "/v1/entity/profiles/name/table/"
+            + table.getFullyQualifiedName()
+            + "/"
+            + timestamp
+            + "?profileType=COLUMN";
+    client.getHttpClient().execute(HttpMethod.DELETE, deletePath, null, String.class);
+
+    String getPath =
+        "/v1/entity/profiles/table/"
+            + table.getFullyQualifiedName()
+            + "?startTs="
+            + (timestamp - 1000)
+            + "&endTs="
+            + (timestamp + 1000)
+            + "&profileType=COLUMN";
+
+    String response = client.getHttpClient().executeForString(HttpMethod.GET, getPath, null, null);
+
+    assertTrue(response.contains("\"data\":[]") || !response.contains(String.valueOf(timestamp)));
+  }
+
+  @Test
+  void testGetEntityProfileNotFound(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String getPath =
+        "/v1/entity/profiles/table/nonexistent.table?startTs=0&endTs=" + System.currentTimeMillis();
+
+    assertThrows(
+        ApiException.class,
+        () -> client.getHttpClient().executeForString(HttpMethod.GET, getPath, null, null));
+  }
+
+  @Test
+  void testGetProfileDataWithPIIRegularUserMasked(TestNamespace ns) throws Exception {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    OpenMetadataClient userClient = SdkClients.user1Client();
+
+    Table piiTable = createPIITestTable(ns);
+
+    Long timestamp = System.currentTimeMillis();
+    ColumnProfile piiColumnProfile =
+        new ColumnProfile()
+            .withName("email")
+            .withTimestamp(timestamp)
+            .withValuesCount(1000.0)
+            .withNullCount(0.0)
+            .withDistinctCount(1000.0)
+            .withUniqueCount(1000.0);
+
+    CreateEntityProfile createProfile =
+        new CreateEntityProfile()
+            .withTimestamp(timestamp)
+            .withProfileData(piiColumnProfile)
+            .withProfileType(CreateEntityProfile.ProfileTypeEnum.COLUMN);
+
+    String createPath = "/v1/entity/profiles/id/table/" + piiTable.getId();
+    adminClient
+        .getHttpClient()
+        .execute(HttpMethod.POST, createPath, createProfile, EntityProfile.class);
+
+    String getPath =
+        "/v1/entity/profiles/table/"
+            + piiTable.getFullyQualifiedName()
+            + "?startTs="
+            + (timestamp - 1000)
+            + "&endTs="
+            + (timestamp + 1000)
+            + "&profileType=COLUMN";
+
+    String response =
+        userClient.getHttpClient().executeForString(HttpMethod.GET, getPath, null, null);
+
+    assertNotNull(response);
+    assertTrue(response.contains("email"));
+    assertFalse(response.contains("1000.0") || response.contains("\"valuesCount\":1000"));
+  }
+
   private Table createTestTable(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -323,13 +624,32 @@ public class EntityProfileResourceIT {
     return client.tables().create(request);
   }
 
-  /**
-   * Gets the table with the latest profile. Uses the /tableProfile/latest endpoint which returns a
-   * Table with profile attached.
-   */
+  private Table createPIITestTable(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable request = new CreateTable();
+    request.setName(ns.prefix("piiProfileTable"));
+    request.setDatabaseSchema(schema.getFullyQualifiedName());
+    request.setDescription("Test table with PII data for profile testing");
+
+    Column piiColumn =
+        ColumnBuilder.of("email", "VARCHAR").dataLength(255).tags("PII.Sensitive").build();
+
+    List<Column> columns =
+        List.of(
+            ColumnBuilder.of("userId", "BIGINT").primaryKey().notNull().build(),
+            piiColumn,
+            ColumnBuilder.of("lastLogin", "TIMESTAMP").build());
+    request.setColumns(columns);
+
+    return client.tables().create(request);
+  }
+
   private Table getTableWithProfile(
       OpenMetadataClient client, String fqn, Long startTs, Long endTs) {
-    // Use the /tableProfile/latest endpoint which returns a Table with profile
     String path = "/v1/tables/" + fqn + "/tableProfile/latest";
 
     RequestOptions options =

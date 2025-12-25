@@ -8,15 +8,18 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.env.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
@@ -42,7 +45,10 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     supportsTags = false; // TestCase tags are handled differently
     supportsDataProducts = false; // TestCase doesn't support dataProducts
     supportsNameLengthValidation = false; // TestCase FQN includes table FQN, no strict name length
+    supportsImportExport = true;
   }
+
+  private TestSuite lastCreatedTestSuite;
 
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
@@ -233,6 +239,22 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Override
   protected TestCase getVersion(java.util.UUID id, Double version) {
     return SdkClients.adminClient().testCases().getVersion(id, version);
+  }
+
+  @Override
+  protected org.openmetadata.sdk.services.EntityServiceBase<TestCase> getEntityService() {
+    return SdkClients.adminClient().testCases();
+  }
+
+  @Override
+  protected String getImportExportContainerName(TestNamespace ns) {
+    if (lastCreatedTestSuite == null) {
+      CreateTestSuite request = new CreateTestSuite();
+      request.setName(ns.prefix("export_suite"));
+      request.setDescription("Test suite for export testing");
+      lastCreatedTestSuite = SdkClients.adminClient().testSuites().create(request);
+    }
+    return lastCreatedTestSuite.getFullyQualifiedName();
   }
 
   // ===================================================================
@@ -1186,5 +1208,1471 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     // Should succeed because column validation is case-insensitive
     TestCase created = createEntity(createRequest);
     assertNotNull(created, "Test case should be created with case-insensitive column match");
+  }
+
+  // ===================================================================
+  // MIGRATED TESTS FROM TestCaseResourceTest
+  // ===================================================================
+
+  @Test
+  void test_createMany(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create two tables for the test cases
+    Table table1 = createTable(ns);
+    Table table2 = createTableWithName(ns, "table2");
+
+    String tableLink1 = "<#E::table::" + table1.getFullyQualifiedName() + ">";
+    String tableLink2 = "<#E::table::" + table2.getFullyQualifiedName() + ">";
+
+    // Create 10 test cases, alternating between tables
+    java.util.List<CreateTestCase> createRequests = new java.util.ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      CreateTestCase request = new CreateTestCase();
+      request.setName(ns.prefix("bulk_test_" + i));
+      request.setDescription("Bulk test case " + i);
+      request.setEntityLink(i % 2 == 0 ? tableLink1 : tableLink2);
+      request.setTestDefinition("tableRowCountToEqual");
+      request.setParameterValues(
+          List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+      createRequests.add(request);
+    }
+
+    // Use the createMany API
+    List<TestCase> createdTestCases = client.testCases().createMany(createRequests);
+
+    // Verify all 10 were created
+    assertEquals(10, createdTestCases.size());
+
+    // Verify each test case exists and has correct entity link
+    for (int i = 0; i < createdTestCases.size(); i++) {
+      TestCase testCase = createdTestCases.get(i);
+      assertNotNull(testCase.getId());
+      assertNotNull(testCase.getFullyQualifiedName());
+
+      // Fetch and verify
+      TestCase fetched = client.testCases().get(testCase.getId().toString());
+      assertNotNull(fetched);
+      assertEquals(testCase.getName(), fetched.getName());
+    }
+  }
+
+  @Test
+  void test_addInspectionQueryViaAPI(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    // Create a test case
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("inspection_query_api_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // Set inspection query using the API
+    String inspectionQuery = "SELECT * FROM " + table.getName() + " WHERE status = 'FAILED'";
+    TestCase updatedTestCase =
+        client.testCases().setInspectionQuery(testCase.getId().toString(), inspectionQuery);
+
+    // Verify the inspection query was set
+    assertNotNull(updatedTestCase);
+    assertEquals(inspectionQuery, updatedTestCase.getInspectionQuery());
+
+    // Fetch and verify it persisted
+    TestCase fetched = client.testCases().get(testCase.getId().toString());
+    assertEquals(inspectionQuery, fetched.getInspectionQuery());
+  }
+
+  @Test
+  void test_testCaseResultStateManagement(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    // Create a test case
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("result_state_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // Add multiple test case results at different timestamps
+    long baseTimestamp = System.currentTimeMillis() - 86400000L * 5; // 5 days ago
+
+    for (int i = 0; i < 5; i++) {
+      long timestamp = baseTimestamp + (i * 86400000L); // Each day after base
+      org.openmetadata.schema.api.tests.CreateTestCaseResult resultRequest =
+          new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+      resultRequest.setTimestamp(timestamp);
+      resultRequest.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed);
+      resultRequest.setResult("Failure result for day " + i);
+
+      client.testCaseResults().create(testCase.getFullyQualifiedName(), resultRequest);
+    }
+
+    // Fetch the test case and verify the latest result is the most recent
+    TestCase fetchedTestCase =
+        client.testCases().get(testCase.getId().toString(), "testCaseResult");
+    assertNotNull(fetchedTestCase.getTestCaseResult());
+
+    // The latest result should have the most recent timestamp
+    long latestTimestamp = baseTimestamp + (4 * 86400000L);
+    assertEquals(latestTimestamp, fetchedTestCase.getTestCaseResult().getTimestamp());
+
+    // Delete the latest result
+    client.testCaseResults().delete(testCase.getFullyQualifiedName(), latestTimestamp);
+
+    // Verify the test case now has the second-most-recent result
+    fetchedTestCase = client.testCases().get(testCase.getId().toString(), "testCaseResult");
+    assertNotNull(fetchedTestCase.getTestCaseResult());
+    long secondLatestTimestamp = baseTimestamp + (3 * 86400000L);
+    assertEquals(secondLatestTimestamp, fetchedTestCase.getTestCaseResult().getTimestamp());
+  }
+
+  @Test
+  void test_columnTestCaseValidation(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    // Test with valid column
+    String validColumnLink =
+        String.format("<#E::table::%s::columns::id>", table.getFullyQualifiedName());
+
+    CreateTestCase validRequest = new CreateTestCase();
+    validRequest.setName(ns.prefix("valid_column_test"));
+    validRequest.setEntityLink(validColumnLink);
+    validRequest.setTestDefinition("columnValuesToBeNotNull");
+    validRequest.setParameterValues(List.of());
+
+    TestCase created = client.testCases().create(validRequest);
+    assertNotNull(created);
+
+    // Test with invalid column - should fail
+    String invalidColumnLink =
+        String.format(
+            "<#E::table::%s::columns::nonexistent_column>", table.getFullyQualifiedName());
+
+    CreateTestCase invalidRequest = new CreateTestCase();
+    invalidRequest.setName(ns.prefix("invalid_column_test"));
+    invalidRequest.setEntityLink(invalidColumnLink);
+    invalidRequest.setTestDefinition("columnValuesToBeNotNull");
+
+    assertThrows(
+        org.openmetadata.sdk.exceptions.OpenMetadataException.class,
+        () -> client.testCases().create(invalidRequest),
+        "Should fail for non-existent column");
+  }
+
+  @Test
+  void test_testCaseInvalidEntityLink(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Test with invalid entity link format
+    CreateTestCase invalidRequest = new CreateTestCase();
+    invalidRequest.setName(ns.prefix("invalid_link_test"));
+    invalidRequest.setEntityLink("<#E::table::nonexistent.table>");
+    invalidRequest.setTestDefinition("tableRowCountToEqual");
+    invalidRequest.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+
+    assertThrows(
+        org.openmetadata.sdk.exceptions.OpenMetadataException.class,
+        () -> client.testCases().create(invalidRequest),
+        "Should fail for non-existent table in entity link");
+  }
+
+  @Test
+  void test_listTestCasesFromSearch(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    // Create several test cases with unique description
+    String uniqueToken = ns.shortPrefix();
+    for (int i = 0; i < 5; i++) {
+      TestCaseBuilder.create(client)
+          .name(ns.prefix("search_test_" + i))
+          .description("Search test " + uniqueToken)
+          .forTable(table)
+          .testDefinition("tableRowCountToEqual")
+          .parameter("value", "100")
+          .create();
+    }
+
+    // Wait for search indexing
+    try {
+      Thread.sleep(2000);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+
+    // List test cases (search needs special endpoint)
+    ListResponse<TestCase> results = client.testCases().list(new ListParams().setLimit(100));
+
+    // Verify at least 5 were created
+    assertNotNull(results);
+    assertTrue(results.getData().size() >= 5, "Should have at least 5 test cases");
+  }
+
+  @Test
+  void test_failedRowsSample(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    // Create a test case
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("failed_rows_sample_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // First, add a failed test case result - required before adding failed rows sample
+    org.openmetadata.schema.api.tests.CreateTestCaseResult failedResult =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+    failedResult.setTimestamp(System.currentTimeMillis());
+    failedResult.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed);
+    failedResult.setResult("Test failed with row count mismatch");
+
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), failedResult);
+
+    // Create sample data using columns that exist in the table (id column from createTable)
+    org.openmetadata.schema.type.TableData sampleData =
+        new org.openmetadata.schema.type.TableData();
+    sampleData.setColumns(List.of("id"));
+    sampleData.setRows(List.of(List.of("1"), List.of("2"), List.of("3")));
+
+    // Add failed rows sample
+    TestCase updatedTestCase =
+        client.testCases().addFailedRowsSample(testCase.getId().toString(), sampleData);
+
+    // Verify the sample data was added
+    assertNotNull(updatedTestCase);
+
+    // Fetch the sample data
+    org.openmetadata.schema.type.TableData fetchedSample =
+        client.testCases().getFailedRowsSample(testCase.getId().toString());
+
+    assertNotNull(fetchedSample);
+    assertEquals(1, fetchedSample.getColumns().size());
+    assertEquals(3, fetchedSample.getRows().size());
+
+    // Delete the sample data
+    client.testCases().deleteFailedRowsSample(testCase.getId().toString());
+
+    // Verify it's gone
+    assertThrows(
+        org.openmetadata.sdk.exceptions.OpenMetadataException.class,
+        () -> client.testCases().getFailedRowsSample(testCase.getId().toString()));
+  }
+
+  private Table createTableWithName(TestNamespace ns, String nameSuffix) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String shortId = ns.shortPrefix();
+
+    // Create service using existing pattern
+    org.openmetadata.schema.services.connections.database.PostgresConnection conn =
+        org.openmetadata.sdk.fluent.DatabaseServices.postgresConnection()
+            .hostPort("localhost:5432")
+            .username("test")
+            .build();
+
+    DatabaseService service =
+        org.openmetadata.sdk.fluent.DatabaseServices.builder()
+            .name("pg2_" + shortId)
+            .connection(conn)
+            .description("Test Postgres service")
+            .create();
+
+    // Create database
+    org.openmetadata.schema.api.data.CreateDatabase dbReq =
+        new org.openmetadata.schema.api.data.CreateDatabase();
+    dbReq.setName("db2_" + shortId);
+    dbReq.setService(service.getFullyQualifiedName());
+    org.openmetadata.schema.entity.data.Database database = client.databases().create(dbReq);
+
+    // Create schema
+    org.openmetadata.schema.api.data.CreateDatabaseSchema schemaReq =
+        new org.openmetadata.schema.api.data.CreateDatabaseSchema();
+    schemaReq.setName("sc2_" + shortId);
+    schemaReq.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = client.databaseSchemas().create(schemaReq);
+
+    // Create table with unique name
+    String tableName = shortId + nameSuffix;
+    CreateTable createTable =
+        new CreateTable()
+            .withName(tableName)
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("id")
+                        .withDataType(ColumnDataType.INT)
+                        .withDescription("Primary key")));
+
+    return client.tables().create(createTable);
+  }
+
+  // ===================================================================
+  // TESTS USING SHARED ENTITIES
+  // ===================================================================
+
+  @Test
+  void test_testCaseWithTags(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    SharedEntities shared = SharedEntities.get();
+
+    // Create test case with PII tag
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("tagged_test_case"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableRowCountToEqual");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+    request.setTags(List.of(shared.PII_SENSITIVE_TAG_LABEL));
+
+    TestCase testCase = client.testCases().create(request);
+
+    assertNotNull(testCase);
+    assertNotNull(testCase.getTags());
+    assertTrue(
+        testCase.getTags().stream()
+            .anyMatch(t -> t.getTagFQN().equals(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN())));
+
+    // Update to add another tag
+    TestCase fetched = client.testCases().get(testCase.getId().toString(), "tags");
+    fetched.setTags(List.of(shared.PII_SENSITIVE_TAG_LABEL, shared.PERSONAL_DATA_TAG_LABEL));
+    TestCase updated = client.testCases().update(fetched.getId().toString(), fetched);
+
+    assertEquals(2, updated.getTags().size());
+  }
+
+  @Test
+  void test_testCaseWithDescription(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    // Create test case with detailed description
+    String description = "This test case validates that the row count equals the expected value";
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("described_test_case"));
+    request.setDescription(description);
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableRowCountToEqual");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+
+    TestCase testCase = client.testCases().create(request);
+
+    assertNotNull(testCase);
+    assertEquals(description, testCase.getDescription());
+
+    // Update description
+    TestCase fetched = client.testCases().get(testCase.getId().toString());
+    String newDescription = "Updated description for test case";
+    fetched.setDescription(newDescription);
+    TestCase updated = client.testCases().update(fetched.getId().toString(), fetched);
+
+    assertEquals(newDescription, updated.getDescription());
+  }
+
+  @Test
+  void test_testCaseWithSharedOwner(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    SharedEntities shared = SharedEntities.get();
+
+    // Create test case with shared user as owner
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("owned_test_case"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableRowCountToEqual");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+    request.setOwners(List.of(shared.USER1_REF));
+
+    TestCase testCase = client.testCases().create(request);
+
+    assertNotNull(testCase);
+    assertNotNull(testCase.getOwners());
+    assertEquals(1, testCase.getOwners().size());
+    assertEquals(shared.USER1.getId(), testCase.getOwners().get(0).getId());
+
+    // Change owner to USER2
+    TestCase fetched = client.testCases().get(testCase.getId().toString(), "owners");
+    fetched.setOwners(List.of(shared.USER2_REF));
+    TestCase updated = client.testCases().update(fetched.getId().toString(), fetched);
+
+    assertEquals(1, updated.getOwners().size());
+    assertEquals(shared.USER2.getId(), updated.getOwners().get(0).getId());
+  }
+
+  @Test
+  void test_testCaseWithTeamOwner(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    SharedEntities shared = SharedEntities.get();
+
+    // Create test case with team as owner
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("team_owned_test_case"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableRowCountToEqual");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+    // TEAM11 is a Group team (TEAM1 is Department which can't own entities)
+    request.setOwners(List.of(shared.TEAM11.getEntityReference()));
+
+    TestCase testCase = client.testCases().create(request);
+
+    assertNotNull(testCase);
+    assertNotNull(testCase.getOwners());
+    assertEquals(1, testCase.getOwners().size());
+    assertEquals(shared.TEAM11.getId(), testCase.getOwners().get(0).getId());
+  }
+
+  @Test
+  void test_testCaseWithGlossaryTermTag(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    SharedEntities shared = SharedEntities.get();
+
+    // Create test case with glossary term tag
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("glossary_tagged_test_case"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableRowCountToEqual");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+    request.setTags(List.of(shared.GLOSSARY1_TERM1_LABEL));
+
+    TestCase testCase = client.testCases().create(request);
+
+    assertNotNull(testCase);
+    assertNotNull(testCase.getTags());
+    assertTrue(
+        testCase.getTags().stream()
+            .anyMatch(t -> t.getTagFQN().equals(shared.GLOSSARY1_TERM1_LABEL.getTagFQN())));
+  }
+
+  @Test
+  void test_testCaseResolutionStatusWorkflow(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    SharedEntities shared = SharedEntities.get();
+
+    // Create a test case
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("resolution_workflow_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // Add a failed test result to trigger incident creation
+    org.openmetadata.schema.api.tests.CreateTestCaseResult failedResult =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+    failedResult.setTimestamp(System.currentTimeMillis());
+    failedResult.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed);
+    failedResult.setResult("Test failed - triggering incident");
+
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), failedResult);
+
+    // Fetch test case to get incident ID
+    TestCase fetchedWithIncident =
+        client.testCases().get(testCase.getId().toString(), "incidentId");
+
+    // Create resolution status - Acknowledge the incident
+    org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus ackStatus =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus();
+    ackStatus.setTestCaseResolutionStatusType(
+        org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.Ack);
+    ackStatus.setTestCaseReference(testCase.getFullyQualifiedName());
+
+    org.openmetadata.schema.tests.type.TestCaseResolutionStatus createdAck =
+        client.testCaseResolutionStatuses().create(ackStatus);
+
+    assertNotNull(createdAck);
+    assertEquals(
+        org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.Ack,
+        createdAck.getTestCaseResolutionStatusType());
+
+    // Create resolution status - Assign to a user
+    org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus assignedStatus =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus();
+    assignedStatus.setTestCaseResolutionStatusType(
+        org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.Assigned);
+    assignedStatus.setTestCaseReference(testCase.getFullyQualifiedName());
+    assignedStatus.setTestCaseResolutionStatusDetails(
+        new org.openmetadata.schema.tests.type.Assigned().withAssignee(shared.USER1_REF));
+
+    org.openmetadata.schema.tests.type.TestCaseResolutionStatus createdAssigned =
+        client.testCaseResolutionStatuses().create(assignedStatus);
+
+    assertNotNull(createdAssigned);
+    assertEquals(
+        org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.Assigned,
+        createdAssigned.getTestCaseResolutionStatusType());
+  }
+
+  @Test
+  void test_listTestCasesFilteredByOwner(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    SharedEntities shared = SharedEntities.get();
+
+    // Create test case owned by USER1
+    CreateTestCase request1 = new CreateTestCase();
+    request1.setName(ns.prefix("owner_filter_test1"));
+    request1.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request1.setTestDefinition("tableRowCountToEqual");
+    request1.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+    request1.setOwners(List.of(shared.USER1_REF));
+    client.testCases().create(request1);
+
+    // Create test case owned by USER2
+    CreateTestCase request2 = new CreateTestCase();
+    request2.setName(ns.prefix("owner_filter_test2"));
+    request2.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request2.setTestDefinition("tableRowCountToEqual");
+    request2.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("200")));
+    request2.setOwners(List.of(shared.USER2_REF));
+    client.testCases().create(request2);
+
+    // List all test cases - should include both
+    ListResponse<TestCase> allTestCases = client.testCases().list(new ListParams().setLimit(100));
+    assertTrue(allTestCases.getData().size() >= 2);
+  }
+
+  @Test
+  void test_testCaseWithMultipleTags(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    SharedEntities shared = SharedEntities.get();
+
+    // Create test case with multiple tags from different sources
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("multi_tagged_test_case"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableRowCountToEqual");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+    request.setTags(
+        List.of(
+            shared.PII_SENSITIVE_TAG_LABEL,
+            shared.PERSONAL_DATA_TAG_LABEL,
+            shared.GLOSSARY1_TERM1_LABEL));
+
+    TestCase testCase = client.testCases().create(request);
+
+    assertNotNull(testCase);
+    assertNotNull(testCase.getTags());
+    assertEquals(3, testCase.getTags().size());
+
+    // Verify all tag types are present
+    boolean hasPiiSensitive =
+        testCase.getTags().stream()
+            .anyMatch(t -> t.getTagFQN().equals(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN()));
+    boolean hasPersonalData =
+        testCase.getTags().stream()
+            .anyMatch(t -> t.getTagFQN().equals(shared.PERSONAL_DATA_TAG_LABEL.getTagFQN()));
+    boolean hasGlossaryTerm =
+        testCase.getTags().stream()
+            .anyMatch(t -> t.getTagFQN().equals(shared.GLOSSARY1_TERM1_LABEL.getTagFQN()));
+
+    assertTrue(hasPiiSensitive, "Should have PII Sensitive tag");
+    assertTrue(hasPersonalData, "Should have Personal Data tag");
+    assertTrue(hasGlossaryTerm, "Should have Glossary term tag");
+  }
+
+  @Test
+  void test_testCaseWithMultipleUserOwners(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    SharedEntities shared = SharedEntities.get();
+
+    // Create test case with multiple user owners
+    // Note: Ownership rule allows either multiple users OR single team, not mix
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("multi_owner_test_case"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableRowCountToEqual");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+    request.setOwners(List.of(shared.USER1_REF, shared.USER2_REF));
+
+    TestCase testCase = client.testCases().create(request);
+
+    assertNotNull(testCase);
+    assertNotNull(testCase.getOwners());
+    assertEquals(2, testCase.getOwners().size());
+    assertTrue(testCase.getOwners().stream().anyMatch(o -> o.getId().equals(shared.USER1.getId())));
+    assertTrue(testCase.getOwners().stream().anyMatch(o -> o.getId().equals(shared.USER2.getId())));
+  }
+
+  @Test
+  void test_testCaseCreatedByAdmin(TestNamespace ns) {
+    // Use admin client to create test case and verify createdBy/updatedBy
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("admin_created_test_case"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableRowCountToEqual");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+
+    TestCase testCase = client.testCases().create(request);
+
+    assertNotNull(testCase);
+    assertNotNull(testCase.getUpdatedBy());
+    // Admin creates the entity
+    assertEquals("admin", testCase.getUpdatedBy());
+  }
+
+  @Test
+  void test_testCaseResultSummary(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    // Create test case
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("result_summary_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // Add multiple results with different statuses
+    long baseTime = System.currentTimeMillis() - 86400000L * 7; // 7 days ago
+
+    // Day 1-3: Success
+    for (int i = 0; i < 3; i++) {
+      org.openmetadata.schema.api.tests.CreateTestCaseResult result =
+          new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+      result.setTimestamp(baseTime + (i * 86400000L));
+      result.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Success);
+      result.setResult("Day " + (i + 1) + " passed");
+      client.testCaseResults().create(testCase.getFullyQualifiedName(), result);
+    }
+
+    // Day 4-5: Failed
+    for (int i = 3; i < 5; i++) {
+      org.openmetadata.schema.api.tests.CreateTestCaseResult result =
+          new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+      result.setTimestamp(baseTime + (i * 86400000L));
+      result.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed);
+      result.setResult("Day " + (i + 1) + " failed");
+      client.testCaseResults().create(testCase.getFullyQualifiedName(), result);
+    }
+
+    // Fetch test case with result - should have latest (failed)
+    TestCase fetchedCase = client.testCases().get(testCase.getId().toString(), "testCaseResult");
+
+    assertNotNull(fetchedCase.getTestCaseResult());
+    assertEquals(
+        org.openmetadata.schema.tests.type.TestCaseStatus.Failed,
+        fetchedCase.getTestCaseResult().getTestCaseStatus());
+  }
+
+  @Test
+  void test_deleteTestCaseResult(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    // Create test case
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("delete_result_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // Add two results
+    long timestamp1 = System.currentTimeMillis() - 86400000L;
+    long timestamp2 = System.currentTimeMillis();
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult result1 =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+    result1.setTimestamp(timestamp1);
+    result1.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Success);
+    result1.setResult("First result");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), result1);
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult result2 =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+    result2.setTimestamp(timestamp2);
+    result2.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed);
+    result2.setResult("Second result");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), result2);
+
+    // Delete the latest result
+    client.testCaseResults().delete(testCase.getFullyQualifiedName(), timestamp2);
+
+    // Fetch test case - should have first result as latest
+    TestCase fetchedCase = client.testCases().get(testCase.getId().toString(), "testCaseResult");
+
+    assertNotNull(fetchedCase.getTestCaseResult());
+    assertEquals(timestamp1, fetchedCase.getTestCaseResult().getTimestamp());
+    assertEquals(
+        org.openmetadata.schema.tests.type.TestCaseStatus.Success,
+        fetchedCase.getTestCaseResult().getTestCaseStatus());
+  }
+
+  @Test
+  void post_testWithoutRequiredFields_4xx(TestNamespace ns) {
+    CreateTestCase request = new CreateTestCase();
+    request.setName(null);
+    request.setTestDefinition("tableRowCountToEqual");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+
+    assertThrows(Exception.class, () -> createEntity(request), "Should fail when name is null");
+  }
+
+  @Test
+  void post_testWithInvalidParamValues_4xx(TestNamespace ns) {
+    Table table = createTable(ns);
+
+    CreateTestCase request1 = new CreateTestCase();
+    request1.setName(ns.prefix("invalid_param"));
+    request1.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request1.setTestDefinition("columnValuesMissingCount");
+    request1.setParameterValues(List.of());
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request1),
+        "Should fail when required parameter is missing");
+
+    CreateTestCase request2 = new CreateTestCase();
+    request2.setName(ns.prefix("extra_param"));
+    request2.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request2.setTestDefinition("tableRowCountToEqual");
+    request2.setParameterValues(
+        List.of(
+            new TestCaseParameterValue().withName("value").withValue("100"),
+            new TestCaseParameterValue().withName("invalidParameter").withValue("200")));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request2),
+        "Should fail when invalid parameter is provided");
+  }
+
+  @Test
+  void post_testWithWrongCaseColumnName_4xx(TestNamespace ns) {
+    Table table = createTable(ns);
+
+    String wrongCaseColumnLink =
+        String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "Name");
+
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("wrong_case_column"));
+    request.setEntityLink(wrongCaseColumnLink);
+    request.setTestDefinition("columnValuesToBeNotNull");
+    request.setParameterValues(List.of());
+
+    assertThrows(
+        Exception.class, () -> createEntity(request), "Should fail with wrong case column name");
+  }
+
+  @Test
+  void put_testCaseResults_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    String columnLink =
+        String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "id");
+
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("results_test"));
+    request.setEntityLink(columnLink);
+    request.setTestDefinition("columnValuesMissingCount");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("missingCountValue").withValue("100")));
+
+    TestCase testCase = createEntity(request);
+
+    long timestamp1 = System.currentTimeMillis() - 86400000L;
+    long timestamp2 = System.currentTimeMillis();
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult result1 =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+    result1.setTimestamp(timestamp1);
+    result1.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Success);
+    result1.setResult("First test result");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), result1);
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult result2 =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+    result2.setTimestamp(timestamp2);
+    result2.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed);
+    result2.setResult("Second test result");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), result2);
+
+    TestCase fetchedCase = client.testCases().get(testCase.getId().toString(), "testCaseResult");
+    assertNotNull(fetchedCase.getTestCaseResult());
+    assertEquals(timestamp2, fetchedCase.getTestCaseResult().getTimestamp());
+    assertEquals(
+        org.openmetadata.schema.tests.type.TestCaseStatus.Failed,
+        fetchedCase.getTestCaseResult().getTestCaseStatus());
+  }
+
+  @Test
+  void getTestCaseWithResult(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("with_result"))
+            .forTable(table)
+            .testDefinition("tableRowCountToBeBetween")
+            .parameter("minValue", "10")
+            .parameter("maxValue", "100")
+            .create();
+
+    long timestamp1 = System.currentTimeMillis() - 86400000L * 10;
+    long timestamp2 = System.currentTimeMillis() - 86400000L;
+    long timestamp3 = System.currentTimeMillis();
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult createResult1 =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+    createResult1.setTimestamp(timestamp1);
+    createResult1.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Success);
+    createResult1.setResult("Past result");
+    org.openmetadata.schema.tests.type.TestCaseResult result1 =
+        client.testCaseResults().create(testCase.getFullyQualifiedName(), createResult1);
+
+    TestCase fetchedCase1 = client.testCases().get(testCase.getId().toString(), "testCaseResult");
+    assertEquals(result1.getTimestamp(), fetchedCase1.getTestCaseResult().getTimestamp());
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult createResult2 =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+    createResult2.setTimestamp(timestamp2);
+    createResult2.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed);
+    createResult2.setResult("Recent result");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), createResult2);
+
+    TestCase fetchedCase2 = client.testCases().get(testCase.getId().toString(), "testCaseResult");
+    assertEquals(timestamp2, fetchedCase2.getTestCaseResult().getTimestamp());
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult createResult3 =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+    createResult3.setTimestamp(timestamp3);
+    createResult3.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Success);
+    createResult3.setResult("Latest result");
+    org.openmetadata.schema.tests.type.TestCaseResult result3 =
+        client.testCaseResults().create(testCase.getFullyQualifiedName(), createResult3);
+
+    TestCase fetchedCase3 = client.testCases().get(testCase.getId().toString(), "testCaseResult");
+    assertEquals(result3.getTimestamp(), fetchedCase3.getTestCaseResult().getTimestamp());
+
+    client.testCaseResults().delete(testCase.getFullyQualifiedName(), timestamp3);
+
+    TestCase fetchedCase4 = client.testCases().get(testCase.getId().toString(), "testCaseResult");
+    assertEquals(timestamp2, fetchedCase4.getTestCaseResult().getTimestamp());
+  }
+
+  @Test
+  void createUpdate_DynamicAssertionTests(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("dynamic_test"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableRowCountToEqual");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+    request.setUseDynamicAssertion(true);
+
+    TestCase testCase = createEntity(request);
+    assertTrue(testCase.getUseDynamicAssertion());
+
+    testCase.setUseDynamicAssertion(false);
+    TestCase updated = client.testCases().update(testCase.getId().toString(), testCase);
+    assertFalse(updated.getUseDynamicAssertion());
+  }
+
+  @Test
+  void patch_entityComputePassedFailedRowCount(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("compute_rows_patch"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    testCase.setComputePassedFailedRowCount(true);
+    TestCase updated = client.testCases().update(testCase.getId().toString(), testCase);
+
+    assertTrue(updated.getComputePassedFailedRowCount());
+  }
+
+  @Test
+  void createUpdateDelete_tests_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase1 =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("crud_test1"))
+            .forTable(table)
+            .testDefinition("tableRowCountToBeBetween")
+            .parameter("minValue", "10")
+            .parameter("maxValue", "100")
+            .create();
+
+    TestCase testCase2 =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("crud_test2"))
+            .forTable(table)
+            .testDefinition("tableColumnCountToEqual")
+            .parameter("columnCount", "2")
+            .create();
+
+    assertNotNull(testCase1.getId());
+    assertNotNull(testCase2.getId());
+
+    testCase1.setDescription("Updated description");
+    TestCase updated = client.testCases().update(testCase1.getId().toString(), testCase1);
+    assertEquals("Updated description", updated.getDescription());
+
+    client.testCases().delete(testCase1.getId().toString());
+    assertThrows(Exception.class, () -> client.testCases().get(testCase1.getId().toString()));
+  }
+
+  @Test
+  void resolved_test_case_deletes_sample_data(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    SharedEntities shared = SharedEntities.get();
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("resolved_sample_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult failedResult =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+    failedResult.setTimestamp(System.currentTimeMillis());
+    failedResult.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed);
+    failedResult.setResult("Test failed");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), failedResult);
+
+    org.openmetadata.schema.type.TableData sampleData =
+        new org.openmetadata.schema.type.TableData();
+    sampleData.setColumns(List.of("id"));
+    sampleData.setRows(List.of(List.of("1"), List.of("2")));
+
+    client.testCases().addFailedRowsSample(testCase.getId().toString(), sampleData);
+
+    org.openmetadata.schema.type.TableData fetchedSample =
+        client.testCases().getFailedRowsSample(testCase.getId().toString());
+    assertNotNull(fetchedSample);
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus resolvedStatus =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus();
+    resolvedStatus.setTestCaseResolutionStatusType(
+        org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.Resolved);
+    resolvedStatus.setTestCaseReference(testCase.getFullyQualifiedName());
+    resolvedStatus.setTestCaseResolutionStatusDetails(
+        new org.openmetadata.schema.tests.type.Resolved().withResolvedBy(shared.USER1_REF));
+
+    client.testCaseResolutionStatuses().create(resolvedStatus);
+
+    assertThrows(
+        Exception.class, () -> client.testCases().getFailedRowsSample(testCase.getId().toString()));
+  }
+
+  @Test
+  void put_and_delete_failedRowSample_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("failed_row_sample_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult failedResult =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+    failedResult.setTimestamp(System.currentTimeMillis());
+    failedResult.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed);
+    failedResult.setResult("Test failed");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), failedResult);
+
+    org.openmetadata.schema.type.TableData sampleData =
+        new org.openmetadata.schema.type.TableData();
+    sampleData.setColumns(List.of("id", "name"));
+    sampleData.setRows(List.of(List.of("1", "test1"), List.of("2", "test2")));
+
+    client.testCases().addFailedRowsSample(testCase.getId().toString(), sampleData);
+
+    org.openmetadata.schema.type.TableData fetchedSample =
+        client.testCases().getFailedRowsSample(testCase.getId().toString());
+
+    assertNotNull(fetchedSample);
+    assertEquals(2, fetchedSample.getColumns().size());
+    assertEquals(2, fetchedSample.getRows().size());
+
+    client.testCases().deleteFailedRowsSample(testCase.getId().toString());
+
+    assertThrows(
+        Exception.class, () -> client.testCases().getFailedRowsSample(testCase.getId().toString()));
+  }
+
+  @Test
+  void put_failedRowSample_without_validation_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("sample_no_validation"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult failedResult =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+    failedResult.setTimestamp(System.currentTimeMillis());
+    failedResult.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed);
+    failedResult.setResult("Test failed");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), failedResult);
+
+    org.openmetadata.schema.type.TableData sampleData =
+        new org.openmetadata.schema.type.TableData();
+    sampleData.setColumns(List.of("arbitrary_column"));
+    sampleData.setRows(List.of(List.of("data1"), List.of("data2")));
+
+    client.testCases().addFailedRowsSample(testCase.getId().toString(), sampleData);
+
+    org.openmetadata.schema.type.TableData fetchedSample =
+        client.testCases().getFailedRowsSample(testCase.getId().toString());
+
+    assertNotNull(fetchedSample);
+    assertEquals(1, fetchedSample.getColumns().size());
+  }
+
+  @Test
+  void patch_entityDescriptionAndTestAuthorizer(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("patch_desc_test"))
+            .description("Original description")
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    testCase.setDescription("Patched description");
+    TestCase updated = client.testCases().update(testCase.getId().toString(), testCase);
+
+    assertEquals("Patched description", updated.getDescription());
+    assertNotNull(updated.getUpdatedBy());
+  }
+
+  @Test
+  void wrongMinMaxTestParameter(TestNamespace ns) {
+    Table table = createTable(ns);
+
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("wrong_min_max"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableRowCountToBeBetween");
+    request.setParameterValues(
+        List.of(
+            new TestCaseParameterValue().withName("minValue").withValue("100"),
+            new TestCaseParameterValue().withName("maxValue").withValue("50")));
+
+    assertThrows(
+        Exception.class, () -> createEntity(request), "Should fail when minValue > maxValue");
+  }
+
+  @Test
+  void createTestCaseResults_wrongTs(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("wrong_ts"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult result =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+    result.setTimestamp(System.currentTimeMillis() + 86400000L * 365);
+    result.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Success);
+    result.setResult("Future result");
+
+    assertThrows(
+        Exception.class,
+        () -> client.testCaseResults().create(testCase.getFullyQualifiedName(), result),
+        "Should fail with future timestamp");
+  }
+
+  @Test
+  void patch_testCaseResults_noChange(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("no_change_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    long timestamp = System.currentTimeMillis();
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult result =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+    result.setTimestamp(timestamp);
+    result.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Success);
+    result.setResult("Initial result");
+
+    org.openmetadata.schema.tests.type.TestCaseResult createdResult =
+        client.testCaseResults().create(testCase.getFullyQualifiedName(), result);
+
+    assertNotNull(createdResult);
+    assertEquals(
+        org.openmetadata.schema.tests.type.TestCaseStatus.Success,
+        createdResult.getTestCaseStatus());
+
+    TestCase fetchedCase = client.testCases().get(testCase.getId().toString(), "testCaseResult");
+    assertNotNull(fetchedCase.getTestCaseResult());
+    assertEquals(timestamp, fetchedCase.getTestCaseResult().getTimestamp());
+  }
+
+  // ===================================================================
+  // FLUENT API TESTS - Using TestCases static fluent API
+  // ===================================================================
+
+  @Test
+  void testFluentCreateTestCase(TestNamespace ns) {
+    Table table = createTable(ns);
+
+    org.openmetadata.sdk.fluent.TestCases.setDefaultClient(SdkClients.adminClient());
+
+    TestCase testCase =
+        org.openmetadata.sdk.fluent.TestCases.create()
+            .name(ns.prefix("fluent_create"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "50")
+            .description("Created using fluent API")
+            .execute();
+
+    assertNotNull(testCase);
+    assertNotNull(testCase.getId());
+    assertEquals("Created using fluent API", testCase.getDescription());
+  }
+
+  @Test
+  void testFluentCreateColumnLevelTest(TestNamespace ns) {
+    Table table = createTable(ns);
+
+    org.openmetadata.sdk.fluent.TestCases.setDefaultClient(SdkClients.adminClient());
+
+    TestCase testCase =
+        org.openmetadata.sdk.fluent.TestCases.create()
+            .name(ns.prefix("fluent_column"))
+            .forColumn(table, "id")
+            .testDefinition("columnValuesToBeNotNull")
+            .description("Column-level test via fluent API")
+            .execute();
+
+    assertNotNull(testCase);
+    assertNotNull(testCase.getId());
+    assertTrue(testCase.getEntityLink().contains("columns::id"));
+  }
+
+  @Test
+  void testFluentFindAndLoad(TestNamespace ns) {
+    Table table = createTable(ns);
+
+    org.openmetadata.sdk.fluent.TestCases.setDefaultClient(SdkClients.adminClient());
+
+    TestCase created =
+        org.openmetadata.sdk.fluent.TestCases.create()
+            .name(ns.prefix("fluent_find"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .execute();
+
+    // Find by ID
+    org.openmetadata.sdk.fluent.TestCases.FluentTestCase loaded =
+        org.openmetadata.sdk.fluent.TestCases.find(created.getId()).fetch();
+
+    assertNotNull(loaded);
+    assertEquals(created.getId(), loaded.get().getId());
+  }
+
+  @Test
+  void testFluentFindByName(TestNamespace ns) {
+    Table table = createTable(ns);
+
+    org.openmetadata.sdk.fluent.TestCases.setDefaultClient(SdkClients.adminClient());
+
+    TestCase created =
+        org.openmetadata.sdk.fluent.TestCases.create()
+            .name(ns.prefix("fluent_find_name"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .execute();
+
+    // Find by name
+    org.openmetadata.sdk.fluent.TestCases.FluentTestCase loaded =
+        org.openmetadata.sdk.fluent.TestCases.findByName(created.getFullyQualifiedName()).fetch();
+
+    assertNotNull(loaded);
+    assertEquals(created.getId(), loaded.get().getId());
+  }
+
+  @Test
+  void testFluentUpdateAndSave(TestNamespace ns) {
+    Table table = createTable(ns);
+
+    org.openmetadata.sdk.fluent.TestCases.setDefaultClient(SdkClients.adminClient());
+
+    TestCase created =
+        org.openmetadata.sdk.fluent.TestCases.create()
+            .name(ns.prefix("fluent_update"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .description("Initial description")
+            .execute();
+
+    // Update via fluent API
+    org.openmetadata.sdk.fluent.TestCases.FluentTestCase loaded =
+        org.openmetadata.sdk.fluent.TestCases.find(created.getId()).fetch();
+
+    TestCase updated = loaded.withDescription("Updated description").save();
+
+    assertEquals("Updated description", updated.getDescription());
+  }
+
+  @Test
+  void testFluentDelete(TestNamespace ns) {
+    Table table = createTable(ns);
+
+    org.openmetadata.sdk.fluent.TestCases.setDefaultClient(SdkClients.adminClient());
+
+    TestCase created =
+        org.openmetadata.sdk.fluent.TestCases.create()
+            .name(ns.prefix("fluent_delete"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .execute();
+
+    // Delete via fluent API
+    org.openmetadata.sdk.fluent.TestCases.find(created.getId()).delete().confirm();
+
+    // Verify deleted
+    TestCase deleted = getEntityIncludeDeleted(created.getId().toString());
+    assertTrue(deleted.getDeleted());
+  }
+
+  @Test
+  void testFluentList(TestNamespace ns) {
+    Table table1 = createTable(ns);
+    Table table2 = createTable(ns);
+
+    org.openmetadata.sdk.fluent.TestCases.setDefaultClient(SdkClients.adminClient());
+
+    org.openmetadata.sdk.fluent.TestCases.create()
+        .name(ns.prefix("fluent_list_1"))
+        .forTable(table1)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .execute();
+
+    org.openmetadata.sdk.fluent.TestCases.create()
+        .name(ns.prefix("fluent_list_2"))
+        .forTable(table2)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "200")
+        .execute();
+
+    // List via fluent API
+    ListResponse<TestCase> response =
+        org.openmetadata.sdk.fluent.TestCases.list().limit(10).execute();
+
+    assertNotNull(response);
+    assertNotNull(response.getData());
+    assertTrue(response.getData().size() >= 2);
+  }
+
+  @Test
+  void testFluentCreateOrUpdate(TestNamespace ns) {
+    Table table = createTable(ns);
+
+    org.openmetadata.sdk.fluent.TestCases.setDefaultClient(SdkClients.adminClient());
+
+    String testName = ns.prefix("fluent_upsert");
+
+    // Create
+    TestCase created =
+        org.openmetadata.sdk.fluent.TestCases.create()
+            .name(testName)
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .description("Initial")
+            .createOrUpdate();
+
+    assertNotNull(created);
+    assertEquals("Initial", created.getDescription());
+
+    // Update via createOrUpdate
+    TestCase updated =
+        org.openmetadata.sdk.fluent.TestCases.create()
+            .name(testName)
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "200")
+            .description("Updated")
+            .createOrUpdate();
+
+    assertEquals(created.getId(), updated.getId());
+    assertEquals("Updated", updated.getDescription());
+  }
+
+  @Test
+  void testFluentWithDynamicAssertion(TestNamespace ns) {
+    Table table = createTable(ns);
+
+    org.openmetadata.sdk.fluent.TestCases.setDefaultClient(SdkClients.adminClient());
+
+    TestCase testCase =
+        org.openmetadata.sdk.fluent.TestCases.create()
+            .name(ns.prefix("fluent_dynamic"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .useDynamicAssertion(true)
+            .execute();
+
+    assertNotNull(testCase);
+    assertTrue(testCase.getUseDynamicAssertion());
+  }
+
+  @Test
+  void testFluentWithComputePassedFailedRows(TestNamespace ns) {
+    Table table = createTable(ns);
+
+    org.openmetadata.sdk.fluent.TestCases.setDefaultClient(SdkClients.adminClient());
+
+    TestCase testCase =
+        org.openmetadata.sdk.fluent.TestCases.create()
+            .name(ns.prefix("fluent_compute"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .computePassedFailedRowCount(true)
+            .execute();
+
+    assertNotNull(testCase);
+    assertTrue(testCase.getComputePassedFailedRowCount());
+  }
+
+  @Test
+  void testFluentWithMultipleParameters(TestNamespace ns) {
+    Table table = createTable(ns);
+
+    org.openmetadata.sdk.fluent.TestCases.setDefaultClient(SdkClients.adminClient());
+
+    TestCase testCase =
+        org.openmetadata.sdk.fluent.TestCases.create()
+            .name(ns.prefix("fluent_params"))
+            .forTable(table)
+            .testDefinition("tableRowCountToBeBetween")
+            .parameter("minValue", "10")
+            .parameter("maxValue", "100")
+            .execute();
+
+    assertNotNull(testCase);
+    assertEquals(2, testCase.getParameterValues().size());
+  }
+
+  @Test
+  void testFluentWithOwners(TestNamespace ns) {
+    Table table = createTable(ns);
+    SharedEntities shared = SharedEntities.get();
+
+    org.openmetadata.sdk.fluent.TestCases.setDefaultClient(SdkClients.adminClient());
+
+    TestCase testCase =
+        org.openmetadata.sdk.fluent.TestCases.create()
+            .name(ns.prefix("fluent_owners"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .owners(List.of(shared.USER1_REF))
+            .execute();
+
+    assertNotNull(testCase);
+    assertNotNull(testCase.getOwners());
+    assertEquals(1, testCase.getOwners().size());
+  }
+
+  @Test
+  void testFluentHardDelete(TestNamespace ns) {
+    Table table = createTable(ns);
+
+    org.openmetadata.sdk.fluent.TestCases.setDefaultClient(SdkClients.adminClient());
+
+    TestCase created =
+        org.openmetadata.sdk.fluent.TestCases.create()
+            .name(ns.prefix("fluent_hard_delete"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .execute();
+
+    // Hard delete via fluent API
+    org.openmetadata.sdk.fluent.TestCases.find(created.getId()).delete().permanently().confirm();
+
+    // Verify hard deleted
+    assertThrows(
+        Exception.class,
+        () -> getEntityIncludeDeleted(created.getId().toString()),
+        "Hard deleted entity should not be retrievable");
   }
 }

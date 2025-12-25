@@ -42,6 +42,12 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
 
+  {
+    supportsImportExport = true;
+  }
+
+  private Glossary lastCreatedGlossary;
+
   public GlossaryResourceIT() {
     supportsFollowers = false;
     supportsTags = true;
@@ -865,5 +871,20 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
   @Override
   protected Glossary getVersion(UUID id, Double version) {
     return SdkClients.adminClient().glossaries().getVersion(id.toString(), version);
+  }
+
+  @Override
+  protected org.openmetadata.sdk.services.EntityServiceBase<Glossary> getEntityService() {
+    return SdkClients.adminClient().glossaries();
+  }
+
+  @Override
+  protected String getImportExportContainerName(TestNamespace ns) {
+    if (lastCreatedGlossary == null) {
+      CreateGlossary request = createMinimalRequest(ns);
+      request.setName(ns.prefix("export_glossary"));
+      lastCreatedGlossary = createEntity(request);
+    }
+    return lastCreatedGlossary.getFullyQualifiedName();
   }
 }

@@ -22,4 +22,9 @@ public class NotificationTemplateService extends EntityServiceBase<NotificationT
       throws OpenMetadataException {
     return httpClient.execute(HttpMethod.POST, basePath, request, NotificationTemplate.class);
   }
+
+  public NotificationTemplate createOrUpdate(CreateNotificationTemplate request)
+      throws OpenMetadataException {
+    return httpClient.execute(HttpMethod.PUT, basePath, request, NotificationTemplate.class);
+  }
 }

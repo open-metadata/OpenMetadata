@@ -308,8 +308,12 @@ public abstract class EntityServiceBase<T> {
   }
 
   public void delete(String id, Map<String, String> params) throws OpenMetadataException {
-    RequestOptions options = RequestOptions.builder().queryParams(params).build();
-    httpClient.execute(HttpMethod.DELETE, basePath + "/" + id, null, Void.class, options);
+    if (params == null || params.isEmpty()) {
+      delete(id);
+    } else {
+      RequestOptions options = RequestOptions.builder().queryParams(params).build();
+      httpClient.execute(HttpMethod.DELETE, basePath + "/" + id, null, Void.class, options);
+    }
   }
 
   public CompletableFuture<Void> deleteAsync(UUID id) {
@@ -362,45 +366,149 @@ public abstract class EntityServiceBase<T> {
         HttpMethod.PUT, basePath + "/restore", restoreEntity, getEntityClass());
   }
 
+  /**
+   * Export entity data to CSV format.
+   *
+   * @param name Entity name or FQN
+   * @return CSV string of exported data
+   * @throws OpenMetadataException if export fails
+   */
   public String exportCsv(String name) throws OpenMetadataException {
-    // Use the proper path with entity name
+    return exportCsv(name, false);
+  }
+
+  /**
+   * Export entity data to CSV format with optional recursive export.
+   *
+   * @param name Entity name or FQN
+   * @param recursive If true, export will include child entities
+   * @return CSV string of exported data
+   * @throws OpenMetadataException if export fails
+   */
+  public String exportCsv(String name, boolean recursive) throws OpenMetadataException {
     String path = basePath + "/name/" + name + "/export";
-    return httpClient.executeForString(HttpMethod.GET, path, null);
+    RequestOptions options =
+        RequestOptions.builder().queryParam("recursive", String.valueOf(recursive)).build();
+    return httpClient.executeForString(HttpMethod.GET, path, null, options);
   }
 
+  /**
+   * Export entity data to CSV format asynchronously.
+   *
+   * @param name Entity name or FQN
+   * @return Response with export status/result
+   * @throws OpenMetadataException if export fails
+   */
   public String exportCsvAsync(String name) throws OpenMetadataException {
-    // Use the proper path with entity name for async export
+    return exportCsvAsync(name, false);
+  }
+
+  /**
+   * Export entity data to CSV format asynchronously with optional recursive export.
+   *
+   * @param name Entity name or FQN
+   * @param recursive If true, export will include child entities
+   * @return Response with export status/result
+   * @throws OpenMetadataException if export fails
+   */
+  public String exportCsvAsync(String name, boolean recursive) throws OpenMetadataException {
     String path = basePath + "/name/" + name + "/exportAsync";
-    return httpClient.executeForString(HttpMethod.GET, path, null);
+    RequestOptions options =
+        RequestOptions.builder().queryParam("recursive", String.valueOf(recursive)).build();
+    return httpClient.executeForString(HttpMethod.GET, path, null, options);
   }
 
+  /**
+   * Import entity data from CSV format.
+   *
+   * @param name Entity name or FQN (container for import)
+   * @param csvData CSV data to import
+   * @return Import result as JSON string
+   * @throws OpenMetadataException if import fails
+   */
   public String importCsv(String name, String csvData) throws OpenMetadataException {
-    RequestOptions options = RequestOptions.builder().header("Content-Type", "text/plain").build();
-    String path = basePath + "/name/" + name + "/import";
-    return httpClient.executeForString(HttpMethod.PUT, path, csvData, options);
+    return importCsv(name, csvData, true, false);
   }
 
+  /**
+   * Import entity data from CSV format.
+   *
+   * @param name Entity name or FQN (container for import)
+   * @param csvData CSV data to import
+   * @param dryRun If true, validate without actually importing
+   * @return Import result as JSON string
+   * @throws OpenMetadataException if import fails
+   */
   public String importCsv(String name, String csvData, boolean dryRun)
+      throws OpenMetadataException {
+    return importCsv(name, csvData, dryRun, false);
+  }
+
+  /**
+   * Import entity data from CSV format with full options.
+   *
+   * @param name Entity name or FQN (container for import)
+   * @param csvData CSV data to import
+   * @param dryRun If true, validate without actually importing
+   * @param recursive If true, import child entities recursively
+   * @return Import result as JSON string
+   * @throws OpenMetadataException if import fails
+   */
+  public String importCsv(String name, String csvData, boolean dryRun, boolean recursive)
       throws OpenMetadataException {
     RequestOptions options =
         RequestOptions.builder()
-            .header("Content-Type", "text/plain")
+            .header("Content-Type", "text/plain; charset=UTF-8")
             .queryParam("dryRun", String.valueOf(dryRun))
+            .queryParam("recursive", String.valueOf(recursive))
             .build();
     String path = basePath + "/name/" + name + "/import";
     return httpClient.executeForString(HttpMethod.PUT, path, csvData, options);
   }
 
+  /**
+   * Import entity data from CSV format asynchronously.
+   *
+   * @param name Entity name or FQN (container for import)
+   * @param csvData CSV data to import
+   * @return Import result as JSON string
+   * @throws OpenMetadataException if import fails
+   */
   public String importCsvAsync(String name, String csvData) throws OpenMetadataException {
-    return importCsvAsync(name, csvData, false);
+    return importCsvAsync(name, csvData, false, false);
   }
 
+  /**
+   * Import entity data from CSV format asynchronously.
+   *
+   * @param name Entity name or FQN (container for import)
+   * @param csvData CSV data to import
+   * @param dryRun If true, validate without actually importing
+   * @return Import result as JSON string
+   * @throws OpenMetadataException if import fails
+   */
   public String importCsvAsync(String name, String csvData, boolean dryRun)
+      throws OpenMetadataException {
+    return importCsvAsync(name, csvData, dryRun, false);
+  }
+
+  /**
+   * Import entity data from CSV format asynchronously with full options.
+   *
+   * @param name Entity name or FQN (container for import)
+   * @param csvData CSV data to import
+   * @param dryRun If true, validate without actually importing
+   * @param recursive If true, import child entities recursively
+   * @return Import result as JSON string
+   * @throws OpenMetadataException if import fails
+   */
+  public String importCsvAsync(String name, String csvData, boolean dryRun, boolean recursive)
       throws OpenMetadataException {
     RequestOptions options =
         RequestOptions.builder()
-            .header("Content-Type", "text/plain")
+            .header("Content-Type", "text/plain; charset=UTF-8")
             .queryParam("dryRun", String.valueOf(dryRun))
+            .queryParam("recursive", String.valueOf(recursive))
             .build();
     String path = basePath + "/name/" + name + "/importAsync";
     return httpClient.executeForString(HttpMethod.PUT, path, csvData, options);

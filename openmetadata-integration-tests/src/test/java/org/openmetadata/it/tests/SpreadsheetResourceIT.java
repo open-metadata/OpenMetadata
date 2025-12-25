@@ -11,9 +11,15 @@ import org.openmetadata.it.factories.DriveServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.services.DriveService;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.sdk.fluent.Directories;
 import org.openmetadata.sdk.fluent.Spreadsheets;
+import org.openmetadata.sdk.fluent.Worksheets;
+import org.openmetadata.sdk.models.ListParams;
+import org.openmetadata.sdk.models.ListResponse;
 
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -22,6 +28,8 @@ public class SpreadsheetResourceIT {
   @BeforeAll
   static void setup() {
     Spreadsheets.setDefaultClient(SdkClients.adminClient());
+    Directories.setDefaultClient(SdkClients.adminClient());
+    Worksheets.setDefaultClient(SdkClients.adminClient());
   }
 
   @Test
@@ -271,5 +279,511 @@ public class SpreadsheetResourceIT {
                 .withService(driveService.getFullyQualifiedName())
                 .execute(),
         "Creating duplicate spreadsheet with same name under same service should fail");
+  }
+
+  @Test
+  void test_spreadsheetDirectlyUnderService(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    Spreadsheet spreadsheet =
+        Spreadsheets.create()
+            .name(ns.prefix("directSpreadsheet"))
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    assertNull(spreadsheet.getDirectory());
+    assertEquals(
+        driveService.getFullyQualifiedName() + "." + ns.prefix("directSpreadsheet"),
+        spreadsheet.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_spreadsheetInDirectory(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    Directory directory =
+        Directories.create()
+            .name(ns.prefix("financials"))
+            .withService(driveService.getFullyQualifiedName())
+            .withPath("/path/to/financials")
+            .execute();
+
+    Spreadsheet spreadsheet =
+        Spreadsheets.create()
+            .name(ns.prefix("budget2024"))
+            .withService(driveService.getFullyQualifiedName())
+            .withParent(directory.getEntityReference())
+            .execute();
+
+    assertNotNull(spreadsheet.getDirectory());
+    assertEquals(directory.getId(), spreadsheet.getDirectory().getId());
+    assertEquals(
+        directory.getFullyQualifiedName(), spreadsheet.getDirectory().getFullyQualifiedName());
+  }
+
+  @Test
+  void test_updateSpreadsheet(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    Spreadsheet created =
+        Spreadsheets.create()
+            .name(ns.prefix("updateSpreadsheet"))
+            .withDescription("description")
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    Spreadsheet fetched = Spreadsheets.get(created.getId().toString());
+    fetched.setDescription("updated description");
+
+    Spreadsheet updated = Spreadsheets.update(created.getId().toString()).entity(fetched).execute();
+    assertEquals("updated description", updated.getDescription());
+
+    fetched = Spreadsheets.get(created.getId().toString());
+    fetched.setPath("/new/path/to/spreadsheet");
+
+    updated = Spreadsheets.update(created.getId().toString()).entity(fetched).execute();
+    assertEquals("/new/path/to/spreadsheet", updated.getPath());
+
+    fetched = Spreadsheets.get(created.getId().toString());
+    fetched.setSize(1024000);
+
+    updated = Spreadsheets.update(created.getId().toString()).entity(fetched).execute();
+    assertEquals(Integer.valueOf(1024000), updated.getSize());
+  }
+
+  @Test
+  void test_patchSpreadsheetAttributes(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    Spreadsheet spreadsheet =
+        Spreadsheets.create()
+            .name(ns.prefix("patchSpreadsheet"))
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    Spreadsheet fetched = Spreadsheets.get(spreadsheet.getId().toString());
+    fetched.setDescription("patched description");
+    Spreadsheet patched =
+        Spreadsheets.update(spreadsheet.getId().toString()).entity(fetched).execute();
+    assertEquals("patched description", patched.getDescription());
+  }
+
+  @Test
+  void test_spreadsheetWithWorksheets(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    Spreadsheet spreadsheet =
+        Spreadsheets.create()
+            .name(ns.prefix("salesData"))
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    for (int i = 1; i <= 3; i++) {
+      Worksheets.create()
+          .name(ns.prefix("sheet" + i))
+          .withSpreadsheet(spreadsheet.getFullyQualifiedName())
+          .execute();
+    }
+
+    Spreadsheet spreadsheetWithWorksheets =
+        Spreadsheets.find(spreadsheet.getId().toString()).withFields("worksheets").fetch();
+    assertNotNull(spreadsheetWithWorksheets.getWorksheets());
+    assertEquals(3, spreadsheetWithWorksheets.getWorksheets().size());
+
+    for (EntityReference worksheetRef : spreadsheetWithWorksheets.getWorksheets()) {
+      assertNotNull(worksheetRef.getId());
+      assertNotNull(worksheetRef.getName());
+      assertTrue(worksheetRef.getName().startsWith(ns.prefix("sheet")));
+    }
+  }
+
+  @Test
+  void test_listSpreadsheetsByService(TestNamespace ns) {
+    DriveService service1 = DriveServiceTestFactory.createGoogleDrive(ns, "service1");
+    DriveService service2 = DriveServiceTestFactory.createGoogleDrive(ns, "service2");
+
+    for (int i = 0; i < 3; i++) {
+      Spreadsheets.create()
+          .name(ns.prefix("spreadsheet_service1_" + i))
+          .withService(service1.getFullyQualifiedName())
+          .execute();
+      Spreadsheets.create()
+          .name(ns.prefix("spreadsheet_service2_" + i))
+          .withService(service2.getFullyQualifiedName())
+          .execute();
+    }
+
+    ListParams params = new ListParams().withService(service1.getFullyQualifiedName());
+    ListResponse<Spreadsheet> list = SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(list.getData().size() >= 3);
+    assertTrue(
+        list.getData().stream().allMatch(s -> s.getService().getId().equals(service1.getId())));
+
+    params = new ListParams().withService(service2.getFullyQualifiedName());
+    list = SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(list.getData().size() >= 3);
+    assertTrue(
+        list.getData().stream().allMatch(s -> s.getService().getId().equals(service2.getId())));
+  }
+
+  @Test
+  void test_spreadsheetFQNPatterns(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    Spreadsheet directSpreadsheet =
+        Spreadsheets.create()
+            .name(ns.prefix("directSheet"))
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+    assertEquals(
+        driveService.getFullyQualifiedName() + "." + ns.prefix("directSheet"),
+        directSpreadsheet.getFullyQualifiedName());
+    assertNull(directSpreadsheet.getDirectory());
+
+    Directory dir1 =
+        Directories.create()
+            .name(ns.prefix("finance"))
+            .withService(driveService.getFullyQualifiedName())
+            .withPath("/finance")
+            .execute();
+
+    Directory dir2 =
+        Directories.create()
+            .name(ns.prefix("2024"))
+            .withService(driveService.getFullyQualifiedName())
+            .withParent(dir1.getFullyQualifiedName())
+            .withPath("/finance/2024")
+            .execute();
+
+    Spreadsheet dirSpreadsheet =
+        Spreadsheets.create()
+            .name(ns.prefix("budget"))
+            .withService(driveService.getFullyQualifiedName())
+            .withParent(dir2.getEntityReference())
+            .execute();
+    assertEquals(
+        driveService.getFullyQualifiedName()
+            + "."
+            + ns.prefix("finance")
+            + "."
+            + ns.prefix("2024")
+            + "."
+            + ns.prefix("budget"),
+        dirSpreadsheet.getFullyQualifiedName());
+    assertNotNull(dirSpreadsheet.getDirectory());
+    assertEquals(dir2.getId(), dirSpreadsheet.getDirectory().getId());
+  }
+
+  @Test
+  void test_spreadsheetsWithAndWithoutDirectory(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    Directory directory =
+        Directories.create()
+            .name(ns.prefix("reports"))
+            .withService(driveService.getFullyQualifiedName())
+            .withPath("/reports")
+            .execute();
+
+    for (int i = 0; i < 2; i++) {
+      Spreadsheets.create()
+          .name(ns.prefix("direct_spreadsheet_" + i))
+          .withService(driveService.getFullyQualifiedName())
+          .execute();
+    }
+
+    for (int i = 0; i < 2; i++) {
+      Spreadsheets.create()
+          .name(ns.prefix("dir_spreadsheet_" + i))
+          .withService(driveService.getFullyQualifiedName())
+          .withParent(directory.getEntityReference())
+          .execute();
+    }
+
+    ListParams params = new ListParams().withService(driveService.getFullyQualifiedName());
+    ListResponse<Spreadsheet> list = SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(list.getData().size() >= 4);
+
+    long withDirectory = list.getData().stream().filter(s -> s.getDirectory() != null).count();
+    long withoutDirectory = list.getData().stream().filter(s -> s.getDirectory() == null).count();
+    assertTrue(withDirectory >= 2);
+    assertTrue(withoutDirectory >= 2);
+
+    params = new ListParams().withDirectory(directory.getFullyQualifiedName());
+    list = SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(list.getData().size() >= 2);
+    assertTrue(list.getData().stream().allMatch(s -> s.getDirectory() != null));
+  }
+
+  @Test
+  void test_listSpreadsheetsByDirectory(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    Directory dir1 =
+        Directories.create()
+            .name(ns.prefix("reports"))
+            .withService(driveService.getFullyQualifiedName())
+            .withPath("/reports")
+            .execute();
+
+    Directory dir2 =
+        Directories.create()
+            .name(ns.prefix("analytics"))
+            .withService(driveService.getFullyQualifiedName())
+            .withPath("/analytics")
+            .execute();
+
+    for (int i = 0; i < 2; i++) {
+      Spreadsheets.create()
+          .name(ns.prefix("report_" + i))
+          .withService(driveService.getFullyQualifiedName())
+          .withParent(dir1.getEntityReference())
+          .execute();
+      Spreadsheets.create()
+          .name(ns.prefix("analytics_" + i))
+          .withService(driveService.getFullyQualifiedName())
+          .withParent(dir2.getEntityReference())
+          .execute();
+    }
+
+    ListParams params = new ListParams().withDirectory(dir1.getFullyQualifiedName());
+    ListResponse<Spreadsheet> list = SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(list.getData().size() >= 2);
+    assertTrue(
+        list.getData().stream()
+            .allMatch(
+                s -> s.getDirectory() != null && s.getDirectory().getId().equals(dir1.getId())));
+
+    params = new ListParams().withDirectory(dir2.getFullyQualifiedName());
+    list = SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(list.getData().size() >= 2);
+    assertTrue(
+        list.getData().stream()
+            .allMatch(
+                s -> s.getDirectory() != null && s.getDirectory().getId().equals(dir2.getId())));
+  }
+
+  @Test
+  void test_listSpreadsheetsWithRootParameter(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    Directory sheetsDir =
+        Directories.create()
+            .name(ns.prefix("sheetsDir"))
+            .withService(driveService.getFullyQualifiedName())
+            .withPath("/sheets")
+            .execute();
+
+    Spreadsheets.create()
+        .name(ns.prefix("rootSpreadsheet1"))
+        .withService(driveService.getFullyQualifiedName())
+        .execute();
+
+    Spreadsheets.create()
+        .name(ns.prefix("rootSpreadsheet2"))
+        .withService(driveService.getFullyQualifiedName())
+        .execute();
+
+    Spreadsheets.create()
+        .name(ns.prefix("childSpreadsheet1"))
+        .withService(driveService.getFullyQualifiedName())
+        .withParent(sheetsDir.getEntityReference())
+        .execute();
+
+    Spreadsheets.create()
+        .name(ns.prefix("childSpreadsheet2"))
+        .withService(driveService.getFullyQualifiedName())
+        .withParent(sheetsDir.getEntityReference())
+        .execute();
+
+    ListParams params = new ListParams().withService(driveService.getFullyQualifiedName());
+    ListResponse<Spreadsheet> allSpreadsheets =
+        SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(allSpreadsheets.getData().size() >= 4);
+
+    params = new ListParams().withService(driveService.getFullyQualifiedName()).withRoot("true");
+    ListResponse<Spreadsheet> rootSpreadsheets =
+        SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(rootSpreadsheets.getData().size() >= 2);
+
+    for (Spreadsheet spreadsheet : rootSpreadsheets.getData()) {
+      assertNull(spreadsheet.getDirectory());
+      assertTrue(
+          spreadsheet.getName().equals(ns.prefix("rootSpreadsheet1"))
+              || spreadsheet.getName().equals(ns.prefix("rootSpreadsheet2")));
+    }
+
+    params = new ListParams().withService(driveService.getFullyQualifiedName()).withRoot("false");
+    ListResponse<Spreadsheet> nonRootSpreadsheets =
+        SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(nonRootSpreadsheets.getData().size() >= 4);
+  }
+
+  @Test
+  void test_listSpreadsheetsWithRootParameterAndPagination(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    Directory folder =
+        Directories.create()
+            .name(ns.prefix("spreadsheetsFolder"))
+            .withService(driveService.getFullyQualifiedName())
+            .withPath("/spreadsheets")
+            .execute();
+
+    for (int i = 1; i <= 7; i++) {
+      Spreadsheets.create()
+          .name(ns.prefix("rootSpreadsheet" + i))
+          .withService(driveService.getFullyQualifiedName())
+          .execute();
+    }
+
+    for (int i = 1; i <= 3; i++) {
+      Spreadsheets.create()
+          .name(ns.prefix("childSpreadsheet" + i))
+          .withService(driveService.getFullyQualifiedName())
+          .withParent(folder.getEntityReference())
+          .execute();
+    }
+
+    ListParams params =
+        new ListParams()
+            .withService(driveService.getFullyQualifiedName())
+            .withRoot("true")
+            .withLimit(3);
+
+    ListResponse<Spreadsheet> firstPage = SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(firstPage.getData().size() <= 3);
+    assertNotNull(firstPage.getPaging().getAfter());
+
+    for (Spreadsheet spreadsheet : firstPage.getData()) {
+      assertNull(spreadsheet.getDirectory());
+    }
+
+    params = params.withAfter(firstPage.getPaging().getAfter());
+    ListResponse<Spreadsheet> secondPage = SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(secondPage.getData().size() <= 3);
+
+    for (Spreadsheet spreadsheet : secondPage.getData()) {
+      assertNull(spreadsheet.getDirectory());
+    }
+
+    params = new ListParams().withService(driveService.getFullyQualifiedName()).withRoot("true");
+    ListResponse<Spreadsheet> allRootSpreadsheets =
+        SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(allRootSpreadsheets.getData().size() >= 7);
+  }
+
+  @Test
+  void test_listSpreadsheetsWithRootParameterEmptyResult(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    for (int i = 1; i <= 2; i++) {
+      Directory dir =
+          Directories.create()
+              .name(ns.prefix("folder" + i))
+              .withService(driveService.getFullyQualifiedName())
+              .withPath("/folder" + i)
+              .execute();
+
+      for (int j = 1; j <= 2; j++) {
+        Spreadsheets.create()
+            .name(ns.prefix(dir.getName() + "_spreadsheet" + j))
+            .withService(driveService.getFullyQualifiedName())
+            .withParent(dir.getEntityReference())
+            .execute();
+      }
+    }
+
+    ListParams params =
+        new ListParams().withService(driveService.getFullyQualifiedName()).withRoot("true");
+    ListResponse<Spreadsheet> rootSpreadsheets =
+        SdkClients.adminClient().spreadsheets().list(params);
+    assertEquals(0, rootSpreadsheets.getData().size());
+
+    params = new ListParams().withService(driveService.getFullyQualifiedName()).withRoot("false");
+    ListResponse<Spreadsheet> allSpreadsheets =
+        SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(allSpreadsheets.getData().size() >= 4);
+    for (Spreadsheet spreadsheet : allSpreadsheets.getData()) {
+      assertNotNull(spreadsheet.getDirectory());
+      assertEquals("directory", spreadsheet.getDirectory().getType());
+    }
+  }
+
+  @Test
+  void test_listSpreadsheetsWithRootParameterAcrossMultipleServices(TestNamespace ns) {
+    DriveService service1 = DriveServiceTestFactory.createGoogleDrive(ns, "googleSheetsService");
+    DriveService service2 = DriveServiceTestFactory.createGoogleDrive(ns, "excelOnlineService");
+
+    Directory googleDir =
+        Directories.create()
+            .name(ns.prefix("googleSheetsFolder"))
+            .withService(service1.getFullyQualifiedName())
+            .withPath("/sheets")
+            .execute();
+
+    for (int i = 1; i <= 2; i++) {
+      Spreadsheets.create()
+          .name(ns.prefix("googleSheet" + i))
+          .withService(service1.getFullyQualifiedName())
+          .execute();
+    }
+
+    for (int i = 1; i <= 2; i++) {
+      Spreadsheets.create()
+          .name(ns.prefix("googleChildSheet" + i))
+          .withService(service1.getFullyQualifiedName())
+          .withParent(googleDir.getEntityReference())
+          .execute();
+    }
+
+    Directory excelDir =
+        Directories.create()
+            .name(ns.prefix("excelFolder"))
+            .withService(service2.getFullyQualifiedName())
+            .withPath("/excel")
+            .execute();
+
+    for (int i = 1; i <= 4; i++) {
+      Spreadsheets.create()
+          .name(ns.prefix("excelWorkbook" + i))
+          .withService(service2.getFullyQualifiedName())
+          .execute();
+    }
+
+    Spreadsheets.create()
+        .name(ns.prefix("excelChildWorkbook"))
+        .withService(service2.getFullyQualifiedName())
+        .withParent(excelDir.getEntityReference())
+        .execute();
+
+    ListParams params =
+        new ListParams().withService(service1.getFullyQualifiedName()).withRoot("true");
+    ListResponse<Spreadsheet> googleRootSpreadsheets =
+        SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(googleRootSpreadsheets.getData().size() >= 2);
+    for (Spreadsheet spreadsheet : googleRootSpreadsheets.getData()) {
+      assertNull(spreadsheet.getDirectory());
+      assertTrue(spreadsheet.getName().startsWith(ns.prefix("googleSheet")));
+    }
+
+    params = new ListParams().withService(service2.getFullyQualifiedName()).withRoot("true");
+    ListResponse<Spreadsheet> excelRootSpreadsheets =
+        SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(excelRootSpreadsheets.getData().size() >= 4);
+    for (Spreadsheet spreadsheet : excelRootSpreadsheets.getData()) {
+      assertNull(spreadsheet.getDirectory());
+      assertTrue(spreadsheet.getName().startsWith(ns.prefix("excelWorkbook")));
+    }
+
+    params = new ListParams().withService(service1.getFullyQualifiedName()).withRoot("false");
+    ListResponse<Spreadsheet> allGoogleSpreadsheets =
+        SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(allGoogleSpreadsheets.getData().size() >= 4);
+
+    params = new ListParams().withService(service2.getFullyQualifiedName()).withRoot("false");
+    ListResponse<Spreadsheet> allExcelSpreadsheets =
+        SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(allExcelSpreadsheets.getData().size() >= 5);
   }
 }

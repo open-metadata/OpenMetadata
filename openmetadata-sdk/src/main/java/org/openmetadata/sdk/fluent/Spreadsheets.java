@@ -51,6 +51,10 @@ public final class Spreadsheets {
     return new SpreadsheetFinder(getClient(), fqn, true);
   }
 
+  public static SpreadsheetUpdater update(String id) {
+    return new SpreadsheetUpdater(getClient(), id);
+  }
+
   public static class SpreadsheetCreator {
     private final OpenMetadataClient client;
     private final CreateSpreadsheet request = new CreateSpreadsheet();
@@ -81,6 +85,11 @@ public final class Spreadsheets {
 
     public SpreadsheetCreator withOwners(List<EntityReference> owners) {
       request.setOwners(owners);
+      return this;
+    }
+
+    public SpreadsheetCreator withParent(EntityReference parent) {
+      request.setParent(parent);
       return this;
     }
 
@@ -116,6 +125,29 @@ public final class Spreadsheets {
       return isFqn
           ? client.spreadsheets().getByName(identifier, fields)
           : client.spreadsheets().get(identifier, fields);
+    }
+  }
+
+  public static class SpreadsheetUpdater {
+    private final OpenMetadataClient client;
+    private final String id;
+    private Spreadsheet entityToUpdate;
+
+    SpreadsheetUpdater(OpenMetadataClient client, String id) {
+      this.client = client;
+      this.id = id;
+    }
+
+    public SpreadsheetUpdater entity(Spreadsheet entity) {
+      this.entityToUpdate = entity;
+      return this;
+    }
+
+    public Spreadsheet execute() {
+      if (entityToUpdate == null) {
+        throw new IllegalStateException("Entity to update must be set via entity() method");
+      }
+      return client.spreadsheets().update(id, entityToUpdate);
     }
   }
 }

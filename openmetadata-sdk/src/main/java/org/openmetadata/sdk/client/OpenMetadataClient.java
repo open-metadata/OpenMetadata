@@ -67,6 +67,8 @@ import org.openmetadata.sdk.services.teams.PersonaService;
 import org.openmetadata.sdk.services.teams.RoleService;
 import org.openmetadata.sdk.services.teams.TeamService;
 import org.openmetadata.sdk.services.teams.UserService;
+import org.openmetadata.sdk.services.tests.TestCaseResolutionStatusService;
+import org.openmetadata.sdk.services.tests.TestCaseResultService;
 import org.openmetadata.sdk.services.tests.TestCaseService;
 import org.openmetadata.sdk.services.tests.TestDefinitionService;
 import org.openmetadata.sdk.services.tests.TestSuiteService;
@@ -141,6 +143,8 @@ public class OpenMetadataClient {
 
   // Tests
   private final TestCaseService testCases;
+  private final TestCaseResultService testCaseResults;
+  private final TestCaseResolutionStatusService testCaseResolutionStatuses;
   private final TestSuiteService testSuites;
   private final TestDefinitionService testDefinitions;
 
@@ -247,6 +251,8 @@ public class OpenMetadataClient {
 
     // Initialize test services
     this.testCases = new TestCaseService(httpClient);
+    this.testCaseResults = new TestCaseResultService(httpClient);
+    this.testCaseResolutionStatuses = new TestCaseResolutionStatusService(httpClient);
     this.testSuites = new TestSuiteService(httpClient);
     this.testDefinitions = new TestDefinitionService(httpClient);
 
@@ -463,6 +469,14 @@ public class OpenMetadataClient {
   // Test Service Getters
   public TestCaseService testCases() {
     return testCases;
+  }
+
+  public TestCaseResultService testCaseResults() {
+    return testCaseResults;
+  }
+
+  public TestCaseResolutionStatusService testCaseResolutionStatuses() {
+    return testCaseResolutionStatuses;
   }
 
   public TestSuiteService testSuites() {

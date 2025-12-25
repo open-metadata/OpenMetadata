@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -15,11 +16,14 @@ import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
@@ -27,6 +31,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.security.policyevaluator.PermissionDebugInfo;
 
 /**
  * Integration tests for Permissions resource operations.
@@ -282,6 +287,74 @@ public class PermissionsResourceIT {
         });
   }
 
+  @Test
+  void test_debugPermissions_adminCanDebugAnyUser() throws Exception {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    TestNamespace ns = new TestNamespace("PermissionsResourceIT");
+
+    User testUser = UserTestFactory.createUser(ns, "test-debug-user");
+    Team testTeam = createTestTeam(adminClient, ns, "test-debug-team");
+
+    addUserToTeam(adminClient, testTeam, testUser);
+
+    PermissionDebugInfo debugInfo = getDebugPermissionsForUser(adminClient, testUser.getName());
+
+    assertEquals(testUser.getName(), debugInfo.getUser().getName());
+    assertNotNull(debugInfo.getDirectRoles());
+    assertNotNull(debugInfo.getTeamPermissions());
+    assertNotNull(debugInfo.getSummary());
+
+    cleanupUser(adminClient, testUser);
+    cleanupTeam(adminClient, testTeam);
+  }
+
+  @Test
+  void test_debugPermissions_userCanDebugOwnPermissions() throws Exception {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    TestNamespace ns = new TestNamespace("PermissionsResourceIT");
+
+    User testUser = UserTestFactory.createUser(ns, "test-debug-own-user");
+
+    PermissionDebugInfo debugInfo = getDebugPermissionsForUser(adminClient, testUser.getName());
+
+    assertEquals(testUser.getName(), debugInfo.getUser().getName());
+    assertNotNull(debugInfo.getDirectRoles());
+    assertNotNull(debugInfo.getTeamPermissions());
+    assertNotNull(debugInfo.getSummary());
+
+    cleanupUser(adminClient, testUser);
+  }
+
+  @Test
+  void test_debugPermissions_userCannotDebugOtherUserPermissions() throws Exception {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    TestNamespace ns = new TestNamespace("PermissionsResourceIT");
+
+    User testUser1 = UserTestFactory.createUser(ns, "test-debug-user1");
+    User testUser2 = UserTestFactory.createUser(ns, "test-debug-user2");
+
+    assertThrows(
+        Exception.class,
+        () -> getDebugPermissionsForUser(adminClient, testUser2.getName()),
+        "User should not be able to debug another user's permissions");
+
+    cleanupUser(adminClient, testUser1);
+    cleanupUser(adminClient, testUser2);
+  }
+
+  @Test
+  void test_debugMyPermissions() throws Exception {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+
+    PermissionDebugInfo debugInfo = getDebugMyPermissions(adminClient);
+
+    assertNotNull(debugInfo.getUser());
+    assertNotNull(debugInfo.getUser().getName());
+    assertNotNull(debugInfo.getDirectRoles());
+    assertNotNull(debugInfo.getTeamPermissions());
+    assertNotNull(debugInfo.getSummary());
+  }
+
   private List<ResourcePermission> getPermissions(OpenMetadataClient client) throws Exception {
     String response =
         client.getHttpClient().executeForString(HttpMethod.GET, "/v1/permissions", null);
@@ -390,6 +463,58 @@ public class PermissionsResourceIT {
     } catch (OpenMetadataException e) {
       // Ignore cleanup errors
     }
+  }
+
+  private Team createTestTeam(OpenMetadataClient client, TestNamespace ns, String teamName)
+      throws Exception {
+    CreateTeam createTeam = new CreateTeam();
+    createTeam.setName(ns.prefix(teamName));
+    createTeam.setDisplayName(ns.prefix(teamName));
+    createTeam.setDescription("Test team for permissions testing");
+    createTeam.setTeamType(CreateTeam.TeamType.GROUP);
+    return client.teams().create(createTeam);
+  }
+
+  private void addUserToTeam(OpenMetadataClient client, Team team, User user) throws Exception {
+    User fetchedUser = client.users().get(user.getId().toString(), "teams");
+    List<EntityReference> teams = new ArrayList<>();
+    if (fetchedUser.getTeams() != null) {
+      teams.addAll(fetchedUser.getTeams());
+    }
+    teams.add(team.getEntityReference());
+    fetchedUser.setTeams(teams);
+    client.users().update(user.getId(), fetchedUser);
+  }
+
+  private void cleanupUser(OpenMetadataClient client, User user) throws Exception {
+    try {
+      client.users().delete(user.getId().toString());
+    } catch (OpenMetadataException e) {
+      // Ignore cleanup errors
+    }
+  }
+
+  private void cleanupTeam(OpenMetadataClient client, Team team) throws Exception {
+    try {
+      client.teams().delete(team.getId().toString());
+    } catch (OpenMetadataException e) {
+      // Ignore cleanup errors
+    }
+  }
+
+  private PermissionDebugInfo getDebugPermissionsForUser(OpenMetadataClient client, String username)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/permissions/debug/user/" + username, null);
+    return OBJECT_MAPPER.readValue(response, PermissionDebugInfo.class);
+  }
+
+  private PermissionDebugInfo getDebugMyPermissions(OpenMetadataClient client) throws Exception {
+    String response =
+        client.getHttpClient().executeForString(HttpMethod.GET, "/v1/permissions/debug/me", null);
+    return OBJECT_MAPPER.readValue(response, PermissionDebugInfo.class);
   }
 
   private static class ResourcePermissionListWrapper {

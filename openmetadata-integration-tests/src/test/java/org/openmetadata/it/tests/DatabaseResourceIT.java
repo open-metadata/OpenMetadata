@@ -25,19 +25,39 @@ import org.openmetadata.sdk.exceptions.InvalidRequestException;
 /**
  * Integration tests for Database entity operations.
  *
- * Extends BaseEntityIT to inherit all 92 common entity tests.
- * Adds 11 database-specific tests.
- *
- * Total coverage: 92 (common) + 11 (database-specific) = 103 tests
+ * Extends BaseEntityIT to inherit all common entity tests.
+ * Adds database-specific tests.
  *
  * Migrated from: org.openmetadata.service.resources.databases.DatabaseResourceTest
- * Migration date: 2025-10-02
+ * Migration status: 8 entity-specific tests migrated, 6 tests not migrated (see details below)
+ *
+ * MIGRATED TESTS (8):
+ * - post_databaseFQN_as_admin_200_OK
+ * - post_databaseWithoutRequiredService_4xx
+ * - post_databaseWithDifferentService_200_ok
+ * - test_bulkServiceFetching_200_OK
+ * - test_fieldFetchersForServiceAndName
+ * - testDatabaseRdfRelationships (RDF-enabled environments only)
+ * - testDatabaseRdfSoftDeleteAndRestore (RDF-enabled environments only)
+ * - testDatabaseRdfHardDelete (RDF-enabled environments only)
+ *
+ * NOT MIGRATED (6):
+ * - 3 CSV import/export tests (SDK endpoint mismatch)
+ * - 3 Bulk API tests (require WebTarget for detailed verification)
  *
  * Test isolation: Uses TestNamespace for unique entity names
  * Parallelization: Safe for concurrent execution via @Execution(ExecutionMode.CONCURRENT)
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
+
+  // Enable import/export for databases
+  {
+    supportsImportExport = true;
+  }
+
+  // Store last created database for import/export tests
+  private Database lastCreatedDatabase;
 
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
@@ -428,6 +448,114 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
         "Database 2 should have Snowflake service");
   }
 
+  /**
+   * Test: Field Fetchers for Service and Name
+   * Original: testFieldFetchersForServiceAndName line 563
+   *
+   * Validates that field fetchers properly populate service and name fields
+   * when listing databases with specific field parameters.
+   */
+  @Test
+  void test_fieldFetchersForServiceAndName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create custom service for this test
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    String dbName1 = ns.prefix("fieldFetcherDb1");
+    String dbName2 = ns.prefix("fieldFetcherDb2");
+
+    Database db1 = createEntity(createRequestWithService(dbName1, service.getFullyQualifiedName()));
+    Database db2 = createEntity(createRequestWithService(dbName2, service.getFullyQualifiedName()));
+
+    // List databases with service field requested
+    org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
+    params.setFields("service");
+    params.setService(service.getName());
+    params.setLimit(100);
+
+    org.openmetadata.sdk.models.ListResponse<Database> dbList = client.databases().list(params);
+
+    // Find our databases in the list
+    Database foundDb1 = null;
+    Database foundDb2 = null;
+    for (Database db : dbList.getData()) {
+      if (db.getId().equals(db1.getId())) {
+        foundDb1 = db;
+      }
+      if (db.getId().equals(db2.getId())) {
+        foundDb2 = db;
+      }
+    }
+
+    assertNotNull(foundDb1, "Database 1 should be found in list");
+    assertNotNull(foundDb2, "Database 2 should be found in list");
+
+    // Verify name is always present
+    assertNotNull(foundDb1.getName(), "Database name should always be present in list response");
+    assertEquals(dbName1, foundDb1.getName(), "Database 1 name should match");
+
+    assertNotNull(foundDb2.getName(), "Database name should always be present in list response");
+    assertEquals(dbName2, foundDb2.getName(), "Database 2 name should match");
+
+    // Verify service is fetched via fieldFetcher when requested
+    assertNotNull(
+        foundDb1.getService(),
+        "Service should be fetched via fieldFetcher when 'service' field is requested");
+    assertEquals(
+        service.getName(),
+        foundDb1.getService().getName(),
+        "Database 1 service name should be correct via field fetcher");
+    assertEquals(
+        service.getId(),
+        foundDb1.getService().getId(),
+        "Database 1 service ID should be correct via field fetcher");
+
+    assertNotNull(
+        foundDb2.getService(),
+        "Service should be fetched via fieldFetcher when 'service' field is requested");
+    assertEquals(
+        service.getName(),
+        foundDb2.getService().getName(),
+        "Database 2 service name should be correct via field fetcher");
+    assertEquals(
+        service.getId(),
+        foundDb2.getService().getId(),
+        "Database 2 service ID should be correct via field fetcher");
+
+    // Test listing without service field (empty fields)
+    org.openmetadata.sdk.models.ListParams paramsWithoutService =
+        new org.openmetadata.sdk.models.ListParams();
+    paramsWithoutService.setFields("");
+    paramsWithoutService.setService(service.getName());
+    paramsWithoutService.setLimit(100);
+
+    org.openmetadata.sdk.models.ListResponse<Database> dbListWithoutService =
+        client.databases().list(paramsWithoutService);
+
+    Database foundDb1WithoutService = null;
+    for (Database db : dbListWithoutService.getData()) {
+      if (db.getId().equals(db1.getId())) {
+        foundDb1WithoutService = db;
+        break;
+      }
+    }
+
+    assertNotNull(foundDb1WithoutService, "Database should be found even without service field");
+    assertNotNull(
+        foundDb1WithoutService.getName(),
+        "Database name should always be present regardless of fields");
+    assertEquals(
+        dbName1,
+        foundDb1WithoutService.getName(),
+        "Database name should match even without service field");
+
+    // Service is a default field, so it should still be fetched
+    assertNotNull(
+        foundDb1WithoutService.getService(),
+        "Service is always fetched as default field even when not in fields param");
+  }
+
   // ===================================================================
   // PHASE 2: Advanced GET Operations Support
   // ===================================================================
@@ -454,20 +582,27 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
   }
 
   // ===================================================================
-  // CSV IMPORT/EXPORT TESTS - FULLY MIGRATED ✅
+  // NOT MIGRATED - Tests that remain in DatabaseResourceTest
   // ===================================================================
-  // Note: CSV tests migrated from DatabaseResourceTest (testImportInvalidCsv, testImportExport,
-  // testImportExportRecursive)
-  // All 3 CSV tests are migrated - CSV functionality IS SDK-accessible via client.importExport()
   //
-  // Current Status: Tests commented out due to endpoint mismatch in current OpenMetadata version
-  // - SDK uses: /v1/databases/{id}/export (returns 404)
-  // - Old test uses: /v1/databases/{fqn}/import with PUT method
+  // CSV IMPORT/EXPORT TESTS (3 tests):
+  // - testImportInvalidCsv
+  // - testImportExport
+  // - testImportExportRecursive
   //
-  // These tests are READY and can be uncommented once SDK endpoints are updated to match server API
-  // The ImportExportAPI class in SDK exists and has the methods - just need endpoint correction
+  // Reason: SDK endpoint mismatch. SDK uses /v1/databases/{id}/export but server expects
+  // /v1/databases/{fqn}/import with PUT method. Will migrate when SDK endpoints are corrected.
   //
-  // Migrated test count: 3 CSV tests (will be active once endpoint fixed)
+  // BULK API TESTS (3 tests):
+  // - testBulk_PreservesUserEditsOnUpdate
+  // - testBulk_TagMergeBehavior
+  // - testBulk_AdminCanOverrideDescription
+  //
+  // Reason: These tests require detailed verification of bot protection, tag merge behavior,
+  // and auth-specific behavior that is not easily testable via SDK (SDK bulk API returns
+  // unstructured String responses). These are better suited as WebTarget-based REST API tests.
+  //
+  // Total NOT migrated: 6 tests (3 CSV + 3 Bulk)
   // ===================================================================
 
   /*
@@ -653,5 +788,21 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
   @Override
   protected Database getVersion(UUID id, Double version) {
     return SdkClients.adminClient().databases().getVersion(id.toString(), version);
+  }
+
+  @Override
+  protected org.openmetadata.sdk.services.EntityServiceBase<Database> getEntityService() {
+    return SdkClients.adminClient().databases();
+  }
+
+  @Override
+  protected String getImportExportContainerName(TestNamespace ns) {
+    // For databases, we export from the database itself
+    if (lastCreatedDatabase == null) {
+      CreateDatabase request = createMinimalRequest(ns);
+      request.setName(ns.prefix("export_db"));
+      lastCreatedDatabase = createEntity(request);
+    }
+    return lastCreatedDatabase.getFullyQualifiedName();
   }
 }

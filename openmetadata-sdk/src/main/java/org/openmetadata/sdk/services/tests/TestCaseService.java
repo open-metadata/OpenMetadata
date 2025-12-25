@@ -1,5 +1,6 @@
 package org.openmetadata.sdk.services.tests;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -9,8 +10,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -58,6 +62,133 @@ public class TestCaseService extends EntityServiceBase<TestCase> {
   // Create or update using CreateTestCase request
   public TestCase upsert(CreateTestCase request) throws OpenMetadataException {
     return httpClient.execute(HttpMethod.PUT, basePath, request, TestCase.class);
+  }
+
+  // ===================================================================
+  // BULK OPERATIONS
+  // ===================================================================
+
+  /**
+   * Create multiple test cases in a single request.
+   *
+   * @param requests List of test case creation requests
+   * @return List of created test cases
+   */
+  public List<TestCase> createMany(List<CreateTestCase> requests) throws OpenMetadataException {
+    try {
+      String response =
+          httpClient.executeForString(HttpMethod.POST, basePath + "/createMany", requests);
+      if (response == null || response.isEmpty()) {
+        return new ArrayList<>();
+      }
+      return objectMapper.readValue(response, new TypeReference<List<TestCase>>() {});
+    } catch (Exception e) {
+      throw new OpenMetadataException("Failed to create test cases: " + e.getMessage(), e);
+    }
+  }
+
+  // ===================================================================
+  // LOGICAL TEST SUITE OPERATIONS
+  // ===================================================================
+
+  /**
+   * Add test cases to a logical test suite.
+   *
+   * @param request The logical test cases request containing test suite ID and test case IDs
+   * @return The updated test suite
+   */
+  public org.openmetadata.schema.tests.TestSuite addToLogicalTestSuite(
+      CreateLogicalTestCases request) throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.PUT,
+        basePath + "/logicalTestCases",
+        request,
+        org.openmetadata.schema.tests.TestSuite.class);
+  }
+
+  /**
+   * Remove a test case from a logical test suite.
+   *
+   * @param testSuiteId The logical test suite ID
+   * @param testCaseId The test case ID to remove
+   */
+  public void removeFromLogicalTestSuite(UUID testSuiteId, UUID testCaseId)
+      throws OpenMetadataException {
+    httpClient.execute(
+        HttpMethod.DELETE,
+        basePath + "/logicalTestCases/" + testSuiteId + "/" + testCaseId,
+        null,
+        Void.class);
+  }
+
+  // ===================================================================
+  // FAILED ROWS SAMPLE OPERATIONS
+  // ===================================================================
+
+  /**
+   * Get the failed rows sample data for a test case.
+   *
+   * @param testCaseId The test case ID
+   * @return The failed rows sample data
+   */
+  public TableData getFailedRowsSample(String testCaseId) throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.GET, basePath + "/" + testCaseId + "/failedRowsSample", null, TableData.class);
+  }
+
+  /**
+   * Add or update failed rows sample data for a test case.
+   *
+   * @param testCaseId The test case ID
+   * @param sampleData The sample data to add
+   * @return The updated test case
+   */
+  public TestCase addFailedRowsSample(String testCaseId, TableData sampleData)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.PUT,
+        basePath + "/" + testCaseId + "/failedRowsSample",
+        sampleData,
+        TestCase.class);
+  }
+
+  /**
+   * Delete the failed rows sample data for a test case.
+   *
+   * @param testCaseId The test case ID
+   * @return The updated test case
+   */
+  public TestCase deleteFailedRowsSample(String testCaseId) throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.DELETE, basePath + "/" + testCaseId + "/failedRowsSample", null, TestCase.class);
+  }
+
+  // ===================================================================
+  // INSPECTION QUERY OPERATIONS
+  // ===================================================================
+
+  /**
+   * Set the inspection query for a test case.
+   *
+   * @param testCaseId The test case ID
+   * @param query The inspection query SQL
+   * @return The updated test case
+   */
+  public TestCase setInspectionQuery(String testCaseId, String query) throws OpenMetadataException {
+    // API accepts raw string with application/json content type
+    RequestOptions options =
+        RequestOptions.builder().header("Content-Type", "application/json").build();
+    try {
+      String response =
+          httpClient.executeForString(
+              HttpMethod.PUT, basePath + "/" + testCaseId + "/inspectionQuery", query, options);
+      if (response == null || response.isEmpty()) {
+        return null;
+      }
+      return objectMapper.readValue(response, TestCase.class);
+    } catch (Exception e) {
+      throw new OpenMetadataException("Failed to set inspection query: " + e.getMessage(), e);
+    }
   }
 
   /**

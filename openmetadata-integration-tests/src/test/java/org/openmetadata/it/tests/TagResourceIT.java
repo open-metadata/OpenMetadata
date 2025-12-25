@@ -503,4 +503,132 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     assertNotNull(fetched.getOwners());
     assertFalse(fetched.getOwners().isEmpty());
   }
+
+  @Test
+  void test_ownerInheritance(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create classification with owner
+    String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
+    CreateClassification classificationRequest = new CreateClassification();
+    classificationRequest.setName(ns.prefix("owner_inherit") + "_" + uniqueSuffix);
+    classificationRequest.setDescription("Classification for owner inheritance test");
+    classificationRequest.setOwners(java.util.List.of(testUser1().getEntityReference()));
+    Classification classification = client.classifications().create(classificationRequest);
+
+    // Verify classification has owner
+    assertNotNull(classification.getOwners());
+    assertEquals(1, classification.getOwners().size());
+
+    // Create tag under classification (without explicit owner)
+    CreateTag tagRequest = new CreateTag();
+    tagRequest.setName(ns.prefix("inherited_owner_tag"));
+    tagRequest.setClassification(classification.getFullyQualifiedName());
+    tagRequest.setDescription("Tag for owner inheritance test");
+
+    Tag tag = createEntity(tagRequest);
+
+    // Verify tag inherited owner from classification
+    Tag fetchedTag = client.tags().get(tag.getId().toString(), "owners");
+    assertNotNull(fetchedTag.getOwners());
+    assertEquals(1, fetchedTag.getOwners().size());
+    assertEquals(testUser1().getId(), fetchedTag.getOwners().get(0).getId());
+    assertTrue(fetchedTag.getOwners().get(0).getInherited(), "Owner should be marked as inherited");
+  }
+
+  @Test
+  void test_domainInheritance(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a domain for testing
+    org.openmetadata.schema.api.domains.CreateDomain createDomain =
+        new org.openmetadata.schema.api.domains.CreateDomain()
+            .withName(ns.prefix("domain_inherit"))
+            .withDomainType(org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
+            .withDescription("Test domain for inheritance");
+    org.openmetadata.schema.entity.domains.Domain domain = client.domains().create(createDomain);
+
+    // Create classification with domain
+    String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
+    CreateClassification classificationRequest = new CreateClassification();
+    classificationRequest.setName(ns.prefix("domain_inherit") + "_" + uniqueSuffix);
+    classificationRequest.setDescription("Classification for domain inheritance test");
+    classificationRequest.setDomains(java.util.List.of(domain.getFullyQualifiedName()));
+    Classification classification = client.classifications().create(classificationRequest);
+
+    // Verify classification has domain
+    Classification fetchedClassification =
+        client.classifications().get(classification.getId().toString(), "domains");
+    assertNotNull(fetchedClassification.getDomains());
+    assertEquals(1, fetchedClassification.getDomains().size());
+
+    // Create tag under classification (without explicit domain)
+    CreateTag tagRequest = new CreateTag();
+    tagRequest.setName(ns.prefix("inherited_domain_tag"));
+    tagRequest.setClassification(classification.getFullyQualifiedName());
+    tagRequest.setDescription("Tag for domain inheritance test");
+
+    Tag tag = createEntity(tagRequest);
+
+    // Verify tag inherited domain from classification
+    Tag fetchedTag = client.tags().get(tag.getId().toString(), "domains");
+    assertNotNull(fetchedTag.getDomains());
+    assertEquals(1, fetchedTag.getDomains().size());
+    assertEquals(domain.getId(), fetchedTag.getDomains().get(0).getId());
+    assertTrue(
+        fetchedTag.getDomains().get(0).getInherited(), "Domain should be marked as inherited");
+  }
+
+  @Test
+  void test_disableClassification_disablesAllTags(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create classification
+    String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
+    CreateClassification classificationRequest = new CreateClassification();
+    classificationRequest.setName(ns.prefix("disable_test") + "_" + uniqueSuffix);
+    classificationRequest.setDescription("Classification for disable test");
+    Classification classification = client.classifications().create(classificationRequest);
+
+    // Create two tags under this classification
+    CreateTag tagRequest1 = new CreateTag();
+    tagRequest1.setName(ns.prefix("tag_disable_1"));
+    tagRequest1.setClassification(classification.getFullyQualifiedName());
+    tagRequest1.setDescription("First tag for disable test");
+    Tag tag1 = createEntity(tagRequest1);
+
+    CreateTag tagRequest2 = new CreateTag();
+    tagRequest2.setName(ns.prefix("tag_disable_2"));
+    tagRequest2.setClassification(classification.getFullyQualifiedName());
+    tagRequest2.setDescription("Second tag for disable test");
+    Tag tag2 = createEntity(tagRequest2);
+
+    // Verify tags are not disabled initially
+    assertFalse(tag1.getDisabled() != null && tag1.getDisabled());
+    assertFalse(tag2.getDisabled() != null && tag2.getDisabled());
+
+    // Disable the classification
+    classification.setDisabled(true);
+    client.classifications().update(classification.getId().toString(), classification);
+
+    // Verify tags are now disabled
+    Tag fetchedTag1 = getEntity(tag1.getId().toString());
+    Tag fetchedTag2 = getEntity(tag2.getId().toString());
+    assertTrue(
+        fetchedTag1.getDisabled(), "Tag1 should be disabled when classification is disabled");
+    assertTrue(
+        fetchedTag2.getDisabled(), "Tag2 should be disabled when classification is disabled");
+
+    // Re-enable the classification
+    classification.setDisabled(false);
+    client.classifications().update(classification.getId().toString(), classification);
+
+    // Verify tags are enabled again
+    fetchedTag1 = getEntity(tag1.getId().toString());
+    fetchedTag2 = getEntity(tag2.getId().toString());
+    assertFalse(
+        fetchedTag1.getDisabled(), "Tag1 should not be disabled after classification is enabled");
+    assertFalse(
+        fetchedTag2.getDisabled(), "Tag2 should not be disabled after classification is enabled");
+  }
 }

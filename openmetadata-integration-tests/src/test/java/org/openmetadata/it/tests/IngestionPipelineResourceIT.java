@@ -35,11 +35,16 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.StepSummary;
 import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceQueryUsagePipeline;
+import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.FilterPattern;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.MessagingServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
+import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
@@ -992,5 +997,167 @@ public class IngestionPipelineResourceIT
     assertEquals(3600, pipeline.getAirflowConfig().getWorkflowTimeout());
     assertEquals(retries, pipeline.getAirflowConfig().getRetries());
     assertEquals(retryDelay, pipeline.getAirflowConfig().getRetryDelay());
+  }
+
+  @Test
+  void post_IngestionPipelineWithoutRequiredService_400() {
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName("pipeline_without_service")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(null)
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Creating ingestion pipeline without service should fail");
+  }
+
+  @Test
+  void post_AirflowWithDifferentServices_200_OK(TestNamespace ns) {
+    DatabaseService postgres = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseService snowflake = DatabaseServiceTestFactory.createSnowflake(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request1 =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("pipeline_postgres"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(postgres.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline1 = createEntity(request1);
+    assertEquals(postgres.getName(), pipeline1.getService().getName());
+
+    CreateIngestionPipeline request2 =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("pipeline_snowflake"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(snowflake.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline2 = createEntity(request2);
+    assertEquals(snowflake.getName(), pipeline2.getService().getName());
+  }
+
+  @Test
+  void post_dbtPipeline_configIsEncrypted(TestNamespace ns) throws OpenMetadataException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    AWSCredentials awsCredentials =
+        new AWSCredentials()
+            .withAwsAccessKeyId("123456789")
+            .withAwsSecretAccessKey("asdfqwer1234")
+            .withAwsRegion("eu-west-2");
+
+    DbtPipeline dbtPipeline =
+        new DbtPipeline()
+            .withDbtConfigSource(new DbtS3Config().withDbtSecurityConfig(awsCredentials));
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("dbt_pipeline"))
+            .withPipelineType(PipelineType.DBT)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(dbtPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+
+    DbtPipeline actualDbtPipeline =
+        JsonUtils.convertValue(pipeline.getSourceConfig().getConfig(), DbtPipeline.class);
+    DbtS3Config actualDbtS3Config =
+        JsonUtils.convertValue(actualDbtPipeline.getDbtConfigSource(), DbtS3Config.class);
+
+    assertEquals(
+        awsCredentials.getAwsAccessKeyId(),
+        actualDbtS3Config.getDbtSecurityConfig().getAwsAccessKeyId());
+    assertEquals(
+        awsCredentials.getAwsRegion(), actualDbtS3Config.getDbtSecurityConfig().getAwsRegion());
+
+    String maskedSecret = actualDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey();
+    assertTrue(
+        maskedSecret == null || maskedSecret.contains("*"),
+        "Secret should be masked for admin user");
+
+    IngestionPipeline botPipeline =
+        SdkClients.ingestionBotClient().ingestionPipelines().get(pipeline.getId().toString());
+
+    DbtPipeline botDbtPipeline =
+        JsonUtils.convertValue(botPipeline.getSourceConfig().getConfig(), DbtPipeline.class);
+    DbtS3Config botDbtS3Config =
+        JsonUtils.convertValue(botDbtPipeline.getDbtConfigSource(), DbtS3Config.class);
+
+    assertEquals(
+        awsCredentials.getAwsAccessKeyId(),
+        botDbtS3Config.getDbtSecurityConfig().getAwsAccessKeyId());
+    assertEquals(
+        awsCredentials.getAwsRegion(), botDbtS3Config.getDbtSecurityConfig().getAwsRegion());
+    assertEquals(
+        awsCredentials.getAwsSecretAccessKey(),
+        botDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey());
+  }
+
+  @Test
+  void test_listPipelinesByProvider(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline automationRequest =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("automation_pipeline"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE))
+            .withProvider(ProviderType.AUTOMATION);
+
+    IngestionPipeline automationPipeline = createEntity(automationRequest);
+
+    CreateIngestionPipeline userRequest =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("user_pipeline"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE))
+            .withProvider(ProviderType.USER);
+
+    IngestionPipeline userPipeline = createEntity(userRequest);
+
+    ListParams params = new ListParams();
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("provider", ProviderType.AUTOMATION.value());
+    params.setQueryParams(queryParams);
+
+    ListResponse<IngestionPipeline> result = listEntities(params);
+    assertTrue(
+        result.getData().stream().anyMatch(p -> p.getId().equals(automationPipeline.getId())));
+
+    queryParams.put("provider", ProviderType.USER.value());
+    params.setQueryParams(queryParams);
+    result = listEntities(params);
+    assertTrue(result.getData().stream().anyMatch(p -> p.getId().equals(userPipeline.getId())));
+
+    queryParams.clear();
+    queryParams.put("provider", ProviderType.AUTOMATION.value());
+    queryParams.put("serviceType", "databaseService");
+    queryParams.put("pipelineType", "metadata");
+    params.setQueryParams(queryParams);
+
+    result = listEntities(params);
+    assertTrue(
+        result.getData().stream().anyMatch(p -> p.getId().equals(automationPipeline.getId())));
   }
 }

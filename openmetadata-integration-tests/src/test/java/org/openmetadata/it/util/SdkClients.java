@@ -98,6 +98,10 @@ public class SdkClients {
     return BOT_CLIENT;
   }
 
+  public static OpenMetadataClient ingestionBotClient() {
+    return botClient();
+  }
+
   public static OpenMetadataClient dataStewardClient() {
     if (DATA_STEWARD_CLIENT == null) {
       synchronized (SdkClients.class) {
@@ -132,8 +136,12 @@ public class SdkClients {
     if (USER1_CLIENT == null) {
       synchronized (SdkClients.class) {
         if (USER1_CLIENT == null) {
+          // USER1 has AllowAll role assigned in SharedEntities for permission tests
           USER1_CLIENT =
-              createClient("user1@open-metadata.org", "user1@open-metadata.org", new String[] {});
+              createClient(
+                  "shared_user1@test.openmetadata.org",
+                  "shared_user1@test.openmetadata.org",
+                  new String[] {});
         }
       }
     }
@@ -145,7 +153,10 @@ public class SdkClients {
       synchronized (SdkClients.class) {
         if (USER2_CLIENT == null) {
           USER2_CLIENT =
-              createClient("user2@open-metadata.org", "user2@open-metadata.org", new String[] {});
+              createClient(
+                  "shared_user2@test.openmetadata.org",
+                  "shared_user2@test.openmetadata.org",
+                  new String[] {});
         }
       }
     }
@@ -157,7 +168,10 @@ public class SdkClients {
       synchronized (SdkClients.class) {
         if (USER3_CLIENT == null) {
           USER3_CLIENT =
-              createClient("user3@open-metadata.org", "user3@open-metadata.org", new String[] {});
+              createClient(
+                  "shared_user3@test.openmetadata.org",
+                  "shared_user3@test.openmetadata.org",
+                  new String[] {});
         }
       }
     }

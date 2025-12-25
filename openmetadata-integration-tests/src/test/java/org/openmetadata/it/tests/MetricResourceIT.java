@@ -7,12 +7,14 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.env.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
@@ -20,6 +22,7 @@ import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for Metric entity operations.
@@ -359,5 +362,269 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     assertEquals(MetricUnitOfMeasurement.PERCENTAGE, metric.getUnitOfMeasurement());
     assertNotNull(metric.getMetricExpression());
     assertEquals("AVG(response_time)", metric.getMetricExpression().getCode());
+  }
+
+  @Test
+  void test_duplicateRelatedMetricsIssue(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateMetric createMetric1 =
+        new CreateMetric()
+            .withName(ns.prefix("metric_duplicate_1"))
+            .withDescription("First metric for duplicate test");
+    Metric metric1 = createEntity(createMetric1);
+
+    CreateMetric createMetric2 =
+        new CreateMetric()
+            .withName(ns.prefix("metric_duplicate_2"))
+            .withDescription("Second metric for duplicate test");
+    Metric metric2 = createEntity(createMetric2);
+
+    Metric originalMetric2 = getEntityWithFields(metric2.getId().toString(), "*");
+
+    originalMetric2.setRelatedMetrics(List.of(metric1.getEntityReference()));
+    Metric updatedMetric2 = patchEntity(metric2.getId().toString(), originalMetric2);
+
+    Metric fetchedMetric2 = getEntityWithFields(metric2.getId().toString(), "relatedMetrics");
+
+    assertNotNull(fetchedMetric2.getRelatedMetrics());
+    assertEquals(
+        1,
+        fetchedMetric2.getRelatedMetrics().size(),
+        "Expected only 1 related metric, but found "
+            + fetchedMetric2.getRelatedMetrics().size()
+            + ". Related metrics: "
+            + fetchedMetric2.getRelatedMetrics());
+    assertEquals(metric1.getId(), fetchedMetric2.getRelatedMetrics().get(0).getId());
+
+    Metric fetchedMetric1 = getEntityWithFields(metric1.getId().toString(), "relatedMetrics");
+    assertNotNull(fetchedMetric1.getRelatedMetrics());
+    assertEquals(
+        1,
+        fetchedMetric1.getRelatedMetrics().size(),
+        "Expected only 1 related metric for the reverse relationship, but found "
+            + fetchedMetric1.getRelatedMetrics().size());
+    assertEquals(metric2.getId(), fetchedMetric1.getRelatedMetrics().get(0).getId());
+  }
+
+  @Test
+  void test_createMetricWithLongCustomUnit(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String longUnit =
+        "Very Long Custom Unit Name That Could Be Used In Real World Scenarios Like Monthly Active Users Excluding Internal Test Accounts And Bots From Analytics Dashboard";
+    CreateMetric createMetric =
+        new CreateMetric()
+            .withName(ns.prefix("metric_long_custom_unit"))
+            .withDescription("Metric with long custom unit")
+            .withMetricType(MetricType.COUNT)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
+            .withCustomUnitOfMeasurement(longUnit);
+
+    Metric metric = createEntity(createMetric);
+    assertEquals(longUnit, metric.getCustomUnitOfMeasurement());
+  }
+
+  @Test
+  void test_createMetricWithSpecialCharacters(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateMetric createMetric =
+        new CreateMetric()
+            .withName(ns.prefix("metric_special_custom_unit"))
+            .withDescription("Metric with special characters in custom unit")
+            .withMetricType(MetricType.COUNT)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
+            .withCustomUnitOfMeasurement("Special@#$%^&*()Characters用户数");
+
+    Metric metric = createEntity(createMetric);
+    assertEquals("Special@#$%^&*()Characters用户数", metric.getCustomUnitOfMeasurement());
+  }
+
+  @Test
+  void test_updateMetricCustomUnit(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateMetric createMetric =
+        new CreateMetric()
+            .withName(ns.prefix("metric_update_custom_unit"))
+            .withDescription("Metric for custom unit update test")
+            .withMetricType(MetricType.COUNT)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.COUNT);
+
+    Metric originalMetric = createEntity(createMetric);
+    assertNull(originalMetric.getCustomUnitOfMeasurement());
+
+    originalMetric.setUnitOfMeasurement(MetricUnitOfMeasurement.OTHER);
+    originalMetric.setCustomUnitOfMeasurement("EURO");
+
+    Metric updatedMetric = patchEntity(originalMetric.getId().toString(), originalMetric);
+
+    assertEquals(MetricUnitOfMeasurement.OTHER, updatedMetric.getUnitOfMeasurement());
+    assertEquals("EURO", updatedMetric.getCustomUnitOfMeasurement());
+  }
+
+  @Test
+  void test_customUnitClearedWhenNotOther(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateMetric createMetric =
+        new CreateMetric()
+            .withName(ns.prefix("metric_clear_custom_unit"))
+            .withDescription("Metric for testing custom unit clearing")
+            .withMetricType(MetricType.COUNT)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
+            .withCustomUnitOfMeasurement("EURO");
+
+    Metric originalMetric = createEntity(createMetric);
+    assertEquals("EURO", originalMetric.getCustomUnitOfMeasurement());
+
+    originalMetric.setUnitOfMeasurement(MetricUnitOfMeasurement.DOLLARS);
+    originalMetric.setCustomUnitOfMeasurement(null);
+
+    Metric updatedMetric = patchEntity(originalMetric.getId().toString(), originalMetric);
+
+    assertEquals(MetricUnitOfMeasurement.DOLLARS, updatedMetric.getUnitOfMeasurement());
+    assertNull(updatedMetric.getCustomUnitOfMeasurement());
+  }
+
+  @Test
+  void test_getCustomUnitsAPI(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String[] customUnits = {"EURO", "Minutes", "GB/sec", "EURO"};
+
+    for (int i = 0; i < customUnits.length; i++) {
+      CreateMetric createMetric =
+          new CreateMetric()
+              .withName(ns.prefix("metric_custom_units_api_" + i))
+              .withDescription("Metric for custom units API test")
+              .withMetricType(MetricType.COUNT)
+              .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
+              .withCustomUnitOfMeasurement(customUnits[i]);
+      createEntity(createMetric);
+    }
+
+    List<String> customUnitsList =
+        client.getHttpClient().execute(HttpMethod.GET, "/v1/metrics/customUnits", null, List.class);
+
+    assertNotNull(customUnitsList);
+    assertTrue(customUnitsList.contains("EURO"));
+    assertTrue(customUnitsList.contains("Minutes"));
+    assertTrue(customUnitsList.contains("GB/sec"));
+
+    long euroCount = customUnitsList.stream().filter("EURO"::equals).count();
+    assertEquals(1, euroCount, "EURO should appear only once in the distinct list");
+  }
+
+  @Test
+  void test_customUnitTrimming(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateMetric createMetric =
+        new CreateMetric()
+            .withName(ns.prefix("metric_trim_custom_unit"))
+            .withDescription("Metric for testing custom unit trimming")
+            .withMetricType(MetricType.COUNT)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
+            .withCustomUnitOfMeasurement("  EURO  ");
+
+    Metric metric = createEntity(createMetric);
+    assertEquals("EURO", metric.getCustomUnitOfMeasurement());
+  }
+
+  @Test
+  void test_reviewersUpdateAndPatch(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+
+    CreateMetric createMetric =
+        new CreateMetric()
+            .withName(ns.prefix("metric_reviewers"))
+            .withDescription("Metric for reviewers test");
+    Metric metric = createEntity(createMetric);
+
+    assertTrue(
+        metric.getReviewers() == null || metric.getReviewers().isEmpty(),
+        "Metric should have no reviewers initially");
+
+    metric.setReviewers(List.of(shared.USER1_REF));
+    Metric updatedMetric = patchEntity(metric.getId().toString(), metric);
+
+    assertNotNull(updatedMetric.getReviewers(), "Metric should have reviewers after update");
+    assertEquals(1, updatedMetric.getReviewers().size(), "Metric should have one reviewer");
+    assertEquals(
+        shared.USER1_REF.getId(),
+        updatedMetric.getReviewers().get(0).getId(),
+        "Reviewer should match USER1");
+
+    Metric retrievedMetric = getEntityWithFields(updatedMetric.getId().toString(), "reviewers");
+    assertNotNull(retrievedMetric.getReviewers(), "Retrieved metric should have reviewers");
+    assertEquals(
+        1, retrievedMetric.getReviewers().size(), "Retrieved metric should have one reviewer");
+    assertEquals(
+        shared.USER1_REF.getId(),
+        retrievedMetric.getReviewers().get(0).getId(),
+        "Retrieved reviewer should match USER1");
+
+    updatedMetric.setReviewers(List.of(shared.USER2_REF));
+    updatedMetric = patchEntity(updatedMetric.getId().toString(), updatedMetric);
+
+    assertEquals(1, updatedMetric.getReviewers().size(), "Metric should still have one reviewer");
+    assertEquals(
+        shared.USER2_REF.getId(),
+        updatedMetric.getReviewers().get(0).getId(),
+        "Reviewer should now be USER2");
+
+    updatedMetric.setReviewers(List.of(shared.USER2_REF, shared.USER1_REF));
+    updatedMetric = patchEntity(updatedMetric.getId().toString(), updatedMetric);
+
+    assertEquals(2, updatedMetric.getReviewers().size(), "Metric should have two reviewers");
+    assertTrue(
+        updatedMetric.getReviewers().stream()
+            .anyMatch(r -> r.getId().equals(shared.USER1_REF.getId())),
+        "Should contain USER1 as reviewer");
+    assertTrue(
+        updatedMetric.getReviewers().stream()
+            .anyMatch(r -> r.getId().equals(shared.USER2_REF.getId())),
+        "Should contain USER2 as reviewer");
+  }
+
+  @Test
+  void test_entityStatusUpdateAndPatch(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateMetric createMetric =
+        new CreateMetric()
+            .withName(ns.prefix("metric_entity_status"))
+            .withDescription("Metric for entity status test");
+    Metric metric = createEntity(createMetric);
+
+    assertEquals(
+        EntityStatus.UNPROCESSED,
+        metric.getEntityStatus(),
+        "Metric should be created with UNPROCESSED status");
+
+    metric.setEntityStatus(EntityStatus.IN_REVIEW);
+    Metric updatedMetric = patchEntity(metric.getId().toString(), metric);
+
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        updatedMetric.getEntityStatus(),
+        "Metric should be updated to IN_REVIEW status");
+
+    Metric retrievedMetric = getEntity(updatedMetric.getId().toString());
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        retrievedMetric.getEntityStatus(),
+        "Retrieved metric should maintain IN_REVIEW status");
+
+    updatedMetric.setEntityStatus(EntityStatus.DEPRECATED);
+    updatedMetric = patchEntity(updatedMetric.getId().toString(), updatedMetric);
+
+    assertEquals(
+        EntityStatus.DEPRECATED,
+        updatedMetric.getEntityStatus(),
+        "Metric should be updated to DEPRECATED status");
   }
 }

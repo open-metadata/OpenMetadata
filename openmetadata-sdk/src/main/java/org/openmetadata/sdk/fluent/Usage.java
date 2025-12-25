@@ -42,6 +42,31 @@ public final class Usage {
     return getClient().getHttpClient().execute(HttpMethod.GET, path, null, EntityUsage.class);
   }
 
+  public static EntityUsage getForEntity(String entityType, String entityId) {
+    return getClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET, "/v1/usage/" + entityType + "/" + entityId, null, EntityUsage.class);
+  }
+
+  public static EntityUsage getForEntity(
+      String entityType, String entityId, String date, int days) {
+    String path = "/v1/usage/" + entityType + "/" + entityId + "?date=" + date + "&days=" + days;
+    return getClient().getHttpClient().execute(HttpMethod.GET, path, null, EntityUsage.class);
+  }
+
+  public static EntityUsage getForEntityByName(
+      String entityType, String entityName, String date, int days) {
+    String path =
+        "/v1/usage/" + entityType + "/name/" + entityName + "?date=" + date + "&days=" + days;
+    return getClient().getHttpClient().execute(HttpMethod.GET, path, null, EntityUsage.class);
+  }
+
+  public static void computePercentile(String entityType, String date) {
+    String path = "/v1/usage/compute.percentile/" + entityType + "/" + date;
+    getClient().getHttpClient().execute(HttpMethod.POST, path, null, Void.class);
+  }
+
   public static class UsageReporter {
     private final OpenMetadataClient client;
     private final String entityType;

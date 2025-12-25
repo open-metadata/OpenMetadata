@@ -3,9 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
@@ -132,6 +130,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       true; // Override if get specific version is not supported
   protected boolean supportsIncludeDeleted =
       true; // Override if include=deleted query param not supported
+  protected boolean supportsImportExport =
+      false; // Override in subclasses that support CSV import/export
 
   // ===================================================================
   // CHANGE TYPE - Controls how version changes are validated
@@ -3768,5 +3768,141 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
     assertNotNull(response, "List response should not be null");
     assertTrue(response.getData().size() > 0, "Should have entities");
+  }
+
+  // ===================================================================
+  // CSV IMPORT/EXPORT TESTS
+  // Equivalent to: testImportExport, testImportInvalidCsv in EntityResourceTest
+  // Only runs for entities that support import/export (supportsImportExport = true)
+  // ===================================================================
+
+  /**
+   * Get the entity service for import/export operations.
+   * Subclasses that support import/export should override this method.
+   *
+   * @return The EntityServiceBase for this entity type, or null if not supported
+   */
+  protected org.openmetadata.sdk.services.EntityServiceBase<T> getEntityService() {
+    return null; // Override in subclasses that support import/export
+  }
+
+  /**
+   * Get the container entity name for import/export.
+   * For example, for tables this would return the schema FQN.
+   *
+   * @param ns Test namespace
+   * @return Container entity name/FQN for import/export operations
+   */
+  protected String getImportExportContainerName(TestNamespace ns) {
+    return null; // Override in subclasses that support import/export
+  }
+
+  /**
+   * Test: Basic CSV export works.
+   * Equivalent to: testImportExport (export part) in EntityResourceTest
+   */
+  @Test
+  void test_exportCsv(TestNamespace ns) {
+    Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
+
+    org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
+    Assumptions.assumeTrue(service != null, "Entity service not provided");
+
+    String containerName = getImportExportContainerName(ns);
+    Assumptions.assumeTrue(containerName != null, "Container name not provided");
+
+    // Create an entity first
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+    assertNotNull(entity, "Entity should be created");
+
+    // Export CSV
+    try {
+      String csv = service.exportCsv(containerName);
+      assertNotNull(csv, "Export should return CSV data");
+      assertFalse(csv.isEmpty(), "CSV should not be empty");
+      // CSV should have at least a header row
+      assertTrue(csv.contains(","), "CSV should have comma-separated values");
+    } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
+      // Some entities may not support export - that's OK if supportsImportExport is false
+      fail("Export failed: " + e.getMessage());
+    }
+  }
+
+  /**
+   * Test: CSV import with dry run validates data.
+   * Equivalent to: testImportInvalidCsv (validation part) in EntityResourceTest
+   */
+  @Test
+  void test_importCsvDryRun(TestNamespace ns) {
+    Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
+
+    org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
+    Assumptions.assumeTrue(service != null, "Entity service not provided");
+
+    String containerName = getImportExportContainerName(ns);
+    Assumptions.assumeTrue(containerName != null, "Container name not provided");
+
+    // Create an entity first
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+    assertNotNull(entity, "Entity should be created");
+
+    // Export to get valid CSV format
+    try {
+      String exportedCsv = service.exportCsv(containerName);
+      assertNotNull(exportedCsv, "Export should return CSV data");
+
+      // Import with dry run (should not actually modify data)
+      String result = service.importCsv(containerName, exportedCsv, true);
+      assertNotNull(result, "Import dry run should return a result");
+    } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
+      fail("Import/export failed: " + e.getMessage());
+    }
+  }
+
+  /**
+   * Test: CSV import round-trip (export then import).
+   * Equivalent to: testImportExport in EntityResourceTest
+   */
+  @Test
+  void test_importExportRoundTrip(TestNamespace ns) {
+    Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
+
+    org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
+    Assumptions.assumeTrue(service != null, "Entity service not provided");
+
+    String containerName = getImportExportContainerName(ns);
+    Assumptions.assumeTrue(containerName != null, "Container name not provided");
+
+    // Create an entity first
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+    assertNotNull(entity, "Entity should be created");
+
+    try {
+      // Export current state
+      String exportedCsv = service.exportCsv(containerName);
+      assertNotNull(exportedCsv, "Export should return CSV data");
+
+      // Import the exported data (should succeed without changes)
+      String result = service.importCsv(containerName, exportedCsv, false);
+      assertNotNull(result, "Import should return a result");
+
+      // Export again and verify consistency
+      String reExportedCsv = service.exportCsv(containerName);
+      assertNotNull(reExportedCsv, "Re-export should return CSV data");
+
+      // The re-exported CSV should be similar to original
+      // (may have minor differences like timestamps, but structure should match)
+      String[] originalLines = exportedCsv.split("\n");
+      String[] reExportedLines = reExportedCsv.split("\n");
+
+      // At minimum, header should match
+      assertEquals(
+          originalLines[0], reExportedLines[0], "CSV headers should match after round-trip");
+    } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
+      fail("Import/export round-trip failed: " + e.getMessage());
+    }
   }
 }

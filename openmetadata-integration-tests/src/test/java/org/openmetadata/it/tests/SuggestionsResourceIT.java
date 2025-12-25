@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
@@ -437,6 +438,26 @@ public class SuggestionsResourceIT {
   }
 
   @Test
+  void testInvalidEntityLinkFormats(TestNamespace ns) throws Exception {
+    CreateSuggestion create =
+        new CreateSuggestion()
+            .withDescription("Test description")
+            .withType(SuggestionType.SuggestDescription)
+            .withEntityLink("<>");
+
+    assertThrows(Exception.class, () -> createSuggestion(create));
+
+    create.withEntityLink("<#E::>");
+    assertThrows(Exception.class, () -> createSuggestion(create));
+
+    create.withEntityLink("<#E::table::>");
+    assertThrows(Exception.class, () -> createSuggestion(create));
+
+    create.withEntityLink("<#E::table::tableName");
+    assertThrows(Exception.class, () -> createSuggestion(create));
+  }
+
+  @Test
   void testCreateSuggestionWithoutDescription(TestNamespace ns) throws Exception {
     Table table = createTestTable(ns);
     String entityLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
@@ -447,6 +468,253 @@ public class SuggestionsResourceIT {
             .withEntityLink(entityLink);
 
     assertThrows(Exception.class, () -> createSuggestion(createSuggestion));
+  }
+
+  @Test
+  void testPaginationOfSuggestions(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns);
+    String entityLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    for (int i = 0; i < 15; i++) {
+      CreateSuggestion create =
+          new CreateSuggestion()
+              .withDescription("Suggestion " + i)
+              .withType(SuggestionType.SuggestDescription)
+              .withEntityLink(entityLink);
+      createSuggestion(create);
+    }
+
+    SuggestionList firstPage = listSuggestionsWithPagination(table.getFullyQualifiedName(), 10);
+    assertNotNull(firstPage);
+    assertEquals(10, firstPage.getData().size());
+    assertEquals(15, firstPage.getPaging().getTotal());
+    assertNotNull(firstPage.getPaging().getAfter());
+
+    SuggestionList secondPage =
+        listSuggestionsWithPagination(
+            table.getFullyQualifiedName(), 10, firstPage.getPaging().getAfter(), null);
+    assertNotNull(secondPage);
+    assertEquals(5, secondPage.getData().size());
+    assertNotNull(secondPage.getPaging().getBefore());
+
+    SuggestionList backToFirst =
+        listSuggestionsWithPagination(
+            table.getFullyQualifiedName(), 10, null, secondPage.getPaging().getBefore());
+    assertNotNull(backToFirst);
+    assertEquals(10, backToFirst.getData().size());
+  }
+
+  @Test
+  void testMutuallyExclusiveTags(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns);
+    String entityLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    TagLabel tier1Tag =
+        new TagLabel()
+            .withTagFQN("Tier.Tier1")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    CreateSuggestion createTier1 =
+        new CreateSuggestion()
+            .withTagLabels(List.of(tier1Tag))
+            .withType(SuggestionType.SuggestTagLabel)
+            .withEntityLink(entityLink);
+
+    Suggestion tier1Suggestion = createSuggestion(createTier1);
+    acceptSuggestion(tier1Suggestion.getId());
+
+    Table updatedTable =
+        Tables.findByName(table.getFullyQualifiedName()).withFields("tags").fetch().get();
+    assertNotNull(updatedTable.getTags());
+    assertTrue(
+        updatedTable.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(tier1Tag.getTagFQN())));
+
+    TagLabel tier2Tag =
+        new TagLabel()
+            .withTagFQN("Tier.Tier2")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    CreateSuggestion createTier2 =
+        new CreateSuggestion()
+            .withTagLabels(List.of(tier2Tag))
+            .withType(SuggestionType.SuggestTagLabel)
+            .withEntityLink(entityLink);
+
+    Suggestion tier2Suggestion = createSuggestion(createTier2);
+    acceptSuggestion(tier2Suggestion.getId());
+
+    Table finalTable =
+        Tables.findByName(table.getFullyQualifiedName()).withFields("tags").fetch().get();
+    assertNotNull(finalTable.getTags());
+    assertTrue(
+        finalTable.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(tier2Tag.getTagFQN())));
+    assertFalse(
+        finalTable.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(tier1Tag.getTagFQN())));
+  }
+
+  @Test
+  void testNestedColumnSuggestion(TestNamespace ns) throws Exception {
+    String shortId = ns.shortPrefix();
+    DatabaseService service =
+        DatabaseServiceTestFactory.createPostgresWithName("svc" + shortId, ns);
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimpleWithName("sc" + shortId, ns, service);
+
+    Column nestedColumn = ColumnBuilder.of("nested", "BIGINT").build();
+    Column parentColumn = ColumnBuilder.of("parent", "STRUCT").build();
+    parentColumn.withChildren(List.of(nestedColumn));
+
+    Table table =
+        Tables.create()
+            .name("tbl" + shortId)
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(parentColumn))
+            .execute();
+
+    String nestedLink =
+        String.format("<#E::table::%s::columns::parent.nested>", table.getFullyQualifiedName());
+
+    CreateSuggestion createSuggestion =
+        new CreateSuggestion()
+            .withDescription("Nested column description")
+            .withType(SuggestionType.SuggestDescription)
+            .withEntityLink(nestedLink);
+
+    Suggestion suggestion = createSuggestion(createSuggestion);
+    acceptSuggestion(suggestion.getId());
+
+    Table updatedTable =
+        Tables.findByName(table.getFullyQualifiedName()).withFields("columns").fetch().get();
+    Column updatedParent = updatedTable.getColumns().get(0);
+    Column updatedNested = updatedParent.getChildren().get(0);
+
+    assertEquals("Nested column description", updatedNested.getDescription());
+  }
+
+  @Test
+  void testDeeplyNestedColumnSuggestion(TestNamespace ns) throws Exception {
+    String shortId = ns.shortPrefix();
+    DatabaseService service =
+        DatabaseServiceTestFactory.createPostgresWithName("svc" + shortId, ns);
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimpleWithName("sc" + shortId, ns, service);
+
+    Column level4 = ColumnBuilder.of("level4", "BIGINT").build();
+    Column level3 = ColumnBuilder.of("level3", "STRUCT").build();
+    level3.withChildren(List.of(level4));
+    Column level2 = ColumnBuilder.of("level2", "STRUCT").build();
+    level2.withChildren(List.of(level3));
+    Column level1 = ColumnBuilder.of("level1", "STRUCT").build();
+    level1.withChildren(List.of(level2));
+
+    Table table =
+        Tables.create()
+            .name("tbl" + shortId)
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(level1))
+            .execute();
+
+    String deeplyNestedLink =
+        String.format(
+            "<#E::table::%s::columns::level1.level2.level3.level4>", table.getFullyQualifiedName());
+
+    CreateSuggestion createSuggestion =
+        new CreateSuggestion()
+            .withDescription("Deeply nested description")
+            .withType(SuggestionType.SuggestDescription)
+            .withEntityLink(deeplyNestedLink);
+
+    Suggestion suggestion = createSuggestion(createSuggestion);
+    acceptSuggestion(suggestion.getId());
+
+    Table updatedTable =
+        Tables.findByName(table.getFullyQualifiedName()).withFields("columns").fetch().get();
+    Column updatedLevel1 = updatedTable.getColumns().get(0);
+    Column updatedLevel2 = updatedLevel1.getChildren().get(0);
+    Column updatedLevel3 = updatedLevel2.getChildren().get(0);
+    Column updatedLevel4 = updatedLevel3.getChildren().get(0);
+
+    assertEquals("Deeply nested description", updatedLevel4.getDescription());
+  }
+
+  @Test
+  void testBulkAcceptManyColumnSuggestions(TestNamespace ns) throws Exception {
+    String shortId = ns.shortPrefix();
+    DatabaseService service =
+        DatabaseServiceTestFactory.createPostgresWithName("svc" + shortId, ns);
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimpleWithName("sc" + shortId, ns, service);
+
+    List<Column> columns = new ArrayList<>();
+    for (int i = 1; i <= 50; i++) {
+      columns.add(ColumnBuilder.of("column" + i, "VARCHAR").dataLength(255).build());
+    }
+
+    Table table =
+        Tables.create()
+            .name("tbl" + shortId)
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(columns)
+            .execute();
+
+    String column25Link =
+        String.format("<#E::table::%s::columns::column25>", table.getFullyQualifiedName());
+    String column50Link =
+        String.format("<#E::table::%s::columns::column50>", table.getFullyQualifiedName());
+
+    CreateSuggestion descSuggestion =
+        new CreateSuggestion()
+            .withDescription("Updated column25 description")
+            .withType(SuggestionType.SuggestDescription)
+            .withEntityLink(column25Link);
+    createSuggestion(descSuggestion);
+
+    TagLabel tagLabel = SharedEntities.get().PII_SENSITIVE_TAG_LABEL;
+    CreateSuggestion tagSuggestion =
+        new CreateSuggestion()
+            .withTagLabels(List.of(tagLabel))
+            .withType(SuggestionType.SuggestTagLabel)
+            .withEntityLink(column50Link);
+    createSuggestion(tagSuggestion);
+
+    SuggestionList openSuggestions =
+        listSuggestionsWithFilters(
+            table.getFullyQualifiedName(), null, null, SuggestionStatus.Open.toString());
+    assertTrue(openSuggestions.getPaging().getTotal() >= 2);
+
+    acceptAllSuggestions(table.getFullyQualifiedName(), null, SuggestionType.SuggestDescription);
+    acceptAllSuggestions(table.getFullyQualifiedName(), null, SuggestionType.SuggestTagLabel);
+
+    SuggestionList remainingOpen =
+        listSuggestionsWithFilters(
+            table.getFullyQualifiedName(), null, null, SuggestionStatus.Open.toString());
+    assertEquals(0, remainingOpen.getPaging().getTotal());
+
+    Table updatedTable =
+        Tables.findByName(table.getFullyQualifiedName()).withFields("columns,tags").fetch().get();
+
+    Column column25 =
+        updatedTable.getColumns().stream()
+            .filter(col -> col.getName().equals("column25"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(column25);
+    assertEquals("Updated column25 description", column25.getDescription());
+
+    Column column50 =
+        updatedTable.getColumns().stream()
+            .filter(col -> col.getName().equals("column50"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(column50);
+    assertNotNull(column50.getTags());
+    assertTrue(
+        column50.getTags().stream().anyMatch(tag -> tag.getTagFQN().equals(tagLabel.getTagFQN())));
   }
 
   // Helper methods
@@ -567,6 +835,35 @@ public class SuggestionsResourceIT {
     }
     if (status != null) {
       optionsBuilder.queryParam("status", status);
+    }
+
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/suggestions", null, optionsBuilder.build());
+    return MAPPER.readValue(response, SuggestionList.class);
+  }
+
+  private SuggestionList listSuggestionsWithPagination(String entityFQN, Integer limit)
+      throws Exception {
+    return listSuggestionsWithPagination(entityFQN, limit, null, null);
+  }
+
+  private SuggestionList listSuggestionsWithPagination(
+      String entityFQN, Integer limit, String after, String before) throws Exception {
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+
+    if (entityFQN != null) {
+      optionsBuilder.queryParam("entityFQN", entityFQN);
+    }
+    if (limit != null) {
+      optionsBuilder.queryParam("limit", limit.toString());
+    }
+    if (after != null) {
+      optionsBuilder.queryParam("after", after);
+    }
+    if (before != null) {
+      optionsBuilder.queryParam("before", before);
     }
 
     String response =

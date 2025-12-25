@@ -92,6 +92,12 @@ import org.openmetadata.service.util.RdfTestUtils;
 @Execution(ExecutionMode.CONCURRENT)
 public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
+  {
+    supportsImportExport = true;
+  }
+
+  private DatabaseSchema lastCreatedSchema;
+
   // ===================================================================
   // OVERRIDE: Tables allow duplicates in different schemas
   // ===================================================================
@@ -226,6 +232,20 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     assertTrue(
         entity.getFullyQualifiedName().contains(entity.getName()), "FQN should contain table name");
+  }
+
+  @Override
+  protected org.openmetadata.sdk.services.EntityServiceBase<Table> getEntityService() {
+    return SdkClients.adminClient().tables();
+  }
+
+  @Override
+  protected String getImportExportContainerName(TestNamespace ns) {
+    if (lastCreatedSchema == null) {
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      lastCreatedSchema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    }
+    return lastCreatedSchema.getFullyQualifiedName();
   }
 
   // ===================================================================
@@ -2302,9 +2322,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     }
 
     // List with pagination, filtered by database schema
-    ListParams params = new ListParams()
-        .setLimit(2)
-        .setDatabaseSchema(schema.getFullyQualifiedName());
+    ListParams params =
+        new ListParams().setLimit(2).setDatabaseSchema(schema.getFullyQualifiedName());
 
     ListResponse<Table> response = client.tables().list(params);
 
@@ -2340,10 +2359,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     }
 
     // List with owners field, filtered by schema
-    ListParams params = new ListParams()
-        .setLimit(10)
-        .setFields("owners")
-        .setDatabaseSchema(schema.getFullyQualifiedName());
+    ListParams params =
+        new ListParams()
+            .setLimit(10)
+            .setFields("owners")
+            .setDatabaseSchema(schema.getFullyQualifiedName());
 
     ListResponse<Table> response = client.tables().list(params);
 
@@ -2780,18 +2800,20 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     // Create multiple tables in that schema
     for (int i = 0; i < 3; i++) {
-      CreateTable req = new CreateTable()
-          .withName(ns.prefix("inherit_table_" + i))
-          .withDatabaseSchema(schema.getFullyQualifiedName())
-          .withColumns(List.of(ColumnBuilder.of("id", "BIGINT").build()));
+      CreateTable req =
+          new CreateTable()
+              .withName(ns.prefix("inherit_table_" + i))
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(List.of(ColumnBuilder.of("id", "BIGINT").build()));
       client.tables().create(req);
     }
 
     // List tables with pagination, filtered by schema
-    ListParams params = new ListParams()
-        .setLimit(2)
-        .setFields("domains")
-        .setDatabaseSchema(schema.getFullyQualifiedName());
+    ListParams params =
+        new ListParams()
+            .setLimit(2)
+            .setFields("domains")
+            .setDatabaseSchema(schema.getFullyQualifiedName());
 
     ListResponse<Table> response = client.tables().list(params);
 
@@ -2924,9 +2946,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     // Create 4 tables in different schemas under same database
     CreateDatabase createDb =
-        new CreateDatabase()
-            .withName(ns.prefix("db"))
-            .withService(service.getFullyQualifiedName());
+        new CreateDatabase().withName(ns.prefix("db")).withService(service.getFullyQualifiedName());
     Database db = client.databases().create(createDb);
 
     List<java.util.UUID> createdIds = new ArrayList<>();
@@ -2947,9 +2967,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     }
 
     // Test pagination with database filter
-    ListParams params = new ListParams()
-        .setLimit(2)
-        .setDatabase(db.getFullyQualifiedName());
+    ListParams params = new ListParams().setLimit(2).setDatabase(db.getFullyQualifiedName());
 
     ListResponse<Table> page1 = client.tables().list(params);
     assertEquals(2, page1.getData().size());
@@ -2994,10 +3012,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             .withTagFQN(tag.getFullyQualifiedName())
             .withSource(TagLabel.TagSource.CLASSIFICATION);
 
-    CreateTable req = new CreateTable()
-        .withName(ns.prefix("field_table"))
-        .withDatabaseSchema(schema.getFullyQualifiedName())
-        .withColumns(List.of(ColumnBuilder.of("id", "BIGINT").build()));
+    CreateTable req =
+        new CreateTable()
+            .withName(ns.prefix("field_table"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(ColumnBuilder.of("id", "BIGINT").build()));
     req.setOwners(
         List.of(
             new EntityReference()
@@ -3009,19 +3028,21 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table table = client.tables().create(req);
 
     // List with different fields, filtered by schema
-    ListParams paramsWithOwners = new ListParams()
-        .setLimit(10)
-        .setFields("owners")
-        .setDatabaseSchema(schema.getFullyQualifiedName());
+    ListParams paramsWithOwners =
+        new ListParams()
+            .setLimit(10)
+            .setFields("owners")
+            .setDatabaseSchema(schema.getFullyQualifiedName());
     ListResponse<Table> withOwners = client.tables().list(paramsWithOwners);
     assertNotNull(withOwners);
     assertEquals(1, withOwners.getData().size());
     assertNotNull(withOwners.getData().get(0).getOwners());
 
-    ListParams paramsWithTags = new ListParams()
-        .setLimit(10)
-        .setFields("tags")
-        .setDatabaseSchema(schema.getFullyQualifiedName());
+    ListParams paramsWithTags =
+        new ListParams()
+            .setLimit(10)
+            .setFields("tags")
+            .setDatabaseSchema(schema.getFullyQualifiedName());
     ListResponse<Table> withTags = client.tables().list(paramsWithTags);
     assertNotNull(withTags);
     assertEquals(1, withTags.getData().size());

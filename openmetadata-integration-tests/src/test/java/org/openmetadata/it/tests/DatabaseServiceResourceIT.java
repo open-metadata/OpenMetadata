@@ -12,8 +12,13 @@ import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
+import org.openmetadata.schema.services.connections.database.ConnectionArguments;
+import org.openmetadata.schema.services.connections.database.ConnectionOptions;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
+import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.type.EntityHistory;
@@ -293,5 +298,131 @@ public class DatabaseServiceResourceIT
     ListResponse<DatabaseService> response = listEntities(params);
     assertNotNull(response);
     assertTrue(response.getData().size() >= 3);
+  }
+
+  @Test
+  void post_validDatabaseService_as_admin_200_ok(TestNamespace ns) {
+    CreateDatabaseService request1 = createMinimalRequest(ns);
+    request1.setName(ns.prefix("service_1"));
+    request1.setDescription(null);
+    DatabaseService service1 = createEntity(request1);
+    assertNotNull(service1);
+    assertNull(service1.getDescription());
+
+    CreateDatabaseService request2 = createMinimalRequest(ns);
+    request2.setName(ns.prefix("service_2"));
+    request2.setDescription("Test description");
+    DatabaseService service2 = createEntity(request2);
+    assertNotNull(service2);
+    assertEquals("Test description", service2.getDescription());
+
+    CreateDatabaseService request3 = createMinimalRequest(ns);
+    request3.setName(ns.prefix("service_3"));
+    request3.setConnection(null);
+    DatabaseService service3 = createEntity(request3);
+    assertNotNull(service3);
+    assertNull(service3.getConnection());
+  }
+
+  @Test
+  void put_updateDatabaseService_as_admin_2xx(TestNamespace ns) {
+    CreateDatabaseService request = createMinimalRequest(ns);
+    request.setName(ns.prefix("update_service"));
+    request.setDescription(null);
+    DatabaseService service = createEntity(request);
+    assertNull(service.getDescription());
+
+    service.setDescription("Updated description");
+    DatabaseService updated = patchEntity(service.getId().toString(), service);
+    assertEquals("Updated description", updated.getDescription());
+
+    SnowflakeConnection snowflakeConnection =
+        new SnowflakeConnection().withUsername("test").withPassword("test12");
+    DatabaseConnection databaseConnection =
+        new DatabaseConnection().withConfig(snowflakeConnection);
+
+    CreateDatabaseService updateRequest =
+        new CreateDatabaseService()
+            .withName(service.getName())
+            .withServiceType(DatabaseServiceType.Snowflake)
+            .withConnection(databaseConnection);
+
+    DatabaseService updatedService =
+        SdkClients.adminClient().databaseServices().create(updateRequest);
+    assertNotNull(updatedService.getConnection());
+
+    ConnectionArguments connectionArguments =
+        new ConnectionArguments()
+            .withAdditionalProperty("credentials", "/tmp/creds.json")
+            .withAdditionalProperty("client_email", "ingestion-bot@domain.com");
+    ConnectionOptions connectionOptions =
+        new ConnectionOptions()
+            .withAdditionalProperty("key1", "value1")
+            .withAdditionalProperty("key2", "value2");
+    snowflakeConnection
+        .withConnectionArguments(connectionArguments)
+        .withConnectionOptions(connectionOptions);
+
+    updatedService.getConnection().setConfig(snowflakeConnection);
+    DatabaseService finalService = patchEntity(updatedService.getId().toString(), updatedService);
+    assertNotNull(finalService.getConnection());
+  }
+
+  @Test
+  void post_put_invalidConnection_as_admin_4xx(TestNamespace ns) {
+    RedshiftConnection redshiftConnection =
+        new RedshiftConnection().withHostPort("localhost:3300").withUsername("test");
+    DatabaseConnection dbConn = new DatabaseConnection().withConfig(redshiftConnection);
+
+    CreateDatabaseService request =
+        new CreateDatabaseService()
+            .withName(ns.prefix("invalid_connection"))
+            .withServiceType(DatabaseServiceType.Snowflake)
+            .withConnection(dbConn);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Creating service with mismatched connection type should fail");
+
+    CreateDatabaseService validRequest = createMinimalRequest(ns);
+    validRequest.setName(ns.prefix("valid_for_invalid_update"));
+    DatabaseService service = createEntity(validRequest);
+
+    MysqlConnection mysqlConnection =
+        new MysqlConnection().withHostPort("localhost:3300").withUsername("test");
+    DatabaseConnection invalidConnection = new DatabaseConnection().withConfig(mysqlConnection);
+    service.setConnection(invalidConnection);
+
+    DatabaseService finalService = service;
+    assertThrows(
+        Exception.class,
+        () -> patchEntity(finalService.getId().toString(), finalService),
+        "Updating service with incompatible connection type should fail");
+  }
+
+  @Test
+  void put_testConnectionResult_200(TestNamespace ns) {
+    CreateDatabaseService request = createMinimalRequest(ns);
+    request.setName(ns.prefix("test_connection_result"));
+    DatabaseService service = createEntity(request);
+    assertNull(service.getTestConnectionResult());
+
+    TestConnectionResult testResult =
+        new TestConnectionResult()
+            .withStatus(TestConnectionResultStatus.SUCCESSFUL)
+            .withLastUpdatedAt(System.currentTimeMillis());
+
+    service.setTestConnectionResult(testResult);
+    DatabaseService updated = patchEntity(service.getId().toString(), service);
+
+    assertNotNull(updated.getTestConnectionResult());
+    assertEquals(
+        TestConnectionResultStatus.SUCCESSFUL, updated.getTestConnectionResult().getStatus());
+
+    DatabaseService storedService = getEntity(service.getId().toString());
+    assertNotNull(storedService.getTestConnectionResult());
+    assertEquals(
+        TestConnectionResultStatus.SUCCESSFUL, storedService.getTestConnectionResult().getStatus());
   }
 }

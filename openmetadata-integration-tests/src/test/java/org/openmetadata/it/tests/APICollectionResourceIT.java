@@ -3,6 +3,8 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -13,7 +15,10 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateAPICollection;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.services.ApiService;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -29,9 +34,9 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class APICollectionResourceIT extends BaseEntityIT<APICollection, CreateAPICollection> {
 
-  // APICollection doesn't support followers
   {
     supportsFollowers = false;
+    supportsBulkAPI = true;
   }
 
   // ===================================================================
@@ -237,5 +242,189 @@ public class APICollectionResourceIT extends BaseEntityIT<APICollection, CreateA
         Exception.class,
         () -> createEntity(request2),
         "Creating duplicate API collection in same service should fail");
+  }
+
+  @Test
+  void post_APICollectionWithoutRequiredService_4xx(TestNamespace ns) {
+    CreateAPICollection request =
+        new CreateAPICollection()
+            .withName(ns.prefix("no_service_api"))
+            .withDescription("API collection without service")
+            .withEndpointURL(URI.create("https://localhost:8585/api/v1/test"))
+            .withService(null);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Creating API collection without service should fail");
+  }
+
+  @Test
+  void post_apiCollectionWithDifferentService_200_ok(TestNamespace ns) {
+    ApiService service1 = APIServiceTestFactory.createRest(ns);
+    ApiService service2 = APIServiceTestFactory.createRest(ns);
+
+    CreateAPICollection request1 =
+        new CreateAPICollection()
+            .withName(ns.prefix("api_service1"))
+            .withDescription("API collection for service 1")
+            .withService(service1.getFullyQualifiedName())
+            .withEndpointURL(URI.create("https://localhost:8585/api/v1/service1"));
+
+    APICollection collection1 = createEntity(request1);
+    assertNotNull(collection1);
+    assertEquals(service1.getName(), collection1.getService().getName());
+
+    CreateAPICollection request2 =
+        new CreateAPICollection()
+            .withName(ns.prefix("api_service2"))
+            .withDescription("API collection for service 2")
+            .withService(service2.getFullyQualifiedName())
+            .withEndpointURL(URI.create("https://localhost:8585/api/v1/service2"));
+
+    APICollection collection2 = createEntity(request2);
+    assertNotNull(collection2);
+    assertEquals(service2.getName(), collection2.getService().getName());
+
+    ListParams params = new ListParams();
+    params.setService(service1.getName());
+
+    ListResponse<APICollection> list = listEntities(params);
+    assertNotNull(list);
+    assertTrue(list.getData().size() > 0, "Should have at least one API collection for service1");
+    for (APICollection collection : list.getData()) {
+      assertEquals(service1.getName(), collection.getService().getName());
+    }
+  }
+
+  @Test
+  void testBulk_PreservesUserEditsOnUpdate(TestNamespace ns) {
+    ApiService service = APIServiceTestFactory.createRest(ns);
+
+    CreateAPICollection botCreate =
+        new CreateAPICollection()
+            .withName(ns.prefix("bulk_preserve"))
+            .withDescription("Bot initial description")
+            .withService(service.getFullyQualifiedName())
+            .withEndpointURL(URI.create("https://localhost:8585/api/v1/bulk1"))
+            .withTags(List.of(personalDataTagLabel()));
+
+    APICollection entity = createEntity(botCreate);
+    assertNotNull(entity);
+
+    CreateAPICollection userUpdate =
+        new CreateAPICollection()
+            .withName(ns.prefix("bulk_preserve"))
+            .withDescription("User updated description")
+            .withService(service.getFullyQualifiedName())
+            .withEndpointURL(URI.create("https://localhost:8585/api/v1/bulk1"));
+
+    BulkOperationResult result =
+        SdkClients.adminClient().apiCollections().bulkCreateOrUpdate(List.of(userUpdate));
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    APICollection updated = getEntity(entity.getId().toString());
+    assertEquals(
+        "Bot initial description",
+        updated.getDescription(),
+        "Bulk update should not override non-empty user-edited description");
+
+    assertTrue(
+        updated.getTags().contains(personalDataTagLabel()),
+        "Tags should be preserved from initial creation");
+  }
+
+  @Test
+  void testBulk_TagMergeBehavior(TestNamespace ns) {
+    ApiService service = APIServiceTestFactory.createRest(ns);
+
+    CreateAPICollection initialCreate =
+        new CreateAPICollection()
+            .withName(ns.prefix("bulk_tag_merge"))
+            .withDescription("API collection for tag merge test")
+            .withService(service.getFullyQualifiedName())
+            .withEndpointURL(URI.create("https://localhost:8585/api/v1/tagmerge"))
+            .withTags(List.of(personalDataTagLabel()));
+
+    APICollection entity = createEntity(initialCreate);
+    assertEquals(1, entity.getTags().size());
+    assertTrue(entity.getTags().contains(personalDataTagLabel()));
+
+    CreateAPICollection updateWithNewTag =
+        new CreateAPICollection()
+            .withName(ns.prefix("bulk_tag_merge"))
+            .withService(service.getFullyQualifiedName())
+            .withEndpointURL(URI.create("https://localhost:8585/api/v1/tagmerge"))
+            .withTags(List.of(piiSensitiveTagLabel()));
+
+    BulkOperationResult result =
+        SdkClients.adminClient().apiCollections().bulkCreateOrUpdate(List.of(updateWithNewTag));
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    APICollection updated = getEntity(entity.getId().toString());
+    assertEquals(2, updated.getTags().size(), "Tags should be merged, not replaced");
+
+    List<String> tagFqns = new ArrayList<>();
+    for (TagLabel tag : updated.getTags()) {
+      tagFqns.add(tag.getTagFQN());
+    }
+    assertTrue(
+        tagFqns.containsAll(
+            List.of(personalDataTagLabel().getTagFQN(), piiSensitiveTagLabel().getTagFQN())),
+        "Both old and new tags should be present");
+  }
+
+  @Test
+  void testBulk_AdminCanOverrideDescription(TestNamespace ns) {
+    ApiService service = APIServiceTestFactory.createRest(ns);
+
+    CreateAPICollection initialCreate =
+        new CreateAPICollection()
+            .withName(ns.prefix("bulk_admin_override"))
+            .withDescription("Initial description")
+            .withService(service.getFullyQualifiedName())
+            .withEndpointURL(URI.create("https://localhost:8585/api/v1/adminoverride"));
+
+    APICollection entity = createEntity(initialCreate);
+    assertEquals("Initial description", entity.getDescription());
+
+    CreateAPICollection adminUpdate =
+        new CreateAPICollection()
+            .withName(ns.prefix("bulk_admin_override"))
+            .withDescription("Admin updated description")
+            .withService(service.getFullyQualifiedName())
+            .withEndpointURL(URI.create("https://localhost:8585/api/v1/adminoverride"));
+
+    BulkOperationResult result =
+        SdkClients.adminClient().apiCollections().bulkCreateOrUpdate(List.of(adminUpdate));
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    APICollection updated = getEntity(entity.getId().toString());
+    assertEquals(
+        "Admin updated description",
+        updated.getDescription(),
+        "Admin should be able to update description via bulk API");
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateAPICollection> createRequests) {
+    return SdkClients.adminClient().apiCollections().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreateAPICollection> createRequests) {
+    return SdkClients.adminClient().apiCollections().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateAPICollection createInvalidRequestForBulk(TestNamespace ns) {
+    ApiService service = APIServiceTestFactory.createRest(ns);
+    return new CreateAPICollection()
+        .withName("")
+        .withService(service.getFullyQualifiedName())
+        .withEndpointURL(URI.create("https://localhost:8585/api/v1/invalid"));
   }
 }

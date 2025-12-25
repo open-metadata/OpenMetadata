@@ -23,6 +23,7 @@ import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.services.drives.SpreadsheetService;
@@ -487,6 +488,383 @@ public class WorksheetResourceIT extends BaseEntityIT<Worksheet, CreateWorksheet
     assertNotNull(worksheet.getTags());
     assertEquals(1, worksheet.getTags().size());
     assertEquals(personalDataTagLabel().getTagFQN(), worksheet.getTags().get(0).getTagFQN());
+  }
+
+  @Test
+  void put_worksheetUpdate_200(TestNamespace ns) {
+    CreateWorksheet request =
+        new CreateWorksheet()
+            .withName(ns.prefix("update_worksheet"))
+            .withSpreadsheet(createTestSpreadsheet(ns).getFullyQualifiedName())
+            .withDescription("Initial description");
+
+    Worksheet worksheet = createEntity(request);
+    assertEquals("Initial description", worksheet.getDescription());
+
+    worksheet.setDescription("Updated description");
+    Worksheet updated = patchEntity(worksheet.getId().toString(), worksheet);
+    assertEquals("Updated description", updated.getDescription());
+
+    List<Column> columns = new ArrayList<>();
+    columns.add(
+        new Column()
+            .withName("col1")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("Column 1"));
+    columns.add(
+        new Column().withName("col2").withDataType(ColumnDataType.INT).withDescription("Column 2"));
+
+    worksheet.setColumns(columns);
+    updated = patchEntity(worksheet.getId().toString(), worksheet);
+    assertEquals(2, updated.getColumns().size());
+
+    columns.add(
+        new Column()
+            .withName("col3")
+            .withDataType(ColumnDataType.DECIMAL)
+            .withDescription("Column 3"));
+
+    worksheet.setColumns(columns);
+    updated = patchEntity(worksheet.getId().toString(), worksheet);
+    assertEquals(3, updated.getColumns().size());
+
+    worksheet.setIsHidden(true);
+    updated = patchEntity(worksheet.getId().toString(), worksheet);
+    assertEquals(true, updated.getIsHidden());
+  }
+
+  @Test
+  void test_worksheetFQNPatterns(TestNamespace ns) {
+    DriveService service = createTestDriveService(ns);
+
+    SpreadsheetService spreadsheetService = getSpreadsheetService();
+    CreateSpreadsheet createDirectSpreadsheet =
+        new CreateSpreadsheet()
+            .withName(ns.prefix("directWorkbook"))
+            .withService(service.getFullyQualifiedName());
+    Spreadsheet directSpreadsheet = spreadsheetService.create(createDirectSpreadsheet);
+
+    CreateWorksheet create1 =
+        new CreateWorksheet()
+            .withName("Sheet1")
+            .withSpreadsheet(directSpreadsheet.getFullyQualifiedName());
+    Worksheet worksheet1 = createEntity(create1);
+    assertEquals(
+        directSpreadsheet.getFullyQualifiedName() + ".Sheet1", worksheet1.getFullyQualifiedName());
+    assertEquals(
+        service.getFullyQualifiedName() + "." + ns.prefix("directWorkbook") + ".Sheet1",
+        worksheet1.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_columnOperations(TestNamespace ns) {
+    CreateWorksheet request =
+        new CreateWorksheet()
+            .withName(ns.prefix("column_ops"))
+            .withSpreadsheet(createTestSpreadsheet(ns).getFullyQualifiedName());
+
+    Worksheet worksheet = createEntity(request);
+
+    List<Column> columns = new ArrayList<>();
+    columns.add(
+        new Column()
+            .withName("col1")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("Column 1"));
+    columns.add(
+        new Column().withName("col2").withDataType(ColumnDataType.INT).withDescription("Column 2"));
+
+    worksheet.setColumns(columns);
+    Worksheet updated = patchEntity(worksheet.getId().toString(), worksheet);
+    assertEquals(2, updated.getColumns().size());
+
+    Column col1WithTag =
+        new Column()
+            .withName("col1")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("Column 1")
+            .withTags(List.of(personalDataTagLabel()));
+    columns.set(0, col1WithTag);
+
+    worksheet.setColumns(columns);
+    updated = patchEntity(worksheet.getId().toString(), worksheet);
+    Worksheet withColumns = getEntityWithFields(updated.getId().toString(), "columns,tags");
+    assertEquals(1, withColumns.getColumns().get(0).getTags().size());
+    assertEquals(
+        personalDataTagLabel().getTagFQN(),
+        withColumns.getColumns().get(0).getTags().get(0).getTagFQN());
+
+    columns.remove(1);
+    worksheet.setColumns(columns);
+    updated = patchEntity(worksheet.getId().toString(), worksheet);
+    assertEquals(1, updated.getColumns().size());
+    assertEquals("col1", updated.getColumns().get(0).getName());
+  }
+
+  @Test
+  void patch_worksheetColumnTagsAndDescription_200(TestNamespace ns) {
+    List<Column> columns = new ArrayList<>();
+    columns.add(
+        new Column()
+            .withName("customer_id")
+            .withDataType(ColumnDataType.INT)
+            .withDescription("Customer identifier"));
+    columns.add(
+        new Column()
+            .withName("customer_name")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("Customer full name"));
+    columns.add(
+        new Column()
+            .withName("email")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("Customer email address"));
+    columns.add(
+        new Column()
+            .withName("phone")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("Contact phone number"));
+
+    CreateWorksheet request =
+        new CreateWorksheet()
+            .withName(ns.prefix("customer_data"))
+            .withSpreadsheet(createTestSpreadsheet(ns).getFullyQualifiedName())
+            .withColumns(columns);
+
+    Worksheet worksheet = createEntity(request);
+
+    worksheet.getColumns().get(0).setTags(List.of(personalDataTagLabel()));
+    worksheet.getColumns().get(1).setTags(List.of(personalDataTagLabel(), piiSensitiveTagLabel()));
+    worksheet.getColumns().get(2).setTags(List.of(piiSensitiveTagLabel()));
+
+    Worksheet updated = patchEntity(worksheet.getId().toString(), worksheet);
+    Worksheet withTags = getEntityWithFields(updated.getId().toString(), "columns,tags");
+
+    assertEquals(1, withTags.getColumns().get(0).getTags().size());
+    assertEquals(
+        personalDataTagLabel().getTagFQN(),
+        withTags.getColumns().get(0).getTags().get(0).getTagFQN());
+
+    assertEquals(2, withTags.getColumns().get(1).getTags().size());
+    assertEquals(1, withTags.getColumns().get(2).getTags().size());
+    assertEquals(
+        piiSensitiveTagLabel().getTagFQN(),
+        withTags.getColumns().get(2).getTags().get(0).getTagFQN());
+
+    worksheet.getColumns().get(0).setDescription("Updated: Unique customer identifier");
+    worksheet.getColumns().get(2).setDescription("Updated: Primary email for communication");
+
+    updated = patchEntity(worksheet.getId().toString(), worksheet);
+    withTags = getEntityWithFields(updated.getId().toString(), "columns,tags");
+
+    assertEquals(
+        "Updated: Unique customer identifier", withTags.getColumns().get(0).getDescription());
+    assertEquals("Customer full name", withTags.getColumns().get(1).getDescription());
+    assertEquals(
+        "Updated: Primary email for communication", withTags.getColumns().get(2).getDescription());
+    assertEquals("Contact phone number", withTags.getColumns().get(3).getDescription());
+
+    worksheet.getColumns().get(1).setTags(List.of(personalDataTagLabel()));
+    worksheet.getColumns().get(2).setTags(new ArrayList<>());
+
+    updated = patchEntity(worksheet.getId().toString(), worksheet);
+    withTags = getEntityWithFields(updated.getId().toString(), "columns,tags");
+
+    assertEquals(1, withTags.getColumns().get(1).getTags().size());
+    assertEquals(
+        personalDataTagLabel().getTagFQN(),
+        withTags.getColumns().get(1).getTags().get(0).getTagFQN());
+    assertTrue(
+        withTags.getColumns().get(2).getTags() == null
+            || withTags.getColumns().get(2).getTags().isEmpty());
+
+    worksheet.getColumns().get(3).setDescription("Updated: Customer contact phone");
+    worksheet.getColumns().get(3).setTags(List.of(personalDataTagLabel(), piiSensitiveTagLabel()));
+
+    updated = patchEntity(worksheet.getId().toString(), worksheet);
+    withTags = getEntityWithFields(updated.getId().toString(), "columns,tags");
+
+    assertEquals("Updated: Customer contact phone", withTags.getColumns().get(3).getDescription());
+    assertEquals(2, withTags.getColumns().get(3).getTags().size());
+  }
+
+  @Test
+  void patch_worksheetAddRemoveColumns_200(TestNamespace ns) {
+    List<Column> columns = new ArrayList<>();
+    columns.add(
+        new Column()
+            .withName("id")
+            .withDataType(ColumnDataType.INT)
+            .withDescription("Record ID")
+            .withTags(List.of(personalDataTagLabel())));
+    columns.add(
+        new Column()
+            .withName("name")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("Full name")
+            .withTags(List.of(piiSensitiveTagLabel())));
+
+    CreateWorksheet request =
+        new CreateWorksheet()
+            .withName(ns.prefix("column_patch"))
+            .withSpreadsheet(createTestSpreadsheet(ns).getFullyQualifiedName())
+            .withColumns(columns);
+
+    Worksheet worksheet = createEntity(request);
+
+    assertEquals(2, worksheet.getColumns().size());
+    assertEquals("id", worksheet.getColumns().get(0).getName());
+    assertEquals("name", worksheet.getColumns().get(1).getName());
+
+    List<Column> updatedColumns = new ArrayList<>();
+    updatedColumns.add(worksheet.getColumns().get(0));
+    updatedColumns.add(worksheet.getColumns().get(1));
+    updatedColumns.add(
+        new Column()
+            .withName("created_at")
+            .withDataType(ColumnDataType.TIMESTAMP)
+            .withDescription("Record creation timestamp")
+            .withTags(List.of(tier1TagLabel())));
+    worksheet.setColumns(updatedColumns);
+
+    Worksheet updated = patchEntity(worksheet.getId().toString(), worksheet);
+    Worksheet withColumns = getEntityWithFields(updated.getId().toString(), "columns,tags");
+
+    assertNotNull(withColumns.getColumns(), "Columns should not be null after patch");
+    assertEquals(
+        3, withColumns.getColumns().size(), "Expected 3 columns after adding 'created_at'");
+    Column addedColumn = withColumns.getColumns().get(2);
+    assertEquals("created_at", addedColumn.getName());
+    assertEquals(ColumnDataType.TIMESTAMP, addedColumn.getDataType());
+    assertEquals("Record creation timestamp", addedColumn.getDescription());
+    assertEquals(1, addedColumn.getTags().size());
+    assertEquals(tier1TagLabel().getTagFQN(), addedColumn.getTags().get(0).getTagFQN());
+
+    List<Column> remainingColumns = new ArrayList<>();
+    remainingColumns.add(worksheet.getColumns().get(0));
+    remainingColumns.add(worksheet.getColumns().get(2));
+    worksheet.setColumns(remainingColumns);
+
+    updated = patchEntity(worksheet.getId().toString(), worksheet);
+    withColumns = getEntityWithFields(updated.getId().toString(), "columns,tags");
+
+    assertEquals(2, withColumns.getColumns().size());
+    assertEquals("id", withColumns.getColumns().get(0).getName());
+    assertEquals("created_at", withColumns.getColumns().get(1).getName());
+
+    List<Column> newColumns = new ArrayList<>();
+    newColumns.add(
+        new Column()
+            .withName("user_id")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("User identifier")
+            .withTags(List.of(personalDataTagLabel())));
+    newColumns.add(
+        new Column()
+            .withName("status")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("User status"));
+    worksheet.setColumns(newColumns);
+
+    updated = patchEntity(worksheet.getId().toString(), worksheet);
+    withColumns = getEntityWithFields(updated.getId().toString(), "columns,tags");
+
+    assertEquals(2, withColumns.getColumns().size());
+    assertEquals("user_id", withColumns.getColumns().get(0).getName());
+    assertEquals("status", withColumns.getColumns().get(1).getName());
+    assertEquals(1, withColumns.getColumns().get(0).getTags().size());
+    assertTrue(
+        withColumns.getColumns().get(1).getTags() == null
+            || withColumns.getColumns().get(1).getTags().isEmpty());
+  }
+
+  @Test
+  void patch_worksheetComplexColumnOperations_200(TestNamespace ns) {
+    List<Column> columns = new ArrayList<>();
+    columns.add(
+        new Column()
+            .withName("order_id")
+            .withDataType(ColumnDataType.INT)
+            .withDescription("Order identifier"));
+    columns.add(
+        new Column()
+            .withName("customer_email")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("Customer email"));
+    columns.add(
+        new Column()
+            .withName("order_date")
+            .withDataType(ColumnDataType.DATE)
+            .withDescription("Order date"));
+    columns.add(
+        new Column()
+            .withName("total_amount")
+            .withDataType(ColumnDataType.DECIMAL)
+            .withDescription("Total order amount"));
+
+    CreateWorksheet request =
+        new CreateWorksheet()
+            .withName(ns.prefix("orders"))
+            .withSpreadsheet(createTestSpreadsheet(ns).getFullyQualifiedName())
+            .withColumns(columns);
+
+    Worksheet worksheet = createEntity(request);
+
+    worksheet.getColumns().get(0).setTags(List.of(tier1TagLabel()));
+    worksheet.getColumns().get(1).setTags(List.of(piiSensitiveTagLabel(), personalDataTagLabel()));
+
+    worksheet.getColumns().get(2).setDescription("Date when order was placed");
+    worksheet.getColumns().get(3).setDescription("Total amount including taxes and shipping");
+
+    worksheet
+        .getColumns()
+        .add(
+            new Column()
+                .withName("shipping_address")
+                .withDataType(ColumnDataType.STRING)
+                .withDescription("Customer shipping address")
+                .withTags(List.of(piiSensitiveTagLabel(), personalDataTagLabel())));
+    worksheet
+        .getColumns()
+        .add(
+            new Column()
+                .withName("payment_method")
+                .withDataType(ColumnDataType.STRING)
+                .withDescription("Payment method used")
+                .withTags(List.of(piiSensitiveTagLabel())));
+
+    Worksheet updated = patchEntity(worksheet.getId().toString(), worksheet);
+    Worksheet withColumns = getEntityWithFields(updated.getId().toString(), "columns,tags");
+
+    assertEquals(6, withColumns.getColumns().size());
+
+    assertEquals(1, withColumns.getColumns().get(0).getTags().size());
+    assertEquals(
+        tier1TagLabel().getTagFQN(), withColumns.getColumns().get(0).getTags().get(0).getTagFQN());
+
+    assertEquals(2, withColumns.getColumns().get(1).getTags().size());
+
+    assertEquals("Date when order was placed", withColumns.getColumns().get(2).getDescription());
+    assertEquals(
+        "Total amount including taxes and shipping",
+        withColumns.getColumns().get(3).getDescription());
+
+    Column shippingColumn = withColumns.getColumns().get(4);
+    assertEquals("shipping_address", shippingColumn.getName());
+    assertEquals(2, shippingColumn.getTags().size());
+    assertEquals("Customer shipping address", shippingColumn.getDescription());
+
+    Column paymentColumn = withColumns.getColumns().get(5);
+    assertEquals("payment_method", paymentColumn.getName());
+    assertEquals(1, paymentColumn.getTags().size());
+    assertEquals("Payment method used", paymentColumn.getDescription());
+  }
+
+  protected TagLabel tier1TagLabel() {
+    return new TagLabel()
+        .withTagFQN("Tier.Tier1")
+        .withSource(TagLabel.TagSource.CLASSIFICATION)
+        .withLabelType(TagLabel.LabelType.MANUAL);
   }
 
   private WorksheetService getWorksheetService() {
