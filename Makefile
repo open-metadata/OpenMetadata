@@ -39,6 +39,21 @@ yarn_start_e2e_ui:  ## Run the e2e tests locally in UI mode with Yarn
 .PHONY: yarn_start_e2e_codegen
 yarn_start_e2e_codegen:  ## generate playwright code
 	cd openmetadata-ui/src/main/resources/ui && yarn playwright:codegen
+
+## UI Linting
+.PHONY: ui-lint
+ui-lint:  ## Run ESLint, Prettier, license header, and import checks on UI code
+	cd openmetadata-ui/src/main/resources/ui && yarn run lint
+	cd openmetadata-ui/src/main/resources/ui && yarn run pretty --check
+	cd openmetadata-ui/src/main/resources/ui && yarn run license-header-check
+	cd openmetadata-ui/src/main/resources/ui && npx organize-imports-cli --check 'src/**/*.{ts,tsx,js,jsx}'
+
+.PHONY: ui-lint-fix
+ui-lint-fix:  ## Auto-fix ESLint, Prettier, license header, and import issues on UI code
+	cd openmetadata-ui/src/main/resources/ui && yarn run lint:fix
+	cd openmetadata-ui/src/main/resources/ui && yarn run pretty
+	cd openmetadata-ui/src/main/resources/ui && yarn run license-header-fix
+	cd openmetadata-ui/src/main/resources/ui && npx organize-imports-cli 'src/**/*.{ts,tsx,js,jsx}'
 	
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs
