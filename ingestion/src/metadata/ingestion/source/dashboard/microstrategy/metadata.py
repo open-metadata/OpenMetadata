@@ -224,7 +224,11 @@ class MicrostrategySource(DashboardServiceSource):
             )
 
             try:
-                lineage_parser = LineageParser(cube_sql, dialect=dialect)
+                lineage_parser = LineageParser(
+                    cube_sql,
+                    dialect=dialect,
+                    parser_type=self.get_query_parser_type(),
+                )
                 query_hash = lineage_parser.query_hash
                 for table in lineage_parser.source_tables:
                     table_entities = get_table_entities_from_query(

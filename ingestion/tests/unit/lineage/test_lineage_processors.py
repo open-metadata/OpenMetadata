@@ -20,6 +20,9 @@ import uuid
 from datetime import datetime
 from unittest.mock import Mock, patch
 
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
 import networkx as nx
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
@@ -130,6 +133,7 @@ class TestQueryLineageProcessor(unittest.TestCase):
                 crossDatabaseServiceNames=[],
                 parsingTimeoutLimit=10,
                 serviceName="test_service",
+                parser_type=QueryParserType.Auto,
             )
 
             # Check queue has results
@@ -163,6 +167,7 @@ class TestQueryLineageProcessor(unittest.TestCase):
                 crossDatabaseServiceNames=[],
                 parsingTimeoutLimit=10,
                 serviceName="test_service",
+                parser_type=QueryParserType.Auto,
             )
 
             # Queue should be empty as query was already processed
@@ -195,6 +200,7 @@ class TestQueryLineageProcessor(unittest.TestCase):
                 crossDatabaseServiceNames=["service2", "service3"],
                 parsingTimeoutLimit=10,
                 serviceName="service1",
+                parser_type=QueryParserType.Auto,
             )
 
             # Verify service names were extended
@@ -259,6 +265,7 @@ class TestViewLineageProcessor(unittest.TestCase):
                     crossDatabaseServiceNames=[],
                     parsingTimeoutLimit=10,
                     overrideViewLineage=False,
+                    parser_type=QueryParserType.Auto,
                 )
 
                 # Check queue has results
@@ -306,6 +313,7 @@ class TestViewLineageProcessor(unittest.TestCase):
                     crossDatabaseServiceNames=[],
                     parsingTimeoutLimit=10,
                     overrideViewLineage=True,  # Override enabled
+                    parser_type=QueryParserType.Auto,
                 )
 
                 # Check that override flag is set in result
@@ -395,6 +403,7 @@ class TestProcedureLineageProcessor(unittest.TestCase):
                     parsingTimeoutLimit=10,
                     procedure_graph_map=self.procedure_graph_map,
                     enableTempTableLineage=False,
+                    parser_type=QueryParserType.Auto,
                 )
 
                 # Check queue has results
@@ -453,6 +462,7 @@ class TestProcedureLineageProcessor(unittest.TestCase):
                     parsingTimeoutLimit=10,
                     procedure_graph_map=self.procedure_graph_map,
                     enableTempTableLineage=True,  # Enable temp table support
+                    parser_type=QueryParserType.Auto,
                 )
 
                 # Verify graph was created for the procedure
@@ -538,6 +548,7 @@ class TestMemoryEfficiency(unittest.TestCase):
                 crossDatabaseServiceNames=[],
                 parsingTimeoutLimit=10,
                 serviceName="test",
+                parser_type=QueryParserType.Auto,
             )
 
             # The processor should handle this without memory issues

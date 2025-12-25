@@ -10,19 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getActiveFieldNameForAppDocs } from './ServiceUtils';
+import { getCompleteActiveFieldName } from './ServiceUtils';
 
 describe('Service Utils', () => {
-  describe('getActiveFieldNameForAppDocs', () => {
+  describe('getCompleteActiveFieldName', () => {
     it('should handle various cases correctly', () => {
-      expect(getActiveFieldNameForAppDocs()).toBeUndefined();
-      expect(getActiveFieldNameForAppDocs('root/field1/field2')).toBe(
+      expect(getCompleteActiveFieldName()).toBeUndefined();
+      expect(getCompleteActiveFieldName('root/field1/field2')).toBe(
         'field1.field2'
       );
-      expect(getActiveFieldNameForAppDocs('root')).toBe('');
-      expect(getActiveFieldNameForAppDocs('root/1/2/3')).toBe('');
-      expect(getActiveFieldNameForAppDocs('field1/field2')).toBe('field2');
-      expect(getActiveFieldNameForAppDocs('root/field1/@special/field2')).toBe(
+      expect(getCompleteActiveFieldName('root')).toBe('');
+      expect(getCompleteActiveFieldName('root/1/2/3')).toBe('');
+      expect(getCompleteActiveFieldName('field1/field2')).toBe('field2');
+      expect(getCompleteActiveFieldName('root/field1/@special/field2')).toBe(
         'field1.@special.field2'
       );
     });
