@@ -48,7 +48,10 @@ def get_connection(connection: OpenLineageConnection) -> KafkaConsumer:
             "auto.offset.reset": connection.consumerOffsets.value,
             "security.protocol": connection.securityProtocol.value,
         }
-        if connection.securityProtocol.value in (KafkaSecProtocol.SSL.value, KafkaSecProtocol.SASL_SSL.value):
+        if connection.securityProtocol.value in (
+            KafkaSecProtocol.SSL.value,
+            KafkaSecProtocol.SASL_SSL.value,
+        ):
             config.update(
                 {
                     "ssl.ca.location": connection.sslConfig.root.caCertificate,
@@ -56,7 +59,10 @@ def get_connection(connection: OpenLineageConnection) -> KafkaConsumer:
                     "ssl.key.location": connection.sslConfig.root.sslKey,
                 }
             )
-        if connection.securityProtocol.value in (KafkaSecProtocol.SASL_PLAINTEXT.value, KafkaSecProtocol.SASL_SSL.value):
+        if connection.securityProtocol.value in (
+            KafkaSecProtocol.SASL_PLAINTEXT.value,
+            KafkaSecProtocol.SASL_SSL.value,
+        ):
             config.update(
                 {
                     "sasl.mechanism": connection.saslConfig.saslMechanism.value,
