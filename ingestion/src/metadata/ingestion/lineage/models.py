@@ -28,9 +28,6 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseType,
 )
-from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
-    DorisType,
-)
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksType,
 )
@@ -39,6 +36,9 @@ from metadata.generated.schema.entity.services.connections.database.db2Connectio
 )
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeType,
+)
+from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
+    DorisType,
 )
 from metadata.generated.schema.entity.services.connections.database.exasolConnection import (
     ExasolType,
@@ -146,11 +146,11 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(TeradataType.Teradata.value): Dialect.TERADATA,
     str(MariaDBType.MariaDB.value): Dialect.MARIADB,
     str(SingleStoreType.SingleStore.value): Dialect.MYSQL,
-    str(DorisType.Doris.value): Dialect.MYSQL,
     str(ExasolType.Exasol.value): Dialect.EXASOL,
     str(TrinoType.Trino.value): Dialect.TRINO,
     str(VerticaType.Vertica.value): Dialect.VERTICA,
     str(GreenplumType.Greenplum.value): Dialect.POSTGRES,
+    str(DorisType.Doris.value): Dialect.MYSQL,
 }
 
 

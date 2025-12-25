@@ -69,39 +69,6 @@ DorisDialect.get_table_comment = get_table_comment
 logger = ingestion_logger()
 
 
-def doris_get_view_definition(self, connection, view_name, schema=None, **kw):
-    """
-    Get view definition for Doris using SHOW CREATE TABLE.
-    Doris is MySQL-compatible, so we can reuse MySQL's implementation.
-    """
-    # Directly execute SHOW CREATE TABLE without creating MySQLDialect instance
-    # This is more reliable and avoids initialization issues
-
-    full_name = ".".join(
-        self.identifier_preparer._quote_free_identifiers(schema, view_name)
-    )
-    st = f"SHOW CREATE TABLE {full_name}"
-
-    try:
-        rp = connection.execution_options(
-            skip_user_error_events=True
-        ).exec_driver_sql(st)
-        row = self._compat_first(rp, charset=getattr(self, '_connection_charset', 'utf8mb4'))
-        if not row:
-            from sqlalchemy.exc import NoSuchTableError
-            raise NoSuchTableError(full_name)
-        return row[1].strip()
-    except Exception as e:
-        if hasattr(e, 'code') and e.code == 1146:  # Table doesn't exist
-            from sqlalchemy.exc import NoSuchTableError
-            raise NoSuchTableError(full_name)
-        raise
-
-
-# 将方法赋值给DorisDialect
-DorisDialect.get_view_definition = doris_get_view_definition
-
-
 def extract_number(data):
     """
     extract data type length for CHAR, VARCHAR, DECIMAL, such as CHAR(1), return ['1'],
