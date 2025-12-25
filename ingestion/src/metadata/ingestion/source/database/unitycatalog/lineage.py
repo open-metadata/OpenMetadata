@@ -137,8 +137,15 @@ class UnitycatalogLineageSource(Source):
                 )
                 from_columns = []
                 for col in column_streams.upstream_cols:
-                    col_fqn = get_column_fqn(from_table, col.name)
-                    if col_fqn:
+                    col_fqn = get_column_fqn(
+                        from_table,
+                        col.name,
+                        col.table_name,
+                        col.schema_name,
+                        col.catalog_name,
+                    )
+                    # Check to avoid self column loop
+                    if col_fqn and column.fullyQualifiedName.root != col_fqn:
                         from_columns.append(col_fqn)
 
                 if from_columns:
