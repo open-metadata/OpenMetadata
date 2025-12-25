@@ -9,7 +9,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
-import org.openmetadata.schema.system.ValidationResult;
+import org.openmetadata.schema.system.FieldError;
 
 class OktaAuthValidatorTest {
 
@@ -43,7 +43,7 @@ class OktaAuthValidatorTest {
 
     // We can't easily test private methods, but we can test the overall validation
     // The fix should prevent the "Okta domain must use HTTPS" error
-    ValidationResult result = spyValidator.validateOktaConfiguration(authConfig, oidcConfig);
+    FieldError result = spyValidator.validateOktaConfiguration(authConfig, oidcConfig);
 
     // The domain extraction should work correctly now
     // Note: This will still fail due to network calls, but the error message should be different
@@ -51,8 +51,9 @@ class OktaAuthValidatorTest {
 
     // If domain extraction was fixed, we shouldn't get the HTTPS error for localhost
     assertFalse(
-        result.getMessage().contains("Okta domain must use HTTPS")
-            && result.getMessage().contains("localhost"));
+        result != null
+            && result.getError().contains("Okta domain must use HTTPS")
+            && result.getError().contains("localhost"));
   }
 
   @Test
@@ -62,12 +63,11 @@ class OktaAuthValidatorTest {
 
     // This should pass basic validation
     // The domain extraction logic should prefer discoveryUri over serverUrl
-    ValidationResult result = validator.validateOktaConfiguration(authConfig, oidcConfig);
+    FieldError result = validator.validateOktaConfiguration(authConfig, oidcConfig);
 
     assertNotNull(result);
     // Should not fail due to domain format issues
-    if ("failed".equals(result.getStatus())
-        && result.getMessage().contains("domain must use HTTPS")) {
+    if (result != null && result.getError().contains("domain must use HTTPS")) {
       fail("Domain validation should not fail with HTTPS error when using proper discoveryUri");
     }
   }
@@ -78,12 +78,12 @@ class OktaAuthValidatorTest {
     oidcConfig.setServerUrl("https://company.okta.com");
     oidcConfig.setSecret("test-secret-12345678901234567890");
 
-    ValidationResult result = validator.validateOktaConfiguration(authConfig, oidcConfig);
+    FieldError result = validator.validateOktaConfiguration(authConfig, oidcConfig);
 
     assertNotNull(result);
     // Should fail because discoveryUri is required
-    assertEquals("failed", result.getStatus());
-    assertTrue(result.getMessage().contains("Unable to extract Okta domain"));
+    assertEquals("failed", result != null ? "failed" : "success");
+    assertTrue(result != null && result.getError().contains("Unable to extract Okta domain"));
   }
 
   @Test
@@ -91,10 +91,10 @@ class OktaAuthValidatorTest {
     // Test case where discoveryUri is missing - should fail regardless of serverUrl
     oidcConfig.setServerUrl("http://localhost:8585");
 
-    ValidationResult result = validator.validateOktaConfiguration(authConfig, oidcConfig);
+    FieldError result = validator.validateOktaConfiguration(authConfig, oidcConfig);
 
     assertNotNull(result);
-    assertEquals("failed", result.getStatus());
-    assertTrue(result.getMessage().contains("Unable to extract Okta domain"));
+    assertEquals("failed", result != null ? "failed" : "success");
+    assertTrue(result != null && result.getError().contains("Unable to extract Okta domain"));
   }
 }

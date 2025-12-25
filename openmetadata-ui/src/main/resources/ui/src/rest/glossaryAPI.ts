@@ -184,6 +184,14 @@ export const exportGlossaryInCSVFormat = async (glossaryName: string) => {
   return response.data;
 };
 
+export const exportGlossaryTermsInCSVFormat = async (glossaryName: string) => {
+  const response = await APIClient.get<CSVExportResponse>(
+    `/glossaryTerms/name/${getEncodedFqn(glossaryName)}/exportAsync`
+  );
+
+  return response.data;
+};
+
 export const getGlossaryVersionsList = async (id: string) => {
   const url = `/glossaries/${id}/versions`;
 
@@ -292,7 +300,7 @@ export const removeAssetsFromGlossaryTerm = async (
 };
 
 export const searchGlossaryTerms = async (search: string, page = 1) => {
-  const apiUrl = `/search/query?q=*${search ?? ''}*`;
+  const apiUrl = `/search/query?q=${search ?? ''}`;
 
   const { data } = await APIClient.get(apiUrl, {
     params: {
@@ -318,7 +326,7 @@ export const searchGlossaryTermsPaginated = async (
   offset = 0,
   fields?: string
 ) => {
-  const params: Record<string, any> = {
+  const params: Record<string, number | string> = {
     limit,
     offset,
   };
@@ -356,26 +364,6 @@ export type GlossaryTermWithChildren = Omit<GlossaryTerm, 'children'> & {
   children?: GlossaryTerm[];
 };
 
-export const getFirstLevelGlossaryTerms = async (parentFQN: string) => {
-  const apiUrl = `/glossaryTerms`;
-
-  const { data } = await APIClient.get<
-    PagingResponse<GlossaryTermWithChildren[]>
-  >(apiUrl, {
-    params: {
-      directChildrenOf: parentFQN,
-      fields: [
-        TabSpecificField.CHILDREN_COUNT,
-        TabSpecificField.OWNERS,
-        TabSpecificField.REVIEWERS,
-      ],
-      limit: 100000,
-    },
-  });
-
-  return data;
-};
-
 export const getFirstLevelGlossaryTermsPaginated = async (
   parentFQN: string,
   pageSize = 50,
@@ -403,7 +391,8 @@ export const getFirstLevelGlossaryTermsPaginated = async (
 
 export const getGlossaryTermChildrenLazy = async (
   parentFQN: string,
-  limit = 50
+  limit = 50,
+  after?: string
 ) => {
   const apiUrl = `/glossaryTerms`;
 
@@ -418,6 +407,7 @@ export const getGlossaryTermChildrenLazy = async (
         TabSpecificField.REVIEWERS,
       ],
       limit,
+      after,
     },
   });
 

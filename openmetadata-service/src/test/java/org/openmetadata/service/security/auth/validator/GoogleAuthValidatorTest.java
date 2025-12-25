@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.security.client.OidcClientConfig;
-import org.openmetadata.schema.system.ValidationResult;
+import org.openmetadata.schema.system.FieldError;
 
 public class GoogleAuthValidatorTest {
   private GoogleAuthValidator validator;
@@ -29,11 +29,11 @@ public class GoogleAuthValidatorTest {
     authConfig.setClientId("invalid-client-id");
     authConfig.setClientType(ClientType.PUBLIC);
 
-    ValidationResult result = validator.validateGoogleConfiguration(authConfig, oidcConfig);
+    FieldError result = validator.validateGoogleConfiguration(authConfig, oidcConfig);
 
-    assertEquals("failed", result.getStatus());
-    assertEquals("google-client-id", result.getComponent());
-    assertTrue(result.getMessage().contains("Invalid Google client ID format"));
+    assertEquals("failed", result != null ? "failed" : "success");
+    assertEquals("authenticationConfiguration.clientId", result != null ? result.getField() : "");
+    assertTrue(result != null && result.getError().contains("Invalid client Id"));
   }
 
   @Test
@@ -42,10 +42,10 @@ public class GoogleAuthValidatorTest {
     authConfig.setClientId("invalid-project.apps.googleusercontent.com");
     authConfig.setClientType(ClientType.PUBLIC);
 
-    ValidationResult result = validator.validateGoogleConfiguration(authConfig, oidcConfig);
+    FieldError result = validator.validateGoogleConfiguration(authConfig, oidcConfig);
 
     // The new validator only checks suffix, not project format
-    assertEquals("success", result.getStatus());
+    assertEquals("success", result != null ? "failed" : "success");
   }
 
   @Test
@@ -55,11 +55,11 @@ public class GoogleAuthValidatorTest {
         "123456789012-abcdefghijklmnopqrstuvwxyz012345.apps.googleusercontent.com");
     authConfig.setClientType(ClientType.PUBLIC);
 
-    ValidationResult result = validator.validateGoogleConfiguration(authConfig, oidcConfig);
+    FieldError result = validator.validateGoogleConfiguration(authConfig, oidcConfig);
 
     // Should pass for public client with valid client ID
-    assertEquals("success", result.getStatus());
-    assertEquals("google-public", result.getComponent());
+    assertEquals("success", result != null ? "failed" : "success");
+    assertEquals("", result != null ? result.getField() : "");
   }
 
   @Test
@@ -70,11 +70,11 @@ public class GoogleAuthValidatorTest {
     authConfig.setAuthority("https://invalid.com");
     authConfig.setClientType(ClientType.PUBLIC);
 
-    ValidationResult result = validator.validateGoogleConfiguration(authConfig, oidcConfig);
+    FieldError result = validator.validateGoogleConfiguration(authConfig, oidcConfig);
 
-    assertEquals("failed", result.getStatus());
-    assertEquals("google-authority", result.getComponent());
-    assertTrue(result.getMessage().contains("Google authority must be exactly"));
+    assertEquals("failed", result != null ? "failed" : "success");
+    assertEquals("authenticationConfiguration.authority", result != null ? result.getField() : "");
+    assertTrue(result != null && result.getError().contains("Google authority must be exactly"));
   }
 
   @Test
@@ -84,12 +84,15 @@ public class GoogleAuthValidatorTest {
     oidcConfig.setId("123456789012-abcdefghijklmnopqrstuvwxyz012345.apps.googleusercontent.com");
     oidcConfig.setSecret("");
 
-    ValidationResult result = validator.validateGoogleConfiguration(authConfig, oidcConfig);
+    FieldError result = validator.validateGoogleConfiguration(authConfig, oidcConfig);
 
     // The validator requires both client ID and secret for confidential clients
-    assertEquals("failed", result.getStatus());
-    assertEquals("google-credentials", result.getComponent());
-    assertTrue(result.getMessage().contains("Client ID and Client Secret are required"));
+    assertEquals("failed", result != null ? "failed" : "success");
+    assertEquals(
+        "authenticationConfiguration.oidcConfiguration.secret",
+        result != null ? result.getField() : "");
+    assertTrue(
+        result != null && result.getError().contains("Client ID and Client Secret are required"));
   }
 
   @Test
@@ -100,10 +103,12 @@ public class GoogleAuthValidatorTest {
     oidcConfig.setSecret("short");
     oidcConfig.setCallbackUrl("http://localhost:8585/callback/google");
 
-    ValidationResult result = validator.validateGoogleConfiguration(authConfig, oidcConfig);
+    FieldError result = validator.validateGoogleConfiguration(authConfig, oidcConfig);
 
     // The validator will try to validate the credentials and likely fail due to invalid secret
-    assertEquals("failed", result.getStatus());
-    assertEquals("google-credentials", result.getComponent());
+    assertEquals("failed", result != null ? "failed" : "success");
+    assertEquals(
+        "authenticationConfiguration.oidcConfiguration.id",
+        result != null ? result.getField() : "");
   }
 }

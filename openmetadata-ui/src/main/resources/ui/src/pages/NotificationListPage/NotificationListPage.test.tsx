@@ -18,6 +18,7 @@ import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { getAllAlerts } from '../../rest/alertsAPI';
+import { descriptionTableObject } from '../../utils/TableColumn.util';
 import NotificationListPage from './NotificationListPage';
 
 const MOCK_DATA = [
@@ -187,7 +188,7 @@ describe('Notification Alerts Page Tests', () => {
     expect(alertNameElement).toBeInTheDocument();
   });
 
-  it('Table should render no data', async () => {
+  it('Table should render descriptionTableObject', async () => {
     (getAllAlerts as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
         data: [],
@@ -200,9 +201,7 @@ describe('Notification Alerts Page Tests', () => {
       });
     });
 
-    const alertNameElement = await screen.findByText('label.no-entity');
-
-    expect(alertNameElement).toBeInTheDocument();
+    expect(descriptionTableObject).toHaveBeenCalledWith();
   });
 
   it('should call LimitWrapper with resource as eventsubscription', async () => {

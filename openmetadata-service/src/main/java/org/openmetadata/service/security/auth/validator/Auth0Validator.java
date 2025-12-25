@@ -8,8 +8,9 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.security.client.OidcClientConfig;
-import org.openmetadata.schema.system.ValidationResult;
+import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.util.ValidationErrorBuilder;
 import org.openmetadata.service.util.ValidationHttpUtil;
 
 @Slf4j
@@ -19,7 +20,7 @@ public class Auth0Validator {
   private static final String AUTH0_TOKEN_PATH = "/oauth/token";
   private final OidcDiscoveryValidator discoveryValidator = new OidcDiscoveryValidator();
 
-  public ValidationResult validateAuth0Configuration(
+  public FieldError validateAuth0Configuration(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
     try {
       return switch (authConfig.getClientType()) {
@@ -28,18 +29,17 @@ public class Auth0Validator {
       };
     } catch (Exception e) {
       LOG.error("Auth0 validation failed", e);
-      return new ValidationResult()
-          .withComponent("auth0")
-          .withStatus("failed")
-          .withMessage("Auth0 validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          "", "Auth0 validation failed: " + e.getMessage());
     }
   }
 
-  private ValidationResult validateAuth0PublicClient(AuthenticationConfiguration authConfig) {
+  private FieldError validateAuth0PublicClient(AuthenticationConfiguration authConfig) {
     try {
       String authority = authConfig.getAuthority();
-      ValidationResult domainValidation = validateAuth0Domain(authority);
-      if ("failed".equals(domainValidation.getStatus())) {
+      FieldError domainValidation =
+          validateAuth0Domain(authority, ValidationErrorBuilder.FieldPaths.AUTH_AUTHORITY);
+      if (domainValidation != null) {
         return domainValidation;
       }
 
@@ -48,76 +48,66 @@ public class Auth0Validator {
       OidcClientConfig publicClientConfig =
           new OidcClientConfig().withId(authConfig.getClientId()).withDiscoveryUri(discoveryUri);
 
-      ValidationResult discoveryCheck =
+      FieldError discoveryCheck =
           discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, publicClientConfig);
-      if (!"success".equals(discoveryCheck.getStatus())) {
+      if (discoveryCheck != null) {
         return discoveryCheck;
       }
 
-      ValidationResult clientIdValidation =
-          validatePublicClientId(authority, authConfig.getClientId());
-      if ("failed".equals(clientIdValidation.getStatus())) {
+      FieldError clientIdValidation = validatePublicClientId(authority, authConfig.getClientId());
+      if (clientIdValidation != null) {
         return clientIdValidation;
       }
 
-      ValidationResult publicKeyValidation = validatePublicKeyUrls(authConfig, authority);
-      if ("failed".equals(publicKeyValidation.getStatus())) {
+      FieldError publicKeyValidation = validatePublicKeyUrls(authConfig, authority);
+      if (publicKeyValidation != null) {
         return publicKeyValidation;
       }
 
-      return new ValidationResult()
-          .withComponent("auth0-public")
-          .withStatus("success")
-          .withMessage(
-              "Auth0 public client validated successfully. Authority, client ID, and public key URLs are valid.");
+      return null; // Success - Auth0 public client validated
     } catch (Exception e) {
       LOG.error("Auth0 public client validation failed", e);
-      return new ValidationResult()
-          .withComponent("auth0-public")
-          .withStatus("failed")
-          .withMessage("Auth0 public client validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          "", "Auth0 public client validation failed: " + e.getMessage());
     }
   }
 
-  private ValidationResult validateAuth0ConfidentialClient(
+  private FieldError validateAuth0ConfidentialClient(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
     try {
       String auth0Domain = extractAuth0DomainFromOidcConfig(oidcConfig);
-      ValidationResult domainValidation = validateAuth0Domain(auth0Domain);
-      if ("failed".equals(domainValidation.getStatus())) {
+      FieldError domainValidation =
+          validateAuth0Domain(auth0Domain, ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI);
+      if (domainValidation != null) {
         return domainValidation;
       }
 
       // Validate against OIDC discovery document (scopes, response types, etc.)
       String discoveryUri = auth0Domain + AUTH0_WELL_KNOWN_PATH;
-      ValidationResult discoveryCheck =
-          discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, oidcConfig);
-      if (!"success".equals(discoveryCheck.getStatus())) {
+      FieldError discoveryCheck =
+          discoveryValidator.validateAgainstDiscovery(
+              oidcConfig.getDiscoveryUri(), authConfig, oidcConfig);
+      if (discoveryCheck != null) {
         return discoveryCheck;
       }
 
-      ValidationResult publicKeyValidation = validatePublicKeyUrls(authConfig, auth0Domain);
-      if ("failed".equals(publicKeyValidation.getStatus())) {
+      FieldError publicKeyValidation = validatePublicKeyUrls(authConfig, auth0Domain);
+      if (publicKeyValidation != null) {
         return publicKeyValidation;
       }
 
-      ValidationResult credentialsValidation =
-          validateClientCredentials(auth0Domain, oidcConfig.getId(), oidcConfig.getSecret());
-      if ("failed".equals(credentialsValidation.getStatus())) {
+      FieldError credentialsValidation =
+          validateClientCredentials(
+              auth0Domain, oidcConfig.getId(), oidcConfig.getSecret(), oidcConfig.getCallbackUrl());
+      if (credentialsValidation != null) {
         return credentialsValidation;
       }
 
-      return new ValidationResult()
-          .withComponent("auth0-confidential")
-          .withStatus("success")
-          .withMessage(
-              "Auth0 confidential client validated successfully. Discovery URI, client ID, public key URLs, and secret are valid.");
+      return null; // Success - Auth0 confidential client validated
     } catch (Exception e) {
       LOG.error("Auth0 confidential client validation failed", e);
-      return new ValidationResult()
-          .withComponent("auth0-confidential")
-          .withStatus("failed")
-          .withMessage("Auth0 confidential client validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          "", "Auth0 confidential client validation failed: " + e.getMessage());
     }
   }
 
@@ -135,20 +125,15 @@ public class Auth0Validator {
         "Unable to extract Auth0 domain from OIDC configuration. Please provide a valid discoveryUri or serverUrl");
   }
 
-  private ValidationResult validateAuth0Domain(String auth0Domain) {
+  private FieldError validateAuth0Domain(String auth0Domain, String fieldPath) {
     try {
       String discoveryUrl = auth0Domain + AUTH0_WELL_KNOWN_PATH;
       testAuth0DiscoveryEndpoint(discoveryUrl);
 
-      return new ValidationResult()
-          .withComponent("auth0-domain")
-          .withStatus("success")
-          .withMessage("Auth0 domain validated successfully");
+      return null; // Success - Auth0 domain validated
     } catch (Exception e) {
-      return new ValidationResult()
-          .withComponent("auth0-domain")
-          .withStatus("failed")
-          .withMessage("Domain validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          fieldPath, "Domain validation failed: " + e.getMessage());
     }
   }
 
@@ -179,9 +164,32 @@ public class Auth0Validator {
     }
   }
 
-  private ValidationResult validateClientCredentials(
-      String auth0Domain, String clientId, String clientSecret) {
+  private FieldError validateClientCredentials(
+      String auth0Domain, String clientId, String clientSecret, String redirectUri) {
     try {
+      String authUrl =
+          auth0Domain
+              + "/authorize"
+              + "?response_type=code"
+              + "&client_id="
+              + clientId
+              + "&redirect_uri="
+              + redirectUri
+              + "&scope=openid";
+
+      try {
+        ValidationHttpUtil.HttpResponseData authResponse = ValidationHttpUtil.safeGet(authUrl);
+        if (authResponse.getStatusCode() == 400 || authResponse.getStatusCode() == 404) {
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+              "Invalid client ID. The client ID is not recognized by Auth0.");
+        }
+      } catch (Exception e) {
+        // Log but continue - we'll try the full credentials next
+        LOG.debug("Could not validate client ID separately: {}", e.getMessage());
+      }
+
+      // Now try the full credentials
       String tokenUrl = auth0Domain + AUTH0_TOKEN_PATH;
       String requestBody =
           String.format(
@@ -194,10 +202,7 @@ public class Auth0Validator {
       int responseCode = response.getStatusCode();
       if (responseCode == 200) {
         // Successfully obtained token
-        return new ValidationResult()
-            .withComponent("auth0-credentials")
-            .withStatus("success")
-            .withMessage("Auth0 client credentials validated successfully");
+        return null; // Success - Auth0 client credentials validated
       } else {
         // Parse error response
         try {
@@ -205,50 +210,36 @@ public class Auth0Validator {
           String error = errorResponse.path("error").asText();
           String errorDescription = errorResponse.path("error_description").asText();
 
-          if ("invalid_client".equals(error) || "unauthorized_client".equals(error)) {
-            return new ValidationResult()
-                .withComponent("auth0-credentials")
-                .withStatus("failed")
-                .withMessage(
-                    "Invalid client credentials. Please verify the client ID and secret are correct.");
-          } else if ("access_denied".equals(error)) {
-            return new ValidationResult()
-                .withComponent("auth0-credentials")
-                .withStatus("failed")
-                .withMessage(
-                    "Client is not authorized for client credentials grant. "
-                        + "Please enable this grant type in Auth0 application settings.");
+          if ("invalid_client".equals(error)
+              || "unauthorized_client".equals(error)
+              || "access_denied".equals(error)) {
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET, "Invalid client secret");
           } else {
-            return new ValidationResult()
-                .withComponent("auth0-credentials")
-                .withStatus("failed")
-                .withMessage("Authentication failed: " + errorDescription);
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET,
+                "Authentication failed: " + errorDescription);
           }
         } catch (Exception parseError) {
-          return new ValidationResult()
-              .withComponent("auth0-credentials")
-              .withStatus("failed")
-              .withMessage("Credentials validation failed. HTTP response: " + responseCode);
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET,
+              "Credentials validation failed. HTTP response: " + responseCode);
         }
       }
     } catch (Exception e) {
       LOG.warn("Auth0 credentials validation encountered an error", e);
-      return new ValidationResult()
-          .withComponent("auth0-credentials")
-          .withStatus("warning")
-          .withMessage(
-              "Could not fully validate credentials: "
-                  + e.getMessage()
-                  + ". Credentials format appears valid.");
+      // Warning case - treat as success since credentials format appears valid
+      LOG.warn("Could not fully validate Auth0 credentials: {}", e.getMessage());
+      return null;
     }
   }
 
-  private ValidationResult validatePublicClientId(String auth0Domain, String clientId) {
+  private FieldError validatePublicClientId(String auth0Domain, String clientId) {
     return validateClientIdViaAuthorizationEndpoint(
         auth0Domain, clientId, "auth0-public-client-id", "public");
   }
 
-  private ValidationResult validateClientIdViaAuthorizationEndpoint(
+  private FieldError validateClientIdViaAuthorizationEndpoint(
       String auth0Domain, String clientId, String componentName, String clientType) {
     try {
       String authEndpoint = auth0Domain + "/authorize";
@@ -269,44 +260,35 @@ public class Auth0Validator {
       if (responseCode == 302 || responseCode == 200) {
         // Check if it's redirecting to Auth0 login page or showing login form
         String clientTypeDesc = clientType.isEmpty() ? "" : clientType + " ";
-        return new ValidationResult()
-            .withComponent(componentName)
-            .withStatus("success")
-            .withMessage(
-                "Auth0 "
-                    + clientTypeDesc
-                    + "client ID validated successfully via authorization endpoint");
+        return null; // Success - Auth0 client ID validated
       } else if (responseCode == 400 || responseCode == 404) {
-        return new ValidationResult()
-            .withComponent(componentName)
-            .withStatus("failed")
-            .withMessage(
-                "Invalid Auth0 client ID. Client does not exist or is not properly configured.");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID,
+            "Invalid Auth0 client ID. Client does not exist or is not properly configured.");
       } else {
-        return new ValidationResult()
-            .withComponent(componentName)
-            .withStatus("warning")
-            .withMessage("Could not fully validate client ID. HTTP response: " + responseCode);
+        // Warning case - treat as success since format appears valid
+        LOG.warn("Could not fully validate Auth0 client ID. HTTP response: {}", responseCode);
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID, "Could not validate client Id");
       }
 
     } catch (Exception e) {
-      return new ValidationResult()
-          .withComponent(componentName)
-          .withStatus("warning")
-          .withMessage(
-              "Client ID validation failed: " + e.getMessage() + ". Format appears valid.");
+      // Warning case - treat as success since format appears valid
+      LOG.warn("Auth0 client ID validation warning: {}", e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID,
+          "Auth0 client ID validation warning: {}" + e.getMessage());
     }
   }
 
-  private ValidationResult validatePublicKeyUrls(
+  private FieldError validatePublicKeyUrls(
       AuthenticationConfiguration authConfig, String auth0Domain) {
     try {
       List<String> publicKeyUrls = authConfig.getPublicKeyUrls();
       if (publicKeyUrls == null || publicKeyUrls.isEmpty()) {
-        return new ValidationResult()
-            .withComponent("auth0-public-key-urls")
-            .withStatus("failed")
-            .withMessage("Public key URLs are required for Auth0 clients");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+            "Public key URLs are required for Auth0 clients");
       }
 
       String expectedJwksUrl = auth0Domain + "/.well-known/jwks.json";
@@ -320,11 +302,9 @@ public class Auth0Validator {
       }
 
       if (!hasCorrectAuth0JwksUrl) {
-        return new ValidationResult()
-            .withComponent("auth0-public-key-urls")
-            .withStatus("failed")
-            .withMessage(
-                "At least one public key URL must be the Auth0 JWKS endpoint: " + expectedJwksUrl);
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+            "At least one public key URL must be the Auth0 JWKS endpoint: " + expectedJwksUrl);
       }
 
       for (String urlStr : publicKeyUrls) {
@@ -333,57 +313,45 @@ public class Auth0Validator {
 
           String host = url.getHost();
           if (!host.endsWith(".auth0.com") && !host.contains(".")) {
-            return new ValidationResult()
-                .withComponent("auth0-public-key-urls")
-                .withStatus("failed")
-                .withMessage("Public key URL domain doesn't match Auth0 pattern: " + host);
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+                "Public key URL domain doesn't match Auth0 pattern: " + host);
           }
 
           ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(urlStr);
 
           if (response.getStatusCode() != 200) {
-            return new ValidationResult()
-                .withComponent("auth0-public-key-urls")
-                .withStatus("failed")
-                .withMessage(
-                    "Public key URL is not accessible. HTTP response: "
-                        + response.getStatusCode()
-                        + " for URL: "
-                        + urlStr);
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+                "Public key URL is not accessible. HTTP response: "
+                    + response.getStatusCode()
+                    + " for URL: "
+                    + urlStr);
           }
           JsonNode jwks = JsonUtils.readTree(response.getBody());
           if (!jwks.has("keys") && !urlStr.contains("/pem")) {
-            return new ValidationResult()
-                .withComponent("auth0-public-key-urls")
-                .withStatus("failed")
-                .withMessage("Invalid JWKS format. Expected JSON with 'keys' array at: " + urlStr);
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+                "Invalid JWKS format. Expected JSON with 'keys' array at: " + urlStr);
           }
           if (jwks.has("keys") && jwks.get("keys").size() == 0) {
-            return new ValidationResult()
-                .withComponent("auth0-public-key-urls")
-                .withStatus("failed")
-                .withMessage("JWKS endpoint returned empty keys array: " + urlStr);
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+                "JWKS endpoint returned empty keys array: " + urlStr);
           }
 
         } catch (Exception e) {
-          return new ValidationResult()
-              .withComponent("auth0-public-key-urls")
-              .withStatus("failed")
-              .withMessage("Invalid public key URL '" + urlStr + "': " + e.getMessage());
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+              "Invalid public key URL '" + urlStr + "': " + e.getMessage());
         }
       }
 
-      return new ValidationResult()
-          .withComponent("auth0-public-key-urls")
-          .withStatus("success")
-          .withMessage(
-              "Auth0 public key URLs are valid and accessible. Found expected JWKS endpoint: "
-                  + expectedJwksUrl);
+      return null; // Success - Auth0 public key URLs validated
     } catch (Exception e) {
-      return new ValidationResult()
-          .withComponent("auth0-public-key-urls")
-          .withStatus("failed")
-          .withMessage("Public key URL validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+          "Public key URL validation failed: " + e.getMessage());
     }
   }
 }

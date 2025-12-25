@@ -11,35 +11,70 @@
 
 clusterName: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
 
+
 swagger:
   resourcePackage: org.openmetadata.service.resources
 
 assets:
   resourcePath: /assets/
-  uriPath: ${BASE_PATH:-/}
+  uriPath: /
 
 basePath: ${BASE_PATH:-/}
 
 server:
   applicationContextPath: ${BASE_PATH:-/}
-  rootPath: ${BASE_PATH:-/}api/*
+  rootPath: /api/*
   applicationConnectors:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_PORT:-8585}
-      maxRequestHeaderSize: ${MAX_REQUEST_HEADER_SIZE:-8KiB}
+
+      # Jetty Acceptor and Selector threads for high concurrency
+      acceptorThreads: ${SERVER_ACCEPTOR_THREADS:-2}  # 1-2 per CPU core
+      selectorThreads: ${SERVER_SELECTOR_THREADS:-8}  # 2-4 per CPU core
+
+      # Connection settings - relaxed for Docker/local development
+      acceptQueueSize: ${SERVER_ACCEPT_QUEUE_SIZE:-256}  # OS-level connection backlog
+      idleTimeout: ${SERVER_IDLE_TIMEOUT:-60 seconds}  # Close idle connections (increased from 30s)
+
+      # Buffer sizes for better throughput
+      outputBufferSize: ${SERVER_OUTPUT_BUFFER_SIZE:-32KiB}
+      inputBufferSize: ${SERVER_INPUT_BUFFER_SIZE:-8KiB}
+      maxRequestHeaderSize: ${SERVER_MAX_REQUEST_HEADER_SIZE:-8KiB}
+      maxResponseHeaderSize: ${SERVER_MAX_RESPONSE_HEADER_SIZE:-8KiB}
+      headerCacheSize: ${SERVER_HEADER_CACHE_SIZE:-512B}  # Cache parsed headers (in bytes)
+
+      # Performance settings
+      useServerHeader: false  # Don't send server version header
+      useDateHeader: true
+      useForwardedHeaders: ${SERVER_USE_FORWARDED_HEADERS:-false}  # Enable if behind proxy
+
+      # Data rate limits (prevent slow loris attacks)
+      minRequestDataPerSecond: ${SERVER_MIN_REQUEST_DATA_RATE:-0B}  # 0B = disabled
+      minResponseDataPerSecond: ${SERVER_MIN_RESPONSE_DATA_RATE:-0B}  # 0B = disabled
+
   adminConnectors:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_ADMIN_PORT:-8586}
+      acceptorThreads: 1  # Admin endpoint needs minimal resources
+      selectorThreads: 1
+
+  # Response compression disabled for maximum throughput
   gzip:
-    syncFlush: true
+    enabled: false
 
   maxThreads: ${SERVER_MAX_THREADS:-150}
   minThreads: ${SERVER_MIN_THREADS:-100}
   idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-1 minute}
   enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-false}
   maxQueuedRequests: ${SERVER_REQUEST_QUEUE:-1024}
+
+  # Request/Response logging (disable in production for performance)
+  requestLog:
+    appenders:
+      - type: console
+        threshold: ${REQUEST_LOG_LEVEL:-ERROR}  # Only log errors by default
 
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it
@@ -163,13 +198,61 @@ database:
   password: ${DB_USER_PASSWORD:-openmetadata_password}
   # the JDBC URL; the database is called openmetadata_db
   url: jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?${DB_PARAMS:-allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
-  maxSize: ${DB_CONNECTION_POOL_MAX_SIZE:-50}
-  minSize: ${DB_CONNECTION_POOL_MIN_SIZE:-10}
-  initialSize: ${DB_CONNECTION_POOL_INITIAL_SIZE:-10}
+
+  # HikariCP Connection Pool Settings - Optimized for Performance
+  maxSize: ${DB_CONNECTION_POOL_MAX_SIZE:-100}  # Increased from 50 for better concurrency
+  minSize: ${DB_CONNECTION_POOL_MIN_SIZE:-20}   # Increased from 10 to reduce connection creation overhead
+  minimumIdle: ${DB_CONNECTION_POOL_MIN_IDLE:-20}  # HikariCP specific minimum idle connections
+  initialSize: ${DB_CONNECTION_POOL_INITIAL_SIZE:-20}  # Start with more connections ready
   checkConnectionWhileIdle: ${DB_CONNECTION_CHECK_CONNECTION_WHILE_IDLE:-true}
-  checkConnectionOnBorrow: ${DB_CONNECTION_CHECK_CONNECTION_ON_BORROW:-true}
+  checkConnectionOnBorrow: ${DB_CONNECTION_CHECK_CONNECTION_ON_BORROW:-false}  # Disable for performance
   evictionInterval: ${DB_CONNECTION_EVICTION_INTERVAL:-5 minutes}
-  minIdleTime: ${DB_CONNECTION_MIN_IDLE_TIME:-1 minute}
+  minIdleTime: ${DB_CONNECTION_MIN_IDLE_TIME:-5 minute}
+
+
+  # JDBC Driver Properties - Critical for Performance
+  # These work across both PostgreSQL and MySQL drivers
+  properties:
+    # HikariCP connection pool settings
+    connectionTimeout: ${DB_CONNECTION_TIMEOUT:-300000}  # 300 seconds
+    idleTimeout: ${DB_IDLE_TIMEOUT:-600000}  # 10 minutes
+    maxLifetime: ${DB_MAX_LIFETIME:-1800000}  # 30 minutes
+    leakDetectionThreshold: ${DB_LEAK_DETECTION_THRESHOLD:-600000}  # 10 minute
+    keepaliveTime: ${DB_KEEPALIVE_TIME:-0}  # 0 = disabled (set to 30000 for Aurora)
+    validationTimeout: ${DB_VALIDATION_TIMEOUT:-300000}  # 300 seconds
+    # PostgreSQL specific - these are ignored by MySQL driver
+    prepareThreshold: ${DB_PG_PREPARE_THRESHOLD:-1}  # Use prepared statements immediately
+    preparedStatementCacheQueries: ${DB_PG_PREP_STMT_CACHE_QUERIES:-500}  # Cache more statements
+    preparedStatementCacheSizeMiB: ${DB_PG_PREP_STMT_CACHE_SIZE_MB:-10}  # Larger cache
+    reWriteBatchedInserts: ${DB_PG_REWRITE_BATCHED_INSERTS:-true}  # Critical for batch performance
+    defaultRowFetchSize: ${DB_PG_DEFAULT_ROW_FETCH_SIZE:-1000}  # Fetch more rows at once
+    assumeMinServerVersion: ${DB_PG_ASSUME_MIN_SERVER_VERSION:-12}  # Skip version checks
+    ApplicationName: ${DB_PG_APPLICATION_NAME:-OpenMetadata}
+    loginTimeout: ${DB_PG_LOGIN_TIMEOUT:-300}  # Login timeout in seconds
+    postgresqlConnectTimeout: ${DB_POSTGRESQL_CONNECT_TIMEOUT:-60}  # Connection timeout in seconds
+    postgresqlSocketTimeout: ${DB_POSTGRESQL_SOCKET_TIMEOUT:-30000}  # Socket timeout in seconds (0 = infinite)
+
+    # Aurora PostgreSQL specific optimizations
+    loadBalanceHosts: ${DB_PG_LOAD_BALANCE_HOSTS:-false}  # Set to true for Aurora reader endpoints
+    hostRecheckSeconds: ${DB_PG_HOST_RECHECK_SECONDS:-10}  # How often to check host status
+    targetServerType: ${DB_PG_TARGET_SERVER_TYPE:-primary}  # primary, secondary, any, preferSecondary
+
+    # MySQL specific - these are ignored by PostgreSQL driver
+    rewriteBatchedStatements: ${DB_MYSQL_REWRITE_BATCHED_STATEMENTS:-true}  # Critical for MySQL batch
+    cachePrepStmts: ${DB_MYSQL_CACHE_PREP_STMTS:-true}
+    prepStmtCacheSize: ${DB_MYSQL_PREP_STMT_CACHE_SIZE:-500}
+    prepStmtCacheSqlLimit: ${DB_MYSQL_PREP_STMT_CACHE_SQL_LIMIT:-2048}
+    useServerPrepStmts: ${DB_MYSQL_USE_SERVER_PREP_STMTS:-true}
+    useLocalSessionState: ${DB_MYSQL_USE_LOCAL_SESSION_STATE:-true}
+    useLocalTransactionState: ${DB_MYSQL_USE_LOCAL_TRANSACTION_STATE:-true}
+    elideSetAutoCommits: ${DB_MYSQL_ELIDE_SET_AUTO_COMMITS:-true}
+    maintainTimeStats: ${DB_MYSQL_MAINTAIN_TIME_STATS:-false}
+    cacheResultSetMetadata: ${DB_MYSQL_CACHE_RESULT_SET_METADATA:-true}
+    cacheServerConfiguration: ${DB_MYSQL_CACHE_SERVER_CONFIG:-true}
+    tcpKeepAlive: ${DB_MYSQL_TCP_KEEP_ALIVE:-true}
+    tcpNoDelay: ${DB_MYSQL_TCP_NO_DELAY:-true}
+    mysqlConnectTimeout: ${DB_MYSQL_CONNECT_TIMEOUT:-60000}  # Connection timeout in milliseconds
+    mysqlSocketTimeout: ${DB_MYSQL_SOCKET_TIMEOUT:-30000000}  # Socket timeout in milliseconds (0 = infinite)
 
 objectStorage:
   enabled: false
@@ -208,6 +291,11 @@ authenticationConfiguration:
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
   jwtPrincipalClaimsMapping: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING:-[]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
+  enableAutoRedirect: ${AUTHENTICATION_ENABLE_AUTO_REDIRECT:-false}
+  # Force secure flag on session cookies even when not using HTTPS directly.
+  # Enable this when running behind a proxy/load balancer that handles SSL termination.
+  # Default: false (secure flag only set when HTTPS is detected)
+  forceSecureSessionCookie: ${FORCE_SECURE_SESSION_COOKIE:-false}
   oidcConfiguration:
     id: ${OIDC_CLIENT_ID:-""}
     type: ${OIDC_TYPE:-""} # google, azure etc.
@@ -307,9 +395,12 @@ elasticsearch:
   clusterAlias: ${ELASTICSEARCH_CLUSTER_ALIAS:-""}
   truststorePath: ${ELASTICSEARCH_TRUST_STORE_PATH:-""}
   truststorePassword: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
-  connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
-  socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-60}
+  connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-10}  # Increased from 5s for Docker networks
+  socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-120}  # Increased from 60s for slow queries
   keepAliveTimeoutSecs: ${ELASTICSEARCH_KEEP_ALIVE_TIMEOUT_SECS:-600}
+  # Connection pool settings for better load balancing and performance
+  maxConnTotal: ${ELASTICSEARCH_MAX_CONN_TOTAL:-30}  # Total connections across all hosts
+  maxConnPerRoute: ${ELASTICSEARCH_MAX_CONN_PER_ROUTE:-10}  # Max connections per host
   batchSize: ${ELASTICSEARCH_BATCH_SIZE:-100}
   payLoadSize: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}
   searchIndexMappingLanguage : ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
@@ -326,7 +417,6 @@ elasticsearch:
       accessKey: ${AWS_BEDROCK_ACCESS_KEY:-""}
       secretKey: ${AWS_BEDROCK_SECRET_KEY:-""}
       useIamRole: ${AWS_BEDROCK_USE_IAM:-"false"}
-
 
 eventMonitoringConfiguration:
   eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
@@ -361,16 +451,20 @@ pipelineServiceClientConfiguration:
     certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
   logStorageConfiguration:
     type: ${PIPELINE_SERVICE_CLIENT_LOG_TYPE:-"default"} # Possible values are "default", "s3"
+    enabled: ${PIPELINE_SERVICE_CLIENT_LOG_ENABLED:-false} # Enable it for pipelines deployed in the server
     # if type is s3, provide the following configuration
     bucketName: ${PIPELINE_SERVICE_CLIENT_LOG_BUCKET_NAME:-""}
     # optional path within the bucket to store the logs
     prefix: ${PIPELINE_SERVICE_CLIENT_LOG_PREFIX:-""}
-    region: ${PIPELINE_SERVICE_CLIENT_LOG_REGION:-""}
+    enableServerSideEncryption: ${PIPELINE_SERVICE_CLIENT_LOG_SSE_ENABLED:-false}
+    sseAlgorithm: ${PIPELINE_SERVICE_CLIENT_LOG_SSE_ALGORITHM:-"AES256"} # Allowed values: "AES256" or "aws:kms"
+    kmsKeyId: ${PIPELINE_SERVICE_CLIENT_LOG_KMS_KEY_ID:-""} # Required only if sseAlgorithm is "aws:kms"
     awsConfig:
       awsAccessKeyId: ${PIPELINE_SERVICE_CLIENT_LOG_AWS_ACCESS_KEY_ID:-""}
       awsSecretAccessKey: ${PIPELINE_SERVICE_CLIENT_LOG_AWS_SECRET_ACCESS_KEY:-""}
       awsRegion: ${PIPELINE_SERVICE_CLIENT_LOG_REGION:-""}
       awsSessionToken: ${PIPELINE_SERVICE_CLIENT_LOG_AWS_SESSION_TOKEN:-""}
+      endPointURL: ${PIPELINE_SERVICE_CLIENT_LOG_AWS_ENDPOINT_URL:-""} # port forward localhost:9000 for minio
 
   # Secrets Manager Loader: specify to the Ingestion Framework how to load the SM credentials from its env
   # Supported: noop, airflow, env
@@ -471,3 +565,45 @@ rdf:
   username: ${RDF_REMOTE_USERNAME:-"admin"}
   password: ${RDF_REMOTE_PASSWORD:-"admin"}
   dataset: ${RDF_DATASET:-"openmetadata"}
+
+# Cache Configuration
+# Caching layer for entity metadata, relationships, and tag usage to reduce database load
+# Default: Disabled (uses NoopCacheProvider)
+cache:
+  # Cache provider: none (default) or redis
+  provider: ${CACHE_PROVIDER:-none}
+
+  # TTL (Time To Live) settings in seconds
+  entityTtlSeconds: ${CACHE_ENTITY_TTL:-172800}             # 48 hour for entities
+  relationshipTtlSeconds: ${CACHE_RELATIONSHIP_TTL:-172800} # 48 hour for relationships
+  tagTtlSeconds: ${CACHE_TAG_TTL:-172800}                   # 48 hour for tags
+
+  # Redis configuration
+  redis:
+    # Redis connection URL
+    # Standalone: redis://localhost:6379
+    # AWS ElastiCache: redis://my-cluster.abc123.cache.amazonaws.com:6379
+    url: ${CACHE_REDIS_URL:-redis://localhost:6379}
+    authType: ${CACHE_REDIS_AUTH_TYPE:-NONE}
+    database: ${CACHE_REDIS_DATABASE:-0}  # Redis database index (0-15)
+
+    # Authentication for standalone Redis
+    username: ${CACHE_REDIS_USERNAME:-}
+    passwordRef: ${CACHE_REDIS_PASSWORD:-}  # Reference to password in secrets manager
+    useSSL: ${CACHE_REDIS_USE_SSL:-false}
+
+    # Key namespace prefix (useful for multi-tenant deployments)
+    keyspace: ${CACHE_REDIS_KEYSPACE:-"om:prod"}
+
+    # Connection pool settings
+    poolSize: ${CACHE_REDIS_POOL_SIZE:-64}
+    connectTimeoutMs: ${CACHE_REDIS_CONNECT_TIMEOUT:-2000}
+
+    # AWS ElastiCache IAM Authentication (only if using ElastiCache)
+    useIamAuth: ${CACHE_REDIS_USE_IAM:-false}
+    awsRegion: ${CACHE_REDIS_AWS_REGION:-}
+    awsUseInstanceProfile: ${CACHE_REDIS_AWS_INSTANCE_PROFILE:-true}
+    # If not using instance profile, provide credentials:
+    awsAccessKey: ${AWS_ACCESS_KEY_ID:-}
+    awsSecretKey: ${AWS_SECRET_ACCESS_KEY:-}
+    tokenRefreshIntervalSeconds: ${CACHE_REDIS_TOKEN_REFRESH:-900}  # 15 minutes

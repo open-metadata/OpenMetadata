@@ -99,7 +99,7 @@ jest.mock('../../../rest/domainAPI', () => ({
 }));
 
 jest.mock(
-  '../../../components/Domain/DomainDetailsPage/DomainDetailsPage.component',
+  '../../../components/Domain/DomainDetails/DomainDetails.component',
   () => {
     return jest.fn().mockReturnValue(
       <div data-testid="domain-details-page">

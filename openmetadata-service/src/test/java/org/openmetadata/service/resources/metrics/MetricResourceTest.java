@@ -2,10 +2,19 @@ package org.openmetadata.service.resources.metrics;
 
 import static jakarta.ws.rs.core.Response.Status;
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
+import static org.openmetadata.service.resources.EntityResourceTest.PERSONAL_DATA_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.PII_SENSITIVE_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -20,17 +29,21 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -425,10 +438,208 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
     }
   }
 
+  @Test
+  void test_reviewersUpdateAndPatch(TestInfo test) throws IOException {
+    // Create a metric with no reviewers initially
+    CreateMetric createMetric = createRequest(getEntityName(test));
+    Metric metric = createEntity(createMetric, ADMIN_AUTH_HEADERS);
+
+    // Verify the metric is created with no reviewers
+    assertTrue(
+        listOrEmpty(metric.getReviewers()).isEmpty(), "Metric should have no reviewers initially");
+
+    // Update the reviewers using PATCH operation without explicit change tracking
+    String originalJson = JsonUtils.pojoToJson(metric);
+    List<EntityReference> reviewers = List.of(USER1_REF);
+    metric.setReviewers(reviewers);
+
+    Metric updatedMetric = patchEntity(metric.getId(), originalJson, metric, ADMIN_AUTH_HEADERS);
+
+    // Verify the reviewers were added correctly
+    assertNotNull(updatedMetric.getReviewers(), "Metric should have reviewers after update");
+    assertEquals(1, updatedMetric.getReviewers().size(), "Metric should have one reviewer");
+    assertEquals(
+        USER1_REF.getId(),
+        updatedMetric.getReviewers().get(0).getId(),
+        "Reviewer should match USER1");
+
+    // Get the metric again to confirm the reviewers are persisted
+    Metric retrievedMetric = getEntity(updatedMetric.getId(), FIELD_REVIEWERS, ADMIN_AUTH_HEADERS);
+    assertNotNull(retrievedMetric.getReviewers(), "Retrieved metric should have reviewers");
+    assertEquals(
+        1, retrievedMetric.getReviewers().size(), "Retrieved metric should have one reviewer");
+    assertEquals(
+        USER1_REF.getId(),
+        retrievedMetric.getReviewers().get(0).getId(),
+        "Retrieved reviewer should match USER1");
+
+    // Update reviewers - replace existing reviewer with a new one
+    String metricJson = JsonUtils.pojoToJson(updatedMetric);
+    List<EntityReference> newReviewers = List.of(USER2_REF);
+    updatedMetric.setReviewers(newReviewers);
+    updatedMetric =
+        patchEntity(updatedMetric.getId(), metricJson, updatedMetric, ADMIN_AUTH_HEADERS);
+
+    // Verify the reviewer was updated
+    assertEquals(1, updatedMetric.getReviewers().size(), "Metric should still have one reviewer");
+    assertEquals(
+        USER2_REF.getId(),
+        updatedMetric.getReviewers().get(0).getId(),
+        "Reviewer should now be USER2");
+
+    // Add a second reviewer
+    metricJson = JsonUtils.pojoToJson(updatedMetric);
+    List<EntityReference> multipleReviewers = List.of(USER2_REF, USER1_REF);
+    updatedMetric.setReviewers(multipleReviewers);
+    updatedMetric =
+        patchEntity(updatedMetric.getId(), metricJson, updatedMetric, ADMIN_AUTH_HEADERS);
+
+    // Verify multiple reviewers
+    assertEquals(2, updatedMetric.getReviewers().size(), "Metric should have two reviewers");
+    assertTrue(
+        updatedMetric.getReviewers().stream().anyMatch(r -> r.getId().equals(USER1_REF.getId())),
+        "Should contain USER1 as reviewer");
+    assertTrue(
+        updatedMetric.getReviewers().stream().anyMatch(r -> r.getId().equals(USER2_REF.getId())),
+        "Should contain USER2 as reviewer");
+  }
+
+  @Test
+  void test_entityStatusUpdateAndPatch(TestInfo test) throws IOException {
+    // Create a metric with default status
+    CreateMetric createMetric = createRequest(getEntityName(test));
+    Metric metric = createEntity(createMetric, ADMIN_AUTH_HEADERS);
+
+    // Verify the metric is created with UNPROCESSED status (actual default behavior)
+    assertEquals(
+        EntityStatus.UNPROCESSED,
+        metric.getEntityStatus(),
+        "Metric should be created with UNPROCESSED status");
+
+    // Update the entityStatus using PATCH operation
+    String originalJson = JsonUtils.pojoToJson(metric);
+    metric.setEntityStatus(EntityStatus.IN_REVIEW);
+
+    ChangeDescription change = getChangeDescription(metric, MINOR_UPDATE);
+    fieldUpdated(change, "entityStatus", EntityStatus.UNPROCESSED, EntityStatus.IN_REVIEW);
+    Metric updatedMetric =
+        patchEntityAndCheck(metric, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify the entityStatus was updated correctly
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        updatedMetric.getEntityStatus(),
+        "Metric should be updated to IN_REVIEW status");
+
+    // Get the metric again to confirm the status is persisted
+    Metric retrievedMetric = getEntity(updatedMetric.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        retrievedMetric.getEntityStatus(),
+        "Retrieved metric should maintain IN_REVIEW status");
+
+    // Update to DEPRECATED status
+    String metricJson = JsonUtils.pojoToJson(updatedMetric);
+    updatedMetric.setEntityStatus(EntityStatus.DEPRECATED);
+    change = getChangeDescription(updatedMetric, MINOR_UPDATE);
+    fieldUpdated(change, "entityStatus", EntityStatus.IN_REVIEW, EntityStatus.DEPRECATED);
+    updatedMetric =
+        patchEntityAndCheck(updatedMetric, metricJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify DEPRECATED status
+    assertEquals(
+        EntityStatus.DEPRECATED,
+        updatedMetric.getEntityStatus(),
+        "Metric should be updated to DEPRECATED status");
+  }
+
   public Metric getMetric(UUID id, String fields, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(id);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Metric.class, authHeaders);
+  }
+
+  @Test
+  void testBulk_PreservesUserEditsOnUpdate(TestInfo test) throws IOException {
+    CreateMetric botCreate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot initial description")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL));
+
+    Metric entity = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+    assertEquals("Bot initial description", entity.getDescription());
+    assertEquals(1, entity.getTags().size());
+
+    String originalJson = JsonUtils.pojoToJson(entity);
+    String userDescription = "User-edited description - should be preserved";
+    entity.setDescription(userDescription);
+    entity.setTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    Metric userEditedEntity = patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+    assertEquals(userDescription, userEditedEntity.getDescription());
+    assertEquals(2, userEditedEntity.getTags().size());
+
+    CreateMetric botUpdate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot trying to overwrite - should be ignored")
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult updateResult =
+        TestUtils.put(
+            bulkTarget,
+            List.of(botUpdate),
+            BulkOperationResult.class,
+            OK,
+            INGESTION_BOT_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, updateResult.getStatus());
+    assertEquals(1, updateResult.getNumberOfRowsPassed());
+
+    Metric verifyEntity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        userDescription,
+        verifyEntity.getDescription(),
+        "Bot should not overwrite user's description");
+
+    assertEquals(
+        3, verifyEntity.getTags().size(), "Tags should be merged (2 user tags + 1 new bot tag)");
+    assertTrue(
+        verifyEntity.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(USER_ADDRESS_TAG_LABEL.getTagFQN())));
+    assertTrue(
+        verifyEntity.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(PERSONAL_DATA_TAG_LABEL.getTagFQN())));
+    assertTrue(
+        verifyEntity.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(PII_SENSITIVE_TAG_LABEL.getTagFQN())));
+  }
+
+  @Test
+  void testBulk_AdminCanOverrideDescription(TestInfo test) throws IOException {
+    CreateMetric botCreate =
+        createRequest(test.getDisplayName()).withDescription("Bot initial description");
+
+    Metric entity = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(entity);
+    entity.setDescription("User description");
+    Metric userEditedEntity = patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+    assertEquals("User description", userEditedEntity.getDescription());
+
+    CreateMetric adminUpdate =
+        createRequest(test.getDisplayName()).withDescription("Admin override description");
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult updateResult =
+        TestUtils.put(
+            bulkTarget, List.of(adminUpdate), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, updateResult.getStatus());
+
+    Metric verifyEntity = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals("Admin override description", verifyEntity.getDescription());
   }
 }

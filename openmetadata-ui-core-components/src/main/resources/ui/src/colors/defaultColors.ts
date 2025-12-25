@@ -61,18 +61,21 @@ export const defaultColors: ThemeColors = {
     500: '#717680',
     600: '#535862',
     700: '#414651',
+    725: '#363636', // custom shade for search icon
     750: '#404040', // custom shade
     800: '#252B37',
-    900: '#101828',
-    950: '#0C111D',
+    900: '#181D27',
+    950: '#0A0D12',
   },
   blueGray: {
     25: '#FCFCFD',
+    40: '#FAFAFA', // custom shade for search field background
     50: '#F8F9FC',
     75: '#EFF4FA', // custom shade for chips
     100: '#EAECF5',
     150: '#D2DBEA', // custom shade for chip borders
     200: '#D5D9EB',
+    250: '#DFDFDF', // custom shade for search field borders
     300: '#AFB5D9',
     400: '#717BBC',
     500: '#4E5BA6',
@@ -215,7 +218,7 @@ export const defaultColors: ThemeColors = {
     200: '#A6F4C5',
     300: '#6CE9A6',
     400: '#32D583',
-    500: '#12B76A',
+    500: '#17B26A',
     600: '#039855',
     700: '#027A48',
     800: '#05603A',

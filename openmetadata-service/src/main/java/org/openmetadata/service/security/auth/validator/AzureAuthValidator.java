@@ -7,8 +7,9 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.security.client.OidcClientConfig;
-import org.openmetadata.schema.system.ValidationResult;
+import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.util.ValidationErrorBuilder;
 import org.openmetadata.service.util.ValidationHttpUtil;
 
 @Slf4j
@@ -19,7 +20,7 @@ public class AzureAuthValidator {
   private static final String TOKEN_ENDPOINT_V2 = "/oauth2/v2.0/token";
   private static final String OPENID_CONFIG_PATH = "/.well-known/openid-configuration";
 
-  public ValidationResult validateAzureConfiguration(
+  public FieldError validateAzureConfiguration(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
     try {
       return switch (authConfig.getClientType()) {
@@ -28,59 +29,72 @@ public class AzureAuthValidator {
       };
     } catch (Exception e) {
       LOG.error("Azure AD validation failed", e);
-      return new ValidationResult()
-          .withComponent("azure")
-          .withStatus("failed")
-          .withMessage("Azure AD validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          "", "Azure OAuth validation failed: " + e.getMessage());
     }
   }
 
-  private ValidationResult validateAzurePublicClient(AuthenticationConfiguration authConfig) {
+  private FieldError validateAzurePublicClient(AuthenticationConfiguration authConfig) {
     try {
       String authority = authConfig.getAuthority();
       if (!authority.contains("login.microsoftonline.com")) {
-        return new ValidationResult()
-            .withComponent("azure-authority")
-            .withStatus("failed")
-            .withMessage("Azure authority must use login.microsoftonline.com domain");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_AUTHORITY,
+            "Azure authority must use login.microsoftonline.com domain");
       }
 
-      String tenantId = extractTenantId(authority);
+      String tenantId;
+      try {
+        tenantId = extractTenantId(authority);
+      } catch (IllegalArgumentException e) {
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_AUTHORITY, e.getMessage());
+      }
 
-      ValidationResult tenantValidation = validateTenantExists(tenantId);
-      if ("failed".equals(tenantValidation.getStatus())) {
+      FieldError tenantValidation = validateTenantExists(tenantId);
+      if (tenantValidation != null) {
         return tenantValidation;
       }
 
-      ValidationResult clientIdValidation =
-          validatePublicClientId(tenantId, authConfig.getClientId());
-      if ("failed".equals(clientIdValidation.getStatus())) {
+      FieldError clientIdValidation = validatePublicClientId(tenantId, authConfig.getClientId());
+      if (clientIdValidation != null) {
         return clientIdValidation;
       }
 
-      ValidationResult publicKeyValidation = validatePublicKeyUrls(authConfig, tenantId);
-      if ("failed".equals(publicKeyValidation.getStatus())) {
+      FieldError publicKeyValidation = validatePublicKeyUrls(authConfig, tenantId);
+      if (publicKeyValidation != null) {
         return publicKeyValidation;
       }
 
-      return new ValidationResult()
-          .withComponent("azure-public")
-          .withStatus("success")
-          .withMessage(
-              "Azure public client validated successfully. Authority, client ID, and public key URLs are valid.");
+      return null;
     } catch (Exception e) {
       LOG.error("Azure public client validation failed", e);
-      return new ValidationResult()
-          .withComponent("azure-public")
-          .withStatus("failed")
-          .withMessage("Azure public client validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          "", "Azure public key validation failed" + e.getMessage());
     }
   }
 
-  private ValidationResult validateAzureConfidentialClient(
+  private FieldError validateAzureConfidentialClient(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
     try {
       String tenantId = oidcConfig.getTenant();
+
+      // Validate tenant ID for confidential clients
+      if (nullOrEmpty(tenantId)) {
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_TENANT,
+            "Tenant ID is required for Azure confidential clients");
+      }
+
+      // Validate tenant ID format
+      if (!isValidGuid(tenantId)
+          && !"common".equals(tenantId)
+          && !"organizations".equals(tenantId)
+          && !"consumers".equals(tenantId)) {
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_TENANT,
+            "Invalid tenant ID format. Must be a valid GUID or 'common'/'organizations'/'consumers'");
+      }
 
       // Determine the discovery URI to use
       String discoveryUri;
@@ -96,24 +110,21 @@ public class AzureAuthValidator {
             && !discoveryUri.equals(expectedV2DiscoveryUri)) {
           // Check if it's a malformed URI (common error: missing slash)
           if (discoveryUri.contains(".well-knownopenid-configuration")) {
-            return new ValidationResult()
-                .withComponent("azure-discovery-uri")
-                .withStatus("failed")
-                .withMessage(
-                    "Malformed discovery URI detected. Missing '/' between '.well-known' and 'openid-configuration'. "
-                        + "Expected format: "
-                        + expectedDiscoveryUri);
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+                "Malformed discovery URI detected. Missing '/' between '.well-known' and 'openid-configuration'. "
+                    + "Expected format: "
+                    + expectedDiscoveryUri);
           }
-          return new ValidationResult()
-              .withComponent("azure-discovery-uri")
-              .withStatus("failed")
-              .withMessage(
-                  "Invalid Azure discovery URI. Expected: "
-                      + expectedDiscoveryUri
-                      + " or "
-                      + expectedV2DiscoveryUri
-                      + " but got: "
-                      + discoveryUri);
+
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+              "Invalid Azure discovery URI. Expected: "
+                  + expectedDiscoveryUri
+                  + " or "
+                  + expectedV2DiscoveryUri
+                  + " but got: "
+                  + discoveryUri);
         }
       } else {
         // No discovery URI provided, construct default v2 endpoint
@@ -121,141 +132,104 @@ public class AzureAuthValidator {
       }
 
       // First validate that the discovery URI is accessible
-      ValidationResult tenantValidation = validateDiscoveryEndpoint(discoveryUri, tenantId);
-      if ("failed".equals(tenantValidation.getStatus())) {
+      FieldError tenantValidation = validateDiscoveryEndpoint(discoveryUri, tenantId);
+      if (tenantValidation != null) {
         return tenantValidation;
       }
 
       // Then validate against the discovery document
-      ValidationResult discoveryCheck =
+      FieldError discoveryCheck =
           discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, oidcConfig);
-      if (!"success".equals(discoveryCheck.getStatus())) {
+      if (discoveryCheck != null) {
         return discoveryCheck;
       }
 
       // For Azure confidential clients, validate offline_access scope is present
-      ValidationResult offlineAccessCheck = validateOfflineAccessScope(discoveryUri, oidcConfig);
-      if (!"success".equals(offlineAccessCheck.getStatus())) {
+      FieldError offlineAccessCheck = validateOfflineAccessScope(discoveryUri, oidcConfig);
+      if (offlineAccessCheck != null) {
         return offlineAccessCheck;
       }
 
-      ValidationResult publicKeyValidation = validatePublicKeyUrls(authConfig, tenantId);
-      if ("failed".equals(publicKeyValidation.getStatus())) {
+      FieldError publicKeyValidation = validatePublicKeyUrls(authConfig, tenantId);
+      if (publicKeyValidation != null) {
         return publicKeyValidation;
       }
 
-      ValidationResult credentialsValidation =
+      FieldError credentialsValidation =
           validateClientCredentials(tenantId, oidcConfig.getId(), oidcConfig.getSecret());
-      if ("failed".equals(credentialsValidation.getStatus())) {
+      if (credentialsValidation != null) {
         return credentialsValidation;
       }
 
-      return new ValidationResult()
-          .withComponent("azure-confidential")
-          .withStatus("success")
-          .withMessage(
-              "Azure confidential client validated successfully. Configuration validated against discovery document, client credentials, and public key URLs are valid.");
+      return null;
     } catch (Exception e) {
       LOG.error("Azure confidential client validation failed", e);
-      return new ValidationResult()
-          .withComponent("azure-confidential")
-          .withStatus("failed")
-          .withMessage("Azure confidential client validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError("", "Failed azure confidential validation");
     }
   }
 
-  private ValidationResult validateDiscoveryEndpoint(String discoveryUrl, String tenantId) {
+  private FieldError validateDiscoveryEndpoint(String discoveryUrl, String tenantId) {
     try {
       LOG.debug("Validating Azure discovery endpoint: {}", discoveryUrl);
       ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUrl);
 
       if (response.getStatusCode() == 404) {
-        return new ValidationResult()
-            .withComponent("azure-discovery")
-            .withStatus("failed")
-            .withMessage(
-                "Azure discovery endpoint not found. Please verify the discovery URI is correct: "
-                    + discoveryUrl);
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+            "Azure discovery endpoint not found. Please verify the discovery URI is correct");
       } else if (response.getStatusCode() != 200) {
-        return new ValidationResult()
-            .withComponent("azure-discovery")
-            .withStatus("failed")
-            .withMessage(
-                "Failed to access Azure discovery endpoint. HTTP response: "
-                    + response.getStatusCode());
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+            "Failed to access Azure discovery endpoint. HTTP response: "
+                + response.getStatusCode());
       }
 
       // Parse and validate the discovery document
       JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
       if (!discoveryDoc.has("issuer") || !discoveryDoc.has("token_endpoint")) {
-        return new ValidationResult()
-            .withComponent("azure-discovery")
-            .withStatus("failed")
-            .withMessage("Invalid Azure discovery document format at: " + discoveryUrl);
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+            "Invalid Azure discovery document format at: " + discoveryUrl);
       }
-
-      return new ValidationResult()
-          .withComponent("azure-discovery")
-          .withStatus("success")
-          .withMessage("Azure discovery endpoint validated successfully");
+      return null;
     } catch (Exception e) {
-      return new ValidationResult()
-          .withComponent("azure-discovery")
-          .withStatus("failed")
-          .withMessage("Discovery endpoint validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+          "Azure discovery document validation failed");
     }
   }
 
-  private ValidationResult validateTenantExists(String tenantId) {
+  private FieldError validateTenantExists(String tenantId) {
     try {
       String discoveryUrl = AZURE_LOGIN_BASE + "/" + tenantId + OPENID_CONFIG_PATH;
 
       ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUrl);
 
-      if (response.getStatusCode() == 404) {
-        return new ValidationResult()
-            .withComponent("azure-tenant")
-            .withStatus("failed")
-            .withMessage(
-                "Azure tenant '"
-                    + tenantId
-                    + "' not found. Please verify the tenant ID is correct.");
-      } else if (response.getStatusCode() != 200) {
-        return new ValidationResult()
-            .withComponent("azure-tenant")
-            .withStatus("failed")
-            .withMessage("Failed to validate tenant. HTTP response: " + response.getStatusCode());
+      if (response.getStatusCode() != 200) {
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_TENANT, "Failed to validate tenant");
       }
 
-      // Parse and validate the discovery document
       JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
       if (!discoveryDoc.has("issuer") || !discoveryDoc.has("token_endpoint")) {
-        return new ValidationResult()
-            .withComponent("azure-tenant")
-            .withStatus("failed")
-            .withMessage("Invalid Azure discovery document format");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+            "Invalid Azure discovery document format");
       }
-
-      return new ValidationResult()
-          .withComponent("azure-tenant")
-          .withStatus("success")
-          .withMessage("Azure tenant validated successfully");
+      return null;
     } catch (Exception e) {
-      return new ValidationResult()
-          .withComponent("azure-tenant")
-          .withStatus("failed")
-          .withMessage("Tenant validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.OIDC_TENANT, "Failed to validate tenant");
     }
   }
 
-  private ValidationResult validateClientCredentials(
+  private FieldError validateClientCredentials(
       String tenantId, String clientId, String clientSecret) {
     try {
       if (nullOrEmpty(clientSecret)) {
-        return new ValidationResult()
-            .withComponent("azure-credentials")
-            .withStatus("failed")
-            .withMessage("Client secret is required for confidential Azure AD clients");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET,
+            "Client secret is required for confidential Azure AD clients");
       }
 
       String tokenUrl = AZURE_LOGIN_BASE + "/" + tenantId + TOKEN_ENDPOINT_V2;
@@ -270,10 +244,7 @@ public class AzureAuthValidator {
       int responseCode = response.getStatusCode();
       if (responseCode == 200) {
         // Successfully obtained token
-        return new ValidationResult()
-            .withComponent("azure-credentials")
-            .withStatus("success")
-            .withMessage("Azure client credentials validated successfully");
+        return null;
       } else {
         // Parse error response
         try {
@@ -282,39 +253,29 @@ public class AzureAuthValidator {
           String errorDescription = errorResponse.path("error_description").asText();
 
           if ("invalid_client".equals(error)) {
-            return new ValidationResult()
-                .withComponent("azure-credentials")
-                .withStatus("failed")
-                .withMessage(
-                    "Invalid client credentials. Please verify the client ID and secret are correct.");
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET,
+                "Invalid client credentials. Please verify the client ID and secret are correct.");
           } else if ("unauthorized_client".equals(error)) {
-            return new ValidationResult()
-                .withComponent("azure-credentials")
-                .withStatus("failed")
-                .withMessage(
-                    "Client is not authorized. Please ensure the application is properly configured in Azure AD.");
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+                "Client is not authorized. Please ensure the application is properly configured in Azure AD.");
           } else {
-            return new ValidationResult()
-                .withComponent("azure-credentials")
-                .withStatus("failed")
-                .withMessage("Authentication failed: " + errorDescription);
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET,
+                "Authentication failed: " + errorDescription);
           }
         } catch (Exception parseError) {
-          return new ValidationResult()
-              .withComponent("azure-credentials")
-              .withStatus("failed")
-              .withMessage("Credentials validation failed. HTTP response: " + responseCode);
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET,
+              "Credentials validation failed. HTTP response: " + responseCode);
         }
       }
     } catch (Exception e) {
       LOG.warn("Azure credentials validation encountered an error", e);
-      return new ValidationResult()
-          .withComponent("azure-credentials")
-          .withStatus("warning")
-          .withMessage(
-              "Could not fully validate credentials: "
-                  + e.getMessage()
-                  + ". Credentials format appears valid.");
+
+      LOG.warn("Could not fully validate credentials: {}", e.getMessage());
+      return ValidationErrorBuilder.createFieldError("", "Exception occured while validating");
     }
   }
 
@@ -344,11 +305,11 @@ public class AzureAuthValidator {
             "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
   }
 
-  private ValidationResult validatePublicClientId(String tenantId, String clientId) {
+  private FieldError validatePublicClientId(String tenantId, String clientId) {
     return validateClientIdViaTokenEndpoint(tenantId, clientId, "azure-public-client-id", "public");
   }
 
-  private ValidationResult validateClientIdViaTokenEndpoint(
+  private FieldError validateClientIdViaTokenEndpoint(
       String tenantId, String clientId, String componentName, String clientType) {
     try {
       String tokenUrl = AZURE_LOGIN_BASE + "/" + tenantId + TOKEN_ENDPOINT_V2;
@@ -368,66 +329,37 @@ public class AzureAuthValidator {
         String error = errorResponse.path("error").asText();
 
         if ("invalid_client".equals(error)) {
-          // Client ID doesn't exist
-          return new ValidationResult()
-              .withComponent(componentName)
-              .withStatus("failed")
-              .withMessage("Azure client ID not found. Please verify the client ID is correct.");
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+              "Azure client ID not found. Please verify the client ID is correct");
         } else if ("unsupported_grant_type".equals(error) || "invalid_grant".equals(error)) {
-          // Client ID exists but grant type is invalid (expected)
-          String clientTypeDesc = clientType.isEmpty() ? "" : clientType + " ";
-          return new ValidationResult()
-              .withComponent(componentName)
-              .withStatus("success")
-              .withMessage(
-                  "Azure "
-                      + clientTypeDesc
-                      + "client ID validated successfully via token endpoint");
+          return null;
         } else {
-          // Some other error, but client ID format was accepted
-          return new ValidationResult()
-              .withComponent(componentName)
-              .withStatus("success")
-              .withMessage(
-                  "Azure "
-                      + clientType
-                      + " client ID appears to be valid (received: "
-                      + error
-                      + ")");
+          return null;
         }
       } catch (Exception parseError) {
         // If we can't parse the response, assume client ID is valid if we got a response
         if (responseCode == 400) {
-          return new ValidationResult()
-              .withComponent(componentName)
-              .withStatus("success")
-              .withMessage("Azure " + clientType + " client ID validated successfully");
+          return null;
         } else {
-          return new ValidationResult()
-              .withComponent(componentName)
-              .withStatus("failed")
-              .withMessage("Client ID validation failed. HTTP response: " + responseCode);
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID, "Client ID validation failed");
         }
       }
 
     } catch (Exception e) {
-      return new ValidationResult()
-          .withComponent(componentName)
-          .withStatus("warning")
-          .withMessage(
-              "Client ID validation failed: " + e.getMessage() + ". Format appears valid.");
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID, "Client ID validation failed");
     }
   }
 
-  private ValidationResult validatePublicKeyUrls(
+  private FieldError validatePublicKeyUrls(
       AuthenticationConfiguration authConfig, String tenantId) {
     try {
       List<String> publicKeyUrls = authConfig.getPublicKeyUrls();
       if (publicKeyUrls == null || publicKeyUrls.isEmpty()) {
-        return new ValidationResult()
-            .withComponent("azure-public-key-urls")
-            .withStatus("failed")
-            .withMessage("Public key URLs are required for Azure AD clients");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS, "Public key urls are required");
       }
 
       String expectedJwksUrl = AZURE_LOGIN_BASE + "/" + tenantId + "/discovery/v2.0/keys";
@@ -442,11 +374,9 @@ public class AzureAuthValidator {
       }
 
       if (!hasCorrectAzureJwksUrl) {
-        return new ValidationResult()
-            .withComponent("azure-public-key-urls")
-            .withStatus("failed")
-            .withMessage(
-                "At least one public key URL must be the Azure JWKS endpoint: " + expectedJwksUrl);
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+            "At least one public key URL must be the Azure JWKS endpoint: " + expectedJwksUrl);
       }
 
       // Validate all provided URLs
@@ -455,14 +385,9 @@ public class AzureAuthValidator {
           ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(urlStr);
 
           if (response.getStatusCode() != 200) {
-            return new ValidationResult()
-                .withComponent("azure-public-key-urls")
-                .withStatus("failed")
-                .withMessage(
-                    "Public key URL is not accessible. HTTP response: "
-                        + response.getStatusCode()
-                        + " for URL: "
-                        + urlStr);
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+                "Public key url not accessible");
           }
 
           // Validate response is proper JWKS
@@ -470,52 +395,41 @@ public class AzureAuthValidator {
 
           // For JWKS, should have 'keys' array
           if (!jwks.has("keys")) {
-            return new ValidationResult()
-                .withComponent("azure-public-key-urls")
-                .withStatus("failed")
-                .withMessage("Invalid JWKS format. Expected JSON with 'keys' array at: " + urlStr);
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+                "Invalid JWKS format. Expected JSON with 'keys' array at: " + urlStr);
           }
 
           // Validate keys array is not empty
-          if (jwks.get("keys").size() == 0) {
-            return new ValidationResult()
-                .withComponent("azure-public-key-urls")
-                .withStatus("failed")
-                .withMessage("JWKS endpoint returned empty keys array: " + urlStr);
+          if (jwks.get("keys").isEmpty()) {
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+                "JWKS endpoint returned empty keys array: " + urlStr);
           }
 
         } catch (Exception e) {
-          return new ValidationResult()
-              .withComponent("azure-public-key-urls")
-              .withStatus("failed")
-              .withMessage("Invalid public key URL '" + urlStr + "': " + e.getMessage());
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+              "Invalid public key URL: " + urlStr);
         }
       }
 
-      return new ValidationResult()
-          .withComponent("azure-public-key-urls")
-          .withStatus("success")
-          .withMessage(
-              "Azure public key URLs are valid and accessible. Found expected JWKS endpoint: "
-                  + expectedJwksUrl);
+      return null;
     } catch (Exception e) {
-      return new ValidationResult()
-          .withComponent("azure-public-key-urls")
-          .withStatus("failed")
-          .withMessage("Public key URL validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+          "Public key URL validation failed");
     }
   }
 
-  private ValidationResult validateOfflineAccessScope(
-      String discoveryUri, OidcClientConfig oidcConfig) {
+  private FieldError validateOfflineAccessScope(String discoveryUri, OidcClientConfig oidcConfig) {
     try {
       // Fetch the discovery document to check supported scopes
       ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUri);
       if (response.getStatusCode() != 200) {
-        return new ValidationResult()
-            .withComponent("azure-offline-access")
-            .withStatus("warning")
-            .withMessage("Could not verify offline_access scope support from discovery document");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+            "Could not find offline_access scope in discovery document");
       }
 
       JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
@@ -537,53 +451,21 @@ public class AzureAuthValidator {
           configuredScope != null && configuredScope.contains("offline_access");
 
       if (offlineAccessSupported && !hasOfflineAccess) {
-        return new ValidationResult()
-            .withComponent("azure-offline-access")
-            .withStatus("failed")
-            .withMessage(
-                "Azure confidential clients require 'offline_access' scope for refresh tokens. "
-                    + "Without this scope, users may experience frequent authentication issues due to Azure's short token lifetimes. "
-                    + "Please add 'offline_access' to your scope configuration. "
-                    + "Current scope: '"
-                    + (configuredScope != null ? configuredScope : "")
-                    + "'");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_SCOPE,
+            "Azure confidential clients require 'offline_access' scope for refresh tokens. "
+                + "Without this scope, users may experience frequent authentication issues due to Azure's short token lifetimes. "
+                + "Please add 'offline_access' to your scope configuration. "
+                + "Current scope: '"
+                + (configuredScope != null ? configuredScope : "")
+                + "'");
       }
 
-      if (hasOfflineAccess && !offlineAccessSupported) {
-        return new ValidationResult()
-            .withComponent("azure-offline-access")
-            .withStatus("warning")
-            .withMessage(
-                "The 'offline_access' scope is configured but may not be supported by this Azure tenant");
-      }
-
-      if (hasOfflineAccess && offlineAccessSupported) {
-        return new ValidationResult()
-            .withComponent("azure-offline-access")
-            .withStatus("success")
-            .withMessage("Offline access scope is properly configured for refresh tokens");
-      }
-
-      // If offline_access is not supported by Azure, just warn
-      if (!offlineAccessSupported) {
-        return new ValidationResult()
-            .withComponent("azure-offline-access")
-            .withStatus("warning")
-            .withMessage(
-                "This Azure tenant may not support offline_access scope. Users might experience frequent re-authentication");
-      }
-
-      return new ValidationResult()
-          .withComponent("azure-offline-access")
-          .withStatus("success")
-          .withMessage("Offline access scope validation completed");
+      return null;
 
     } catch (Exception e) {
       LOG.error("Error validating offline_access scope", e);
-      return new ValidationResult()
-          .withComponent("azure-offline-access")
-          .withStatus("warning")
-          .withMessage("Could not validate offline_access scope: " + e.getMessage());
+      return null;
     }
   }
 }

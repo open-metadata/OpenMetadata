@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isEqual, pick, sortBy } from 'lodash';
 import { DateRangeObject } from 'Models';
 import { useEffect, useMemo, useState } from 'react';
@@ -26,23 +25,29 @@ import {
   XAxis,
 } from 'recharts';
 import {
+  BLUE_1,
   GREEN_4,
   GREY_100,
   RED_3,
   YELLOW_3,
 } from '../../../constants/Color.constants';
+import { ES_MAX_PAGE_SIZE } from '../../../constants/constants';
 import { DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS } from '../../../constants/DataContract.constants';
 import { PROFILER_FILTER_RANGE } from '../../../constants/profiler.constant';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
-import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import { getAllContractResults } from '../../../rest/contractAPI';
-import { getContractExecutionMonthTicks } from '../../../utils/DataContract/DataContractUtils';
 import {
-  formatMonth,
+  createContractExecutionCustomScale,
+  formatContractExecutionTick,
+  generateMonthTickPositions,
+  processContractExecutionData,
+} from '../../../utils/DataContract/DataContractUtils';
+import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
+import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DatePickerMenu from '../../common/DatePickerMenu/DatePickerMenu.component';
 import Loader from '../../common/Loader/Loader';
@@ -60,7 +65,10 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
         endTs: getCurrentMillis(),
       },
       key: 'last30days',
-      title: PROFILER_FILTER_RANGE.last30days.title,
+      title: translateWithNestedKeys(
+        PROFILER_FILTER_RANGE.last30days.title,
+        PROFILER_FILTER_RANGE.last30days.titleData
+      ),
     }),
     []
   );
@@ -78,6 +86,7 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
       setIsLoading(true);
       const results = await getAllContractResults(contract.id, {
         ...pick(dateRangeObj, ['startTs', 'endTs']),
+        limit: ES_MAX_PAGE_SIZE,
       });
       setContractExecutionResultList(sortBy(results.data, 'timestamp'));
     } catch (err) {
@@ -87,31 +96,24 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
     }
   };
 
-  const { processedChartData, executionMonthThicks } = useMemo(() => {
-    const processed = contractExecutionResultList.map((item) => {
-      return {
-        name: item.timestamp,
-        failed:
-          item.contractExecutionStatus === ContractExecutionStatus.Failed
-            ? 1
-            : 0,
-        success:
-          item.contractExecutionStatus === ContractExecutionStatus.Success
-            ? 1
-            : 0,
-        aborted:
-          item.contractExecutionStatus === ContractExecutionStatus.Aborted
-            ? 1
-            : 0,
-        data: item,
-      };
-    });
+  const { processedChartData, executionMonthThicks, customScale } =
+    useMemo(() => {
+      const processed = processContractExecutionData(
+        contractExecutionResultList
+      );
 
-    return {
-      processedChartData: processed,
-      executionMonthThicks: getContractExecutionMonthTicks(processed),
-    };
-  }, [contractExecutionResultList]);
+      // Create custom scale for positioning bars from the left
+      const customScaleFunction = createContractExecutionCustomScale(processed);
+
+      // Generate tick positions for month labels
+      const tickPositions = generateMonthTickPositions(processed);
+
+      return {
+        processedChartData: processed,
+        executionMonthThicks: tickPositions,
+        customScale: customScaleFunction,
+      };
+    }, [contractExecutionResultList]);
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     if (!isEqual(value, dateRangeObject)) {
@@ -135,11 +137,7 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
       {isLoading ? (
         <Loader />
       ) : (
-        <ResponsiveContainer
-          className={classNames('contract-execution-chart', {
-            'contract-execution-chart-less-width':
-              contractExecutionResultList.length <= 8,
-          })}>
+        <ResponsiveContainer className="contract-execution-chart">
           <BarChart data={processedChartData}>
             <CartesianGrid
               stroke={GREY_100}
@@ -154,8 +152,9 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
             <XAxis
               axisLine={false}
               dataKey="name"
-              domain={['min', 'max']}
-              tickFormatter={formatMonth}
+              domain={[dateRangeObject.startTs, dateRangeObject.endTs]}
+              scale={customScale}
+              tickFormatter={formatContractExecutionTick}
               tickMargin={10}
               ticks={executionMonthThicks}
             />
@@ -180,6 +179,15 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
               dataKey="aborted"
               fill={YELLOW_3}
               name={t('label.aborted')}
+              stackId="single"
+              {...DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS}
+            />
+
+            <Bar
+              activeBar={<Rectangle fill={BLUE_1} stroke={BLUE_1} />}
+              dataKey="running"
+              fill={BLUE_1}
+              name={t('label.running')}
               stackId="single"
               {...DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS}
             />

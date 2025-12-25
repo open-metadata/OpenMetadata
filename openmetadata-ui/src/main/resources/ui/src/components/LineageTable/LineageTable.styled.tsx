@@ -19,21 +19,26 @@ import {
 } from '@mui/material';
 import type { MenuProps } from '@mui/material/Menu';
 import Menu from '@mui/material/Menu';
+import React from 'react';
 
 export const StyledMenu = styled((props: MenuProps) => <Menu {...props} />)(
   ({ theme }) => ({
     '& .MuiPaper-root': {
       width: 'auto',
+
       '& .MuiMenu-list': {
         padding: '0',
+        borderRadius: '8px',
       },
       '& .MuiMenuItem-root': {
         margin: '0',
         padding: '10px 16px',
         borderRadius: '0px',
+
         '& svg': {
-          height: 20,
-          marginRight: theme.spacing(1.5),
+          height: 16,
+          width: 16,
+          marginRight: theme.spacing(3),
         },
         '&:active': {
           backgroundColor: theme.palette.allShades.blue[25],
@@ -83,21 +88,34 @@ export const StyledToggleButtonGroup = styled(
   },
 }));
 
-export const StyledIconButton = styled((props: IconButtonProps) => (
-  <IconButton {...props} />
-))(({ theme }) => ({
+export const StyledIconButton = styled(
+  React.forwardRef<HTMLButtonElement, IconButtonProps>((props, ref) => (
+    <IconButton {...props} ref={ref} />
+  ))
+)(({ theme }) => ({
   height: 40,
   width: 40,
 
   '& svg': {
     height: 20,
     width: 20,
-    color: theme.palette.allShades.gray[500],
+    color: theme.palette.allShades.gray[600],
   },
-  boxShadow: 'none',
-  borderColor: theme.palette.allShades.gray[300],
-  backgroundColor: theme.palette.allShades.gray[50],
+  boxShadow: theme.shadows[1],
+  borderColor: theme.palette.allShades.gray[200],
+  backgroundColor: theme.palette.allShades.white,
   border: '1px solid',
+  borderRadius: theme.shape.borderRadius,
+
+  '&:hover': {
+    backgroundColor: theme.palette.allShades.white,
+    borderColor: theme.palette.allShades.blue[700],
+    color: theme.palette.allShades.blue[700],
+
+    '& svg': {
+      color: theme.palette.allShades.blue[700],
+    },
+  },
 
   '&.MuiIconButton-colorPrimary': {
     borderColor: theme.palette.allShades.blue[700],

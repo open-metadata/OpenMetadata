@@ -1,9 +1,0 @@
-{
-  "name": "system-notification-entity-default",
-  "fullyQualifiedName": "system-notification-entity-default",
-  "displayName": "Default Entity Notification",
-  "description": "System default fallback template for any unhandled eventTypes",
-  "provider": "system",
-  "templateSubject": "{{event.eventType}} - {{entity.fullyQualifiedName}}",
-  "templateBody": "{{#if (eq channel 'email')}}Hello {{recipientName}},<br/><br/>{{/if}}[{{publisherName}}] <b>{{event.userName}}</b> performed {{event.eventType}} on <a href=\"{{entity.href}}\">{{entity.fullyQualifiedName}}</a>{{#if changes.fieldsUpdated}}<br/><b>Changed:</b> {{#each changes.fieldsUpdated}}{{name}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}{{#if (eq channel 'email')}}<br/><br/>Happy Exploring!<br/>Thanks.{{/if}}"
-}

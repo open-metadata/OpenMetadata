@@ -233,9 +233,7 @@ describe('ProviderSelector', () => {
 
   describe('Selection State', () => {
     it('should highlight selected provider', () => {
-      const { container } = render(
-        <ProviderSelector onProviderSelect={mockOnProviderSelect} />
-      );
+      render(<ProviderSelector onProviderSelect={mockOnProviderSelect} />);
 
       const googleCard = screen.getByText('Google').closest('.provider-item');
       fireEvent.click(googleCard!);
@@ -244,9 +242,7 @@ describe('ProviderSelector', () => {
     });
 
     it('should allow changing selection', () => {
-      const { container } = render(
-        <ProviderSelector onProviderSelect={mockOnProviderSelect} />
-      );
+      render(<ProviderSelector onProviderSelect={mockOnProviderSelect} />);
 
       const googleCard = screen.getByText('Google').closest('.provider-item');
       const oktaCard = screen.getByText('Okta').closest('.provider-item');

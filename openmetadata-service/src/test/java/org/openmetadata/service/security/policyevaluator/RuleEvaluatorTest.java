@@ -30,6 +30,7 @@ import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -48,6 +49,7 @@ import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.DomainRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
@@ -202,7 +204,7 @@ class RuleEvaluatorTest {
         Mockito.spy(new CreateResourceContext<>(Entity.DATA_PRODUCT, dataProduct));
 
     resourceContext = new ResourceContext<>(Entity.TABLE, table, tableRepository);
-    subjectContext = new SubjectContext(user);
+    subjectContext = new SubjectContext(user, null);
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
   }
@@ -277,13 +279,13 @@ class RuleEvaluatorTest {
             policy.getName(),
             compiledRules);
 
-    subjectContext = new SubjectContext(ownerUser);
+    subjectContext = new SubjectContext(ownerUser, null);
     RuleEvaluator ruleEvaluator =
         new RuleEvaluator(policyContext, subjectContext, createResourceContextSchema);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertTrue(evaluateExpression("isOwner()"));
 
-    subjectContext = new SubjectContext(nonOwnerUser);
+    subjectContext = new SubjectContext(nonOwnerUser, null);
     ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, createResourceContextSchema);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertFalse(evaluateExpression("isOwner()"));
@@ -306,7 +308,7 @@ class RuleEvaluatorTest {
             policy.getName(),
             compiledRules);
 
-    subjectContext = new SubjectContext(ownerUser);
+    subjectContext = new SubjectContext(ownerUser, null);
     ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, resourceContextDataProduct);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertTrue(evaluateExpression("isOwner()"));
@@ -315,7 +317,7 @@ class RuleEvaluatorTest {
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertTrue(evaluateExpression("isOwner()"));
 
-    subjectContext = new SubjectContext(nonOwnerUser);
+    subjectContext = new SubjectContext(nonOwnerUser, null);
     ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, resourceContextDataProduct);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertFalse(evaluateExpression("isOwner()"));
@@ -323,6 +325,48 @@ class RuleEvaluatorTest {
         new RuleEvaluator(policyContext, subjectContext, createResourceContextDataProduct);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertFalse(evaluateExpression("isOwner()"));
+  }
+
+  @Test
+  void test_isReviewer() {
+    GlossaryRepository glossaryRepository = mock(GlossaryRepository.class);
+    Entity.registerEntity(Glossary.class, Entity.GLOSSARY, glossaryRepository);
+
+    User reviewer = new User().withId(UUID.randomUUID()).withName("reviewerUser");
+    EntityReference reviewerRef =
+        new EntityReference()
+            .withId(reviewer.getId())
+            .withType(Entity.USER)
+            .withName("reviewerUser");
+
+    Glossary glossary =
+        new Glossary()
+            .withId(UUID.randomUUID())
+            .withName("testGlossary")
+            .withReviewers(List.of(reviewerRef));
+
+    EntityRepository.CACHE_WITH_ID.put(
+        new ImmutablePair<>(Entity.GLOSSARY, glossary.getId()), glossary);
+
+    SubjectContext subjectContext = new SubjectContext(reviewer, null);
+
+    ResourceContext<Glossary> glossaryResourceContext =
+        new ResourceContext<>(Entity.GLOSSARY, glossary, glossaryRepository);
+
+    RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, glossaryResourceContext);
+    EvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
+
+    assertTrue(
+        parseExpression("isReviewer()").getValue(evaluationContext, Boolean.class),
+        "Reviewer user should return true for isReviewer()");
+
+    User otherUser = new User().withId(UUID.randomUUID()).withName("otherUser");
+    SubjectContext otherSubjectContext = new SubjectContext(otherUser, null);
+    ruleEvaluator = new RuleEvaluator(null, otherSubjectContext, glossaryResourceContext);
+    evaluationContext = new StandardEvaluationContext(ruleEvaluator);
+    assertFalse(
+        parseExpression("isReviewer()").getValue(evaluationContext, Boolean.class),
+        "Non-reviewer user should return false for isReviewer()");
   }
 
   @Test
@@ -983,7 +1027,7 @@ class RuleEvaluatorTest {
 
   @AfterEach
   void resetContext() {
-    subjectContext = new SubjectContext(user);
+    subjectContext = new SubjectContext(user, null);
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     LOG.info("Context reset to default state after test completion.");

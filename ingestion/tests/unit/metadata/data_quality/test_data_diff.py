@@ -59,6 +59,7 @@ def test_compile_and_clauses(elements, expected):
                                 Column(name="id", dataType=DataType.STRING),
                                 Column(name="name", dataType=DataType.STRING),
                             ],
+                            "key_columns": ["id"],
                         }
                     ),
                     "table2": TableParameter.model_construct(
@@ -68,6 +69,7 @@ def test_compile_and_clauses(elements, expected):
                                 Column(name="id", dataType=DataType.STRING),
                                 Column(name="name", dataType=DataType.STRING),
                             ],
+                            "key_columns": ["id"],
                         }
                     ),
                     "keyColumns": ["id"],
@@ -90,6 +92,7 @@ def test_compile_and_clauses(elements, expected):
                                 Column(name="id", dataType=DataType.STRING),
                                 Column(name="name", dataType=DataType.STRING),
                             ],
+                            "key_columns": ["id"],
                         }
                     ),
                     "table2": TableParameter.model_construct(
@@ -99,6 +102,7 @@ def test_compile_and_clauses(elements, expected):
                                 Column(name="id", dataType=DataType.STRING),
                                 Column(name="name", dataType=DataType.STRING),
                             ],
+                            "key_columns": ["id"],
                         }
                     ),
                     "keyColumns": ["id"],
@@ -121,6 +125,7 @@ def test_compile_and_clauses(elements, expected):
                                 Column(name="id", dataType=DataType.STRING),
                                 Column(name="name", dataType=DataType.STRING),
                             ],
+                            "key_columns": ["id", "name"],
                         }
                     ),
                     "table2": TableParameter.model_construct(
@@ -130,6 +135,7 @@ def test_compile_and_clauses(elements, expected):
                                 Column(name="id", dataType=DataType.STRING),
                                 Column(name="name", dataType=DataType.STRING),
                             ],
+                            "key_columns": ["id", "name"],
                         }
                     ),
                     "keyColumns": ["id", "name"],
@@ -152,6 +158,7 @@ def test_compile_and_clauses(elements, expected):
                                 Column(name="id", dataType=DataType.STRING),
                                 Column(name="name", dataType=DataType.STRING),
                             ],
+                            "key_columns": ["id", "name"],
                         }
                     ),
                     "table2": TableParameter.model_construct(
@@ -161,6 +168,7 @@ def test_compile_and_clauses(elements, expected):
                                 Column(name="id", dataType=DataType.STRING),
                                 Column(name="name", dataType=DataType.STRING),
                             ],
+                            "key_columns": ["id", "name"],
                         },
                     ),
                     "keyColumns": ["id", "name"],
@@ -182,6 +190,7 @@ def test_compile_and_clauses(elements, expected):
                                 Column(name="id", dataType=DataType.STRING),
                                 Column(name="name", dataType=DataType.STRING),
                             ],
+                            "key_columns": ["id"],
                         }
                     ),
                     "table2": TableParameter.model_construct(
@@ -191,6 +200,7 @@ def test_compile_and_clauses(elements, expected):
                                 Column(name="ID", dataType=DataType.STRING),
                                 Column(name="name", dataType=DataType.STRING),
                             ],
+                            "key_columns": ["id"],
                         },
                     ),
                     "keyColumns": ["id"],
@@ -212,6 +222,7 @@ def test_compile_and_clauses(elements, expected):
                                 Column(name="id", dataType=DataType.STRING),
                                 Column(name="name", dataType=DataType.STRING),
                             ],
+                            "key_columns": ["id"],
                         }
                     ),
                     "table2": TableParameter.model_construct(
@@ -221,6 +232,7 @@ def test_compile_and_clauses(elements, expected):
                                 Column(name="id", dataType=DataType.STRING),
                                 Column(name="name", dataType=DataType.STRING),
                             ],
+                            "key_columns": ["id"],
                         },
                     ),
                     "keyColumns": ["id"],

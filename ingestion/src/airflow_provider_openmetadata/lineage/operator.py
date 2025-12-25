@@ -12,11 +12,14 @@
 """
 OpenMetadata Airflow Lineage Operator
 """
+import logging
 import traceback
 from typing import List
 
 from airflow.models.baseoperator import BaseOperator
 from airflow.utils.context import Context
+
+logger = logging.getLogger(__name__)
 
 from airflow_provider_openmetadata.lineage.runner import AirflowLineageRunner
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -63,9 +66,7 @@ class OpenMetadataLineageOperator(BaseOperator):
         try:
             xlet_list: List[XLets] = get_xlets_from_dag(self.dag)
 
-            self.dag.log.info(
-                f"Extracted the following XLet data from the DAG: {xlet_list}"
-            )
+            logger.info(f"Extracted the following XLet data from the DAG: {xlet_list}")
 
             metadata = OpenMetadata(self.server_config)
             runner = AirflowLineageRunner(
@@ -79,6 +80,6 @@ class OpenMetadataLineageOperator(BaseOperator):
 
             runner.execute()
         except Exception as err:
-            self.dag.log.info(traceback.format_exc())
-            self.dag.log.error(f"Error executing the lineage runner - {err}")
+            logger.info(traceback.format_exc())
+            logger.error(f"Error executing the lineage runner - {err}")
             raise err

@@ -12,9 +12,13 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
+import { SearchIndex } from '../../../enums/search.enum';
 import { User } from '../../../generated/entity/teams/user';
-import { searchData } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import { MyDataWidget } from './MyDataWidget.component';
 
 const mockUserData: User = {
@@ -51,10 +55,15 @@ const mockSearchAPIResponse = {
   },
 };
 
-jest.mock('../../../rest/miscAPI', () => ({
-  searchData: jest.fn().mockImplementation(() =>
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockImplementation(() =>
     Promise.resolve({
-      owns: [],
+      hits: {
+        hits: [],
+        total: {
+          value: 0,
+        },
+      },
     })
   ),
 }));
@@ -65,6 +74,13 @@ jest.mock('../../../utils/EntityUtils', () => ({
 
 jest.mock('../../../utils/SearchClassBase', () => ({
   getEntityIcon: jest.fn().mockImplementation((obj) => obj.name),
+}));
+
+jest.mock('../../../constants/Widgets.constant', () => ({
+  getSortField: jest.fn().mockReturnValue('updatedAt'),
+  getSortOrder: jest.fn().mockReturnValue('desc'),
+  applySortToData: jest.fn().mockImplementation((data) => data),
+  MY_DATA_WIDGET_FILTER_OPTIONS: [],
 }));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -86,15 +102,22 @@ describe('MyDataWidget component', () => {
       render(<MyDataWidget widgetKey="widgetKey" />, { wrapper: MemoryRouter });
     });
 
-    expect(searchData).toHaveBeenCalledWith(
-      '',
-      1,
-      PAGE_SIZE_MEDIUM,
-      '(owners.id:113)',
-      'updatedAt',
-      'desc',
-      'all'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: '',
+      pageNumber: INITIAL_PAGING_VALUE,
+      pageSize: PAGE_SIZE_MEDIUM,
+      queryFilter: {
+        query: {
+          bool: {
+            should: [{ term: { 'owners.id': '113' } }],
+            minimum_should_match: 1,
+          },
+        },
+      },
+      sortField: 'updatedAt',
+      sortOrder: 'desc',
+      searchIndex: SearchIndex.ALL,
+    });
   });
 
   it('should render header', async () => {
@@ -122,7 +145,9 @@ describe('MyDataWidget component', () => {
   });
 
   it('should render table names', async () => {
-    (searchData as jest.Mock).mockResolvedValueOnce(mockSearchAPIResponse);
+    (searchQuery as jest.Mock).mockResolvedValueOnce(
+      mockSearchAPIResponse.data
+    );
     await act(async () => {
       render(
         <MemoryRouter>

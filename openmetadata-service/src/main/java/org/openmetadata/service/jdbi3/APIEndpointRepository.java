@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 
 import java.util.ArrayList;
@@ -191,7 +192,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
     for (APIEndpoint endpoint : apiEndpoints) {
       endpoint.setTags(
-          addDerivedTags(
+          addDerivedTagsGracefully(
               tagsMap.getOrDefault(endpoint.getFullyQualifiedName(), Collections.emptyList())));
     }
 

@@ -27,22 +27,11 @@ import { Tab } from '../generated/system/ui/uiCustomization';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import {
+  DirectoryDetailPageTabProps,
   getDirectoryDetailsPageTabs,
   getDirectoryWidgetsFromKey,
 } from './DirectoryDetailsUtils';
 import i18n from './i18next/LocalUtil';
-
-export interface DirectoryDetailPageTabProps {
-  childrenCount: number;
-  activityFeedTab: JSX.Element;
-  lineageTab: JSX.Element;
-  customPropertiesTab: JSX.Element;
-  activeTab: EntityTabs;
-  feedCount: {
-    totalCount: number;
-  };
-  labelMap?: Record<EntityTabs, string>;
-}
 
 type DirectoryWidgetKeys =
   | DetailPageWidgetKeys.DESCRIPTION
@@ -77,6 +66,7 @@ class DirectoryClassBase {
       EntityTabs.CHILDREN,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.LINEAGE,
+      EntityTabs.CONTRACT,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,

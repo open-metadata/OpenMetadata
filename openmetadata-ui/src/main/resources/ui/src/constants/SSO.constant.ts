@@ -15,21 +15,24 @@ import { ClientType } from '../generated/configuration/securityConfiguration';
 import {
   getAuthorityUrl,
   getCallbackUrl,
-  getDomainUrl,
   getServerUrl,
-} from '../utils/SSOUtils';
+} from '../utils/SSOURLUtils';
 
 // Default callback URL for SSO configuration
 export const DEFAULT_CALLBACK_URL = getCallbackUrl();
+
+// OIDC-specific default values
+export const OIDC_SSO_DEFAULTS = {
+  tokenValidity: 3600,
+  serverUrl: getServerUrl(),
+  sessionExpiry: 604800,
+};
 
 // Google-specific default values
 export const GOOGLE_SSO_DEFAULTS = {
   authority: 'https://accounts.google.com',
   publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
   discoveryUri: 'https://accounts.google.com/.well-known/openid-configuration',
-  tokenValidity: 3600,
-  sessionExpiry: 604800,
-  serverUrl: getServerUrl(),
 };
 
 // SAML-specific default values
@@ -39,7 +42,7 @@ export const SAML_SSO_DEFAULTS = {
     authorityUrl: getAuthorityUrl(), // Note: field name is authorityUrl in IDP, not authority
   },
   sp: {
-    entityId: getDomainUrl(),
+    entityId: getServerUrl(),
     acs: getCallbackUrl(),
     callback: getCallbackUrl(),
   },
@@ -67,7 +70,9 @@ export const COMMON_UI_FIELDS = {
   },
   oidcScope: {
     'ui:title': 'OIDC Request Scopes',
-    'ui:placeholder': 'e.g. openid email profile',
+    'ui:placeholder':
+      'Enter scope (e.g. openid, email, profile) and press ENTER',
+    'ui:field': 'ArrayField',
   },
   oidcDiscoveryUri: {
     'ui:title': 'OIDC Discovery URI',
@@ -121,23 +126,12 @@ export const COMMON_UI_FIELDS = {
 // Common hidden fields for all providers
 export const COMMON_HIDDEN_FIELDS = {
   responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  forceSecureSessionCookie: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // Authorizer hidden fields
 export const AUTHORIZER_HIDDEN_FIELDS = {
   testPrincipals: {
-    'ui:widget': 'hidden',
-    'ui:hideError': true,
-  },
-  allowedEmailRegistrationDomains: {
-    'ui:widget': 'hidden',
-    'ui:hideError': true,
-  },
-  allowedDomains: {
-    'ui:widget': 'hidden',
-    'ui:hideError': true,
-  },
-  useRolesFromProvider: {
     'ui:widget': 'hidden',
     'ui:hideError': true,
   },
@@ -190,9 +184,62 @@ export const LDAP_UI_SCHEMA = {
       'ui:title': 'Auth Reassign Roles',
       'ui:placeholder': 'Enter value (e.g. Admin, DataSteward) and press ENTER',
     },
-    // Hide trustStore fields as they are not commonly used
-    truststoreConfigType: { 'ui:widget': 'hidden', 'ui:hideError': true },
-    trustStoreConfig: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    // Show truststoreConfigType when SSL is enabled
+    truststoreConfigType: {
+      'ui:title': 'Trust Store Config Type',
+    },
+    trustStoreConfig: {
+      'ui:title': 'Trust Store Configuration',
+      customTrustManagerConfig: {
+        'ui:title':
+          'Custom Trust Store Settings (Use when Trust Store Config Type = CustomTrustStore)',
+        trustStoreFilePath: {
+          'ui:title': 'Trust Store File Path',
+          'ui:placeholder': '/opt/openmetadata/certs/ldap-truststore.jks',
+        },
+        trustStoreFilePassword: {
+          'ui:title': 'Trust Store Password',
+          'ui:widget': 'password',
+        },
+        trustStoreFileFormat: {
+          'ui:title': 'Trust Store Format',
+          'ui:placeholder': 'JKS',
+        },
+        verifyHostname: {
+          'ui:title': 'Verify Hostname',
+        },
+        examineValidityDates: {
+          'ui:title': 'Check Certificate Validity',
+        },
+      },
+      hostNameConfig: {
+        'ui:title':
+          'Hostname Settings (Use when Trust Store Config Type = HostName)',
+        allowWildCards: {
+          'ui:title': 'Allow Wildcards',
+        },
+        acceptableHostNames: {
+          'ui:title': 'Acceptable Host Names',
+          'ui:options': {
+            addable: true,
+          },
+        },
+      },
+      trustAllConfig: {
+        'ui:title':
+          'Trust All Settings (Use when Trust Store Config Type = TrustAll)',
+        examineValidityDates: {
+          'ui:title': 'Check Certificate Validity',
+        },
+      },
+      jvmDefaultConfig: {
+        'ui:title':
+          'JVM Default Settings (Use when Trust Store Config Type = JVMDefault)',
+        verifyHostname: {
+          'ui:title': 'Verify Hostname',
+        },
+      },
+    },
   },
   // Hide other provider configs for LDAP
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -379,7 +426,7 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
     clientAuthenticationMethod: COMMON_UI_FIELDS.oidcClientAuthenticationMethod,
     tokenValidity: {
       'ui:title': 'OIDC Token Validity',
-      'ui:placeholder': `Default: ${GOOGLE_SSO_DEFAULTS.tokenValidity}`,
+      'ui:placeholder': `Default: ${OIDC_SSO_DEFAULTS.tokenValidity}`,
     },
     customParams: COMMON_UI_FIELDS.oidcCustomParameters,
     tenant: { 'ui:widget': 'hidden', 'ui:hideError': true }, // Hide tenant for Google (not applicable)
@@ -392,7 +439,7 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: {
       'ui:title': 'OIDC Session Expiry',
-      'ui:placeholder': `Default: ${GOOGLE_SSO_DEFAULTS.sessionExpiry}`,
+      'ui:placeholder': `Default: ${OIDC_SSO_DEFAULTS.sessionExpiry}`,
     },
   },
   // For public client mode
@@ -436,6 +483,7 @@ export const COMMON_FIELD_TITLES = {
       'Enter username:claim_name (e.g. username:preferred_username,email:email) and press ENTER.',
   },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableAutoRedirect: { 'ui:title': 'Enable Auto Redirect' },
   clientType: {
     'ui:title': 'Client Type',
     'ui:widget': 'radio',
@@ -500,6 +548,11 @@ export const BOT_PRINCIPALS_VISIBILITY: Record<string, UISchemaField> = {
   auth0: { 'ui:widget': 'hidden', 'ui:hideError': true },
   basic: { 'ui:widget': 'hidden', 'ui:hideError': true },
   'aws-cognito': { 'ui:widget': 'hidden', 'ui:hideError': true },
+  azure: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  okta: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  ldap: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  saml: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  'custom-oidc': { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // Provider-specific field removal mapping for cleanup
@@ -551,7 +604,10 @@ export const PROVIDER_FIELD_MAPPINGS: Record<string, string[]> = {
 };
 
 // Common fields to always remove from authentication configuration
-export const COMMON_AUTH_FIELDS_TO_REMOVE = ['responseType'];
+export const COMMON_AUTH_FIELDS_TO_REMOVE = [
+  'responseType',
+  'forceSecureSessionCookie',
+];
 
 // Hardcoded authorizer values
 export const DEFAULT_AUTHORIZER_CLASS_NAME =
@@ -559,31 +615,17 @@ export const DEFAULT_AUTHORIZER_CLASS_NAME =
 export const DEFAULT_CONTAINER_REQUEST_FILTER =
   'org.openmetadata.service.security.JwtFilter';
 
-// Common fields to always remove from authorizer configuration
-export const COMMON_AUTHORIZER_FIELDS_TO_REMOVE = [
-  'testPrincipals',
-  'allowedEmailRegistrationDomains',
-  'allowedDomains',
-  'useRolesFromProvider',
-];
-
-// SAML security fields to remove
-export const SAML_SECURITY_FIELDS_TO_REMOVE = [
-  'validateXml',
-  'sendEncryptedNameId',
-  'signSpMetadata',
-  'wantAssertionEncrypted',
-  'keyStoreFilePath',
-  'keyStoreAlias',
-  'keyStorePassword',
-];
-
-// Providers that should NOT include bot principals (only Azure and Okta should)
+// Providers that should NOT include bot principals (deprecated field - no provider should have it)
 export const PROVIDERS_WITHOUT_BOT_PRINCIPALS = [
   'google',
   'auth0',
   'basic',
   'aws-cognito',
+  'azure',
+  'okta',
+  'ldap',
+  'saml',
+  'custom-oidc',
 ];
 
 // Main SSO UI Schema generator
@@ -653,6 +695,7 @@ export interface AuthenticationConfiguration {
   jwtPrincipalClaims: string[];
   jwtPrincipalClaimsMapping: string[];
   enableSelfSignup: boolean;
+  enableAutoRedirect?: boolean;
   clientType?: ClientType;
   secret?: string;
   ldapConfiguration?: Record<string, unknown>;

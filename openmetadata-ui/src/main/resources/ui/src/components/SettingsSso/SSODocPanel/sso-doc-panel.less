@@ -14,11 +14,22 @@
 @import (reference) '../../../styles/variables.less';
 
 .sso-doc-panel {
+  height: 100%;
+  padding-top: @size-lg;
+  display: flex;
+  flex-direction: column;
+
+  .sso-doc-content-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
   .sso-doc-header {
     display: flex;
     align-items: center;
     gap: @padding-xs;
-    margin-bottom: @size-sm - 2px;
+    padding: 0 @size-lg @size-lg @size-lg;
 
     .sso-provider-icon {
       display: flex;
@@ -31,6 +42,7 @@
       font-weight: 600;
       color: @grey-900;
       line-height: @size-lg;
+      font-size: 18px;
     }
   }
 
@@ -41,7 +53,7 @@
     h4,
     h5,
     h6 {
-      font-size: @font-size-base;
+      font-size: 18px;
       font-weight: 600;
       line-height: @size-mlg;
       padding-bottom: @size-xs;
@@ -53,17 +65,14 @@
         background: @primary-50;
         border-left: @size-xxs solid @primary-6;
 
-        box-shadow: @box-shadow-highlight-light;
-        animation: highlightPulse 0.6s ease-in-out;
-
         margin: 0;
 
         &[data-highlight-position='first'] {
-          padding-left: @size-xs;
           padding-top: @size-xs;
+          padding-bottom: @size-xs;
           border-bottom: none;
           h3 {
-            padding: 0;
+            padding: 0 @size-lg;
           }
         }
 
@@ -85,13 +94,30 @@
         color: @grey-800;
       }
     }
+    h1 {
+      padding: 0 @size-lg;
+    }
+    h2 {
+      padding: 0 @size-lg @size-md @size-lg;
+    }
 
     h3 {
       color: @grey-800;
-      font-size: @font-size-base;
+      font-size: 18px;
+      padding: 0 @size-lg;
       font-weight: 600;
       border-bottom: none;
       padding-bottom: @padding-xs;
+      margin: 24px 0px 10px 0px;
+
+      // Add margin after the entire section (after h3 and its siblings)
+      ~ h3 {
+        margin-top: @size-lg;
+      }
+
+      ~ ul {
+        padding: 0 @size-lg 0 40px;
+      }
     }
 
     h4 {
@@ -100,19 +126,28 @@
       font-weight: 600;
     }
 
+    h6 {
+      font-size: 18px;
+    }
+
     ul {
-      margin-bottom: @padding-md;
+      padding: 0 @size-lg @size-md @size-lg + @size-mlg;
+      margin-bottom: @size-lg;
+
+      ul {
+        margin-bottom: 0;
+        padding-bottom: 0;
+      }
 
       &[data-highlighted='true'] {
         background: @primary-50;
         border-left: @size-xxs solid @primary-6;
 
         margin: 0;
-        animation: highlightPulse 0.6s ease-in-out;
 
         &[data-highlight-position='first'] {
           border-bottom: none;
-          padding-left: @size-xs;
+          padding-left: @size-lg + @size-mlg;
         }
 
         &[data-highlight-position='middle'] {
@@ -129,11 +164,16 @@
       }
 
       li {
-        margin-bottom: @padding-xs;
+        margin-bottom: @padding-xss;
         line-height: @size-sm + 2px;
         font-size: @font-size-base;
         font-weight: 400;
         color: @grey-800;
+
+        p {
+          padding: 0;
+          margin-bottom: 0;
+        }
 
         strong {
           color: @grey-800;
@@ -143,12 +183,18 @@
     }
 
     p {
-      margin-bottom: @padding-md;
-      margin-top: 0;
+      padding: 0 @size-lg;
+      margin-bottom: @size-lg;
       line-height: @size-mlg;
       font-size: @font-size-base;
       font-weight: 400;
       color: @grey-800;
+
+      // Remove padding for paragraphs that can be highlighted
+      &[data-highlighted] {
+        padding: 0;
+        margin-bottom: @size-lg;
+      }
 
       &[data-highlighted='true'] {
         background: @primary-50;
@@ -156,22 +202,26 @@
         border-left: @size-xxs solid @primary-6;
         padding: @padding-mlg @padding-md;
         margin: 0;
-        animation: highlightPulse 0.6s ease-in-out;
 
         &[data-highlight-position='first'] {
           border-radius: @border-rad-sm @border-rad-sm 0 0;
           border-bottom: none;
+          margin: 0;
+          padding: 0;
         }
 
         &[data-highlight-position='middle'] {
           border-radius: 0;
           border-top: none;
           border-bottom: none;
+          padding: 0;
         }
 
         &[data-highlight-position='last'] {
           border-radius: 0 0 @border-rad-sm @border-rad-sm;
           border-top: none;
+          padding: 0;
+          margin: 0;
         }
       }
     }
@@ -225,23 +275,5 @@
         color: @grey-800;
       }
     }
-  }
-}
-
-@keyframes highlightPulse {
-  0% {
-    transform: translateX(-@size-xxs / 2);
-    box-shadow: 0 0 0 rgba(21, 112, 239, 0.3);
-    border-left-width: @size-xxs;
-  }
-  50% {
-    transform: translateX(0);
-    box-shadow: @box-shadow-highlight-medium;
-    border-left-width: @border-rad-xs - @size-xxs;
-  }
-  100% {
-    transform: translateX(0);
-    box-shadow: @box-shadow-highlight-light;
-    border-left-width: @size-xxs;
   }
 }

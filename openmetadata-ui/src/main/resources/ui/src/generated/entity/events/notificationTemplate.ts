@@ -44,9 +44,18 @@ export interface NotificationTemplate {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Indicates if this system template has been modified from its default version. Only
+     * applicable to system templates.
+     */
+    isModifiedFromDefault?: boolean;
     /**
      * Name for the notification template (e.g., 'Default Table Template', 'Custom Pipeline
      * Alerts').
@@ -61,6 +70,10 @@ export interface NotificationTemplate {
      * Handlebars HTML template body with placeholders.
      */
     templateBody: string;
+    /**
+     * Handlebars template for the email subject line with placeholders.
+     */
+    templateSubject: string;
     /**
      * Last update time corresponding to the new version of the template.
      */

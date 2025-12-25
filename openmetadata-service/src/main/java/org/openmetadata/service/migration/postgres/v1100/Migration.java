@@ -17,5 +17,6 @@ public class Migration extends MigrationProcessImpl {
   public void runDataMigration() {
     MigrationUtil migrationUtil = new MigrationUtil(handle, ConnectionType.POSTGRES);
     migrationUtil.migrateEntityStatusForExistingEntities();
+    migrationUtil.cleanupOrphanedDataContracts();
   }
 }

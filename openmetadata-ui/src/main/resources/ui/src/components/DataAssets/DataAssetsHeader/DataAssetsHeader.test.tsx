@@ -26,6 +26,7 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { MOCK_DATA_CONTRACT } from '../../../mocks/DataContract.mock';
 import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
+import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
@@ -84,6 +85,10 @@ jest.mock('../../../utils/ServiceUtils', () => ({
   getEntityTypeFromServiceCategory: jest
     .fn()
     .mockImplementation(() => EntityType.DATABASE_SERVICE),
+}));
+
+jest.mock('../../../rest/contractAPI', () => ({
+  getContractByEntityId: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
@@ -196,6 +201,26 @@ jest.mock('../../../hooks/useCustomPages', () => ({
 
 jest.mock('../../../utils/RouterUtils', () => ({
   getEntityDetailsPath: jest.fn(),
+}));
+
+jest.mock(
+  '../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
 }));
 
 describe('ExtraInfoLink component', () => {
@@ -493,22 +518,66 @@ describe('DataAssetsHeader component', () => {
     expect(button).toBeEnabled();
   });
 
+  it('should render the button with disableRunAgentsButtonMessage prop when provided', () => {
+    const customMessage = 'Custom disable message';
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        disableRunAgentsButton
+        dataAsset={{
+          ...mockProps.dataAsset,
+          serviceType: DatabaseServiceType.BigQuery,
+        }}
+        disableRunAgentsButtonMessage={customMessage}
+        entityType={EntityType.DATABASE_SERVICE}
+      />
+    );
+
+    const button = screen.getByTestId('trigger-auto-pilot-application-button');
+
+    expect(button).toBeDisabled();
+    expect(button).toBeInTheDocument();
+  });
+
+  it('should render the button when disableRunAgentsButtonMessage is not provided', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          serviceType: DatabaseServiceType.BigQuery,
+        }}
+        disableRunAgentsButton={false}
+        entityType={EntityType.DATABASE_SERVICE}
+      />
+    );
+
+    const button = screen.getByTestId('trigger-auto-pilot-application-button');
+
+    expect(button).toBeInTheDocument();
+    expect(button).toBeEnabled();
+  });
+
   describe('dataContractLatestResultButton', () => {
     const mockGetDataContractStatusIcon =
       getDataContractStatusIcon as jest.Mock;
     const mockUseCustomPages = useCustomPages as jest.Mock;
     const mockGetEntityDetailsPath = getEntityDetailsPath as jest.Mock;
 
-    it('should render data contract button when contract tab is visible and status is in allowed list', () => {
+    it('should render data contract button when contract tab is visible and status is in allowed list', async () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: {
           tabs: [{ id: EntityTabs.CONTRACT }],
         },
       });
 
-      render(
-        <DataAssetsHeader {...mockProps} dataContract={MOCK_DATA_CONTRACT} />
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve(MOCK_DATA_CONTRACT)
       );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
 
       const button = screen.getByTestId('data-contract-latest-result-btn');
 
@@ -517,25 +586,27 @@ describe('DataAssetsHeader component', () => {
       expect(button).toHaveClass('failed');
     });
 
-    it('should render data contract button when customizedPage tabs is undefined', () => {
+    it('should render data contract button when customizedPage tabs is undefined', async () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: {
           tabs: undefined,
         },
       });
 
-      const mockDataContract = MOCK_DATA_CONTRACT;
-
-      render(
-        <DataAssetsHeader {...mockProps} dataContract={mockDataContract} />
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve(MOCK_DATA_CONTRACT)
       );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
 
       expect(
         screen.getByTestId('data-contract-latest-result-btn')
       ).toBeInTheDocument();
     });
 
-    it('should navigate to contract tab when button is clicked', () => {
+    it('should navigate to contract tab when button is clicked', async () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: {
           tabs: [{ id: EntityTabs.CONTRACT }],
@@ -549,9 +620,13 @@ describe('DataAssetsHeader component', () => {
         },
       };
 
-      render(
-        <DataAssetsHeader {...mockProps} dataContract={mockDataContract} />
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve(mockDataContract)
       );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
 
       const button = screen.getByTestId('data-contract-latest-result-btn');
       fireEvent.click(button);
@@ -564,23 +639,27 @@ describe('DataAssetsHeader component', () => {
       expect(mockNavigate).toHaveBeenCalled();
     });
 
-    it('should not render data contract button when contract tab is not visible', () => {
+    it('should not render data contract button when contract tab is not visible', async () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: {
           tabs: [{ id: EntityTabs.ACTIVITY_FEED }],
         },
       });
 
-      render(
-        <DataAssetsHeader {...mockProps} dataContract={MOCK_DATA_CONTRACT} />
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve(MOCK_DATA_CONTRACT)
       );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
 
       expect(
         screen.queryByTestId('data-contract-latest-result-btn')
       ).not.toBeInTheDocument();
     });
 
-    it('should not render data contract button when status is not in allowed list', () => {
+    it('should not render data contract button when status is not in allowed list', async () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: {
           tabs: [{ id: EntityTabs.CONTRACT }],
@@ -594,30 +673,40 @@ describe('DataAssetsHeader component', () => {
         },
       };
 
-      render(
-        <DataAssetsHeader {...mockProps} dataContract={mockDataContract} />
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve(mockDataContract)
       );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
 
       expect(
         screen.queryByTestId('data-contract-latest-result-btn')
       ).not.toBeInTheDocument();
     });
 
-    it('should not render data contract button when dataContract is undefined', () => {
+    it('should not render data contract button when dataContract is undefined', async () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: {
           tabs: [{ id: EntityTabs.CONTRACT }],
         },
       });
 
-      render(<DataAssetsHeader {...mockProps} dataContract={undefined} />);
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve()
+      );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
 
       expect(
         screen.queryByTestId('data-contract-latest-result-btn')
       ).not.toBeInTheDocument();
     });
 
-    it('should not render data contract button when latestResult is undefined', () => {
+    it('should not render data contract button when latestResult is undefined', async () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: {
           tabs: [{ id: EntityTabs.CONTRACT }],
@@ -629,79 +718,57 @@ describe('DataAssetsHeader component', () => {
         latestResult: undefined,
       };
 
-      render(
-        <DataAssetsHeader {...mockProps} dataContract={mockDataContract} />
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve(mockDataContract)
       );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
 
       expect(
         screen.queryByTestId('data-contract-latest-result-btn')
       ).not.toBeInTheDocument();
     });
 
-    it('should render button with correct class names for each status', () => {
-      mockUseCustomPages.mockReturnValue({
-        customizedPage: { tabs: [{ id: EntityTabs.CONTRACT }] },
-      });
-
-      const statuses = [
-        ContractExecutionStatus.Failed,
-        ContractExecutionStatus.Aborted,
-        ContractExecutionStatus.Running,
-      ];
-
-      statuses.forEach((status) => {
-        const { unmount } = render(
-          <DataAssetsHeader
-            {...mockProps}
-            dataContract={{ ...MOCK_DATA_CONTRACT, latestResult: { status } }}
-          />
-        );
-
-        const button = screen.getByTestId('data-contract-latest-result-btn');
-
-        expect(button).toHaveClass(`data-contract-latest-result-button`);
-        expect(button).toHaveClass(status.toLowerCase());
-
-        unmount();
-      });
-    });
-
-    it('should render button with icon when getDataContractStatusIcon returns an icon', () => {
+    it('should render button with icon when getDataContractStatusIcon returns an icon', async () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: { tabs: [{ id: EntityTabs.CONTRACT }] },
       });
       mockGetDataContractStatusIcon.mockReturnValue('TestIcon');
 
-      render(
-        <DataAssetsHeader
-          {...mockProps}
-          dataContract={{
-            ...MOCK_DATA_CONTRACT,
-            latestResult: { status: ContractExecutionStatus.Failed },
-          }}
-        />
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          ...MOCK_DATA_CONTRACT,
+          latestResult: { status: ContractExecutionStatus.Failed },
+        })
       );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
 
       const button = screen.getByTestId('data-contract-latest-result-btn');
 
       expect(button.querySelector('.anticon')).toBeInTheDocument();
     });
 
-    it('should render button without icon when getDataContractStatusIcon returns null', () => {
+    it('should render button without icon when getDataContractStatusIcon returns null', async () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: { tabs: [{ id: EntityTabs.CONTRACT }] },
       });
       mockGetDataContractStatusIcon.mockReturnValue(null);
 
-      render(
-        <DataAssetsHeader
-          {...mockProps}
-          dataContract={{
-            ...MOCK_DATA_CONTRACT,
-            latestResult: { status: ContractExecutionStatus.Failed },
-          }}
-        />
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          ...MOCK_DATA_CONTRACT,
+          latestResult: { status: ContractExecutionStatus.Failed },
+        })
       );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
 
       const button = screen.getByTestId('data-contract-latest-result-btn');
 

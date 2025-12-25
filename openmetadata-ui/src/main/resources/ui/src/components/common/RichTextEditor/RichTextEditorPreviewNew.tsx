@@ -37,6 +37,21 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   const [isContentLoaded, setIsContentLoaded] = useState<boolean>(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
+  const clampStyle: Record<string, string | number> | undefined = useMemo(
+    () =>
+      readMore
+        ? undefined
+        : {
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: Number(maxLineLength),
+            overflow: 'hidden',
+            maxHeight: `${Number(maxLineLength) * 2}em`,
+            transition: 'max-height 0.3s ease',
+          },
+    [readMore, maxLineLength]
+  );
+
   const handleReadMoreToggle = () => setReadMore((prev) => !prev);
 
   useEffect(() => {
@@ -57,15 +72,31 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
     const checkOverflow = () => {
       if (contentRef.current) {
         const el = contentRef.current;
-        el.style.setProperty('-webkit-line-clamp', maxLineLength);
+
+        // Save original styles
+        const originalDisplay = el.style.display;
+        const originalBoxOrient = el.style.webkitBoxOrient;
+        const originalOverflow = el.style.overflow;
+        const originalLineClamp = el.style.webkitLineClamp;
+
+        // Temporarily apply line-clamp to measure overflow
+        el.style.display = '-webkit-box';
+        el.style.webkitBoxOrient = 'vertical';
+        el.style.overflow = 'hidden';
+        el.style.webkitLineClamp = maxLineLength;
+
+        // Check if content overflows
         const { scrollHeight, clientHeight } = el;
         const isOverflow = scrollHeight > clientHeight + 1;
+
+        // Restore original styles
+        el.style.display = originalDisplay;
+        el.style.webkitBoxOrient = originalBoxOrient;
+        el.style.overflow = originalOverflow;
+        el.style.webkitLineClamp = originalLineClamp;
+
         setIsOverflowing(isOverflow);
         setIsContentLoaded(true);
-        el.style.setProperty(
-          '-webkit-line-clamp',
-          readMore ? 'unset' : maxLineLength
-        );
       }
     };
 
@@ -80,11 +111,7 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
     return () => {
       resizeObserver.disconnect();
     };
-  }, [content, readMore]);
-
-  const maxHeight = useMemo(() => {
-    return isContentLoaded && readMore ? 'none' : '4em';
-  }, [isContentLoaded, readMore]);
+  }, [content, maxLineLength]);
 
   if (isDescriptionContentEmpty(markdown)) {
     return <span className="text-grey-muted">{t('label.no-description')}</span>;
@@ -101,14 +128,7 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
         className={classNames('markdown-parser', textVariant)}
         data-testid="markdown-parser"
         ref={contentRef}
-        style={{
-          display: '-webkit-box',
-          WebkitBoxOrient: 'vertical',
-          WebkitLineClamp: readMore ? 'unset' : Number(maxLineLength),
-          overflow: 'hidden',
-          maxHeight: maxHeight,
-          transition: 'max-height 0.3s ease',
-        }}>
+        style={clampStyle}>
         <BlockEditor autoFocus={false} content={content} editable={false} />
       </div>
       {isContentLoaded && isOverflowing && enableSeeMoreVariant && (

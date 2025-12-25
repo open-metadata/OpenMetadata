@@ -19,6 +19,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -45,10 +47,10 @@ import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfigurat
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.schema.system.SecurityValidationResponse;
 import org.openmetadata.schema.system.StepValidation;
 import org.openmetadata.schema.system.ValidationResponse;
-import org.openmetadata.schema.system.ValidationResult;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -84,6 +86,8 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.ValidationErrorBuilder;
+import org.openmetadata.service.util.ValidationErrorBuilder.FieldPaths;
 
 @Slf4j
 @Repository
@@ -521,8 +525,13 @@ public class SystemRepository {
       validation.setLogStorage(logStorageValidation);
     }
 
+    addExtraValidations(applicationConfig, validation);
+
     return validation;
   }
+
+  public void addExtraValidations(
+      OpenMetadataApplicationConfig applicationConfig, ValidationResponse validation) {}
 
   private StepValidation getDatabaseValidation(OpenMetadataApplicationConfig applicationConfig) {
     try {
@@ -748,21 +757,26 @@ public class SystemRepository {
             || "azure".equalsIgnoreCase(provider)
             || "okta".equalsIgnoreCase(provider)
             || "auth0".equalsIgnoreCase(provider)
+            || "aws-cognito".equalsIgnoreCase(provider)
             || "custom-oidc".equalsIgnoreCase(provider));
   }
 
   public SecurityValidationResponse validateSecurityConfiguration(
       SecurityConfiguration securityConfig, OpenMetadataApplicationConfig applicationConfig) {
-    List<ValidationResult> results = new ArrayList<>();
+    List<FieldError> errors = new ArrayList<>();
 
     try {
       if (securityConfig.getAuthenticationConfiguration() != null) {
         AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
 
         // First validate all required fields from AuthenticationConfiguration schema
-        results.add(validateAuthenticationConfigurationBaseFields(authConfig));
+        FieldError baseError = validateAuthenticationConfigurationBaseFields(authConfig);
+        if (baseError != null) {
+          errors.add(baseError);
+        }
 
         if (authConfig.getProvider() != null) {
+          FieldError providerError = null;
           switch (authConfig.getProvider()) {
             case CUSTOM_OIDC:
             case OKTA:
@@ -771,56 +785,61 @@ public class SystemRepository {
             case AWS_COGNITO:
             case AUTH_0:
               // Always validate OIDC providers - validators handle public/confidential clients
-              results.add(
+              providerError =
                   validateOidcConfiguration(
-                      authConfig, securityConfig.getAuthorizerConfiguration()));
+                      authConfig, securityConfig.getAuthorizerConfiguration());
               break;
             case LDAP:
               if (authConfig.getLdapConfiguration() != null) {
-                results.add(validateLdapConfiguration(authConfig.getLdapConfiguration()));
+                providerError = validateLdapConfiguration(authConfig.getLdapConfiguration());
               }
               break;
             case SAML:
               if (authConfig.getSamlConfiguration() != null) {
-                results.add(
-                    validateSamlConfiguration(
-                        authConfig.getSamlConfiguration(), applicationConfig));
+                providerError =
+                    validateSamlConfiguration(authConfig.getSamlConfiguration(), applicationConfig);
               }
               break;
             default:
-              results.add(
-                  new ValidationResult()
-                      .withComponent("authentication")
-                      .withStatus("failed")
-                      .withMessage("Unknown authentication provider: " + authConfig.getProvider()));
+              providerError =
+                  ValidationErrorBuilder.createFieldError(
+                      FieldPaths.AUTH_PROVIDER, "Unknown provider: " + authConfig.getProvider());
+          }
+          if (providerError != null) {
+            errors.add(providerError);
           }
         }
       }
 
       // Validate Authorizer configuration
       if (securityConfig.getAuthorizerConfiguration() != null) {
-        results.add(validateAuthorizerConfiguration(securityConfig.getAuthorizerConfiguration()));
+        FieldError authzError =
+            validateAuthorizerConfiguration(securityConfig.getAuthorizerConfiguration());
+        if (authzError != null) {
+          errors.add(authzError);
+        }
       }
 
-      boolean hasFailures = results.stream().anyMatch(r -> "failed".equals(r.getStatus()));
-
-      return new SecurityValidationResponse()
-          .withStatus(hasFailures ? "failed" : "success")
-          .withMessage(
-              hasFailures
-                  ? "Security configuration validation found issues"
-                  : "Security configuration validation completed successfully")
-          .withResults(results);
+      SecurityValidationResponse response = new SecurityValidationResponse();
+      if (errors.isEmpty()) {
+        response.setStatus(SecurityValidationResponse.Status.SUCCESS);
+      } else {
+        response.setStatus(SecurityValidationResponse.Status.FAILED);
+        response.setErrors(errors);
+      }
+      return response;
     } catch (Exception e) {
       LOG.error("Security configuration validation failed", e);
+      errors.add(
+          ValidationErrorBuilder.createFieldError(
+              "general", "Validation failed: " + e.getMessage()));
       return new SecurityValidationResponse()
-          .withStatus("failed")
-          .withMessage("Security configuration validation failed: " + e.getMessage())
-          .withResults(results);
+          .withStatus(SecurityValidationResponse.Status.FAILED)
+          .withErrors(errors);
     }
   }
 
-  private ValidationResult validateAuthenticationConfigurationBaseFields(
+  private FieldError validateAuthenticationConfigurationBaseFields(
       AuthenticationConfiguration authConfig) {
     try {
       // Validate all required fields from AuthenticationConfiguration schema
@@ -828,67 +847,69 @@ public class SystemRepository {
       // "clientId", "jwtPrincipalClaims"]
 
       if (authConfig.getProvider() == null) {
-        throw new IllegalArgumentException("Authentication provider is required");
+        return ValidationErrorBuilder.createFieldError(
+            FieldPaths.AUTH_PROVIDER, "Provider is required");
       }
 
       if (nullOrEmpty(authConfig.getProviderName())) {
-        throw new IllegalArgumentException("Authentication provider name is required");
+        return ValidationErrorBuilder.createFieldError(
+            "authenticationConfiguration.providerName", "Provider name is required");
       }
 
       if (authConfig.getPublicKeyUrls() == null || authConfig.getPublicKeyUrls().isEmpty()) {
-        throw new IllegalArgumentException("Authentication public key URLs are required");
+        return ValidationErrorBuilder.createFieldError(
+            FieldPaths.AUTH_PUBLIC_KEY_URLS, "Public key URLs are required");
       }
 
       if (nullOrEmpty(authConfig.getAuthority())) {
-        throw new IllegalArgumentException("Authentication authority is required");
+        return ValidationErrorBuilder.createFieldError(
+            FieldPaths.AUTH_AUTHORITY, "Authority is required");
       }
 
       if (nullOrEmpty(authConfig.getCallbackUrl())) {
-        throw new IllegalArgumentException("Authentication callback URL is required");
+        return ValidationErrorBuilder.createFieldError(
+            FieldPaths.AUTH_CALLBACK_URL, "Callback URL is required");
       }
 
       if (nullOrEmpty(authConfig.getClientId())) {
-        throw new IllegalArgumentException("Authentication client ID is required");
+        return ValidationErrorBuilder.createFieldError(
+            FieldPaths.AUTH_CLIENT_ID, "Client ID is required");
       }
 
       if (authConfig.getJwtPrincipalClaims() == null
           || authConfig.getJwtPrincipalClaims().isEmpty()) {
-        throw new IllegalArgumentException("Authentication JWT principal claims are required");
+        return ValidationErrorBuilder.createFieldError(
+            FieldPaths.AUTH_JWT_PRINCIPAL_CLAIMS, "JWT principal claims are required");
       }
 
-      return new ValidationResult()
-          .withComponent("authentication-base")
-          .withStatus("success")
-          .withMessage("Authentication configuration base fields are valid");
+      return null; // No errors - validation passed
     } catch (Exception e) {
-      return new ValidationResult()
-          .withComponent("authentication-base")
-          .withStatus("failed")
-          .withMessage("Authentication base validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError("", e.getMessage());
     }
   }
 
-  private ValidationResult validateOidcConfiguration(
+  private FieldError validateOidcConfiguration(
       AuthenticationConfiguration authConfig, AuthorizerConfiguration authzConfig) {
     try {
       String clientType = String.valueOf(authConfig.getClientType()).toLowerCase();
       if ("confidential".equals(clientType)) {
         if (authConfig.getOidcConfiguration() == null) {
-          throw new IllegalArgumentException(
-              "OIDC configuration is required for confidential clients");
+          return ValidationErrorBuilder.createFieldError(
+              FieldPaths.OIDC_CLIENT_ID, "OIDC configuration is required");
         }
         OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
 
         if (nullOrEmpty(oidcConfig.getId())) {
-          throw new IllegalArgumentException("OIDC client ID in oidcConfiguration is required");
+          return ValidationErrorBuilder.createFieldError(
+              FieldPaths.OIDC_CLIENT_ID, "Client ID is required");
         }
         if (nullOrEmpty(oidcConfig.getSecret())) {
-          throw new IllegalArgumentException(
-              "OIDC client secret is required for confidential clients");
+          return ValidationErrorBuilder.createFieldError(
+              FieldPaths.OIDC_CLIENT_SECRET, "Client secret is required");
         }
         if (nullOrEmpty(oidcConfig.getDiscoveryUri()) && nullOrEmpty(oidcConfig.getServerUrl())) {
-          throw new IllegalArgumentException(
-              "Either OIDC discovery URI or server URL must be provided");
+          return ValidationErrorBuilder.createFieldError(
+              FieldPaths.OIDC_DISCOVERY_URI, "Discovery URI or Server URL is required");
         }
       } else if ("public".equals(clientType)) {
         LOG.debug("Public client detected - oidcConfiguration is optional");
@@ -896,56 +917,75 @@ public class SystemRepository {
 
       // Provider-specific enhanced validation
       String provider = String.valueOf(authConfig.getProvider());
-      ValidationResult providerValidation = null;
+      FieldError providerValidation = null;
 
       switch (provider.toLowerCase()) {
         case "azure":
           AzureAuthValidator azureValidator = new AzureAuthValidator();
-          providerValidation =
+          FieldError azureResult =
               azureValidator.validateAzureConfiguration(
                   authConfig, authConfig.getOidcConfiguration());
+          if (azureResult != null) {
+            providerValidation = azureResult;
+          }
           break;
 
         case "google":
           GoogleAuthValidator googleValidator = new GoogleAuthValidator();
-          providerValidation =
+          FieldError googleResult =
               googleValidator.validateGoogleConfiguration(
                   authConfig, authConfig.getOidcConfiguration());
+          if (googleResult != null) {
+            providerValidation = googleResult;
+          }
           break;
 
         case "okta":
           OktaAuthValidator oktaValidator = new OktaAuthValidator();
-          providerValidation =
+          FieldError oktaResult =
               oktaValidator.validateOktaConfiguration(
                   authConfig, authConfig.getOidcConfiguration());
+          if (oktaResult != null) {
+            // Okta validator now returns FieldError directly - no need for field path mapping
+            providerValidation = oktaResult;
+          }
           break;
 
         case "auth0":
           Auth0Validator auth0Validator = new Auth0Validator();
-          providerValidation =
+          FieldError auth0Result =
               auth0Validator.validateAuth0Configuration(
                   authConfig, authConfig.getOidcConfiguration());
+          if (auth0Result != null) {
+            providerValidation = auth0Result;
+          }
           break;
 
         case "aws-cognito":
           CognitoAuthValidator cognitoValidator = new CognitoAuthValidator();
-          providerValidation =
+          FieldError cognitoResult =
               cognitoValidator.validateCognitoConfiguration(
                   authConfig, authConfig.getOidcConfiguration());
+          if (cognitoResult != null) {
+            providerValidation = cognitoResult;
+          }
           break;
 
         case "custom-oidc":
           CustomOidcValidator customOidcValidator = new CustomOidcValidator();
-          providerValidation =
+          FieldError customResult =
               customOidcValidator.validateCustomOidcConfiguration(
                   authConfig, authConfig.getOidcConfiguration());
+          if (customResult != null) {
+            providerValidation = customResult;
+          }
           break;
 
         default:
           LOG.warn("Unknown provider type for enhanced validation: {}", provider);
       }
 
-      if (providerValidation != null && "failed".equals(providerValidation.getStatus())) {
+      if (providerValidation != null) {
         return providerValidation;
       }
 
@@ -955,57 +995,49 @@ public class SystemRepository {
         try {
           AuthenticationCodeFlowHandler.validateConfig(authConfig, authzConfig);
         } catch (Exception e) {
-          // If AuthenticationCodeFlowHandler validation fails but provider validation succeeded,
-          // return the provider validation result with a note
-          if (providerValidation != null && "success".equals(providerValidation.getStatus())) {
-            return new ValidationResult()
-                .withComponent("oidc")
-                .withStatus("warning")
-                .withMessage(
-                    "Provider-specific validation passed, but OIDC flow validation failed: "
-                        + e.getMessage());
-          }
-          throw e; // Re-throw if no provider validation or it failed
+          // Return error if validation fails
+          return ValidationErrorBuilder.createFieldError(
+              "authenticationConfiguration.oidcConfiguration",
+              "OIDC flow validation failed: " + e.getMessage());
         }
       } else {
         LOG.debug(
             "Skipping AuthenticationCodeFlowHandler validation for public client without oidcConfiguration");
       }
 
-      return new ValidationResult()
-          .withComponent("oidc")
-          .withStatus("success")
-          .withMessage("OIDC configuration is valid and provider metadata successfully retrieved");
+      return null; // No errors - validation passed
     } catch (Exception e) {
-      return new ValidationResult()
-          .withComponent("oidc")
-          .withStatus("failed")
-          .withMessage("OIDC validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError("", e.getMessage());
     }
   }
 
-  private ValidationResult validateLdapConfiguration(LdapConfiguration ldapConfig) {
+  private FieldError validateLdapConfiguration(LdapConfiguration ldapConfig) {
     try {
       // Validate required fields from JSON schema
       if (nullOrEmpty(ldapConfig.getHost())) {
-        throw new IllegalArgumentException("LDAP host is required");
+        return ValidationErrorBuilder.createFieldError(FieldPaths.LDAP_HOST, "Host is required");
       }
       if (ldapConfig.getPort() == null
           || ldapConfig.getPort() <= 0
           || ldapConfig.getPort() > 65535) {
-        throw new IllegalArgumentException("Valid LDAP port (1-65535) is required");
+        return ValidationErrorBuilder.createFieldError(
+            FieldPaths.LDAP_PORT, "Valid port (1-65535) is required");
       }
       if (nullOrEmpty(ldapConfig.getDnAdminPrincipal())) {
-        throw new IllegalArgumentException("LDAP admin DN is required");
+        return ValidationErrorBuilder.createFieldError(
+            FieldPaths.LDAP_DN_ADMIN_PRINCIPAL, "Admin DN is required");
       }
       if (nullOrEmpty(ldapConfig.getDnAdminPassword())) {
-        throw new IllegalArgumentException("LDAP admin password is required");
+        return ValidationErrorBuilder.createFieldError(
+            FieldPaths.LDAP_DN_ADMIN_PASSWORD, "Admin password is required");
       }
       if (nullOrEmpty(ldapConfig.getUserBaseDN())) {
-        throw new IllegalArgumentException("LDAP user base DN is required");
+        return ValidationErrorBuilder.createFieldError(
+            FieldPaths.LDAP_USER_BASE_DN, "User base DN is required");
       }
       if (nullOrEmpty(ldapConfig.getMailAttributeName())) {
-        throw new IllegalArgumentException("LDAP mail attribute name is required");
+        return ValidationErrorBuilder.createFieldError(
+            FieldPaths.LDAP_MAIL_ATTRIBUTE, "Mail attribute name is required");
       }
 
       // Test LDAP connection
@@ -1041,8 +1073,8 @@ public class SystemRepository {
         SearchResult searchResult =
             connection.search(ldapConfig.getUserBaseDN(), SearchScope.BASE, "(objectClass=*)");
         if (searchResult.getEntryCount() == 0) {
-          throw new IllegalArgumentException(
-              "User base DN does not exist: " + ldapConfig.getUserBaseDN());
+          return ValidationErrorBuilder.createFieldError(
+              FieldPaths.LDAP_USER_BASE_DN, "User base DN does not exist");
         }
 
         // Test group base DN if provided
@@ -1058,71 +1090,307 @@ public class SystemRepository {
           }
         }
 
-        return new ValidationResult()
-            .withComponent("ldap")
-            .withStatus("success")
-            .withMessage("LDAP configuration is valid and connection successful");
+        return null; // No errors - validation passed
       } finally {
         if (connection != null && connection.isConnected()) {
           connection.close();
         }
       }
     } catch (Exception e) {
-      return new ValidationResult()
-          .withComponent("ldap")
-          .withStatus("failed")
-          .withMessage("LDAP validation failed: " + e.getMessage());
+      return mapLdapExceptionToFieldError(e);
     }
   }
 
-  private ValidationResult validateSamlConfiguration(
+  private FieldError mapLdapExceptionToFieldError(Exception e) {
+    String message = e.getMessage().toLowerCase();
+
+    // UserBaseDN errors - "no such object" typically means the DN doesn't exist
+    if (message.contains("no such object") || message.contains("32")) {
+      return ValidationErrorBuilder.createFieldError(FieldPaths.LDAP_USER_BASE_DN, e.getMessage());
+    }
+
+    // Host-related errors
+    if (message.contains("unknownhostexception") || message.contains("resolve address")) {
+      return ValidationErrorBuilder.createFieldError(FieldPaths.LDAP_HOST, e.getMessage());
+    }
+
+    // Port-related errors
+    if (message.contains("connection refused")
+        || message.contains("connect error")
+        || (message.contains("port") && message.contains("connect"))) {
+      return ValidationErrorBuilder.createFieldError(FieldPaths.LDAP_PORT, e.getMessage());
+    }
+
+    // SSL-related errors
+    if (message.contains("sslhandshakeexception")
+        || message.contains("ssl")
+        || message.contains("handshake")
+        || message.contains("certificate")) {
+      return ValidationErrorBuilder.createFieldError(FieldPaths.LDAP_SSL_ENABLED, e.getMessage());
+    }
+
+    // Authentication/credentials errors
+    // Note: It's difficult to distinguish between wrong DN and wrong password from LDAP error alone
+    // Both typically return "invalid credentials" (LDAP error code 49)
+    // We map to dnAdminPassword since that's more commonly the issue
+    if (message.contains("invalid credentials")
+        || message.contains("authentication")
+        || message.contains("bind failed")
+        || message.contains("49")) {
+      return ValidationErrorBuilder.createFieldError(
+          FieldPaths.LDAP_DN_ADMIN_PASSWORD, e.getMessage());
+    }
+
+    // Invalid DN format errors
+    if (message.contains("invalid dn") || message.contains("malformed")) {
+      return ValidationErrorBuilder.createFieldError(
+          FieldPaths.LDAP_DN_ADMIN_PRINCIPAL, e.getMessage());
+    }
+
+    // Generic LDAP configuration error for unmatched cases
+    return ValidationErrorBuilder.createFieldError("", e.getMessage());
+  }
+
+  private FieldError validateSamlConfiguration(
       SamlSSOClientConfig samlConfig, OpenMetadataApplicationConfig applicationConfig) {
     try {
       // Use enhanced SAML validator - this performs comprehensive validation
       // without affecting production settings
       SamlValidator samlValidator = new SamlValidator();
-      return samlValidator.validateSamlConfiguration(null, samlConfig);
+      FieldError result = samlValidator.validateSamlConfiguration(null, samlConfig);
+      if (result != null) {
+        return result;
+      }
+      return null; // No errors - validation passed
     } catch (Exception e) {
-      return new ValidationResult()
-          .withComponent("saml")
-          .withStatus("failed")
-          .withMessage("SAML validation failed: " + e.getMessage());
+      String fieldPath = determineFieldPathFromError("saml", e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          fieldPath, "SAML validation failed: " + e.getMessage());
     }
   }
 
-  private ValidationResult validateAuthorizerConfiguration(AuthorizerConfiguration authzConfig) {
+  private FieldError validateAuthorizerConfiguration(AuthorizerConfiguration authzConfig) {
     try {
       // Validate required fields
       if (nullOrEmpty(authzConfig.getClassName())) {
-        throw new IllegalArgumentException("Authorizer class name is required");
+        return ValidationErrorBuilder.createFieldError(
+            "authorizerConfiguration.className", "Class name is required");
       }
 
       // Validate admin principals
       if (authzConfig.getAdminPrincipals() == null || authzConfig.getAdminPrincipals().isEmpty()) {
-        throw new IllegalArgumentException("At least one admin principal must be configured");
+        return ValidationErrorBuilder.createFieldError(
+            FieldPaths.AUTHZ_ADMIN_PRINCIPALS, "At least one admin principal is required");
+      }
+
+      // Validate principal domain (required field)
+      if (nullOrEmpty(authzConfig.getPrincipalDomain())) {
+        return ValidationErrorBuilder.createFieldError(
+            FieldPaths.AUTHZ_PRINCIPAL_DOMAIN, "Principal domain is required");
       }
 
       // Try to instantiate the authorizer class
       try {
         Class<?> authorizerClass = Class.forName(authzConfig.getClassName());
         if (!Authorizer.class.isAssignableFrom(authorizerClass)) {
-          throw new IllegalArgumentException(
-              "Class " + authzConfig.getClassName() + " does not implement Authorizer interface");
+          return ValidationErrorBuilder.createFieldError(
+              "authorizerConfiguration.className", "Class does not implement Authorizer interface");
         }
       } catch (ClassNotFoundException e) {
-        throw new IllegalArgumentException(
-            "Authorizer class not found: " + authzConfig.getClassName());
+        return ValidationErrorBuilder.createFieldError(
+            "authorizerConfiguration.className", "Class not found");
       }
 
-      return new ValidationResult()
-          .withComponent("authorizer")
-          .withStatus("success")
-          .withMessage("Authorizer configuration is valid");
+      return null; // No errors - validation passed
     } catch (Exception e) {
-      return new ValidationResult()
-          .withComponent("authorizer")
-          .withStatus("failed")
-          .withMessage("Authorizer validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError("", e.getMessage());
+    }
+  }
+
+  /**
+   * Determine the specific field path based on the error message content.
+   * This helps map generic error messages to specific form fields.
+   */
+  private String determineFieldPathFromError(String provider, String errorMessage) {
+    String lowerCaseMessage = errorMessage.toLowerCase();
+
+    // Special handling for specific error patterns first
+    // Check for explicit "Invalid client ID" messages
+    if (lowerCaseMessage.contains("invalid client id")
+        || (lowerCaseMessage.contains("client id")
+            && lowerCaseMessage.contains("not recognized"))) {
+      return FieldPaths.OIDC_CLIENT_ID;
+    }
+
+    // "Invalid client credentials" - generic OAuth error that could be ID or secret
+    if (lowerCaseMessage.contains("invalid client credentials")) {
+      // For most providers, this typically indicates wrong secret when we can't be more specific
+      // The error message usually mentions both ID and secret, making it ambiguous
+      // We default to client secret as it's more commonly the issue
+      return FieldPaths.OIDC_CLIENT_SECRET;
+    }
+
+    // Azure-specific: "Client is not authorized" typically means wrong client ID
+    if (lowerCaseMessage.contains("client is not authorized")
+        && "azure".equalsIgnoreCase(provider)) {
+      return FieldPaths.OIDC_CLIENT_ID;
+    }
+
+    // Generic client ID mentions (check after more specific patterns)
+    if (lowerCaseMessage.contains("client id")
+        || lowerCaseMessage.contains("client_id")
+        || lowerCaseMessage.contains("clientid")) {
+      return FieldPaths.OIDC_CLIENT_ID;
+    }
+
+    if (lowerCaseMessage.contains("client secret")
+        || lowerCaseMessage.contains("client_secret")
+        || lowerCaseMessage.contains("clientsecret")
+        || lowerCaseMessage.contains("invalid client secret")
+        || (lowerCaseMessage.contains("secret") && lowerCaseMessage.contains("incorrect"))) {
+      return FieldPaths.OIDC_CLIENT_SECRET;
+    }
+
+    // Check for Azure discovery URI issues
+    if ("azure".equalsIgnoreCase(provider)
+        && lowerCaseMessage.contains("invalid azure discovery uri")) {
+      // Check if the error message shows that both expected and actual URIs have the same tenant
+      // This would indicate the discovery URI format is wrong, not the tenant
+
+      // Extract tenant patterns from the error message if possible
+      // Look for the tenant GUID pattern in both expected and actual URIs
+      Pattern tenantPattern =
+          Pattern.compile("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
+      Matcher matcher = tenantPattern.matcher(errorMessage);
+
+      List<String> tenantIds = new ArrayList<>();
+      while (matcher.find()) {
+        tenantIds.add(matcher.group());
+      }
+
+      // If we found multiple tenant IDs and they're all the same, it's a discovery URI format issue
+      if (tenantIds.size() >= 2 && tenantIds.stream().distinct().count() == 1) {
+        // Same tenant in expected and actual - problem is with discovery URI format
+        return FieldPaths.OIDC_DISCOVERY_URI;
+      }
+
+      // Different tenants or couldn't determine - likely a tenant issue
+      return "authenticationConfiguration.oidcConfiguration.tenant";
+    }
+
+    // Check for public key URL errors first (before discovery URI check)
+    // since public key URL errors may contain the word "discovery" in the URL path
+    if (lowerCaseMessage.contains("public key url")
+        || lowerCaseMessage.contains("jwks endpoint")
+        || lowerCaseMessage.contains("public key urls")) {
+      return FieldPaths.AUTH_PUBLIC_KEY_URLS;
+    }
+
+    if (lowerCaseMessage.contains("discovery")
+        || lowerCaseMessage.contains("discovery uri")
+        || lowerCaseMessage.contains("discovery_uri")) {
+      return FieldPaths.OIDC_DISCOVERY_URI;
+    }
+    if (lowerCaseMessage.contains("tenant") || lowerCaseMessage.contains("tenant id")) {
+      return "authenticationConfiguration.oidcConfiguration.tenant";
+    }
+    if (lowerCaseMessage.contains("scope")) {
+      return FieldPaths.OIDC_SCOPE;
+    }
+    if (lowerCaseMessage.contains("prompt")) {
+      return FieldPaths.OIDC_PROMPT;
+    }
+    if (lowerCaseMessage.contains("callback") || lowerCaseMessage.contains("redirect")) {
+      return FieldPaths.OIDC_CALLBACK_URL;
+    }
+    if (lowerCaseMessage.contains("authority")) {
+      return FieldPaths.AUTH_AUTHORITY;
+    }
+    if (lowerCaseMessage.contains("audience")) {
+      return "authenticationConfiguration.oidcConfiguration.audience";
+    }
+
+    // Provider-specific field mappings
+    switch (provider.toLowerCase()) {
+      case "google":
+        if (lowerCaseMessage.contains("domain") || lowerCaseMessage.contains("hd parameter")) {
+          return "authenticationConfiguration.oidcConfiguration.domain";
+        }
+        break;
+      case "azure":
+        if (lowerCaseMessage.contains("tenant")) {
+          return "authenticationConfiguration.oidcConfiguration.tenant";
+        }
+        break;
+      case "okta":
+        if (lowerCaseMessage.contains("issuer") || lowerCaseMessage.contains("org url")) {
+          return "authenticationConfiguration.oidcConfiguration.issuer";
+        }
+        break;
+      case "auth0":
+        if (lowerCaseMessage.contains("domain")) {
+          return "authenticationConfiguration.oidcConfiguration.domain";
+        }
+        break;
+      case "aws-cognito":
+        if (lowerCaseMessage.contains("user pool")
+            || lowerCaseMessage.contains("userpool")
+            || lowerCaseMessage.contains("region")
+            || lowerCaseMessage.contains("invalid aws region")
+            || lowerCaseMessage.contains("invalid cognito url")
+            || lowerCaseMessage.contains("discovery")) {
+          // All these errors relate to the discovery URI since user pool ID and region are
+          // extracted from it
+          return FieldPaths.OIDC_DISCOVERY_URI;
+        }
+        break;
+      case "saml":
+        // SAML IDP fields
+        if (lowerCaseMessage.contains("entity id") || lowerCaseMessage.contains("entityid")) {
+          return FieldPaths.SAML_IDP_ENTITY_ID;
+        }
+        if (lowerCaseMessage.contains("sso login url")
+            || lowerCaseMessage.contains("sso url")
+            || lowerCaseMessage.contains("login url")) {
+          return FieldPaths.SAML_IDP_SSO_URL;
+        }
+        if (lowerCaseMessage.contains("certificate")
+            || lowerCaseMessage.contains("x509")
+            || lowerCaseMessage.contains("cert")) {
+          return FieldPaths.SAML_IDP_CERT;
+        }
+        if (lowerCaseMessage.contains("name id") || lowerCaseMessage.contains("nameid")) {
+          return FieldPaths.SAML_IDP_NAME_ID;
+        }
+        // SAML SP fields
+        if (lowerCaseMessage.contains("sp entity")
+            || lowerCaseMessage.contains("service provider entity")) {
+          return FieldPaths.SAML_SP_ENTITY_ID;
+        }
+        if (lowerCaseMessage.contains("acs") || lowerCaseMessage.contains("assertion consumer")) {
+          return FieldPaths.SAML_SP_ACS_URL;
+        }
+        if (lowerCaseMessage.contains("sp certificate")
+            || lowerCaseMessage.contains("service provider certificate")) {
+          return FieldPaths.SAML_SP_CERT;
+        }
+        if (lowerCaseMessage.contains("private key") || lowerCaseMessage.contains("sp key")) {
+          return FieldPaths.SAML_SP_KEY;
+        }
+        if (lowerCaseMessage.contains("callback")) {
+          return FieldPaths.SAML_SP_CALLBACK;
+        }
+        // Default to general SAML configuration for unmapped SAML errors
+        return "authenticationConfiguration.samlConfiguration";
+    }
+
+    // Default to general configuration based on provider
+    if ("saml".equalsIgnoreCase(provider)) {
+      return "authenticationConfiguration.samlConfiguration";
+    } else if (isOidcProvider(provider)) {
+      return "authenticationConfiguration.oidcConfiguration";
+    } else {
+      return "authenticationConfiguration";
     }
   }
 
@@ -1158,7 +1426,8 @@ public class SystemRepository {
           .withMessage(
               String.format(
                   "Connected to S3 bucket: %s in region %s",
-                  logStorageConfig.getBucketName(), logStorageConfig.getRegion()));
+                  logStorageConfig.getBucketName(),
+                  logStorageConfig.getAwsConfig().getAwsRegion()));
     } catch (Exception e) {
       return new StepValidation()
           .withDescription("S3 Log Storage")

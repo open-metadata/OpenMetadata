@@ -85,6 +85,7 @@ export enum EntityType {
   FILE = 'file',
   SPREADSHEET = 'spreadsheet',
   WORKSHEET = 'worksheet',
+  NOTIFICATION_TEMPLATE = 'notificationTemplate',
 }
 
 export enum EntityLineageDirection {
@@ -154,7 +155,6 @@ export enum TabSpecificField {
   STATE = 'state',
   SUMMARY = 'summary',
   TABLE_CONSTRAINTS = 'tableConstraints',
-  TABLE_PROFILE = 'profile',
   TABLE_QUERIES = 'tableQueries',
   TAGS = 'tags',
   TARGET_DEFINITION = 'targetDefinition',
@@ -181,6 +181,9 @@ export enum TabSpecificField {
   MODIFIED_TIME = 'modifiedTime',
   CREATED_TIME = 'createdTime',
   ROW_COUNT = 'rowCount',
+  FILE_TYPE = 'fileType',
+  FILE_EXTENSION = 'fileExtension',
+  FILE_VERSION = 'fileVersion',
 }
 
 export enum FqnPart {

@@ -14,7 +14,7 @@
 
 .sso-configuration-form-card {
   border: none;
-  padding: @padding-lg @padding-mlg;
+  padding: 0 @padding-mlg @padding-lg @padding-mlg;
   box-shadow: none;
   .ant-card-body {
     padding: 0;
@@ -131,7 +131,7 @@
     width: 100%;
 
     .cancel-sso-configuration {
-      font-weight: @font-semibold;
+      font-weight: @font-regular;
 
       line-height: 24px;
       color: @primary-6;
@@ -153,9 +153,10 @@
   }
 }
 
-.content-resizable-panel-container {
+.sso-settings-page .content-resizable-panel-container {
   .ant-card-body {
-    padding-bottom: 0 !important;
+    padding-bottom: 0;
+    padding-top: 0;
   }
 
   .form-actions-bottom {
@@ -177,7 +178,7 @@
     box-sizing: border-box;
 
     .cancel-sso-configuration {
-      font-weight: 600;
+      font-weight: @font-regular;
 
       line-height: 24px;
       color: @primary-6;
@@ -193,203 +194,203 @@
       }
     }
   }
+}
 
-  &.sso-configured {
-    margin-top: @size-xs;
-    .ant-card {
-      border: none !important;
-    }
+.sso-settings-page .content-resizable-panel-container.sso-configured {
+  margin-top: @size-xs;
+  .ant-card {
+    border: none;
+  }
 
-    .ant-card-body {
-      padding: 0px !important;
-    }
+  .ant-card-body {
+    padding: 0px;
+  }
 
-    // Apply same styling as non-configured for ALL form controls including array fields
-    .rjsf .form-control {
-      border-radius: @border-rad-xs;
-      border: 1px solid @grey-300;
-      background-color: @background-color;
-      padding: @padding-sm - 2px @padding-sm + 2px;
-      color: @grey-700;
-      box-shadow: 0px 1px 2px 0px @grey-27;
+  // Apply same styling as non-configured for ALL form controls including array fields
+  .rjsf .form-control {
+    border-radius: @border-rad-xs;
+    border: 1px solid @grey-300;
+    background-color: @background-color;
+    padding: @padding-sm - 2px @padding-sm + 2px;
+    color: @grey-700;
+    box-shadow: 0px 1px 2px 0px @grey-27;
 
-      &:hover {
-        border-color: @primary-6;
-      }
-
-      &:focus {
-        border-color: @primary-color;
-        box-shadow: @box-shadow-ant-select;
-        outline: none;
-      }
-    }
-
-    // Ensure array field inputs and ALL inputs get proper focus styling
-    .rjsf .field-array input,
-    .rjsf input.form-control,
-    .rjsf input[type='text'],
-    .rjsf input[type='password'],
-    .rjsf input[type='email'],
-    .rjsf input[type='number'] {
-      &:focus,
-      &:focus-visible {
-        border-color: @primary-color !important;
-        box-shadow: @box-shadow-ant-select !important;
-        outline: none !important;
-      }
-    }
-
-    // Ensure textarea gets same focus styling
-    .rjsf textarea.form-control {
-      &:focus,
-      &:focus-visible {
-        border-color: @primary-color !important;
-        box-shadow: @box-shadow-ant-select !important;
-        outline: none !important;
-      }
-    }
-    .rjsf .form-group.field {
-      margin-top: 0;
-    }
-    // Form label styling for configured SSO
-    .rjsf .control-label {
-      color: @grey-700;
-      font-weight: 500;
-      font-size: @font-size-base;
-
-      .required {
-        color: @red-23;
-      }
-    }
-
-    // Boolean field labels (checkboxes, radio buttons) styling for configured SSO
-    .rjsf .checkbox label span,
-    .rjsf .radio-inline label span span,
-    .rjsf .ant-radio-wrapper {
-      color: @grey-700 !important;
-      font-weight: 500 !important;
-      font-size: @font-size-base !important;
-    }
-
-    // Checkbox styling for configured SSO - match non-configured styling
-    .rjsf .checkbox {
-      display: flex;
-      align-items: flex-start;
-
-      label {
-        display: flex;
-        align-items: center;
-        gap: @size-xs;
-        cursor: pointer;
-        margin: 0;
-
-        input[type='checkbox'] {
-          appearance: none;
-          width: @size-mlg;
-          height: @size-mlg;
-          border: 1px solid @grey-300;
-          border-radius: 6px;
-          background-color: @background-color;
-          cursor: pointer;
-          position: relative;
-          margin: 0;
-          flex-shrink: 0;
-
-          &:checked {
-            background-color: @primary-color;
-            border-color: @primary-color;
-          }
-
-          &:checked::after {
-            content: '';
-            position: absolute;
-            top: 45%;
-            left: 50%;
-            width: 5px;
-            height: 9px;
-            border: solid @white;
-            border-width: 0 2px 2px 0;
-            transform: translate(-50%, -50%) rotate(45deg);
-          }
-
-          &:hover {
-            border-color: @primary-6;
-          }
-
-          &:focus {
-            outline: none;
-            box-shadow: @box-shadow-ant-select;
-          }
-        }
-
-        span {
-          color: @grey-700;
-          font-weight: 500;
-          font-size: @font-size-base;
-          line-height: 1.4;
-
-          .required {
-            color: @red-23;
-            margin-left: @size-xxs;
-          }
-        }
-      }
-    }
-
-    // Apply select styling to configure tab form
-    .ant-select:not(.ant-select-customize-input) .ant-select-selector {
-      border-radius: @border-rad-xs;
-      border: 1px solid @grey-300;
-      background-color: @background-color;
-      height: auto;
-      padding: @size-xs @size-sm;
-      box-shadow: @button-box-shadow-disabled;
-
-      &:hover {
-        border-color: @primary-6;
-      }
-
-      &:focus {
-        border-color: @primary-color;
-        box-shadow: @box-shadow-ant-select;
-      }
-      .ant-select-selection-item {
-        font-weight: @font-regular;
-      }
-    }
-
-    // Hide the clear/close button on select dropdowns
-    .ant-select-clear {
-      display: none !important;
-    }
-
-    .ant-select-focused .ant-select-selector {
-      border-color: @primary-color !important;
-      box-shadow: @box-shadow-ant-select !important;
-    }
-
-    .ant-select:hover .ant-select-selector {
+    &:hover {
       border-color: @primary-6;
     }
 
-    // Ensure ALL form inputs in configured SSO have proper focus state
-    input.form-control:focus,
-    input[type='text']:focus,
-    input[type='password']:focus,
-    input[type='email']:focus,
-    textarea.form-control:focus,
-    .ant-input:focus,
-    .ant-input-focused {
+    &:focus {
+      border-color: @primary-color;
+      box-shadow: @box-shadow-ant-select;
+      outline: none;
+    }
+  }
+
+  // Ensure array field inputs and ALL inputs get proper focus styling
+  .rjsf .field-array input,
+  .rjsf input.form-control,
+  .rjsf input[type='text'],
+  .rjsf input[type='password'],
+  .rjsf input[type='email'],
+  .rjsf input[type='number'] {
+    &:focus,
+    &:focus-visible {
       border-color: @primary-color !important;
       box-shadow: @box-shadow-ant-select !important;
       outline: none !important;
     }
   }
+
+  // Ensure textarea gets same focus styling
+  .rjsf textarea.form-control {
+    &:focus,
+    &:focus-visible {
+      border-color: @primary-color;
+      box-shadow: @box-shadow-ant-select;
+      outline: none;
+    }
+  }
+  .rjsf .form-group.field {
+    margin-top: 0;
+  }
+  // Form label styling for configured SSO
+  .rjsf .control-label {
+    color: @grey-700;
+    font-weight: 500;
+    font-size: @font-size-base;
+
+    .required {
+      color: @red-23;
+    }
+  }
+
+  // Boolean field labels (checkboxes, radio buttons) styling for configured SSO
+  .rjsf .checkbox label span,
+  .rjsf .radio-inline label span span,
+  .rjsf .ant-radio-wrapper {
+    color: @grey-700;
+    font-weight: @font-medium;
+    font-size: @font-size-base;
+  }
+
+  // Checkbox styling for configured SSO - match non-configured styling
+  .rjsf .checkbox {
+    display: flex;
+    align-items: flex-start;
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: @size-xs;
+      cursor: pointer;
+      margin: 0;
+
+      input[type='checkbox'] {
+        appearance: none;
+        width: @size-mlg;
+        height: @size-mlg;
+        border: 1px solid @grey-300;
+        border-radius: 6px;
+        background-color: @background-color;
+        cursor: pointer;
+        position: relative;
+        margin: 0;
+        flex-shrink: 0;
+
+        &:checked {
+          background-color: @primary-color;
+          border-color: @primary-color;
+        }
+
+        &:checked::after {
+          content: '';
+          position: absolute;
+          top: 45%;
+          left: 50%;
+          width: 5px;
+          height: 9px;
+          border: solid @white;
+          border-width: 0 2px 2px 0;
+          transform: translate(-50%, -50%) rotate(45deg);
+        }
+
+        &:hover {
+          border-color: @primary-6;
+        }
+
+        &:focus {
+          outline: none;
+          box-shadow: @box-shadow-ant-select;
+        }
+      }
+
+      span {
+        color: @grey-700;
+        font-weight: 500;
+        font-size: @font-size-base;
+        line-height: 1.4;
+
+        .required {
+          color: @red-23;
+          margin-left: @size-xxs;
+        }
+      }
+    }
+  }
+
+  // Apply select styling to configure tab form
+  .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+    border-radius: @border-rad-xs;
+    border: 1px solid @grey-300;
+    background-color: @background-color;
+    height: auto;
+    padding: @size-xs @size-sm;
+    box-shadow: @button-box-shadow-disabled;
+
+    &:hover {
+      border-color: @primary-6;
+    }
+
+    &:focus {
+      border-color: @primary-color;
+      box-shadow: @box-shadow-ant-select;
+    }
+    .ant-select-selection-item {
+      font-weight: @font-regular;
+    }
+  }
+
+  // Hide the clear/close button on select dropdowns
+  .ant-select-clear {
+    display: none;
+  }
+
+  .ant-select-focused .ant-select-selector {
+    border-color: @primary-color !important;
+    box-shadow: @box-shadow-ant-select !important;
+  }
+
+  .ant-select:hover .ant-select-selector {
+    border-color: @primary-6;
+  }
+
+  // Ensure ALL form inputs in configured SSO have proper focus state
+  input.form-control:focus,
+  input[type='text']:focus,
+  input[type='password']:focus,
+  input[type='email']:focus,
+  textarea.form-control:focus,
+  .ant-input:focus,
+  .ant-input-focused {
+    border-color: @primary-color;
+    box-shadow: @box-shadow-ant-select;
+    outline: none;
+  }
 }
 
-.content-height-with-resizable-panel.sso-configured {
+.sso-settings-page .content-height-with-resizable-panel.sso-configured {
   background-color: @white;
-  height: calc(100vh - var(--ant-navbar-height) - 216px);
+  height: calc(100vh - var(--ant-navbar-height) - 200px);
 
   .right-panel-splitter {
     margin-left: @size-lg;
@@ -408,14 +409,14 @@
       gap: 12px;
       margin-top: @size-lg;
       margin-bottom: 0;
-      padding: @size-md @size-lg;
+      padding: @size-md @size-lg 0 @size-lg;
       border-top: 1px solid @grey-200;
       background-color: @white;
       box-shadow: @box-shadow-base;
       box-sizing: border-box;
 
       .cancel-sso-configuration {
-        font-weight: 600;
+        font-weight: @font-medium;
 
         line-height: 24px;
         color: @primary-6;
@@ -435,6 +436,13 @@
         font-weight: @font-semibold;
       }
     }
+  }
+}
+
+// When alert is visible with configured SSO, adjust container height
+.sso-settings-page:has(#page-alert) {
+  .content-height-with-resizable-panel.sso-configured {
+    height: calc(100vh - var(--ant-navbar-height) - 200px - 78px) !important;
   }
 }
 
@@ -562,11 +570,7 @@
   }
 }
 
-// SSO-specific dropdown menu box-shadow
-.sso-configuration-form-card .ant-select-dropdown {
-  box-shadow: 0px 1px 2px 0px @grey-27;
-}
-
+// SSO-specific dropdown menu box-shadow and border radius
 .sso-configuration-form-card .rjsf .form-group.field {
   margin: 0;
 }
@@ -756,9 +760,23 @@
   }
 }
 
+// Error state styling for inputs and textareas
+.sso-configuration-form-card .rjsf .has-error input,
+.sso-configuration-form-card .rjsf .has-error textarea,
+.content-resizable-panel-container.sso-configured .rjsf .has-error input,
+.content-resizable-panel-container.sso-configured .rjsf .has-error textarea {
+  border-color: @error-color !important;
+
+  &:focus {
+    border-color: @error-color !important;
+    box-shadow: none;
+    outline: none;
+  }
+}
+
 // Styles for disabled inputs and selects in SSO forms
 .sso-configuration-form-card,
-.content-resizable-panel-container.sso-configured {
+.sso-settings-page .content-resizable-panel-container.sso-configured {
   .ant-input[disabled] {
     background-color: @grey-100;
     color: @grey-500;
@@ -819,4 +837,28 @@
       background-position: center;
     }
   }
+}
+
+// SSO-specific scrollbar thumb color
+.sso-configuration-form-card,
+.sso-settings-page .content-resizable-panel-container.sso-configured,
+.sso-settings-page .content-height-with-resizable-panel.sso-configured {
+  &::-webkit-scrollbar-thumb {
+    background-color: @grey-500;
+  }
+
+  // Apply to all scrollable children within SSO forms
+  * {
+    &::-webkit-scrollbar-thumb {
+      background-color: @grey-500;
+    }
+  }
+}
+.sso-form-sticky-header {
+  height: @size-lg;
+  background-color: @white;
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 9;
 }

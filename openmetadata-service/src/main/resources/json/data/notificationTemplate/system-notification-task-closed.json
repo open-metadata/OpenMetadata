@@ -1,9 +1,0 @@
-{
-  "name": "system-notification-task-closed",
-  "fullyQualifiedName": "system-notification-task-closed",
-  "displayName": "Task Closed Notification",
-  "description": "System default template for task closure notifications",
-  "provider": "system",
-  "templateSubject": "Task closed - {{entity.fullyQualifiedName}}",
-  "templateBody": "{{#if (eq channel 'email')}}Hello {{recipientName}},<br/><br/>{{/if}}[{{publisherName}}] <b>@{{thread.createdBy}}</b> closed Task with Id: {{thread.task.id}} for Asset <a href=\"{{entity.href}}\">{{entity.fullyQualifiedName}}</a><br/><b>Current Status:</b> Closed{{#if (eq channel 'email')}}<br/><br/>Happy Exploring!<br/>Thanks.{{/if}}"
-}

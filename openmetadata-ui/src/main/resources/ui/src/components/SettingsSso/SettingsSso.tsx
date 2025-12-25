@@ -343,7 +343,11 @@ const SettingsSso = () => {
   if (isLoading) {
     return (
       <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
-        <TitleBreadcrumb className="m-b-xs" titleLinks={breadcrumb} />
+        <TitleBreadcrumb
+          useCustomArrow
+          className="m-b-xs"
+          titleLinks={breadcrumb}
+        />
         <Loader />
       </PageLayoutV1>
     );
@@ -353,7 +357,11 @@ const SettingsSso = () => {
   if (showProviderSelector) {
     return (
       <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
-        <TitleBreadcrumb className="m-b-xs" titleLinks={breadcrumb} />
+        <TitleBreadcrumb
+          useCustomArrow
+          className="m-b-xs"
+          titleLinks={breadcrumb}
+        />
 
         <div className="m-t-lg sso-provider-selection">
           <ProviderSelector
@@ -369,7 +377,11 @@ const SettingsSso = () => {
   if (!hasExistingConfig) {
     return (
       <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
-        <TitleBreadcrumb className="m-b-xs" titleLinks={breadcrumb} />
+        <TitleBreadcrumb
+          useCustomArrow
+          className="m-b-xs"
+          titleLinks={breadcrumb}
+        />
 
         <SSOConfigurationForm
           securityConfig={securityConfig}
@@ -383,7 +395,11 @@ const SettingsSso = () => {
 
   return (
     <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
-      <TitleBreadcrumb className="m-b-xs" titleLinks={breadcrumb} />
+      <TitleBreadcrumb
+        useCustomArrow
+        className="m-b-xs"
+        titleLinks={breadcrumb}
+      />
 
       <div className="settings-sso" style={{ background: 'white' }}>
         {currentProvider && currentProvider !== AuthProvider.Basic && (

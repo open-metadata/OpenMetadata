@@ -16,7 +16,7 @@ import { BIG_ENTITY_DELETE_TIMEOUT } from '../constant/delete';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { getApiContext, toastNotification } from './common';
-import { escapeESReservedCharacters, getEncodedFqn } from './entity';
+import { getEncodedFqn } from './entity';
 
 export enum Services {
   Database = GlobalSettingOptions.DATABASES,
@@ -118,7 +118,7 @@ export const deleteService = async (
   // Closing the toast notification
   await toastNotification(
     page,
-    /deleted successfully!/,
+    `"${serviceName}" deleted successfully!`,
     BIG_ENTITY_DELETE_TIMEOUT
   ); // Wait for up to 5 minutes for the toast notification to appear
 
@@ -126,11 +126,11 @@ export const deleteService = async (
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  const serviceSearchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(
-      escapeESReservedCharacters(serviceName)
-    )}*`
-  );
+  const serviceSearchResponse = page.waitForResponse((response) => {
+    const url = response.url();
+
+    return url.includes('/api/v1/search/query') && url.includes(serviceName);
+  });
 
   await page.fill('[data-testid="searchbar"]', serviceName);
 
@@ -159,19 +159,12 @@ export const testConnection = async (page: Page) => {
 
   const warningBadge = page.locator('[data-testid="warning-badge"]');
 
-  const failBadge = page.locator('[data-testid="fail-badge"]');
-
-  await expect(successBadge.or(warningBadge).or(failBadge)).toBeVisible({
-    timeout: 2.5 * 60 * 1000,
+  await expect(successBadge.or(warningBadge)).toBeVisible({
+    timeout: 3.5 * 60 * 1000, // 3 minutes for connection test and 0.5 minute buffer
   });
 
   await expect(page.getByTestId('messag-text')).toContainText(
-    new RegExp(
-      'Connection test was successful.|' +
-        'Test connection partially successful: Some steps had failures, we will only ingest partial metadata. Click here to view details.|' +
-        'Test connection failed, please validate your connection and permissions for the failed steps.',
-      'g'
-    )
+    /Connection test was successful.|Test connection partially successful: Some steps had failures, we will only ingest partial metadata. Click here to view details./g
   );
 };
 

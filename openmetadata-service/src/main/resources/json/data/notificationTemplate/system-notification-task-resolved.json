@@ -1,9 +1,0 @@
-{
-  "name": "system-notification-task-resolved",
-  "fullyQualifiedName": "system-notification-task-resolved",
-  "displayName": "Task Resolved Notification",
-  "description": "System default template for task resolution notifications",
-  "provider": "system",
-  "templateSubject": "Task resolved - {{entity.fullyQualifiedName}}",
-  "templateBody": "{{#if (eq channel 'email')}}Hello {{recipientName}},<br/><br/>{{/if}}[{{publisherName}}] <b>@{{thread.createdBy}}</b> resolved Task with Id: {{thread.task.id}} for Asset <a href=\"{{entity.href}}\">{{entity.fullyQualifiedName}}</a><br/><b>Current Status:</b> Resolved{{#if (eq channel 'email')}}<br/><br/>Happy Exploring!<br/>Thanks.{{/if}}"
-}

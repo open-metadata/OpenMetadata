@@ -27,7 +27,7 @@ import {
   upperCase,
 } from 'lodash';
 import { EntityTags } from 'Models';
-import { CSSProperties, Fragment } from 'react';
+import { CSSProperties, Fragment, lazy, Suspense } from 'react';
 import { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ImportIcon } from '..//assets/svg/ic-import.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
@@ -127,20 +127,20 @@ import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/Acti
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import QueryViewer from '../components/common/QueryViewer/QueryViewer.component';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import TableProfiler from '../components/Database/Profiler/TableProfiler/TableProfiler';
+import DataObservabilityTab from '../components/Database/Profiler/DataObservability/DataObservabilityTab';
 import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
 import TableQueries from '../components/Database/TableQueries/TableQueries';
 import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
-import { EntityLineageTab } from '../components/Lineage/EntityLineageTab/EntityLineageTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -187,6 +187,12 @@ import serviceUtilClassBase from './ServiceUtilClassBase';
 import { ordinalize } from './StringsUtils';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
+
+const EntityLineageTab = lazy(() =>
+  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+    (module) => ({ default: module.EntityLineageTab })
+  )
+);
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
@@ -494,6 +500,10 @@ export const getEntityIcon = (
   return Icon ? <Icon className={className} style={style} /> : null;
 };
 
+export const getEntityTypeIcon = (entityType?: string) => {
+  return searchClassBase.getEntityIcon(entityType ?? '');
+};
+
 export const getServiceIcon = (source: SourceType) => {
   const isDataAsset = NON_SERVICE_TYPE_ASSETS.includes(
     source.entityType as EntityType
@@ -774,13 +784,12 @@ export const getTableDetailPageBaseTabs = ({
   feedCount,
   getEntityFeedCount,
   handleFeedCount,
-  viewAllPermission,
+  viewCustomPropertiesPermission,
   editCustomAttributePermission,
   viewSampleDataPermission,
   viewQueriesPermission,
   editLineagePermission,
   fetchTableDetails,
-  testCaseSummary,
   isViewTableType,
   labelMap,
 }: TableDetailPageTabProps): TabProps[] => {
@@ -895,10 +904,9 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.PROFILER,
       children: (
-        <TableProfiler
+        <DataObservabilityTab
           permissions={tablePermissions}
           table={tableDetails}
-          testCaseSummary={testCaseSummary}
         />
       ),
     },
@@ -911,12 +919,14 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <EntityLineageTab
-          deleted={Boolean(deleted)}
-          entity={tableDetails as SourceType}
-          entityType={EntityType.TABLE}
-          hasEditAccess={editLineagePermission}
-        />
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
+            entity={tableDetails as SourceType}
+            entityType={EntityType.TABLE}
+            hasEditAccess={editLineagePermission}
+          />
+        </Suspense>
       ),
     },
     {
@@ -1029,9 +1039,7 @@ export const getTableDetailPageBaseTabs = ({
     {
       label: (
         <TabsLabel
-          isBeta
           id={EntityTabs.CONTRACT}
-          isActive={activeTab === EntityTabs.CONTRACT}
           name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
         />
       ),
@@ -1054,7 +1062,7 @@ export const getTableDetailPageBaseTabs = ({
         <CustomPropertyTable<EntityType.TABLE>
           entityType={EntityType.TABLE}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },
@@ -1147,21 +1155,31 @@ export const tableConstraintRendererBasedOnType = (
  * @param columns Table Columns for creating options in table constraint form
  * @returns column options with label and value
  */
-export const getColumnOptionsFromTableColumn = (columns: Column[]) => {
+export const getColumnOptionsFromTableColumn = (
+  columns: Column[],
+  useFullyQualifiedName = false
+) => {
   const options: {
     label: string;
     value: string;
   }[] = [];
 
   columns.forEach((item) => {
-    if (!isEmpty(item.children)) {
-      options.push(...getColumnOptionsFromTableColumn(item.children ?? []));
-    }
-
     options.push({
       label: item.name,
-      value: item.name,
+      value: useFullyQualifiedName
+        ? item.fullyQualifiedName ?? item.name
+        : item.name,
     });
+
+    if (!isEmpty(item.children)) {
+      options.push(
+        ...getColumnOptionsFromTableColumn(
+          item.children ?? [],
+          useFullyQualifiedName
+        )
+      );
+    }
   });
 
   return options;
