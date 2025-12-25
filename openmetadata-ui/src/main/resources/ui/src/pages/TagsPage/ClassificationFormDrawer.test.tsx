@@ -98,12 +98,12 @@ describe('ClassificationFormDrawer', () => {
     expect(saveButton).toBeDisabled();
   });
 
-  it('should show "Saving" text when isLoading is true', () => {
+  it('should keep "Save" text visible when isLoading is true', () => {
     render(<ClassificationFormDrawer {...defaultProps} isLoading />);
 
     const saveButton = screen.getByTestId('save-button');
 
-    expect(saveButton).toHaveTextContent('label.saving');
+    expect(saveButton).toHaveTextContent('label.save');
   });
 
   it('should show "Save" text when isLoading is false', () => {

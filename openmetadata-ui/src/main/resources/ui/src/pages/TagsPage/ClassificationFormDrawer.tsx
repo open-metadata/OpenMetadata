@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Drawer, IconButton, Typography } from '@mui/material';
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Drawer,
+  IconButton,
+  Typography,
+} from '@mui/material';
 import { XClose } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -97,9 +104,11 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
         <Button
           data-testid="save-button"
           disabled={isLoading}
+          loading={isLoading}
+          loadingIndicator={<CircularProgress color="inherit" size={18} />}
           variant="contained"
           onClick={() => formRef.submit()}>
-          {isLoading ? t('label.saving') : t('label.save')}
+          {t('label.save')}
         </Button>
       </Box>
     </Drawer>
