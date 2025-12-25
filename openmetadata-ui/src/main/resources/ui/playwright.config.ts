@@ -53,7 +53,7 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:8585',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     /* Screenshot on failure. */
     screenshot: 'only-on-failure',
   },
@@ -63,19 +63,34 @@ export default defineConfig({
     // Admin authentication setup doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
     {
       name: 'setup',
-      testMatch: '**/*.setup.ts',
+      testMatch: '**/auth.setup.ts',
+    },
+    {
+      name: 'entity-data-setup',
+      testMatch: '**/entity-data.setup.ts',
+      dependencies: ['setup'],
     },
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
-      dependencies: ['setup'],
+      dependencies: ['setup', 'entity-data-setup'],
       grepInvert: /data-insight/,
-      testIgnore: ['**/nightly/**'],
+      teardown: 'entity-data-teardown',
+      testIgnore: [
+        '**/nightly/**',
+        '**/DataAssetRulesEnabled.spec.ts',
+        '**/DataAssetRulesDisabled.spec.ts',
+        '**/SystemCertificationTags.spec.ts',
+      ],
+    },
+    {
+      name: 'entity-data-teardown',
+      testMatch: '**/entity-data.teardown.ts',
     },
     {
       name: 'data-insight-application',
-      dependencies: ['setup'],
+      dependencies: ['setup', 'entity-data-setup'],
       testMatch: '**/dataInsightApp.ts',
     },
     {
@@ -83,6 +98,30 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['data-insight-application'],
       grep: /data-insight/,
+      teardown: 'entity-data-teardown',
+    },
+    {
+      name: 'DataAssetRulesEnabled',
+      testMatch: '**/DataAssetRulesEnabled.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
+      fullyParallel: true,
+    },
+    {
+      name: 'DataAssetRulesDisabled',
+      testMatch: '**/DataAssetRulesDisabled.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['DataAssetRulesEnabled'],
+      fullyParallel: true,
+    },
+    // System Certification Tags tests modify global shared state (system tags like Gold, Silver, Bronze)
+    // They must run in isolation after the main chromium project to avoid flakiness
+    {
+      name: 'SystemCertificationTags',
+      testMatch: '**/SystemCertificationTags.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'chromium'],
+      fullyParallel: false,
     },
   ],
 

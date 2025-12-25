@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.Getter;
@@ -54,6 +55,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -384,9 +386,16 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         addPipelineStatusChangeDescription(
             ingestionPipeline.getVersion(), pipelineStatus, storedPipelineStatus);
     ingestionPipeline.setPipelineStatuses(pipelineStatus);
+    ingestionPipeline.setChangeDescription(change);
+
+    // Ensure entity reference is set before firing lifecycle event
+    setFullyQualifiedName(ingestionPipeline);
 
     // Update ES Indexes
     searchRepository.updateEntityIndex(ingestionPipeline);
+
+    // Fire lifecycle event for handlers (e.g., TestSuitePipelineStatusHandler)
+    EntityLifecycleEventDispatcher.getInstance().onEntityUpdated(ingestionPipeline, change, null);
 
     ChangeEvent changeEvent =
         getChangeEvent(
@@ -479,6 +488,20 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         PipelineStatus.class);
   }
 
+  @Transaction
+  public IngestionPipeline deletePipelineStatusByRunId(UUID ingestionPipelineId, UUID runId) {
+    IngestionPipeline ingestionPipeline = find(ingestionPipelineId, Include.NON_DELETED);
+    daoCollection
+        .entityExtensionTimeSeriesDao()
+        .deleteExtensionByKey(
+            RUN_ID_EXTENSION_KEY,
+            runId.toString(),
+            ingestionPipeline.getFullyQualifiedName(),
+            PIPELINE_STATUS_EXTENSION);
+    setFieldsInternal(ingestionPipeline, Fields.EMPTY_FIELDS);
+    return ingestionPipeline;
+  }
+
   /**
    * Handles entity updated from PUT and POST operation.
    */
@@ -499,6 +522,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       updateEnabled(original.getEnabled(), updated.getEnabled());
       updateDeployed(original.getDeployed(), updated.getDeployed());
       updateRaiseOnError(original.getRaiseOnError(), updated.getRaiseOnError());
+      updateEnableStreamableLogs(
+          original.getEnableStreamableLogs(), updated.getEnableStreamableLogs());
     }
 
     protected void updateProcessingEngine(IngestionPipeline original, IngestionPipeline updated) {
@@ -535,31 +560,39 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
     private void updateAirflowConfig(
         AirflowConfig origAirflowConfig, AirflowConfig updatedAirflowConfig) {
-      if (!origAirflowConfig.equals(updatedAirflowConfig)) {
+      if (!Objects.equals(origAirflowConfig, updatedAirflowConfig)) {
         recordChange("airflowConfig", origAirflowConfig, updatedAirflowConfig);
       }
     }
 
     private void updateLogLevel(LogLevels origLevel, LogLevels updatedLevel) {
-      if (updatedLevel != null && !origLevel.equals(updatedLevel)) {
+      if (updatedLevel != null && !Objects.equals(origLevel, updatedLevel)) {
         recordChange("loggerLevel", origLevel, updatedLevel);
       }
     }
 
+    private void updateEnableStreamableLogs(
+        Boolean origEnableStreamableLogs, Boolean updatedEnableStreamableLogs) {
+      if (updatedEnableStreamableLogs != null
+          && !Objects.equals(origEnableStreamableLogs, updatedEnableStreamableLogs)) {
+        recordChange("enableStreamableLogs", origEnableStreamableLogs, updatedEnableStreamableLogs);
+      }
+    }
+
     private void updateDeployed(Boolean origDeployed, Boolean updatedDeployed) {
-      if (updatedDeployed != null && !origDeployed.equals(updatedDeployed)) {
+      if (updatedDeployed != null && !Objects.equals(origDeployed, updatedDeployed)) {
         recordChange("deployed", origDeployed, updatedDeployed);
       }
     }
 
     private void updateRaiseOnError(Boolean origRaiseOnError, Boolean updatedRaiseOnError) {
-      if (updatedRaiseOnError != null && !origRaiseOnError.equals(updatedRaiseOnError)) {
+      if (updatedRaiseOnError != null && !Objects.equals(origRaiseOnError, updatedRaiseOnError)) {
         recordChange("raiseOnError", origRaiseOnError, updatedRaiseOnError);
       }
     }
 
     private void updateEnabled(Boolean origEnabled, Boolean updatedEnabled) {
-      if (updatedEnabled != null && !origEnabled.equals(updatedEnabled)) {
+      if (updatedEnabled != null && !Objects.equals(origEnabled, updatedEnabled)) {
         recordChange("enabled", origEnabled, updatedEnabled);
       }
     }
@@ -627,6 +660,19 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     } catch (Exception e) {
       LOG.error("Failed to append logs for pipeline: {}, runId: {}", pipelineFQN, runId, e);
       throw new RuntimeException("Failed to append logs", e);
+    }
+  }
+
+  public void closeStream(String pipelineFQN, UUID runId) {
+    try {
+      if (isLogStorageEnabled()) {
+        logStorage.closeStream(pipelineFQN, runId);
+      } else {
+        throw new IllegalStateException("Log storage is not configured");
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to close stream for pipeline: {}, runId: {}", pipelineFQN, runId, e);
+      throw new RuntimeException("Failed to close stream", e);
     }
   }
 
@@ -839,5 +885,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public PipelineServiceClientResponse deployIngestionPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+  }
+
+  public boolean isIngestionRunnerStreamableLogsEnabled(EntityReference ingestionRunner) {
+    return false; // Default implementation
   }
 }

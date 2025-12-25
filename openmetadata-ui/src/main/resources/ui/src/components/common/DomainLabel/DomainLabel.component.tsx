@@ -74,6 +74,8 @@ export const DomainLabel = ({
             ...entityDetailsResponse,
             domains: Array.isArray(selectedDomain)
               ? selectedDomain
+              : isEmpty(selectedDomain)
+              ? []
               : [selectedDomain],
           });
 
@@ -142,9 +144,9 @@ export const DomainLabel = ({
                 <DomainIcon
                   className="d-flex"
                   color={DE_ACTIVE_COLOR}
-                  height={16}
+                  height={20}
                   name="folder"
-                  width={16}
+                  width={20}
                 />
               </Typography.Text>
             )}

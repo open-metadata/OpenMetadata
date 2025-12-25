@@ -10,22 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { get } from 'lodash';
+import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import APIEndpointSchema from '../../components/APIEndpoint/APIEndpointSchema/APIEndpointSchema';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import Loader from '../../components/common/Loader/Loader';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
-import Lineage from '../../components/Lineage/Lineage.component';
+import { ContractTab } from '../../components/DataContract/ContractTab/ContractTab';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from '../i18next/LocalUtil';
 import { APIEndpointDetailPageTabProps } from './APIEndpointClassBase';
+const EntityLineageTab = lazy(() =>
+  import('../../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+    (module) => ({ default: module.EntityLineageTab })
+  )
+);
 
 export const getApiEndpointDetailsPageTabs = ({
   activeTab,
@@ -35,7 +42,7 @@ export const getApiEndpointDetailsPageTabs = ({
   getEntityFeedCount,
   handleFeedCount,
   editCustomAttributePermission,
-  viewAllPermission,
+  viewCustomPropertiesPermission,
   editLineagePermission,
   labelMap,
 }: APIEndpointDetailPageTabProps) => {
@@ -85,15 +92,25 @@ export const getApiEndpointDetailsPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={apiEndpoint.deleted}
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(apiEndpoint?.deleted)}
             entity={apiEndpoint as SourceType}
             entityType={EntityType.API_ENDPOINT}
             hasEditAccess={editLineagePermission}
           />
-        </LineageProvider>
+        </Suspense>
       ),
+    },
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, i18n.t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
     },
     {
       label: (
@@ -110,7 +127,7 @@ export const getApiEndpointDetailsPageTabs = ({
         <CustomPropertyTable<EntityType.API_ENDPOINT>
           entityType={EntityType.API_ENDPOINT}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

@@ -5,7 +5,9 @@
   "description": "Create Spreadsheet entity request",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.data.CreateSpreadsheet",
-  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
   "properties": {
     "name": {
       "description": "Name that identifies this spreadsheet.",
@@ -92,8 +94,19 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "createdTime": {
+      "description": "Spreadsheet creation timestamp",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "modifiedTime": {
+      "description": "Last modification timestamp",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
     }
   },
-  "required": ["name", "service"],
+  "required": [
+    "name",
+    "service"
+  ],
   "additionalProperties": false
 }

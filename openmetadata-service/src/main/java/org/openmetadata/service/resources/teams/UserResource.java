@@ -147,6 +147,7 @@ import org.openmetadata.service.security.CatalogPrincipal;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -219,7 +220,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     super.initialize(config);
-    this.authenticationConfiguration = config.getAuthenticationConfiguration();
+    this.authenticationConfiguration = SecurityConfigurationManager.getCurrentAuthConfig();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
     this.repository.initializeUsers(config);
     this.isSelfSignUpEnabled = authenticationConfiguration.getEnableSelfSignup();
@@ -722,12 +723,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private void sendInviteMailToUserForBasicAuth(UriInfo uriInfo, User user, CreateUser create) {
     if (isBasicAuth() && getSmtpSettings().getEnableSmtpServer()) {
       try {
-        authHandler.sendInviteMailToUser(
-            uriInfo,
-            user,
-            String.format("Welcome to %s", EmailUtil.getSmtpSettings().getEmailingEntity()),
-            create.getCreatePasswordType(),
-            create.getPassword());
+        SecurityConfigurationManager.getInstance()
+            .getAuthenticatorHandler()
+            .sendInviteMailToUser(
+                uriInfo,
+                user,
+                String.format("Welcome to %s", EmailUtil.getSmtpSettings().getEmailingEntity()),
+                create.getCreatePasswordType(),
+                create.getPassword());
       } catch (Exception ex) {
         LOG.error("Error in sending invite to User" + ex.getMessage());
       }
@@ -1091,6 +1094,81 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
+  @GET
+  @Path("/{id}/assets")
+  @Operation(
+      operationId = "listUserAssets",
+      summary = "List assets owned by this user or their teams",
+      description =
+          "Get a paginated list of assets that are owned by this user or any of the teams they belong to. "
+              + "Use limit and offset query params for pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityReference.class))),
+        @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
+      })
+  public Response listUserAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset) {
+    return Response.ok(repository.getUserAssets(id, limit, offset)).build();
+  }
+
+  @GET
+  @Path("/name/{name}/assets")
+  @Operation(
+      operationId = "listUserAssetsByName",
+      summary = "List assets owned by this user or their teams by name",
+      description =
+          "Get a paginated list of assets that are owned by this user or any of the teams they belong to. "
+              + "Use limit and offset query params for pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityReference.class))),
+        @ApiResponse(responseCode = "404", description = "User for instance {name} is not found")
+      })
+  public Response listUserAssetsByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the user", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset) {
+    return Response.ok(repository.getUserAssetsByName(name, limit, offset)).build();
+  }
+
   @POST
   @Path("/signup")
   @Operation(
@@ -1103,8 +1181,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response registerNewUser(@Context UriInfo uriInfo, @Valid RegistrationRequest create)
       throws IOException {
-    User registeredUser = authHandler.registerUser(create);
-    authHandler.sendEmailVerification(uriInfo, registeredUser);
+    User registeredUser =
+        SecurityConfigurationManager.getInstance().getAuthenticatorHandler().registerUser(create);
+    SecurityConfigurationManager.getInstance()
+        .getAuthenticatorHandler()
+        .sendEmailVerification(uriInfo, registeredUser);
     return Response.status(Response.Status.CREATED.getStatusCode(), "User Registration Successful.")
         .entity(registeredUser)
         .build();
@@ -1127,7 +1208,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("token")
           String token) {
-    authHandler.confirmEmailRegistration(uriInfo, token);
+    SecurityConfigurationManager.getInstance()
+        .getAuthenticatorHandler()
+        .confirmEmailRegistration(uriInfo, token);
     return Response.status(Response.Status.OK).entity("Email Verified Successfully").build();
   }
 
@@ -1153,7 +1236,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
       return Response.status(Response.Status.OK).entity("Email Already Verified.").build();
     }
-    authHandler.resendRegistrationToken(uriInfo, registeredUser);
+    SecurityConfigurationManager.getInstance()
+        .getAuthenticatorHandler()
+        .resendRegistrationToken(uriInfo, registeredUser);
     return Response.status(Response.Status.OK)
         .entity("Email Verification Mail Sent. Please check your Mailbox.")
         .build();
@@ -1187,11 +1272,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     try {
       // send a mail to the User with the Update
-      authHandler.sendPasswordResetLink(
-          uriInfo,
-          registeredUser,
-          EmailUtil.getPasswordResetSubject(),
-          TemplateConstants.RESET_LINK_TEMPLATE);
+      SecurityConfigurationManager.getInstance()
+          .getAuthenticatorHandler()
+          .sendPasswordResetLink(
+              uriInfo,
+              registeredUser,
+              EmailUtil.getPasswordResetSubject(),
+              TemplateConstants.RESET_LINK_TEMPLATE);
     } catch (Exception ex) {
       LOG.error("Error in sending mail for reset password" + ex.getMessage());
       return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
@@ -1219,7 +1306,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response resetUserPassword(@Context UriInfo uriInfo, @Valid PasswordResetRequest request)
       throws IOException {
-    authHandler.resetUserPasswordWithToken(uriInfo, request);
+    SecurityConfigurationManager.getInstance()
+        .getAuthenticatorHandler()
+        .resetUserPasswordWithToken(uriInfo, request);
     return Response.status(200).entity("Password Changed Successfully").build();
   }
 
@@ -1245,11 +1334,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Valid ChangePasswordRequest request)
       throws IOException {
     if (request.getRequestType() == SELF) {
-      authHandler.changeUserPwdWithOldPwd(
-          uriInfo, securityContext.getUserPrincipal().getName(), request);
+      SecurityConfigurationManager.getInstance()
+          .getAuthenticatorHandler()
+          .changeUserPwdWithOldPwd(uriInfo, securityContext.getUserPrincipal().getName(), request);
     } else {
       authorizer.authorizeAdmin(securityContext);
-      authHandler.changeUserPwdWithOldPwd(uriInfo, request.getUsername(), request);
+      SecurityConfigurationManager.getInstance()
+          .getAuthenticatorHandler()
+          .changeUserPwdWithOldPwd(uriInfo, request.getUsername(), request);
     }
     return Response.status(OK).entity("Password Updated Successfully").build();
   }
@@ -1305,7 +1397,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException("Password needs to be encoded in Base-64.");
     }
     loginRequest.withPassword(new String(decodedBytes));
-    return Response.status(Response.Status.OK).entity(authHandler.loginUser(loginRequest)).build();
+    return Response.status(Response.Status.OK)
+        .entity(
+            SecurityConfigurationManager.getInstance()
+                .getAuthenticatorHandler()
+                .loginUser(loginRequest))
+        .build();
   }
 
   @POST
@@ -1329,7 +1426,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context SecurityContext securityContext,
       @Valid TokenRefreshRequest refreshRequest) {
     return Response.status(Response.Status.OK)
-        .entity(authHandler.getNewAccessToken(refreshRequest))
+        .entity(
+            SecurityConfigurationManager.getInstance()
+                .getAuthenticatorHandler()
+                .getNewAccessToken(refreshRequest))
         .build();
   }
 

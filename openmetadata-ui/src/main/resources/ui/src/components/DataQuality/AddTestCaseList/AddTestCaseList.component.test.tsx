@@ -244,7 +244,7 @@ describe('AddTestCaseList', () => {
 
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith({
-          q: 'test_search',
+          q: '*test_search*',
           limit: 25,
           offset: 0,
         });
@@ -282,7 +282,7 @@ describe('AddTestCaseList', () => {
 
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith({
-          q: `column_test && ${filters}`,
+          q: `*column_test* && ${filters}`,
           limit: 25,
           offset: 0,
         });
@@ -524,7 +524,7 @@ describe('AddTestCaseList', () => {
 
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith({
-          q: 'specific_test',
+          q: '*specific_test*',
           limit: 25,
           offset: 0,
         });

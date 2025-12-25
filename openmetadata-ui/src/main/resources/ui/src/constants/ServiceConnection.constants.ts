@@ -55,6 +55,12 @@ export const FILTER_PATTERN_BY_SERVICE_TYPE = {
   [EntityType.STORAGE_SERVICE]: [
     ServiceConnectionFilterPatternFields.CONTAINER_FILTER_PATTERN,
   ],
+  [EntityType.DRIVE_SERVICE]: [
+    ServiceConnectionFilterPatternFields.DIRECTORY_FILTER_PATTERN,
+    ServiceConnectionFilterPatternFields.FILE_FILTER_PATTERN,
+    ServiceConnectionFilterPatternFields.SPREADSHEET_FILTER_PATTERN,
+    ServiceConnectionFilterPatternFields.WORKSHEET_FILTER_PATTERN,
+  ],
 };
 
 export const SERVICE_CONNECTION_UI_SCHEMA = {

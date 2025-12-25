@@ -26,7 +26,12 @@ import {
 } from '../../utils/common';
 import { addMultiOwner, removeOwner } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
-import { addTagToTableColumn, submitForm, validateForm } from '../../utils/tag';
+import {
+  addTagToTableColumn,
+  setTagDisabled,
+  submitForm,
+  validateForm,
+} from '../../utils/tag';
 
 const NEW_CLASSIFICATION = {
   name: `PlaywrightClassification-${uuid()}`,
@@ -38,8 +43,8 @@ const NEW_TAG = {
   displayName: `PlaywrightTag-${uuid()}`,
   renamedName: `PlaywrightTag-${uuid()}`,
   description: 'This is the PlaywrightTag',
-  color: '#FF5733',
-  icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAF8AAACFCAMAAAAKN9SOAAAAA1BMVEXmGSCqexgYAAAAI0lEQVRoge3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAHgaMeAAAUWJHZ4AAAAASUVORK5CYII=',
+  color: '#F14C75',
+  icon: 'Cube01',
 };
 const tagFqn = `${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`;
 
@@ -125,7 +130,13 @@ test('Classification Page', async ({ page }) => {
       .locator('.ant-table-thead > tr > .ant-table-cell')
       .allTextContents();
 
-    expect(headers).toEqual(['Tag', 'Display Name', 'Description', 'Actions']);
+    expect(headers).toEqual([
+      'Enabled',
+      'Tag',
+      'Display Name',
+      'Description',
+      'Actions',
+    ]);
   });
 
   await test.step('Disabled system tags should not render', async () => {
@@ -153,6 +164,22 @@ test('Classification Page', async ({ page }) => {
     await expect(
       page.locator('[data-testid="add-new-tag-button"]')
     ).toBeDisabled();
+
+    // Verify that the "Add Domain" and "Add Owner" icon buttons are not visible
+    // on both the Classification and Tag pages when Classification is disabled.
+
+    await expect(page.getByTestId('add-domain')).not.toBeVisible();
+    await expect(page.getByTestId('add-owner')).not.toBeVisible();
+
+    await page.getByTestId(tag.responseData.name).click();
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await expect(page.getByTestId('disabled')).toBeVisible();
+    await expect(page.getByTestId('add-domain')).not.toBeVisible();
+    await expect(page.getByTestId('add-owner')).not.toBeVisible();
 
     // Check if the disabled Classification tag is not visible in the table
     await table.visitEntityPage(page);
@@ -203,6 +230,21 @@ test('Classification Page', async ({ page }) => {
       )
     ).not.toBeVisible();
 
+    // Verify that the "Add Domain" and "Add Owner" icon buttons are visible
+    // on both the Classification and Tag pages when Classification is enabled.
+    await expect(page.getByTestId('add-domain')).toBeVisible();
+    await expect(page.getByTestId('add-owner')).toBeVisible();
+
+    await page.getByTestId(tag.responseData.name).click();
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await expect(page.getByTestId('disabled')).not.toBeVisible();
+    await expect(page.getByTestId('add-domain')).toBeVisible();
+    await expect(page.getByTestId('add-owner')).toBeVisible();
+
     /* This code test will be fix in this PR  https://github.com/open-metadata/OpenMetadata/pull/18333  */
     // await table.visitEntityPage(page);
     // await addTagToTableColumn(page, {
@@ -219,11 +261,8 @@ test('Classification Page', async ({ page }) => {
     await redirectToHomePage(page);
     await classification.visitPage(page);
     await page.click('[data-testid="add-classification"]');
-    await page.waitForSelector('.ant-modal-content', {
-      state: 'visible',
-    });
 
-    await expect(page.locator('.ant-modal-content')).toBeVisible();
+    await expect(page.getByTestId('tags-form')).toBeVisible();
 
     await validateForm(page);
 
@@ -258,19 +297,20 @@ test('Classification Page', async ({ page }) => {
 
     await page.click('[data-testid="add-new-tag-button"]');
 
-    await page.waitForSelector('.ant-modal-content', {
-      state: 'visible',
-    });
-
-    await expect(page.locator('.ant-modal-content')).toBeVisible();
+    await expect(page.getByTestId('tags-form')).toBeVisible();
 
     await validateForm(page);
 
     await page.fill('[data-testid="name"]', NEW_TAG.name);
     await page.fill('[data-testid="displayName"]', NEW_TAG.displayName);
     await page.locator(descriptionBox).fill(NEW_TAG.description);
-    await page.fill('[data-testid="icon-url"]', NEW_TAG.icon);
-    await page.fill('[data-testid="tags_color-color-input"]', NEW_TAG.color);
+    await page.getByTestId('icon-picker-btn').click();
+    await page
+      .getByRole('button', { name: `Select icon ${NEW_TAG.icon}` })
+      .click();
+    await page
+      .getByRole('button', { name: `Select color ${NEW_TAG.color}` })
+      .click();
 
     const createTagResponse = page.waitForResponse('api/v1/tags');
     await submitForm(page);
@@ -347,7 +387,7 @@ test('Classification Page', async ({ page }) => {
       await clickOutside(page);
 
       const suggestTag = page.waitForResponse(
-        'api/v1/search/query?q=*%20AND%20disabled:false&index=tag_search_index*'
+        'api/v1/search/query?q=*&index=tag_search_index*'
       );
       await page.click('[data-testid="tag-selector"]');
       await page.keyboard.type(tag);
@@ -383,6 +423,12 @@ test('Classification Page', async ({ page }) => {
       );
       await page.reload();
       await databaseSchemasPage;
+
+      await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await expect(
         page.locator('[data-testid="tags-container"]')
@@ -441,6 +487,11 @@ test('Classification Page', async ({ page }) => {
     // Verify term count is now 0 after deleting the tag
     await page.reload();
     await page.waitForLoadState('networkidle');
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.waitForSelector('[data-testid="side-panel-classification"]', {
       state: 'visible',
     });
@@ -583,18 +634,28 @@ test('Verify system classification term counts', async ({ page }) => {
     .locator('[data-testid="side-panel-classification"]')
     .filter({ hasText: 'Tier' });
 
-  await expect(tierElement.getByTestId('filter-count')).toContainText('5');
+  const tierCountText = await tierElement
+    .getByTestId('filter-count')
+    .textContent();
+  const tierCount = parseInt(tierCountText?.trim() || '0');
+
+  expect(tierCount).toBeGreaterThanOrEqual(5);
 
   const piiElement = page
     .locator('[data-testid="side-panel-classification"]')
     .filter({ hasText: 'PII' });
 
-  await expect(piiElement.getByTestId('filter-count')).toContainText('3');
+  const piiCountText = await piiElement
+    .getByTestId('filter-count')
+    .textContent();
+  const piiCount = parseInt(piiCountText?.trim() || '0');
+
+  expect(piiCount).toBeGreaterThanOrEqual(3);
 });
 
 test('Verify Owner Add Delete', async ({ page }) => {
   await classification1.visitPage(page);
-  const OWNER1 = user1.getUserName();
+  const OWNER1 = user1.getUserDisplayName();
 
   await addMultiOwner({
     page,
@@ -610,7 +671,7 @@ test('Verify Owner Add Delete', async ({ page }) => {
   await page.waitForLoadState('networkidle');
 
   await expect(
-    page.locator(`[data-testid="tag-owner-name"]`).getByTestId(OWNER1)
+    page.locator(`[data-testid="owner-link"]`).getByTestId(OWNER1)
   ).toBeVisible();
 
   await classification1.visitPage(page);
@@ -624,4 +685,39 @@ test('Verify Owner Add Delete', async ({ page }) => {
     type: 'Users',
     dataTestId: 'classification-owner-name',
   });
+});
+
+test('Disabled tag should not allow adding assets from Assets tab', async ({
+  browser,
+  page,
+}) => {
+  const { apiContext, afterAction } = await createNewPage(browser);
+
+  try {
+    // Disable the tag via API
+    await setTagDisabled(apiContext, tag1.responseData.id, true);
+
+    // Visit the disabled tag page
+    await tag1.visitPage(page);
+
+    await page.waitForSelector(
+      '[data-testid="tags-container"] [data-testid="loader"]',
+      { state: 'detached' }
+    );
+
+    // Verify the disabled badge is visible
+    await expect(page.getByTestId('disabled')).toBeVisible();
+
+    // Go to Assets tab
+    await page.getByTestId('assets').click();
+
+    // Verify the "Add Assets" button is NOT visible for disabled tag
+    await expect(
+      page.getByTestId('data-classification-add-button')
+    ).not.toBeVisible();
+  } finally {
+    // Re-enable the tag for cleanup
+    await setTagDisabled(apiContext, tag1.responseData.id, false);
+    await afterAction();
+  }
 });

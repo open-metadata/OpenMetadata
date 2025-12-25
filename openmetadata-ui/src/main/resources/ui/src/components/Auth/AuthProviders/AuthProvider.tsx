@@ -122,7 +122,6 @@ const isEmailVerifyField = 'isEmailVerified';
 let requestInterceptor: number | null = null;
 let responseInterceptor: number | null = null;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let pendingRequests: any[] = [];
 
 type AuthContextType = {
@@ -233,7 +232,20 @@ export const AuthProvider = ({
 
   const handledVerifiedUser = () => {
     if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
-      navigate(ROUTES.HOME);
+      // Check if provider uses OidcAuthenticator which has routing logic
+      const usesOidcAuthenticator = [
+        AuthProviderEnum.Google,
+        AuthProviderEnum.CustomOidc,
+        AuthProviderEnum.AwsCognito,
+      ].includes(authConfig?.provider as AuthProviderEnum);
+
+      // For providers using OidcAuthenticator, navigate to HOME for routing
+      // For all others (Azure, Auth0, SAML, etc.), navigate directly to MY_DATA
+      if (usesOidcAuthenticator && clientType !== ClientType.Confidential) {
+        navigate(ROUTES.HOME);
+      } else {
+        navigate(ROUTES.MY_DATA);
+      }
     }
   };
 
@@ -452,7 +464,6 @@ export const AuthProvider = ({
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const withDomainFilter = (config: InternalAxiosRequestConfig<any>) => {
     const isGetRequest = config.method === 'get';
     const activeDomain = useDomainStore.getState().activeDomain;
@@ -517,7 +528,6 @@ export const AuthProvider = ({
     }
 
     requestInterceptor = axiosClient.interceptors.request.use(async function (
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       config: InternalAxiosRequestConfig<any>
     ) {
       // Need to read token from local storage as it might have been updated with refresh

@@ -1,64 +1,139 @@
 [
-    {
-      "name": "eta_predictions",
-      "displayName": "ETA Predictions",
-      "description": "ETA Predictions Model",
-      "algorithm": "Neural Network",
-      "dashboard": "sample_superset.eta_predictions_performance",
-      "mlStore": {
-        "storage": "s3://path-to-pickle",
-        "imageRepository": "https://docker.hub.com/image"
-      },
-      "server": "http://my-server.ai",
-      "mlFeatures": [
-        {
-          "name": "sales",
-          "dataType": "numerical",
-          "description": "Sales amount",
-          "featureSources": [
-            {
-              "name": "gross_sales",
-              "dataType": "integer",
-              "dataSource": "sample_data.ecommerce_db.shopify.fact_sale"
-            }
-          ]
-        },
-        {
-          "name": "persona",
-          "dataType": "categorical",
-          "description": "type of buyer",
-          "featureAlgorithm": "PCA",
-          "featureSources": [
-            {
-              "name": "membership",
-              "dataType": "string",
-              "dataSource": "sample_data.ecommerce_db.shopify.raw_customer"
-            },
-            {
-              "name": "platform",
-              "dataType": "string",
-              "dataSource": "sample_data.ecommerce_db.shopify.raw_customer"
-            }
-          ]
-        }
-      ],
-      "mlHyperParameters": [
-        {
-          "name": "regularisation",
-          "value": "0.5"
-        },
-        {
-          "name": "random",
-          "value": "hello"
-        }
-      ],
-      "target": "ETA_time"
+  {
+    "name": "eta_predictions",
+    "displayName": "ETA Predictions",
+    "description": "Deep learning model for predicting estimated time of arrival using historical delivery data and real-time traffic patterns",
+    "algorithm": "mlmodel",
+    "dashboard": "sample_superset.eta_predictions_performance",
+    "mlStore": {
+      "storage": "mlflow-artifacts:/1/abc123def456/artifacts/model"
     },
+    "sourceUrl": "http://localhost:8088/#/models/eta_predictions",
+    "mlFeatures": [
       {
-      "name": "forecast_sales",
-      "displayName": "Sales Forecast Predictions",
-      "description": "Sales Forecast Predictions Model",
-      "algorithm": "Time Series",
-      "dashboard": "sample_superset.forecast_sales_performance"
-    }
+        "name": "distance",
+        "dataType": "numerical"
+      },
+      {
+        "name": "traffic_density",
+        "dataType": "numerical"
+      },
+      {
+        "name": "weather_condition",
+        "dataType": "categorical"
+      },
+      {
+        "name": "day_of_week",
+        "dataType": "categorical"
+      }
+    ],
+    "mlHyperParameters": [
+      {
+        "name": "learning_rate",
+        "value": "0.001"
+      },
+      {
+        "name": "batch_size",
+        "value": "32"
+      },
+      {
+        "name": "epochs",
+        "value": "100"
+      },
+      {
+        "name": "dropout_rate",
+        "value": "0.3"
+      }
+    ]
+  },
+  {
+    "name": "forecast_sales",
+    "displayName": "Sales Forecast Predictions",
+    "description": "Time series forecasting model for predicting future sales based on historical trends and seasonality patterns",
+    "algorithm": "mlmodel",
+    "dashboard": "sample_superset.forecast_sales_performance",
+    "mlStore": {
+      "storage": "mlflow-artifacts:/2/xyz789abc012/artifacts/model"
+    },
+    "sourceUrl": "http://localhost:8088/#/models/forecast_sales",
+    "mlFeatures": [
+      {
+        "name": "historical_sales",
+        "dataType": "numerical"
+      },
+      {
+        "name": "month",
+        "dataType": "categorical"
+      },
+      {
+        "name": "promotion_flag",
+        "dataType": "categorical"
+      }
+    ],
+    "mlHyperParameters": [
+      {
+        "name": "seasonality_mode",
+        "value": "multiplicative"
+      },
+      {
+        "name": "changepoint_prior_scale",
+        "value": "0.05"
+      },
+      {
+        "name": "seasonality_prior_scale",
+        "value": "10.0"
+      }
+    ]
+  },
+  {
+    "name": "customer_segmentation",
+    "displayName": "Customer Segmentation Model",
+    "description": "Clustering model for customer segmentation based on purchase behavior and demographics",
+    "algorithm": "mlmodel",
+    "dashboard": "sample_superset.eta_predictions_performance",
+    "mlStore": {
+      "storage": "mlflow-artifacts:/3/seg456cluster/artifacts/model"
+    },
+    "sourceUrl": "http://localhost:8088/#/models/customer_segmentation",
+    "mlFeatures": [
+      {
+        "name": "total_purchase_amount",
+        "dataType": "numerical"
+      },
+      {
+        "name": "purchase_frequency",
+        "dataType": "numerical"
+      },
+      {
+        "name": "avg_basket_size",
+        "dataType": "numerical"
+      },
+      {
+        "name": "customer_age_group",
+        "dataType": "categorical"
+      },
+      {
+        "name": "preferred_category",
+        "dataType": "categorical"
+      }
+    ],
+    "mlHyperParameters": [
+      {
+        "name": "n_clusters",
+        "value": "5"
+      },
+      {
+        "name": "max_iter",
+        "value": "300"
+      },
+      {
+        "name": "init",
+        "value": "k-means++"
+      },
+      {
+        "name": "random_state",
+        "value": "42"
+      }
+    ]
+  }
 ]

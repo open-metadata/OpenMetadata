@@ -166,11 +166,18 @@ public class SubscriptionUtil {
   }
 
   private static Set<String> getTaskAssignees(
+      SubscriptionAction action,
       SubscriptionDestination.SubscriptionCategory category,
       SubscriptionDestination.SubscriptionType type,
       ChangeEvent event) {
     Thread thread = AlertsRuleEvaluator.getThread(event);
     Set<String> receiversList = new HashSet<>();
+
+    if (category == SubscriptionDestination.SubscriptionCategory.EXTERNAL
+        && action.getReceivers() != null) {
+      receiversList.addAll(action.getReceivers());
+    }
+
     Map<UUID, Team> teams = new HashMap<>();
     Map<UUID, User> users = new HashMap<>();
     addMentionedUsersToNotifyIfRequired(users, teams, category, thread);
@@ -264,11 +271,18 @@ public class SubscriptionUtil {
   }
 
   public static Set<String> handleConversationNotification(
+      SubscriptionAction action,
       SubscriptionDestination.SubscriptionCategory category,
       SubscriptionDestination.SubscriptionType type,
       ChangeEvent event) {
     Thread thread = AlertsRuleEvaluator.getThread(event);
     Set<String> receiversList = new HashSet<>();
+
+    if (category == SubscriptionDestination.SubscriptionCategory.EXTERNAL
+        && action.getReceivers() != null) {
+      receiversList.addAll(action.getReceivers());
+    }
+
     Map<UUID, Team> teams = new HashMap<>();
     Map<UUID, User> users = new HashMap<>();
 
@@ -391,9 +405,9 @@ public class SubscriptionUtil {
     if (event.getEntityType().equals(THREAD)) {
       Thread thread = AlertsRuleEvaluator.getThread(event);
       switch (thread.getType()) {
-        case Task -> receiverUrls.addAll(getTaskAssignees(category, type, event));
+        case Task -> receiverUrls.addAll(getTaskAssignees(action, category, type, event));
         case Conversation -> receiverUrls.addAll(
-            handleConversationNotification(category, type, event));
+            handleConversationNotification(action, category, type, event));
           // TODO: For Announcement, Immediate Consumer needs to be Notified (find information from
           // Lineage)
         case Announcement -> {

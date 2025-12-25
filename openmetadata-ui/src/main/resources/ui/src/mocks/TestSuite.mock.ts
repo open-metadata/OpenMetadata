@@ -567,6 +567,52 @@ export const MOCK_TABLE_COLUMN_NAME_TO_EXIST = {
   deleted: false,
 };
 
+export const MOCK_TABLE_DIFF_DEFINITION = {
+  id: 'table-diff-test-id',
+  name: 'tableDiff',
+  displayName: 'Table Diff',
+  fullyQualifiedName: 'tableDiff',
+  description: 'Compare two tables',
+  entityType: 'TABLE',
+  testPlatforms: ['OpenMetadata'],
+  supportedDataTypes: [],
+  parameterDefinition: [
+    {
+      name: 'table2',
+      displayName: 'Table 2',
+      dataType: 'STRING',
+      description: 'Second table to compare',
+      required: true,
+    },
+    {
+      name: 'keyColumns',
+      displayName: 'Key Columns',
+      dataType: 'ARRAY',
+      description: 'Key columns for table 1',
+      required: false,
+    },
+    {
+      name: 'table2.keyColumns',
+      displayName: 'Table 2 Key Columns',
+      dataType: 'ARRAY',
+      description: 'Key columns for table 2',
+      required: false,
+    },
+    {
+      name: 'useColumns',
+      displayName: 'Use Columns',
+      dataType: 'ARRAY',
+      description: 'Additional columns to compare',
+      required: false,
+    },
+  ],
+  version: 0.1,
+  updatedAt: 1675211404184,
+  updatedBy: 'admin',
+  href: 'http://localhost:8585/api/v1/dataQuality/testDefinitions/table-diff-test-id',
+  deleted: false,
+};
+
 export const MOCK_TABLE_TEST_WITH_COLUMN = {
   id: 'id',
   name: 'tableColumnNameToExist',

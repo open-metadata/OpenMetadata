@@ -152,11 +152,10 @@ const ExplorePageV1: FC<unknown> = () => {
 
     // Getting the filters that can be common for all the Entities
     const must = mustField.filter((filterCategory: QueryFieldInterface) => {
-      const shouldField: QueryFieldInterface[] = get(
-        filterCategory,
-        'bool.should',
-        []
-      );
+      const rawShouldField = get(filterCategory, 'bool.should', []);
+      const shouldField: QueryFieldInterface[] = Array.isArray(rawShouldField)
+        ? rawShouldField
+        : [];
 
       const terms = extractTermKeys(shouldField);
 

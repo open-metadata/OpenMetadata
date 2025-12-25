@@ -95,6 +95,7 @@
           "dataProduct",
           "databaseService",
           "dashboardService",
+          "driveService",
           "query",
           "queryCostRecord",
           "apiService",
@@ -117,7 +118,11 @@
           "topic",
           "chart",
           "user",
-          "testCase"
+          "testCase",
+          "directory",
+          "file",
+          "spreadsheet",
+          "worksheet"
         ]
       },
       "default": ["all"],
@@ -127,7 +132,7 @@
     "recreateIndex": {
       "title": "Recreate Indexes",
       "type": "boolean",
-      "default": false
+      "default": true
     },
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",

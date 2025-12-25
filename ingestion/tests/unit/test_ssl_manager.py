@@ -125,6 +125,21 @@ class KafkaSourceSSLTest(TestCase):
             kafka_source_with_ssl.service_connection.schemaRegistrySSL.root.sslCertificate.get_secret_value(),
             "sslCertificateData",
         )
+        self.assertIsNotNone(
+            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get(
+                "ssl.ca.location"
+            ),
+        )
+        self.assertIsNotNone(
+            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get(
+                "ssl.key.location"
+            ),
+        )
+        self.assertIsNotNone(
+            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get(
+                "ssl.certificate.location"
+            ),
+        )
 
 
 class CassandraSourceSSLTest(TestCase):
@@ -195,3 +210,166 @@ class CassandraSourceSSLTest(TestCase):
             cassandra_source_with_ssl.service_connection.sslConfig.root.sslCertificate.get_secret_value(),
             "sslCertificateData",
         )
+
+
+class MssqlSSLManagerTest(TestCase):
+    """
+    Tests for MSSQL SSL Manager functionality
+    """
+
+    def test_check_ssl_and_init_with_ssl_config(self):
+        """Test SSL manager initialization with sslConfig"""
+        from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+            MssqlConnection,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection_with_ssl = MssqlConnection(
+            hostPort="localhost:1433",
+            database="testdb",
+            username="sa",
+            password="password",
+            encrypt=False,
+            trustServerCertificate=False,
+            sslConfig={"caCertificate": "caCertificateData"},
+        )
+
+        ssl_manager = check_ssl_and_init(connection_with_ssl)
+
+        self.assertIsNotNone(ssl_manager)
+        self.assertIsNotNone(ssl_manager.ca_file_path)
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_check_ssl_and_init_without_ssl_config(self):
+        """Test SSL manager initialization without sslConfig"""
+        from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+            MssqlConnection,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection_without_ssl = MssqlConnection(
+            hostPort="localhost:1433",
+            database="testdb",
+            username="sa",
+            password="password",
+            encrypt=True,
+            trustServerCertificate=True,
+        )
+
+        ssl_manager = check_ssl_and_init(connection_without_ssl)
+
+        self.assertIsNone(ssl_manager.ca_file_path)
+
+    def test_setup_ssl_pyodbc_driver(self):
+        """Test SSL setup for pyodbc driver"""
+        from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+            MssqlConnection,
+            MssqlScheme,
+        )
+
+        connection = MssqlConnection(
+            hostPort="localhost:1433",
+            database="testdb",
+            username="sa",
+            password="password",
+            scheme=MssqlScheme.mssql_pyodbc,
+            encrypt=True,
+            trustServerCertificate=False,
+        )
+
+        ssl_manager = SSLManager(
+            ca=SecretStr("CA cert"), cert=SecretStr("Cert"), key=SecretStr("Key")
+        )
+        updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertIsNotNone(updated_connection.connectionArguments)
+        self.assertEqual(
+            updated_connection.connectionArguments.root.get("Encrypt"), "yes"
+        )
+        self.assertIsNone(
+            updated_connection.connectionArguments.root.get("TrustServerCertificate")
+        )
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_pyodbc_with_trust_certificate(self):
+        """Test SSL setup for pyodbc driver with trustServerCertificate"""
+        from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+            MssqlConnection,
+            MssqlScheme,
+        )
+
+        connection = MssqlConnection(
+            hostPort="localhost:1433",
+            database="testdb",
+            username="sa",
+            password="password",
+            scheme=MssqlScheme.mssql_pyodbc,
+            encrypt=True,
+            trustServerCertificate=True,
+        )
+
+        ssl_manager = SSLManager(
+            ca=SecretStr("CA cert"), cert=SecretStr("Cert"), key=SecretStr("Key")
+        )
+        updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertIsNotNone(updated_connection.connectionArguments)
+        self.assertEqual(
+            updated_connection.connectionArguments.root.get("Encrypt"), "yes"
+        )
+        self.assertEqual(
+            updated_connection.connectionArguments.root.get("TrustServerCertificate"),
+            "yes",
+        )
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_pytds_driver(self):
+        """Test SSL setup for pytds driver"""
+        from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+            MssqlConnection,
+            MssqlScheme,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = MssqlConnection(
+            hostPort="localhost:1433",
+            database="testdb",
+            username="sa",
+            password="password",
+            scheme=MssqlScheme.mssql_pytds,
+            sslConfig={"caCertificate": "caCertificateData"},
+        )
+
+        ssl_manager = check_ssl_and_init(connection)
+        updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertIsNotNone(updated_connection.connectionArguments.root["cafile"])
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_pymssql_driver(self):
+        """Test SSL setup for pymssql driver"""
+        from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+            MssqlConnection,
+            MssqlScheme,
+        )
+
+        connection = MssqlConnection(
+            hostPort="localhost:1433",
+            database="testdb",
+            username="sa",
+            password="password",
+            scheme=MssqlScheme.mssql_pymssql,
+        )
+
+        ssl_manager = SSLManager(
+            ca=SecretStr("CA cert"), cert=SecretStr("Cert"), key=SecretStr("Key")
+        )
+        updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertDictEqual(updated_connection.connectionArguments.root, {})
+
+        ssl_manager.cleanup_temp_files()
