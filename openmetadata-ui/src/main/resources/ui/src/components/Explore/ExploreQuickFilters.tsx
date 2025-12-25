@@ -17,10 +17,6 @@ import { isEqual, isUndefined, toLower, uniqWith } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  MISC_FIELDS,
-  OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY,
-} from '../../constants/AdvancedSearch.constants';
 import { TIER_FQN_KEY } from '../../constants/explore.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -51,6 +47,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fieldsWithNullValues = [],
   defaultQueryFilter,
   showSelectedCounts = false,
+  optionPageSize,
 }) => {
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
@@ -97,7 +94,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           '',
           JSON.stringify(combinedQueryFilter),
           independent,
-          showDeleted
+          showDeleted,
+          optionPageSize
         ),
         key === TIER_FQN_KEY
           ? getTags({ parent: 'Tier', limit: 50 })
@@ -132,14 +130,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     setIsOptionsLoading(true);
     setOptions([]);
     try {
-      if (key === MISC_FIELDS[0]) {
-        await fetchDefaultOptions(
-          [SearchIndex.USER, SearchIndex.TEAM],
-          OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY
-        );
-      } else {
-        await fetchDefaultOptions(index, key);
-      }
+      await fetchDefaultOptions(index, key);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -208,7 +199,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             highlight
             fixedOrderOptions={field.key === TIER_FQN_KEY}
             hasNullOption={hasNullOption}
-            hideCounts={fields.hideCounts ?? false}
+            hideCounts={field.hideCounts ?? false}
             independent={independent}
             index={index as ExploreSearchIndex}
             isSuggestionsLoading={isOptionsLoading}

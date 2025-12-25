@@ -183,8 +183,8 @@ export const IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS = [
   'nodeDepth',
   'toEntity',
   'fromEntity',
-  'column.toColumn',
-  'column.fromColumns',
+  'toColumn',
+  'fromColumn',
 ];
 
 export const IMPACT_ANALYSIS_STATIC_COLUMNS = ['name', 'column'];
