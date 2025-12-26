@@ -25,7 +25,13 @@ interface PaginationAssertionParams {
   shouldBeDisabled?: 'prev' | 'next';
 }
 
-const getInsidePageColumns = (columnsContainer: HTMLElement): string[] => {
+const getColumnsFromContainer = (columnsContainer: HTMLElement): string[] => {
+  return Array.from(
+    columnsContainer.querySelectorAll('[data-testid^="column-"]')
+  ).map((el) => el.textContent?.trim() ?? '');
+};
+
+const getColumnsFromCurrentPage = (columnsContainer: HTMLElement): string[] => {
   const insidePageContainer = columnsContainer.querySelector(
     '.inside-current-page-items'
   );
@@ -50,7 +56,7 @@ const assertPaginationState = ({
 
   expect(screen.getByText(expectedPageText)).toBeInTheDocument();
 
-  const visibleColumns = getInsidePageColumns(columnsContainer);
+  const visibleColumns = getColumnsFromCurrentPage(columnsContainer);
 
   expect(visibleColumns).toEqual(expectedColumns);
 
@@ -82,6 +88,7 @@ const mockNodeDataProps = {
       columns: [...Array(12)].map((_, i) => ({
         fullyQualifiedName: `col${i}`,
         name: `col${i}`,
+        dataType: 'VARCHAR',
       })),
       testSuite: {
         deleted: false,
@@ -115,6 +122,7 @@ const mockNodeDataProps2 = {
       columns: [...Array(3)].map((_, i) => ({
         fullyQualifiedName: `col${i}`,
         name: `col${i}`,
+        dataType: 'VARCHAR',
       })),
       dataModel: {
         modelType: ModelType.Dbt,
@@ -144,11 +152,21 @@ const setColumnsInCurrentPagesMock = jest.fn((updater) => {
 let isColumnLayerActive = false;
 let isDataObservabilityLayerActive = false;
 let tracedColumns: string[] = [];
+let columnsHavingLineage: string[] = [];
+let isEditMode = false;
 
 jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
-  useLineageProvider: jest.fn().mockImplementation(() => ({
+  useLineageProvider: jest.fn(() => ({
     tracedNodes: [],
-    tracedColumns,
+    get tracedColumns() {
+      return tracedColumns;
+    },
+    get columnsHavingLineage() {
+      return columnsHavingLineage;
+    },
+    get isEditMode() {
+      return isEditMode;
+    },
     pipelineStatus: {},
     nodes: [
       {
@@ -161,12 +179,14 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
       upstreamEdges: [],
       downstreamEdges: [],
     },
-    activeLayer: [
-      ...(isColumnLayerActive ? [LineageLayer.ColumnLevelLineage] : []),
-      ...(isDataObservabilityLayerActive
-        ? [LineageLayer.DataObservability]
-        : []),
-    ],
+    get activeLayer() {
+      return [
+        ...(isColumnLayerActive ? [LineageLayer.ColumnLevelLineage] : []),
+        ...(isDataObservabilityLayerActive
+          ? [LineageLayer.DataObservability]
+          : []),
+      ];
+    },
     expandAllColumns: true,
     fetchPipelineStatus: jest.fn(),
     onColumnClick: onMockColumnClick,
@@ -192,6 +212,9 @@ jest.mock('react-i18next', () => ({
       if (key === 'label.slash-symbol') {
         return '/';
       }
+      if (key === 'message.only-show-columns-with-lineage') {
+        return 'Only show columns with Lineage';
+      }
 
       return key;
     },
@@ -203,6 +226,8 @@ describe('CustomNodeV1', () => {
     isColumnLayerActive = false;
     isDataObservabilityLayerActive = false;
     tracedColumns = [];
+    columnsHavingLineage = [];
+    isEditMode = false;
     jest.clearAllMocks();
   });
 
@@ -420,14 +445,22 @@ describe('CustomNodeV1', () => {
   });
 
   describe('CustomNodeV1 Column Pagination', () => {
+    const clickFilterButton = () => {
+      const filterButton = screen.getByTestId('lineage-filter-button');
+      fireEvent.click(filterButton);
+    };
+
     it('should have pagination in columns', () => {
       isColumnLayerActive = true;
+      columnsHavingLineage = ['col0', 'col2', 'col5', 'col7', 'col10'];
 
       render(
         <ReactFlowProvider>
           <CustomNodeV1Component {...mockNodeDataProps} />
         </ReactFlowProvider>
       );
+
+      clickFilterButton();
 
       const columnsContainer = screen.getByTestId('column-container');
 
@@ -474,12 +507,15 @@ describe('CustomNodeV1', () => {
 
     it('should select a column when it is clicked', () => {
       isColumnLayerActive = true;
+      columnsHavingLineage = ['col0', 'col2', 'col5', 'col7', 'col10'];
 
       render(
         <ReactFlowProvider>
           <CustomNodeV1Component {...mockNodeDataProps} />
         </ReactFlowProvider>
       );
+
+      clickFilterButton();
 
       const column = screen.getByTestId('column-col0');
 
@@ -490,12 +526,15 @@ describe('CustomNodeV1', () => {
 
     it('should keep the traced column visible when page changes', () => {
       isColumnLayerActive = true;
+      columnsHavingLineage = ['col0', 'col2', 'col3', 'col5', 'col7', 'col10'];
 
       const { rerender } = render(
         <ReactFlowProvider>
           <CustomNodeV1Component {...mockNodeDataProps} />
         </ReactFlowProvider>
       );
+
+      clickFilterButton();
 
       expect(screen.getByText('1 / 3')).toBeVisible();
       expect(screen.getByTestId('column-col3')).not.toHaveClass(
@@ -519,6 +558,279 @@ describe('CustomNodeV1', () => {
       expect(screen.getByTestId('column-col3')).toHaveClass(
         'custom-node-header-column-tracing'
       );
+    });
+  });
+
+  describe('Only show columns with lineage', () => {
+    const clickFilterButton = () => {
+      const filterButton = screen.getByTestId('lineage-filter-button');
+      fireEvent.click(filterButton);
+    };
+
+    it('should render tooltip on hovering filter button in lineage node', async () => {
+      isColumnLayerActive = true;
+      columnsHavingLineage = ['col0', 'col2', 'col5'];
+
+      render(
+        <ReactFlowProvider>
+          <CustomNodeV1Component {...mockNodeDataProps} />
+        </ReactFlowProvider>
+      );
+
+      const filterButton = screen.getByTestId('lineage-filter-button');
+
+      expect(filterButton).toBeInTheDocument();
+
+      fireEvent.mouseOver(filterButton);
+
+      expect(
+        await screen.findByText('Only show columns with Lineage')
+      ).toBeInTheDocument();
+    });
+
+    describe('Column Filter', () => {
+      it('should only render columns with lineage when filter is on', () => {
+        isColumnLayerActive = false;
+        let visibleColumns = [];
+        columnsHavingLineage = ['col0', 'col2', 'col5', 'col7', 'col10'];
+
+        render(
+          <ReactFlowProvider>
+            <CustomNodeV1Component {...mockNodeDataProps} />
+          </ReactFlowProvider>
+        );
+
+        const expandButton = screen.getByTestId('children-info-dropdown-btn');
+        act(() => fireEvent.click(expandButton));
+
+        const columnsContainer = screen.getByTestId('column-container');
+        visibleColumns = getColumnsFromCurrentPage(columnsContainer);
+
+        expect(visibleColumns).toEqual([
+          'col0',
+          'col1',
+          'col2',
+          'col3',
+          'col4',
+        ]);
+
+        expect(screen.getByText('1 / 3')).toBeInTheDocument();
+
+        const filterButton = screen.getByTestId('lineage-filter-button');
+
+        expect(filterButton).toBeInTheDocument();
+        expect(filterButton).not.toHaveClass('active');
+
+        act(() => fireEvent.click(filterButton));
+
+        expect(filterButton).toHaveClass('active');
+
+        visibleColumns = getColumnsFromContainer(columnsContainer);
+
+        expect(visibleColumns).toEqual([
+          'col0',
+          'col2',
+          'col5',
+          'col7',
+          'col10',
+        ]);
+
+        expect(screen.queryByTestId('prev-btn')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('next-btn')).not.toBeInTheDocument();
+        expect(screen.queryByText('1 / 3')).not.toBeInTheDocument();
+      });
+
+      it('should turn on the filter when column layer is applied', () => {
+        isColumnLayerActive = true;
+        columnsHavingLineage = ['col0', 'col2', 'col5'];
+
+        render(
+          <ReactFlowProvider>
+            <CustomNodeV1Component {...mockNodeDataProps} />
+          </ReactFlowProvider>
+        );
+
+        const filterButton = screen.getByTestId('lineage-filter-button');
+
+        expect(filterButton).toBeInTheDocument();
+        expect(filterButton).toHaveClass('active');
+
+        const columnsContainer = screen.getByTestId('column-container');
+        const visibleColumns = getColumnsFromContainer(columnsContainer);
+
+        expect(visibleColumns).toEqual(['col0', 'col2', 'col5']);
+        expect(screen.queryByTestId('prev-btn')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('next-btn')).not.toBeInTheDocument();
+      });
+
+      it('should maintain filter state when another layer is applied', () => {
+        isColumnLayerActive = true;
+        columnsHavingLineage = ['col0', 'col2', 'col5'];
+
+        const { rerender } = render(
+          <ReactFlowProvider>
+            <CustomNodeV1Component {...mockNodeDataProps} />
+          </ReactFlowProvider>
+        );
+
+        const filterButton = screen.getByTestId('lineage-filter-button');
+
+        expect(filterButton).toHaveClass('active');
+
+        isDataObservabilityLayerActive = true;
+
+        rerender(
+          <ReactFlowProvider>
+            <CustomNodeV1Component {...mockNodeDataProps} />
+          </ReactFlowProvider>
+        );
+
+        const filterButtonAfterRerender = screen.getByTestId(
+          'lineage-filter-button'
+        );
+
+        expect(filterButtonAfterRerender).toHaveClass('active');
+      });
+
+      it('should disable turn off and disable the filter in edit mode', () => {
+        isColumnLayerActive = true;
+        isEditMode = true;
+        columnsHavingLineage = ['col0', 'col2', 'col5'];
+
+        render(
+          <ReactFlowProvider>
+            <CustomNodeV1Component {...mockNodeDataProps} />
+          </ReactFlowProvider>
+        );
+
+        const filterButton = screen.getByTestId('lineage-filter-button');
+
+        expect(filterButton).not.toHaveClass('active');
+        expect(filterButton).toBeDisabled();
+      });
+    });
+
+    describe('Nested Columns Display', () => {
+      it('should show full nested columns when filter is activated if any sub-column has lineage', () => {
+        isColumnLayerActive = true;
+
+        const nestedColumnsNode = {
+          ...mockNodeDataProps,
+          data: {
+            node: {
+              ...mockNodeDataProps.data.node,
+              columns: [
+                {
+                  fullyQualifiedName: 'parent1',
+                  name: 'parent1',
+                  dataType: 'RECORD',
+                  children: [
+                    {
+                      fullyQualifiedName: 'parent1.child1',
+                      name: 'parent1.child1',
+                      dataType: 'VARCHAR',
+                    },
+                    {
+                      fullyQualifiedName: 'parent1.child2',
+                      name: 'parent1.child2',
+                      dataType: 'VARCHAR',
+                    },
+                  ],
+                },
+                {
+                  fullyQualifiedName: 'parent2',
+                  name: 'parent2',
+                  dataType: 'RECORD',
+                  children: [
+                    {
+                      fullyQualifiedName: 'parent2.child1',
+                      name: 'parent2.child1',
+                      dataType: 'VARCHAR',
+                    },
+                  ],
+                },
+                {
+                  fullyQualifiedName: 'col0',
+                  name: 'col0',
+                  dataType: 'VARCHAR',
+                },
+              ],
+            },
+          },
+        };
+
+        columnsHavingLineage = ['parent1.child2'];
+
+        render(
+          <ReactFlowProvider>
+            <CustomNodeV1Component {...nestedColumnsNode} />
+          </ReactFlowProvider>
+        );
+
+        /**
+         * by default filter is activated when column layer is applied
+         * so asserting the activated state that only columns with lineage
+         * are visible, rest are hidden
+         */
+        expect(screen.getByText('parent1')).toBeInTheDocument();
+        expect(screen.getByText('parent1.child1')).toBeInTheDocument();
+        expect(screen.getByText('parent1.child2')).toBeInTheDocument();
+        expect(screen.queryByText('parent2')).not.toBeInTheDocument();
+        expect(screen.queryByText('parent2.child1')).not.toBeInTheDocument();
+        expect(screen.queryByText('col0')).not.toBeInTheDocument();
+
+        clickFilterButton();
+
+        /**
+         * After filter button is deactivated asserting that all columns
+         * are visible, none is hidden
+         */
+        expect(screen.getByText('parent1')).toBeInTheDocument();
+        expect(screen.getByText('parent1.child1')).toBeInTheDocument();
+        expect(screen.getByText('parent1.child2')).toBeInTheDocument();
+        expect(screen.queryByText('parent2')).toBeInTheDocument();
+        expect(screen.queryByText('parent2.child1')).toBeInTheDocument();
+        expect(screen.queryByText('col0')).toBeInTheDocument();
+      });
+    });
+
+    describe('Filter with Search', () => {
+      it('should only search among columns with lineage when filter is activated and column is searched', () => {
+        isColumnLayerActive = true;
+        columnsHavingLineage = ['col0', 'col2', 'col5', 'col7', 'col10'];
+
+        render(
+          <ReactFlowProvider>
+            <CustomNodeV1Component {...mockNodeDataProps} />
+          </ReactFlowProvider>
+        );
+
+        let columnsContainer = screen.getByTestId('column-container');
+        let visibleColumns = getColumnsFromContainer(columnsContainer);
+
+        expect(visibleColumns).toEqual([
+          'col0',
+          'col2',
+          'col5',
+          'col7',
+          'col10',
+        ]);
+
+        const searchInput = screen.getByTestId(
+          'search-column-input'
+        ) as HTMLInputElement;
+
+        act(() => {
+          fireEvent.change(searchInput, { target: { value: 'col1' } });
+        });
+
+        columnsContainer = screen.getByTestId('column-container');
+        visibleColumns = getColumnsFromContainer(columnsContainer);
+
+        expect(visibleColumns).toEqual(['col10']);
+        expect(visibleColumns).not.toContain('col1');
+        expect(visibleColumns).not.toContain('col11');
+      });
     });
   });
 });

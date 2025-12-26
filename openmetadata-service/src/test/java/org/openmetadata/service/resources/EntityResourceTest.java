@@ -422,6 +422,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static EntityReference MLFLOW_REFERENCE;
 
+  public static EntityReference OPENAI_REFERENCE;
+
   public static EntityReference S3_OBJECT_STORE_SERVICE_REFERENCE;
   public static EntityReference ELASTICSEARCH_SEARCH_SERVICE_REFERENCE;
   public static EntityReference OPENSEARCH_SEARCH_SERVICE_REFERENCE;
@@ -594,6 +596,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new APIServiceResourceTest().setupAPIService(test);
     new MetadataServiceResourceTest().setupMetadataServices();
     new DriveServiceResourceTest().setupDriveServices(test);
+    new org.openmetadata.service.resources.services.llm.LLMServiceResourceTest()
+        .setupLLMServices(test);
     new TableResourceTest().setupDatabaseSchemas(test);
     new TestSuiteResourceTest().setupTestSuites(test);
     new TestDefinitionResourceTest().setupTestDefinitions();
@@ -2595,7 +2599,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertTagsContain(updated.getTags(), additionalTags);
   }
 
-  private void assertTagsContain(List<TagLabel> tags, List<TagLabel> expectedTags) {
+  protected void assertTagsContain(List<TagLabel> tags, List<TagLabel> expectedTags) {
     for (TagLabel expected : expectedTags) {
       assertTrue(
           tags.stream().anyMatch(tag -> tag.getTagFQN().equals(expected.getTagFQN())),
@@ -2603,7 +2607,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  private void assertTagsDoNotContain(List<TagLabel> tags, List<TagLabel> unexpectedTags) {
+  protected void assertTagsDoNotContain(List<TagLabel> tags, List<TagLabel> unexpectedTags) {
     for (TagLabel unexpected : unexpectedTags) {
       assertFalse(
           tags.stream().anyMatch(tag -> tag.getTagFQN().equals(unexpected.getTagFQN())),
@@ -2621,7 +2625,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     TagLabel autoAppliedTag =
         new TagLabel()
             .withTagFQN("PII.Sensitive")
-            .withLabelType(TagLabel.LabelType.AUTOMATED)
+            .withLabelType(TagLabel.LabelType.GENERATED)
             .withState(TagLabel.State.SUGGESTED)
             .withSource(TagLabel.TagSource.CLASSIFICATION);
 
@@ -2667,7 +2671,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Create entity with auto-applied tag
     TagLabel autoTag =
-        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.AUTOMATED);
+        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.GENERATED);
 
     CreateEntity create = createRequest(getEntityName(test));
     create.setTags(listOf(autoTag));
@@ -2708,7 +2712,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Create multiple entities with same auto-applied tag
     List<T> entities = new ArrayList<>();
     TagLabel autoTag =
-        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.AUTOMATED);
+        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.GENERATED);
 
     for (int i = 0; i < 3; i++) {
       CreateEntity create = createRequest(getEntityName(test) + i);
@@ -2775,7 +2779,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         "Feedback can only be submitted for auto-applied tags");
   }
 
-  private RecognizerFeedback submitRecognizerFeedback(
+  protected RecognizerFeedback submitRecognizerFeedback(
       RecognizerFeedback feedback, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("tags/name/" + feedback.getTagFQN() + "/feedback");
     return TestUtils.post(target, feedback, RecognizerFeedback.class, authHeaders);

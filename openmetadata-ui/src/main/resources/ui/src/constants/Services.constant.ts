@@ -450,6 +450,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.ServiceNow,
   DatabaseServiceType.Timescale,
   MetadataServiceType.Collibra,
+  PipelineServiceType.Mulesoft,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =

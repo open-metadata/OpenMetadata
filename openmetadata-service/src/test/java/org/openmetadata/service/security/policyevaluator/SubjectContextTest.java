@@ -329,4 +329,33 @@ public class SubjectContextTest {
     }
     assertEquals(expectedPolicyOrder.size(), count);
   }
+
+  @Test
+  void testIsReviewer() {
+    SubjectContext subjectContext = SubjectContext.getSubjectContext(user.getName());
+
+    // Case 1: reviewers list is null or empty
+    assertFalse(subjectContext.isReviewer(null), "Expected false when reviewers is null");
+    assertFalse(
+        subjectContext.isReviewer(new ArrayList<>()), "Expected false when reviewers is empty");
+
+    // Case 2: reviewer is same user
+    List<EntityReference> reviewers =
+        List.of(new EntityReference().withType(Entity.USER).withName("user"));
+    assertTrue(subjectContext.isReviewer(reviewers), "User should be reviewer if listed as USER");
+
+    // Case 3: reviewer is one of the user's teams
+    reviewers = List.of(new EntityReference().withType(Entity.TEAM).withName("team111"));
+    assertTrue(
+        subjectContext.isReviewer(reviewers),
+        "User should be reviewer if their team is in reviewers list");
+
+    // Case 4: reviewer list does not match user or their team
+    reviewers =
+        List.of(
+            new EntityReference().withType(Entity.USER).withName("someone_else"),
+            new EntityReference().withType(Entity.TEAM).withName("team13"));
+    assertFalse(
+        subjectContext.isReviewer(reviewers), "User should not be reviewer if no match found");
+  }
 }
