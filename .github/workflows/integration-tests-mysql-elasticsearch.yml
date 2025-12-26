@@ -46,7 +46,13 @@ concurrency:
 jobs:
   integration-tests-mysql-elasticsearch:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    # Only run on non-draft PRs that have "safe to test" label (for PR), or on push to main
+    if: >
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event_name == 'pull_request_target' &&
+       !github.event.pull_request.draft &&
+       contains(github.event.pull_request.labels.*.name, 'safe to test'))
     steps:
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.3.4
@@ -69,7 +75,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          # For PRs, checkout the PR head; for push, checkout the pushed commit
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          # Prevent credential persistence for security
+          persist-credentials: false
 
       - name: Cache Maven dependencies
         id: cache-output
@@ -94,14 +103,10 @@ jobs:
           sudo make install_antlr_cli
 
       - name: Build dependencies
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mvn -DskipTests clean install -pl '!openmetadata-ui,!openmetadata-docs,!openmetadata-docs-v1' -am
 
       - name: Run Integration Tests (MySQL + Elasticsearch)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mvn test -pl :openmetadata-integration-tests -Pmysql-elasticsearch
 
