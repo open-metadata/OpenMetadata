@@ -34,7 +34,9 @@
         "expert",
         "editedBy",
         "defaultsTo",
-        "relatesTo"
+        "relatesTo",
+        "inputPort",
+        "outputPort"
       ],
       "javaEnums": [
         { "name": "CONTAINS" },
@@ -59,7 +61,9 @@
         { "name": "EXPERT" },
         { "name": "EDITED_BY" },
         { "name":  "DEFAULTS_TO" },
-        { "name": "RELATES_TO" }
+        { "name": "RELATES_TO" },
+        { "name": "INPUT_PORT" },
+        { "name": "OUTPUT_PORT" }
       ]
     }
   },
