@@ -10,20 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityTags, TagFilterOptions } from 'Models';
 import { Col, Row, Segmented, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
+import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {} from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_API_ENDPOINT_SCHEMA_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
-import {} from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   APIEndpoint,
@@ -50,16 +50,16 @@ import {
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import Table from '../../common/Table/Table';
+import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnDetailPanel } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import Table from '../../common/Table/Table';
-import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 
 interface APIEndpointSchemaProps {
   isVersionView?: boolean;
@@ -546,8 +546,10 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
               schema?.schemaFields ?? [],
               fqn
             );
+
             return updatedField as unknown as Column;
           }
+
           return selectedColumn as Column;
         }}
         updateColumnTags={async (fqn, tags) => {
@@ -566,8 +568,10 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
               schema?.schemaFields ?? [],
               fqn
             );
+
             return updatedField as unknown as Column;
           }
+
           return selectedColumn as Column;
         }}
         onClose={handleCloseColumnDetail}

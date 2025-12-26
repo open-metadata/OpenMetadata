@@ -1061,53 +1061,63 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         await test.step(
           'Verify array column with nested children renders correctly',
           async () => {
-            // columnsName[4] is an ARRAY type with nested children (children at index 5 and 6)
-            const nestedParentFQN = `${
-              entity.entityResponseData?.['fullyQualifiedName']
-            }.${(entity as TableClass).columnsName[2]}`;
+            const tableResponse = entity.entityResponseData as any;
+            const columns = tableResponse?.columns || [];
 
-            const arrayColumnFQN = `${nestedParentFQN}.${
-              (entity as TableClass).columnsName[4]
-            }`;
+            const nestedParent = columns.find(
+              (col: any) => col.name === (entity as TableClass).columnsName[2]
+            );
 
-            // First expand the parent to see the array column
+            if (!nestedParent) {
+              throw new Error(`Nested parent column not found: ${(entity as TableClass).columnsName[2]}`);
+            }
+
+            const nestedParentFQN = nestedParent.fullyQualifiedName;
+
+            const arrayColumn = nestedParent.children?.find(
+              (col: any) => col.name === (entity as TableClass).columnsName[4]
+            );
+
+            if (!arrayColumn) {
+              throw new Error(`Array column not found: ${(entity as TableClass).columnsName[4]}`);
+            }
+
+            const arrayColumnFQN = arrayColumn.fullyQualifiedName;
+
             const parentRow = page.locator(
               `[data-row-key="${nestedParentFQN}"]`
             );
 
-            if (await parentRow.getByTestId('expand-icon').isVisible()) {
-              await parentRow.getByTestId('expand-icon').click();
-              await page.waitForTimeout(300);
-            }
+            await parentRow.waitFor({ state: 'visible' });
+            await page.waitForLoadState('networkidle');
 
-            // Click on the array column to open detail panel
             const arrayColumnRow = page.locator(
               `[data-row-key="${arrayColumnFQN}"]`
             );
+
+            await arrayColumnRow.waitFor({ state: 'visible' });
+
             const columnName = arrayColumnRow.getByTestId('column-name');
 
+            await columnName.waitFor({ state: 'visible' });
+            await columnName.scrollIntoViewIfNeeded();
             await columnName.click();
 
             await expect(page.locator('.column-detail-panel')).toBeVisible();
 
             const panelContainer = page.locator('.column-detail-panel');
-            await page.waitForTimeout(500);
 
-            // Verify nested columns section exists
             const nestedColumnLinks = panelContainer.locator(
               '.nested-column-name'
             );
 
             if ((await nestedColumnLinks.count()) > 0) {
-              // Verify array elements are displayed as children
               await expect(nestedColumnLinks.first()).toBeVisible();
 
-              // Verify all nested elements within array are rendered
               const linkCount = await nestedColumnLinks.count();
 
               expect(linkCount).toBeGreaterThan(0);
 
-              // Close panel
               await panelContainer.getByTestId('close-button').click();
             }
           }

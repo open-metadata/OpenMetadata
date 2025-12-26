@@ -33,8 +33,8 @@ import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-test.svg'
 import { ReactComponent as UniquenessIcon } from '../../assets/svg/ic-uniqueness.svg';
 import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg';
 import { ReactComponent as NoDimensionIcon } from '../../assets/svg/no-dimension-icon.svg';
-import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import { SelectionOption } from '../../components/common/SelectionCardGroup/SelectionCardGroup.interface';
+import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
 import { TestCaseType } from '../../enums/TestSuite.enum';
 import { Table } from '../../generated/entity/data/table';
@@ -50,8 +50,8 @@ import { TableSearchSource } from '../../interface/search.interface';
 import { DataQualityDashboardChartFilters } from '../../pages/DataQuality/DataQualityPage.interface';
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import { getEntryFormattedValue } from '../DataInsightUtils';
-import { generateEntityLink } from '../TableUtils';
 import { formatDate } from '../date-time/DateTimeUtils';
+import { generateEntityLink } from '../TableUtils';
 
 /**
  * Builds the parameters for a test case search based on the given filters.
@@ -480,16 +480,20 @@ export const calculateTestCaseStatusCounts = (
         switch (status) {
           case 'success':
             acc.success++;
+
             break;
           case 'failed':
             acc.failed++;
+
             break;
           case 'aborted':
             acc.aborted++;
+
             break;
         }
         acc.total++;
       }
+
       return acc;
     },
     { success: 0, failed: 0, aborted: 0, total: 0 }

@@ -253,9 +253,9 @@ describe('ContainerDataModel', () => {
       <MemoryRouter>
         <ContainerDataModel
           {...props}
+          isReadOnly
           hasCustomPropertiesEditAccess={false}
           hasDescriptionEditAccess={false}
-          isReadOnly
         />
       </MemoryRouter>
     );

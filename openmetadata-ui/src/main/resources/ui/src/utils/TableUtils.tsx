@@ -1635,6 +1635,8 @@ export const buildColumnBreadcrumbPath = <
 
   const breadcrumbs: T[] = [column];
   let currentColumn: T | null = column;
+  const visited = new Set<string>();
+  visited.add(column.fullyQualifiedName);
 
   while (currentColumn) {
     const parent: T | null | undefined = findParentColumn(
@@ -1644,7 +1646,16 @@ export const buildColumnBreadcrumbPath = <
     if (parent === undefined || parent === null) {
       break;
     }
+
+    // Prevent infinite loops by checking if we've already visited this parent
+    if (parent.fullyQualifiedName && visited.has(parent.fullyQualifiedName)) {
+      break;
+    }
+
     breadcrumbs.unshift(parent);
+    if (parent.fullyQualifiedName) {
+      visited.add(parent.fullyQualifiedName);
+    }
     currentColumn = parent;
   }
 

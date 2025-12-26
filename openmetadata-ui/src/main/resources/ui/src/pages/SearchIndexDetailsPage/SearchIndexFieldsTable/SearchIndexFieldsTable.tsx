@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { EntityTags, TagFilterOptions } from 'Models';
 import { Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
@@ -24,24 +23,25 @@ import {
   toLower,
   uniqBy,
 } from 'lodash';
+import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import Table from '../../../components/common/Table/Table';
+import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
 import { ColumnDetailPanel } from '../../../components/Database/ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../components/Database/TableDescription/TableDescription.component';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import Table from '../../../components/common/Table/Table';
-import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_SEARCH_INDEX_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { Column } from '../../../generated/entity/data/table';
@@ -468,6 +468,7 @@ const SearchIndexFieldsTable = ({
           await onUpdate(fields);
           // Find and return the updated field
           const updatedField = findFieldByFQN<SearchIndexField>(fields, fqn);
+
           return updatedField as unknown as Column;
         }}
         updateColumnTags={async (fqn, tags) => {
@@ -476,6 +477,7 @@ const SearchIndexFieldsTable = ({
           await onUpdate(fields);
           // Find and return the updated field
           const updatedField = findFieldByFQN<SearchIndexField>(fields, fqn);
+
           return updatedField as unknown as Column;
         }}
         onClose={handleCloseColumnDetail}
