@@ -173,7 +173,7 @@ Added comprehensive import/export support to SDK and BaseEntityIT:
 | AgentExecutionResourceTest | 3 | AgentExecutionResourceIT | 5 | ✅ | +2 |
 | TestConnectionDefinitionResourceTest | 2 | TestConnectionDefinitionResourceIT | 8 | ✅ | +6 |
 | WorkflowResourceTest | 1 | WorkflowResourceIT | 15 | ✅ | +14 |
-| ServiceResourceTest | 1 | BaseServiceIT | 0 | ⚠️ | -1 |
+| ServiceResourceTest | 1 | BaseServiceIT | 1 | ✅ | 0 |
 | AppMarketPlaceResourceTest | 0 | AppMarketPlaceResourceIT | 12 | ✅ | +12 |
 
 ### New Test Classes (No Source Equivalent)

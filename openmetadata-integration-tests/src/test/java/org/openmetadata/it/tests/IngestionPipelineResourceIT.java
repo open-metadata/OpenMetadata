@@ -1136,28 +1136,38 @@ public class IngestionPipelineResourceIT
 
     IngestionPipeline userPipeline = createEntity(userRequest);
 
-    ListParams params = new ListParams();
-    Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("provider", ProviderType.AUTOMATION.value());
-    params.setQueryParams(queryParams);
+    // Use cleaner API with service filter for test isolation
+    ListParams automationParams =
+        new ListParams()
+            .withService(service.getFullyQualifiedName())
+            .withProvider(ProviderType.AUTOMATION.value());
 
-    ListResponse<IngestionPipeline> result = listEntities(params);
+    ListResponse<IngestionPipeline> result = listEntities(automationParams);
     assertTrue(
-        result.getData().stream().anyMatch(p -> p.getId().equals(automationPipeline.getId())));
+        result.getData().stream().anyMatch(p -> p.getId().equals(automationPipeline.getId())),
+        "Automation pipeline should be found with provider filter");
 
-    queryParams.put("provider", ProviderType.USER.value());
-    params.setQueryParams(queryParams);
-    result = listEntities(params);
-    assertTrue(result.getData().stream().anyMatch(p -> p.getId().equals(userPipeline.getId())));
+    ListParams userParams =
+        new ListParams()
+            .withService(service.getFullyQualifiedName())
+            .withProvider(ProviderType.USER.value());
 
-    queryParams.clear();
-    queryParams.put("provider", ProviderType.AUTOMATION.value());
-    queryParams.put("serviceType", "databaseService");
-    queryParams.put("pipelineType", "metadata");
-    params.setQueryParams(queryParams);
-
-    result = listEntities(params);
+    result = listEntities(userParams);
     assertTrue(
-        result.getData().stream().anyMatch(p -> p.getId().equals(automationPipeline.getId())));
+        result.getData().stream().anyMatch(p -> p.getId().equals(userPipeline.getId())),
+        "User pipeline should be found with provider filter");
+
+    // Test with multiple filters
+    ListParams multiParams =
+        new ListParams()
+            .withService(service.getFullyQualifiedName())
+            .withProvider(ProviderType.AUTOMATION.value())
+            .withServiceType("databaseService")
+            .withPipelineType("metadata");
+
+    result = listEntities(multiParams);
+    assertTrue(
+        result.getData().stream().anyMatch(p -> p.getId().equals(automationPipeline.getId())),
+        "Automation pipeline should be found with multiple filters");
   }
 }

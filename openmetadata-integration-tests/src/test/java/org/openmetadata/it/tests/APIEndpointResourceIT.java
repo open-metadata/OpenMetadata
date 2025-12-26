@@ -385,7 +385,7 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
     }
 
     ListParams params1 = new ListParams();
-    params1.addFilter("apiCollection", collection1.getName());
+    params1.addFilter("apiCollection", collection1.getFullyQualifiedName());
     params1.setLimit(100);
     ListResponse<APIEndpoint> list1 = client.apiEndpoints().list(params1);
     assertTrue(
@@ -400,7 +400,7 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
     }
 
     ListParams params2 = new ListParams();
-    params2.addFilter("apiCollection", collection2.getName());
+    params2.addFilter("apiCollection", collection2.getFullyQualifiedName());
     params2.setLimit(100);
     ListResponse<APIEndpoint> list2 = client.apiEndpoints().list(params2);
     assertTrue(
@@ -445,13 +445,13 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
     assertEquals(shared.USER1_REF.getId(), endpoint.getOwners().get(0).getId());
 
     endpoint.setRequestMethod(APIRequestMethod.POST);
-    endpoint.setOwners(List.of(shared.TEAM1.getEntityReference()));
+    endpoint.setOwners(List.of(shared.TEAM11.getEntityReference()));
     APIEndpoint updated = client.apiEndpoints().update(endpoint.getId().toString(), endpoint);
 
     assertEquals(APIRequestMethod.POST, updated.getRequestMethod());
     assertNotNull(updated.getOwners());
     assertEquals(1, updated.getOwners().size());
-    assertEquals(shared.TEAM1.getId(), updated.getOwners().get(0).getId());
+    assertEquals(shared.TEAM11.getId(), updated.getOwners().get(0).getId());
   }
 
   @Test

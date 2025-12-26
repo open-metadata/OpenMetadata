@@ -148,7 +148,7 @@ public class K8sIngestionPipelineResourceIT {
     String path = "/v1/services/ingestionPipelines/deploy/" + pipeline.getId();
     return client
         .getHttpClient()
-        .execute(HttpMethod.POST, path, "", PipelineServiceClientResponse.class);
+        .execute(HttpMethod.POST, path, null, PipelineServiceClientResponse.class);
   }
 
   private PipelineServiceClientResponse triggerPipeline(IngestionPipeline pipeline)
@@ -157,14 +157,14 @@ public class K8sIngestionPipelineResourceIT {
     String path = "/v1/services/ingestionPipelines/trigger/" + pipeline.getId();
     return client
         .getHttpClient()
-        .execute(HttpMethod.POST, path, "", PipelineServiceClientResponse.class);
+        .execute(HttpMethod.POST, path, null, PipelineServiceClientResponse.class);
   }
 
   private IngestionPipeline togglePipeline(IngestionPipeline pipeline)
       throws OpenMetadataException {
     OpenMetadataClient client = SdkClients.adminClient();
     String path = "/v1/services/ingestionPipelines/toggleIngestion/" + pipeline.getId();
-    return client.getHttpClient().execute(HttpMethod.POST, path, "", IngestionPipeline.class);
+    return client.getHttpClient().execute(HttpMethod.POST, path, null, IngestionPipeline.class);
   }
 
   private PipelineServiceClientResponse killPipeline(IngestionPipeline pipeline)
@@ -173,7 +173,7 @@ public class K8sIngestionPipelineResourceIT {
     String path = "/v1/services/ingestionPipelines/kill/" + pipeline.getId();
     return client
         .getHttpClient()
-        .execute(HttpMethod.POST, path, "", PipelineServiceClientResponse.class);
+        .execute(HttpMethod.POST, path, null, PipelineServiceClientResponse.class);
   }
 
   private PipelineServiceClientResponse getStatus() throws OpenMetadataException {

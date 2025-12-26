@@ -301,37 +301,41 @@ public class APICollectionResourceIT extends BaseEntityIT<APICollection, CreateA
   void testBulk_PreservesUserEditsOnUpdate(TestNamespace ns) {
     ApiService service = APIServiceTestFactory.createRest(ns);
 
-    CreateAPICollection botCreate =
+    // Create entity with admin and add tag
+    CreateAPICollection initialCreate =
         new CreateAPICollection()
             .withName(ns.prefix("bulk_preserve"))
-            .withDescription("Bot initial description")
+            .withDescription("Initial description")
             .withService(service.getFullyQualifiedName())
             .withEndpointURL(URI.create("https://localhost:8585/api/v1/bulk1"))
             .withTags(List.of(personalDataTagLabel()));
 
-    APICollection entity = createEntity(botCreate);
+    APICollection entity = createEntity(initialCreate);
     assertNotNull(entity);
 
-    CreateAPICollection userUpdate =
+    // Bot tries to update via bulk - should NOT override the description
+    CreateAPICollection botUpdate =
         new CreateAPICollection()
             .withName(ns.prefix("bulk_preserve"))
-            .withDescription("User updated description")
+            .withDescription("Bot trying to overwrite")
             .withService(service.getFullyQualifiedName())
             .withEndpointURL(URI.create("https://localhost:8585/api/v1/bulk1"));
 
     BulkOperationResult result =
-        SdkClients.adminClient().apiCollections().bulkCreateOrUpdate(List.of(userUpdate));
+        SdkClients.ingestionBotClient().apiCollections().bulkCreateOrUpdate(List.of(botUpdate));
 
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
 
-    APICollection updated = getEntity(entity.getId().toString());
+    APICollection updated = getEntityWithFields(entity.getId().toString(), "tags");
     assertEquals(
-        "Bot initial description",
+        "Initial description",
         updated.getDescription(),
-        "Bulk update should not override non-empty user-edited description");
+        "Bot should not be able to override non-empty description via bulk update");
 
+    assertNotNull(updated.getTags(), "Tags should not be null");
     assertTrue(
-        updated.getTags().contains(personalDataTagLabel()),
+        updated.getTags().stream()
+            .anyMatch(t -> t.getTagFQN().equals(personalDataTagLabel().getTagFQN())),
         "Tags should be preserved from initial creation");
   }
 
@@ -348,8 +352,15 @@ public class APICollectionResourceIT extends BaseEntityIT<APICollection, CreateA
             .withTags(List.of(personalDataTagLabel()));
 
     APICollection entity = createEntity(initialCreate);
-    assertEquals(1, entity.getTags().size());
-    assertTrue(entity.getTags().contains(personalDataTagLabel()));
+
+    // Fetch with tags field to verify initial tag
+    APICollection entityWithTags = getEntityWithFields(entity.getId().toString(), "tags");
+    assertNotNull(entityWithTags.getTags(), "Tags should not be null");
+    assertEquals(1, entityWithTags.getTags().size());
+    assertTrue(
+        entityWithTags.getTags().stream()
+            .anyMatch(t -> t.getTagFQN().equals(personalDataTagLabel().getTagFQN())),
+        "Initial entity should have personalDataTag");
 
     CreateAPICollection updateWithNewTag =
         new CreateAPICollection()
@@ -363,7 +374,8 @@ public class APICollectionResourceIT extends BaseEntityIT<APICollection, CreateA
 
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
 
-    APICollection updated = getEntity(entity.getId().toString());
+    APICollection updated = getEntityWithFields(entity.getId().toString(), "tags");
+    assertNotNull(updated.getTags(), "Tags should not be null after update");
     assertEquals(2, updated.getTags().size(), "Tags should be merged, not replaced");
 
     List<String> tagFqns = new ArrayList<>();

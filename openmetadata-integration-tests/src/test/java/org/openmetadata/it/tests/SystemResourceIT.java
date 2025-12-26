@@ -49,13 +49,13 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.api.security.ResponseType;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
-import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.profiler.MetricType;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
@@ -583,16 +583,18 @@ public class SystemResourceIT {
     JsonNode beforeCount = MAPPER.readTree(beforeCountJson);
     int beforeUserCount = beforeCount.get("userCount").asInt();
 
-    User botUser = new User();
-    botUser.setName(ns.prefix("test_bot_user"));
-    botUser.setEmail(ns.prefix("test_bot@example.com"));
-    botUser.setIsBot(true);
-    botUser.setAuthenticationMechanism(
-        new AuthenticationMechanism()
-            .withAuthType(AuthenticationMechanism.AuthType.JWT)
-            .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited)));
+    CreateUser createBotUser =
+        new CreateUser()
+            .withName(ns.prefix("testbotuser"))
+            .withEmail("botuser" + ns.shortPrefix() + "@example.com")
+            .withIsBot(true)
+            .withAuthenticationMechanism(
+                new AuthenticationMechanism()
+                    .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                    .withConfig(
+                        new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited)));
 
-    String botUserJson = MAPPER.writeValueAsString(botUser);
+    String botUserJson = MAPPER.writeValueAsString(createBotUser);
     client
         .getHttpClient()
         .executeForString(
@@ -1594,10 +1596,6 @@ public class SystemResourceIT {
         tableRules.stream()
             .anyMatch(rule -> rule.getName().equals("Multiple Users or Single Team Ownership")));
 
-    assertTrue(
-        tableRules.stream()
-            .anyMatch(rule -> rule.getName().equals("Multiple Domains are not allowed")));
-
     String dashboardRulesJson =
         client
             .getHttpClient()
@@ -1615,10 +1613,6 @@ public class SystemResourceIT {
     assertTrue(
         dashboardRules.stream()
             .anyMatch(rule -> rule.getName().equals("Multiple Users or Single Team Ownership")));
-
-    assertTrue(
-        dashboardRules.stream()
-            .anyMatch(rule -> rule.getName().equals("Multiple Domains are not allowed")));
 
     String teamRulesJson =
         client

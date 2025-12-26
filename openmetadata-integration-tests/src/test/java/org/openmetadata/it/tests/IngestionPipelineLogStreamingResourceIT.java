@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import java.util.Map;
 import java.util.UUID;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.env.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -127,6 +129,9 @@ public class IngestionPipelineLogStreamingResourceIT {
   @Test
   @Order(4)
   void testGetLogsForNonExistentRun(TestNamespace ns) throws OpenMetadataException {
+    assumeFalse(
+        TestSuiteBootstrap.isK8sEnabled(),
+        "Log streaming behavior differs with K8s pipeline backend");
     IngestionPipeline pipeline = createTestPipeline(ns);
     UUID runId = UUID.randomUUID();
     String pipelineFQN = pipeline.getFullyQualifiedName();

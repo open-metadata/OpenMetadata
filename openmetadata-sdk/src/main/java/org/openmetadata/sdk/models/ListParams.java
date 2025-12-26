@@ -80,7 +80,7 @@ public class ListParams {
   }
 
   public ListParams setDomain(String domain) {
-    filters.put("domains", domain);
+    filters.put("domain", domain);
     return this;
   }
 
@@ -113,6 +113,33 @@ public class ListParams {
 
   public ListParams withRoot(String root) {
     return setRoot(root);
+  }
+
+  public ListParams setProvider(String provider) {
+    filters.put("provider", provider);
+    return this;
+  }
+
+  public ListParams withProvider(String provider) {
+    return setProvider(provider);
+  }
+
+  public ListParams setServiceType(String serviceType) {
+    filters.put("serviceType", serviceType);
+    return this;
+  }
+
+  public ListParams withServiceType(String serviceType) {
+    return setServiceType(serviceType);
+  }
+
+  public ListParams setPipelineType(String pipelineType) {
+    filters.put("pipelineType", pipelineType);
+    return this;
+  }
+
+  public ListParams withPipelineType(String pipelineType) {
+    return setPipelineType(pipelineType);
   }
 
   public ListParams withLimit(Integer limit) {

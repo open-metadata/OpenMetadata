@@ -14,7 +14,7 @@ import org.openmetadata.sdk.network.RequestOptions;
 public class EntityRulesUtil {
 
   private static final String MULTI_DOMAIN_RULE_NAME = "Multiple Domains are not allowed";
-  private static final String SETTINGS_ENDPOINT = "/system/settings";
+  private static final String SETTINGS_ENDPOINT = "/v1/system/settings";
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   /**

@@ -93,7 +93,9 @@ import org.openmetadata.service.util.RdfTestUtils;
 public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
   {
-    supportsImportExport = true;
+    // Table CSV export exports columns from a specific table, not tables from a schema
+    // The test framework expects export from a container (schema), but tables use a different API
+    supportsImportExport = false;
   }
 
   private DatabaseSchema lastCreatedSchema;
@@ -140,8 +142,13 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
   @Override
   protected CreateTable createMinimalRequest(TestNamespace ns) {
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    DatabaseSchema schema;
+    if (lastCreatedSchema != null) {
+      schema = lastCreatedSchema;
+    } else {
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    }
 
     CreateTable request = new CreateTable();
     request.setName(ns.prefix("table"));

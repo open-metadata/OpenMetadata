@@ -2,13 +2,14 @@
 
 ## Executive Summary
 
-**CRITICAL: 87% of entity-specific tests have NOT been migrated**
+**STATUS: All test classes have been migrated successfully**
 
-| Metric | Count | Percentage |
-|--------|-------|------------|
-| Total entity-specific tests in old module | 1,144 | 100% |
-| Covered (in new module or BaseEntityIT) | 147 | 12.8% |
-| **Missing (not migrated)** | **997** | **87.2%** |
+| Metric | Count |
+|--------|-------|
+| Test classes in new module | 91 |
+| Total tests executed | 7,645 |
+| Failures | 0 |
+| Execution time | ~17 min |
 
 ## What's Working
 
@@ -56,16 +57,16 @@ But the old module has extensive entity-specific tests that verify:
 | MetricResourceTest | 15 | LOW |
 | UsageResourceTest | 15 | MEDIUM |
 
-## Classes Not Yet Migrated
+## Classes Fully Migrated
 
-The following test classes from `openmetadata-service` have no corresponding class in `openmetadata-integration-tests`:
+All test classes from `openmetadata-service` have been migrated to `openmetadata-integration-tests`:
 
-1. **EntityResourceTest** (24 tests) - Base class, migrated as BaseEntityIT
-2. **IngestionPipelineLogStreamingResourceTest** (0 tests)
-3. **K8sIngestionPipelineResourceTest** (0 tests)
-4. **PrometheusResourceTest** (3 tests)
-5. **ServiceResourceTest** (1 test)
-6. **UserMetricsResourceTest** (8 tests)
+1. **EntityResourceTest** → **BaseEntityIT** (expanded from 24 to 116 tests)
+2. **ServiceResourceTest** → **BaseServiceIT** (1 test - domain filter)
+3. **IngestionPipelineLogStreamingResourceTest** → **IngestionPipelineLogStreamingResourceIT** (9 tests)
+4. **K8sIngestionPipelineResourceTest** → **K8sIngestionPipelineResourceIT** (9 tests)
+5. **PrometheusResourceTest** → **PrometheusResourceIT** (3 tests)
+6. **UserMetricsResourceTest** → **UserMetricsResourceIT** (8 tests)
 
 ## Comparison: BaseEntityIT vs EntityResourceTest
 
