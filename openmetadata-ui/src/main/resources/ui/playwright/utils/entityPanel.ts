@@ -17,7 +17,11 @@ export const openEntitySummaryPanel = async (
   page: Page,
   entityName: string
 ) => {
-  const searchResponse = page.waitForResponse('/api/v1/search/query*');
+  const searchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.status() < 400
+  );
 
   await page.getByTestId('searchBox').fill(entityName);
   await searchResponse;
@@ -32,7 +36,10 @@ export const openEntitySummaryPanel = async (
     .locator('[data-testid="table-data-card"]')
     .filter({ hasText: entityName })
     .first();
-  if (await entityCard.isVisible()) {
+
+  // Only click if the card is visible (search results may be on explore page)
+  const isCardVisible = await entityCard.isVisible().catch(() => false);
+  if (isCardVisible) {
     await entityCard.click();
     await page.waitForLoadState('networkidle');
   }
@@ -43,7 +50,8 @@ export const waitForPatchResponse = async (page: Page) => {
     (resp) =>
       resp.url().includes('/api/v1/') &&
       resp.request().method() === 'PATCH' &&
-      !resp.url().includes('/api/v1/analytics')
+      !resp.url().includes('/api/v1/analytics') &&
+      resp.status() < 400
   );
 };
 
@@ -70,21 +78,23 @@ export const editTags = async (
 
   if (clearExisting) {
     const clearAllButton = page.locator('[data-testid="clear-all-button"]');
-    if (await clearAllButton.isVisible()) {
-      await clearAllButton.click();
-      const updateButton = page.getByRole('button', {
-        name: 'Update',
-      });
-      await updateButton.click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+    // Wait for clear button to be visible before clicking
+    await clearAllButton.waitFor({ state: 'visible'});
+    await clearAllButton.click();
 
-      await page
-        .locator('[data-testid="edit-icon-tags"]')
-        .scrollIntoViewIfNeeded();
-      await page.locator('[data-testid="edit-icon-tags"]').click();
-    }
+    const updateButton = page.getByRole('button', {
+      name: 'Update',
+    });
+    await updateButton.click();
+    await waitForPatchResponse(page);
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await page
+      .locator('[data-testid="edit-icon-tags"]')
+      .scrollIntoViewIfNeeded();
+    await page.locator('[data-testid="edit-icon-tags"]').click();
   }
 
   await page
@@ -96,9 +106,11 @@ export const editTags = async (
     .scrollIntoViewIfNeeded();
 
   const searchTagResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(
-      tagName
-    )}*index=tag_search_index*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(`q=`) &&
+      response.url().includes('index=tag_search_index') &&
+      response.status() < 400
   );
   const searchBar = page.locator('[data-testid="tag-select-search-bar"]');
   await searchBar.fill(tagName);
@@ -108,24 +120,21 @@ export const editTags = async (
   });
 
   const tagOption = page.getByTitle(tagName);
-  if (await tagOption.isVisible()) {
-    await tagOption.click();
+  // Wait for tag option to be visible before clicking
+  await tagOption.waitFor({ state: 'visible'});
+  await tagOption.click();
 
-    const updateBtn = page.getByRole('button', { name: 'Update' });
-    if (await updateBtn.isVisible()) {
-      await updateBtn.click();
-      await waitForPatchResponse(page);
+  const updateBtn = page.getByRole('button', { name: 'Update' });
+  await updateBtn.waitFor({ state: 'visible' });
+  await updateBtn.click();
+  await waitForPatchResponse(page);
 
-      await expect(page.getByText(/Tags updated successfully/i)).toBeVisible();
-    }
-  }
+  await expect(page.getByText(/Tags updated successfully/i)).toBeVisible();
 };
 
 export const editGlossaryTerms = async (
   page: Page,
-  termName?: string,
-  clearExisting = false
-) => {
+  termName?: string) => {
   await page
     .locator('[data-testid="edit-glossary-terms"]')
     .scrollIntoViewIfNeeded();
@@ -135,35 +144,6 @@ export const editGlossaryTerms = async (
 
   await page.locator('[data-testid="edit-glossary-terms"]').click();
 
-  if (clearExisting) {
-    const glossaryTermItems = page.locator('.selected-glossary-term-chip');
-    const glossaryTermsCount = await glossaryTermItems.count();
-
-    if (glossaryTermsCount >= 1) {
-      const clearAllButton = page.locator('[data-testid="clear-all-button"]');
-      if (await clearAllButton.isVisible()) {
-        await clearAllButton.click();
-        const updateButton = page.getByRole('button', {
-          name: 'Update',
-        });
-        await updateButton.click();
-        await waitForPatchResponse(page);
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-
-        await page
-          .locator('[data-testid="edit-glossary-terms"]')
-          .scrollIntoViewIfNeeded();
-        await page.waitForSelector('[data-testid="edit-glossary-terms"]', {
-          state: 'visible',
-        });
-        await page.locator('[data-testid="edit-glossary-terms"]').click();
-      }
-    } else {
-      await page.waitForTimeout(100);
-    }
-  }
 
   await page
     .locator('[data-testid="selectable-list"]')
@@ -193,33 +173,6 @@ export const editGlossaryTerms = async (
   await patchResp;
 };
 
-export const clearAndAddGlossaryTerms = async (
-  page: Page,
-  termName?: string
-) => {
-  const glossaryTermItems = page.locator('.selected-glossary-term-chip');
-  const glossaryTermsCount = await glossaryTermItems.count();
-
-  if (glossaryTermsCount >= 1) {
-    const editGlossaryTermsButton = page.locator(
-      '[data-testid="edit-glossary-terms"]'
-    );
-    await editGlossaryTermsButton.click();
-    const clearAllButton = page.locator('[data-testid="clear-all-button"]');
-    await clearAllButton.click();
-
-    const updateButton = page.getByRole('button', {
-      name: 'Update',
-    });
-    await updateButton.click();
-    await waitForPatchResponse(page);
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-  }
-
-  await editGlossaryTerms(page, termName);
-};
 
 export const editDomain = async (page: Page, domainName: string) => {
   const summaryPanel = page.locator('.entity-summary-panel-container');
@@ -237,7 +190,10 @@ export const editDomain = async (page: Page, domainName: string) => {
   await tree.waitFor({ state: 'visible' });
 
   const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${domainName}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(`q=`) &&
+      response.status() < 400
   );
 
   await page
@@ -251,7 +207,7 @@ export const editDomain = async (page: Page, domainName: string) => {
   await tagSelector.waitFor({ state: 'visible' });
 
   const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
+    (req) => req.request().method() === 'PATCH' && req.status() < 400
   );
 
   await tagSelector.click();
@@ -262,34 +218,7 @@ export const editDomain = async (page: Page, domainName: string) => {
   });
 };
 
-export const clearDataProducts = async (page: Page) => {
-  const dataProductItems = page.locator('[data-testid="data-product-item"]');
-  const dataProductCount = await dataProductItems.count();
 
-  if (dataProductCount >= 1) {
-    const editDataProductsButton = page.locator(
-      '[data-testid="edit-data-products"]'
-    );
-    if (await editDataProductsButton.isVisible()) {
-      await editDataProductsButton.click();
-      await page.waitForTimeout(500);
-
-      const clearAllButton = page.locator('[data-testid="clear-all-button"]');
-      if (await clearAllButton.isVisible()) {
-        await clearAllButton.click();
-
-        const updateButton = page.getByRole('button', {
-          name: 'Update',
-        });
-        await updateButton.click();
-        await waitForPatchResponse(page);
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-      }
-    }
-  }
-};
 
 export const verifyDeletedEntityNotVisible = async (
   page: Page,
@@ -362,8 +291,9 @@ export async function navigateToExploreAndSelectTable(
     state: 'detached',
   });
 
-  const permissionsResponse = page.waitForResponse((response) =>
-    response.url().includes('/permissions')
+  const permissionsResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/permissions') && response.status() < 400
   );
 
   await openEntitySummaryPanel(page, entityName);

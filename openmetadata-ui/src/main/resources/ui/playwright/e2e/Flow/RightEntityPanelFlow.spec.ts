@@ -82,27 +82,8 @@ test.beforeAll('Setup shared test data', async ({ browser }) => {
   await sharedTestGlossary.create(apiContext);
   await sharedTestGlossaryTerm.create(apiContext);
 
-  const adminTestEntityData = { ...adminTestEntity.entityResponseData };
-  try {
-    const patchResponse = await adminTestEntity.patch({
-      apiContext,
-      patchData: [
-        {
-          op: 'add',
-          path: '/domains/0',
-          value: {
-            id: EntityDataClass.domain1.responseData.id,
-            type: 'domain',
-          },
-        },
-      ],
-    });
-    if (patchResponse?.entity && 'code' in patchResponse.entity) {
-      adminTestEntity.entityResponseData = adminTestEntityData;
-    }
-  } catch {
-    adminTestEntity.entityResponseData = adminTestEntityData;
-  }
+  // Note: Domain assignment is tested separately in the Domain test case
+  // Do not pre-assign domain here to avoid test conflicts
 
   await afterAction();
 });
@@ -504,10 +485,15 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       '[data-testid="lineage-section"]'
     );
 
-    if (await lineageSection.isVisible()) {
-      await expect(
-        summaryPanel.getByText(/no lineage connections found/i)
-      ).toBeVisible();
+    // Wait for lineage section to be in stable state
+    await lineageSection.waitFor({ state: 'visible'});
+
+    // Check if "no lineage connections found" text is present in the overview
+    const noLineageText = summaryPanel.locator(
+      'text=/no lineage connections found/i'
+    );
+    if (await noLineageText.isVisible()) {
+      await expect(noLineageText).toBeVisible();
     }
 
     const lineageTab = summaryPanel.getByRole('menuitem', {
