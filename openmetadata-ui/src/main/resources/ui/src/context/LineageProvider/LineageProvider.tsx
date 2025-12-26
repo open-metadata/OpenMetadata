@@ -1083,23 +1083,31 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const handleEntityUpdate = useCallback(
     (updatedEntity: Partial<SourceType>) => {
-      setSelectedNode((prev) => ({ ...prev, ...updatedEntity }));
+      setSelectedNode((prev) => {
+        if (!prev?.id) {
+          return prev;
+        }
 
-      setNodes((prevNodes) =>
-        prevNodes.map((node) =>
-          node.id === selectedNode.id
-            ? {
-                ...node,
-                data: {
-                  ...node.data,
-                  node: { ...node.data.node, ...updatedEntity },
-                },
-              }
-            : node
-        )
-      );
+        const entityId = updatedEntity.id ?? prev.id;
+
+        setNodes((prevNodes) =>
+          prevNodes.map((node) =>
+            node.id === entityId
+              ? {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    node: { ...node.data.node, ...updatedEntity },
+                  },
+                }
+              : node
+          )
+        );
+
+        return { ...prev, ...updatedEntity };
+      });
     },
-    [selectedNode, setNodes]
+    [setNodes]
   );
 
   const onNodeClick = useCallback(
