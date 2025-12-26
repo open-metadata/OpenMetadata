@@ -17,14 +17,14 @@ export const openEntitySummaryPanel = async (
   page: Page,
   entityName: string
 ) => {
-  const searchResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.status() < 400
+  const searchResponsePromise = page.waitForResponse((response) =>
+    response.url().includes('/api/v1/search/query')
   );
 
   await page.getByTestId('searchBox').fill(entityName);
-  await searchResponse;
+
+  const searchResponse = await searchResponsePromise;
+  expect(searchResponse.status()).toBe(200);
 
   await page.getByTestId('searchBox').press('Enter');
   await page.waitForSelector('[data-testid="loader"]', {
@@ -46,13 +46,17 @@ export const openEntitySummaryPanel = async (
 };
 
 export const waitForPatchResponse = async (page: Page) => {
-  return page.waitForResponse(
+  const responsePromise = page.waitForResponse(
     (resp) =>
       resp.url().includes('/api/v1/') &&
       resp.request().method() === 'PATCH' &&
-      !resp.url().includes('/api/v1/analytics') &&
-      resp.status() < 400
+      !resp.url().includes('/api/v1/analytics')
   );
+
+  const response = await responsePromise;
+  expect(response.status()).toBe(200);
+
+  return response;
 };
 
 export const navigateToEntityPanelTab = async (page: Page, tabName: string) => {
@@ -105,16 +109,18 @@ export const editTags = async (
     .locator('[data-testid="selectable-list"]')
     .scrollIntoViewIfNeeded();
 
-  const searchTagResponse = page.waitForResponse(
+  const searchTagResponsePromise = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.url().includes(`q=`) &&
-      response.url().includes('index=tag_search_index') &&
-      response.status() < 400
+      response.url().includes('index=tag_search_index')
   );
   const searchBar = page.locator('[data-testid="tag-select-search-bar"]');
   await searchBar.fill(tagName);
-  await searchTagResponse;
+
+  const searchTagResponse = await searchTagResponsePromise;
+  expect(searchTagResponse.status()).toBe(200);
+
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -189,11 +195,10 @@ export const editDomain = async (page: Page, domainName: string) => {
 
   await tree.waitFor({ state: 'visible' });
 
-  const searchDomain = page.waitForResponse(
+  const searchDomainPromise = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes(`q=`) &&
-      response.status() < 400
+      response.url().includes(`q=`)
   );
 
   await page
@@ -201,18 +206,21 @@ export const editDomain = async (page: Page, domainName: string) => {
     .getByTestId('searchbar')
     .fill(domainName);
 
-  await searchDomain;
+  const searchDomainResponse = await searchDomainPromise;
+  expect(searchDomainResponse.status()).toBe(200);
 
   const tagSelector = page.getByTestId(`tag-${domainName}`);
   await tagSelector.waitFor({ state: 'visible' });
 
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH' && req.status() < 400
+  const patchReqPromise = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
   );
 
   await tagSelector.click();
 
-  await patchReq;
+  const patchResponse = await patchReqPromise;
+  expect(patchResponse.status()).toBe(200);
+
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -236,13 +244,15 @@ export const verifyDeletedEntityNotVisible = async (
   const searchBar = await page.waitForSelector(
     `[data-testid="${searchBarTestId}"]`
   );
-  const searchResponse = page.waitForResponse(
+  const searchResponsePromise = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.url().includes(`index=${searchIndexMap[searchIndexType]}`)
   );
   await searchBar.fill(entityName);
-  await searchResponse;
+
+  const searchResponse = await searchResponsePromise;
+  expect(searchResponse.status()).toBe(200);
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -291,12 +301,12 @@ export async function navigateToExploreAndSelectTable(
     state: 'detached',
   });
 
-  const permissionsResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/permissions') && response.status() < 400
+  const permissionsResponsePromise = page.waitForResponse((response) =>
+    response.url().includes('/permissions')
   );
 
   await openEntitySummaryPanel(page, entityName);
 
-  await permissionsResponse;
+  const permissionsResponse = await permissionsResponsePromise;
+  expect(permissionsResponse.status()).toBe(200);
 }

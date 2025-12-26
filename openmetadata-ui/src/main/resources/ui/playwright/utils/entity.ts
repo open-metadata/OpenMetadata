@@ -457,8 +457,7 @@ export const assignTier = async (
   const patchRequest = page.waitForResponse(
     (response) =>
       response.url().includes(`/api/v1/${endpoint}`) &&
-      response.request().method() === 'PATCH' &&
-      response.status() < 400
+      response.request().method() === 'PATCH'
   );
 
   await tierRadioButton.click();
@@ -468,8 +467,9 @@ export const assignTier = async (
   await updateButton.waitFor({ state: 'visible' });
   await updateButton.click();
 
-  // Wait for the PATCH request to complete successfully
-  await patchRequest;
+  // Wait for the PATCH request to complete and validate status
+  const response = await patchRequest;
+  expect(response.status()).toBe(200);
 
   // Wait for loaders to finish
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
@@ -487,12 +487,13 @@ export const removeTier = async (page: Page, endpoint: string) => {
   const patchRequest = page.waitForResponse(
     (response) =>
       response.url().includes(`/api/v1/${endpoint}`) &&
-      response.request().method() === 'PATCH' &&
-      response.status() < 400
+      response.request().method() === 'PATCH'
   );
   await page.getByTestId('clear-tier').click();
 
-  await patchRequest;
+  const response = await patchRequest;
+  expect(response.status()).toBe(200);
+
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await clickOutside(page);
 
@@ -507,11 +508,13 @@ export const assignCertification = async (
   const certificationResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/tags') &&
-      response.url().includes('parent=Certification') &&
-      response.status() < 400
+      response.url().includes('parent=Certification')
   );
   await page.getByTestId('edit-certification').click();
-  await certificationResponse;
+
+  const tagsResponse = await certificationResponse;
+  expect(tagsResponse.status()).toBe(200);
+
   await page.waitForSelector('.certification-card-popover', {
     state: 'visible',
   });
@@ -531,11 +534,13 @@ export const assignCertification = async (
   const patchRequest = page.waitForResponse(
     (response) =>
       response.url().includes(`/api/v1/${endpoint}`) &&
-      response.request().method() === 'PATCH' &&
-      response.status() < 400
+      response.request().method() === 'PATCH'
   );
   await page.getByTestId('update-certification').click();
-  await patchRequest;
+
+  const patchResponse = await patchRequest;
+  expect(patchResponse.status()).toBe(200);
+
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await clickOutside(page);
 
@@ -553,11 +558,13 @@ export const removeCertification = async (page: Page, endpoint: string) => {
   const patchRequest = page.waitForResponse(
     (response) =>
       response.url().includes(`/api/v1/${endpoint}`) &&
-      response.request().method() === 'PATCH' &&
-      response.status() < 400
+      response.request().method() === 'PATCH'
   );
   await page.getByTestId('clear-certification').click();
-  await patchRequest;
+
+  const response = await patchRequest;
+  expect(response.status()).toBe(200);
+
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await clickOutside(page);
 
