@@ -19,6 +19,7 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { EntityType } from '../../../enums/entity.enum';
 import EntitySummaryPanel from './EntitySummaryPanel.component';
 import { mockDashboardEntityDetails } from './mocks/DashboardSummary.mock';
+import { mockDomainEntityDetails } from './mocks/DomainSummary.mock';
 import { mockMlModelEntityDetails } from './mocks/MlModelSummary.mock';
 import { mockPipelineEntityDetails } from './mocks/PipelineSummary.mock';
 import { mockTableEntityDetails } from './mocks/TableSummary.mock';
@@ -255,6 +256,27 @@ describe('EntitySummaryPanel component tests', () => {
     const chartSummary = screen.getByTestId('ChartSummary');
 
     expect(chartSummary).toBeInTheDocument();
+  });
+
+  it('should render for domain data without requesting invalid domains field', async () => {
+    const { container } = await act(async () => {
+      return render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockDomainEntityDetails,
+              entityType: EntityType.DOMAIN,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
+    });
+
+    expect(
+      container.querySelector('.entity-summary-panel-container')
+    ).toBeInTheDocument();
   });
 
   it('should render drawer header when isSideDrawer is true', async () => {

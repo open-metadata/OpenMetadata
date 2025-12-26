@@ -143,6 +143,7 @@ export default function EntitySummaryPanel({
   // Memoize the entity fetch map to avoid recreating it on every render
   const entityFetchMap = useMemo(() => {
     const commonFields = 'owners,domains,tags,extension';
+    const domainFields = 'owners,tags,extension';
 
     return {
       [EntityType.TABLE]: (fqn: string) =>
@@ -188,7 +189,7 @@ export default function EntitySummaryPanel({
       [EntityType.DATA_PRODUCT]: (fqn: string) =>
         getDataProductByName(fqn, { fields: commonFields }),
       [EntityType.DOMAIN]: (fqn: string) =>
-        getDomainByName(fqn, { fields: commonFields }),
+        getDomainByName(fqn, { fields: domainFields }),
     } as Record<string, (fqn: string) => Promise<unknown>>;
   }, []);
 
