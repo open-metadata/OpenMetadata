@@ -73,33 +73,8 @@ export const navigateToEntityPanelTab = async (page: Page, tabName: string) => {
 
 export const editTags = async (
   page: Page,
-  tagName: string,
-  clearExisting = false
-) => {
-  await page.locator('[data-testid="edit-icon-tags"]').scrollIntoViewIfNeeded();
-
+  tagName: string) => {
   await page.locator('[data-testid="edit-icon-tags"]').click();
-
-  if (clearExisting) {
-    const clearAllButton = page.locator('[data-testid="clear-all-button"]');
-    // Wait for clear button to be visible before clicking
-    await clearAllButton.waitFor({ state: 'visible'});
-    await clearAllButton.click();
-
-    const updateButton = page.getByRole('button', {
-      name: 'Update',
-    });
-    await updateButton.click();
-    await waitForPatchResponse(page);
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-
-    await page
-      .locator('[data-testid="edit-icon-tags"]')
-      .scrollIntoViewIfNeeded();
-    await page.locator('[data-testid="edit-icon-tags"]').click();
-  }
 
   await page
     .locator('[data-testid="selectable-list"]')
