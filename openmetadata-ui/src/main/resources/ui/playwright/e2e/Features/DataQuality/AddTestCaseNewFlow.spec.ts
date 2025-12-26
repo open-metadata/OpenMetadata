@@ -22,7 +22,7 @@ import { test } from '../../fixtures/pages';
  * Data Quality: Add Test Case (New Flow)
  * @description E2E coverage for creating table/column test cases via the new flow, validating scheduler/pipeline behavior, bulk adding from entity page, and enforcing permissions for non-owner roles.
  */
-test.describe('Add TestCase New Flow',{tag:DOMAIN_TAGS.OBSERVABILITY} ,() => {
+test.describe('Add TestCase New Flow', { tag: DOMAIN_TAGS.OBSERVABILITY }, () => {
   // Helper function to select table
   const selectTable = async (page: Page, table: TableClass) => {
     await page.click('[id="root\\/table"]');
@@ -279,7 +279,7 @@ test.describe('Add TestCase New Flow',{tag:DOMAIN_TAGS.OBSERVABILITY} ,() => {
         .click();
       await selectTable(page, table);
 
-      await selectColumn(page, table.entity.columns[0].name);
+      await selectColumn(page, (table.entity as any).columns[0].name);
 
       await createTestCase({
         page,
@@ -359,7 +359,7 @@ test.describe('Add TestCase New Flow',{tag:DOMAIN_TAGS.OBSERVABILITY} ,() => {
       .click();
     await page.waitForLoadState('networkidle');
 
-    await selectColumn(page, table.entity.columns[0].name);
+      await selectColumn(page, (table.entity as any).columns[0].name);
 
     await createTestCase({
       page,
