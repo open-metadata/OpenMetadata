@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.migration.v1112;
+package org.openmetadata.service.migration.v1120;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -37,12 +37,12 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.migration.utils.v1112.MigrationUtil;
+import org.openmetadata.service.migration.utils.v1120.MigrationUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
 
 /**
- * Tests for the v1.11.2 migration that fixes FQN hash for entities whose service name contains
+ * Tests for the v1.12.0 migration that fixes FQN hash for entities whose service name contains
  * dots.
  *
  * <p>The bug was in repository code that used service.getName() instead of
