@@ -279,7 +279,7 @@ test.describe('Add TestCase New Flow', { tag: DOMAIN_TAGS.OBSERVABILITY }, () =>
         .click();
       await selectTable(page, table);
 
-      await selectColumn(page, (table.entity as any).columns[0].name);
+      await selectColumn(page, table.entity.columns[0].name);
 
       await createTestCase({
         page,
@@ -359,7 +359,7 @@ test.describe('Add TestCase New Flow', { tag: DOMAIN_TAGS.OBSERVABILITY }, () =>
       .click();
     await page.waitForLoadState('networkidle');
 
-      await selectColumn(page, (table.entity as any).columns[0].name);
+    await selectColumn(page, table.entity.columns[0].name);
 
     await createTestCase({
       page,
