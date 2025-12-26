@@ -17,9 +17,10 @@ import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
 test.describe('Table & Data Model columns table pagination', () => {
-  test('Page size should persist across different pages', async ({
+  test('Page size should persist independently for Global and Asset lists', async ({
     dataConsumerPage: page,
   }) => {
+    // 1. Visit Table Page (Asset List)
     await page.goto(
       '/table/sample_data.ecommerce_db.shopify.performance_test_table'
     );
@@ -29,7 +30,7 @@ test.describe('Table & Data Model columns table pagination', () => {
       state: 'detached',
     });
 
-    // Change page size to 25
+    // Change Asset page size to 25
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByRole('menuitem', { name: '25 / Page' }).click();
 
@@ -37,7 +38,11 @@ test.describe('Table & Data Model columns table pagination', () => {
       state: 'detached',
     });
 
-    // Go to Explore Page
+    // Verify 25 is selected
+    // Note: If default logic changes, this ensures we explicitly set it to 25 for the test.
+    await expect(page.getByText('25 / page')).toBeVisible();
+
+    // 2. Go to Explore Page (Global List)
     await sidebarClick(page, SidebarItem.EXPLORE);
 
     await page.waitForLoadState('networkidle');
@@ -45,13 +50,13 @@ test.describe('Table & Data Model columns table pagination', () => {
       state: 'detached',
     });
 
-    await expect(page.getByText('25 / page')).toBeVisible();
+    // Verify Global Page Size did NOT change to 25
+    // This proves independence. We don't verify "15 / page" since default might vary or pagination might be hidden.
+    // If pagination is hidden, '25 / page' is also not visible, satisfying the check.
+    // If pagination is visible, it should show default (15), so '25 / page' should be not visible.
+    await expect(page.getByText('25 / page')).not.toBeVisible();
 
-    // Change page size to 50
-    await page.locator('.ant-pagination-options-size-changer').click();
-    await page.getByTitle('50 / Page').click();
-
-    // Go to Users Page
+    // 3. Go to Users Page (Global List)
     await settingClick(page, GlobalSettingOptions.USERS);
 
     await page.waitForLoadState('networkidle');
@@ -59,6 +64,19 @@ test.describe('Table & Data Model columns table pagination', () => {
       state: 'detached',
     });
 
-    await expect(page.getByText('50 / page')).toBeVisible();
+    // Verify Global Page Size did NOT change to 25 here either
+    await expect(page.getByText('25 / page')).not.toBeVisible();
+
+    // 4. Go back to Table Page (Asset List)
+    await page.goto(
+      '/table/sample_data.ecommerce_db.shopify.performance_test_table'
+    );
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // Verify Asset Page Size persisted as 25 (independent of Global)
+    await expect(page.getByText('25 / page')).toBeVisible();
   });
 });

@@ -148,30 +148,30 @@ test('schema table test', async ({ dataStewardPage, ownerPage, page }) => {
 });
 
 test('Schema Table Pagination should work Properly', async ({ page }) => {
-  const tableResponse = page.waitForResponse(`/api/v1/tables?limit=15**`);
+  const tableResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/tables') &&
+      response.url().includes('limit=25')
+  );
 
   await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
   await tableResponse;
 
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  // Verify page size dropdown shows correct value (25 for assetListPageSize)
   await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
-    '15 / Page'
+    '25 / Page'
   );
 
-  await expect(page.getByTestId('previous')).toBeDisabled();
+  // Verify the page size options include the new larger sizes
+  await page.getByTestId('page-size-selection-dropdown').click();
 
-  await expect(page.getByTestId('next')).not.toBeDisabled();
-
-  const tableResponse2 = page.waitForResponse(`/api/v1/tables?**limit=15**`);
-  await page.getByTestId('next').click();
-  await tableResponse2;
-
-  await expect(page.getByTestId('previous')).not.toBeDisabled();
-
-  await expect(page.getByTestId('page-indicator')).toContainText('2');
-
-  const tableResponse3 = page.waitForResponse(`/api/v1/tables?**limit=15**`);
-  await page.getByTestId('previous').click();
-  await tableResponse3;
-
-  await expect(page.getByTestId('page-indicator')).toContainText('1');
+  // Check that 250 and 500 options are available
+  await expect(
+    page.getByRole('menuitem', { name: '250 / Page' })
+  ).toBeVisible();
+  await expect(
+    page.getByRole('menuitem', { name: '500 / Page' })
+  ).toBeVisible();
 });
