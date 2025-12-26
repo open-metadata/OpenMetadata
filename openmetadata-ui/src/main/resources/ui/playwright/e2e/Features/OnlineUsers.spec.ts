@@ -44,12 +44,18 @@ test.describe('Online Users Feature', () => {
     await expect(page.getByTestId('online-users-table')).toBeVisible();
 
     // Verify table headers
-    await expect(page.getByRole('cell', { name: 'Username' })).toBeVisible();
     await expect(
-      page.getByRole('cell', { name: 'Last Activity' })
+      page.getByRole('columnheader', { name: 'Username' })
     ).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'Teams' })).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'Roles' })).toBeVisible();
+    await expect(
+      page.getByRole('columnheader', { name: 'Last Activity' })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('columnheader', { name: 'Teams' })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('columnheader', { name: 'Roles' })
+    ).toBeVisible();
 
     // Check for time filter dropdown (labeled as "Time window:")
     const timeWindowText = page.getByText('Time window:');

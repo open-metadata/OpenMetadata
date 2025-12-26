@@ -413,7 +413,7 @@ export const checkNullPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=15*"exists"*'
+    '/api/v1/search/query?*index=dataAsset&from=0&size=15*%22exists%22*'
   );
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;

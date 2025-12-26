@@ -70,6 +70,9 @@ export const editTags = async (
 
   if (clearExisting) {
     const clearAllButton = page.locator('[data-testid="clear-all-button"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
     if (await clearAllButton.isVisible()) {
       await clearAllButton.click();
       const updateButton = page.getByRole('button', {
