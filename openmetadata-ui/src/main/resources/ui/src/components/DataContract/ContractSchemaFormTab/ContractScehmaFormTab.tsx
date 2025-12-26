@@ -20,8 +20,8 @@ import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.s
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
+  ASSET_LIST_PAGE_SIZE_OPTIONS,
   NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
 import {
@@ -35,6 +35,7 @@ import { Column, Table } from '../../../generated/entity/data/table';
 import { Field, Topic } from '../../../generated/entity/data/topic';
 import { TagSource } from '../../../generated/tests/testCase';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
@@ -96,6 +97,10 @@ export const ContractSchemaFormTab: React.FC<{
   );
 
   const {
+    preferences: { assetListPageSize },
+  } = useCurrentUserPreferences();
+
+  const {
     currentPage,
     pageSize,
     paging,
@@ -103,7 +108,7 @@ export const ContractSchemaFormTab: React.FC<{
     handlePageSizeChange,
     handlePagingChange,
     showPagination,
-  } = usePaging(PAGE_SIZE_MEDIUM);
+  } = usePaging(assetListPageSize);
   const handleChangeTable = useCallback(
     (selectedRowKeys: Key[]) => {
       setSelectedKeys(selectedRowKeys as string[]);
@@ -358,6 +363,7 @@ export const ContractSchemaFormTab: React.FC<{
       paging,
       pagingHandler: handleColumnsPageChange,
       onShowSizeChange: handlePageSizeChange,
+      pageSizeOptions: ASSET_LIST_PAGE_SIZE_OPTIONS,
     }),
     [
       currentPage,

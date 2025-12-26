@@ -30,6 +30,7 @@ jest.mock('../../utils/i18next/LocalUtil', () => ({
 
 jest.mock('../../constants/constants', () => ({
   PAGE_SIZE_BASE: 15,
+  ASSET_LIST_PAGE_SIZE_DEFAULT: 25,
 }));
 
 const mockUseApplicationStore = useApplicationStore as jest.MockedFunction<
@@ -60,6 +61,7 @@ describe('useCurrentUserStore', () => {
     language: SupportedLocales.English,
     selectedEntityTableColumns: {},
     globalPageSize: 15,
+    assetListPageSize: 25,
     recentlySearched: [],
     recentlyViewed: [],
     recentlyViewedQuickLinks: [],
@@ -144,6 +146,7 @@ describe('useCurrentUserStore', () => {
         language: SupportedLocales.English, // From defaultPreferences
         selectedEntityTableColumns: { table1: ['col1', 'col2'] },
         globalPageSize: 15,
+        assetListPageSize: 25,
         recentlySearched: [],
         recentlyViewed: [],
         recentlyViewedQuickLinks: [],
@@ -168,6 +171,7 @@ describe('useCurrentUserStore', () => {
             language: SupportedLocales.简体中文,
             selectedEntityTableColumns: {},
             globalPageSize: 15,
+            assetListPageSize: 25,
             recentlySearched: [],
             recentlyViewed: [],
             recentlyViewedQuickLinks: [],
@@ -183,6 +187,7 @@ describe('useCurrentUserStore', () => {
         language: SupportedLocales.简体中文, // User's existing preference preserved
         selectedEntityTableColumns: {},
         globalPageSize: 15,
+        assetListPageSize: 25,
         recentlySearched: [],
         recentlyViewed: [],
         recentlyViewedQuickLinks: [],

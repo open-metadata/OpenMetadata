@@ -16,7 +16,7 @@ import { groupBy, isEmpty, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
+import { ASSET_LIST_PAGE_SIZE_OPTIONS } from '../../../../../constants/constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS,
@@ -28,6 +28,7 @@ import {
   DashboardDataModel,
 } from '../../../../../generated/entity/data/dashboardDataModel';
 import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
+import { useCurrentUserPreferences } from '../../../../../hooks/currentUserStore/useCurrentUserStore';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
 import {
   getDataModelColumnsByFQN,
@@ -67,15 +68,28 @@ const ModelTab = () => {
   const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true);
 
+  // Get assetListPageSize from user preferences
+  const { preferences, setPreference } = useCurrentUserPreferences();
+  const { assetListPageSize } = preferences;
+
   const {
     currentPage,
     pageSize,
     handlePageChange,
-    handlePageSizeChange,
+    handlePageSizeChange: baseHandlePageSizeChange,
     showPagination,
     paging,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+  } = usePaging(assetListPageSize);
+
+  // Wrap handlePageSizeChange to persist to user preferences
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      baseHandlePageSizeChange(size);
+      setPreference({ assetListPageSize: size });
+    },
+    [baseHandlePageSizeChange, setPreference]
+  );
 
   const { data: dataModel, permissions } =
     useGenericContext<DashboardDataModel>();
@@ -267,6 +281,7 @@ const ModelTab = () => {
       paging,
       pagingHandler: handleColumnsPageChange,
       onShowSizeChange: handlePageSizeChange,
+      pageSizeOptions: ASSET_LIST_PAGE_SIZE_OPTIONS,
     }),
     [
       currentPage,

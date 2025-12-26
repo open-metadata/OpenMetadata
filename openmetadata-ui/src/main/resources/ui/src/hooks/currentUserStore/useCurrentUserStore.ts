@@ -14,7 +14,10 @@
 import { RecentlySearchedData, RecentlyViewedData } from 'Models';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { PAGE_SIZE_BASE } from '../../constants/constants';
+import {
+  ASSET_LIST_PAGE_SIZE_DEFAULT,
+  PAGE_SIZE_BASE,
+} from '../../constants/constants';
 import { detectBrowserLanguage } from '../../utils/i18next/LocalUtil';
 import { SupportedLocales } from '../../utils/i18next/LocalUtil.interface';
 import { useApplicationStore } from '../useApplicationStore';
@@ -24,6 +27,7 @@ export interface UserPreferences {
   language: SupportedLocales;
   selectedEntityTableColumns: Record<string, string[]>;
   globalPageSize: number;
+  assetListPageSize: number;
   recentlyViewed: RecentlyViewedData[];
   recentlySearched: RecentlySearchedData[];
   recentlyViewedQuickLinks: RecentlyViewedData[];
@@ -44,10 +48,10 @@ const defaultPreferences: UserPreferences = {
   language: detectBrowserLanguage(),
   selectedEntityTableColumns: {},
   globalPageSize: PAGE_SIZE_BASE,
+  assetListPageSize: ASSET_LIST_PAGE_SIZE_DEFAULT,
   recentlyViewed: [],
   recentlySearched: [],
   recentlyViewedQuickLinks: [],
-  // Add default values for other preferences
 };
 
 export const usePersistentStorage = create<Store>()(

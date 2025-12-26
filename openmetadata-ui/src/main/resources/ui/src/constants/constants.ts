@@ -51,6 +51,18 @@ export const TABLE_CARD_PAGE_SIZE = 9;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
 export const PAGE_SIZE_LARGE = 50;
+export const PAGE_SIZE_XLARGE = 250;
+export const PAGE_SIZE_XXLARGE = 500;
+
+// Asset List Page Size options (for Database Schema tables, Table Columns, Dashboard Data Model Columns)
+export const ASSET_LIST_PAGE_SIZE_OPTIONS = [
+  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_XLARGE,
+  PAGE_SIZE_XXLARGE,
+];
+export const ASSET_LIST_PAGE_SIZE_DEFAULT = PAGE_SIZE_MEDIUM;
+
 export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;

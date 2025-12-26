@@ -19,10 +19,14 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowIcon } from '../../../assets/svg/arrow-right-full.svg';
 import { ReactComponent as FailedIcon } from '../../../assets/svg/fail-badge.svg';
 import { ReactComponent as CompletedIcon } from '../../../assets/svg/ic-check-circle-colored.svg';
-import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import {
+  ASSET_LIST_PAGE_SIZE_OPTIONS,
+  NO_DATA_PLACEHOLDER,
+} from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column } from '../../../generated/entity/data/table';
 import { SchemaValidation } from '../../../generated/entity/datacontract/dataContractResult';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
@@ -37,16 +41,20 @@ const ContractSchemaTable: React.FC<{
   const { t } = useTranslation();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
+  const { preferences } = useCurrentUserPreferences();
+  const { assetListPageSize } = preferences;
   const tablePaginationProps: TablePaginationConfig = useMemo(
     () => ({
       size: 'default',
       hideOnSinglePage: true,
-      pageSize: LIST_SIZE,
+      pageSize: assetListPageSize,
+      pageSizeOptions: ASSET_LIST_PAGE_SIZE_OPTIONS,
+      showSizeChanger: true,
       prevIcon: <Icon component={ArrowIcon} />,
       nextIcon: <Icon component={ArrowIcon} />,
       className: 'schema-custom-pagination',
     }),
-    []
+    [assetListPageSize]
   );
 
   const schemaColumns: ColumnsType<Column> = useMemo(

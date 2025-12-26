@@ -26,6 +26,7 @@ import TableAntd from '../../components/common/Table/Table';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import {
+  ASSET_LIST_PAGE_SIZE_OPTIONS,
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
 } from '../../constants/constants';
@@ -42,6 +43,7 @@ import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { Include } from '../../generated/type/include';
+import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
@@ -87,16 +89,29 @@ function SchemaTablesTab({
     INITIAL_TABLE_FILTERS
   );
 
+  // Get assetListPageSize from user preferences
+  const { preferences, setPreference } = useCurrentUserPreferences();
+  const { assetListPageSize } = preferences;
+
   const {
     paging,
     pageSize,
     showPagination,
     handlePagingChange,
     currentPage,
-    handlePageSizeChange,
+    handlePageSizeChange: baseHandlePageSizeChange,
     handlePageChange,
     pagingCursor,
-  } = usePaging();
+  } = usePaging(assetListPageSize);
+
+  // Wrap handlePageSizeChange to persist to user preferences
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      baseHandlePageSizeChange(size);
+      setPreference({ assetListPageSize: size });
+    },
+    [baseHandlePageSizeChange, setPreference]
+  );
 
   const allowEditDisplayNamePermission = useMemo(() => {
     return (
@@ -285,6 +300,7 @@ function SchemaTablesTab({
         paging,
         pagingHandler: tablePaginationHandler,
         onShowSizeChange: handlePageSizeChange,
+        pageSizeOptions: ASSET_LIST_PAGE_SIZE_OPTIONS,
       }}
       data-testid="databaseSchema-tables"
       dataSource={tableData}

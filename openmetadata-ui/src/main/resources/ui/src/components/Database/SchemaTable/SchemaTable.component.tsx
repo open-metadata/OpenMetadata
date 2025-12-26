@@ -23,10 +23,10 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
+  ASSET_LIST_PAGE_SIZE_OPTIONS,
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
 import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
@@ -49,6 +49,7 @@ import {
 import { TestSummary } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { useSub } from '../../../hooks/usePubSub';
@@ -108,15 +109,28 @@ const SchemaTable = () => {
   const [searchText, setSearchText] = useState('');
   const [editColumn, setEditColumn] = useState<Column>();
 
+  // Get assetListPageSize from user preferences
+  const { preferences, setPreference } = useCurrentUserPreferences();
+  const { assetListPageSize } = preferences;
+
   const {
     currentPage,
     pageSize,
     handlePageChange,
-    handlePageSizeChange,
+    handlePageSizeChange: baseHandlePageSizeChange,
     showPagination,
     paging,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+  } = usePaging(assetListPageSize);
+
+  // Wrap handlePageSizeChange to persist to user preferences
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      baseHandlePageSizeChange(size);
+      setPreference({ assetListPageSize: size });
+    },
+    [baseHandlePageSizeChange, setPreference]
+  );
 
   // Pagination state for columns
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
@@ -693,6 +707,7 @@ const SchemaTable = () => {
       paging,
       pagingHandler: handleColumnsPageChange,
       onShowSizeChange: handlePageSizeChange,
+      pageSizeOptions: ASSET_LIST_PAGE_SIZE_OPTIONS,
     }),
     [
       currentPage,
