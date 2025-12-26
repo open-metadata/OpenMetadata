@@ -82,9 +82,6 @@ test.beforeAll('Setup shared test data', async ({ browser }) => {
   await sharedTestGlossary.create(apiContext);
   await sharedTestGlossaryTerm.create(apiContext);
 
-  // Note: Domain assignment is tested separately in the Domain test case
-  // Do not pre-assign domain here to avoid test conflicts
-
   await afterAction();
 });
 
