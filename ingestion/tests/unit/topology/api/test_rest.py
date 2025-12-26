@@ -656,6 +656,7 @@ class RESTTest(TestCase):
         assert parking_field.description is not None
         assert parking_field.description.root == "Flight parking"
         assert parking_field.dataType == DataTypeTopic.STRING
+
     def test_convert_parameter_to_field_swagger_2(self):
         """Test converting Swagger 2.0 parameter to FieldModel"""
         param = {
