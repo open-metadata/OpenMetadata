@@ -1081,6 +1081,27 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   };
 
+  const updateNodeData = useCallback(
+    (entityId: string, updatedEntity: Partial<SourceType>) => {
+      setNodes((prevNodes) =>
+        prevNodes.map((node) => {
+          if (node.id !== entityId) {
+            return node;
+          }
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              node: { ...node.data.node, ...updatedEntity },
+            },
+          };
+        })
+      );
+    },
+    [setNodes]
+  );
+
   const handleEntityUpdate = useCallback(
     (updatedEntity: Partial<SourceType>) => {
       setSelectedNode((prev) => {
@@ -1089,25 +1110,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         }
 
         const entityId = updatedEntity.id ?? prev.id;
-
-        setNodes((prevNodes) =>
-          prevNodes.map((node) =>
-            node.id === entityId
-              ? {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    node: { ...node.data.node, ...updatedEntity },
-                  },
-                }
-              : node
-          )
-        );
+        updateNodeData(entityId, updatedEntity);
 
         return { ...prev, ...updatedEntity };
       });
     },
-    [setNodes]
+    [updateNodeData]
   );
 
   const onNodeClick = useCallback(
