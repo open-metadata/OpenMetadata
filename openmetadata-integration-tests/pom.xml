@@ -58,8 +58,20 @@
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
+      <artifactId>mysql</artifactId>
+      <version>1.20.3</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
       <artifactId>elasticsearch</artifactId>
       <version>1.20.3</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.opensearch</groupId>
+      <artifactId>opensearch-testcontainers</artifactId>
+      <version>2.0.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -152,6 +164,141 @@
   </build>
 
   <profiles>
+    <!-- MySQL + Elasticsearch (default) -->
+    <profile>
+      <id>mysql-elasticsearch</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${maven.surefire.version}</version>
+            <configuration>
+              <forkCount>1</forkCount>
+              <reuseForks>true</reuseForks>
+              <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+              <includes>
+                <include>**/*IT.java</include>
+                <include>**/*Test.java</include>
+              </includes>
+              <systemPropertyVariables>
+                <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                <databaseType>mysql</databaseType>
+                <databaseImage>mysql:8.3.0</databaseImage>
+                <searchType>elasticsearch</searchType>
+                <searchImage>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</searchImage>
+              </systemPropertyVariables>
+              <trimStackTrace>false</trimStackTrace>
+              <reportFormat>plain</reportFormat>
+              <useFile>true</useFile>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- PostgreSQL + OpenSearch -->
+    <profile>
+      <id>postgres-opensearch</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${maven.surefire.version}</version>
+            <configuration>
+              <forkCount>1</forkCount>
+              <reuseForks>true</reuseForks>
+              <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+              <includes>
+                <include>**/*IT.java</include>
+                <include>**/*Test.java</include>
+              </includes>
+              <systemPropertyVariables>
+                <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                <databaseType>postgres</databaseType>
+                <databaseImage>postgres:15</databaseImage>
+                <searchType>opensearch</searchType>
+                <searchImage>opensearchproject/opensearch:2.19.0</searchImage>
+              </systemPropertyVariables>
+              <trimStackTrace>false</trimStackTrace>
+              <reportFormat>plain</reportFormat>
+              <useFile>true</useFile>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- PostgreSQL + Elasticsearch -->
+    <profile>
+      <id>postgres-elasticsearch</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${maven.surefire.version}</version>
+            <configuration>
+              <forkCount>1</forkCount>
+              <reuseForks>true</reuseForks>
+              <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+              <includes>
+                <include>**/*IT.java</include>
+                <include>**/*Test.java</include>
+              </includes>
+              <systemPropertyVariables>
+                <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                <databaseType>postgres</databaseType>
+                <databaseImage>postgres:15</databaseImage>
+                <searchType>elasticsearch</searchType>
+                <searchImage>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</searchImage>
+              </systemPropertyVariables>
+              <trimStackTrace>false</trimStackTrace>
+              <reportFormat>plain</reportFormat>
+              <useFile>true</useFile>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- MySQL + OpenSearch -->
+    <profile>
+      <id>mysql-opensearch</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${maven.surefire.version}</version>
+            <configuration>
+              <forkCount>1</forkCount>
+              <reuseForks>true</reuseForks>
+              <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+              <includes>
+                <include>**/*IT.java</include>
+                <include>**/*Test.java</include>
+              </includes>
+              <systemPropertyVariables>
+                <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                <databaseType>mysql</databaseType>
+                <databaseImage>mysql:8.3.0</databaseImage>
+                <searchType>opensearch</searchType>
+                <searchImage>opensearchproject/opensearch:2.19.0</searchImage>
+              </systemPropertyVariables>
+              <trimStackTrace>false</trimStackTrace>
+              <reportFormat>plain</reportFormat>
+              <useFile>true</useFile>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
     <!-- RDF integration tests profile -->
     <profile>
       <id>postgres-rdf-tests</id>
@@ -168,6 +315,10 @@
               <systemPropertyVariables>
                 <enableRdf>true</enableRdf>
                 <rdfContainerImage>stain/jena-fuseki:latest</rdfContainerImage>
+                <databaseType>postgres</databaseType>
+                <databaseImage>postgres:15</databaseImage>
+                <searchType>elasticsearch</searchType>
+                <searchImage>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</searchImage>
                 <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
               </systemPropertyVariables>
               <includes>
