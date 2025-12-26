@@ -2,7 +2,7 @@
 
 # Platform
 
-> **12 Components** | **69 Files** | **1242 Tests** | **1618 Scenarios** 🚀
+> **12 Components** | **69 Files** | **1246 Tests** | **1626 Scenarios** 🚀
 
 ## Table of Contents
 - [Other](#other)
@@ -59,7 +59,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>AutoPilot.spec.ts</b> (10 tests, 10 scenarios)</summary>
+<summary>📄 <b>AutoPilot.spec.ts</b> (12 tests, 12 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/AutoPilot.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/AutoPilot.spec.ts)
 
@@ -97,6 +97,13 @@
 |---|-----------|-------------|
 | 1 | **Mlflow** - Create Service and check the AutoPilot status | Create Service and check the AutoPilot status |
 | 2 | **Mlflow** - Agents created by AutoPilot should be deleted | Agents created by AutoPilot should be deleted |
+
+### Airflow
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Airflow** - Create Service and check the AutoPilot status | Create Service and check the AutoPilot status |
+| 2 | **Airflow** - Agents created by AutoPilot should be deleted | Agents created by AutoPilot should be deleted |
 
 </details>
 
@@ -1639,7 +1646,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>RightEntityPanelFlow.spec.ts</b> (40 tests, 40 scenarios)</summary>
+<summary>📄 <b>RightEntityPanelFlow.spec.ts</b> (40 tests, 42 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/RightEntityPanelFlow.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/RightEntityPanelFlow.spec.ts)
 
@@ -1657,6 +1664,9 @@
 | 8 | **Right Entity Panel - Admin User Flow** - Admin - Schema Tab - View Schema | Admin - Schema Tab - View Schema |
 | 9 | **Right Entity Panel - Admin User Flow** - Lineage Tab - No Lineage | Lineage Tab - No Lineage |
 | 10 | **Right Entity Panel - Admin User Flow** - Lineage Tab - With Upstream and Downstream | Lineage Tab - With Upstream and Downstream |
+| | ↳ *Create lineage connections* | |
+| | ↳ *Verify overview tab lineage* | |
+| | ↳ *Verify lineage tab content* | |
 | 11 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - No Test Cases | Data Quality Tab - No Test Cases |
 | 12 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - Incidents Empty State | Data Quality Tab - Incidents Empty State |
 | 13 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - With Test Cases | Data Quality Tab - With Test Cases |
@@ -2033,6 +2043,35 @@
 </details>
 
 <details open>
+<summary>📄 <b>BulkEditEntity.spec.ts</b> (6 tests, 11 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/BulkEditEntity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkEditEntity.spec.ts)
+
+### Bulk Edit Entity
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Bulk Edit Entity** - Database service | Database service |
+| | ↳ *create custom properties for extension edit* | |
+| | ↳ *Perform bulk edit action* | |
+| 2 | **Bulk Edit Entity** - Database | Database |
+| | ↳ *create custom properties for extension edit* | |
+| | ↳ *Perform bulk edit action* | |
+| 3 | **Bulk Edit Entity** - Database Schema | Database Schema |
+| | ↳ *create custom properties for extension edit* | |
+| | ↳ *Perform bulk edit action* | |
+| 4 | **Bulk Edit Entity** - Table | Table |
+| | ↳ *Perform bulk edit action* | |
+| 5 | **Bulk Edit Entity** - Glossary | Glossary |
+| | ↳ *create custom properties for extension edit* | |
+| | ↳ *Perform bulk edit action* | |
+| 6 | **Bulk Edit Entity** - Glossary Term (Nested) | Glossary Term (Nested) |
+| | ↳ *create custom properties for extension edit* | |
+| | ↳ *Perform bulk edit action on nested glossary term* | |
+
+</details>
+
+<details open>
 <summary>📄 <b>BulkImport.spec.ts</b> (6 tests, 27 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts)
@@ -2074,31 +2113,6 @@
 | | ↳ *allow multiple cell selection using keyboard on rightDown and leftUp* | |
 | | ↳ *perform single cell copy-paste and undo-redo* | |
 | | ↳ *Select range, copy-paste and undo-redo* | |
-
-</details>
-
-<details open>
-<summary>📄 <b>BulkEditEntity.spec.ts</b> (5 tests, 8 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/BulkEditEntity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkEditEntity.spec.ts)
-
-### Bulk Edit Entity
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Bulk Edit Entity** - Database service | Database service |
-| | ↳ *create custom properties for extension edit* | |
-| | ↳ *Perform bulk edit action* | |
-| 2 | **Bulk Edit Entity** - Database | Database |
-| | ↳ *create custom properties for extension edit* | |
-| | ↳ *Perform bulk edit action* | |
-| 3 | **Bulk Edit Entity** - Database Schema | Database Schema |
-| | ↳ *create custom properties for extension edit* | |
-| | ↳ *Perform bulk edit action* | |
-| 4 | **Bulk Edit Entity** - Table | Table |
-| | ↳ *Perform bulk edit action* | |
-| 5 | **Bulk Edit Entity** - Glossary | Glossary |
-| | ↳ *Perform bulk edit action* | |
 
 </details>
 
@@ -2160,6 +2174,22 @@
 </details>
 
 <details open>
+<summary>📄 <b>DataInsightSettings.spec.ts</b> (4 tests, 4 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/DataInsightSettings.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DataInsightSettings.spec.ts)
+
+### Data Insight settings page should work properly
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Insight settings page should work properly** - Edit data insight application | Edit data insight application |
+| 2 | **Data Insight settings page should work properly** - Uninstall application | Uninstall application |
+| 3 | **Data Insight settings page should work properly** - Install application | Install application |
+| 4 | **Data Insight settings page should work properly** - Run application | Run application |
+
+</details>
+
+<details open>
 <summary>📄 <b>SearchSettings.spec.ts</b> (4 tests, 4 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/SearchSettings.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/SearchSettings.spec.ts)
@@ -2177,21 +2207,6 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Search Preview test** - Search preview for searchable table | Search preview for searchable table |
-
-</details>
-
-<details open>
-<summary>📄 <b>DataInsightSettings.spec.ts</b> (3 tests, 3 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/DataInsightSettings.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DataInsightSettings.spec.ts)
-
-### Data Insight settings page should work properly
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Insight settings page should work properly** - Edit data insight application | Edit data insight application |
-| 2 | **Data Insight settings page should work properly** - Uninstall application | Uninstall application |
-| 3 | **Data Insight settings page should work properly** - Install application | Install application |
 
 </details>
 
