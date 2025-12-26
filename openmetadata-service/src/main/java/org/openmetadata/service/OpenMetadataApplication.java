@@ -486,11 +486,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   /**
-   * Configure the ServletHandler to NOT decode ambiguous URI characters like %2F (encoded slash).
-   * This is necessary because entity names can contain slashes (e.g., "domain.name/with-slash")
-   * which get URL-encoded to %2F. Without this setting, Jetty would decode %2F to / during path
-   * parsing, breaking JAX-RS route matching for paths like /name/{name}.
+   * Configure the ServletHandler to allow ambiguous URIs in servlet API methods.
+   * In Jetty 12 / Servlet 6, methods like getServletPath() and getPathInfo() throw
+   * IllegalArgumentException for URIs containing ambiguous characters like %2F (encoded slash)
+   * or %22 (encoded quote). Setting setDecodeAmbiguousURIs(true) allows these methods to work.
    *
+   * This is required because OpenMetadata entity names can contain special characters
+   * (e.g., "domain.name/with-slash") which get URL-encoded by clients.
+   *
+   * See: https://github.com/jetty/jetty.project/issues/12346
    * See: https://jetty.org/docs/jetty/12/programming-guide/server/compliance.html
    */
   private void configureServletHandler(Environment environment) {
@@ -498,8 +502,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     org.eclipse.jetty.ee10.servlet.ServletHandler servletHandler =
         contextHandler.getServletHandler();
     if (servletHandler != null) {
-      servletHandler.setDecodeAmbiguousURIs(false);
-      LOG.info("Configured ServletHandler to NOT decode ambiguous URIs (preserving %2F in paths)");
+      servletHandler.setDecodeAmbiguousURIs(true);
+      LOG.info(
+          "Configured ServletHandler to allow ambiguous URIs (required for %2F, %22 in paths)");
     }
   }
 
