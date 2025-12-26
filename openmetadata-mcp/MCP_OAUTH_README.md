@@ -321,23 +321,43 @@ Claude detects 401 and re-initiates OAuth flow.
 
 **Scenario 2: Insufficient Scope**
 ```bash
+# Client has only metadata:read but tries to patch entity
 POST /mcp
 Authorization: Bearer <token-with-read-only-scope>
-{...method requiring write...}
-
-Response:
-HTTP/1.1 403 Forbidden
-WWW-Authenticate: Bearer
-  error="insufficient_scope"
-  scope="read write"
-  resource_metadata="http://localhost:8585/mcp/.well-known/oauth-protected-resource"
+Content-Type: application/json
 
 {
-  "message": "Insufficient scope for this operation"
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "patch_entity",
+    "arguments": {
+      "entityType": "table",
+      "entityFqn": "sample.db.table1",
+      "patch": "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"Updated\"}]"
+    }
+  }
+}
+
+Response:
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [{
+      "type": "text",
+      "text": "{\"error\":\"Insufficient scope: Access denied: At least one of [metadata:write] is required. Granted scopes: [metadata:read]\",\"statusCode\":403,\"requiredScopes\":[\"metadata:write\"],\"grantedScopes\":[\"metadata:read\"]}"
+    }],
+    "isError": true
+  }
 }
 ```
 
-Claude shows error: "Additional permissions required: write"
+Claude shows error: "Insufficient scope: Access denied. This operation requires 'metadata:write' scope, but you only have 'metadata:read'. Please re-authorize with appropriate permissions."
 
 **Scenario 3: Expired Refresh Token**
 ```bash
@@ -709,9 +729,72 @@ The resource server validates that tokens were issued specifically for it.
 
 ### 4. Scope Validation
 
-Supported scopes:
-- `read`: Read-only access to MCP resources
-- `write`: Full read-write access to MCP resources
+OpenMetadata MCP implements fine-grained scope-based authorization for all tool operations. Each MCP tool requires specific scopes to be present in the access token.
+
+#### Supported Scopes
+
+- `metadata:read`: Read-only access to metadata resources (search, get, lineage)
+- `metadata:write`: Write access to metadata resources (patch, create, update)
+- `connector:access`: Access to connector operations (reserved for future use)
+
+#### Tool Scope Requirements
+
+| Tool Name | Required Scope | Description |
+|-----------|---------------|-------------|
+| `search_metadata` | `metadata:read` | Search metadata entities |
+| `get_entity_details` | `metadata:read` | Get detailed entity information |
+| `get_entity_lineage` | `metadata:read` | Get entity lineage graph |
+| `patch_entity` | `metadata:write` | Update entity via JSON Patch |
+| `create_glossary` | `metadata:write` | Create new glossary |
+| `create_glossary_term` | `metadata:write` | Create new glossary term |
+
+#### Scope Authorization Flow
+
+When a client calls a tool:
+
+1. **Authentication**: Bearer token is validated
+2. **Scope Extraction**: Scopes are extracted from the access token
+3. **Scope Validation**: Tool's required scopes are checked against granted scopes
+4. **Authorization**: If scopes match, tool execution proceeds; otherwise, 403 Forbidden
+
+Example of scope validation failure:
+
+```json
+{
+  "error": "Insufficient scope: Access denied: At least one of [metadata:write] is required. Granted scopes: [metadata:read]",
+  "statusCode": 403,
+  "requiredScopes": ["metadata:write"],
+  "grantedScopes": ["metadata:read"]
+}
+```
+
+#### Requesting Scopes
+
+When initiating the OAuth flow, clients should request the appropriate scopes:
+
+```
+GET /mcp/authorize?
+  client_id=example-client
+  &scope=metadata:read+metadata:write
+  &...
+```
+
+Available scope combinations:
+- `metadata:read` - Read-only access (search, view)
+- `metadata:write` - Write access (includes read implicitly in most clients)
+- `metadata:read metadata:write` - Full access (recommended for most applications)
+
+#### Default Scopes
+
+If no scope is specified in the authorization request, the default scopes are granted based on the client configuration. It's recommended to always explicitly request the minimum required scopes.
+
+#### Legacy Scope Support
+
+For backward compatibility, the following legacy scopes are also supported:
+- `read` - Maps to `metadata:read`
+- `write` - Maps to `metadata:write`
+
+New clients should use the `metadata:*` scope naming convention.
 
 ### 5. State Parameter
 
@@ -828,6 +911,225 @@ curl -X POST http://localhost:8585/mcp/token \
   -d "client_secret=example-secret" | jq
 ```
 
+### 5. Test Scope Validation
+
+```bash
+#!/bin/bash
+
+# Get token with only read scope
+AUTH_RESPONSE=$(curl -s -i "http://localhost:8585/mcp/authorize?client_id=example-client&redirect_uri=http://localhost:8585/callback&response_type=code&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256&scope=metadata:read&state=xyz123")
+CODE=$(echo "$AUTH_RESPONSE" | grep "Location:" | sed 's/.*code=\([^&]*\).*/\1/' | tr -d '\r')
+
+# Exchange for token
+TOKEN_RESPONSE=$(curl -s -X POST http://localhost:8585/mcp/token \
+  -d "grant_type=authorization_code" \
+  -d "code=$CODE" \
+  -d "redirect_uri=http://localhost:8585/callback" \
+  -d "code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk" \
+  -d "client_id=example-client" \
+  -d "client_secret=example-secret")
+
+ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
+
+# Try to call a write operation (should fail)
+curl -X POST http://localhost:8585/mcp \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "patch_entity",
+      "arguments": {
+        "entityType": "table",
+        "entityFqn": "sample.db.users",
+        "patch": "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"Test\"}]"
+      }
+    }
+  }' | jq
+
+# Expected: Error with statusCode 403 and required scopes information
+
+# Try a read operation (should succeed)
+curl -X POST http://localhost:8585/mcp \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/call",
+    "params": {
+      "name": "search_metadata",
+      "arguments": {
+        "query": "users",
+        "entityType": "table"
+      }
+    }
+  }' | jq
+
+# Expected: Successful search results
+```
+
+## Connector-Specific OAuth Configuration
+
+The MCP OAuth implementation supports connector-specific OAuth configurations for various data sources. Each connector has its own OAuth setup requirements and token endpoint configurations.
+
+### Supported Connectors
+
+#### Snowflake
+
+Snowflake OAuth authentication uses the standard OAuth 2.0 flow with Snowflake's authentication servers.
+
+**Setup Requirements:**
+1. Create an OAuth integration in Snowflake:
+   ```sql
+   CREATE SECURITY INTEGRATION openmetadata_oauth
+     TYPE = OAUTH
+     ENABLED = TRUE
+     OAUTH_CLIENT = CUSTOM
+     OAUTH_CLIENT_TYPE = 'CONFIDENTIAL'
+     OAUTH_REDIRECT_URI = 'https://your-openmetadata-instance.com/callback'
+     OAUTH_ISSUE_REFRESH_TOKENS = TRUE
+     OAUTH_REFRESH_TOKEN_VALIDITY = 7776000;
+   ```
+
+2. Obtain client credentials:
+   ```sql
+   SELECT SYSTEM$SHOW_OAUTH_CLIENT_SECRETS('OPENMETADATA_OAUTH');
+   ```
+
+3. Configure in OpenMetadata UI:
+   - Navigate to Settings → Services → Databases → Add Snowflake Connection
+   - Select "OAuth 2.0" as authentication type
+   - Enter:
+     - Client ID (from OAuth integration)
+     - Client Secret (from OAuth integration)
+     - Refresh Token (obtained from initial OAuth flow)
+
+**Token Endpoint:** `https://<account>.snowflakecomputing.com/oauth/token-request`
+
+**Required Scopes:** `session:role:<role_name>`
+
+#### Databricks
+
+Databricks OAuth authentication uses OAuth 2.0 Machine-to-Machine (M2M) authentication with Service Principals.
+
+**Setup Requirements:**
+1. Create a Service Principal in Databricks Account Console:
+   - Go to Account Console → User Management → Service Principals
+   - Click "Add Service Principal"
+   - Note the Application ID (Client ID)
+
+2. Generate OAuth Secret:
+   - In the Service Principal details, go to "OAuth Secrets"
+   - Click "Generate Secret"
+   - Copy the secret value (shown only once)
+
+3. Grant permissions to the Service Principal:
+   - Assign the Service Principal to your workspace
+   - Grant necessary permissions (e.g., CAN USE for catalogs/schemas)
+
+4. Configure in OpenMetadata UI:
+   - Navigate to Settings → Services → Databases → Add Databricks Connection
+   - Enter hostPort (e.g., `adb-1234567890123456.7.azuredatabricks.net`)
+   - Select "OAuth 2.0" as authentication type
+   - Enter:
+     - Client ID (Service Principal Application ID)
+     - Client Secret (Generated OAuth secret)
+     - Refresh Token (N/A for M2M - use client credentials grant)
+
+**Token Endpoint:** `https://<workspace-url>/oidc/v1/token`
+
+**Authentication Method:** Client Credentials Grant (M2M)
+
+**Required Configuration:**
+- `hostPort`: Your Databricks workspace URL
+- `httpPath`: SQL warehouse or cluster HTTP path (e.g., `/sql/1.0/warehouses/abc123`)
+- OAuth credentials with Service Principal client ID and secret
+
+**Example Databricks Configuration:**
+```json
+{
+  "type": "Databricks",
+  "hostPort": "adb-1234567890123456.7.azuredatabricks.net",
+  "httpPath": "/sql/1.0/warehouses/abc123def456",
+  "authType": {
+    "clientId": "12345678-1234-1234-1234-123456789abc",
+    "clientSecret": "dosABCDEF1234567890...",
+    "refreshToken": "dapi1234567890abcdef...",
+    "accessToken": "...",
+    "expiresAt": 1234567890,
+    "tokenEndpoint": "https://adb-1234567890123456.7.azuredatabricks.net/oidc/v1/token"
+  }
+}
+```
+
+**Notes:**
+- Databricks OAuth tokens typically expire after 1 hour
+- Refresh tokens are valid for 90 days by default
+- For Unity Catalog, ensure the Service Principal has appropriate grants
+
+### Adding Support for New Connectors
+
+To add OAuth support for a new connector:
+
+1. **Update JSON Schema** (`openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/<connector>Connection.json`):
+   ```json
+   {
+     "authType": {
+       "oneOf": [
+         ...existing auth types...,
+         {
+           "title": "OAuth 2.0",
+           "$ref": "../common/oauthCredentials.json"
+         }
+       ]
+     }
+   }
+   ```
+
+2. **Update ConnectorOAuthProvider.java**:
+
+   a. Add credential extraction:
+   ```java
+   private OAuthCredentials extractOAuthCredentialsFromConfig(Object config) {
+     if (config instanceof YourConnectorConnection) {
+       YourConnectorConnection conn = (YourConnectorConnection) config;
+       Object authType = conn.getAuthType();
+       if (authType instanceof OAuthCredentials) {
+         return (OAuthCredentials) authType;
+       }
+     }
+     return null;
+   }
+   ```
+
+   b. Add credential setter:
+   ```java
+   private void setOAuthCredentialsOnConfig(Object config, OAuthCredentials oauth) {
+     if (config instanceof YourConnectorConnection) {
+       ((YourConnectorConnection) config).setAuthType(oauth);
+     }
+   }
+   ```
+
+   c. Add token endpoint builder:
+   ```java
+   private String buildTokenEndpoint(Object config, OAuthCredentials oauth) {
+     if (config instanceof YourConnectorConnection) {
+       YourConnectorConnection conn = (YourConnectorConnection) config;
+       // Build connector-specific token endpoint URL
+       return "https://" + conn.getHost() + "/oauth/token";
+     }
+     ...
+   }
+   ```
+
+3. **Update Documentation**: Add connector-specific setup instructions to this README
+
 ## Integration with External Identity Providers
 
 Currently, the authorization endpoint auto-approves requests. To integrate with external IdPs (Google, Okta, etc.):
@@ -910,7 +1212,13 @@ public CompletableFuture<String> handleIdPCallback(
 ### Middleware
 - `BearerAuthenticator.java` - Validates Bearer tokens
 - `ClientAuthenticator.java` - Authenticates OAuth clients
-- `AuthContext.java` - Holds authentication context
+- `AuthContext.java` - Holds authentication context and scope validation helpers
+
+### Authorization
+- `RequireScope.java` - Annotation for declaring scope requirements on tools
+- `ScopeValidator.java` - Utility for validating scopes (AND/OR logic)
+- `ScopeInterceptor.java` - Interceptor that enforces scope validation before tool execution
+- `AuthorizationException.java` - Exception thrown when scope validation fails
 
 ### Transport
 - `OAuthHttpStatelessServerTransportProvider.java` - HTTP transport with OAuth
@@ -951,6 +1259,17 @@ public CompletableFuture<String> handleIdPCallback(
 1. Server is running
 2. Endpoints are prefixed with `/mcp/`
 3. Correct HTTP method (GET for authorize, POST for token)
+
+### Issue: 403 Forbidden - Insufficient Scope
+
+**Check:**
+1. Access token contains required scopes
+2. Tool requires `metadata:write` but token only has `metadata:read`
+3. Re-request authorization with appropriate scopes:
+   ```bash
+   GET /mcp/authorize?scope=metadata:read+metadata:write&...
+   ```
+4. Check error response for `requiredScopes` and `grantedScopes` details
 
 ## Development
 

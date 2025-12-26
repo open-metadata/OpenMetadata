@@ -16,9 +16,7 @@ import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
-import org.openmetadata.mcp.server.auth.Constants;
 import org.openmetadata.mcp.server.auth.provider.ConnectorOAuthProvider;
-import org.openmetadata.mcp.server.auth.provider.OpenMetadataAuthProvider;
 import org.openmetadata.mcp.server.auth.settings.ClientRegistrationOptions;
 import org.openmetadata.mcp.server.auth.settings.RevocationOptions;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
@@ -26,10 +24,10 @@ import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.apps.McpServerProvider;
+import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -116,7 +114,8 @@ public class McpServer implements McpServerProvider {
       OAuthClientInformation mcpClient = new OAuthClientInformation();
       mcpClient.setClientId("openmetadata-mcp-client");
       mcpClient.setClientSecret("mcp-client-secret"); // Not used for connector OAuth
-      mcpClient.setRedirectUris(Collections.singletonList(new URI("http://localhost:3000/callback")));
+      mcpClient.setRedirectUris(
+          Collections.singletonList(new URI("http://localhost:3000/callback")));
       mcpClient.setTokenEndpointAuthMethod("none"); // Public client
       mcpClient.setGrantTypes(Arrays.asList("authorization_code", "refresh_token"));
       mcpClient.setResponseTypes(Collections.singletonList("code"));
@@ -137,6 +136,11 @@ public class McpServer implements McpServerProvider {
       RevocationOptions revocationOptions = new RevocationOptions();
       revocationOptions.setEnabled(true);
 
+      // Configure allowed origins for CORS (matches MCPConfiguration defaults)
+      // These should be configured via MCPConfiguration in production
+      List<String> allowedOrigins =
+          Arrays.asList("http://localhost:3000", "http://localhost:8585", "http://localhost:9090");
+
       OAuthHttpStatelessServerTransportProvider statelessOauthTransport =
           new OAuthHttpStatelessServerTransportProvider(
               JsonUtils.getObjectMapper(),
@@ -145,7 +149,8 @@ public class McpServer implements McpServerProvider {
               new AuthEnrichedMcpContextExtractor(),
               authProvider,
               registrationOptions,
-              revocationOptions);
+              revocationOptions,
+              allowedOrigins);
       McpStatelessSyncServer server =
           io.modelcontextprotocol.server.McpServer.sync(statelessOauthTransport)
               .serverInfo("openmetadata-mcp-stateless", "0.11.2")

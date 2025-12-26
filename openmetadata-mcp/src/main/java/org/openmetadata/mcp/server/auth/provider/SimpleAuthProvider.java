@@ -153,8 +153,7 @@ public class SimpleAuthProvider implements OAuthAuthorizationServerProvider {
     refreshTokens.remove(refreshToken.getToken());
 
     // Generate new tokens
-    String accessTokenValue =
-        "ACCESS_TOKEN_FOR_TESTING";
+    String accessTokenValue = "ACCESS_TOKEN_FOR_TESTING";
     String refreshTokenValue = UUID.randomUUID().toString();
 
     // Create access token with audience claim (RFC 8707)

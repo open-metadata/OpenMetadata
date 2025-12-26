@@ -175,6 +175,7 @@ import org.openmetadata.service.util.jdbi.BindJsonContains;
 import org.openmetadata.service.util.jdbi.BindListFQN;
 import org.openmetadata.service.util.jdbi.BindUUID;
 
+import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
 public interface CollectionDAO {
   @CreateSqlObject
   DatabaseDAO databaseDAO();
@@ -454,6 +455,21 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   LLMServiceDAO llmServiceDAO();
+
+  @CreateSqlObject
+  OAuthClientDAO oauthClientDAO();
+
+  @CreateSqlObject
+  OAuthAuthorizationCodeDAO oauthAuthorizationCodeDAO();
+
+  @CreateSqlObject
+  OAuthAccessTokenDAO oauthAccessTokenDAO();
+
+  @CreateSqlObject
+  OAuthRefreshTokenDAO oauthRefreshTokenDAO();
+
+  @CreateSqlObject
+  OAuthAuditLogDAO oauthAuditLogDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -7747,6 +7763,69 @@ public interface CollectionDAO {
     }
   }
 
+  // OAuth 2.0 Row Mappers
+  class OAuthClientRowMapper implements RowMapper<OAuthRecords.OAuthClientRecord> {
+    @Override
+    public OAuthRecords.OAuthClientRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new OAuthRecords.OAuthClientRecord(
+          UUID.fromString(rs.getString("id")),
+          rs.getString("client_id"),
+          rs.getString("client_secret_encrypted"),
+          rs.getString("client_name"),
+          JsonUtils.readObjects(rs.getString("redirect_uris"), String.class),
+          JsonUtils.readObjects(rs.getString("grant_types"), String.class),
+          rs.getString("token_endpoint_auth_method"),
+          JsonUtils.readObjects(rs.getString("scopes"), String.class));
+    }
+  }
+
+  class OAuthAuthorizationCodeRowMapper implements RowMapper<OAuthRecords.OAuthAuthorizationCodeRecord> {
+    @Override
+    public OAuthRecords.OAuthAuthorizationCodeRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new OAuthRecords.OAuthAuthorizationCodeRecord(
+          rs.getString("code"),
+          rs.getString("client_id"),
+          rs.getString("connector_name"),
+          rs.getString("code_challenge"),
+          rs.getString("code_challenge_method"),
+          rs.getString("redirect_uri"),
+          JsonUtils.readObjects(rs.getString("scopes"), String.class),
+          rs.getLong("expires_at"),
+          rs.getBoolean("used"));
+    }
+  }
+
+  class OAuthAccessTokenRowMapper implements RowMapper<OAuthRecords.OAuthAccessTokenRecord> {
+    @Override
+    public OAuthRecords.OAuthAccessTokenRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new OAuthRecords.OAuthAccessTokenRecord(
+          UUID.fromString(rs.getString("id")),
+          rs.getString("token_hash"),
+          rs.getString("access_token_encrypted"),
+          rs.getString("client_id"),
+          rs.getString("connector_name"),
+          rs.getString("user_name"),
+          JsonUtils.readObjects(rs.getString("scopes"), String.class),
+          rs.getLong("expires_at"));
+    }
+  }
+
+  class OAuthRefreshTokenRowMapper implements RowMapper<OAuthRecords.OAuthRefreshTokenRecord> {
+    @Override
+    public OAuthRecords.OAuthRefreshTokenRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new OAuthRecords.OAuthRefreshTokenRecord(
+          UUID.fromString(rs.getString("id")),
+          rs.getString("token_hash"),
+          rs.getString("refresh_token_encrypted"),
+          rs.getString("client_id"),
+          rs.getString("connector_name"),
+          rs.getString("user_name"),
+          JsonUtils.readObjects(rs.getString("scopes"), String.class),
+          rs.getLong("expires_at"),
+          rs.getBoolean("revoked"));
+    }
+  }
+
   interface TokenDAO {
     @SqlQuery("SELECT tokenType, json FROM user_tokens WHERE token = :token")
     @RegisterRowMapper(TokenRowMapper.class)
@@ -8777,5 +8856,137 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
+  }
+
+  // OAuth 2.0 DAOs for MCP Server
+  interface OAuthClientDAO {
+    @SqlQuery("SELECT id, client_id, client_secret_encrypted, client_name, redirect_uris, grant_types, token_endpoint_auth_method, scopes FROM oauth_clients WHERE client_id = :clientId")
+    @RegisterRowMapper(OAuthClientRowMapper.class)
+    OAuthRecords.OAuthClientRecord findByClientId(@Bind("clientId") String clientId);
+
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO oauth_clients (client_id, client_secret_encrypted, client_name, redirect_uris, grant_types, token_endpoint_auth_method, scopes) VALUES (:clientId, :clientSecret, :clientName, :redirectUris ::jsonb, :grantTypes ::jsonb, :authMethod, :scopes ::jsonb)",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO oauth_clients (client_id, client_secret_encrypted, client_name, redirect_uris, grant_types, token_endpoint_auth_method, scopes) VALUES (:clientId, :clientSecret, :clientName, :redirectUris, :grantTypes, :authMethod, :scopes)",
+        connectionType = MYSQL)
+    void insert(
+        @Bind("clientId") String clientId,
+        @Bind("clientSecret") String clientSecret,
+        @Bind("clientName") String clientName,
+        @Bind("redirectUris") String redirectUris,
+        @Bind("grantTypes") String grantTypes,
+        @Bind("authMethod") String authMethod,
+        @Bind("scopes") String scopes);
+
+    @SqlUpdate("DELETE FROM oauth_clients WHERE client_id = :clientId")
+    void delete(@Bind("clientId") String clientId);
+  }
+
+  interface OAuthAuthorizationCodeDAO {
+    @SqlQuery("SELECT code, client_id, connector_name, code_challenge, code_challenge_method, redirect_uri, scopes, expires_at, used FROM oauth_authorization_codes WHERE code = :code")
+    @RegisterRowMapper(OAuthAuthorizationCodeRowMapper.class)
+    OAuthRecords.OAuthAuthorizationCodeRecord findByCode(@Bind("code") String code);
+
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO oauth_authorization_codes (code, client_id, connector_name, code_challenge, code_challenge_method, redirect_uri, scopes, expires_at) VALUES (:code, :clientId, :connectorName, :codeChallenge, :codeChallengeMethod, :redirectUri, :scopes ::jsonb, :expiresAt)",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO oauth_authorization_codes (code, client_id, connector_name, code_challenge, code_challenge_method, redirect_uri, scopes, expires_at) VALUES (:code, :clientId, :connectorName, :codeChallenge, :codeChallengeMethod, :redirectUri, :scopes, :expiresAt)",
+        connectionType = MYSQL)
+    void insert(
+        @Bind("code") String code,
+        @Bind("clientId") String clientId,
+        @Bind("connectorName") String connectorName,
+        @Bind("codeChallenge") String codeChallenge,
+        @Bind("codeChallengeMethod") String codeChallengeMethod,
+        @Bind("redirectUri") String redirectUri,
+        @Bind("scopes") String scopes,
+        @Bind("expiresAt") long expiresAt);
+
+    @SqlUpdate("UPDATE oauth_authorization_codes SET used = TRUE WHERE code = :code")
+    void markAsUsed(@Bind("code") String code);
+
+    @SqlUpdate("DELETE FROM oauth_authorization_codes WHERE code = :code")
+    void delete(@Bind("code") String code);
+
+    @SqlUpdate("DELETE FROM oauth_authorization_codes WHERE expires_at < :currentTime")
+    void deleteExpired(@Bind("currentTime") long currentTime);
+  }
+
+  interface OAuthAccessTokenDAO {
+    @SqlQuery("SELECT id, token_hash, access_token_encrypted, client_id, connector_name, user_name, scopes, expires_at FROM oauth_access_tokens WHERE token_hash = :tokenHash")
+    @RegisterRowMapper(OAuthAccessTokenRowMapper.class)
+    OAuthRecords.OAuthAccessTokenRecord findByTokenHash(@Bind("tokenHash") String tokenHash);
+
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO oauth_access_tokens (token_hash, access_token_encrypted, client_id, connector_name, user_name, scopes, expires_at) VALUES (:tokenHash, :accessTokenEncrypted, :clientId, :connectorName, :userName, :scopes ::jsonb, :expiresAt)",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO oauth_access_tokens (token_hash, access_token_encrypted, client_id, connector_name, user_name, scopes, expires_at) VALUES (:tokenHash, :accessTokenEncrypted, :clientId, :connectorName, :userName, :scopes, :expiresAt)",
+        connectionType = MYSQL)
+    void insert(
+        @Bind("tokenHash") String tokenHash,
+        @Bind("accessTokenEncrypted") String accessTokenEncrypted,
+        @Bind("clientId") String clientId,
+        @Bind("connectorName") String connectorName,
+        @Bind("userName") String userName,
+        @Bind("scopes") String scopes,
+        @Bind("expiresAt") long expiresAt);
+
+    @SqlUpdate("DELETE FROM oauth_access_tokens WHERE token_hash = :tokenHash")
+    void delete(@Bind("tokenHash") String tokenHash);
+
+    @SqlUpdate("DELETE FROM oauth_access_tokens WHERE expires_at < :currentTime")
+    void deleteExpired(@Bind("currentTime") long currentTime);
+  }
+
+  interface OAuthRefreshTokenDAO {
+    @SqlQuery("SELECT id, token_hash, refresh_token_encrypted, client_id, connector_name, user_name, scopes, expires_at, revoked FROM oauth_refresh_tokens WHERE token_hash = :tokenHash")
+    @RegisterRowMapper(OAuthRefreshTokenRowMapper.class)
+    OAuthRecords.OAuthRefreshTokenRecord findByTokenHash(@Bind("tokenHash") String tokenHash);
+
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO oauth_refresh_tokens (token_hash, refresh_token_encrypted, client_id, connector_name, user_name, scopes, expires_at) VALUES (:tokenHash, :refreshTokenEncrypted, :clientId, :connectorName, :userName, :scopes ::jsonb, :expiresAt)",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO oauth_refresh_tokens (token_hash, refresh_token_encrypted, client_id, connector_name, user_name, scopes, expires_at) VALUES (:tokenHash, :refreshTokenEncrypted, :clientId, :connectorName, :userName, :scopes, :expiresAt)",
+        connectionType = MYSQL)
+    void insert(
+        @Bind("tokenHash") String tokenHash,
+        @Bind("refreshTokenEncrypted") String refreshTokenEncrypted,
+        @Bind("clientId") String clientId,
+        @Bind("connectorName") String connectorName,
+        @Bind("userName") String userName,
+        @Bind("scopes") String scopes,
+        @Bind("expiresAt") long expiresAt);
+
+    @SqlUpdate("UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE token_hash = :tokenHash")
+    void revoke(@Bind("tokenHash") String tokenHash);
+
+    @SqlUpdate("DELETE FROM oauth_refresh_tokens WHERE token_hash = :tokenHash")
+    void delete(@Bind("tokenHash") String tokenHash);
+
+    @SqlUpdate("DELETE FROM oauth_refresh_tokens WHERE expires_at < :currentTime")
+    void deleteExpired(@Bind("currentTime") long currentTime);
+  }
+
+  interface OAuthAuditLogDAO {
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO oauth_audit_log (event_type, client_id, connector_name, user_name, success, error_message, ip_address, user_agent, metadata) VALUES (:eventType, :clientId, :connectorName, :userName, :success, :errorMessage, :ipAddress, :userAgent, :metadata ::jsonb)",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO oauth_audit_log (event_type, client_id, connector_name, user_name, success, error_message, ip_address, user_agent, metadata) VALUES (:eventType, :clientId, :connectorName, :userName, :success, :errorMessage, :ipAddress, :userAgent, :metadata)",
+        connectionType = MYSQL)
+    void insert(
+        @Bind("eventType") String eventType,
+        @Bind("clientId") String clientId,
+        @Bind("connectorName") String connectorName,
+        @Bind("userName") String userName,
+        @Bind("success") boolean success,
+        @Bind("errorMessage") String errorMessage,
+        @Bind("ipAddress") String ipAddress,
+        @Bind("userAgent") String userAgent,
+        @Bind("metadata") String metadata);
   }
 }

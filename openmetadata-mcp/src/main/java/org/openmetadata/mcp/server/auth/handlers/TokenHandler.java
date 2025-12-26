@@ -14,9 +14,6 @@ import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.auth.OAuthToken;
 import org.openmetadata.mcp.auth.exception.TokenException;
 import org.openmetadata.mcp.server.auth.middleware.ClientAuthenticator;
-import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
-import org.openmetadata.service.security.auth.SecurityConfigurationManager;
-import org.pac4j.oidc.client.OidcClient;
 
 /**
  * Handler for OAuth token requests.
@@ -42,7 +39,8 @@ public class TokenHandler {
     // TODO: Update to use correct API to get OIDC client from authHandler
     // This TokenHandler is deprecated in favor of ConnectorOAuthProvider
     return CompletableFuture.failedFuture(
-        new TokenException("not_implemented", "TokenHandler is deprecated, use ConnectorOAuthProvider instead"));
+        new TokenException(
+            "not_implemented", "TokenHandler is deprecated, use ConnectorOAuthProvider instead"));
 
     /*
     AuthenticationCodeFlowHandler authHandler =

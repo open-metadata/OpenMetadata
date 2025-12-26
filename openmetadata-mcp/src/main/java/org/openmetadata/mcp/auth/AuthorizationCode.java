@@ -18,6 +18,8 @@ public class AuthorizationCode {
 
   private String codeChallenge;
 
+  private String codeVerifier;
+
   private URI redirectUri;
 
   private boolean redirectUriProvidedExplicitly;
@@ -79,6 +81,14 @@ public class AuthorizationCode {
 
   public void setCodeChallenge(String codeChallenge) {
     this.codeChallenge = codeChallenge;
+  }
+
+  public String getCodeVerifier() {
+    return codeVerifier;
+  }
+
+  public void setCodeVerifier(String codeVerifier) {
+    this.codeVerifier = codeVerifier;
   }
 
   public URI getRedirectUri() {

@@ -28,7 +28,6 @@ import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.UserUtil;
-import org.pac4j.oidc.client.OidcClient;
 
 /**
  * OAuth provider that integrates with OpenMetadata's existing SSO authentication system. This
@@ -86,7 +85,9 @@ public class OpenMetadataAuthProvider implements OAuthAuthorizationServerProvide
               SecurityConfigurationManager.getCurrentAuthzConfig());
       // TODO: Update to use correct API to get OIDC client from authHandler
       // OidcClient oidcClient = authHandler.getClient(); // Method doesn't exist
-      throw new AuthorizeException("not_implemented", "OpenMetadataAuthProvider is deprecated, use ConnectorOAuthProvider instead");
+      throw new AuthorizeException(
+          "not_implemented",
+          "OpenMetadataAuthProvider is deprecated, use ConnectorOAuthProvider instead");
 
       /*
       // Build MCP callback URL that will be invoked after IdP authentication
