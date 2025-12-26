@@ -7,12 +7,14 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,21 +29,19 @@ import org.openmetadata.mcp.auth.RefreshToken;
 import org.openmetadata.mcp.auth.exception.AuthorizeException;
 import org.openmetadata.mcp.auth.exception.RegistrationException;
 import org.openmetadata.mcp.auth.exception.TokenException;
+import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.ServiceTokenType;
-import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
-import org.openmetadata.schema.services.connections.database.DatabricksConnection;
-import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
-import org.openmetadata.schema.services.connections.common.OAuthCredentials;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.common.OAuthCredentials;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.secrets.SecretsManager;
-// import org.openmetadata.service.security.SecurityContext; // Requires openmetadata-service
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.UserUtil;
@@ -82,13 +82,14 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
   private final HttpClient httpClient;
   private final String baseUrl;
 
-  // In-memory stores for OAuth flow (TODO: Move to Redis/Database for production)
-  private final Map<String, OAuthClientInformation> clients = new ConcurrentHashMap<>();
+  // Database-backed repositories for OAuth persistence
+  private final org.openmetadata.mcp.server.auth.repository.OAuthClientRepository clientRepository;
+  private final org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository codeRepository;
+  private final org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository tokenRepository;
+
+  // Temporary in-memory mapping for userName (TODO: Add user_name column to oauth_authorization_codes schema)
   private final Map<String, ConnectorAuthorizationCode> authorizationCodes =
       new ConcurrentHashMap<>();
-  private final Map<String, AccessToken> accessTokens = new ConcurrentHashMap<>();
-  private final Map<String, RefreshToken> refreshTokens = new ConcurrentHashMap<>();
-  private final Map<String, String> mcpTokenToConnectorToken = new ConcurrentHashMap<>();
 
   /**
    * Creates a new ConnectorOAuthProvider.
@@ -98,27 +99,56 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
    * @param baseUrl Base URL of the OpenMetadata server
    */
   public ConnectorOAuthProvider(
-      SecretsManager secretsManager,
-      DatabaseServiceRepository serviceRepository,
-      String baseUrl) {
+      SecretsManager secretsManager, DatabaseServiceRepository serviceRepository, String baseUrl) {
     this.secretsManager = secretsManager;
     this.serviceRepository = serviceRepository;
     this.httpClient = HttpClient.newBuilder().build();
     this.baseUrl = baseUrl;
-    LOG.info("Initialized ConnectorOAuthProvider with baseUrl: {}", baseUrl);
+
+    // Initialize database repositories
+    this.clientRepository = new org.openmetadata.mcp.server.auth.repository.OAuthClientRepository();
+    this.codeRepository = new org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository();
+    this.tokenRepository = new org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository();
+
+    LOG.info("Initialized ConnectorOAuthProvider with database persistence and baseUrl: {}", baseUrl);
+  }
+
+  /**
+   * Get the current authenticated user from thread-local impersonation context.
+   *
+   * <p>This method attempts to retrieve the authenticated user from ImpersonationContext which is
+   * set by the JwtFilter during request processing. If no user is found in the context, it falls
+   * back to "admin" as the default user for MCP operations.
+   *
+   * @return The username of the authenticated user, or "admin" if not available
+   */
+  private String getCurrentUser() {
+    // Try to get impersonatedBy from thread-local context
+    // ImpersonationContext is set by JwtFilter during request authentication
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    if (impersonatedBy != null && !impersonatedBy.isEmpty()) {
+      LOG.debug("Using impersonatedBy user from context: {}", impersonatedBy);
+      return impersonatedBy;
+    }
+
+    // Fallback to admin - MCP operations typically use service accounts
+    // In future, this could be enhanced to extract user from JWT token passed in request
+    LOG.warn(
+        "No authenticated user found in ImpersonationContext, using 'admin' as default for MCP OAuth");
+    return "admin";
   }
 
   @Override
   public CompletableFuture<Void> registerClient(OAuthClientInformation clientInfo)
       throws RegistrationException {
-    clients.put(clientInfo.getClientId(), clientInfo);
+    clientRepository.register(clientInfo);
     LOG.info("Registered OAuth client: {}", clientInfo.getClientId());
     return CompletableFuture.completedFuture(null);
   }
 
   @Override
   public CompletableFuture<OAuthClientInformation> getClient(String clientId) {
-    OAuthClientInformation client = clients.get(clientId);
+    OAuthClientInformation client = clientRepository.findByClientId(clientId);
     return CompletableFuture.completedFuture(client);
   }
 
@@ -166,17 +196,14 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
               new Fields(new HashSet<>(List.of("connection"))));
 
       if (service == null) {
-        throw new AuthorizeException(
-            "invalid_request", "Connector not found: " + connectorName);
+        throw new AuthorizeException("invalid_request", "Connector not found: " + connectorName);
       }
 
       // Decrypt OAuth credentials via SecretsManager
       DatabaseConnection connection = service.getConnection();
       Object decryptedConfig =
           secretsManager.decryptServiceConnectionConfig(
-              connection.getConfig(),
-              service.getServiceType().value(),
-              ServiceType.DATABASE);
+              connection.getConfig(), service.getServiceType().value(), ServiceType.DATABASE);
 
       // Extract OAuth credentials from decrypted config
       OAuthCredentials oauth = extractOAuthCredentialsFromConfig(decryptedConfig);
@@ -200,25 +227,41 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
         LOG.info("Access token still valid for connector: {}", connectorName);
       }
 
+      // Get current authenticated user
+      String currentUser = getCurrentUser();
+
       // Generate MCP authorization code
       String authCode = UUID.randomUUID().toString();
+      long expiresAt = Instant.now().plusSeconds(300).getEpochSecond(); // 5 min expiry
+      List<String> scopes = params.getScopes() != null ? params.getScopes() : List.of();
 
-      // Create authorization code entity
+      // Store authorization code in database (NOT storing sensitive connector access token)
+      codeRepository.store(
+          authCode,
+          client.getClientId(),
+          connectorName,
+          params.getCodeChallenge(),
+          params.getCodeChallenge() != null ? "S256" : null,
+          params.getRedirectUri(),
+          scopes,
+          expiresAt);
+
+      // Also keep in-memory for userName mapping (TODO: Add user_name column to schema)
       ConnectorAuthorizationCode codeEntity = new ConnectorAuthorizationCode();
       codeEntity.setCode(authCode);
-      codeEntity.setConnectorAccessToken(oauth.getAccessToken());
       codeEntity.setConnectorName(connectorName);
       codeEntity.setClientId(client.getClientId());
       codeEntity.setRedirectUri(params.getRedirectUri());
-      codeEntity.setScopes(params.getScopes() != null ? params.getScopes() : List.of());
+      codeEntity.setScopes(scopes);
       codeEntity.setCodeChallenge(params.getCodeChallenge());
-      codeEntity.setExpiresAt(Instant.now().plusSeconds(300).getEpochSecond()); // 5 min expiry
-
+      codeEntity.setExpiresAt(expiresAt);
+      codeEntity.setUserName(currentUser); // Store authenticated user for token exchange
       authorizationCodes.put(authCode, codeEntity);
 
       LOG.info(
-          "Internal OAuth authorization successful for connector: {} - returning code directly (no redirect!)",
-          connectorName);
+          "Internal OAuth authorization successful for connector: {} by user: {} - returning code directly (no redirect!)",
+          connectorName,
+          currentUser);
 
       // Return authorization code directly (NOT a redirect URL!)
       return CompletableFuture.completedFuture(authCode);
@@ -232,31 +275,56 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
   }
 
   /**
-   * Extract OAuth credentials from connector configuration.
+   * Extract OAuth credentials from connector configuration using plugin system.
+   *
+   * <p>This method uses the {@link org.openmetadata.mcp.server.auth.plugins.OAuthConnectorPluginRegistry}
+   * to automatically detect the appropriate plugin for the config and extract OAuth credentials.
+   * This eliminates hardcoded if/else statements for each connector type.
    *
    * @param config The decrypted config object
-   * @return OAuth credentials, or null if not configured
+   * @return OAuth credentials, or null if not configured or OAuth not supported for this connector
    */
   private OAuthCredentials extractOAuthCredentialsFromConfig(Object config) {
-    if (config instanceof SnowflakeConnection) {
-      return ((SnowflakeConnection) config).getOauth();
+    // Use plugin registry to auto-detect and extract credentials
+    org.openmetadata.mcp.server.auth.plugins.OAuthConnectorPlugin plugin =
+        org.openmetadata.mcp.server.auth.plugins.OAuthConnectorPluginRegistry.getPluginForConfig(
+            config);
+
+    if (plugin != null) {
+      LOG.debug("Using {} to extract OAuth credentials", plugin.getClass().getSimpleName());
+      return plugin.extractCredentials(config);
     }
-    // TODO: Add Databricks and other connectors once their OAuth schema is defined
-    // Databricks uses different auth structure - needs schema update first
+
+    LOG.debug(
+        "No OAuth plugin found for config type: {}. OAuth may not be supported for this connector.",
+        config != null ? config.getClass().getSimpleName() : "null");
     return null;
   }
 
   /**
-   * Set OAuth credentials on connector configuration.
+   * Set OAuth credentials on connector configuration using plugin system.
+   *
+   * <p>This method uses the {@link org.openmetadata.mcp.server.auth.plugins.OAuthConnectorPluginRegistry}
+   * to automatically detect the appropriate plugin for the config and set OAuth credentials.
+   * This eliminates hardcoded if/else statements for each connector type.
    *
    * @param config The configuration object to update
    * @param oauth The OAuth credentials to set
    */
   private void setOAuthCredentialsOnConfig(Object config, OAuthCredentials oauth) {
-    if (config instanceof SnowflakeConnection) {
-      ((SnowflakeConnection) config).setOauth(oauth);
+    // Use plugin registry to auto-detect and set credentials
+    org.openmetadata.mcp.server.auth.plugins.OAuthConnectorPlugin plugin =
+        org.openmetadata.mcp.server.auth.plugins.OAuthConnectorPluginRegistry.getPluginForConfig(
+            config);
+
+    if (plugin != null) {
+      LOG.debug("Using {} to set OAuth credentials", plugin.getClass().getSimpleName());
+      plugin.setCredentials(config, oauth);
+    } else {
+      LOG.warn(
+          "No OAuth plugin found for config type: {}. Cannot update OAuth credentials.",
+          config != null ? config.getClass().getSimpleName() : "null");
     }
-    // TODO: Add Databricks and other connectors once their OAuth schema is defined
   }
 
   /**
@@ -327,10 +395,7 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
             response.statusCode(),
             response.body());
         throw new RuntimeException(
-            "Token refresh failed with status: "
-                + response.statusCode()
-                + " - "
-                + response.body());
+            "Token refresh failed with status: " + response.statusCode() + " - " + response.body());
       }
 
       // Parse new token from response
@@ -364,31 +429,33 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
   }
 
   /**
-   * Build connector-specific token endpoint URL.
+   * Build connector-specific token endpoint URL using plugin system.
+   *
+   * <p>This method uses the {@link org.openmetadata.mcp.server.auth.plugins.OAuthConnectorPluginRegistry}
+   * to automatically detect the appropriate plugin for the config and build the token endpoint URL.
+   * This eliminates hardcoded if/else statements for each connector type.
    *
    * @param config Connector configuration object
    * @param oauth OAuth credentials (may contain explicit tokenEndpoint)
    * @return Token endpoint URL
    */
   private String buildTokenEndpoint(Object config, OAuthCredentials oauth) {
-    // Check if explicitly configured
-    URI tokenEndpointUri = oauth.getTokenEndpoint();
-    if (tokenEndpointUri != null) {
-      return tokenEndpointUri.toString();
-    }
+    // Use plugin registry to auto-detect and build token endpoint
+    org.openmetadata.mcp.server.auth.plugins.OAuthConnectorPlugin plugin =
+        org.openmetadata.mcp.server.auth.plugins.OAuthConnectorPluginRegistry.getPluginForConfig(
+            config);
 
-    // Otherwise, build from connector configuration
-    if (config instanceof SnowflakeConnection) {
-      SnowflakeConnection sf = (SnowflakeConnection) config;
-      // Snowflake token endpoint format
-      return "https://" + sf.getAccount() + ".snowflakecomputing.com/oauth/token-request";
+    if (plugin != null) {
+      LOG.debug("Using {} to build token endpoint", plugin.getClass().getSimpleName());
+      return plugin.buildTokenEndpoint(config, oauth);
     }
-    // TODO: Add Databricks and other connectors once OAuth is supported
 
     throw new IllegalArgumentException(
         "Cannot determine token endpoint for connector type: "
             + (config != null ? config.getClass().getSimpleName() : "null")
-            + ". Please configure tokenEndpoint explicitly in OAuth credentials.");
+            + ". OAuth may not be supported for this connector type. "
+            + "Please configure tokenEndpoint explicitly in OAuth credentials, "
+            + "or ensure an OAuth plugin is registered for this connector.");
   }
 
   /**
@@ -420,9 +487,13 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
 
       try {
         serviceRepository.persistOAuthCredentials(service);
-        LOG.info("Refreshed OAuth credentials persisted to database for service: {}", service.getName());
+        LOG.info(
+            "Refreshed OAuth credentials persisted to database for service: {}", service.getName());
       } catch (Exception dbEx) {
-        LOG.error("Failed to persist refreshed OAuth credentials to database for service: {}", service.getName(), dbEx);
+        LOG.error(
+            "Failed to persist refreshed OAuth credentials to database for service: {}",
+            service.getName(),
+            dbEx);
         // Don't fail the request - token refresh succeeded, storage update is best-effort
         // The in-memory token will work for this session
       }
@@ -457,39 +528,114 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
   public CompletableFuture<OAuthToken> exchangeAuthorizationCode(
       OAuthClientInformation client, AuthorizationCode code) throws TokenException {
     try {
-      // Retrieve connector auth code
-      ConnectorAuthorizationCode storedCode = authorizationCodes.get(code.getCode());
+      // Retrieve authorization code from database
+      org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAuthorizationCodeRecord dbCode =
+          codeRepository.findByCode(code.getCode());
 
-      if (storedCode == null) {
+      if (dbCode == null) {
         throw new TokenException("invalid_grant", "Invalid authorization code");
       }
 
+      // Check if already used
+      if (dbCode.used()) {
+        throw new TokenException("invalid_grant", "Authorization code already used");
+      }
+
       // Check expiry
-      if (Instant.now().getEpochSecond() > storedCode.getExpiresAt()) {
-        authorizationCodes.remove(code.getCode());
+      if (Instant.now().getEpochSecond() > dbCode.expiresAt()) {
+        codeRepository.delete(code.getCode());
         throw new TokenException("invalid_grant", "Authorization code expired");
       }
 
-      // Verify PKCE if provided
-      // TODO: Implement PKCE verification once code_verifier is available in token exchange
-      if (storedCode.getCodeChallenge() != null) {
-        LOG.debug("PKCE code_challenge was present during authorization");
+      // Get in-memory code for userName (fallback until schema updated)
+      ConnectorAuthorizationCode storedCode = authorizationCodes.get(code.getCode());
+      String connectorName = dbCode.connectorName();
+
+      // Verify PKCE if code_challenge was provided during authorization
+      if (dbCode.codeChallenge() != null) {
+        String codeVerifier = code.getCodeVerifier();
+        if (codeVerifier == null || codeVerifier.isEmpty()) {
+          throw new TokenException(
+              "invalid_request", "code_verifier is required when code_challenge was used");
+        }
+
+        try {
+          // Compute SHA-256 hash of code_verifier and base64url encode it
+          MessageDigest digest = MessageDigest.getInstance("SHA-256");
+          byte[] hash = digest.digest(codeVerifier.getBytes(StandardCharsets.UTF_8));
+          String computedChallenge = Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
+
+          if (!computedChallenge.equals(dbCode.codeChallenge())) {
+            LOG.error(
+                "PKCE verification failed - code_verifier does not match code_challenge for connector: {}",
+                connectorName);
+            throw new TokenException(
+                "invalid_grant", "PKCE verification failed: code_verifier is incorrect");
+          }
+
+          LOG.info(
+              "PKCE verification succeeded for connector: {}, client: {}",
+              connectorName,
+              client.getClientId());
+        } catch (NoSuchAlgorithmException e) {
+          LOG.error("Failed to verify PKCE code_challenge - SHA-256 algorithm not available", e);
+          throw new TokenException("server_error", "Failed to verify code challenge");
+        }
       }
 
-      // Remove used code (one-time use)
+      // Mark code as used in database
+      codeRepository.markAsUsed(code.getCode());
+      // Remove from in-memory map
       authorizationCodes.remove(code.getCode());
 
-      // Get current user from security context
-      // TODO: Integrate with SecurityContext once openmetadata-service dependency is available
-      String userName = "admin"; // Default user for MCP operations
+      // Get user from stored authorization code (captured during authorize phase)
+      String userName = storedCode != null ? storedCode.getUserName() : null;
+      if (userName == null || userName.isEmpty()) {
+        LOG.warn(
+            "No user found in authorization code for connector: {}, falling back to 'admin'",
+            connectorName);
+        userName = "admin";
+      }
 
-      User user = Entity.getEntityByName(Entity.USER, userName, "id", Include.NON_DELETED);
+      User user;
+      try {
+        user = Entity.getEntityByName(Entity.USER, userName, "id", Include.NON_DELETED);
+      } catch (Exception e) {
+        LOG.error("Failed to load user: {}, falling back to 'admin'", userName, e);
+        userName = "admin";
+        user = Entity.getEntityByName(Entity.USER, userName, "id", Include.NON_DELETED);
+      }
+
+      // Reload connector's OAuth credentials to get access token
+      DatabaseService service =
+          serviceRepository.getByName(
+              null,
+              connectorName,
+              new Fields(new HashSet<>(List.of("connection"))));
+
+      if (service == null) {
+        throw new TokenException("server_error", "Connector not found: " + connectorName);
+      }
+
+      DatabaseConnection connection = service.getConnection();
+      Object decryptedConfig =
+          secretsManager.decryptServiceConnectionConfig(
+              connection.getConfig(), service.getServiceType().value(), ServiceType.DATABASE);
+
+      OAuthCredentials oauth = extractOAuthCredentialsFromConfig(decryptedConfig);
+      if (oauth == null || oauth.getAccessToken() == null) {
+        throw new TokenException(
+            "server_error",
+            "Connector OAuth credentials not found or invalid for: " + connectorName);
+      }
+
+      String connectorAccessToken = oauth.getAccessToken();
 
       LOG.info(
           "Exchanging authorization code for tokens - client: {}, user: {}, connector: {}",
           client.getClientId(),
           userName,
-          storedCode.getConnectorName());
+          connectorName);
 
       // Generate OpenMetadata JWT token for MCP usage (1 hour expiry)
       JWTAuthMechanism jwtAuthMechanism =
@@ -505,29 +651,39 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
 
       // Create access token
       AccessToken accessToken = new AccessToken();
-      accessToken.setToken(jwtAuthMechanism.getJWTToken());
+      String mcpAccessToken = jwtAuthMechanism.getJWTToken();
+      accessToken.setToken(mcpAccessToken); // Note: AccessToken uses setToken(), not setAccessToken()
       accessToken.setClientId(client.getClientId());
-      accessToken.setScopes(storedCode.getScopes());
-      accessToken.setExpiresAt((int) Instant.now().plusSeconds(3600).getEpochSecond());
-      accessToken.setAudience(Arrays.asList(baseUrl));
+      accessToken.setScopes(dbCode.scopes());
+      long accessTokenExpiresAt = Instant.now().plusSeconds(3600).getEpochSecond();
+      accessToken.setExpiresAt((int) accessTokenExpiresAt);
 
-      accessTokens.put(accessToken.getToken(), accessToken);
-
-      // Map MCP JWT token → Connector access token
-      // This allows MCP tools to use connector credentials when making data queries
-      mcpTokenToConnectorToken.put(
-          jwtAuthMechanism.getJWTToken(), storedCode.getConnectorAccessToken());
+      // Store access token in database with connector name for token->connector mapping
+      tokenRepository.storeAccessToken(
+          accessToken,
+          client.getClientId(),
+          connectorName, // Store connector name so we can reload credentials later
+          userName,
+          dbCode.scopes());
 
       LOG.info(
-          "Mapped MCP token to connector token for connector: {}", storedCode.getConnectorName());
+          "Stored MCP access token in database, mapped to connector: {}", connectorName);
 
       // Create refresh token
       RefreshToken refreshToken = new RefreshToken();
       refreshToken.setToken(UUID.randomUUID().toString());
       refreshToken.setClientId(client.getClientId());
-      refreshToken.setScopes(storedCode.getScopes());
+      refreshToken.setScopes(dbCode.scopes());
+      long refreshTokenExpiresAt = Instant.now().plusSeconds(86400 * 30).getEpochSecond(); // 30 days
+      refreshToken.setExpiresAt((int) refreshTokenExpiresAt);
 
-      refreshTokens.put(refreshToken.getToken(), refreshToken);
+      // Store refresh token in database
+      tokenRepository.storeRefreshToken(
+          refreshToken,
+          client.getClientId(),
+          connectorName,
+          userName,
+          dbCode.scopes());
 
       // Build OAuth token response
       OAuthToken oauthToken = new OAuthToken();
@@ -535,10 +691,10 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
       oauthToken.setTokenType("Bearer");
       oauthToken.setExpiresIn(3600);
       oauthToken.setRefreshToken(refreshToken.getToken());
-      oauthToken.setScope(String.join(" ", storedCode.getScopes()));
+      oauthToken.setScope(String.join(" ", dbCode.scopes()));
 
       LOG.info(
-          "Successfully issued MCP access token for connector: {}", storedCode.getConnectorName());
+          "Successfully issued MCP access token for connector: {}", connectorName);
 
       return CompletableFuture.completedFuture(oauthToken);
 
@@ -556,11 +712,55 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
    * <p>This allows MCP tools to retrieve the underlying connector OAuth token when making data
    * queries.
    *
+   * <p>This method:
+   * <ol>
+   *   <li>Looks up the MCP access token in the database
+   *   <li>Extracts the connector name from the token record
+   *   <li>Loads the connector's OAuth credentials from the database
+   *   <li>Returns the connector's access token
+   * </ol>
+   *
    * @param mcpToken The MCP access token (OpenMetadata JWT)
    * @return The connector's OAuth access token, or null if not found
    */
   public String getConnectorToken(String mcpToken) {
-    return mcpTokenToConnectorToken.get(mcpToken);
+    try {
+      // Get connector name from token record
+      String connectorName = tokenRepository.getConnectorNameForToken(mcpToken);
+      if (connectorName == null) {
+        LOG.warn("MCP token not found or no connector name associated");
+        return null;
+      }
+
+      // Load connector's OAuth credentials from database
+      DatabaseService service =
+          serviceRepository.getByName(
+              null,
+              connectorName,
+              new Fields(new HashSet<>(List.of("connection"))));
+
+      if (service == null) {
+        LOG.warn("Connector not found: {}", connectorName);
+        return null;
+      }
+
+      DatabaseConnection connection = service.getConnection();
+      Object decryptedConfig =
+          secretsManager.decryptServiceConnectionConfig(
+              connection.getConfig(), service.getServiceType().value(), ServiceType.DATABASE);
+
+      OAuthCredentials oauth = extractOAuthCredentialsFromConfig(decryptedConfig);
+      if (oauth == null || oauth.getAccessToken() == null) {
+        LOG.warn("No OAuth credentials found for connector: {}", connectorName);
+        return null;
+      }
+
+      return oauth.getAccessToken();
+
+    } catch (Exception e) {
+      LOG.error("Failed to retrieve connector token for MCP token", e);
+      return null;
+    }
   }
 
   /**
@@ -573,7 +773,8 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
   @Override
   public CompletableFuture<RefreshToken> loadRefreshToken(
       OAuthClientInformation client, String refreshTokenString) {
-    return CompletableFuture.completedFuture(refreshTokens.get(refreshTokenString));
+    RefreshToken token = tokenRepository.findRefreshToken(refreshTokenString);
+    return CompletableFuture.completedFuture(token);
   }
 
   /**
@@ -590,7 +791,8 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
       OAuthClientInformation client, RefreshToken refreshToken, List<String> scopes)
       throws TokenException {
     try {
-      RefreshToken storedToken = refreshTokens.get(refreshToken.getToken());
+      // Load refresh token from database
+      RefreshToken storedToken = tokenRepository.findRefreshToken(refreshToken.getToken());
 
       if (storedToken == null) {
         throw new TokenException("invalid_grant", "Invalid refresh token");
@@ -599,13 +801,17 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
       // Check expiration
       if (storedToken.getExpiresAt() != null
           && Instant.now().isAfter(Instant.ofEpochMilli(storedToken.getExpiresAt()))) {
-        refreshTokens.remove(refreshToken.getToken());
+        tokenRepository.deleteRefreshToken(refreshToken.getToken());
         throw new TokenException("invalid_grant", "Refresh token expired");
       }
 
+      // Get connector name from refresh token (need helper method similar to access tokens)
+      String connectorName = tokenRepository.getConnectorNameForRefreshToken(refreshToken.getToken());
+
       // Generate new access token (reuse the same logic as initial token generation)
       // Get default bot user for MCP operations
-      User botUser = Entity.getEntityByName(Entity.USER, "ingestion-bot", "id", Include.NON_DELETED);
+      User botUser =
+          Entity.getEntityByName(Entity.USER, "ingestion-bot", "id", Include.NON_DELETED);
 
       // Generate JWT token (1 hour expiry)
       int tokenExpirySeconds = 3600;
@@ -630,7 +836,13 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
       newAccessToken.setExpiresAt(
           (int) Instant.now().plusSeconds(tokenExpirySeconds).getEpochSecond());
 
-      accessTokens.put(mcpAccessToken, newAccessToken);
+      // Store new access token in database
+      tokenRepository.storeAccessToken(
+          newAccessToken,
+          client.getClientId(),
+          connectorName != null ? connectorName : "unknown",
+          botUser.getName(),
+          scopes != null ? scopes : storedToken.getScopes());
 
       // Create OAuth token response
       OAuthToken oauthToken = new OAuthToken();
@@ -663,7 +875,8 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
    */
   @Override
   public CompletableFuture<AccessToken> loadAccessToken(String token) {
-    return CompletableFuture.completedFuture(accessTokens.get(token));
+    AccessToken accessToken = tokenRepository.findAccessToken(token);
+    return CompletableFuture.completedFuture(accessToken);
   }
 
   /**
@@ -676,17 +889,23 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
   public CompletableFuture<Void> revokeToken(Object token) {
     try {
       if (token instanceof AccessToken accessToken) {
-        accessTokens.remove(accessToken.getToken());
-        mcpTokenToConnectorToken.remove(accessToken.getToken());
+        tokenRepository.deleteAccessToken(accessToken.getToken());
         LOG.info("Revoked access token");
       } else if (token instanceof RefreshToken refreshToken) {
-        refreshTokens.remove(refreshToken.getToken());
+        tokenRepository.revokeRefreshToken(refreshToken.getToken());
         LOG.info("Revoked refresh token");
       } else if (token instanceof String tokenString) {
-        // Try both maps
-        accessTokens.remove(tokenString);
-        refreshTokens.remove(tokenString);
-        mcpTokenToConnectorToken.remove(tokenString);
+        // Try both token types - delete access token and revoke refresh token
+        try {
+          tokenRepository.deleteAccessToken(tokenString);
+        } catch (Exception e) {
+          LOG.debug("Token {} not found as access token", tokenString);
+        }
+        try {
+          tokenRepository.revokeRefreshToken(tokenString);
+        } catch (Exception e) {
+          LOG.debug("Token {} not found as refresh token", tokenString);
+        }
         LOG.info("Revoked token: {}", tokenString);
       } else {
         LOG.warn("Unknown token type for revocation: {}", token.getClass());
@@ -708,6 +927,7 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
     private List<String> scopes;
     private String codeChallenge;
     private long expiresAt;
+    private String userName; // User who authorized the connection
 
     public String getCode() {
       return code;
@@ -771,6 +991,14 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
 
     public void setExpiresAt(long expiresAt) {
       this.expiresAt = expiresAt;
+    }
+
+    public String getUserName() {
+      return userName;
+    }
+
+    public void setUserName(String userName) {
+      this.userName = userName;
     }
   }
 }

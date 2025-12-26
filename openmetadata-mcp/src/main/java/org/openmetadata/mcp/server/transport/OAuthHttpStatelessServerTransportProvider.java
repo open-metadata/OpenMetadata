@@ -72,6 +72,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   private final JwtFilter jwtFilter;
 
+  private final List<String> allowedOrigins;
+
   /**
    * Creates a new OAuthHttpServletSseServerTransportProvider.
    * @param objectMapper The JSON object mapper
@@ -81,6 +83,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
    * @param authProvider The OAuth authorization server provider
    * @param registrationOptions The client registration options
    * @param revocationOptions The token revocation options
+   * @param allowedOrigins List of allowed origins for CORS
    */
   public OAuthHttpStatelessServerTransportProvider(
       ObjectMapper objectMapper,
@@ -89,7 +92,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       McpTransportContextExtractor<HttpServletRequest> contextExtractor,
       OAuthAuthorizationServerProvider authProvider,
       ClientRegistrationOptions registrationOptions,
-      RevocationOptions revocationOptions) {
+      RevocationOptions revocationOptions,
+      List<String> allowedOrigins) {
     super(objectMapper, mcpEndpoint, contextExtractor);
     this.objectMapper = objectMapper;
     logger.info(
@@ -102,21 +106,11 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     // Create Authorization Server metadata (RFC 8414)
     // Endpoints are relative to /mcp prefix since servlet is mounted there
     OAuthMetadata metadata = new OAuthMetadata();
-    metadata.setIssuer(
-        URI.create(baseUrl + "/mcp"));
-    metadata.setAuthorizationEndpoint(
-        URI.create(
-            baseUrl + "/authorize"));
-    metadata.setTokenEndpoint(
-        URI.create(
-            baseUrl + "/token"));
+    metadata.setIssuer(URI.create(baseUrl + "/mcp"));
+    metadata.setAuthorizationEndpoint(URI.create(baseUrl + "/authorize"));
+    metadata.setTokenEndpoint(URI.create(baseUrl + "/token"));
     metadata.setScopesSupported(
-        List.of(
-            "openid",
-            "profile",
-            "email",
-            "offline_access",
-            "api://apiId/.default"));
+        List.of("openid", "profile", "email", "offline_access", "api://apiId/.default"));
     metadata.setResponseTypesSupported(java.util.Arrays.asList("code"));
     metadata.setGrantTypesSupported(java.util.Arrays.asList("authorization_code", "refresh_token"));
     metadata.setTokenEndpointAuthMethodsSupported(java.util.Arrays.asList("client_secret_post"));
@@ -162,7 +156,10 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
             SecurityConfigurationManager.getCurrentAuthConfig(),
             SecurityConfigurationManager.getCurrentAuthzConfig());
 
+    this.allowedOrigins = allowedOrigins;
+
     logger.info("OAuthHttpServletSseServerTransportProvider initialized with base URL: " + baseUrl);
+    logger.info("CORS allowed origins: " + allowedOrigins);
   }
 
   /**
@@ -171,6 +168,33 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
    */
   protected ObjectMapper getObjectMapper() {
     return objectMapper;
+  }
+
+  /**
+   * Sets CORS headers with origin validation.
+   * Only allows specific origins from the allowedOrigins list.
+   * Rejects requests from origins not in the allowed list.
+   * @param request The HTTP request
+   * @param response The HTTP response
+   */
+  private void setCorsHeaders(HttpServletRequest request, HttpServletResponse response) {
+    String origin = request.getHeader("Origin");
+
+    if (origin != null && allowedOrigins.contains(origin)) {
+      // Set specific origin (not wildcard) for security
+      response.setHeader("Access-Control-Allow-Origin", origin);
+      response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept");
+      response.setHeader("Access-Control-Max-Age", "3600");
+      logger.debug("CORS headers set for allowed origin: " + origin);
+    } else {
+      // Log rejected origin attempts
+      if (origin != null) {
+        logger.warn("CORS request rejected from unauthorized origin: " + origin);
+      } else {
+        logger.debug("CORS request without Origin header");
+      }
+    }
   }
 
   @Override
@@ -266,11 +290,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       throws ServletException, IOException {
     logger.info("Handling CORS preflight request: " + request.getRequestURI());
 
-    // Set CORS headers for preflight request
-    response.setHeader("Access-Control-Allow-Origin", "*");
-    response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept");
-    response.setHeader("Access-Control-Max-Age", "3600");
+    // Set CORS headers for preflight request with origin validation
+    setCorsHeaders(request, response);
     response.setStatus(HttpServletResponse.SC_OK);
   }
 
@@ -306,7 +327,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     try {
       OAuthMetadata metadata = metadataHandler.handle().join();
       response.setContentType("application/json");
-      response.setHeader("Access-Control-Allow-Origin", "*"); // TODO: Don't do this
+      setCorsHeaders(request, response);
       response.setStatus(200);
       getObjectMapper().writeValue(response.getOutputStream(), metadata);
     } catch (CompletionException ex) {
@@ -319,8 +340,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     try {
       ProtectedResourceMetadata metadata = protectedResourceMetadataHandler.handle().join();
       response.setContentType("application/json");
-      // TODO: Don't do this
-      response.setHeader("Access-Control-Allow-Origin", "*");
+      setCorsHeaders(request, response);
       response.setStatus(200);
       getObjectMapper().writeValue(response.getOutputStream(), metadata);
     } catch (CompletionException ex) {
@@ -345,7 +365,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       String redirectUrl = authorizationHandler.handle(params).join().getRedirectUrl();
       response.setHeader("Location", redirectUrl);
       response.setHeader("Cache-Control", "no-store");
-      response.setHeader("Access-Control-Allow-Origin", "*"); // TODO: Don't do this
+      setCorsHeaders(request, response);
       response.sendRedirect(redirectUrl);
     } catch (CompletionException ex) {
       response.setStatus(400);
@@ -421,8 +441,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       response.setContentType("application/json");
       response.setHeader("Cache-Control", "no-store");
       response.setHeader("Pragma", "no-cache");
-      // TODO: Don't do this
-      response.setHeader("Access-Control-Allow-Origin", "*");
+      setCorsHeaders(request, response);
       response.setStatus(200);
       getObjectMapper().writeValue(response.getOutputStream(), token);
     } catch (CompletionException ex) {
@@ -445,7 +464,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
           getObjectMapper().readValue(body.toString(), OAuthClientMetadata.class);
 
       Object clientInfo = registrationHandler.handle(clientMetadata).join();
-      response.setHeader("Access-Control-Allow-Origin", "*"); // TODO: Don't do this
+      setCorsHeaders(request, response);
       response.setContentType("application/json");
       response.setStatus(201); // Created
       getObjectMapper().writeValue(response.getOutputStream(), clientInfo);

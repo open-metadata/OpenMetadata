@@ -1,21 +1,21 @@
 package org.openmetadata.mcp.server.auth.handlers;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.net.URI;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.server.auth.OAuthSetupRequest;
 import org.openmetadata.schema.api.services.DatabaseConnection;
@@ -23,9 +23,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.services.connections.common.OAuthCredentials;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -102,7 +100,8 @@ public class OAuthSetupHandler extends HttpServlet {
         return;
       }
 
-      LOG.info("Loaded service: {}, connection type: {}",
+      LOG.info(
+          "Loaded service: {}, connection type: {}",
           service.getName(),
           service.getConnection() != null ? service.getConnection().getClass().getName() : "null");
 
@@ -176,10 +175,7 @@ public class OAuthSetupHandler extends HttpServlet {
 
     if (response.statusCode() != 200) {
       throw new RuntimeException(
-          "Token exchange failed with status "
-              + response.statusCode()
-              + ": "
-              + response.body());
+          "Token exchange failed with status " + response.statusCode() + ": " + response.body());
     }
 
     // Parse token response
@@ -193,7 +189,8 @@ public class OAuthSetupHandler extends HttpServlet {
     credentials.setRefreshToken(tokenResponse.get("refresh_token").asText());
     credentials.setTokenEndpoint(URI.create(tokenEndpoint));
 
-    long expiresIn = tokenResponse.has("expires_in") ? tokenResponse.get("expires_in").asLong() : 3600;
+    long expiresIn =
+        tokenResponse.has("expires_in") ? tokenResponse.get("expires_in").asLong() : 3600;
     credentials.setExpiresAt((int) Instant.now().plusSeconds(expiresIn).getEpochSecond());
 
     if (request.getScopes() != null && !request.getScopes().isEmpty()) {
@@ -239,9 +236,7 @@ public class OAuthSetupHandler extends HttpServlet {
     // Decrypt connection config
     Object decryptedConfig =
         secretsManager.decryptServiceConnectionConfig(
-            connection.getConfig(),
-            service.getServiceType().value(),
-            ServiceType.DATABASE);
+            connection.getConfig(), service.getServiceType().value(), ServiceType.DATABASE);
 
     // Set OAuth credentials based on connector type
     if (decryptedConfig instanceof SnowflakeConnection) {
@@ -267,9 +262,12 @@ public class OAuthSetupHandler extends HttpServlet {
 
     try {
       serviceRepository.persistOAuthCredentials(service);
-      LOG.info("OAuth credentials encrypted and persisted to database for service: {}", service.getName());
+      LOG.info(
+          "OAuth credentials encrypted and persisted to database for service: {}",
+          service.getName());
     } catch (Exception e) {
-      LOG.error("Failed to persist OAuth credentials to database for service: {}", service.getName(), e);
+      LOG.error(
+          "Failed to persist OAuth credentials to database for service: {}", service.getName(), e);
       throw new Exception("Failed to save OAuth credentials to database: " + e.getMessage(), e);
     }
   }
