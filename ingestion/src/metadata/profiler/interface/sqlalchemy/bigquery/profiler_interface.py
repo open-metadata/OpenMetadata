@@ -13,11 +13,13 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
+from copy import deepcopy
 from typing import List, Type, cast
 
 from sqlalchemy import Column, inspect
 
 from metadata.generated.schema.entity.data.table import SystemProfile
+from metadata.generated.schema.security.credentials.gcpValues import SingleProjectId
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -27,12 +29,26 @@ from metadata.profiler.metrics.system.bigquery.system import (
 from metadata.profiler.metrics.system.system import System
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import profiler_interface_registry_logger
+from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = profiler_interface_registry_logger()
 
 
 class BigQueryProfilerInterface(SQAProfilerInterface):
     """BigQuery profiler interface"""
+
+    def create_session(self):
+        connection_config = deepcopy(self.service_connection_config)
+        # Create a modified connection for BigQuery with the correct project ID
+        if (
+            hasattr(connection_config.credentials.gcpConfig, "projectId")
+            and self.table_entity.database
+        ):
+            connection_config.credentials.gcpConfig.projectId = SingleProjectId(
+                root=self.table_entity.database.name
+            )
+            self.connection = get_ssl_connection(connection_config)
+        return super().create_session()
 
     def _compute_system_metrics(
         self,
@@ -49,6 +65,7 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
             session=self.session,
             runner=runner,
             usage_location=self.service_connection_config.usageLocation,
+            billing_project_id=self.service_connection_config.billingProjectId,
         )
         return instance.get_system_metrics()
 

@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
@@ -34,6 +35,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
@@ -41,14 +45,20 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.ColumnTestSummaryDefinition;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestSummary;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventHandler;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchAggregation;
@@ -56,12 +66,12 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -117,6 +127,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         UPDATE_FIELDS);
     quoteFqn = false;
     supportsSearch = true;
+    EntityLifecycleEventDispatcher.getInstance()
+        .registerHandler(new TestSuitePipelineStatusHandler());
     fieldFetchers.put("summary", this::fetchAndSetTestCaseResultSummary);
     fieldFetchers.put("pipelines", this::fetchAndSetIngestionPipelines);
   }
@@ -218,7 +230,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   @Override
   public EntityInterface getParentEntity(TestSuite entity, String fields) {
     if (entity.getBasic() && entity.getBasicEntityReference() != null) {
-      return Entity.getEntity(entity.getBasicEntityReference(), fields, ALL);
+      String filteredFields = EntityUtil.getFilteredFields(TABLE, fields);
+      return Entity.getEntity(entity.getBasicEntityReference(), filteredFields, ALL);
     }
     return null;
   }
@@ -291,6 +304,12 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       throws IOException {
     SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggQuery);
     return searchRepository.genericAggregation(q, index, searchAggregation);
+  }
+
+  public DataQualityReport getDataQualityReport(
+      String q, String aggQuery, String index, SubjectContext subjectContext) throws IOException {
+    SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggQuery);
+    return searchRepository.genericAggregation(q, index, searchAggregation, subjectContext);
   }
 
   public TestSummary getTestSummary(List<ResultSummary> testCaseResults) {
@@ -645,6 +664,119 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         .withUpdatedBy(testSuite.getUpdatedBy())
         .withUpdatedAt(testSuite.getUpdatedAt())
         .withVersion(testSuite.getVersion());
+  }
+
+  public void onTestSuiteExecutionComplete(IngestionPipeline pipeline) {
+    try {
+      TestSuite testSuite =
+          Entity.getEntity(
+              pipeline.getService().getType(),
+              pipeline.getService().getId(),
+              "*",
+              Include.NON_DELETED);
+
+      PipelineStatusType state = pipeline.getPipelineStatuses().getPipelineState();
+
+      // Create consolidated TestSuite ChangeEvent
+      createTestSuiteCompletionChangeEvent(testSuite, state);
+
+      // Update DataContract if linked (existing logic)
+      if (testSuite.getDataContract() != null) {
+        LOG.info(
+            "Pipeline {} completed with status {}. Updating data contract {}.",
+            pipeline.getFullyQualifiedName(),
+            state,
+            testSuite.getDataContract().getFullyQualifiedName());
+
+        DataContractRepository dataContractRepository =
+            (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
+        dataContractRepository.updateContractDQResults(testSuite.getDataContract(), testSuite);
+      }
+
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to process test suite completion for pipeline {}: {}",
+          pipeline.getFullyQualifiedName(),
+          e.getMessage(),
+          e);
+    }
+  }
+
+  private void createTestSuiteCompletionChangeEvent(
+      TestSuite testSuite, PipelineStatusType pipelineState) {
+    // Load fresh summary data
+    List<ResultSummary> resultSummary = getResultSummary(testSuite.getId());
+    TestSummary summary = getTestSummary(resultSummary);
+
+    // Create ChangeEvent manually (similar to DataContract pattern)
+    ChangeEvent changeEvent =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withEntityId(testSuite.getId())
+            .withEntityType(Entity.TEST_SUITE)
+            .withEntityFullyQualifiedName(testSuite.getFullyQualifiedName())
+            .withUserName("admin")
+            .withTimestamp(System.currentTimeMillis())
+            .withCurrentVersion(testSuite.getVersion())
+            .withPreviousVersion(testSuite.getVersion())
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName("testCaseResultSummary")
+                                .withNewValue(resultSummary))))
+            .withEntity(testSuite);
+
+    // Populate domains if available
+    if (testSuite.getDomains() != null) {
+      changeEvent.withDomains(testSuite.getDomains().stream().map(EntityReference::getId).toList());
+    }
+
+    // Insert directly into change event DAO
+    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+
+    LOG.info(
+        "Created consolidated ChangeEvent for TestSuite {} with status: {} (passed: {}/{})",
+        testSuite.getFullyQualifiedName(),
+        pipelineState,
+        summary.getSuccess(),
+        summary.getTotal());
+  }
+
+  private class TestSuitePipelineStatusHandler implements EntityLifecycleEventHandler {
+    @Override
+    public void onEntityUpdated(
+        EntityInterface entity,
+        ChangeDescription changeDescription,
+        SubjectContext subjectContext) {
+      if (!(entity instanceof IngestionPipeline pipeline)) {
+        return;
+      }
+
+      Optional.of(pipeline)
+          .filter(p -> p.getPipelineType() == PipelineType.TEST_SUITE)
+          .filter(p -> p.getPipelineStatuses() != null)
+          .filter(
+              p -> {
+                PipelineStatusType state = p.getPipelineStatuses().getPipelineState();
+                return state == PipelineStatusType.SUCCESS
+                    || state == PipelineStatusType.FAILED
+                    || state == PipelineStatusType.PARTIAL_SUCCESS;
+              })
+          .ifPresent(TestSuiteRepository.this::onTestSuiteExecutionComplete);
+    }
+
+    @Override
+    public String getHandlerName() {
+      return "TestSuitePipelineStatusHandler";
+    }
+
+    @Override
+    public Set<String> getSupportedEntityTypes() {
+      return Set.of(Entity.INGESTION_PIPELINE);
+    }
   }
 
   public class TestSuiteUpdater extends EntityUpdater {

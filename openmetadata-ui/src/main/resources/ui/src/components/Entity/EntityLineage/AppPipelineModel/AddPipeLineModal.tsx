@@ -24,7 +24,7 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { EntityReference } from '../../../../generated/entity/type';
-import { searchData } from '../../../../rest/miscAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import {
   getEntityName,
   getEntityReferenceFromEntity,
@@ -69,12 +69,13 @@ const AddPipeLineModal = ({
 
   const getSearchResults = async (value = '*') => {
     try {
-      const data = await searchData(value, 1, PAGE_SIZE, '', '', '', [
-        SearchIndex.PIPELINE,
-        SearchIndex.STORED_PROCEDURE,
-      ]);
-
-      const edgeOptions = data.data.hits.hits.map((hit) =>
+      const data = await searchQuery({
+        query: value,
+        pageNumber: 1,
+        pageSize: PAGE_SIZE,
+        searchIndex: [SearchIndex.PIPELINE, SearchIndex.STORED_PROCEDURE],
+      });
+      const edgeOptions = data.hits.hits.map((hit) =>
         getEntityReferenceFromEntity(
           hit._source,
           hit._source.entityType as EntityType

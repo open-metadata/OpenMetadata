@@ -1,13 +1,13 @@
 package org.openmetadata.service.migration.utils.v120;
 
-import jakarta.json.Json;
-import jakarta.json.JsonObject;
-import jakarta.json.JsonObjectBuilder;
+import com.fasterxml.jackson.databind.JsonNode;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -75,55 +75,40 @@ public class MigrationUtil {
           .forEach(
               row -> {
                 try {
-
-                  JsonObject queryJson =
-                      JsonUtils.readJson((String) row.get("query_json")).asJsonObject();
-                  String serviceName = (String) row.get("service_name");
-                  String serviceId = (String) row.get("service_id");
+                  JsonNode rowNode = JsonUtils.valueToTree(row);
+                  JsonNode queryJson = rowNode.get("query_json").get("value");
+                  String serviceName = rowNode.get("service_name").asText();
+                  String serviceId = rowNode.get("service_id").asText();
 
                   if (serviceId == null) {
+                    String id = rowNode.get("id").asText();
                     LOG.warn(
-                        String.format(
-                            "Query [%s] cannot be linked to a service. Deleting...",
-                            queryJson.getString("id")));
+                        String.format("Query [%s] cannot be linked to a service. Deleting...", id));
                     // We cannot directly call the queryRepository for deletion, since the Query
                     // object is missing the new `service` property we introduced and the `delete`
                     // operation would fail. We need to delete the query entry and the relationships
                     // from/to this ID by hand. It should be OK since queries are simple structures
                     // without any children. We should only have relationship
                     // table <> query & user <> query
-                    handle
-                        .createUpdate(DELETE_QUERY)
-                        .bind("id", queryJson.getString("id"))
-                        .execute();
-                    handle
-                        .createUpdate(DELETE_RELATIONSHIP)
-                        .bind("id", queryJson.getString("id"))
-                        .execute();
+                    handle.createUpdate(DELETE_QUERY).bind("id", id).execute();
+                    handle.createUpdate(DELETE_RELATIONSHIP).bind("id", id).execute();
 
                   } else {
                     // Since the query does not have the service yet, it cannot be cast to the Query
                     // class.
-
-                    JsonObject serviceJson =
-                        Json.createObjectBuilder()
-                            .add("id", serviceId)
-                            .add("name", serviceName)
-                            .add("fullyQualifiedName", serviceName)
-                            .add("type", "databaseService")
-                            .build();
-
-                    JsonObjectBuilder queryWithService = Json.createObjectBuilder();
-                    queryJson.forEach(queryWithService::add);
-                    queryWithService.add("service", serviceJson);
-
-                    Query query =
-                        JsonUtils.readValue(queryWithService.build().toString(), Query.class);
+                    Query query = JsonUtils.readValue(queryJson.textValue(), Query.class);
+                    query.setService(
+                        new EntityReference()
+                            .withId(UUID.fromString(serviceId))
+                            .withName(serviceName)
+                            .withFullyQualifiedName(serviceName)
+                            .withType(Entity.DATABASE_SERVICE));
                     queryRepository.setFullyQualifiedName(query);
                     collectionDAO.queryDAO().update(query);
                   }
                 } catch (Exception ex) {
-                  LOG.warn(String.format("Error updating query [%s] due to [%s]", row, ex));
+                  LOG.warn(
+                      String.format("Error updating query [%s] due to [%s]", row, ex.getMessage()));
                 }
               });
     } catch (Exception ex) {
@@ -160,8 +145,8 @@ public class MigrationUtil {
                   jsonRow = pgObject.getValue();
                 }
                 GlossaryTerm term = JsonUtils.readValue(jsonRow, GlossaryTerm.class);
-                if (term.getStatus() == GlossaryTerm.Status.DRAFT) {
-                  term.setStatus(GlossaryTerm.Status.APPROVED);
+                if (term.getEntityStatus() == EntityStatus.DRAFT) {
+                  term.setEntityStatus(EntityStatus.APPROVED);
                   collectionDAO.glossaryTermDAO().update(term);
                 }
                 EntityReference glossaryRef =

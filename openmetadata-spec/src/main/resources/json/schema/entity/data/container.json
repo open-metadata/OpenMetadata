@@ -36,18 +36,49 @@
     "fileFormat": {
       "javaType": "org.openmetadata.schema.type.ContainerFileFormat",
       "description": "This schema defines the file formats for the object/files within a container.",
-      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
+      "javaInterfaces": [
+        "org.openmetadata.schema.EnumInterface"
+      ],
       "type": "string",
-      "enum": ["zip", "gz", "zstd", "csv", "tsv", "json", "parquet", "avro"],
+      "enum": [
+        "zip",
+        "gz",
+        "zstd",
+        "csv",
+        "tsv",
+        "json",
+        "parquet",
+        "avro",
+        "MF4"
+      ],
       "javaEnums": [
-        {"name": "Zip"},
-        {"name": "Gz"},
-        {"name": "Zstd"},
-        {"name": "Csv"},
-        {"name": "Tsv"},
-        {"name": "Json"},
-        {"name": "Parquet"},
-        {"name": "Avro"}
+        {
+          "name": "Zip"
+        },
+        {
+          "name": "Gz"
+        },
+        {
+          "name": "Zstd"
+        },
+        {
+          "name": "Csv"
+        },
+        {
+          "name": "Tsv"
+        },
+        {
+          "name": "Json"
+        },
+        {
+          "name": "Parquet"
+        },
+        {
+          "name": "Avro"
+        },
+        {
+          "name": "MF4"
+        }
       ]
     }
   },
@@ -83,6 +114,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
@@ -161,7 +196,7 @@
       "type": "boolean",
       "default": false
     },
-    "retentionPeriod" : {
+    "retentionPeriod": {
       "description": "Retention period of the data in the Container. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`.",
       "$ref": "../../type/basic.json#/definitions/duration"
     },
@@ -177,7 +212,7 @@
       "description": "Full path of the container/file.",
       "type": "string"
     },
-    "domains" : {
+    "domains": {
       "description": "Domains the Container belongs to. When not set, the Container inherits the domain from the storage service it belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
@@ -201,6 +236,10 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "entityStatus": {
+      "description": "Status of the Container.",
+      "$ref": "../../type/status.json"
     }
   },
   "required": [

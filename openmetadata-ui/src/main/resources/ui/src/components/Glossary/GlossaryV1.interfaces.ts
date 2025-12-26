@@ -28,4 +28,5 @@ export type GlossaryV1Props = {
   isSummaryPanelOpen: boolean;
   updateVote?: (data: VotingDataProps) => Promise<void>;
   refreshActiveGlossaryTerm?: () => void;
+  refreshGlossaryList?: () => void;
 };

@@ -14,6 +14,10 @@
  * Credentials for a GitHub repository
  */
 export interface GithubCredentials {
+    /**
+     * GitHub instance URL. For GitHub.com, use https://github.com
+     */
+    gitHostURL?:     string;
     repositoryName:  string;
     repositoryOwner: string;
     token?:          string;

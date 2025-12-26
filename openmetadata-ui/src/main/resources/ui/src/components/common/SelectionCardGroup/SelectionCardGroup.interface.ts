@@ -17,12 +17,14 @@ export interface SelectionOption {
   label: string;
   description: string;
   icon: ReactNode;
+  isBeta?: boolean;
 }
 
 export interface SelectionCardGroupProps {
   options: SelectionOption[];
   value?: string;
   onChange?: (value: string) => void;
+  onClick?: () => void;
   className?: string;
   disabled?: boolean;
 }

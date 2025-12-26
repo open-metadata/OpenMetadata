@@ -100,7 +100,8 @@ class AutoClassificationProcessor(Processor, ABC):
 
         column_tags = []
 
-        for idx, column in enumerate(record.table.columns):
+        for idx, column_name in enumerate(record.sample_data.data.columns):
+            column = next(c for c in record.table.columns if c.name == column_name)
             try:
                 tags = self.create_column_tag_labels(
                     column=column,

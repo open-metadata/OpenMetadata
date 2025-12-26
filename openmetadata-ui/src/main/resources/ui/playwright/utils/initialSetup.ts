@@ -44,13 +44,7 @@ const initialSetup = async (page: Page) => {
 export const loginAsAdmin = async (page: Page, admin: AdminClass) => {
   await admin.login(page);
   await page.waitForURL('**/my-data');
+
+  // Setup policy and increase the token expiry time
   await initialSetup(page);
-  await admin.logout(page);
-  await page.waitForURL('**/signin');
-  await admin.login(page);
-
-  // Close the leftside bar to run tests smoothly
-  await page.getByTestId('sidebar-toggle').click();
-
-  await page.waitForURL('**/my-data');
 };

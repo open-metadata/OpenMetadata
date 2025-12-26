@@ -7,6 +7,7 @@ source:
       username: username
       password: password
       hostPort: http://hostPort
+      # apiKey: api_key
   sourceConfig:
     config:
       type: DashboardMetadata

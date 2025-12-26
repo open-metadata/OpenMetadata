@@ -45,6 +45,7 @@ jest.mock('../../../../../utils/CuratedAssetsUtils', () => ({
     entityCount: 10,
     resourcesWithNonZeroCount: [],
   }),
+  isValidElasticsearchQuery: jest.fn().mockReturnValue(true),
 }));
 
 const mockOnCancel = jest.fn();

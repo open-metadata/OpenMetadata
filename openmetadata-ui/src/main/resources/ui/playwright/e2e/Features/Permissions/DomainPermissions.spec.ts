@@ -14,13 +14,13 @@
 import { expect, Page, test as base } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
-import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage, uuid } from '../../../utils/common';
+import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
 import { addCustomPropertiesForEntity } from '../../../utils/customProperty';
 import {
   assignRoleToUser,
+  cleanupPermissions,
   initializePermissions,
 } from '../../../utils/permission';
 import {
@@ -69,7 +69,6 @@ const customPropertyName = `pwDomainCustomProperty${uuid()}`;
 
 test.beforeAll('Setup domain and custom property', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
-  await EntityDataClass.preRequisitesForTests(apiContext);
   await domain.create(apiContext);
 
   // Create custom property for domain once
@@ -93,6 +92,7 @@ test('Domain allow operations', async ({ testUserPage, browser }) => {
   // Setup allow permissions
   const page = await browser.newPage();
   await adminUser.login(page);
+  const { apiContext } = await getApiContext(page);
   await initializePermissions(page, 'allow', [
     'EditDescription',
     'EditOwners',
@@ -114,10 +114,8 @@ test('Domain allow operations', async ({ testUserPage, browser }) => {
   // Test that domain operation elements are visible
   const directElements = [
     'edit-description',
-    'add-owner',
     'add-tag',
     'edit-icon-right-panel',
-    'add-domain',
   ];
 
   const manageButtonElements = ['delete-button', 'rename-button'];
@@ -139,6 +137,13 @@ test('Domain allow operations', async ({ testUserPage, browser }) => {
     await expect(element).toBeVisible();
   }
 
+  const ownerButton = testUserPage
+    .getByTestId('add-owner')
+    .or(testUserPage.getByTestId('edit-owner'))
+    .first();
+
+  await expect(ownerButton).toBeVisible();
+
   // Click manage button once and test elements inside it
   const manageButton = testUserPage.getByTestId('manage-button');
 
@@ -151,6 +156,7 @@ test('Domain allow operations', async ({ testUserPage, browser }) => {
       await expect(element).toBeVisible();
     }
   }
+  await cleanupPermissions(apiContext);
 });
 
 test('Domain deny operations', async ({ testUserPage, browser }) => {
@@ -159,6 +165,7 @@ test('Domain deny operations', async ({ testUserPage, browser }) => {
   // Setup deny permissions
   const page = await browser.newPage();
   await adminUser.login(page);
+  const { apiContext } = await getApiContext(page);
   await initializePermissions(page, 'deny', [
     'EditDescription',
     'EditOwners',
@@ -180,10 +187,8 @@ test('Domain deny operations', async ({ testUserPage, browser }) => {
   // Test that domain operation elements are visible
   const directElements = [
     'edit-description',
-    'add-owner',
     'add-tag',
     'edit-icon-right-panel',
-    'add-domain',
   ];
 
   const manageButtonElements = ['delete-button', 'rename-button'];
@@ -203,6 +208,12 @@ test('Domain deny operations', async ({ testUserPage, browser }) => {
 
     await expect(element).not.toBeVisible();
   }
+  const ownerButton = testUserPage
+    .getByTestId('add-owner')
+    .or(testUserPage.getByTestId('edit-owner'))
+    .first();
+
+  await expect(ownerButton).not.toBeVisible();
 
   // Click manage button once and test elements inside it
   const manageButton = testUserPage.getByTestId('manage-button');
@@ -216,12 +227,12 @@ test('Domain deny operations', async ({ testUserPage, browser }) => {
       await expect(element).not.toBeVisible();
     }
   }
+  await cleanupPermissions(apiContext);
 });
 
 test.afterAll('Cleanup domain', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await domain.delete(apiContext);
-  await EntityDataClass.postRequisitesForTests(apiContext);
   await afterAction();
 });
 

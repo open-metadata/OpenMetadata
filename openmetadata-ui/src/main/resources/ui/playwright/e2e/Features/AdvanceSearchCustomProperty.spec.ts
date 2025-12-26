@@ -77,7 +77,7 @@ test.describe('Advanced Search Custom Property', () => {
 
       await page
         .getByTestId(`custom-property-${durationPropertyName}-card`)
-        .locator('svg')
+        .getByTestId('edit-icon')
         .click(); // Add Custom Property Value
 
       await page.getByTestId('duration-input').fill(durationPropertyValue);
@@ -98,20 +98,23 @@ test.describe('Advanced Search Custom Property', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--field .ant-select'),
-        'Custom Properties'
+        'Custom Properties',
+        true
       );
 
       await selectOption(
         page,
         ruleLocator.locator('.rule--field .ant-select'),
-        'Table'
+        'Table',
+        true
       );
 
       // Perform click on custom property type to filter
       await selectOption(
         page,
         ruleLocator.locator('.rule--field .ant-select'),
-        durationPropertyName
+        durationPropertyName,
+        true
       );
 
       // Perform click on operator

@@ -16,12 +16,16 @@ package org.openmetadata.service.resources.tags;
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -45,6 +49,7 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -238,5 +243,173 @@ public class ClassificationResourceTest
     // Now check termCount again
     withTermCount = getEntity(classification.getId(), "termCount", ADMIN_AUTH_HEADERS);
     assertEquals(3, withTermCount.getTermCount(), "Classification should have 3 tags");
+  }
+
+  @Test
+  void test_entityStatusUpdateAndPatch(TestInfo test) throws IOException {
+    // Create a classification with APPROVED status by default
+    CreateClassification createClassification = createRequest(getEntityName(test));
+    Classification classification = createEntity(createClassification, ADMIN_AUTH_HEADERS);
+
+    // Verify the classification is created with UNPROCESSED status
+    assertEquals(
+        EntityStatus.UNPROCESSED,
+        classification.getEntityStatus(),
+        "Classification should be created with UNPROCESSED status");
+
+    // Update the entityStatus using PATCH operation
+    String originalJson = JsonUtils.pojoToJson(classification);
+    classification.setEntityStatus(EntityStatus.IN_REVIEW);
+
+    ChangeDescription change = getChangeDescription(classification, MINOR_UPDATE);
+    fieldUpdated(change, "entityStatus", EntityStatus.UNPROCESSED, EntityStatus.IN_REVIEW);
+    Classification updatedClassification =
+        patchEntityAndCheck(classification, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify the entityStatus was updated correctly
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        updatedClassification.getEntityStatus(),
+        "Classification should be updated to IN_REVIEW status");
+
+    // Get the classification again to confirm the status is persisted
+    Classification retrievedClassification =
+        getEntity(updatedClassification.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        retrievedClassification.getEntityStatus(),
+        "Retrieved classification should maintain IN_REVIEW status");
+  }
+
+  @Test
+  void test_autoClassificationConfig_CRUD(TestInfo test) throws IOException {
+    // Create a classification without auto-classification config
+    CreateClassification createClassification = createRequest(getEntityName(test));
+    Classification classification = createEntity(createClassification, ADMIN_AUTH_HEADERS);
+
+    // Verify no auto-classification config initially
+    assertNull(
+        classification.getAutoClassificationConfig(),
+        "Classification should not have auto-classification config initially");
+
+    // Add auto-classification config using PATCH
+    String originalJson = JsonUtils.pojoToJson(classification);
+    org.openmetadata.schema.entity.classification.AutoClassificationConfig config =
+        new org.openmetadata.schema.entity.classification.AutoClassificationConfig()
+            .withEnabled(true)
+            .withConflictResolution(
+                org.openmetadata.schema.entity.classification.AutoClassificationConfig
+                    .ConflictResolution.HIGHEST_CONFIDENCE)
+            .withMinimumConfidence(0.7)
+            .withRequireExplicitMatch(true);
+    classification.setAutoClassificationConfig(config);
+
+    ChangeDescription change = getChangeDescription(classification, MINOR_UPDATE);
+    fieldAdded(change, "autoClassificationConfig", JsonUtils.pojoToJson(config));
+
+    Classification updatedClassification =
+        patchEntityAndCheck(classification, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify config was added
+    assertNotNull(updatedClassification.getAutoClassificationConfig());
+    assertTrue(updatedClassification.getAutoClassificationConfig().getEnabled());
+    assertEquals(0.7, updatedClassification.getAutoClassificationConfig().getMinimumConfidence());
+
+    // Update the config
+    originalJson = JsonUtils.pojoToJson(updatedClassification);
+    org.openmetadata.schema.entity.classification.AutoClassificationConfig oldConfig =
+        JsonUtils.readValue(
+            JsonUtils.pojoToJson(updatedClassification.getAutoClassificationConfig()),
+            org.openmetadata.schema.entity.classification.AutoClassificationConfig.class);
+    config.setMinimumConfidence(0.8);
+    config.setConflictResolution(
+        org.openmetadata.schema.entity.classification.AutoClassificationConfig.ConflictResolution
+            .HIGHEST_PRIORITY);
+    updatedClassification.setAutoClassificationConfig(config);
+
+    change = getChangeDescription(updatedClassification, MINOR_UPDATE);
+    fieldUpdated(
+        change,
+        "autoClassificationConfig",
+        JsonUtils.pojoToJson(oldConfig),
+        JsonUtils.pojoToJson(config));
+
+    Classification finalClassification =
+        patchEntityAndCheck(
+            updatedClassification, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify updates
+    assertEquals(0.8, finalClassification.getAutoClassificationConfig().getMinimumConfidence());
+    assertEquals(
+        org.openmetadata.schema.entity.classification.AutoClassificationConfig.ConflictResolution
+            .HIGHEST_PRIORITY,
+        finalClassification.getAutoClassificationConfig().getConflictResolution());
+
+    // Read with autoClassificationConfig field
+    Classification retrievedClassification =
+        getEntity(finalClassification.getId(), "autoClassificationConfig", ADMIN_AUTH_HEADERS);
+    assertNotNull(retrievedClassification.getAutoClassificationConfig());
+    assertTrue(retrievedClassification.getAutoClassificationConfig().getEnabled());
+  }
+
+  @Test
+  void test_createClassificationWithAutoConfig(TestInfo test) throws IOException {
+    // Create classification with auto-classification config upfront
+    CreateClassification createClassification = createRequest(getEntityName(test));
+    org.openmetadata.schema.api.classification.AutoClassificationConfig config =
+        new org.openmetadata.schema.api.classification.AutoClassificationConfig()
+            .withEnabled(true)
+            .withConflictResolution(
+                org.openmetadata.schema.api.classification.AutoClassificationConfig
+                    .ConflictResolution.MOST_SPECIFIC)
+            .withMinimumConfidence(0.65)
+            .withRequireExplicitMatch(false);
+    createClassification.withAutoClassificationConfig(config);
+    createClassification.withMutuallyExclusive(true);
+
+    Classification classification = createEntity(createClassification, ADMIN_AUTH_HEADERS);
+
+    // Verify config was created
+    assertNotNull(classification.getAutoClassificationConfig());
+    assertTrue(classification.getAutoClassificationConfig().getEnabled());
+    assertEquals(0.65, classification.getAutoClassificationConfig().getMinimumConfidence());
+    assertEquals(
+        org.openmetadata.schema.entity.classification.AutoClassificationConfig.ConflictResolution
+            .MOST_SPECIFIC,
+        classification.getAutoClassificationConfig().getConflictResolution());
+    assertFalse(classification.getAutoClassificationConfig().getRequireExplicitMatch());
+    assertTrue(classification.getMutuallyExclusive());
+  }
+
+  @Test
+  void test_deleteAutoClassificationConfig(TestInfo test) throws IOException {
+    // Create classification with auto-classification config
+    CreateClassification createClassification = createRequest(getEntityName(test));
+    org.openmetadata.schema.api.classification.AutoClassificationConfig config =
+        new org.openmetadata.schema.api.classification.AutoClassificationConfig()
+            .withEnabled(true)
+            .withMinimumConfidence(0.6);
+    createClassification.withAutoClassificationConfig(config);
+
+    Classification classification = createEntity(createClassification, ADMIN_AUTH_HEADERS);
+    assertNotNull(classification.getAutoClassificationConfig());
+
+    // Remove auto-classification config using PATCH
+    String originalJson = JsonUtils.pojoToJson(classification);
+    classification.setAutoClassificationConfig(null);
+
+    ChangeDescription change = getChangeDescription(classification, MINOR_UPDATE);
+    fieldDeleted(change, "autoClassificationConfig", JsonUtils.pojoToJson(config));
+
+    Classification updatedClassification =
+        patchEntityAndCheck(classification, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify config was removed
+    assertNull(updatedClassification.getAutoClassificationConfig());
+
+    // Verify it's still null when retrieved
+    Classification retrievedClassification =
+        getEntity(updatedClassification.getId(), "autoClassificationConfig", ADMIN_AUTH_HEADERS);
+    assertNull(retrievedClassification.getAutoClassificationConfig());
   }
 }

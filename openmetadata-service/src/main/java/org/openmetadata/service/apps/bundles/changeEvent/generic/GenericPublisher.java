@@ -17,13 +17,14 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTarget;
-import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation;
 import java.net.UnknownHostException;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -35,6 +36,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.notifications.recipients.RecipientResolver;
+import org.openmetadata.service.notifications.recipients.context.Recipient;
+import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 
 @Slf4j
 public class GenericPublisher implements Destination<ChangeEvent> {
@@ -69,73 +73,55 @@ public class GenericPublisher implements Destination<ChangeEvent> {
 
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
-    long attemptTime = System.currentTimeMillis();
     try {
       String eventJson = JsonUtils.pojoToJson(event);
-      Invocation.Builder target = getTarget(client, webhook, eventJson);
-      postWebhookMessage(this, target, eventJson, webhook.getHttpMethod());
-      sendActionsToTargets(event);
+
+      // Resolve recipients using new RecipientResolver framework
+      RecipientResolver recipientResolver = new RecipientResolver();
+      Set<Recipient> recipients =
+          recipientResolver.resolveRecipients(event, subscriptionDestination, webhook);
+
+      // Convert type-agnostic Recipient objects to configured webhook requests
+      List<Invocation.Builder> targets =
+          recipients.stream()
+              .filter(r -> r instanceof WebhookRecipient)
+              .map(r -> ((WebhookRecipient) r).getConfiguredRequest(client, eventJson))
+              .filter(Objects::nonNull)
+              .toList();
+
+      // Send webhook message to each target
+      for (Invocation.Builder actionTarget : targets) {
+        postWebhookMessage(this, actionTarget, eventJson);
+      }
     } catch (Exception ex) {
-      handleException(attemptTime, event, ex);
+      // Handle UnknownHostException with specific logging
+      if (ex.getCause() instanceof UnknownHostException) {
+        String message =
+            String.format(
+                "Unknown Host Exception for Generic Publisher : %s , WebhookEndpoint : %s",
+                subscriptionDestination.getId(), webhook.getEndpoint());
+        LOG.warn(message);
+        setErrorStatus(System.currentTimeMillis(), 400, "UnknownHostException");
+      }
+
+      String message =
+          CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, event, ex.getMessage());
+      LOG.error(message);
+      throw new EventPublisherException(
+          CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage()),
+          Pair.of(subscriptionDestination.getId(), event));
     }
   }
 
   @Override
   public void sendTestMessage() throws EventPublisherException {
-    long attemptTime = System.currentTimeMillis();
     try {
       Invocation.Builder target = getTarget(client, webhook, TEST_MESSAGE_JSON);
       deliverTestWebhookMessage(this, target, TEST_MESSAGE_JSON, webhook.getHttpMethod());
     } catch (Exception ex) {
-      handleException(attemptTime, ex);
-    }
-  }
-
-  private void sendActionsToTargets(ChangeEvent event) throws EventPublisherException {
-    List<Invocation.Builder> targets =
-        getTargetsForWebhookAlert(
-            webhook,
-            subscriptionDestination.getCategory(),
-            WEBHOOK,
-            client,
-            event,
-            JsonUtils.pojoToJson(event));
-    String eventJson = JsonUtils.pojoToJson(event);
-
-    for (Invocation.Builder actionTarget : targets) {
-      postWebhookMessage(this, actionTarget, eventJson);
-    }
-  }
-
-  private void handleException(long attemptTime, ChangeEvent event, Exception ex)
-      throws EventPublisherException {
-    handleCommonException(attemptTime, ex);
-    String message =
-        CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, event, ex.getMessage());
-    LOG.error(message);
-    throw new EventPublisherException(
-        CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage()),
-        Pair.of(subscriptionDestination.getId(), event));
-  }
-
-  private void handleException(long attemptTime, Exception ex) throws EventPublisherException {
-    handleCommonException(attemptTime, ex);
-    String message =
-        CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage());
-    LOG.error(message);
-    throw new EventPublisherException(message);
-  }
-
-  private void handleCommonException(long attemptTime, Exception ex)
-      throws EventPublisherException {
-    Throwable cause = ex.getCause();
-    if (cause instanceof UnknownHostException) {
       String message =
-          String.format(
-              "Unknown Host Exception for Generic Publisher : %s , WebhookEndpoint : %s",
-              subscriptionDestination.getId(), webhook.getEndpoint());
-      LOG.warn(message);
-      setErrorStatus(attemptTime, 400, "UnknownHostException");
+          CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage());
+      LOG.error(message);
       throw new EventPublisherException(message);
     }
   }

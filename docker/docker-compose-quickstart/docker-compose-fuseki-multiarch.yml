@@ -1,0 +1,39 @@
+version: "3.9"
+
+# Official Apache Jena Fuseki with multi-platform support
+services:
+  fuseki:
+    # Build multi-architecture image locally using Alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.fuseki-working
+    container_name: fuseki-standalone
+    hostname: fuseki
+    ports:
+      - "3030:3030"
+    environment:
+      # Admin credentials
+      - ADMIN_PASSWORD=admin
+      # JVM memory settings
+      - JVM_ARGS=-Xmx4g -Xms2g
+    volumes:
+      # Mount directory for persistent storage
+      - ${DOCKER_VOLUMES_PATH:-./docker-volumes}/fuseki:/fuseki
+    networks:
+      - fuseki-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3030/$/ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+networks:
+  fuseki-net:
+    driver: bridge

@@ -11,94 +11,347 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../../styles/variables.less');
-@import (reference) url('../../../styles/components/card.less');
+@import (reference) '../../../styles/variables.less';
+@import (reference) '../../../styles/components/card.less';
 
-.summary-panel-container {
-  position: sticky;
-  box-shadow: none;
-  font-size: 14px;
-  overflow-x: hidden;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+.entity-summary-panel-container {
   height: 100%;
-
-  .ant-card-head {
-    border-bottom: none;
-    padding-top: 0;
+  background: @white;
+  &.explore,
+  &.lineage,
+  &.glossary-term-assets-tab {
+    background: @background-primary;
   }
 
-  .ant-card-body {
-    padding-top: 0;
-    .scrollable-card-body();
+  .overview-tab-content {
+    height: 100vh;
   }
-
-  .ant-divider {
-    visibility: hidden;
-  }
-
-  .summary-panel-statistics-count {
-    color: @text-color;
-    font-size: 18px;
-    line-height: 24px;
-    font-weight: 700;
-  }
-
-  .entity-title {
-    font-weight: 600;
-    word-break: break-word;
-  }
-
-  .summary-panel-title {
-    color: @primary-color;
-    font-weight: 500;
-    font-size: 18px;
-    word-break: break-all;
-  }
-
-  .summary-panel-section-title {
+  .summary-panel-container {
+    position: sticky;
+    box-shadow: none;
+    width: 100%;
+    height: 100%;
     font-size: 14px;
-    line-height: 24px;
-    font-weight: 600;
-    color: @text-color;
+    overflow: hidden;
+    border-bottom: none !important;
+    border-radius: 8px !important;
+    display: flex;
+    border-color: @grey-38 !important;
+    border-top: none !important;
+
+    &.drawer-summary-panel-container {
+      width: 85%;
+      margin-left: 12px;
+      max-height: calc(100vh - 70px);
+      .ant-card-body {
+        max-height: calc(100vh - 70px);
+      }
+      .data-quality-stats-container,
+      .incidents-stats-container {
+        margin-top: 12px;
+      }
+      .data-quality-tab-container {
+        .data-quality-tabs {
+          .ant-tabs-nav {
+            top: 0px;
+            border-top: none;
+            border-right: none;
+            border-left: none;
+            border-radius: 0px;
+          }
+          .ant-tabs-tabpane {
+            background-color: @white;
+            overflow-y: auto;
+            margin: 0px;
+          }
+        }
+      }
+    }
+
+    .ant-card-head {
+      border-bottom: none;
+      padding-top: 0;
+    }
+
+    .ant-card-body {
+      padding-top: 0;
+      padding: 0 !important;
+      display: inherit;
+      flex-direction: row;
+      position: relative;
+      width: 100%;
+    }
+
+    .content-area {
+      overflow-y: auto;
+      flex: 1;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -ms-overflow-style: none;
+      height: 100%;
+      border-radius: 8px;
+      position: relative;
+      background: @white;
+      &::-webkit-scrollbar {
+        width: 0px;
+        background: transparent;
+      }
+
+      scrollbar-gutter: stable;
+      &.drawer-content-area {
+        max-height: calc(100vh - 70px);
+      }
+    }
+
+    .ant-divider {
+      visibility: hidden;
+    }
+
+    .summary-panel-statistics-count {
+      color: @text-color;
+      font-size: 18px;
+      line-height: 24px;
+      font-weight: 700;
+    }
+
+    .entity-title {
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    .summary-panel-title {
+      color: @primary-color;
+      font-weight: 500;
+      font-size: 18px;
+      word-break: break-all;
+    }
+
+    .summary-panel-section-title {
+      font-size: 14px;
+      line-height: 24px;
+      font-weight: 600;
+      color: @text-color;
+    }
+
+    .ant-divider-horizontal {
+      margin: 16px 0px;
+    }
+
+    .close-icon {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+    }
+
+    .summary-schema-editor {
+      margin: 16px 0px;
+      border: @global-border;
+      border-radius: 4px;
+    }
+
+    .link {
+      color: @primary-color;
+    }
   }
 
-  .ant-divider-horizontal {
-    margin: 16px 0px;
+  .show-panel::-webkit-scrollbar {
+    display: none;
   }
 
-  .close-icon {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-  }
-
-  .summary-schema-editor {
-    margin: 16px 0px;
+  .summary-panel-custom-query-editor {
     border: @global-border;
-    border-radius: 4px;
-  }
-
-  .link {
-    color: @primary-color;
-  }
-}
-
-.show-panel::-webkit-scrollbar {
-  display: none;
-}
-
-.summary-panel-custom-query-editor {
-  border: @global-border;
-  border-radius: @border-rad-base;
-
-  .CodeMirror {
     border-radius: @border-rad-base;
-    height: 300px;
-  }
-}
 
-.summary-panel-card {
-  background-color: @grey-9;
-  border: 0.5px solid #eaecf5;
+    .CodeMirror {
+      border-radius: @border-rad-base;
+      height: 300px;
+    }
+  }
+
+  .summary-panel-card {
+    background-color: @grey-9;
+    border: 0.5px solid @grey-15;
+  }
+  .entity-icon {
+    color: @primary-7;
+    width: 18px !important;
+    height: 18px !important;
+    margin-left: 4px;
+    display: inline;
+    align-items: center;
+  }
+  .title-section {
+    position: sticky;
+    padding: 4px;
+    z-index: 999;
+    top: 0;
+    flex: 1;
+    background-color: @white;
+  }
+  .drawer-title-section {
+    background-color: transparent !important;
+  }
+  .title-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 8px;
+    height: 49px;
+    padding-left: 4px;
+    padding-right: 4px;
+    background-color: @grey-9;
+    .d-flex {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .entity-icon {
+      flex-shrink: 0;
+      margin-right: 8px;
+    }
+
+    .entity-title-link {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      font-size: 15px;
+      cursor: pointer;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-decoration: none;
+      color: @primary-color;
+      display: block;
+
+      .text-highlighter {
+        color: @primary-color;
+      }
+    }
+  }
+
+  .custom-properties-list {
+    .custom-property-item {
+      display: flex;
+      flex-direction: column;
+      padding-top: 16px;
+      padding-bottom: 16px;
+      background-image: linear-gradient(to right, @grey-15 66%, @white 0%);
+      background-position: bottom;
+      background-size: 3px 1px;
+      background-repeat: repeat-x;
+      margin-right: -16px;
+      margin-left: -16px;
+      padding-right: 16px;
+      padding-left: 16px;
+      &:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        background-image: none;
+      }
+
+      .property-name {
+        font-size: 13px;
+        color: @grey-900;
+        font-weight: 600;
+        margin-bottom: 12px;
+      }
+
+      .property-value {
+        font-size: 12px;
+        font-weight: 400;
+        color: @grey-700;
+        word-break: break-word;
+      }
+    }
+
+    .custom-property-table {
+      margin-top: 8px;
+      border: 1px solid @grey-200;
+      border-radius: 10px;
+      thead {
+        background-color: @grey-9;
+      }
+      th {
+        color: @grey-600;
+        font-weight: 500;
+        padding-top: 10px;
+        padding-bottom: 11px;
+        font-size: 11px;
+        border-bottom: 1px solid @light-border-color;
+      }
+      tr {
+        text-align: center;
+      }
+      .ant-table {
+        border: 1px solid @grey-200;
+        border-radius: 10px;
+        overflow: hidden;
+        width: 100%;
+
+        .ant-table-thead > tr > th {
+          background-color: @grey-50;
+          border-bottom: 1px solid @light-border-color;
+          font-weight: 600;
+          font-size: 12px;
+          color: @text-color;
+          padding: 12px 20px;
+          text-align: left;
+          white-space: nowrap;
+
+          &:first-child {
+            padding-left: 16px;
+          }
+
+          &:last-child {
+            padding-right: 16px;
+          }
+        }
+
+        .ant-table-thead > tr {
+          text-align: center;
+        }
+
+        .ant-table-thead > tr > td {
+          border-bottom: 1px solid @light-border-color;
+          font-size: 12px;
+          color: @text-color;
+          padding: 12px 20px;
+          text-align: left;
+          white-space: nowrap;
+
+          &:first-child {
+            padding-left: 16px;
+          }
+
+          &:last-child {
+            padding-right: 16px;
+          }
+        }
+
+        .ant-table-tbody > tr:last-child > td {
+          border-bottom: none;
+          border-bottom: 1px solid @light-border-color;
+        }
+        tbody > tr > td {
+          padding-top: 10px;
+          font-size: 13px;
+          padding-bottom: 11px;
+        }
+      }
+    }
+  }
+  .drawer-close-icon {
+    background: transparent;
+    border: none;
+
+    svg {
+      height: 16px;
+      width: 16px;
+    }
+    &:hover {
+      background: none;
+      border: none;
+    }
+  }
 }

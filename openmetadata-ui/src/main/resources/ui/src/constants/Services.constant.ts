@@ -85,6 +85,7 @@ import sqlite from '../assets/img/service-icon-sqlite.png';
 import superset from '../assets/img/service-icon-superset.png';
 import synapse from '../assets/img/service-icon-synapse.png';
 import tableau from '../assets/img/service-icon-tableau.png';
+import timescale from '../assets/img/service-icon-timescale.png';
 import trino from '../assets/img/service-icon-trino.png';
 import unitycatalog from '../assets/img/service-icon-unitycatalog.svg';
 import vertica from '../assets/img/service-icon-vertica.png';
@@ -92,14 +93,18 @@ import dashboardDefault from '../assets/svg/dashboard.svg';
 import iconDefaultService from '../assets/svg/default-service-icon.svg';
 import elasticSearch from '../assets/svg/elasticsearch.svg';
 import databaseDefault from '../assets/svg/ic-custom-database.svg';
+import { default as customDriveDefault } from '../assets/svg/ic-custom-drive.svg';
 import mlModelDefault from '../assets/svg/ic-custom-model.svg';
 import searchDefault from '../assets/svg/ic-custom-search.svg';
-import storageDefault from '../assets/svg/ic-custom-storage.svg';
+import { default as storageDefault } from '../assets/svg/ic-custom-storage.svg';
+import { default as driveDefault } from '../assets/svg/ic-drive-service.svg';
 import restService from '../assets/svg/ic-service-rest-api.svg';
 import logo from '../assets/svg/logo-monogram.svg';
 import openSearch from '../assets/svg/open-search.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
 import securitySafe from '../assets/svg/security-safe.svg';
+import googleDrive from '../assets/svg/service-icon-google-drive.svg';
+import hex from '../assets/svg/service-icon-hex.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
 import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
@@ -114,6 +119,7 @@ import { StorageServiceType } from '../generated/entity/data/container';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
+import { DriveServiceType } from '../generated/entity/services/driveService';
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { MlModelServiceType } from '../generated/entity/services/mlmodelService';
@@ -121,7 +127,6 @@ import { PipelineServiceType } from '../generated/entity/services/pipelineServic
 import { SearchServiceType } from '../generated/entity/services/searchService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ServiceType } from '../generated/entity/services/serviceType';
-import i18n from '../utils/i18next/LocalUtil';
 import { SERVICE_FILTER_PATTERN_FIELDS } from './ServiceConnection.constants';
 
 export const MYSQL = mysql;
@@ -130,6 +135,7 @@ export const MSSQL = mssql;
 export const REDSHIFT = redshift;
 export const BIGQUERY = query;
 export const BIGTABLE = bigtable;
+export const HEX = hex;
 export const HIVE = hive;
 export const IMPALA = impala;
 export const POSTGRES = postgres;
@@ -189,6 +195,8 @@ export const DASHBOARD_DEFAULT = dashboardDefault;
 export const PIPELINE_DEFAULT = pipelineDefault;
 export const ML_MODEL_DEFAULT = mlModelDefault;
 export const CUSTOM_STORAGE_DEFAULT = storageDefault;
+export const CUSTOM_DRIVE_DEFAULT = customDriveDefault;
+export const DRIVE_DEFAULT = driveDefault;
 export const NIFI = nifi;
 export const KINESIS = kinesis;
 export const QUICKSIGHT = quicksight;
@@ -214,10 +222,13 @@ export const REST_SERVICE = restService;
 export const COCKROACH = cockroach;
 export const SECURITY_DEFAULT = securitySafe;
 export const GRAFANA = grafana;
+export const GOOGLE_DRIVE = googleDrive;
+export const TIMESCALE = timescale;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
   MetadataServiceType.OpenMetadata,
+  PipelineServiceType.Spark,
 ];
 
 export const arrServiceTypes: Array<ServiceTypes> = [
@@ -229,6 +240,7 @@ export const arrServiceTypes: Array<ServiceTypes> = [
   'storageServices',
   'apiServices',
   'securityServices',
+  'driveServices',
 ];
 
 export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
@@ -242,42 +254,28 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   search: ServiceCategory.SEARCH_SERVICES,
   apiServices: ServiceCategory.API_SERVICES,
   security: ServiceCategory.SECURITY_SERVICES,
+  drives: ServiceCategory.DRIVE_SERVICES,
 };
 
-export const servicesDisplayName: { [key: string]: string } = {
-  databaseServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.database'),
-  }),
-  messagingServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.messaging'),
-  }),
-  dashboardServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.dashboard'),
-  }),
-  pipelineServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.pipeline'),
-  }),
-  mlmodelServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.ml-model'),
-  }),
-  metadataServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.metadata'),
-  }),
-  storageServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.storage'),
-  }),
-  searchServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.search'),
-  }),
-  dashboardDataModel: i18n.t('label.entity-service', {
-    entity: i18n.t('label.data-model'),
-  }),
-  apiServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.api-uppercase'),
-  }),
-  securityServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.security'),
-  }),
+export const servicesDisplayName: Record<
+  string,
+  { key: string; entity: string }
+> = {
+  databaseServices: { key: 'label.entity-service', entity: 'label.database' },
+  messagingServices: { key: 'label.entity-service', entity: 'label.messaging' },
+  dashboardServices: { key: 'label.entity-service', entity: 'label.dashboard' },
+  pipelineServices: { key: 'label.entity-service', entity: 'label.pipeline' },
+  mlmodelServices: { key: 'label.entity-service', entity: 'label.ml-model' },
+  metadataServices: { key: 'label.entity-service', entity: 'label.metadata' },
+  storageServices: { key: 'label.entity-service', entity: 'label.storage' },
+  searchServices: { key: 'label.entity-service', entity: 'label.search' },
+  dashboardDataModel: {
+    key: 'label.entity-service',
+    entity: 'label.data-model',
+  },
+  apiServices: { key: 'label.entity-service', entity: 'label.api-uppercase' },
+  securityServices: { key: 'label.entity-service', entity: 'label.security' },
+  driveServices: { key: 'label.entity-service', entity: 'label.drive' },
 };
 
 export const DEF_UI_SCHEMA = {
@@ -354,38 +352,34 @@ export const SERVICE_CATEGORY_OPTIONS = map(ServiceCategory, (value) => ({
 
 export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
   {
-    name: i18n.t('label.select-field', {
-      field: i18n.t('label.service-type'),
-    }),
+    name: 'label.select-field',
+    nameData: { field: 'label.service-type' },
     step: 1,
   },
   {
-    name: i18n.t('label.configure-entity', {
-      entity: i18n.t('label.service'),
-    }),
+    name: 'label.configure-entity',
+    nameData: { entity: 'label.service' },
     step: 2,
   },
   {
-    name: i18n.t('label.connection-entity', {
-      entity: i18n.t('label.detail-plural'),
-    }),
+    name: 'label.connection-entity',
+    nameData: { entity: 'label.detail-plural' },
     step: 3,
   },
   {
-    name: i18n.t('label.set-default-filters'),
+    name: 'label.set-default-filters',
     step: 4,
   },
 ];
 
 export const STEPS_FOR_EDIT_SERVICE: Array<StepperStepType> = [
   {
-    name: i18n.t('label.connection-entity', {
-      entity: i18n.t('label.detail-plural'),
-    }),
+    name: 'label.connection-entity',
+    nameData: { entity: 'label.detail-plural' },
     step: 1,
   },
   {
-    name: i18n.t('label.set-default-filters'),
+    name: 'label.set-default-filters',
     step: 2,
   },
 ];
@@ -393,8 +387,10 @@ export const STEPS_FOR_EDIT_SERVICE: Array<StepperStepType> = [
 export const SERVICE_DEFAULT_ERROR_MAP = {
   serviceType: false,
 };
-// 2 minutes
-export const FETCHING_EXPIRY_TIME = 2 * 60 * 1000;
+// 3 minutes timeout to wait for test connection status
+// Increasing it temporarily while we investigate test connection delays
+// @pmbrull
+export const FETCHING_EXPIRY_TIME = 3 * 60 * 1000;
 export const FETCH_INTERVAL = 2000;
 export const WORKFLOW_COMPLETE_STATUS = [
   WorkflowStatus.Failed,
@@ -420,6 +416,7 @@ export const SERVICE_TYPE_MAP = {
   [ServiceCategory.SEARCH_SERVICES]: ServiceType.Search,
   [ServiceCategory.API_SERVICES]: ServiceType.API,
   [ServiceCategory.SECURITY_SERVICES]: ServiceType.Security,
+  [ServiceCategory.DRIVE_SERVICES]: ServiceType.Drive,
 };
 
 export const SERVICE_TYPES_ENUM = {
@@ -433,6 +430,7 @@ export const SERVICE_TYPES_ENUM = {
   [ServiceCategory.SEARCH_SERVICES]: SearchServiceType,
   [ServiceCategory.API_SERVICES]: APIServiceType,
   [ServiceCategory.SECURITY_SERVICES]: SecurityServiceType,
+  [ServiceCategory.DRIVE_SERVICES]: DriveServiceType,
 };
 
 export const BETA_SERVICES = [
@@ -448,27 +446,26 @@ export const BETA_SERVICES = [
   SecurityServiceType.Ranger,
   DatabaseServiceType.Epic,
   DashboardServiceType.Grafana,
+  DashboardServiceType.Hex,
+  DatabaseServiceType.ServiceNow,
+  DatabaseServiceType.Timescale,
+  MetadataServiceType.Collibra,
+  PipelineServiceType.Mulesoft,
 ];
 
-export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
-  'message.test-your-connection-before-creating-service'
-);
+export const TEST_CONNECTION_INITIAL_MESSAGE =
+  'message.test-your-connection-before-creating-service';
 
-export const TEST_CONNECTION_SUCCESS_MESSAGE = i18n.t(
-  'message.connection-test-successful'
-);
+export const TEST_CONNECTION_SUCCESS_MESSAGE =
+  'message.connection-test-successful';
 
-export const TEST_CONNECTION_FAILURE_MESSAGE = i18n.t(
-  'message.connection-test-failed'
-);
+export const TEST_CONNECTION_FAILURE_MESSAGE = 'message.connection-test-failed';
 
-export const TEST_CONNECTION_TESTING_MESSAGE = i18n.t(
-  'message.testing-your-connection-may-take-two-minutes'
-);
+export const TEST_CONNECTION_TESTING_MESSAGE =
+  'message.testing-your-connection-may-take-two-minutes';
 
-export const TEST_CONNECTION_WARNING_MESSAGE = i18n.t(
-  'message.connection-test-warning'
-);
+export const TEST_CONNECTION_WARNING_MESSAGE =
+  'message.connection-test-warning';
 
 export const ADVANCED_PROPERTIES = [
   'connectionArguments',
@@ -505,6 +502,7 @@ export const SERVICE_TYPES = [
   EntityType.SEARCH_SERVICE,
   EntityType.API_SERVICE,
   EntityType.SECURITY_SERVICE,
+  EntityType.DRIVE_SERVICE,
 ];
 
 export const EXCLUDE_AUTO_PILOT_SERVICE_TYPES = [EntityType.SECURITY_SERVICE];

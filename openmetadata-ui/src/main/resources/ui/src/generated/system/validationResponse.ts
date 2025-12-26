@@ -23,6 +23,10 @@ export interface ValidationResponse {
      */
     jwks?: StepValidation;
     /**
+     * Log storage connectivity check (only shown if S3 storage is configured)
+     */
+    logStorage?: StepValidation;
+    /**
      * List migration results
      */
     migrations?: StepValidation;
@@ -34,12 +38,15 @@ export interface ValidationResponse {
      * Search instance connectivity check
      */
     searchInstance?: StepValidation;
+    [property: string]: any;
 }
 
 /**
  * Database connectivity check
  *
  * JWKs validation
+ *
+ * Log storage connectivity check (only shown if S3 storage is configured)
  *
  * List migration results
  *

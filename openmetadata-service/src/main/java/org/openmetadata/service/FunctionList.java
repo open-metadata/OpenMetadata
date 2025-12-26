@@ -2,7 +2,7 @@ package org.openmetadata.service;
 
 import java.util.List;
 import org.openmetadata.schema.type.Function;
-import org.openmetadata.service.util.ResultList;
+import org.openmetadata.schema.utils.ResultList;
 
 public class FunctionList extends ResultList<Function> {
   @SuppressWarnings("unused")

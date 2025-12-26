@@ -225,16 +225,19 @@ class MicrostrategySource(DashboardServiceSource):
 
             try:
                 lineage_parser = LineageParser(cube_sql, dialect=dialect)
+                query_hash = lineage_parser.query_hash
                 for table in lineage_parser.source_tables:
                     table_entities = get_table_entities_from_query(
                         metadata=self.metadata,
-                        service_name=prefix_db_service_name,
+                        service_names=prefix_db_service_name,
                         database_name="*",
                         database_schema="*",
                         table_name=str(table),
                     )
                     if not table_entities:
-                        logger.debug(f"Table not found in metadata: {str(table)}")
+                        logger.debug(
+                            f"[{query_hash}] Table not found in metadata: {str(table)}"
+                        )
                         continue
                     for table_entity in table_entities or []:
                         if (

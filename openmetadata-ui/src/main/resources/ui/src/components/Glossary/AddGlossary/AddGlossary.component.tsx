@@ -25,12 +25,18 @@ import {
   FormItemLayout,
   HelperTextType,
 } from '../../../interface/FormUtils.interface';
-import { generateFormFields, getField } from '../../../utils/formUtils';
+import {
+  generateFormFields,
+  getField,
+  getPopupContainer,
+} from '../../../utils/formUtils';
 
+import { isArray } from 'lodash';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -48,6 +54,7 @@ const AddGlossary = ({
 }: AddGlossaryProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
+  const { entityRules } = useEntityRules(EntityType.GLOSSARY);
   const { currentUser } = useApplicationStore();
   const { activeDomainEntityRef } = useDomainStore();
 
@@ -61,10 +68,9 @@ const AddGlossary = ({
   const reviewersData =
     Form.useWatch<EntityReference | EntityReference[]>('reviewers', form) ?? [];
 
-  const selectedDomain = Form.useWatch<EntityReference[] | undefined>(
-    'domains',
-    form
-  );
+  const selectedDomain = Form.useWatch<
+    EntityReference | EntityReference[] | undefined
+  >('domains', form);
 
   const reviewersList = Array.isArray(reviewersData)
     ? reviewersData
@@ -97,10 +103,11 @@ const AddGlossary = ({
       owners: selectedOwners,
       tags: tags || [],
       mutuallyExclusive: Boolean(mutuallyExclusive),
-      domains:
-        (selectedDomain
-          ?.map((d) => d.fullyQualifiedName)
-          .filter(Boolean) as string[]) ?? [],
+      domains: selectedDomain
+        ? ((isArray(selectedDomain) ? selectedDomain : [selectedDomain])
+            .map((d) => d.fullyQualifiedName)
+            .filter(Boolean) as string[]) ?? []
+        : undefined,
     };
     onSave(data);
   };
@@ -202,6 +209,10 @@ const AddGlossary = ({
     type: FieldTypes.USER_TEAM_SELECT,
     props: {
       hasPermission: true,
+      popoverProps: {
+        placement: 'topLeft',
+        getPopupContainer: getPopupContainer,
+      },
       children: (
         <Button
           data-testid="add-owner"
@@ -210,7 +221,10 @@ const AddGlossary = ({
           type="primary"
         />
       ),
-      multiple: { user: true, team: false },
+      multiple: {
+        user: entityRules.canAddMultipleUserOwners,
+        team: entityRules.canAddMultipleTeamOwner,
+      },
     },
     formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
@@ -227,7 +241,10 @@ const AddGlossary = ({
     type: FieldTypes.USER_TEAM_SELECT,
     props: {
       hasPermission: true,
-      popoverProps: { placement: 'topLeft' },
+      popoverProps: {
+        placement: 'topLeft',
+        getPopupContainer: getPopupContainer,
+      },
       children: (
         <Button
           data-testid="add-reviewers"
@@ -254,7 +271,13 @@ const AddGlossary = ({
     label: t('label.domain-plural'),
     type: FieldTypes.DOMAIN_SELECT,
     props: {
-      selectedDomain: activeDomainEntityRef,
+      selectedDomain: activeDomainEntityRef
+        ? [activeDomainEntityRef]
+        : undefined,
+      popoverProps: {
+        placement: 'topLeft',
+        getPopupContainer: getPopupContainer,
+      },
       children: (
         <Button
           data-testid="add-domain"
@@ -263,13 +286,13 @@ const AddGlossary = ({
           type="primary"
         />
       ),
-      multiple: true,
+      multiple: entityRules.canAddMultipleDomains,
     },
     formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
       valuePropName: 'selectedDomain',
       trigger: 'onUpdate',
-      initialValue: activeDomainEntityRef,
+      initialValue: activeDomainEntityRef ? [activeDomainEntityRef] : undefined,
     },
   };
 

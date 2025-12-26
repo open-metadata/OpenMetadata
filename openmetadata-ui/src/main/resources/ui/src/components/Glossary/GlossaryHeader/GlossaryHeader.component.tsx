@@ -43,8 +43,8 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
+  EntityStatus,
   GlossaryTerm,
-  Status,
 } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
@@ -71,10 +71,10 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
-import { GlossaryStatusBadge } from '../GlossaryStatusBadge/GlossaryStatusBadge.component';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
 import './glossery-header.less';
 const GlossaryHeader = ({
@@ -154,9 +154,9 @@ const GlossaryHeader = ({
     }
   };
 
-  const glossaryTermStatus: Status | null = useMemo(() => {
+  const glossaryTermStatus: EntityStatus | null = useMemo(() => {
     if (!isGlossary) {
-      return selectedData.status ?? Status.Approved;
+      return selectedData.entityStatus ?? EntityStatus.Approved;
     }
 
     return null;
@@ -212,7 +212,7 @@ const GlossaryHeader = ({
   }, [fqn]);
 
   const handleGlossaryImport = () =>
-    navigate(getEntityImportPath(EntityType.GLOSSARY_TERM, fqn));
+    navigate(getEntityImportPath(EntityType.GLOSSARY, fqn));
 
   const handleVersionClick = async () => {
     let path: string;
@@ -365,7 +365,7 @@ const GlossaryHeader = ({
                   entity: t('label.glossary-term'),
                 })}
                 icon={StyleIcon}
-                id="rename-button"
+                id="edit-style-button"
                 name={t('label.style')}
               />
             ),
@@ -430,9 +430,9 @@ const GlossaryHeader = ({
 
   const statusBadge = useMemo(() => {
     if (!isGlossary) {
-      const entityStatus = selectedData.status ?? Status.Approved;
+      const entityStatus = selectedData.entityStatus ?? EntityStatus.Approved;
 
-      return <GlossaryStatusBadge status={entityStatus} />;
+      return <EntityStatusBadge showDivider status={entityStatus} />;
     }
 
     return null;
@@ -442,7 +442,7 @@ const GlossaryHeader = ({
     if (permissions.Create || createGlossaryTermPermission) {
       return isGlossary ? (
         <Button
-          className="m-l-xs h-10"
+          className="m-l-xs"
           data-testid="add-new-tag-button-header"
           size="middle"
           type="primary"
@@ -451,9 +451,9 @@ const GlossaryHeader = ({
         </Button>
       ) : (
         <>
-          {glossaryTermStatus && glossaryTermStatus === Status.Approved && (
+          {glossaryTermStatus && glossaryTermStatus === EntityStatus.Approved && (
             <Dropdown
-              className="m-l-xs h-10"
+              className="m-l-xs"
               menu={{
                 items: addButtonContent,
               }}

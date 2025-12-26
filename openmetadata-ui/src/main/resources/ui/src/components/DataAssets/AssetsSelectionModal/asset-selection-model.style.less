@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import url('../../../styles/variables.less');
+@import '../../../styles/variables.less';
 
 .asset-selection-model-card.table-data-card-container {
   box-shadow: none !important;
@@ -67,5 +67,27 @@
       width: 6.5px;
       height: 11px;
     }
+  }
+}
+
+.asset-selection-space {
+  .ant-space-item {
+    &:has(> .asset-list-wrapper) {
+      flex: 1;
+      overflow-y: scroll;
+    }
+  }
+}
+
+.asset-filters-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  overflow: visible;
+
+  .explore-quick-filters-container {
+    flex: 1;
+    overflow: visible;
   }
 }

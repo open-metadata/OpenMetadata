@@ -111,6 +111,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
@@ -157,6 +161,10 @@
       "description": "Latest usage information for this worksheet.",
       "$ref": "../../type/usageDetails.json",
       "default": null
+    },
+    "entityStatus": {
+      "description": "Status of the Worksheet.",
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "spreadsheet", "service"],

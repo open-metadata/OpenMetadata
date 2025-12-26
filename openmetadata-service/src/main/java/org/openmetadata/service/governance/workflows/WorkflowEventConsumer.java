@@ -25,6 +25,7 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 
 @Slf4j
 public class WorkflowEventConsumer implements Destination<ChangeEvent> {
+  public static final String GOVERNANCE_BOT = "governance-bot";
   private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
 
@@ -32,7 +33,51 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
   // ENTITY_RESTORED.
   private static List<EventType> validEventTypes =
       List.of(EventType.ENTITY_CREATED, EventType.ENTITY_UPDATED);
-  private static List<String> validEntityTypes = List.of(Entity.GLOSSARY_TERM);
+  private static List<String> validEntityTypes =
+      List.of(
+          Entity.GLOSSARY_TERM,
+          Entity.TABLE,
+          Entity.DASHBOARD,
+          Entity.PIPELINE,
+          Entity.TOPIC,
+          Entity.CONTAINER,
+          Entity.DATABASE,
+          Entity.DATABASE_SCHEMA,
+          Entity.STORED_PROCEDURE,
+          Entity.DASHBOARD_DATA_MODEL,
+          Entity.CHART,
+          Entity.MLMODEL,
+          Entity.SEARCH_INDEX,
+          Entity.API_ENDPOINT,
+          Entity.API_COLLECTION,
+          Entity.DATABASE_SERVICE,
+          Entity.DASHBOARD_SERVICE,
+          Entity.MESSAGING_SERVICE,
+          Entity.PIPELINE_SERVICE,
+          Entity.MLMODEL_SERVICE,
+          Entity.STORAGE_SERVICE,
+          Entity.SEARCH_SERVICE,
+          Entity.API_SERVICE,
+          Entity.METADATA_SERVICE,
+          Entity.DOMAIN,
+          Entity.DATA_PRODUCT,
+          Entity.GLOSSARY,
+          Entity.CLASSIFICATION,
+          Entity.TAG,
+          Entity.POLICY,
+          Entity.ROLE,
+          Entity.TEAM,
+          Entity.USER,
+          Entity.BOT,
+          Entity.APPLICATION,
+          Entity.INGESTION_PIPELINE,
+          Entity.TEST_SUITE,
+          Entity.TEST_CASE,
+          Entity.QUERY,
+          Entity.METRIC,
+          Entity.DATA_INSIGHT_CHART,
+          Entity.DATA_CONTRACT,
+          Entity.PAGE);
 
   public WorkflowEventConsumer(
       EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
@@ -54,6 +99,18 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
     try {
       EventType eventType = event.getEventType();
       String entityType = event.getEntityType();
+
+      // Skip events from governance-bot to prevent infinite loops
+      // These are system-initiated workflow changes that shouldn't trigger new workflows
+      if (GOVERNANCE_BOT.equals(event.getUserName())
+          || (event.getImpersonatedBy() != null
+              && GOVERNANCE_BOT.equals(event.getImpersonatedBy()))) {
+        LOG.debug(
+            "Skipping workflow-initiated event from governance-bot for entity {} of type: {}",
+            event.getEntityFullyQualifiedName(),
+            event.getEntityType());
+        return;
+      }
 
       if (validEventTypes.contains(eventType) && validEntityTypes.contains(entityType)) {
         String signal = String.format("%s-%s", entityType, eventType.toString());

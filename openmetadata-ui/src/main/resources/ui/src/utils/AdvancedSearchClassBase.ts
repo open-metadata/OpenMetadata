@@ -24,6 +24,7 @@ import { debounce, isEmpty, sortBy, toLower } from 'lodash';
 import { CustomPropertyEnumConfig } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
   LIST_VALUE_OPERATORS,
+  MULTISELECT_FIELD_OPERATORS,
   NULL_CHECK_OPERATORS,
   RANGE_FIELD_OPERATORS,
   SEARCH_INDICES_WITH_COLUMNS_FIELD,
@@ -33,7 +34,6 @@ import {
 import {
   EntityFields,
   EntityReferenceFields,
-  EntitySourceFields,
   SuggestionField,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -43,8 +43,8 @@ import {
   getCustomPropertyAdvanceSearchEnumOptions,
   renderAdvanceSearchButtons,
 } from './AdvancedSearchUtils';
+import { buildTermQuery } from './elasticsearchQueryBuilder';
 import { getEntityName } from './EntityUtils';
-import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import { t } from './i18next/LocalUtil';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import { parseBucketsData } from './SearchUtils';
@@ -167,32 +167,39 @@ class AdvancedSearchClassBase {
     searchIndex: SearchIndex | SearchIndex[];
     entityField: EntityFields | EntityReferenceFields;
     suggestField?: SuggestionField;
-    isCaseInsensitive?: boolean;
+    sourceFields?: string;
+    sourceFieldOptionType?: {
+      label: string;
+      value: string;
+    };
+    q?: string;
   }) => SelectFieldSettings['asyncFetch'] = ({
     searchIndex,
     entityField,
-    isCaseInsensitive = false,
+    q = '',
+    sourceFields,
+    sourceFieldOptionType,
   }) => {
     let pendingResolve:
       | ((result: { values: any[]; hasMore: boolean }) => void)
       | null = null;
     const debouncedFetch = debounce((search: string) => {
-      const sourceFields = isCaseInsensitive
-        ? EntitySourceFields?.[entityField as EntityFields]?.join(',')
-        : undefined;
-
       getAggregateFieldOptions(
         searchIndex,
         entityField,
         search ?? '',
-        JSON.stringify(getCombinedQueryFilterObject()),
+        q,
         sourceFields
       )
         .then((response) => {
           const buckets =
             response.data.aggregations[`sterms#${entityField}`].buckets;
 
-          const bucketsData = parseBucketsData(buckets, sourceFields);
+          const bucketsData = parseBucketsData(
+            buckets,
+            sourceFields,
+            sourceFieldOptionType
+          );
 
           if (pendingResolve) {
             pendingResolve({
@@ -235,8 +242,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.DATABASE_SCHEMA,
-          entityField: EntityFields.DATABASE,
+          searchIndex: SearchIndex.DATABASE,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },
@@ -253,8 +260,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.TABLE,
-          entityField: EntityFields.DATABASE,
+          searchIndex: SearchIndex.DATABASE,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },
@@ -266,8 +273,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.TABLE,
-          entityField: EntityFields.DATABASE_SCHEMA,
+          searchIndex: SearchIndex.DATABASE_SCHEMA,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },
@@ -311,8 +318,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.STORED_PROCEDURE,
-          entityField: EntityFields.DATABASE,
+          searchIndex: SearchIndex.DATABASE,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },
@@ -324,8 +331,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.STORED_PROCEDURE,
-          entityField: EntityFields.DATABASE_SCHEMA,
+          searchIndex: SearchIndex.DATABASE_SCHEMA,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },
@@ -378,8 +385,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.API_ENDPOINT_INDEX,
-          entityField: EntityFields.API_COLLECTION,
+          searchIndex: SearchIndex.API_COLLECTION_INDEX,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },
@@ -432,8 +439,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.GLOSSARY_TERM,
-          entityField: EntityFields.GLOSSARY,
+          searchIndex: SearchIndex.GLOSSARY,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },
@@ -450,8 +457,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.DASHBOARD,
-          entityField: EntityFields.DATA_MODEL,
+          searchIndex: SearchIndex.DASHBOARD_DATA_MODEL,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },
@@ -462,8 +469,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.DASHBOARD,
-          entityField: EntityFields.CHART,
+          searchIndex: SearchIndex.CHART,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },
@@ -567,6 +574,107 @@ class AdvancedSearchClassBase {
   };
 
   /**
+   * Fields specific to directories
+   */
+  directorySearchQueryBuilderFields: Fields = {
+    [EntityFields.PARENT]: {
+      label: t('label.entity-parent', { entity: t('label.directory') }),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.DIRECTORY_SEARCH_INDEX,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
+   * Fields specific to files
+   */
+  fileSearchQueryBuilderFields: Fields = {
+    [EntityFields.DIRECTORY]: {
+      label: t('label.directory'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.DIRECTORY_SEARCH_INDEX,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+    [EntityFields.FILE_EXTENSION]: {
+      label: t('label.file-extension'),
+      type: 'text',
+      mainWidgetProps: this.mainWidgetProps,
+    },
+    [EntityFields.FILE_TYPE]: {
+      label: t('label.file-type'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.FILE_SEARCH_INDEX,
+          entityField: EntityFields.FILE_TYPE,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
+   * Fields specific to spreadsheets
+   */
+  spreadsheetSearchQueryBuilderFields: Fields = {
+    [EntityFields.DIRECTORY]: {
+      label: t('label.directory'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.DIRECTORY_SEARCH_INDEX,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+    [EntityFields.LAST_MODIFIED_BY]: {
+      label: t('label.last-modified-by'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.USER,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
+   * Fields specific to spreadsheets
+   */
+  worksheetSearchQueryBuilderFields: Fields = {
+    [EntityFields.SPREADSHEET]: {
+      label: t('label.spreadsheet'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.SPREADSHEET_SEARCH_INDEX,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
    * Overriding default configurations.
    * Basic attributes that fields inherit from.
    */
@@ -575,7 +683,41 @@ class AdvancedSearchClassBase {
       ...this.baseConfig,
       types: this.configTypes,
       widgets: this.configWidgets,
-      operators: this.configOperators,
+      operators: {
+        ...this.configOperators,
+        like: {
+          ...this.baseConfig.operators.like,
+          elasticSearchQueryType: 'wildcard',
+        },
+        ...(isExplorePage
+          ? {}
+          : {
+              equal: {
+                ...this.baseConfig.operators.equal,
+                label: t('label.is'),
+              },
+              not_equal: {
+                ...this.baseConfig.operators.not_equal,
+                label: t('label.is-not'),
+              },
+              select_equals: {
+                ...this.baseConfig.operators.select_equals,
+                label: t('label.is'),
+              },
+              select_not_equals: {
+                ...this.baseConfig.operators.select_not_equals,
+                label: t('label.is-not'),
+              },
+              is_null: {
+                ...this.baseConfig.operators.is_null,
+                label: t('label.is-not-set'),
+              },
+              is_not_null: {
+                ...this.baseConfig.operators.is_not_null,
+                label: t('label.is-set'),
+              },
+            }),
+      },
       settings: {
         ...this.baseConfig.settings,
         showLabels: isExplorePage,
@@ -633,9 +775,8 @@ class AdvancedSearchClassBase {
 
   public getCommonConfig(args: {
     entitySearchIndex?: Array<SearchIndex>;
-    tierOptions?: Promise<ListValues>;
   }): Fields {
-    const { entitySearchIndex = [SearchIndex.TABLE], tierOptions } = args;
+    const { entitySearchIndex = [SearchIndex.TABLE] } = args;
 
     return {
       [EntityFields.DISPLAY_NAME_KEYWORD]: {
@@ -667,7 +808,7 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: entitySearchIndex,
             entityField: EntityFields.NAME_KEYWORD,
-            isCaseInsensitive: true,
+            sourceFields: 'name',
           }),
           useAsyncSearch: true,
         },
@@ -709,8 +850,22 @@ class AdvancedSearchClassBase {
 
         fieldSettings: {
           asyncFetch: this.autocomplete({
-            searchIndex: entitySearchIndex,
-            entityField: EntityFields.DOMAINS,
+            searchIndex: SearchIndex.DOMAIN,
+            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+          }),
+          useAsyncSearch: true,
+        },
+      },
+
+      [EntityFields.DATA_PRODUCT]: {
+        label: t('label.data-product'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: SearchIndex.DATA_PRODUCT,
+            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
           }),
           useAsyncSearch: true,
         },
@@ -736,10 +891,43 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         fieldSettings: {
           asyncFetch: this.autocomplete({
-            searchIndex: entitySearchIndex ?? [
-              (SearchIndex.TAG, SearchIndex.GLOSSARY_TERM),
-            ],
-            entityField: EntityFields.TAG,
+            searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
+            entityField: EntityFields.FULLY_QUALIFIED_NAME,
+            q: buildTermQuery(
+              [
+                {
+                  field: 'classification.name.keyword',
+                  value: 'tier',
+                  negate: true,
+                },
+                {
+                  field: 'classification.name.keyword',
+                  value: 'certification',
+                  negate: true,
+                },
+              ],
+              true
+            ) as string,
+          }),
+          useAsyncSearch: true,
+        },
+      },
+
+      [EntityFields.CERTIFICATION]: {
+        label: t('label.certification'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: [SearchIndex.TAG],
+            entityField: EntityFields.FULLY_QUALIFIED_NAME,
+            q: buildTermQuery(
+              {
+                field: 'classification.name.keyword',
+                value: 'certification',
+              },
+              true
+            ) as string,
           }),
           useAsyncSearch: true,
         },
@@ -750,7 +938,17 @@ class AdvancedSearchClassBase {
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
         fieldSettings: {
-          asyncFetch: this.autoCompleteTier(tierOptions),
+          asyncFetch: this.autocomplete({
+            searchIndex: [SearchIndex.TAG],
+            entityField: EntityFields.FULLY_QUALIFIED_NAME,
+            q: buildTermQuery(
+              {
+                field: 'classification.name.keyword',
+                value: 'tier',
+              },
+              true
+            ) as string,
+          }),
           useAsyncSearch: true,
         },
       },
@@ -872,6 +1070,13 @@ class AdvancedSearchClassBase {
       [SearchIndex.GLOSSARY_TERM]: this.glossaryTermQueryBuilderFields,
       [SearchIndex.DATABASE_SCHEMA]: this.databaseSchemaQueryBuilderFields,
       [SearchIndex.STORED_PROCEDURE]: this.storedProcedureQueryBuilderFields,
+      [SearchIndex.DIRECTORY_SEARCH_INDEX]:
+        this.directorySearchQueryBuilderFields,
+      [SearchIndex.FILE_SEARCH_INDEX]: this.fileSearchQueryBuilderFields,
+      [SearchIndex.SPREADSHEET_SEARCH_INDEX]:
+        this.spreadsheetSearchQueryBuilderFields,
+      [SearchIndex.WORKSHEET_SEARCH_INDEX]:
+        this.worksheetSearchQueryBuilderFields,
       [SearchIndex.ALL]: {
         ...this.tableQueryBuilderFields,
         ...this.pipelineQueryBuilderFields,
@@ -882,6 +1087,10 @@ class AdvancedSearchClassBase {
         ...this.searchIndexQueryBuilderFields,
         ...this.dataModelQueryBuilderFields,
         ...this.apiEndpointQueryBuilderFields,
+        ...this.directorySearchQueryBuilderFields,
+        ...this.fileSearchQueryBuilderFields,
+        ...this.spreadsheetSearchQueryBuilderFields,
+        ...this.worksheetSearchQueryBuilderFields,
       },
       [SearchIndex.DATA_ASSET]: {
         ...this.tableQueryBuilderFields,
@@ -894,6 +1103,10 @@ class AdvancedSearchClassBase {
         ...this.dataModelQueryBuilderFields,
         ...this.apiEndpointQueryBuilderFields,
         ...this.glossaryTermQueryBuilderFields,
+        ...this.directorySearchQueryBuilderFields,
+        ...this.fileSearchQueryBuilderFields,
+        ...this.spreadsheetSearchQueryBuilderFields,
+        ...this.worksheetSearchQueryBuilderFields,
       },
     };
 
@@ -929,11 +1142,9 @@ class AdvancedSearchClassBase {
    */
   public getQueryBuilderFields = ({
     entitySearchIndex = [SearchIndex.TABLE],
-    tierOptions,
     shouldAddServiceField = true,
   }: {
     entitySearchIndex?: Array<SearchIndex>;
-    tierOptions?: Promise<ListValues>;
     shouldAddServiceField?: boolean;
   }) => {
     const serviceQueryBuilderFields: Fields = {
@@ -952,7 +1163,7 @@ class AdvancedSearchClassBase {
     };
 
     const fieldsConfig = {
-      ...this.getCommonConfig({ entitySearchIndex, tierOptions }),
+      ...this.getCommonConfig({ entitySearchIndex }),
       ...(shouldAddServiceField ? serviceQueryBuilderFields : {}),
       ...this.getEntitySpecificQueryBuilderFields(entitySearchIndex),
       ...this.getColumnConfig(entitySearchIndex),
@@ -968,10 +1179,9 @@ class AdvancedSearchClassBase {
    * Builds search index specific configuration for the query builder
    */
   public getQbConfigs: (
-    tierOptions: Promise<ListValues>,
     entitySearchIndex?: Array<SearchIndex>,
     isExplorePage?: boolean
-  ) => BasicConfig = (tierOptions, entitySearchIndex, isExplorePage) => {
+  ) => BasicConfig = (entitySearchIndex, isExplorePage) => {
     const searchIndexWithServices = [
       SearchIndex.DATA_ASSET,
       SearchIndex.TABLE,
@@ -1008,7 +1218,6 @@ class AdvancedSearchClassBase {
       fields: {
         ...this.getQueryBuilderFields({
           entitySearchIndex,
-          tierOptions,
           shouldAddServiceField,
         }),
       },
@@ -1041,9 +1250,9 @@ class AdvancedSearchClassBase {
         return {
           subfieldsKey: field.name,
           dataObject: {
-            type: 'select',
+            type: 'multiselect',
             label,
-            operators: LIST_VALUE_OPERATORS,
+            operators: MULTISELECT_FIELD_OPERATORS,
             fieldSettings: {
               listValues: getCustomPropertyAdvanceSearchEnumOptions(
                 (field.customPropertyConfig?.config as CustomPropertyEnumConfig)

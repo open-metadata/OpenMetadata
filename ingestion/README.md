@@ -23,8 +23,8 @@ The flow is depicted in the images below.
 
 **TopologyRunner Standard Flow**
 
-![image](../openmetadata-docs/images/v1.4/features/ingestion/workflows/metadata/multithreading/single-thread-flow.png)
+![image](https://raw.githubusercontent.com/open-metadata/docs-v1/refs/heads/main/public/images/v1.9/features/ingestion/workflows/metadata/multithreading/single-thread-flow.png)
 
 **TopologyRunner Multithread Flow**
 
-![image](../openmetadata-docs/images/v1.4/features/ingestion/workflows/metadata/multithreading/multi-thread-flow.png)
+![image](https://raw.githubusercontent.com/open-metadata/docs-v1/refs/heads/main/public/images/v1.9/features/ingestion/workflows/metadata/multithreading/multi-thread-flow.png)

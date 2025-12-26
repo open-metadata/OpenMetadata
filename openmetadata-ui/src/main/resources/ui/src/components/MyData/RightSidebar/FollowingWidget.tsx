@@ -44,6 +44,7 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
@@ -82,11 +83,15 @@ function FollowingWidget({
       const sortField = getSortField(selectedEntityFilter);
       const sortOrder = getSortOrder(selectedEntityFilter);
 
+      const queryFilterObj = getTermQuery(
+        { followers: currentUser.id },
+        'must'
+      );
+
       const res = await searchQuery({
         pageSize: PAGE_SIZE_MEDIUM,
         searchIndex: SearchIndex.ALL,
-        query: '*',
-        filters: `followers:${currentUser.id}`,
+        queryFilter: queryFilterObj,
         sortField,
         sortOrder,
       });
@@ -174,10 +179,10 @@ function FollowingWidget({
     () => (
       <WidgetEmptyState
         actionButtonLink={ROUTES.EXPLORE}
-        actionButtonText={t('label.browse-assets')}
+        actionButtonText={t('label.explore-assets')}
         description={t('message.not-followed-anything')}
         icon={
-          <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
+          <NoDataAssetsPlaceholder height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
         }
         title={t('message.not-following-any-assets-yet')}
       />
@@ -256,6 +261,15 @@ function FollowingWidget({
     );
   }, [followedData, emptyState, isExpanded]);
 
+  const translatedSortOptions = useMemo(
+    () =>
+      FOLLOWING_WIDGET_FILTER_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   const widgetHeader = useMemo(
     () => (
       <WidgetHeader
@@ -265,10 +279,9 @@ function FollowingWidget({
         icon={<FollowingAssetsIcon height={22} width={22} />}
         isEditView={isEditView}
         selectedSortBy={selectedEntityFilter}
-        sortOptions={FOLLOWING_WIDGET_FILTER_OPTIONS}
+        sortOptions={translatedSortOptions}
         title={t('label.following-assets')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
         onSortChange={(key) => handleEntityFilterChange({ key })}
         onTitleClick={() =>
           navigate(getUserPath(currentUser?.name ?? '', UserPageTabs.FOLLOWING))
@@ -285,6 +298,7 @@ function FollowingWidget({
       widgetKey,
       widgetData?.w,
       handleEntityFilterChange,
+      translatedSortOptions,
     ]
   );
 

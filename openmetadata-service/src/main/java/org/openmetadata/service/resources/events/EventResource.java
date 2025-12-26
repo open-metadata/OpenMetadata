@@ -31,13 +31,13 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import lombok.Getter;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.Entity.EntityList;
 import org.openmetadata.service.jdbi3.ChangeEventRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/events")
 @Tag(

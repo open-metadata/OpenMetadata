@@ -50,6 +50,12 @@
     }
   }
 
+  .test-type-card {
+    .form-switch-container {
+      margin-top: 16px;
+    }
+  }
+
   .ant-btn-icon-only.ant-btn-sm {
     &.list-add-btn {
       height: 24px;
@@ -184,15 +190,46 @@
   }
 
   .test-case-form-alert {
-    min-height: 75px;
+    min-height: 90px;
+  }
+}
+
+.test-case-form-drawer {
+  .ant-drawer-body {
+    padding: 0 @padding-lg;
+
+    .test-case-form-v1,
+    .edit-test-case-form-v1 {
+      padding-top: @padding-lg;
+      padding-bottom: @padding-lg;
+    }
   }
 }
 
 // Drawer specific styles
-.drawer-form-content {
-  .test-case-form-v1,
-  .edit-test-case-form-v1 {
-    padding-bottom: 0;
+.drawer-content-wrapper {
+  display: grid;
+  grid-template-columns: 65% 35%;
+  gap: 24px;
+  height: calc(100vh - 120px); // Account for drawer header and footer
+
+  .drawer-form-content {
+    overflow-y: auto;
+    padding-right: 8px;
+    height: 100%;
+
+    .test-case-form-v1,
+    .edit-test-case-form-v1 {
+      padding-bottom: 0;
+    }
+  }
+
+  .drawer-doc-panel {
+    overflow-y: auto;
+    border: 1px solid @grey-15;
+    border-radius: @border-rad-sm;
+    margin: @margin-lg @margin-lg @margin-lg 0;
+    padding: 0 @padding-mlg;
   }
 }
 

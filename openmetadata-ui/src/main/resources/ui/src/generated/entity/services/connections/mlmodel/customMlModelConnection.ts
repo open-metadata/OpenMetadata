@@ -29,6 +29,7 @@ export interface CustomMlModelConnection {
      * Custom Ml model service type
      */
     type: ServiceType;
+    [property: string]: any;
 }
 
 /**

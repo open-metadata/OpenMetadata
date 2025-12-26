@@ -3,6 +3,7 @@ package org.openmetadata.service.search.opensearch;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -13,18 +14,16 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
-import os.org.opensearch.action.bulk.BulkRequest;
-import os.org.opensearch.action.update.UpdateRequest;
-import os.org.opensearch.common.xcontent.XContentType;
+import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 
 @Slf4j
 public class OpenSearchEntitiesProcessor
-    implements Processor<BulkRequest, ResultList<? extends EntityInterface>> {
+    implements Processor<List<BulkOperation>, ResultList<? extends EntityInterface>> {
   private final StepStats stats = new StepStats();
 
   public OpenSearchEntitiesProcessor(int total) {
@@ -32,24 +31,24 @@ public class OpenSearchEntitiesProcessor
   }
 
   @Override
-  public BulkRequest process(
+  public List<BulkOperation> process(
       ResultList<? extends EntityInterface> input, Map<String, Object> contextData)
       throws SearchIndexException {
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
     if (CommonUtil.nullOrEmpty(entityType)) {
       throw new IllegalArgumentException(
-          "[EsEntitiesProcessor] entityType cannot be null or empty.");
+          "[OpenSearchEntitiesProcessor] entityType cannot be null or empty.");
     }
 
     LOG.debug(
-        "[EsEntitiesProcessor] Processing a Batch of Size: {}, EntityType: {} ",
+        "[OpenSearchEntitiesProcessor] Processing a Batch of Size: {}, EntityType: {} ",
         input.getData().size(),
         entityType);
-    BulkRequest requests;
+    List<BulkOperation> operations;
     try {
-      requests = buildBulkRequests(entityType, input.getData());
+      operations = buildBulkOperations(entityType, input.getData());
       LOG.debug(
-          "[EsEntitiesProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
+          "[OpenSearchEntitiesProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
           input.getData().size(),
           input.getData().size(),
           0);
@@ -62,38 +61,41 @@ public class OpenSearchEntitiesProcessor
               .withFailedCount(input.getData().size())
               .withSuccessCount(0)
               .withMessage(
-                  "Entities Processor Encountered Failure. Converting requests to Es Request.")
+                  "Entities Processor Encountered Failure. Converting requests to BulkOperation.")
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
-      LOG.debug("[EsEntitiesProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));
+      LOG.debug("[OpenSearchEntitiesProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));
       updateStats(0, input.getData().size());
       throw new SearchIndexException(error);
     }
-    return requests;
+    return operations;
   }
 
-  private BulkRequest buildBulkRequests(
+  private static List<BulkOperation> buildBulkOperations(
       String entityType, List<? extends EntityInterface> entities) {
-    BulkRequest bulkRequests = new BulkRequest();
+    List<BulkOperation> operations = new ArrayList<>();
     for (EntityInterface entity : entities) {
-      UpdateRequest request = getUpdateRequest(entityType, entity);
-      bulkRequests.add(request);
+      BulkOperation operation = getUpdateOperation(entityType, entity);
+      operations.add(operation);
     }
-    return bulkRequests;
+    return operations;
   }
 
-  public static UpdateRequest getUpdateRequest(String entityType, EntityInterface entity) {
+  public static BulkOperation getUpdateOperation(String entityType, EntityInterface entity) {
     IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
-    UpdateRequest updateRequest =
-        new UpdateRequest(
-            indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()),
-            entity.getId().toString());
-    updateRequest.doc(
+    String indexName = indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
+    String doc =
         JsonUtils.pojoToJson(
             Objects.requireNonNull(Entity.buildSearchIndex(entityType, entity))
-                .buildSearchIndexDoc()),
-        XContentType.JSON);
-    updateRequest.docAsUpsert(true);
-    return updateRequest;
+                .buildSearchIndexDoc());
+
+    return BulkOperation.of(
+        b ->
+            b.update(
+                u ->
+                    u.index(indexName)
+                        .id(entity.getId().toString())
+                        .docAsUpsert(true)
+                        .document(OsUtils.toJsonData(doc))));
   }
 
   @Override

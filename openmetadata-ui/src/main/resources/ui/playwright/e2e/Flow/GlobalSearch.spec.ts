@@ -45,6 +45,10 @@ test('searching for longer description should work', async ({ page }) => {
     }
   );
 
+  await page.waitForSelector('[data-testid="search-results"]', {
+    state: 'visible',
+  });
+
   await expect(
     page
       .getByTestId('search-results')

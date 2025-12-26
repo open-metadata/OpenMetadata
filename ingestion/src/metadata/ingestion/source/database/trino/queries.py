@@ -46,3 +46,7 @@ TRINO_TABLE_COMMENTS = textwrap.dedent(
 TRINO_GET_DATABASE = """
 SHOW CATALOGS
 """
+
+TRINO_VIEW_DEFINITION = """
+SHOW CREATE VIEW {view_name}
+"""

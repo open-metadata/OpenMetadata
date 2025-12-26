@@ -21,6 +21,7 @@ import { VALIDATION_MESSAGES } from '../../../../../constants/constants';
 import {
   CuratedAssetsFormSelectedAssetsInfo,
   getSelectedResourceCount,
+  isValidElasticsearchQuery,
 } from '../../../../../utils/CuratedAssetsUtils';
 import { AdvancedAssetsFilterField } from '../AdvancedAssetsFilterField/AdvancedAssetsFilterField.component';
 import { SelectAssetTypeField } from '../SelectAssetTypeField/SelectAssetTypeField.component';
@@ -47,7 +48,6 @@ const CuratedAssetsModal = ({
   const selectedResource = Form.useWatch('resources', form);
 
   const queryFilter = Form.useWatch('queryFilter', form);
-
   const title = Form.useWatch('title', form);
 
   useEffect(() => {
@@ -61,7 +61,11 @@ const CuratedAssetsModal = ({
   }, [isOpen, curatedAssetsConfig, form]);
 
   const disableSave = useMemo(() => {
-    return isEmpty(title) || isEmpty(selectedResource) || isEmpty(queryFilter);
+    return (
+      isEmpty(title) ||
+      isEmpty(selectedResource) ||
+      !isValidElasticsearchQuery(queryFilter || '{}')
+    );
   }, [title, selectedResource, queryFilter]);
 
   const handleCancel = useCallback(() => {

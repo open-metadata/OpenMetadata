@@ -59,6 +59,7 @@ def get_default_metrics(
         metrics_registry.UNIQUE_RATIO.value,
         metrics_registry.IQR.value,
         metrics_registry.HISTOGRAM.value,
+        metrics_registry.CARDINALITY_DISTRIBUTION.value,
         metrics_registry.NON_PARAMETRIC_SKEW.value,
     ]
 

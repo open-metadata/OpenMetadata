@@ -33,7 +33,12 @@ export interface CreateDataContract {
     /**
      * Reference to the data entity (table, topic, etc.) this contract applies to.
      */
-    entity: EntityReference;
+    entity:        EntityReference;
+    entityStatus?: EntityStatus;
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
     /**
      * Name of the data contract.
      */
@@ -55,14 +60,25 @@ export interface CreateDataContract {
      */
     schema?: Column[];
     /**
+     * Security and access policy expectations defined in the data contract.
+     */
+    security?: ContractSecurity;
+    /**
      * Semantics rules defined in the data contract.
      */
     semantics?: SemanticsRule[];
     /**
+     * Service Level Agreement expectations defined in the data contract.
+     */
+    sla?: ContractSLA;
+    /**
      * Source URL of the data contract.
      */
     sourceUrl?: string;
-    status?:    ContractStatus;
+    /**
+     * Terms of use for the data contract for both human and AI agents consumption.
+     */
+    termsOfUse?: string;
 }
 
 /**
@@ -121,6 +137,19 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**
@@ -235,6 +264,7 @@ export enum DataType {
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
     Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -352,6 +382,10 @@ export interface CustomMetric {
  * This schema defines the type to capture the table's column profile.
  */
 export interface ColumnProfile {
+    /**
+     * Cardinality distribution showing top categories with an 'Others' bucket.
+     */
+    cardinalityDistribution?: CardinalityDistribution;
     /**
      * Custom Metrics profile list bound to a column.
      */
@@ -471,6 +505,29 @@ export interface ColumnProfile {
 }
 
 /**
+ * Cardinality distribution showing top categories with an 'Others' bucket.
+ */
+export interface CardinalityDistribution {
+    /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
+    /**
+     * List of category names including 'Others'.
+     */
+    categories?: string[];
+    /**
+     * List of counts corresponding to each category.
+     */
+    counts?: number[];
+    /**
+     * List of percentages corresponding to each category.
+     */
+    percentages?: number[];
+}
+
+/**
  * Profiling results of a Custom Metric.
  */
 export interface CustomMetricProfile {
@@ -523,6 +580,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */
@@ -578,9 +639,82 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
+}
+
+/**
+ * Security and access policy expectations defined in the data contract.
+ *
+ * Security and access policy expectations
+ */
+export interface ContractSecurity {
+    /**
+     * Expected data classification (e.g. Confidential, PII, etc.)
+     */
+    dataClassification?: string;
+    /**
+     * Intended consumers of the data (e.g. internal teams, external partners, etc.)
+     */
+    policies?: Policy[];
+    [property: string]: any;
+}
+
+/**
+ * Intended consumers of the data (e.g. internal teams, external partners, etc.)
+ */
+export interface Policy {
+    /**
+     * Reference to an access policy ID or name that should govern this data
+     */
+    accessPolicy?: string;
+    /**
+     * List of groups that are intended consumers of the data
+     */
+    identities?: string[];
+    /**
+     * List of filters that define what subset of the data is accessible to the consumers
+     */
+    rowFilters?: RowFilter[];
+    [property: string]: any;
+}
+
+/**
+ * Filter that defines what subset of the data is accessible to certain consumers
+ */
+export interface RowFilter {
+    /**
+     * Column to apply the filter
+     */
+    columnName?: string;
+    /**
+     * Values applied to the filter
+     */
+    values?: string[];
+    [property: string]: any;
 }
 
 /**
@@ -603,6 +737,10 @@ export interface SemanticsRule {
      * List of entities to ignore for this semantics rule.
      */
     ignoredEntities?: string[];
+    /**
+     * JSON Tree to represents rule in UI.
+     */
+    jsonTree?: string;
     /**
      * Name of the semantics rule.
      */
@@ -627,10 +765,124 @@ export enum ProviderType {
 }
 
 /**
- * Status of the data contract.
+ * Service Level Agreement expectations defined in the data contract.
+ *
+ * Service Level Agreement expectations (timeliness, availability, etc.)
  */
-export enum ContractStatus {
-    Active = "Active",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
+export interface ContractSLA {
+    /**
+     * Time of day by which data is expected to be available (e.g. "09:00 UTC")
+     */
+    availabilityTime?: string;
+    /**
+     * Column that represents the refresh time of the data (if applicable)
+     */
+    columnName?: string;
+    /**
+     * Maximum acceptable latency between data generation and availability (e.g. 4 hours)
+     */
+    maxLatency?: MaximumLatency;
+    /**
+     * Expected frequency of data updates (e.g. every 1 day)
+     */
+    refreshFrequency?: RefreshFrequency;
+    /**
+     * How long the data is retained (if relevant)
+     */
+    retention?: DataRetentionPeriod;
+    /**
+     * Timezone for the availability time. UTC by default.
+     */
+    timezone?: Timezone;
+    [property: string]: any;
+}
+
+/**
+ * Maximum acceptable latency between data generation and availability (e.g. 4 hours)
+ */
+export interface MaximumLatency {
+    unit:  MaxLatencyUnit;
+    value: number;
+    [property: string]: any;
+}
+
+export enum MaxLatencyUnit {
+    Day = "day",
+    Hour = "hour",
+    Minute = "minute",
+}
+
+/**
+ * Expected frequency of data updates (e.g. every 1 day)
+ */
+export interface RefreshFrequency {
+    interval: number;
+    unit:     RefreshFrequencyUnit;
+    [property: string]: any;
+}
+
+export enum RefreshFrequencyUnit {
+    Day = "day",
+    Hour = "hour",
+    Month = "month",
+    Week = "week",
+    Year = "year",
+}
+
+/**
+ * How long the data is retained (if relevant)
+ */
+export interface DataRetentionPeriod {
+    period: number;
+    unit:   RetentionUnit;
+    [property: string]: any;
+}
+
+export enum RetentionUnit {
+    Day = "day",
+    Month = "month",
+    Week = "week",
+    Year = "year",
+}
+
+/**
+ * Timezone for the availability time. UTC by default.
+ */
+export enum Timezone {
+    GMT0000EuropeLondon = "GMT+00:00 (Europe/London)",
+    GMT0100AtlanticAzores = "GMT-01:00 (Atlantic/Azores)",
+    GMT0100EuropeParis = "GMT+01:00 (Europe/Paris)",
+    GMT0200AtlanticSouthGeorgia = "GMT-02:00 (Atlantic/South_Georgia)",
+    GMT0200EuropeAthens = "GMT+02:00 (Europe/Athens)",
+    GMT0230AtlanticNewfoundland = "GMT-02:30 (Atlantic/Newfoundland)",
+    GMT0300AmericaSaoPaulo = "GMT-03:00 (America/Sao Paulo)",
+    GMT0300AsiaIran = "GMT+03:00 (Asia/Iran)",
+    GMT0300EuropeMoscow = "GMT+03:00 (Europe/Moscow)",
+    GMT0400AmericaSantiago = "GMT-04:00 (America/Santiago)",
+    GMT0400AsiaDubai = "GMT+04:00 (Asia/Dubai)",
+    GMT0430AsiaAfghanistan = "GMT+04:30 (Asia/Afghanistan)",
+    GMT0500AmericaNewYork = "GMT-05:00 (America/New York)",
+    GMT0500AsiaKarachi = "GMT+05:00 (Asia/Karachi)",
+    GMT0530AsiaKolkata = "GMT+05:30 (Asia/Kolkata)",
+    GMT0545AsiaNepal = "GMT+05:45 (Asia/Nepal)",
+    GMT0600AmericaChicago = "GMT-06:00 (America/Chicago)",
+    GMT0600AsiaDhaka = "GMT+06:00 (Asia/Dhaka)",
+    GMT0600AsiaMyanmar = "GMT+06:00 (Asia/Myanmar)",
+    GMT0700AmericaDenver = "GMT-07:00 (America/Denver)",
+    GMT0700AsiaBangkok = "GMT+07:00 (Asia/Bangkok)",
+    GMT0800AmericaLosAngeles = "GMT-08:00 (America/Los Angeles)",
+    GMT0800AsiaShanghai = "GMT+08:00 (Asia/Shanghai)",
+    GMT0845AustraliaAustralianCentralWesternStandardTime = "GMT+08:45 (Australia/Australian Central Western Standard Time)",
+    GMT0900AmericaAnchorage = "GMT-09:00 (America/Anchorage)",
+    GMT0900AsiaTokyo = "GMT+09:00 (Asia/Tokyo)",
+    GMT0900AustraliaAdelaide = "GMT+09:00 (Australia/Adelaide)",
+    GMT0930PacificMarquesas = "GMT-09:30 (Pacific/Marquesas)",
+    GMT1000AustraliaSydney = "GMT+10:00 (Australia/Sydney)",
+    GMT1000PacificHonolulu = "GMT-10:00 (Pacific/Honolulu)",
+    GMT1030AustraliaLordHowe = "GMT+10:30 (Australia/Lord Howe)",
+    GMT1100PacificNiue = "GMT-11:00 (Pacific/Niue)",
+    GMT1100PacificNorfolk = "GMT+11:00 (Pacific/Norfolk)",
+    GMT1200PacificAuckland = "GMT+12:00 (Pacific/Auckland)",
+    GMT1300PacificTongatapu = "GMT+13:00 (Pacific/Tongatapu)",
+    GMT1400PacificKiritimati = "GMT+14:00 (Pacific/Kiritimati)",
 }

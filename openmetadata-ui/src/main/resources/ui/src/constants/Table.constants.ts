@@ -22,75 +22,78 @@ import {
   Table,
   TableType,
 } from '../generated/entity/data/table';
-import i18n from '../utils/i18next/LocalUtil';
 
 export const TABLE_SCROLL_VALUE = { x: 1200 };
 
 export const TABLE_CONSTRAINTS_TYPE_OPTIONS = [
   {
-    label: i18n.t('label.entity-key', {
-      entity: i18n.t('label.primary'),
-    }),
+    label: 'label.entity-key',
+    labelData: {
+      entity: 'label.primary',
+    },
     value: ConstraintType.PrimaryKey,
   },
   {
-    label: i18n.t('label.entity-key', {
-      entity: i18n.t('label.foreign'),
-    }),
+    label: 'label.entity-key',
+    labelData: {
+      entity: 'label.foreign',
+    },
     value: ConstraintType.ForeignKey,
   },
   {
-    label: i18n.t('label.unique'),
+    label: 'label.unique',
     value: ConstraintType.Unique,
   },
   {
-    label: i18n.t('label.entity-key', {
-      entity: i18n.t('label.dist'),
-    }),
+    label: 'label.entity-key',
+    labelData: {
+      entity: 'label.dist',
+    },
     value: ConstraintType.DistKey,
   },
   {
-    label: i18n.t('label.entity-key', {
-      entity: i18n.t('label.sort'),
-    }),
+    label: 'label.entity-key',
+    labelData: {
+      entity: 'label.sort',
+    },
     value: ConstraintType.SortKey,
   },
 ];
 
 export const COLUMN_CONSTRAINT_TYPE_OPTIONS = [
   {
-    label: i18n.t('label.primary-key'),
+    label: 'label.primary-key',
     value: Constraint.PrimaryKey,
   },
   {
-    label: i18n.t('label.not-null'),
+    label: 'label.not-null',
     value: Constraint.NotNull,
   },
   {
-    label: i18n.t('label.null'),
+    label: 'label.null',
     value: Constraint.Null,
   },
   {
-    label: i18n.t('label.unique'),
+    label: 'label.unique',
     value: Constraint.Unique,
   },
 ];
 
 export const RELATIONSHIP_TYPE_OPTION = [
   {
-    label: i18n.t('label.one-to-one'),
+    label: 'label.one-to-one',
     value: RelationshipType.OneToOne,
   },
   {
-    label: i18n.t('label.one-to-many'),
+    label: 'label.one-to-many',
     value: RelationshipType.OneToMany,
   },
   {
-    label: i18n.t('label.many-to-one'),
+    label: 'label.many-to-one',
     value: RelationshipType.ManyToOne,
   },
   {
-    label: i18n.t('label.many-to-many'),
+    label: 'label.many-to-many',
     value: RelationshipType.ManyToMany,
   },
 ];
@@ -226,7 +229,6 @@ export const TABLE_DUMMY_DATA: Table = {
       dataLength: 512,
       dataTypeDisplay: 'varchar',
       description:
-        // eslint-disable-next-line max-len
         'The name of the region, such as a province or state, where the customer is located. For example, Ontario or New York. This column is the same as CustomerAddress.province in the Admin API.',
       fullyQualifiedName:
         'sample_data.ecommerce_db.shopify.dim_address_clean.region',

@@ -29,6 +29,7 @@ export interface CustomPipelineConnection {
      * Custom pipeline service type
      */
     type: ServiceType;
+    [property: string]: any;
 }
 
 /**

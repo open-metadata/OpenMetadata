@@ -15,7 +15,9 @@
       "type": "string",
       "enum": [
         "TEST_CONNECTION",
-        "REVERSE_INGESTION"
+        "REVERSE_INGESTION",
+        "QUERY_RUNNER",
+        "TEST_SPARK_ENGINE_CONNECTION"
       ]
     },
     "workflowStatus": {
@@ -68,6 +70,12 @@
         },
         {
           "$ref": "../../metadataIngestion/reverseIngestionPipeline.json"
+        },
+        {
+          "$ref": "queryRunnerRequest.json"
+        },
+        {
+          "$ref": "testSparkEngineConnection.json"
         }
       ]
     },
@@ -79,6 +87,9 @@
         },
         {
           "$ref": "../services/ingestionPipelines/reverseIngestionResponse.json"
+        },
+        {
+          "$ref": "response/queryRunnerResponse.json"
         }
       ]
     },
@@ -101,6 +112,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "href": {
       "description": "Link to the resource corresponding to this entity.",

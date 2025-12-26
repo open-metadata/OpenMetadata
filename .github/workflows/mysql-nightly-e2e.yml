@@ -36,8 +36,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2, 3, 4]
-        shardTotal: [4]
+        shardIndex: [1, 2, 3, 4, 5, 6]
+        shardTotal: [6]
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -67,7 +67,7 @@ jobs:
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: "3.9"
+          python-version: "3.10"
           args: "-d mysql"
           ingestion_dependency: "playwright"
 
@@ -75,11 +75,30 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: yarn --ignore-scripts --frozen-lockfile
       - name: Install Playwright Browsers
-        run: npx playwright@1.48.2 install --with-deps
+        run: npx playwright@1.51.1 install --with-deps
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
-          npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+          if [ "${{ matrix.shardIndex }}" -eq "1" ]; then
+            echo "🔹 Running DataAssetRules-only tests on shard 1"
+
+            # The testMatch pattern ensures only DataAssetRules*.spec.ts files run
+            npx playwright test \
+              --project=setup \
+              --project=DataAssetRulesEnabled \
+              --project=DataAssetRulesDisabled
+
+          else
+            # Shards 2-6 handle chromium tests (5 workers total)
+            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 1 ))
+            echo "🔹 Running all tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/5"
+            npx playwright test \
+              --project=chromium \
+              --grep-invert @dataAssetRules \
+              --shard=${CHROMIUM_SHARD}/5
+              --workers=50%
+          fi
+
         env:
           PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
@@ -137,7 +156,16 @@ jobs:
         with:
           name: blob-report-${{ matrix.shardIndex }}
           path: openmetadata-ui/src/main/resources/ui/blob-report
-          retention-days: 5
+          retention-days: 1
+
+      - name: Upload HTML report to GitHub Actions Artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-HTML-report-${{ matrix.shardIndex }}
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
+          retention-days: 1
+          compression-level: 9
 
       - name: Clean Up
         run: |
@@ -163,7 +191,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18.19.0
+          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
 
       - name: Download blob reports from GitHub Actions Artifacts
         uses: actions/download-artifact@v4
@@ -180,4 +208,4 @@ jobs:
           SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
         run: |
           npx playwright merge-reports --reporter json ./blob-reports > merged_tests_results.json
-          npx playwright-slack-report -c playwright/salck-cli.config.json -j merged_tests_results.json > slack_report.json
+          npx playwright-slack-report -c playwright/slack-cli.config.json -j merged_tests_results.json > slack_report.json

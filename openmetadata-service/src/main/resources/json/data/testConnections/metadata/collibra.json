@@ -1,0 +1,14 @@
+{
+    "name": "Collibra",
+    "displayName": "Collibra Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction.",
+    "steps": [
+        {
+            "name": "GetGlossaries",
+            "description":  "Check if the Collibra APIs are reachable and can fetch glossaries with the given credentials.",
+            "errorMessage": "Failed to connect to Collibra or fetch glossaries, please validate the credentials",
+            "shortCircuit": true,
+            "mandatory": true
+        }
+    ]
+}

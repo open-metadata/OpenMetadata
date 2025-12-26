@@ -33,7 +33,9 @@ export interface BulkEditEntityProps {
   onCSVReadComplete: (results: { data: string[][] }) => void;
   setGridContainer: (container: HTMLElement | null) => void;
   handleCopy: (event: CopyEvent<Record<string, string>>) => void;
-  handlePaste: (event: PasteEvent<Record<string, string>>) => void;
+  handlePaste: (
+    event: PasteEvent<Record<string, string>>
+  ) => Record<string, string>;
   pushToUndoStack: (dataSource: Record<string, string>[]) => void;
   handleOnRowsChange: (updatedRows: Record<string, string>[]) => void;
 }
