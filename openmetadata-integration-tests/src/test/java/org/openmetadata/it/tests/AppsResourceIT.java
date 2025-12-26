@@ -58,10 +58,10 @@ import org.openmetadata.sdk.network.HttpMethod;
  *
  * <p>Migrated from: org.openmetadata.service.resources.apps.AppsResourceTest
  *
- * <p>Test isolation: Uses TestNamespace extension for test isolation Parallelization: Safe for
- * concurrent execution via @Execution(ExecutionMode.CONCURRENT)
+ * <p>Test isolation: Uses TestNamespace extension for test isolation. Runs in SAME_THREAD mode
+ * because multiple tests trigger SearchIndexingApplication which is a shared resource.
  */
-@Execution(ExecutionMode.CONCURRENT)
+@Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(TestNamespaceExtension.class)
 public class AppsResourceIT {
 
@@ -350,6 +350,7 @@ public class AppsResourceIT {
         TestSuiteBootstrap.isK8sEnabled(), "App trigger not compatible with K8s pipeline backend");
     String appName = "SearchIndexingApplication";
 
+    waitForAppJobCompletion(appName);
     Apps.trigger(appName).run();
 
     Thread.sleep(2000);

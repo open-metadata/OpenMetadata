@@ -10,10 +10,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -3526,44 +3529,53 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               .allMatch(d -> d.getInherited() != null && d.getInherited()),
           "All table domains should be marked as inherited");
 
-      // Wait for Elasticsearch indexing
-      Thread.sleep(2000);
-
-      // Verify domains appear in Elasticsearch search
+      // Wait for Elasticsearch indexing using Awaitility
       try (RestClient searchClient = TestSuiteBootstrap.createSearchClient()) {
+        String tableId = table.getId().toString();
+        AtomicReference<String> responseBodyRef = new AtomicReference<>();
 
-        // Refresh index to make documents searchable
-        refreshSearchIndex(searchClient);
+        Awaitility.await("Wait for table to appear in search index")
+            .pollInterval(Duration.ofMillis(500))
+            .atMost(Duration.ofSeconds(30))
+            .ignoreExceptions()
+            .until(
+                () -> {
+                  refreshSearchIndex(searchClient);
 
-        // Search for table by ID
-        String tableSearchQuery =
-            "{"
-                + "  \"size\": 1,"
-                + "  \"query\": {"
-                + "    \"bool\": {"
-                + "      \"must\": ["
-                + "        { \"term\": { \"_id\": \""
-                + table.getId().toString()
-                + "\" } }"
-                + "      ]"
-                + "    }"
-                + "  }"
-                + "}";
+                  String tableSearchQuery =
+                      "{"
+                          + "  \"size\": 1,"
+                          + "  \"query\": {"
+                          + "    \"bool\": {"
+                          + "      \"must\": ["
+                          + "        { \"term\": { \"_id\": \""
+                          + tableId
+                          + "\" } }"
+                          + "      ]"
+                          + "    }"
+                          + "  }"
+                          + "}";
 
-        Request request = new Request("POST", "/" + getTableSearchIndexName() + "/_search");
-        request.setJsonEntity(tableSearchQuery);
-        Response response = searchClient.performRequest(request);
+                  Request request =
+                      new Request("POST", "/" + getTableSearchIndexName() + "/_search");
+                  request.setJsonEntity(tableSearchQuery);
+                  Response response = searchClient.performRequest(request);
 
-        assertEquals(200, response.getStatusLine().getStatusCode());
+                  if (response.getStatusLine().getStatusCode() != 200) {
+                    return false;
+                  }
 
-        // Parse response to verify domains are in search index
-        String responseBody =
-            new String(
-                response.getEntity().getContent().readAllBytes(),
-                java.nio.charset.StandardCharsets.UTF_8);
+                  String body =
+                      new String(
+                          response.getEntity().getContent().readAllBytes(),
+                          java.nio.charset.StandardCharsets.UTF_8);
+                  responseBodyRef.set(body);
+                  return body.contains(tableId);
+                });
 
         // Verify the table appears in search results
-        assertTrue(responseBody.contains(table.getId().toString()));
+        String responseBody = responseBodyRef.get();
+        assertTrue(responseBody.contains(tableId));
         assertTrue(responseBody.contains("\"total\""));
       }
     } finally {
