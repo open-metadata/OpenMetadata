@@ -43,14 +43,12 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
 import {
-  DEFAULT_DOMAIN_VALUE,
   ES_MAX_PAGE_SIZE,
   REDIRECT_PATHNAME,
   ROUTES,
 } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
-import { SearchIndex } from '../../../enums/search.enum';
 import {
   AuthenticationConfiguration,
   ClientType,
@@ -77,7 +75,6 @@ import {
   prepareUserProfileFromClaims,
   validateAuthFields,
 } from '../../../utils/AuthProvider.util';
-import { getPathNameFromWindowLocation } from '../../../utils/RouterUtils';
 import {
   getOidcToken,
   getRefreshToken,
@@ -87,6 +84,7 @@ import {
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
+import { withDomainFilter } from '../../../utils/DomainUtils';
 import Loader from '../../common/Loader/Loader';
 import Auth0Authenticator from '../AppAuthenticators/Auth0Authenticator';
 import BasicAuthAuthenticator from '../AppAuthenticators/BasicAuthAuthenticator';
@@ -102,16 +100,6 @@ import OktaAuthProvider from './OktaAuthProvider';
 interface AuthProviderProps {
   childComponentType: ComponentType;
   children: ReactNode;
-}
-
-interface ESQueryFilter {
-  query: {
-    bool: {
-      must?: Record<string, unknown>[];
-      must_not?: Record<string, unknown>[];
-      should?: Record<string, unknown>[];
-    };
-  };
 }
 
 const cookieStorage = new CookieStorage();
@@ -470,64 +458,6 @@ export const AuthProvider = ({
 
         break;
     }
-  };
-
-  const withDomainFilter = (config: InternalAxiosRequestConfig<any>) => {
-    const isGetRequest = config.method === 'get';
-    const activeDomain = useDomainStore.getState().activeDomain;
-    const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
-    const currentPath = getPathNameFromWindowLocation();
-    const shouldNotIntercept = [
-      '/domain',
-      '/auth/logout',
-      '/auth/refresh',
-    ].reduce((prev, curr) => {
-      return prev || currentPath.startsWith(curr);
-    }, false);
-
-    // Do not intercept requests from domains page or /auth endpoints
-    if (shouldNotIntercept) {
-      return config;
-    }
-
-    if (isGetRequest && hasActiveDomain) {
-      // Filter ES Query
-      if (config.url?.includes('/search/query')) {
-        if (config.params?.index === SearchIndex.TAG) {
-          return config;
-        }
-
-        let filter: ESQueryFilter = { query: { bool: {} } };
-        if (config.params?.query_filter) {
-          try {
-            filter = JSON.parse(config.params.query_filter as string);
-          } catch {
-            filter = { query: { bool: {} } };
-          }
-        }
-
-        filter.query.bool.must = [
-          ...(filter.query.bool.must ?? []),
-          {
-            prefix: {
-              'domains.fullyQualifiedName': activeDomain,
-            },
-          },
-        ];
-
-        config.params = {
-          ...config.params,
-          query_filter: JSON.stringify(filter),
-        };
-      } else {
-        config.params = {
-          ...config.params,
-          domain: activeDomain,
-        };
-      }
-    }
-
-    return config;
   };
 
   /**
