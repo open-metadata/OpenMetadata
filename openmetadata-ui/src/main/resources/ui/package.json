@@ -38,7 +38,7 @@
     "playwright:open": "playwright test --ui",
     "playwright:codegen": "playwright codegen",
     "generate:app-docs": "node generateApplicationDocs.js",
-    "generate:e2e-docs": "node playwright/doc-generator/generate.js"
+    "generate:e2e-docs": "PLAYWRIGHT_IS_OSS=true node playwright/doc-generator/generate.js"
   },
   "dependencies": {
     "@analytics/session-utils": "^0.1.17",

@@ -19,8 +19,8 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-import { CarouselLayout } from '../../components/Layout/CarouselLayout/CarouselLayout';
 import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
+import { CarouselLayout } from '../../components/Layout/CarouselLayout/CarouselLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import SignInPage from './SignInPage';
 
@@ -155,6 +155,7 @@ describe('Test SignInPage Component', () => {
     });
 
     const loader = await findByTestId(container, 'loader');
+
     expect(loader).toBeInTheDocument();
 
     expect(onLoginHandler).toHaveBeenCalled();
@@ -173,6 +174,7 @@ describe('Test SignInPage Component', () => {
     });
 
     const emailInput = await findByTestId(container, 'email');
+
     expect(emailInput).toBeInTheDocument();
   });
 
@@ -188,6 +190,7 @@ describe('Test SignInPage Component', () => {
     });
 
     const signinButton = await findByText(container, /label.sign-in-with-sso/i);
+
     expect(signinButton).toBeInTheDocument();
   });
 
