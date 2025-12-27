@@ -119,6 +119,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
+import org.openmetadata.schema.entity.learning.LearningResource;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -411,6 +412,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   DocStoreDAO docStoreDAO();
+
+  @CreateSqlObject
+  LearningResourceDAO learningResourceDAO();
 
   @CreateSqlObject
   SuggestionDAO suggestionDAO();
@@ -7501,6 +7505,23 @@ public interface CollectionDAO {
         value = "DELETE FROM doc_store WHERE entityType = 'EmailTemplate'",
         connectionType = POSTGRES)
     void deleteEmailTemplates();
+  }
+
+  interface LearningResourceDAO extends EntityDAO<LearningResource> {
+    @Override
+    default String getTableName() {
+      return "learning_resource_entity";
+    }
+
+    @Override
+    default Class<LearningResource> getEntityClass() {
+      return LearningResource.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
   }
 
   interface SuggestionDAO {

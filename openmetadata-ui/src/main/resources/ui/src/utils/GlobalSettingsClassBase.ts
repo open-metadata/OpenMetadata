@@ -15,6 +15,7 @@ import { ReactComponent as APICollectionIcon } from '../assets/svg/api-collectio
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-colored.svg';
 import { ReactComponent as IconAPI } from '../assets/svg/apis-colored.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
+import { ReactComponent as LearningIcon } from '../assets/svg/book.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored-new.svg';
@@ -624,6 +625,13 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.DATA_ASSET_RULES}`,
             icon: DataAssetRulesIcon,
             isBeta: true,
+          },
+          {
+            label: t('label.learning-resources'),
+            description: t('message.learning-resources-management-description'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LEARNING_RESOURCES}`,
+            icon: LearningIcon,
           },
         ],
       },

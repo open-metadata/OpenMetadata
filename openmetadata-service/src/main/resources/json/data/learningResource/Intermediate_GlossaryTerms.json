@@ -1,0 +1,27 @@
+{
+  "name": "Intermediate_GlossaryTerms",
+  "displayName": "Working with Glossary Terms",
+  "description": "Master glossary terms in OpenMetadata. Learn how to create hierarchical terms, add synonyms, define relationships, link to assets, and manage reviewers and approvals.",
+  "resourceType": "Article",
+  "categories": [
+    "Discovery",
+    "DataGovernance"
+  ],
+  "difficulty": "Intermediate",
+  "source": {
+    "url": "https://www.getcollate.io/learning-center/resource/Intermediate_GlossaryTerms",
+    "provider": "OpenMetadata",
+    "embedConfig": {
+      "content": "# Glossary Terms Guide\n\n## Creating Terms\n\nGlossary terms represent business concepts in your organization.\n\n## Key Features\n\n- **Hierarchical Structure**: Organize terms in parent-child relationships\n- **Synonyms**: Add alternative names for the same concept\n- **Related Terms**: Link related business concepts\n- **Asset Linking**: Connect terms to tables, columns, and other assets\n\n## Best Practices\n\n1. Use clear, descriptive names\n2. Provide detailed descriptions\n3. Add examples when helpful\n4. Keep hierarchies manageable (3-4 levels max)\n5. Review and update regularly"
+    }
+  },
+  "estimatedDuration": 12,
+  "contexts": [
+    {
+      "pageId": "glossaryTerm",
+      "componentId": "term-header"
+    }
+  ],
+  "status": "Active",
+  "owners": []
+}

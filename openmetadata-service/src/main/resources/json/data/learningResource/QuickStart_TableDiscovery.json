@@ -1,0 +1,27 @@
+{
+  "name": "QuickStart_TableDiscovery",
+  "displayName": "Discover Your Data Tables",
+  "description": "Learn how to explore and discover data tables in OpenMetadata. This guide covers search, filters, and viewing table details including schema, lineage, and quality metrics.",
+  "resourceType": "Article",
+  "categories": [
+    "Discovery"
+  ],
+  "difficulty": "Intro",
+  "source": {
+    "url": "https://docs.open-metadata.org/tutorials/table-discovery",
+    "provider": "OpenMetadata"
+  },
+  "estimatedDuration": 5,
+  "contexts": [
+    {
+      "pageId": "explore",
+      "componentId": "table-list-header"
+    },
+    {
+      "pageId": "table",
+      "componentId": "overview-tab"
+    }
+  ],
+  "status": "Active",
+  "owners": []
+}

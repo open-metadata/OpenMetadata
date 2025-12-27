@@ -97,4 +97,5 @@ export enum GlobalSettingOptions {
   FILES = 'files',
   SPREADSHEETS = 'spreadsheets',
   WORKSHEETS = 'worksheets',
+  LEARNING_RESOURCES = 'learning-resources',
 }

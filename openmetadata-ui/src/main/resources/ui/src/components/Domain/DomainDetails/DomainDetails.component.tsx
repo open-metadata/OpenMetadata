@@ -104,6 +104,7 @@ import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
+import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 import '../domain.less';
@@ -826,6 +827,8 @@ const DomainDetails = ({
               )}
 
               <ButtonGroup className="spaced" size="small">
+                <LearningIcon pageId="domain" size="small" />
+
                 {domain?.version && (
                   <Tooltip
                     title={t(

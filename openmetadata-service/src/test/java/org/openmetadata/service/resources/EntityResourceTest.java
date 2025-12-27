@@ -286,7 +286,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsTags;
   protected boolean supportsPatch = true;
   protected boolean supportsEtag = true;
-  protected final boolean supportsSoftDelete;
+  protected boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsPatchDomains = true;
   protected final boolean supportsEmptyDescription;

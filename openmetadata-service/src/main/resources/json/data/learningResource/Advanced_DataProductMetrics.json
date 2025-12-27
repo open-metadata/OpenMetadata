@@ -1,0 +1,27 @@
+{
+  "name": "Advanced_DataProductMetrics",
+  "displayName": "Data Product Metrics & SLOs",
+  "description": "Master data product metrics and service level objectives. Learn to define quality metrics, set up monitoring, track consumer satisfaction, and measure the success of your data products.",
+  "resourceType": "Article",
+  "categories": [
+    "DataGovernance",
+    "DataQuality"
+  ],
+  "difficulty": "Advanced",
+  "source": {
+    "url": "https://www.getcollate.io/learning-center/resource/Advanced_DataProductMetrics",
+    "provider": "OpenMetadata",
+    "embedConfig": {
+      "content": "# Data Product Metrics Guide\n\n## Overview\n\nData products require clear metrics and SLOs to ensure they deliver value.\n\n## Key Metrics\n\n### Quality Metrics\n- **Completeness**: Percentage of non-null values\n- **Freshness**: How recently data was updated\n- **Accuracy**: Validation against known truth\n- **Consistency**: Agreement across sources\n\n### Usage Metrics\n- **Active Consumers**: Number of teams/users accessing the product\n- **Query Volume**: Daily/weekly query counts\n- **Latency**: Response time for data access\n\n## Defining SLOs\n\n1. **Availability**: 99.9% uptime\n2. **Latency**: p95 < 500ms\n3. **Freshness**: Updated within 1 hour\n4. **Quality**: >95% completeness\n\n## Monitoring\n\nSet up dashboards and alerts to track SLO compliance and notify stakeholders of violations.\n\n## Best Practices\n\n- Start with achievable targets\n- Review and adjust SLOs quarterly\n- Communicate changes to consumers\n- Track historical trends"
+    }
+  },
+  "estimatedDuration": 18,
+  "contexts": [
+    {
+      "pageId": "dataProduct",
+      "componentId": "metrics-tab"
+    }
+  ],
+  "status": "Active",
+  "owners": []
+}

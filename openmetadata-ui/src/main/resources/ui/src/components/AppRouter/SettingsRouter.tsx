@@ -38,6 +38,7 @@ import EditEmailConfigPage from '../../pages/EditEmailConfigPage/EditEmailConfig
 import EmailConfigSettingsPage from '../../pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component';
 import GlobalSettingCategoryPage from '../../pages/GlobalSettingPage/GlobalSettingCategory/GlobalSettingCategoryPage';
 import GlobalSettingPage from '../../pages/GlobalSettingPage/GlobalSettingPage';
+import { LearningResourcesPage } from '../../pages/LearningResourcesPage/LearningResourcesPage';
 import LineageConfigPage from '../../pages/LineageConfigPage/LineageConfigPage';
 import NotificationListPage from '../../pages/NotificationListPage/NotificationListPage';
 import OmHealthPage from '../../pages/OmHealth/OmHealthPage';
@@ -628,6 +629,17 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.OM_HEALTH
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <LearningResourcesPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.LEARNING_RESOURCES
         )}
       />
       <Route

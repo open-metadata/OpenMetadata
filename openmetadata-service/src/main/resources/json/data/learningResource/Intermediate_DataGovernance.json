@@ -1,0 +1,27 @@
+{
+  "name": "Intermediate_DataGovernance",
+  "displayName": "Understanding Data Governance",
+  "description": "Learn how to implement data governance policies in OpenMetadata. Topics include classification, glossary management, ownership assignment, and compliance tracking.",
+  "resourceType": "Article",
+  "categories": [
+    "DataGovernance"
+  ],
+  "difficulty": "Intermediate",
+  "source": {
+    "url": "https://docs.open-metadata.org/tutorials/data-governance",
+    "provider": "OpenMetadata"
+  },
+  "estimatedDuration": 12,
+  "contexts": [
+    {
+      "pageId": "governance",
+      "componentId": "glossary-panel"
+    },
+    {
+      "pageId": "table",
+      "componentId": "governance-tab"
+    }
+  ],
+  "status": "Active",
+  "owners": []
+}

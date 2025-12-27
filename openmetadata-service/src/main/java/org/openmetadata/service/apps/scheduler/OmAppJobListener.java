@@ -6,7 +6,6 @@ import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.app.App;
@@ -37,6 +36,7 @@ public class OmAppJobListener implements JobListener {
   public static final String APP_RUN_STATS = "AppRunStats";
   public static final String JOB_LISTENER_NAME = "OM_JOB_LISTENER";
   public static final String SERVICES_FIELD = "services";
+  private App jobApp;
 
   protected OmAppJobListener() {
     this.repository = new AppRepository();
@@ -53,7 +53,7 @@ public class OmAppJobListener implements JobListener {
       String runType =
           (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
       String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
-      App jobApp = repository.findByName(appName, Include.NON_DELETED);
+      jobApp = repository.findByName(appName, Include.NON_DELETED);
 
       // Debug logging to check if App ID is present
       if (jobApp.getId() == null) {
@@ -192,14 +192,9 @@ public class OmAppJobListener implements JobListener {
       JobExecutionContext context, AppRunRecord runRecord, boolean update) {
     JobDataMap dataMap = context.getJobDetail().getJobDataMap();
     if (dataMap.containsKey(SCHEDULED_APP_RUN_EXTENSION)) {
-      // Update the Run Record in Data Map
       dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
-
-      // Push Updates to the Database
-      String appName = (String) context.getJobDetail().getJobDataMap().get(APP_NAME);
-      UUID appId = repository.findByName(appName, Include.NON_DELETED).getId();
       if (update) {
-        repository.updateAppStatus(appId, runRecord);
+        repository.updateAppStatus(jobApp.getId(), runRecord);
       } else {
         repository.addAppStatus(runRecord);
       }

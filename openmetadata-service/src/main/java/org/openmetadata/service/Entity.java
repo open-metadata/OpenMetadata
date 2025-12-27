@@ -270,6 +270,7 @@ public final class Entity {
   public static final String ALL_RESOURCES = "All";
 
   public static final String DOCUMENT = "document";
+  public static final String LEARNING_RESOURCE = "learningResource";
   // ServiceType - Service Entity name map
   static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP = new EnumMap<>(ServiceType.class);
   // entity type to service entity name map
