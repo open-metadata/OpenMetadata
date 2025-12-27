@@ -105,7 +105,7 @@ jobs:
           librdkafka-dev unixodbc-dev libevent-dev jq
           sudo make install_antlr_cli
 
-      - name: Build Dependencies (skip tests)
+      - name: Build for Integration Tests (PostgreSQL + OpenSearch)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn -DskipTests clean install -pl :openmetadata-integration-tests -am
