@@ -47,7 +47,7 @@ test.describe('Service Listing', () => {
   });
 
   test('should render the service listing page', async ({ page }) => {
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.getByTestId('filter-icon').click();
 

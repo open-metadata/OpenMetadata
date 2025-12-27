@@ -24,7 +24,7 @@ test.describe('Table & Data Model columns table pagination', () => {
       '/table/sample_data.ecommerce_db.shopify.performance_test_table'
     );
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -40,7 +40,7 @@ test.describe('Table & Data Model columns table pagination', () => {
     // Go to Explore Page
     await sidebarClick(page, SidebarItem.EXPLORE);
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -54,7 +54,7 @@ test.describe('Table & Data Model columns table pagination', () => {
     // Go to Users Page
     await settingClick(page, GlobalSettingOptions.USERS);
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });

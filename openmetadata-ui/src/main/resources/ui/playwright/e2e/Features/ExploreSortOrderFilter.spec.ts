@@ -28,7 +28,7 @@ test.describe('Explore Sort Order Filter', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.EXPLORE);
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await page.getByTestId('search-dropdown-Data Assets').click();
       await page.waitForSelector(

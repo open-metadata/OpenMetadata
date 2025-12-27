@@ -13,14 +13,14 @@
 import { expect, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    redirectToHomePage,
+    toastNotification,
+    uuid,
 } from '../../utils/common';
 import {
-  confirmationDragAndDropTeam,
-  dragAndDropElement,
-  openDragDropDropdown,
+    confirmationDragAndDropTeam,
+    dragAndDropElement,
+    openDragDropDropdown,
 } from '../../utils/dragDrop';
 import { settingClick } from '../../utils/sidebar';
 import { addTeamHierarchy, hardDeleteTeam } from '../../utils/team';
@@ -102,7 +102,7 @@ test.describe('Teams drag and drop should work properly', () => {
   test('Add teams in hierarchy', async ({ page }) => {
     for (const teamDetails of DRAG_AND_DROP_TEAM_DETAILS) {
       await addTeamHierarchy(page, teamDetails);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });

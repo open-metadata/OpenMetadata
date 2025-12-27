@@ -10,17 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
-  DATA_CONSUMER_RULES,
-  DATA_STEWARD_RULES,
-  EDIT_DESCRIPTION_RULE,
-  EDIT_GLOSSARY_TERM_RULE,
-  EDIT_TAGS_RULE,
-  EDIT_USER_FOR_TEAM_RULES,
-  OWNER_TEAM_RULES,
-  VIEW_ALL_RULE,
-  VIEW_ALL_WITH_MATCH_TAG_CONDITION,
+    DATA_CONSUMER_RULES,
+    DATA_STEWARD_RULES,
+    EDIT_DESCRIPTION_RULE,
+    EDIT_GLOSSARY_TERM_RULE,
+    EDIT_TAGS_RULE,
+    EDIT_USER_FOR_TEAM_RULES,
+    OWNER_TEAM_RULES,
+    VIEW_ALL_RULE,
+    VIEW_ALL_WITH_MATCH_TAG_CONDITION,
 } from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
@@ -34,35 +34,35 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  redirectToHomePage,
-  toastNotification,
-  uuid,
-  visitOwnProfilePage,
+    redirectToHomePage,
+    toastNotification,
+    uuid,
+    visitOwnProfilePage,
 } from '../../utils/common';
 import { addOwner, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import {
-  addUser,
-  checkDataConsumerPermissions,
-  checkEditOwnerButtonPermission,
-  checkForUserExistError,
-  checkStewardPermissions,
-  checkStewardServicesPermissions,
-  generateToken,
-  hardDeleteUserProfilePage,
-  performUserLogin,
-  permanentDeleteUser,
-  resetPassword,
-  restoreUser,
-  restoreUserProfilePage,
-  revokeToken,
-  settingPageOperationPermissionCheck,
-  softDeleteUser,
-  softDeleteUserProfilePage,
-  updateExpiration,
-  updateUserDetails,
-  visitUserListPage,
-  visitUserProfilePage,
+    addUser,
+    checkDataConsumerPermissions,
+    checkEditOwnerButtonPermission,
+    checkForUserExistError,
+    checkStewardPermissions,
+    checkStewardServicesPermissions,
+    generateToken,
+    hardDeleteUserProfilePage,
+    performUserLogin,
+    permanentDeleteUser,
+    resetPassword,
+    restoreUser,
+    restoreUserProfilePage,
+    revokeToken,
+    settingPageOperationPermissionCheck,
+    softDeleteUser,
+    softDeleteUserProfilePage,
+    updateExpiration,
+    updateUserDetails,
+    visitUserListPage,
+    visitUserProfilePage,
 } from '../../utils/user';
 
 const userName = `pw-user-${uuid()}`;
@@ -231,7 +231,7 @@ test.describe('User with Admin Roles', () => {
   }) => {
     await redirectToHomePage(adminPage);
     await settingClick(adminPage, GlobalSettingOptions.USERS);
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
     await adminPage.waitForSelector('.user-list-table [data-testid="loader"]', {
       state: 'detached',
     });
@@ -287,7 +287,7 @@ test.describe('User with Data Consumer Roles', () => {
     // Check CRUD for Glossary
     await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
 
-    await dataConsumerPage.waitForLoadState('networkidle');
+    await dataConsumerPage.waitForLoadState('domcontentloaded');
     await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -567,7 +567,7 @@ test.describe('User Profile Feed Interactions', () => {
     );
     await adminPage.getByTestId('user-name').click();
     await userResponse;
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     await expect(
       adminPage.locator('.user-profile-dropdown-overlay')
@@ -816,7 +816,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
 
       // Refresh the page
       await adminPage.reload();
-      await adminPage.waitForLoadState('networkidle');
+      await adminPage.waitForLoadState('domcontentloaded');
 
       // Open dropdown again after refresh
       await adminPage.locator('[data-testid="dropdown-profile"]').click();
@@ -1072,7 +1072,7 @@ test.describe('User Profile Persona Interactions', () => {
 
         // Click the persona link to navigate
         await personaLink.click();
-        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForLoadState('domcontentloaded');
 
         // Verify we're on the persona page
         await expect(adminPage.url()).toContain('/persona/');
@@ -1149,7 +1149,7 @@ test.describe('User Profile Persona Interactions', () => {
       await adminPage.waitForSelector('.ant-select-dropdown', {
         state: 'visible',
       });
-      await adminPage.waitForLoadState('networkidle');
+      await adminPage.waitForLoadState('domcontentloaded');
 
       // Select specific persona for default - try test ID first, fallback to role selector
       const defaultPersonaOptionTestId = adminPage.getByTitle(
@@ -1194,7 +1194,7 @@ test.describe('User Profile Persona Interactions', () => {
 
         // Click the persona link to navigate
         await personaLink.click();
-        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForLoadState('domcontentloaded');
 
         // Verify we're on the persona page
         await expect(adminPage.url()).toContain('/persona/');
@@ -1343,7 +1343,7 @@ base.describe(
 
         for (const entity of entities) {
           await entity.visitEntityPage(page);
-          await page.waitForLoadState('networkidle');
+          await page.waitForLoadState('domcontentloaded');
           await page.waitForSelector('[data-testid="loader"]', {
             state: 'detached',
           });

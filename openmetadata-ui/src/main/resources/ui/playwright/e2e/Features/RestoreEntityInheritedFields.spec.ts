@@ -26,9 +26,9 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignDataProduct,
-  assignSingleSelectDomain,
-  redirectToHomePage,
+    assignDataProduct,
+    assignSingleSelectDomain,
+    redirectToHomePage,
 } from '../../utils/common';
 import { softDeleteEntity } from '../../utils/entity';
 import { test } from '../fixtures/pages';
@@ -78,7 +78,7 @@ entities.forEach((EntityClass) => {
       test.slow();
 
       await entity.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.getByTestId('breadcrumb-link')).toHaveCount(
         ['Table', 'ApiEndpoint', 'Store Procedure'].includes(entity.getType())

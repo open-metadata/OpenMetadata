@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
-  EDIT_USER_FOR_TEAM_RULES,
-  OWNER_TEAM_RULES,
+    EDIT_USER_FOR_TEAM_RULES,
+    OWNER_TEAM_RULES,
 } from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
@@ -26,36 +26,36 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  clickOutside,
-  createNewPage,
-  descriptionBox,
-  descriptionBoxReadOnly,
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
-  visitOwnProfilePage,
+    clickOutside,
+    createNewPage,
+    descriptionBox,
+    descriptionBoxReadOnly,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
+    uuid,
+    visitOwnProfilePage,
 } from '../../utils/common';
 import {
-  addMultiOwner,
-  waitForAllLoadersToDisappear,
+    addMultiOwner,
+    waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
 import {
-  addEmailTeam,
-  addTeamHierarchy,
-  addTeamOwnerToEntity,
-  addUserInTeam,
-  addUserTeam,
-  checkTeamTabCount,
-  createTeam,
-  executionOnOwnerGroupTeam,
-  executionOnOwnerTeam,
-  getNewTeamDetails,
-  hardDeleteTeam,
-  searchTeam,
-  softDeleteTeam,
-  verifyAssetsInTeamsPage,
+    addEmailTeam,
+    addTeamHierarchy,
+    addTeamOwnerToEntity,
+    addUserInTeam,
+    addUserTeam,
+    checkTeamTabCount,
+    createTeam,
+    executionOnOwnerGroupTeam,
+    executionOnOwnerTeam,
+    getNewTeamDetails,
+    hardDeleteTeam,
+    searchTeam,
+    softDeleteTeam,
+    verifyAssetsInTeamsPage,
 } from '../../utils/team';
 
 const id = uuid();
@@ -144,7 +144,7 @@ test.describe('Teams Page', () => {
   test('Teams Page Flow', async ({ page }) => {
     await test.step('Create a new team', async () => {
       await checkTeamTabCount(page);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await page.waitForSelector('[data-testid="add-team"]');
 
@@ -400,7 +400,7 @@ test.describe('Teams Page', () => {
 
     await page.getByRole('link', { name: publicTeam.displayName }).click();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -422,7 +422,7 @@ test.describe('Teams Page', () => {
     await clickOutside(page);
 
     await visitOwnProfilePage(page);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.getByTestId('edit-teams-button').click();
     await page.getByTestId('team-select').click();
@@ -447,7 +447,7 @@ test.describe('Teams Page', () => {
       .getByText(publicTeam.displayName)
       .click();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await hardDeleteTeam(page);
   });
@@ -459,7 +459,7 @@ test.describe('Teams Page', () => {
     const team = new TeamClass();
     await team.create(apiContext);
     await settingClick(page, GlobalSettingOptions.TEAMS);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     const getTeamResponse = page.waitForResponse(`/api/v1/teams/name/*?*`);
     await page
       .getByRole('link', { name: team.responseData?.['displayName'] })
@@ -497,7 +497,7 @@ test.describe('Teams Page', () => {
 
     try {
       await settingClick(page, GlobalSettingOptions.TEAMS);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       for (const team of [team1, team2, team3]) {
         await searchTeam(page, team.responseData?.['displayName']);
@@ -527,7 +527,7 @@ test.describe('Teams Page', () => {
 
     try {
       await settingClick(page, GlobalSettingOptions.TEAMS);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await searchTeam(page, team.responseData?.['displayName']);
 
@@ -536,7 +536,7 @@ test.describe('Teams Page', () => {
         .getByRole('link')
         .click();
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.getByTestId('team-heading')).toHaveText(
         team.data.displayName

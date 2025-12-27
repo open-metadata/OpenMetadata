@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
@@ -140,7 +140,6 @@ test.describe('Entity Version pages', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.delete(apiContext);
@@ -155,7 +154,7 @@ test.describe('Entity Version pages', () => {
       const { apiContext } = await getApiContext(page);
       await entity.visitEntityPage(page);
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       const versionDetailResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/versions/0.2') && response.status() === 200

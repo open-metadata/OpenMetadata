@@ -12,9 +12,9 @@
  */
 import {
   APIRequestContext,
+  test as base,
   expect,
   Page,
-  test as base,
 } from '@playwright/test';
 import {
   ECustomizedDataAssets,
@@ -126,7 +126,6 @@ test.beforeAll('Setup Customize tests', async ({ browser }) => {
 });
 
 test.afterAll('Cleanup Customize tests', async ({ browser }) => {
-  test.slow();
 
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await adminUser.delete(apiContext);
@@ -188,7 +187,7 @@ test.describe('Persona customize UI tab', async () => {
     const personaListResponse = adminPage.waitForResponse(`/api/v1/personas?*`);
     await adminPage.goBack();
     await personaListResponse;
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
     await navigateToPersonaWithPagination(
       adminPage,
       navigationPersona.data.name,
@@ -375,7 +374,7 @@ test.describe('Persona customization', () => {
           );
 
           await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
-          await adminPage.waitForLoadState('networkidle');
+          await adminPage.waitForLoadState('domcontentloaded');
           await adminPage.getByText('Data Assets').click();
           await adminPage.getByText(type, { exact: true }).click();
 
@@ -447,7 +446,7 @@ test.describe('Persona customization', () => {
         await redirectToHomePage(userPage);
 
         await entity?.visitEntityPage(userPage);
-        await userPage.waitForLoadState('networkidle');
+        await userPage.waitForLoadState('domcontentloaded');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -503,7 +502,7 @@ test.describe('Persona customization', () => {
             true
           );
           await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
-          await adminPage.waitForLoadState('networkidle');
+          await adminPage.waitForLoadState('domcontentloaded');
           await adminPage.getByText('Governance').click();
           await adminPage.getByText(type, { exact: true }).click();
 
@@ -571,7 +570,7 @@ test.describe('Persona customization', () => {
         await redirectToHomePage(userPage);
 
         await entity?.visitEntityPage(userPage);
-        await userPage.waitForLoadState('networkidle');
+        await userPage.waitForLoadState('domcontentloaded');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -618,7 +617,7 @@ test.describe('Persona customization', () => {
       // Need to find persona card and click as the list might get paginated
       await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
-      await adminPage.waitForLoadState('networkidle');
+      await adminPage.waitForLoadState('domcontentloaded');
       await adminPage.getByText('Governance').click();
       await adminPage.getByText('Glossary Term', { exact: true }).click();
 
@@ -645,7 +644,7 @@ test.describe('Persona customization', () => {
       await redirectToHomePage(userPage);
 
       await entity?.visitEntityPage(userPage);
-      await userPage.waitForLoadState('networkidle');
+      await userPage.waitForLoadState('domcontentloaded');
       await userPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -701,7 +700,7 @@ test.describe('Persona customization', () => {
       // Need to find persona card and click as the list might get paginated
       await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
-      await adminPage.waitForLoadState('networkidle');
+      await adminPage.waitForLoadState('domcontentloaded');
       await adminPage.getByText('Data Assets').click();
       await adminPage.getByText('Table', { exact: true }).click();
 
@@ -755,7 +754,7 @@ test.describe('Persona customization', () => {
         await redirectToHomePage(userPage);
 
         await entity?.visitEntityPage(userPage);
-        await userPage.waitForLoadState('networkidle');
+        await userPage.waitForLoadState('domcontentloaded');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -763,7 +762,7 @@ test.describe('Persona customization', () => {
         // Change language to French
         await userPage.getByRole('button', { name: 'EN' }).click();
         await userPage.getByRole('menuitem', { name: 'Français - FR' }).click();
-        await userPage.waitForLoadState('networkidle');
+        await userPage.waitForLoadState('domcontentloaded');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });

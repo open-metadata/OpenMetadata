@@ -23,36 +23,36 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import {
-  clickOutside,
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-  uuid,
+    clickOutside,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage,
+    uuid,
 } from '../../utils/common';
 import {
-  activateColumnLayer,
-  addColumnLineage,
-  addPipelineBetweenNodes,
-  applyPipelineFromModal,
-  clickLineageNode,
-  connectEdgeBetweenNodes,
-  connectEdgeBetweenNodesViaAPI,
-  deleteEdge,
-  deleteNode,
-  editLineage,
-  editLineageClick,
-  performZoomOut,
-  rearrangeNodes,
-  removeColumnLineage,
-  setupEntitiesForLineage,
-  toggleLineageFilters,
-  verifyColumnLayerInactive,
-  verifyColumnLineageInCSV,
-  verifyExportLineageCSV,
-  verifyExportLineagePNG,
-  verifyLineageConfig,
-  verifyNodePresent,
-  visitLineageTab,
+    activateColumnLayer,
+    addColumnLineage,
+    addPipelineBetweenNodes,
+    applyPipelineFromModal,
+    clickLineageNode,
+    connectEdgeBetweenNodes,
+    connectEdgeBetweenNodesViaAPI,
+    deleteEdge,
+    deleteNode,
+    editLineage,
+    editLineageClick,
+    performZoomOut,
+    rearrangeNodes,
+    removeColumnLineage,
+    setupEntitiesForLineage,
+    toggleLineageFilters,
+    verifyColumnLayerInactive,
+    verifyColumnLineageInCSV,
+    verifyExportLineageCSV,
+    verifyExportLineagePNG,
+    verifyLineageConfig,
+    verifyNodePresent,
+    visitLineageTab,
 } from '../../utils/lineage';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -282,7 +282,7 @@ test('Verify column lineage between table and topic', async ({ page }) => {
   await redirectToHomePage(page);
   await table.visitEntityPage(page);
   await visitLineageTab(page);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await verifyColumnLineageInCSV(page, table, topic, sourceCol, targetCol);
 
   // Verify relation in platform lineage
@@ -444,7 +444,7 @@ test('Verify function data in edge drawer', async ({ page }) => {
     await page.reload();
     await lineageReq1;
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await activateColumnLayer(page);
     await page
@@ -529,7 +529,7 @@ test('Verify table search with special characters as handled', async ({
     await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
 
     await clickLineageNode(page, dbFqn);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await expect(
       page.locator('.lineage-entity-panel').getByTestId('entity-header-title')
@@ -583,7 +583,7 @@ test('Verify cycle lineage should be handled properly', async ({ page }) => {
     await rearrangeNodes(page);
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await performZoomOut(page);
 
     await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();

@@ -13,10 +13,10 @@
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
 import {
-  descriptionBox,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    descriptionBox,
+    redirectToHomePage,
+    toastNotification,
+    uuid,
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { settingClick } from './sidebar';
@@ -226,7 +226,7 @@ export const redirectToBotPage = async (page: Page) => {
 
 export const resetTokenFromBotPage = async (page: Page, botName: string) => {
   await page.goto(`/bots/${botName}`);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const isRevokeButtonVisible = await page
@@ -243,7 +243,7 @@ export const resetTokenFromBotPage = async (page: Page, botName: string) => {
 
     await page.getByTestId('save-button').click();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   } else if (isAuthMechanismVisible) {
     await page.getByTestId('auth-mechanism').click();

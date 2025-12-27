@@ -107,7 +107,7 @@ test.describe.serial('Description Suggestions Table Entity', () => {
       await singleResolveResponse;
 
       await page.reload();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -142,7 +142,7 @@ test.describe.serial('Description Suggestions Table Entity', () => {
       await singleResolveResponse;
 
       await page.reload();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });

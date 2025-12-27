@@ -16,10 +16,10 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
-  changeTermHierarchyFromModal,
-  performExpandAll,
-  selectActiveGlossary,
-  selectActiveGlossaryTerm,
+    changeTermHierarchyFromModal,
+    performExpandAll,
+    selectActiveGlossary,
+    selectActiveGlossaryTerm,
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 
@@ -142,7 +142,7 @@ test.describe('Glossary Hierarchy', () => {
 
       // Navigate to parent term
       await page.getByTestId(parentTerm.responseData.displayName).click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Move parent term (with child) to glossary2
       await changeTermHierarchyFromModal(
@@ -260,7 +260,7 @@ test.describe('Glossary Hierarchy', () => {
 
       // Navigate to deepest term
       await page.getByTestId(terms[DEPTH - 1].responseData.displayName).click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Verify deepest term details are visible
       await expect(

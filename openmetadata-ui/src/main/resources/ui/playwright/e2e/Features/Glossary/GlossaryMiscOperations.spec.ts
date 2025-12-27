@@ -17,10 +17,10 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
-  dragAndDropTerm,
-  performExpandAll,
-  selectActiveGlossary,
-  selectActiveGlossaryTerm,
+    dragAndDropTerm,
+    performExpandAll,
+    selectActiveGlossary,
+    selectActiveGlossaryTerm,
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 
@@ -71,7 +71,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       // First verify the table has the glossary term tag
       await redirectToHomePage(page);
       await tableEntity.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Verify glossary term tag is present on the table (in glossary-container)
       const glossaryContainer = page
@@ -113,7 +113,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       // Navigate back to the table and verify the glossary term tag has been removed
       await redirectToHomePage(page);
       await tableEntity.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Verify glossary term tag is no longer present on the table
       // The glossary-container should either not exist or not contain the term name
@@ -218,7 +218,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       // First verify the table has the glossary term tag
       await redirectToHomePage(page);
       await tableEntity.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Verify glossary term tag is present on the table (in KnowledgePanel)
       const glossaryTermsPanel = page.getByTestId(
@@ -269,7 +269,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       // Navigate back to the table and verify the glossary term tag has been removed
       await redirectToHomePage(page);
       await tableEntity.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Verify glossary term tag is no longer present on the table
       // Either the panel doesn't show the term, or the panel shows empty state
@@ -353,7 +353,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
 
       // Check table1 has parent term tag
       await tableEntity1.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const glossaryTermsPanel1 = page.getByTestId(
         'KnowledgePanel.GlossaryTerms'
@@ -366,7 +366,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
 
       // Check table2 has child term tag
       await tableEntity2.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const glossaryTermsPanel2 = page.getByTestId(
         'KnowledgePanel.GlossaryTerms'
@@ -413,7 +413,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       // Navigate to table1 and verify parent term tag is removed
       await redirectToHomePage(page);
       await tableEntity1.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(
         page
@@ -424,7 +424,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       // Navigate to table2 and verify child term tag is removed
       await redirectToHomePage(page);
       await tableEntity2.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(
         page

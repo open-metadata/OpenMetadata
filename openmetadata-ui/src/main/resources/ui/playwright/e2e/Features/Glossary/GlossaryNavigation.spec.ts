@@ -16,8 +16,8 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
-  selectActiveGlossary,
-  selectActiveGlossaryTerm,
+    selectActiveGlossary,
+    selectActiveGlossaryTerm,
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 
@@ -238,7 +238,7 @@ test.describe('Glossary Navigation', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, emptyGlossary.data.displayName);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Verify empty state is shown - actual message in UI
       await expect(

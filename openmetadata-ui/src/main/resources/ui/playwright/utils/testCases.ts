@@ -51,7 +51,7 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
     })
     .click();
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -71,7 +71,7 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
 
   await page.getByTestId('breadcrumb-link').nth(3).click();
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });

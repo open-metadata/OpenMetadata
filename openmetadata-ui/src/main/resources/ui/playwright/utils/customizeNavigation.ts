@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { SidebarItem, SIDEBAR_LIST_ITEMS } from '../constant/sidebar';
+import { SIDEBAR_LIST_ITEMS, SidebarItem } from '../constant/sidebar';
 import { PersonaClass } from '../support/persona/PersonaClass';
 
 const NAV_ITEMS = [
@@ -124,5 +124,5 @@ export const selectPersona = async (page: Page, persona: PersonaClass) => {
     .getByTestId('persona-label')
     .getByText(persona.data.displayName)
     .click();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 };
