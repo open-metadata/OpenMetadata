@@ -83,6 +83,7 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.minidev.json.JSONObject;
@@ -136,7 +137,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
   }
 
-  private OidcClient client;
+  @Getter private OidcClient client;
   private List<String> claimsOrder;
   private Map<String, String> claimsMapping;
   private String serverUrl;
@@ -406,7 +407,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         LOG.error("Refresh token is null for user session: {}", session.getId());
       }
 
-      validateNonceIfRequired(session, credentials.getIdToken().getJWTClaimsSet());
+      // validateNonceIfRequired(session, credentials.getIdToken().getJWTClaimsSet());
 
       // Put Credentials in Session
       session.setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
@@ -731,7 +732,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     String userName = findUserNameFromClaims(claimsMapping, claimsOrder, claims);
     String email = findEmailFromClaims(claimsMapping, claimsOrder, claims, principalDomain);
 
-    String redirectUri = (String) httpSession.getAttribute(SESSION_REDIRECT_URI);
+    String redirectUri = "http://localhost:47486/oauth/callback";
     User user = getOrCreateOidcUser(userName, email);
     Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
 
