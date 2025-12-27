@@ -166,7 +166,7 @@ public class LogicOps {
           if (nullOrEmpty(owners)) {
             return true;
           }
-          long teamCount = owners.stream().filter(owner -> owner.getType().equals(TEAM)).count();
+          long teamCount = owners.stream().filter(owner -> TEAM.equals(owner.getType())).count();
           long userCount = owners.size() - teamCount;
           if (teamCount > 1 || (teamCount > 0 && userCount > 0)) {
             return false; // More than one team or both team and user ownership
@@ -242,7 +242,7 @@ public class LogicOps {
 
           List<EntityReference> refs =
               JsonUtils.convertValue(args[0], new TypeReference<List<EntityReference>>() {});
-          return refs.stream().filter(ref -> ref.getType().equals(type)).toList();
+          return refs.stream().filter(ref -> type.equals(ref.getType())).toList();
         });
 
     // Example: {"filterTagsBySource":[{"var":"tags"},"Glossary"]}
