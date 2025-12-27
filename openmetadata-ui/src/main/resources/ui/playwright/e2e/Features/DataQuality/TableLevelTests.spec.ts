@@ -12,11 +12,8 @@
  */
 import { expect, Response, test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
-import {
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
-} from '../../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../../utils/common';
+import { clickUpdateButton } from '../../../utils/dataQuality';
 import { deleteTestCase } from '../../../utils/testCases';
 
 // use the admin user to login
@@ -32,8 +29,6 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
  * 3. Submit and verify in Data Quality tab; then edit threshold values; delete at the end.
  */
 test('Table Row Count To Be Between', async ({ page }) => {
-  test.slow();
-
   await redirectToHomePage(page);
   const { afterAction, apiContext } = await getApiContext(page);
   const table = new TableClass();
@@ -123,14 +118,12 @@ test('Table Row Count To Be Between', async ({ page }) => {
         `Edit ${testCase.name}`
       );
 
-      await page.getByPlaceholder('Min Value').clear();
-      await page.getByPlaceholder('Min Value').fill('20');
-      await page.getByPlaceholder('Max Value').clear();
-      await page.getByPlaceholder('Max Value').fill('2000');
+      await page.locator('#testCaseForm_params_minValue').clear();
+      await page.fill('#testCaseForm_params_minValue', '20');
+      await page.locator('#testCaseForm_params_maxValue').clear();
+      await page.fill('#testCaseForm_params_maxValue', '2000');
 
-      await page.getByTestId('update-btn').click();
-
-      await toastNotification(page, 'Test case updated successfully.');
+      await clickUpdateButton(page);
     });
 
     await test.step('Delete', async () => {
@@ -152,8 +145,6 @@ test('Table Row Count To Be Between', async ({ page }) => {
  * 3. Submit and verify in Data Quality tab; then edit the value; delete at the end.
  */
 test('Table Row Count To Equal', async ({ page }) => {
-  test.slow();
-
   await redirectToHomePage(page);
   const { afterAction, apiContext } = await getApiContext(page);
   const table = new TableClass();
@@ -244,9 +235,7 @@ test('Table Row Count To Equal', async ({ page }) => {
       await page.locator('#tableTestForm_params_value').clear();
       await page.locator('#tableTestForm_params_value').fill('200');
 
-      await page.getByTestId('update-btn').click();
-
-      await toastNotification(page, 'Test case updated successfully.');
+      await clickUpdateButton(page);
     });
 
     await test.step('Delete', async () => {
@@ -268,8 +257,6 @@ test('Table Row Count To Equal', async ({ page }) => {
  * 3. Submit and verify in Data Quality tab; then edit threshold values; delete at the end.
  */
 test('Table Column Count To Be Between', async ({ page }) => {
-  test.slow();
-
   await redirectToHomePage(page);
   const { afterAction, apiContext } = await getApiContext(page);
   const table = new TableClass();
@@ -370,9 +357,7 @@ test('Table Column Count To Be Between', async ({ page }) => {
       await page.locator('#tableTestForm_params_maxColValue').clear();
       await page.locator('#tableTestForm_params_maxColValue').fill('15');
 
-      await page.getByTestId('update-btn').click();
-
-      await toastNotification(page, 'Test case updated successfully.');
+      await clickUpdateButton(page);
     });
 
     await test.step('Delete', async () => {
@@ -394,8 +379,6 @@ test('Table Column Count To Be Between', async ({ page }) => {
  * 3. Submit and verify in Data Quality tab; then edit the value; delete at the end.
  */
 test('Table Column Count To Equal', async ({ page }) => {
-  test.slow();
-
   await redirectToHomePage(page);
   const { afterAction, apiContext } = await getApiContext(page);
   const table = new TableClass();
@@ -489,9 +472,7 @@ test('Table Column Count To Equal', async ({ page }) => {
       await page.locator('#tableTestForm_params_columnCount').clear();
       await page.locator('#tableTestForm_params_columnCount').fill('5');
 
-      await page.getByTestId('update-btn').click();
-
-      await toastNotification(page, 'Test case updated successfully.');
+      await clickUpdateButton(page);
     });
 
     await test.step('Delete', async () => {
@@ -513,8 +494,6 @@ test('Table Column Count To Equal', async ({ page }) => {
  * 3. Submit and verify in Data Quality tab; then edit the column name; delete at the end.
  */
 test('Table Column Name To Exist', async ({ page }) => {
-  test.slow();
-
   await redirectToHomePage(page);
   const { afterAction, apiContext } = await getApiContext(page);
   const table = new TableClass();
@@ -607,9 +586,7 @@ test('Table Column Name To Exist', async ({ page }) => {
         .locator('#tableTestForm_params_columnName')
         .fill(table.entity?.columns[1].name);
 
-      await page.getByTestId('update-btn').click();
-
-      await toastNotification(page, 'Test case updated successfully.');
+      await clickUpdateButton(page);
     });
 
     await test.step('Delete', async () => {
@@ -631,8 +608,6 @@ test('Table Column Name To Exist', async ({ page }) => {
  * 3. Submit and verify in Data Quality tab; then edit the column names; delete at the end.
  */
 test('Table Column To Match Set', async ({ page }) => {
-  test.slow();
-
   await redirectToHomePage(page);
   const { afterAction, apiContext } = await getApiContext(page);
   const table = new TableClass();
@@ -729,15 +704,7 @@ test('Table Column To Match Set', async ({ page }) => {
 
       await page.click('#tableTestForm_params_ordered');
 
-      const updateTestCaseResponse = page.waitForResponse(
-        (response: Response) =>
-          response.url().includes('/api/v1/dataQuality/testCases') &&
-          response.request().method() === 'PATCH'
-      );
-      await page.getByTestId('update-btn').click();
-      const response = await updateTestCaseResponse;
-
-      expect(response.status()).toBe(200);
+      await clickUpdateButton(page);
     });
 
     await test.step('Delete', async () => {
@@ -759,8 +726,6 @@ test('Table Column To Match Set', async ({ page }) => {
  * 3. Submit and verify in Data Quality tab; then edit to add additional key/use columns; delete at the end.
  */
 test('Table Difference', async ({ page }) => {
-  test.slow();
-
   await redirectToHomePage(page);
   const { afterAction, apiContext } = await getApiContext(page);
   const table1 = new TableClass();
@@ -968,9 +933,8 @@ test('Table Difference', async ({ page }) => {
       await page
         .getByTitle(table1.entity?.columns[2].name, { exact: true })
         .click();
-      await page.getByTestId('update-btn').click();
 
-      await toastNotification(page, 'Test case updated successfully.');
+      await clickUpdateButton(page);
     });
 
     await test.step('Delete', async () => {
@@ -994,8 +958,6 @@ test('Table Difference', async ({ page }) => {
  * 3. Submit and verify in Data Quality tab; then edit display name, SQL and strategy; delete at the end.
  */
 test('Custom SQL Query', async ({ page }) => {
-  test.slow();
-
   await redirectToHomePage(page);
   const { afterAction, apiContext } = await getApiContext(page);
   const table = new TableClass();
@@ -1119,9 +1081,8 @@ test('Custom SQL Query', async ({ page }) => {
 
       await page.getByPlaceholder('Enter a Threshold').clear();
       await page.getByPlaceholder('Enter a Threshold').fill('244');
-      await page.getByTestId('update-btn').click();
 
-      await toastNotification(page, 'Test case updated successfully.');
+      await clickUpdateButton(page);
     });
 
     await test.step('Delete', async () => {
@@ -1143,8 +1104,6 @@ test('Custom SQL Query', async ({ page }) => {
  * 3. Submit and verify in Data Quality tab; then edit threshold values; delete at the end.
  */
 test('Table Row Inserted Count To Be Between', async ({ page }) => {
-  test.slow();
-
   await redirectToHomePage(page);
   const { afterAction, apiContext } = await getApiContext(page);
   const table = new TableClass();
@@ -1242,15 +1201,7 @@ test('Table Row Inserted Count To Be Between', async ({ page }) => {
       await page.fill('#testCaseForm_params_maxValue', '');
       await page.fill('#testCaseForm_params_maxValue', '1000');
 
-      const updateTestCaseResponse = page.waitForResponse(
-        (response: Response) =>
-          response.url().includes('/api/v1/dataQuality/testCases') &&
-          response.request().method() === 'PATCH'
-      );
-      await page.getByTestId('update-btn').click();
-      const response = await updateTestCaseResponse;
-
-      expect(response.status()).toBe(200);
+      await clickUpdateButton(page);
     });
 
     await test.step('Delete', async () => {
