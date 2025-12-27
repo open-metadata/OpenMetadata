@@ -26,9 +26,8 @@ import {
   InternalAxiosRequestConfig,
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import { isEmpty, isNil, isNumber } from 'lodash';
+import { isNil, isNumber } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
-import Qs from 'qs';
 import {
   ComponentType,
   createContext,
@@ -79,7 +78,6 @@ import {
   validateAuthFields,
 } from '../../../utils/AuthProvider.util';
 import { getPathNameFromWindowLocation } from '../../../utils/RouterUtils';
-import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import {
   getOidcToken,
   getRefreshToken,
@@ -104,6 +102,16 @@ import OktaAuthProvider from './OktaAuthProvider';
 interface AuthProviderProps {
   childComponentType: ComponentType;
   children: ReactNode;
+}
+
+interface ESQueryFilter {
+  query: {
+    bool: {
+      must?: Record<string, unknown>[];
+      must_not?: Record<string, unknown>[];
+      should?: Record<string, unknown>[];
+    };
+  };
 }
 
 const cookieStorage = new CookieStorage();
@@ -489,19 +497,28 @@ export const AuthProvider = ({
           return config;
         }
 
-        // Parse and update the query parameter
-        const queryParams = Qs.parse(config.url.split('?')[1]);
-        // adding quotes for exact matching
-        const domainStatement = `(domains.fullyQualifiedName:"${escapeESReservedCharacters(
-          activeDomain
-        )}")`;
-        queryParams.q = queryParams.q ?? '';
-        queryParams.q += isEmpty(queryParams.q)
-          ? domainStatement
-          : ` AND ${domainStatement}`;
+        let filter: ESQueryFilter = { query: { bool: {} } };
+        if (config.params?.query_filter) {
+          try {
+            filter = JSON.parse(config.params.query_filter as string);
+          } catch {
+            filter = { query: { bool: {} } };
+          }
+        }
 
-        // Update the URL with the modified query parameter
-        config.url = `${config.url.split('?')[0]}?${Qs.stringify(queryParams)}`;
+        filter.query.bool.must = [
+          ...(filter.query.bool.must ?? []),
+          {
+            prefix: {
+              'domains.fullyQualifiedName': activeDomain,
+            },
+          },
+        ];
+
+        config.params = {
+          ...config.params,
+          query_filter: JSON.stringify(filter),
+        };
       } else {
         config.params = {
           ...config.params,
