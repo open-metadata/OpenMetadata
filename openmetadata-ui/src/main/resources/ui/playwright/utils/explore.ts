@@ -281,7 +281,7 @@ export const verifyEntitiesAreSorted = async (page: Page) => {
   await page.waitForSelector('[data-testid="search-results"]', {
     state: 'visible',
   });
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   const entityNames = await page.$$eval(
     '[data-testid="search-results"] .explore-search-card [data-testid="entity-link"]',

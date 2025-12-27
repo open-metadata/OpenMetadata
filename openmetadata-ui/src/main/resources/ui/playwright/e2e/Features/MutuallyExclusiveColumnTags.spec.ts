@@ -36,7 +36,7 @@ test('Should show error toast when adding mutually exclusive tags to column', as
   await redirectToHomePage(page);
   await table.visitEntityPage(page);
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const firstColumnName = table.columnsName[0];

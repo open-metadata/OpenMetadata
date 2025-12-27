@@ -12,22 +12,22 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import {
-  CUSTOM_PROPERTY_INVALID_NAMES,
-  CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
-  ENTITY_REFERENCE_PROPERTIES,
+    CUSTOM_PROPERTY_INVALID_NAMES,
+    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
+    ENTITY_REFERENCE_PROPERTIES,
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
 import {
-  EntityTypeEndpoint,
-  ENTITY_PATH,
+    ENTITY_PATH,
+    EntityTypeEndpoint,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
 import {
-  clickOutside,
-  descriptionBox,
-  descriptionBoxReadOnly,
-  uuid,
+    clickOutside,
+    descriptionBox,
+    descriptionBoxReadOnly,
+    uuid,
 } from './common';
 import { sidebarClick } from './sidebar';
 
@@ -736,7 +736,7 @@ export const addCustomPropertiesForEntity = async ({
   await page.waitForSelector('[data-testid="custom-property-form"]', {
     state: 'detached',
   });
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   const response = await createPropertyPromise;
 
   expect(response.status()).toBe(200);
@@ -857,7 +857,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
   entityType: string
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   // Open advanced search dialog
   await showAdvancedSearchDialog(page);

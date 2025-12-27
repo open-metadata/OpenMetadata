@@ -14,10 +14,10 @@ import test, { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  clickOutside,
-  createNewPage,
-  descriptionBox,
-  redirectToHomePage,
+    clickOutside,
+    createNewPage,
+    descriptionBox,
+    redirectToHomePage,
 } from '../../utils/common';
 import { createQueryByTableName, queryFilters } from '../../utils/query';
 
@@ -265,7 +265,7 @@ test('Query Entity', async ({ page }) => {
       .click();
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -283,7 +283,7 @@ test('Query Entity', async ({ page }) => {
       .click();
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });

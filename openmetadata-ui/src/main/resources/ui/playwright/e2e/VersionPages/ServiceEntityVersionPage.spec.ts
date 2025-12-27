@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
@@ -118,7 +118,6 @@ test.describe('Service Version pages', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.delete(apiContext);

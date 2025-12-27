@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { TeamClass } from '../../support/team/TeamClass';
@@ -115,7 +115,7 @@ test.describe('User with different Roles', () => {
     adminPage,
   }) => {
     await visitUserProfilePage(adminPage, user3.getUserName());
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     await expect(adminPage.getByTestId('user-profile-teams')).toBeVisible();
 
@@ -147,7 +147,7 @@ test.describe('User with different Roles', () => {
 
     await adminPage.getByText(team.responseData.displayName).first().click();
 
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     const domainResponse = adminPage.waitForResponse((response) =>
       response.url().includes('/api/v1/domains/hierarchy')
@@ -190,7 +190,7 @@ test.describe('User with different Roles', () => {
 
     await visitUserProfilePage(adminPage, user3.getUserName());
 
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     // Wait for the team to be visible in the teams section
     await adminPage
@@ -277,7 +277,7 @@ test.describe('User with different Roles', () => {
     test.slow();
 
     await redirectToUserPage(adminPage);
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     // Step 1: Assign domain to user
     // Verify domain edit button is visible
@@ -428,7 +428,7 @@ test.describe('User with different Roles', () => {
     await subdomain.create(apiContext);
 
     await redirectToUserPage(adminPage);
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     // Click on edit domains button
     await adminPage.getByTestId('edit-domains').click();
@@ -474,7 +474,7 @@ test.describe('User with different Roles', () => {
 
     // Wait for the child domains to load
     await waitForAllLoadersToDisappear(adminPage);
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     // Verify that the subdomain is now visible in the tree
     await expect(

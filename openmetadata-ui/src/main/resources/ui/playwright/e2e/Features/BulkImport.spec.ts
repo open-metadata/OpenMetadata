@@ -23,30 +23,30 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
 } from '../../utils/common';
 import {
-  createColumnRowDetails,
-  createColumnRowDetailsWithEncloseDot,
-  createCustomPropertiesForEntity,
-  createDatabaseRowDetails,
-  createDatabaseSchemaRowDetails,
-  createStoredProcedureRowDetails,
-  createTableRowDetails,
-  fillColumnDetails,
-  fillRecursiveColumnDetails,
-  fillRecursiveEntityTypeFQNDetails,
-  fillRowDetails,
-  fillStoredProcedureCode,
-  firstTimeGridAddRowAction,
-  performBulkDownload,
-  performColumnSelectAndDeleteOperation,
-  performDeleteOperationOnEntity,
-  pressKeyXTimes,
-  validateImportStatus,
+    createColumnRowDetails,
+    createColumnRowDetailsWithEncloseDot,
+    createCustomPropertiesForEntity,
+    createDatabaseRowDetails,
+    createDatabaseSchemaRowDetails,
+    createStoredProcedureRowDetails,
+    createTableRowDetails,
+    fillColumnDetails,
+    fillRecursiveColumnDetails,
+    fillRecursiveEntityTypeFQNDetails,
+    fillRowDetails,
+    fillStoredProcedureCode,
+    firstTimeGridAddRowAction,
+    performBulkDownload,
+    performColumnSelectAndDeleteOperation,
+    performDeleteOperationOnEntity,
+    pressKeyXTimes,
+    validateImportStatus,
 } from '../../utils/importUtils';
 
 // use the admin user to login
@@ -1014,7 +1014,7 @@ test.describe('Bulk Import Export', () => {
 
     await test.step('should verify the removed value from entity', async () => {
       await page.getByTestId('column-name').first().click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(
         page

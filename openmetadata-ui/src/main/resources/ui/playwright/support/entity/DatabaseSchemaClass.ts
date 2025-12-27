@@ -17,9 +17,9 @@ import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
-  EntityTypeEndpoint,
-  ResponseDataType,
-  ResponseDataWithServiceType,
+    EntityTypeEndpoint,
+    ResponseDataType,
+    ResponseDataWithServiceType,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
@@ -141,7 +141,7 @@ export class DatabaseSchemaClass extends EntityClass {
       false
     );
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Wait for the database to be visible before clicking
     await page.getByTestId(this.database.name).waitFor({ state: 'visible' });

@@ -12,24 +12,24 @@
  */
 
 import {
-  expect,
-  Page,
-  PlaywrightTestArgs,
-  PlaywrightWorkerArgs,
-  TestType,
+    expect,
+    Page,
+    PlaywrightTestArgs,
+    PlaywrightWorkerArgs,
+    TestType,
 } from '@playwright/test';
 import { DBT, REDSHIFT } from '../../../constant/service';
 import { SidebarItem } from '../../../constant/sidebar';
 import {
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
 } from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
-  checkServiceFieldSectionHighlighting,
-  Services,
+    checkServiceFieldSectionHighlighting,
+    Services,
 } from '../../../utils/serviceIngestion';
 import { sidebarClick } from '../../../utils/sidebar';
 import ServiceBaseClass from './ServiceBaseClass';
@@ -125,7 +125,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       if (await metadataTab.isVisible()) {
         await metadataTab.click();
       }
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.click('[data-testid="add-new-ingestion-button"]');
       await page.waitForSelector('.ant-dropdown:visible [data-menu-id*="dbt"]');
       await page.click('[data-menu-id*="dbt"]');
@@ -170,7 +170,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       if (await metadataTab2.isVisible()) {
         await metadataTab2.click();
       }
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page
         .getByLabel('agents')
         .getByTestId('loader')

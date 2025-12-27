@@ -18,10 +18,10 @@ import { DashboardServiceClass } from '../../support/entity/service/DashboardSer
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage, toastNotification } from '../../utils/common';
 import {
-  assignTagToChildren,
-  generateEntityChildren,
-  removeTagsFromChildren,
-  restoreEntity,
+    assignTagToChildren,
+    generateEntityChildren,
+    removeTagsFromChildren,
+    restoreEntity,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
@@ -115,7 +115,7 @@ test.describe('Dashboard and Charts deleted toggle', () => {
     page,
   }) => {
     await dashboard.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -133,7 +133,7 @@ test.describe('Dashboard and Charts deleted toggle', () => {
     await page.click('[data-testid="confirm-button"]');
 
     await deleteResponse;
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await toastNotification(
       page,
@@ -142,7 +142,7 @@ test.describe('Dashboard and Charts deleted toggle', () => {
     );
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
     // Retry mechanism for checking deleted badge
     let deletedBadge = page.locator('[data-testid="deleted-badge"]');
@@ -158,7 +158,7 @@ test.describe('Dashboard and Charts deleted toggle', () => {
       attempts++;
       if (attempts < maxAttempts) {
         await page.reload();
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -179,7 +179,7 @@ test.describe('Dashboard and Charts deleted toggle', () => {
 
     await restoreEntity(page);
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await expect(
@@ -202,7 +202,7 @@ test.describe('Data Model', () => {
       '/dashboardDataModel/sample_superset.model.big_analytics_data_model_with_nested_columns'
     );
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });

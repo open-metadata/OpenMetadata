@@ -13,8 +13,8 @@
 import { expect, test } from '@playwright/test';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import {
-  CUSTOM_PROPERTIES_TYPES,
-  FIELD_VALUES_CUSTOM_PROPERTIES,
+    CUSTOM_PROPERTIES_TYPES,
+    FIELD_VALUES_CUSTOM_PROPERTIES,
 } from '../../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
@@ -23,26 +23,26 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  closeFirstPopupAlert,
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    closeFirstPopupAlert,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
+    uuid,
 } from '../../utils/common';
 import {
-  addCustomPropertiesForEntity,
-  deleteCreatedProperty,
+    addCustomPropertiesForEntity,
+    deleteCreatedProperty,
 } from '../../utils/customProperty';
 import { addMultiOwner } from '../../utils/entity';
 import {
-  selectActiveGlossary,
-  selectActiveGlossaryTerm,
+    selectActiveGlossary,
+    selectActiveGlossaryTerm,
 } from '../../utils/glossary';
 import {
-  createGlossaryTermRowDetails,
-  fillGlossaryRowDetails,
-  validateImportStatus,
+    createGlossaryTermRowDetails,
+    fillGlossaryRowDetails,
+    validateImportStatus,
 } from '../../utils/importUtils';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 
@@ -156,7 +156,7 @@ test.describe('Glossary Bulk Import Export', () => {
 
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         const fileInput = page.getByTestId('upload-file-widget');
         await fileInput?.setInputFiles([
           'downloads/' + glossary1.data.displayName + '.csv',
@@ -244,7 +244,7 @@ test.describe('Glossary Bulk Import Export', () => {
       for (const propertyName of Object.values(propertyListName)) {
         await settingClick(page, GlobalSettingOptions.GLOSSARY_TERM, true);
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         await page.getByTestId('loader').waitFor({ state: 'detached' });
 
@@ -271,7 +271,7 @@ test.describe('Glossary Bulk Import Export', () => {
 
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         const initialCsvContent = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
 ,name1,name1,<p>name1</p>,,,,,,user:admin,Approved,,,
@@ -335,7 +335,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
 
           await page.click('[data-testid="manage-button"]');
           await page.click('[data-testid="import-button-description"]');
-          await page.waitForLoadState('networkidle');
+          await page.waitForLoadState('domcontentloaded');
 
           const circularCsvContent = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
 ${circularRefGlossary.data.name}.name1,name1,name1,<p>name1</p>,,,,,,user:admin,Approved,,,
@@ -415,7 +415,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
 
           await page.click('[data-testid="manage-button"]');
           await page.click('[data-testid="import-button-description"]');
-          await page.waitForLoadState('networkidle');
+          await page.waitForLoadState('domcontentloaded');
 
           // CSV with missing name (required field)
           const missingNameCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
@@ -476,7 +476,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
 
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         // CSV with reference to non-existent parent
         const invalidParentCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
@@ -542,7 +542,7 @@ ${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child wi
 
           await page.click('[data-testid="manage-button"]');
           await page.click('[data-testid="import-button-description"]');
-          await page.waitForLoadState('networkidle');
+          await page.waitForLoadState('domcontentloaded');
 
           // CSV with one valid term and one with circular reference
           const mixedCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension

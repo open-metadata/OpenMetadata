@@ -13,25 +13,25 @@
 
 import { Browser, expect, Page, Response } from '@playwright/test';
 import {
-  GLOBAL_SETTING_PERMISSIONS,
-  SETTING_PAGE_ENTITY_PERMISSION,
+    GLOBAL_SETTING_PERMISSIONS,
+    SETTING_PAGE_ENTITY_PERMISSION,
 } from '../constant/permission';
 import { VISIT_SERVICE_PAGE_DETAILS } from '../constant/service';
 import {
-  GlobalSettingOptions,
-  SETTINGS_OPTIONS_PATH,
-  SETTING_CUSTOM_PROPERTIES_PATH,
+    GlobalSettingOptions,
+    SETTING_CUSTOM_PROPERTIES_PATH,
+    SETTINGS_OPTIONS_PATH,
 } from '../constant/settings';
 import { SidebarItem } from '../constant/sidebar';
 import { UserClass } from '../support/user/UserClass';
 import {
-  descriptionBox,
-  descriptionBoxReadOnly,
-  getAuthContext,
-  getToken,
-  redirectToHomePage,
-  toastNotification,
-  visitOwnProfilePage,
+    descriptionBox,
+    descriptionBoxReadOnly,
+    getAuthContext,
+    getToken,
+    redirectToHomePage,
+    toastNotification,
+    visitOwnProfilePage,
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -615,7 +615,7 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   // Click on the entity link in the drawer title
   await page.click('.summary-panel-container [data-testid="entity-link"]');
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 };
 
 export const checkStewardPermissions = async (page: Page) => {

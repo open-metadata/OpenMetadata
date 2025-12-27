@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
-  assignRoleToUser,
-  cleanupPermissions,
-  initializePermissions,
+    assignRoleToUser,
+    cleanupPermissions,
+    initializePermissions,
 } from '../../../utils/permission';
 import { sidebarClick } from '../../../utils/sidebar';
 
@@ -101,7 +101,7 @@ test.describe('Glossary Permissions', () => {
 
     const manageButtonElements = ['delete-button', 'rename-button'];
 
-    await testUserPage.waitForLoadState('networkidle');
+    await testUserPage.waitForLoadState('domcontentloaded');
 
     for (const testId of directElements) {
       let element;
@@ -162,7 +162,7 @@ test.describe('Glossary Permissions', () => {
 
     const manageButtonElements = ['delete-button', 'rename-button'];
 
-    await testUserPage.waitForLoadState('networkidle');
+    await testUserPage.waitForLoadState('domcontentloaded');
 
     for (const testId of directElements) {
       let element;
@@ -205,7 +205,7 @@ test.describe('Glossary Permissions', () => {
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
 
-    await testUserPage.waitForLoadState('networkidle');
+    await testUserPage.waitForLoadState('domcontentloaded');
 
     // Edit description button should be visible
     const editDescBtn = testUserPage.getByTestId('edit-description');
@@ -227,7 +227,7 @@ test.describe('Glossary Permissions', () => {
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
 
-    await testUserPage.waitForLoadState('networkidle');
+    await testUserPage.waitForLoadState('domcontentloaded');
 
     // Add owner button should be visible
     const addOwner = testUserPage.getByTestId('add-owner');
@@ -254,7 +254,7 @@ test.describe('Glossary Permissions', () => {
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
 
-    await testUserPage.waitForLoadState('networkidle');
+    await testUserPage.waitForLoadState('domcontentloaded');
 
     // Add tag button should be visible
     const addTag = testUserPage
@@ -283,7 +283,7 @@ test.describe('Glossary Permissions', () => {
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
 
-    await testUserPage.waitForLoadState('networkidle');
+    await testUserPage.waitForLoadState('domcontentloaded');
 
     // Manage button should be visible with delete option
     const manageButton = testUserPage.getByTestId('manage-button');
@@ -316,7 +316,7 @@ test.describe('Glossary Permissions', () => {
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
 
-    await testUserPage.waitForLoadState('networkidle');
+    await testUserPage.waitForLoadState('domcontentloaded');
 
     // Add glossary button should be visible (create permission)
     const addGlossaryBtn = testUserPage.getByTestId('add-glossary');
@@ -348,7 +348,7 @@ test.describe('Glossary Permissions', () => {
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
 
-    await testUserPage.waitForLoadState('networkidle');
+    await testUserPage.waitForLoadState('domcontentloaded');
 
     // User should be able to view the glossary page
     const glossaryHeader = testUserPage.getByTestId(
@@ -411,7 +411,7 @@ test.describe('Glossary Permissions', () => {
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
 
-    await testUserPage.waitForLoadState('networkidle');
+    await testUserPage.waitForLoadState('domcontentloaded');
 
     // Verify user can access the glossary page (team membership works)
     const glossaryHeader = testUserPage.getByTestId(

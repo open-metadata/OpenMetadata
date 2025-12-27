@@ -18,8 +18,8 @@ import { DashboardClass } from '../../../support/entity/DashboardClass';
 import { selectOption } from '../../../utils/advancedSearch';
 import { createNewPage, redirectToHomePage, uuid } from '../../../utils/common';
 import {
-  addCustomPropertiesForEntity,
-  deleteCreatedProperty,
+    addCustomPropertiesForEntity,
+    deleteCreatedProperty,
 } from '../../../utils/customProperty';
 import { settingClick, sidebarClick } from '../../../utils/sidebar';
 
@@ -167,7 +167,7 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
 
       await applyAdvanceFilter;
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
@@ -90,7 +90,7 @@ const searchForEntityShouldWork = async (
     .getByTestId('navbar-search-container')
     .getByTestId('cancel-icon')
     .click();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 };
 
 const searchForEntityShouldWorkShowNoResult = async (
@@ -113,7 +113,7 @@ const searchForEntityShouldWorkShowNoResult = async (
 
   await page.waitForResponse(`api/v1/search/query?**`);
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('loader', { state: 'hidden' });
 
   await expect(page.getByTestId('entity-header-display-name')).not.toHaveText(
@@ -130,7 +130,7 @@ Try adjusting your search or filter to find what you are looking for.`)
     .getByTestId('cancel-icon')
     .click();
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 };
 
 test.beforeAll(async ({ browser }) => {

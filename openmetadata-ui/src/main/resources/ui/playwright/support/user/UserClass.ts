@@ -13,8 +13,8 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import {
-  DATA_CONSUMER_RULES,
-  DATA_STEWARD_RULES,
+    DATA_CONSUMER_RULES,
+    DATA_STEWARD_RULES,
 } from '../../constant/permission';
 import { generateRandomUsername, uuid } from '../../utils/common';
 import { PolicyClass, PolicyRulesType } from '../access-control/PoliciesClass';
@@ -208,7 +208,7 @@ export class UserClass {
   ) {
     await page.goto('/');
     await page.waitForURL('**/signin');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     const emailInput = page.locator('input[id="email"]');
     await emailInput.waitFor({ state: 'visible' });
     await emailInput.fill(userName);
@@ -269,7 +269,7 @@ export class UserClass {
     await Promise.all([waitLogout, waitSigninNavigation]);
 
     // Ensure all network requests complete
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Clean up the route interception
     await page.unroute('**/analytics/web/events/collect');

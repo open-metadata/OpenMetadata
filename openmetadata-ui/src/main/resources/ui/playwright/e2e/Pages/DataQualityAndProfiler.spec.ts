@@ -21,22 +21,22 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignSingleSelectDomain,
-  clickOutside,
-  descriptionBox,
-  getApiContext,
-  redirectToExplorePage,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    assignSingleSelectDomain,
+    clickOutside,
+    descriptionBox,
+    getApiContext,
+    redirectToExplorePage,
+    redirectToHomePage,
+    toastNotification,
+    uuid,
 } from '../../utils/common';
 import { getCurrentMillis } from '../../utils/dateTime';
 import { visitEntityPage } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import {
-  deleteTestCase,
-  verifyIncidentBreadcrumbsFromTablePageRedirect,
-  visitDataQualityTab,
+    deleteTestCase,
+    verifyIncidentBreadcrumbsFromTablePageRedirect,
+    visitDataQualityTab,
 } from '../../utils/testCases';
 import { test } from '../fixtures/pages';
 
@@ -831,7 +831,7 @@ test(
     await page.getByRole('tab', { name: 'Data Quality' }).click();
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await test.step('Update profiler setting', async () => {
       await page.click('[data-testid="profiler-setting-btn"]');
@@ -1083,7 +1083,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
     await page.click('[data-testid="test-cases"]');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1351,7 +1351,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
     await page.click('[data-testid="test-cases"]');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1410,7 +1410,7 @@ test('Pagination functionality in test cases list', async ({ page }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
     await page.click('[data-testid="test-cases"]');
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });

@@ -14,15 +14,15 @@ import { expect, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import {
-  descriptionBox,
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    descriptionBox,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
+    uuid,
 } from '../../utils/common';
 import {
-  getElementWithPagination,
-  removePolicyFromRole,
+    getElementWithPagination,
+    removePolicyFromRole,
 } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
 
@@ -302,7 +302,7 @@ test('Delete role action from manage button options', async ({ page }) => {
 
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   await getElementWithPagination(page, roleLocator);
 

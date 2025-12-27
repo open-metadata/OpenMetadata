@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -81,7 +81,6 @@ const test = base.extend<{ page: Page }>({
 });
 
 base.beforeAll('Setup pre-requests', async ({ browser }) => {
-  test.slow(true);
 
   const { afterAction, apiContext } = await performAdminLogin(browser);
 
@@ -94,7 +93,6 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
 });
 
 base.afterAll('Cleanup', async ({ browser }) => {
-  test.slow(true);
 
   const { afterAction, apiContext } = await performAdminLogin(browser);
 
@@ -107,7 +105,6 @@ base.afterAll('Cleanup', async ({ browser }) => {
 
 test.describe('Curated Assets Widget', () => {
   test.beforeAll(async ({ page }) => {
-    test.slow(true);
 
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await redirectToHomePage(page);
@@ -181,7 +178,7 @@ test.describe('Curated Assets Widget', () => {
       await page.locator('[data-testid="saveButton"]').click();
       await queryResponse;
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -196,7 +193,7 @@ test.describe('Curated Assets Widget', () => {
       await redirectToHomePage(page);
       await removeLandingBanner(page);
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -210,7 +207,7 @@ test.describe('Curated Assets Widget', () => {
           .getByText(`${entityType.displayName} - Display Name Filter`)
       ).toBeVisible();
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -290,7 +287,7 @@ test.describe('Curated Assets Widget', () => {
     await page.locator('[data-testid="saveButton"]').click();
     await queryResponse;
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await waitForAllLoadersToDisappear(page);
 
@@ -299,7 +296,7 @@ test.describe('Curated Assets Widget', () => {
       page.locator('[data-testid="KnowledgePanel.CuratedAssets"]')
     ).toBeVisible();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await expect(
       page
@@ -393,12 +390,12 @@ test.describe('Curated Assets Widget', () => {
     ).toBeVisible();
 
     // Wait for auto-save to complete before navigating
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await redirectToHomePage(page);
     await removeLandingBanner(page);
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -483,7 +480,7 @@ test.describe('Curated Assets Widget', () => {
     await ruleLocator2.locator('.rule--value input').clear();
     await ruleLocator2.locator('.rule--value input').fill('pw');
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const queryResponse = page.waitForResponse(
       (response) =>
@@ -500,7 +497,7 @@ test.describe('Curated Assets Widget', () => {
     await page.locator('[data-testid="saveButton"]').click();
     await queryResponse;
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -517,13 +514,13 @@ test.describe('Curated Assets Widget', () => {
     ).toBeVisible();
 
     // Wait for auto-save to complete before navigating
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Navigate to landing page to verify widget
     await redirectToHomePage(page);
     await removeLandingBanner(page);
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -650,7 +647,7 @@ test.describe('Curated Assets Widget', () => {
     await page.locator('[data-testid="saveButton"]').click();
     await queryResponse;
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -667,13 +664,13 @@ test.describe('Curated Assets Widget', () => {
     ).toBeVisible();
 
     // Wait for auto-save to complete before navigating
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Navigate to landing page to verify widget
     await redirectToHomePage(page);
     await removeLandingBanner(page);
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -712,7 +709,7 @@ test.describe('Curated Assets Widget', () => {
     await expect(page.locator('[data-testid="save-button"]')).toBeEnabled();
 
     await page.locator('[data-testid="save-button"]').click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await redirectToHomePage(page);
     await removeLandingBanner(page);

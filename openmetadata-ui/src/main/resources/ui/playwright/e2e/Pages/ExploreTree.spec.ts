@@ -40,10 +40,10 @@ import { TagClass } from '../../support/tag/TagClass';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { updateDisplayNameForEntity } from '../../utils/entity';
 import {
-  Bucket,
-  validateBucketsForIndex,
-  validateBucketsForIndexAndSort,
-  verifyDatabaseAndSchemaInExploreTree,
+    Bucket,
+    validateBucketsForIndex,
+    validateBucketsForIndexAndSort,
+    verifyDatabaseAndSchemaInExploreTree,
 } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -58,7 +58,7 @@ test.beforeEach(async ({ page }) => {
 test.describe('Explore Tree scenarios', () => {
   test('Explore Tree', async ({ page }) => {
     await test.step('Check the explore tree', async () => {
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
@@ -173,7 +173,7 @@ test.describe('Explore Tree scenarios', () => {
       const serviceName2 = get(table2.serviceResponseData, 'name', '');
 
       await sidebarClick(page, SidebarItem.EXPLORE);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Verify first table's database and schema
       await test.step('Verify first table database and schema', async () => {
@@ -218,7 +218,7 @@ test.describe('Explore Tree scenarios', () => {
       'Visit explore page and verify existing values',
       async () => {
         await sidebarClick(page, SidebarItem.EXPLORE);
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         // Verify original database and schema names using utility function
         await verifyDatabaseAndSchemaInExploreTree(
@@ -259,7 +259,7 @@ test.describe('Explore Tree scenarios', () => {
     // Step 3: Verify the changes are reflected in explore page
     await test.step('Verify renamed values in explore page', async () => {
       await sidebarClick(page, SidebarItem.EXPLORE);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Verify updated database and schema names using utility function
       await verifyDatabaseAndSchemaInExploreTree(

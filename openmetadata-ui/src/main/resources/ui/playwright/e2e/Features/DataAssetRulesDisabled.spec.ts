@@ -48,20 +48,20 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignDataProduct,
-  assignDomain,
-  descriptionBoxReadOnly,
-  redirectToHomePage,
-  toastNotification,
+    assignDataProduct,
+    assignDomain,
+    descriptionBoxReadOnly,
+    redirectToHomePage,
+    toastNotification,
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
 import { addMultiOwner, assignGlossaryTerm } from '../../utils/entity';
 import {
-  createDatabaseRowDetails,
-  createDatabaseSchemaRowDetails,
-  createTableRowDetails,
-  fillRowDetails,
-  validateImportStatus,
+    createDatabaseRowDetails,
+    createDatabaseSchemaRowDetails,
+    createTableRowDetails,
+    fillRowDetails,
+    validateImportStatus,
 } from '../../utils/importUtils';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { test } from '../fixtures/pages';
@@ -376,7 +376,7 @@ test.describe(
 
         await page.click('[data-testid="databases"]');
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         // Verify Details updated
         await expect(page.getByTestId('column-name')).toHaveText(
@@ -536,7 +536,7 @@ test.describe(
 
         await page.getByTestId('column-display-name').click();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('loader', { state: 'hidden' });
 
         // Verify Tags
@@ -654,7 +654,7 @@ test.describe(
           .getByTestId('column-display-name')
           .getByTestId(table.entity.name)
           .click();
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('loader', { state: 'hidden' });
 
         // Verify Domain

@@ -19,8 +19,8 @@ import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import {
-  addOwner,
-  updateDisplayNameForEntityChildren,
+    addOwner,
+    updateDisplayNameForEntityChildren,
 } from '../../utils/entity';
 
 const table = new TableClass();
@@ -107,7 +107,7 @@ test('schema table test', async ({ dataStewardPage, ownerPage, page }) => {
     await redirectToHomePage(page);
 
     await table.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await addOwner({
@@ -133,7 +133,7 @@ test('schema table test', async ({ dataStewardPage, ownerPage, page }) => {
       await redirectToHomePage(currentPage);
 
       await table.visitEntityPage(currentPage);
-      await currentPage.waitForLoadState('networkidle');
+      await currentPage.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });

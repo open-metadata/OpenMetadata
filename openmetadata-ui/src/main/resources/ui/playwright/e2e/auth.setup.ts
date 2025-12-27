@@ -150,37 +150,37 @@ setup('authenticate all users', async ({ browser }) => {
 
     // Save states for each user sequentially to avoid file operation conflicts
     await dataConsumer.login(dataConsumerPage);
-    await dataConsumerPage.waitForLoadState('networkidle');
+    await dataConsumerPage.waitForLoadState('domcontentloaded');
     await dataConsumerPage
       .context()
       .storageState({ path: dataConsumerFile, indexedDB: true });
 
     await dataSteward.login(dataStewardPage);
-    await dataStewardPage.waitForLoadState('networkidle');
+    await dataStewardPage.waitForLoadState('domcontentloaded');
     await dataStewardPage
       .context()
       .storageState({ path: dataStewardFile, indexedDB: true });
 
     await editDescriptionUser.login(editDescriptionPage);
-    await editDescriptionPage.waitForLoadState('networkidle');
+    await editDescriptionPage.waitForLoadState('domcontentloaded');
     await editDescriptionPage
       .context()
       .storageState({ path: editDescriptionFile, indexedDB: true });
 
     await editTagsUser.login(editTagsPage);
-    await editTagsPage.waitForLoadState('networkidle');
+    await editTagsPage.waitForLoadState('domcontentloaded');
     await editTagsPage
       .context()
       .storageState({ path: editTagsFile, indexedDB: true });
 
     await editGlossaryTermUser.login(editGlossaryTermPage);
-    await editGlossaryTermPage.waitForLoadState('networkidle');
+    await editGlossaryTermPage.waitForLoadState('domcontentloaded');
     await editGlossaryTermPage
       .context()
       .storageState({ path: editGlossaryTermFile, indexedDB: true });
 
     await ownerUser.login(ownerPage);
-    await ownerPage.waitForLoadState('networkidle');
+    await ownerPage.waitForLoadState('domcontentloaded');
     await ownerPage
       .context()
       .storageState({ path: ownerFile, indexedDB: true });
@@ -191,7 +191,7 @@ setup('authenticate all users', async ({ browser }) => {
       await newAdminPage.close();
     }
   } catch (error) {
-    // eslint-disable-next-line no-console
+     
     console.error('Error during authentication setup:', error);
 
     throw error;

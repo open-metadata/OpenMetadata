@@ -12,30 +12,30 @@
  *  limitations under the License.
  */
 import {
-  APIRequestContext,
-  expect,
-  Page,
-  PlaywrightTestArgs,
-  PlaywrightWorkerArgs,
-  TestType,
+    APIRequestContext,
+    expect,
+    Page,
+    PlaywrightTestArgs,
+    PlaywrightWorkerArgs,
+    TestType,
 } from '@playwright/test';
 import { MAX_CONSECUTIVE_ERRORS } from '../../../constant/service';
 import {
-  descriptionBox,
-  executeWithRetry,
-  getApiContext,
-  INVALID_NAMES,
-  NAME_VALIDATION_ERROR,
-  toastNotification,
+    descriptionBox,
+    executeWithRetry,
+    getApiContext,
+    INVALID_NAMES,
+    NAME_VALIDATION_ERROR,
+    toastNotification,
 } from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
-  deleteService,
-  getServiceCategoryFromService,
-  makeRetryRequest,
-  Services,
-  testConnection,
+    deleteService,
+    getServiceCategoryFromService,
+    makeRetryRequest,
+    Services,
+    testConnection,
 } from '../../../utils/serviceIngestion';
 import { ResponseDataType } from '../Entity.interface';
 
@@ -160,7 +160,7 @@ class ServiceBaseClass {
     if (await metadataTab.isVisible()) {
       await metadataTab.click();
     }
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.waitForSelector('[data-testid="add-new-ingestion-button"]');
 
@@ -199,7 +199,7 @@ class ServiceBaseClass {
     if (await metadataTab2.isVisible()) {
       await metadataTab2.click();
     }
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page
       .getByLabel('agents')
       .getByTestId('loader')
@@ -211,7 +211,7 @@ class ServiceBaseClass {
     await page.getByTestId('more-actions').first().click();
     await page.getByTestId('run-button').click();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await toastNotification(page, `Pipeline triggered successfully!`);
 
@@ -373,7 +373,7 @@ class ServiceBaseClass {
     if (await metadataTab2.isVisible()) {
       await metadataTab2.click();
     }
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector(`td:has-text("${ingestionType}")`);
 
     await expect(
@@ -433,7 +433,7 @@ class ServiceBaseClass {
     if (await metadataTab2.isVisible()) {
       await metadataTab2.click();
     }
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // click and edit pipeline schedule for Hours
 
@@ -597,7 +597,7 @@ class ServiceBaseClass {
     if (await metadataTab2.isVisible()) {
       await metadataTab2.click();
     }
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await ingestionResponse;
     await page

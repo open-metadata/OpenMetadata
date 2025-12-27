@@ -252,7 +252,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
     });
 
     await userPage.getByTestId('profiler').click();
-    await userPage.waitForLoadState('networkidle');
+    await userPage.waitForLoadState('domcontentloaded');
     await userPage.waitForSelector("[data-testid='loader']", {
       state: 'detached',
     });

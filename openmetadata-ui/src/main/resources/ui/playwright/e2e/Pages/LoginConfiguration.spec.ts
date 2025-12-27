@@ -54,7 +54,7 @@ test.describe('Login configuration', () => {
     // Wait for the API response to complete
     await settingsResponsePromise;
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Assert the updated values
     await expect(

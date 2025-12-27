@@ -18,10 +18,10 @@ import { TableClass } from '../support/entity/TableClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-  assignDomain,
-  descriptionBox,
-  toastNotification,
-  uuid,
+    assignDomain,
+    descriptionBox,
+    toastNotification,
+    uuid,
 } from './common';
 import { addMultiOwner, addOwner } from './entity';
 import { validateFormNameFieldInput } from './form';
@@ -58,7 +58,7 @@ export const createTeam = async (page: Page, isPublic?: boolean) => {
 
   await createTeamResponse;
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -397,7 +397,7 @@ export const addEmailTeam = async (page: Page, email: string) => {
   // Reload the page
   await page.reload();
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
@@ -487,7 +487,7 @@ export const executionOnOwnerTeam = async (
 
   const newTeamData = await createTeam(page);
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',

@@ -12,17 +12,17 @@
  */
 import test, { expect } from '@playwright/test';
 import {
-  clickOnDistKeySelector,
-  clickOnForeignKeySelector,
-  clickOnSortKeySelector,
-  clickOnUniqueKeySelector,
+    clickOnDistKeySelector,
+    clickOnForeignKeySelector,
+    clickOnSortKeySelector,
+    clickOnUniqueKeySelector,
 } from '../../constant/tableConstraint';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-  clickOutside,
-  createNewPage,
-  redirectToHomePage,
-  uuid,
+    clickOutside,
+    createNewPage,
+    redirectToHomePage,
+    uuid,
 } from '../../utils/common';
 
 // use the admin user to login
@@ -60,7 +60,7 @@ test.describe('Table Constraints', {}, () => {
 
     await test.step('Add Constraints', async () => {
       await table.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });

@@ -68,7 +68,7 @@ export class TeamClass {
       .getByRole('link')
       .click();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await expect(page.getByTestId('team-heading')).toHaveText(
       this.data.displayName

@@ -61,7 +61,7 @@ test.describe('Login flow should work properly', () => {
 
   test('Signup and Login with signed up credentials', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await expect(page).toHaveURL(`/signin`);
 
@@ -100,7 +100,7 @@ test.describe('Login flow should work properly', () => {
     const loginResponse = page.waitForResponse(`/api/v1/auth/login`);
     await page.locator('[data-testid="login"]').click();
     await loginResponse;
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await expect(page).toHaveURL(`/my-data`);
 
@@ -114,7 +114,7 @@ test.describe('Login flow should work properly', () => {
 
   test('Signin using invalid credentials', async ({ page }) => {
     await page.goto(`/signin`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     // Login with invalid email
     await page.fill('#email', invalidEmail);
     await page.fill('#password', CREDENTIALS.password);
@@ -199,7 +199,7 @@ test.describe('Login flow should work properly', () => {
 
     await redirectToHomePage(page1);
     await page1.getByTestId('dropdown-profile').click();
-    await page1.waitForLoadState('networkidle');
+    await page1.waitForLoadState('domcontentloaded');
     await clickOutside(page1);
 
     await expect(page1.getByTestId('nav-user-name')).toContainText(/admin/i);
@@ -210,7 +210,7 @@ test.describe('Login flow should work properly', () => {
     await redirectToHomePage(page2);
 
     await page2.getByTestId('dropdown-profile').click();
-    await page2.waitForLoadState('networkidle');
+    await page2.waitForLoadState('domcontentloaded');
     await clickOutside(page2);
 
     await expect(page2.getByTestId('nav-user-name')).toContainText(/admin/i);

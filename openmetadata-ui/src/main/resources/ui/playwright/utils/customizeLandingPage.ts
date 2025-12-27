@@ -13,9 +13,9 @@
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
 import {
-  redirectToHomePage,
-  toastNotification,
-  visitOwnProfilePage,
+    redirectToHomePage,
+    toastNotification,
+    visitOwnProfilePage,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { navigateToPersonaWithPagination } from './persona';
@@ -156,7 +156,7 @@ export const navigateToCustomizeLandingPage = async (
   await page.getByTestId('LandingPage').click();
   await getCustomPageDataResponse;
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 };
 
 export const removeAndCheckWidget = async (
@@ -195,7 +195,7 @@ export const setUserDefaultPersona = async (
   ).toBeVisible();
 
   await page.locator('[data-testid="default-persona-select-list"]').click();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
 
@@ -256,7 +256,7 @@ export const removeAndVerifyWidget = async (
   });
 
   await page.locator('[data-testid="save-button"]').click();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   await redirectToHomePage(page);
 
@@ -289,7 +289,7 @@ export const addAndVerifyWidget = async (
   ).toBeVisible();
 
   await page.locator('[data-testid="save-button"]').click();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   await redirectToHomePage(page);
 
@@ -523,7 +523,7 @@ export const verifyWidgetEntityNavigation = async (
     }
 
     // Wait for navigation
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Verify we're on the correct page
     const currentUrl = page.url();

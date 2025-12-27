@@ -33,7 +33,7 @@ const waitForTourBadgeWithRetry = async (
     } catch (e) {
       if (attempt < maxAttempts) {
         await page.reload();
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -197,7 +197,7 @@ test.describe('Tour should work properly', () => {
 
     if (isWelcomeScreenVisible) {
       await page.getByTestId('welcome-screen-close-btn').click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
     }
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');

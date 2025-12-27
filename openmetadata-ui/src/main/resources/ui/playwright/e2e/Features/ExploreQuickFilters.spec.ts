@@ -15,15 +15,15 @@ import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-  assignSingleSelectDomain,
-  clickOutside,
-  createNewPage,
-  redirectToHomePage,
+    assignSingleSelectDomain,
+    clickOutside,
+    createNewPage,
+    redirectToHomePage,
 } from '../../utils/common';
 import {
-  assignTag,
-  assignTier,
-  waitForAllLoadersToDisappear,
+    assignTag,
+    assignTier,
+    waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { searchAndClickOnOption, selectNullOption } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
@@ -63,7 +63,7 @@ test.afterAll('Cleanup', async ({ browser }) => {
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
   await sidebarClick(page, SidebarItem.EXPLORE);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 });
 
@@ -188,7 +188,7 @@ test('should persist quick filter on global search', async ({ page }) => {
   await page.getByTestId('searchBox').click();
   await page.keyboard.down('Enter');
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   // expect the quick filter to be persisted
   await expect(

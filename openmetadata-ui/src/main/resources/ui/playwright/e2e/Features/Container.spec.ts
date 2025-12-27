@@ -23,12 +23,8 @@ import { test } from '../fixtures/pages';
 
 const container = new ContainerClass();
 
-test.slow(true);
-
 test.describe('Container entity specific tests ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.slow(true);
-
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await container.create(apiContext, CONTAINER_CHILDREN);
 
@@ -36,8 +32,6 @@ test.describe('Container entity specific tests ', () => {
   });
 
   test.afterAll('Clean up', async ({ browser }) => {
-    test.slow(true);
-
     const { afterAction, apiContext } = await performAdminLogin(browser);
 
     await container.delete(apiContext);
@@ -126,7 +120,7 @@ test.describe('Container entity specific tests ', () => {
   }) => {
     await page.goto('/container/s3_storage_sample.departments.finance');
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });

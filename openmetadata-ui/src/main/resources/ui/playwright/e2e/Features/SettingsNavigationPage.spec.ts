@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -50,13 +50,13 @@ base.afterAll('Cleanup', async ({ browser }) => {
 const navigateToPersonaNavigation = async (page: Page) => {
   const getPersonas = page.waitForResponse('/api/v1/personas*');
   await settingClick(page, GlobalSettingOptions.PERSONA);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await getPersonas;
 
   await navigateToPersonaWithPagination(page, persona.data.name, true);
 
   await page.getByTestId('navigation').click();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 };
 
 test.describe('Settings Navigation Page Tests', () => {
@@ -145,7 +145,7 @@ test.describe('Settings Navigation Page Tests', () => {
 
     // Test discard changes
     await page.getByTestId('unsaved-changes-modal-discard').click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Should navigate away and changes should be discarded
     await expect(page).toHaveURL(/.*settings.*/);
@@ -176,7 +176,7 @@ test.describe('Settings Navigation Page Tests', () => {
     const saveResponse = page.waitForResponse('api/v1/docStore');
     await page.getByTestId('unsaved-changes-modal-save').click();
     await saveResponse;
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Should navigate to settings page
     await expect(page).toHaveURL(/.*settings.*/);
@@ -241,7 +241,7 @@ test.describe('Settings Navigation Page Tests', () => {
 
     // Test discard changes
     await page.getByTestId('unsaved-changes-modal-save').click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Verify reset worked - save button disabled and state reverted
     expect(await domainSwitch.isChecked()).toBeTruthy();

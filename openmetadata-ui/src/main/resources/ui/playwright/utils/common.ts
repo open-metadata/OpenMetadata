@@ -63,14 +63,14 @@ export const redirectToHomePage = async (
   await page.goto('/');
   await page.waitForURL('**/my-data');
   if (waitForNetworkIdle) {
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   }
 };
 
 export const redirectToExplorePage = async (page: Page) => {
   await page.goto('/explore');
   await page.waitForURL('**/explore');
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 };
 
 export const removeLandingBanner = async (page: Page) => {
@@ -497,7 +497,7 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await sidebarClick(page, SidebarItem.GLOSSARY);
   await glossaryResponse;
   await page.getByRole('menuitem', { name: glossaryName }).click();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 };
 
@@ -577,7 +577,7 @@ export const closeFirstPopupAlert = async (page: Page) => {
 
 export const reloadAndWaitForNetworkIdle = async (page: Page) => {
   await page.reload();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
@@ -687,7 +687,7 @@ export const testPaginationNavigation = async (
   page: Page,
   waitForLoadSelector?: string
 ) => {
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   if (waitForLoadSelector) {
     await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
@@ -711,7 +711,7 @@ export const testPaginationNavigation = async (
 
   await nextButton.click();
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await waitForAllLoadersToDisappear(page);
 
   const currentUrl = page.url();
@@ -726,7 +726,7 @@ export const testPaginationNavigation = async (
   expect(afterValue).toBeTruthy();
 
   await page.reload();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   if (waitForLoadSelector) {
     await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
@@ -753,7 +753,7 @@ export const testTableSorting = async (
   columnIndex = 0
 ) => {
   await waitForAllLoadersToDisappear(page);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   const header = page.locator(`th:has-text("${columnHeader}")`).first();
   const visibleRowSelector = `tbody tr:not([aria-hidden="true"])`;
@@ -796,7 +796,7 @@ export const testTableSearch = async (
   notVisibleText: string
 ) => {
   await waitForAllLoadersToDisappear(page);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*index=${searchIndex}*`
@@ -805,7 +805,7 @@ export const testTableSearch = async (
   await page.getByTestId('searchbar').fill(searchTerm);
   await waitForSearchResponse;
   await waitForAllLoadersToDisappear(page);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   await expect(page.getByText(searchTerm).first()).toBeVisible();
 

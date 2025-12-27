@@ -17,12 +17,12 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignSingleSelectDomain,
-  descriptionBox,
-  redirectToHomePage,
-  removeSingleSelectDomain,
-  toastNotification,
-  uuid,
+    assignSingleSelectDomain,
+    descriptionBox,
+    redirectToHomePage,
+    removeSingleSelectDomain,
+    toastNotification,
+    uuid,
 } from '../../utils/common';
 import { addMultiOwner, removeOwnersFromList } from '../../utils/entity';
 import { test } from '../fixtures/pages';
@@ -59,7 +59,7 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
   const testCaseName1 = table.testCasesResponseData?.[0]?.['name'];
   const testCaseName2 = table.testCasesResponseData?.[1]?.['name'];
   await page.goto('/data-quality/test-suites/bundle-suites');
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   const loggedInUserRequest = ownerPage.waitForResponse(
     `/api/v1/users/loggedInUser*`
@@ -97,7 +97,7 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
     await createTestSuiteResponse;
     await toastNotification(page, 'Test Suite created successfully.');
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -136,7 +136,7 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
 
   await test.step('Add test case to logical test suite by owner', async () => {
     await ownerPage.goto(`test-suites/${NEW_TEST_SUITE.name}`);
-    await ownerPage.waitForLoadState('networkidle');
+    await ownerPage.waitForLoadState('domcontentloaded');
     await ownerPage.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -186,7 +186,7 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
     );
 
     await page.getByTestId('view-service-button').click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });

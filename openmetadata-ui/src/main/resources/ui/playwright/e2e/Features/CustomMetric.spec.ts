@@ -14,8 +14,8 @@ import test from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import {
-  createCustomMetric,
-  deleteCustomMetric,
+    createCustomMetric,
+    deleteCustomMetric,
 } from '../../utils/customMetric';
 
 // use the admin user to login
@@ -38,7 +38,7 @@ test('Table custom metric', async ({ page }) => {
     );
     await table.visitEntityPage(page);
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 
     await page.click('[data-testid="profiler"]');

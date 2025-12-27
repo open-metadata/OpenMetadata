@@ -81,7 +81,7 @@ export class TagClass {
     );
     await page.getByTestId(this.data.name).waitFor({ state: 'visible' });
     await page.getByTestId(this.data.name).click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   }
 
   async create(apiContext: APIRequestContext) {

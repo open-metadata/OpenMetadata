@@ -20,9 +20,9 @@ import { TagClass } from '../../support/tag/TagClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import {
-  assignTagToChildren,
-  getFirstRowColumnLink,
-  removeTagsFromChildren,
+    assignTagToChildren,
+    getFirstRowColumnLink,
+    removeTagsFromChildren,
 } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { columnPaginationTable } from '../../utils/table';
@@ -63,7 +63,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
     await page.click('[data-testid="test-cases"]');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -72,7 +72,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await page.getByTestId('next').click();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -98,7 +98,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
   }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.click('[data-testid="test-cases"]');
 
     const listTestCaseResponse = page.waitForResponse(
@@ -156,13 +156,13 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await firstLinkInColumn.click();
 
     await page.waitForURL('**/table/**');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
 
     await page.goBack({
-      waitUntil: 'networkidle',
+      waitUntil: 'domcontentloaded',
     });
 
     await page.waitForSelector('[data-testid="loader"]', {
@@ -181,13 +181,13 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await secondLinkInColumn.click();
 
     await page.waitForURL('**/table/**');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
 
     await page.goBack({
-      waitUntil: 'networkidle',
+      waitUntil: 'domcontentloaded',
     });
 
     await page.waitForSelector('[data-testid="loader"]', {
@@ -204,7 +204,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
   test('should persist page size', async ({ dataConsumerPage: page }) => {
     await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -234,13 +234,13 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await linkInColumn.click();
 
     await entityApiResponse;
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
 
     await page.goBack();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -262,7 +262,7 @@ test.describe('Table & Data Model columns table pagination', () => {
       '/table/sample_data.ecommerce_db.shopify.performance_test_table'
     );
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -282,7 +282,7 @@ test.describe('Table & Data Model columns table pagination', () => {
       '/dashboardDataModel/sample_superset.model.big_analytics_data_model_with_nested_columns'
     );
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -346,7 +346,7 @@ test.describe('Table & Data Model columns table pagination', () => {
   }) => {
     await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -419,7 +419,7 @@ test.describe('Table & Data Model columns table pagination', () => {
       '/table/sample_data.ecommerce_db.shopify.performance_test_table'
     );
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -485,7 +485,7 @@ test.describe(
       await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
 
       // Wait for page to be fully loaded
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -583,7 +583,7 @@ test.describe(
       await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
 
       // Wait for page to be fully loaded
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -624,7 +624,7 @@ test.describe(
 
       page.reload();
       // Wait for page to be fully loaded
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });

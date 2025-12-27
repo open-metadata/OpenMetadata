@@ -16,9 +16,9 @@ import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { Glossary } from '../../support/glossary/Glossary';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage,
 } from '../../utils/common';
 import { addMultiOwner } from '../../utils/entity';
 import { setupGlossaryAndTerms } from '../../utils/glossary';
@@ -187,7 +187,7 @@ test('GlossaryTerm', async ({ page }) => {
     });
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     const versionPageResponse = page.waitForResponse(
       `/api/v1/glossaryTerms/${term2.responseData.id}/versions/0.2`
     );
@@ -216,7 +216,7 @@ test('GlossaryTerm', async ({ page }) => {
     });
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Verify the reviewer was actually added before checking version diff
     await expect(
@@ -230,7 +230,7 @@ test('GlossaryTerm', async ({ page }) => {
 
     // Wait for the version dialog to be fully loaded
     await page.waitForSelector('[role="dialog"]', { state: 'visible' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await expect(
       page.locator('[data-testid="glossary-reviewer"]')
@@ -282,7 +282,7 @@ test('Navigate between versions', async ({ page }) => {
 
     // Wait for version dialog to load
     await page.waitForSelector('[role="dialog"]', { state: 'visible' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check if version selector/dropdown exists
     const versionSelector = page.getByTestId('version-selector');
@@ -296,7 +296,7 @@ test('Navigate between versions', async ({ page }) => {
 
       if (await versionOption.isVisible()) {
         await versionOption.click();
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
       }
     }
 
@@ -324,7 +324,7 @@ test('Return to current version from history', async ({ page }) => {
 
     // Close the version dialog
     await page.getByRole('dialog').getByRole('img').click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Verify we're back on the main glossary page
     await expect(page.getByTestId('entity-header-display-name')).toContainText(
@@ -350,7 +350,7 @@ test('Version diff shows synonym changes', async ({ page }) => {
 
     // Wait for version dialog
     await page.waitForSelector('[role="dialog"]', { state: 'visible' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check for synonym diff
     const synonymDiff = page.locator('[data-testid="test-synonym"].diff-added');
@@ -372,7 +372,7 @@ test('Version diff shows reference changes', async ({ page }) => {
 
     // Wait for version dialog
     await page.waitForSelector('[role="dialog"]', { state: 'visible' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check for reference diff
     const referenceDiff = page.locator(
@@ -396,7 +396,7 @@ test('Version diff shows related term changes', async ({ page }) => {
 
     // Wait for version dialog
     await page.waitForSelector('[role="dialog"]', { state: 'visible' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check for related term diff (term1 was added as related term to term2)
     const relatedTermDiff = page.locator(

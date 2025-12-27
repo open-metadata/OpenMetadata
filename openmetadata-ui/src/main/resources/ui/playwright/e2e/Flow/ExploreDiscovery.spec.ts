@@ -17,8 +17,8 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
-  getEncodedFqn,
-  waitForAllLoadersToDisappear,
+    getEncodedFqn,
+    waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { getJsonTreeObject } from '../../utils/exploreDiscovery';
 import { sidebarClick } from '../../utils/sidebar';
@@ -83,7 +83,7 @@ test.describe('Explore Assets Discovery', () => {
       `/explore?page=1&size=10&queryFilter=${JSON.stringify(queryFilter)}`
     );
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await expect(
@@ -106,7 +106,7 @@ test.describe('Explore Assets Discovery', () => {
       `/explore?page=1&size=10&queryFilter=${JSON.stringify(queryFilter)}`
     );
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await expect(
@@ -129,7 +129,7 @@ test.describe('Explore Assets Discovery', () => {
       `/explore?page=1&size=10&queryFilter=${JSON.stringify(queryFilter)}`
     );
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await expect(
@@ -153,7 +153,7 @@ test.describe('Explore Assets Discovery', () => {
       )}`
     );
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await expect(
@@ -178,7 +178,7 @@ test.describe('Explore Assets Discovery', () => {
       )}`
     );
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await expect(
@@ -203,7 +203,7 @@ test.describe('Explore Assets Discovery', () => {
       )}`
     );
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await expect(
@@ -217,7 +217,7 @@ test.describe('Explore Assets Discovery', () => {
     page,
   }) => {
     await table1.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.getByTestId('manage-button').click();
     await page.getByTestId('delete-button').click();
@@ -241,14 +241,14 @@ test.describe('Explore Assets Discovery', () => {
     await page.getByTestId('confirm-button').click();
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await expect(page.getByTestId('deleted-badge')).toBeVisible();
 
     await redirectToHomePage(page);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.getByTestId('searchBox').click();
     await page.getByTestId('searchBox').fill(table1.entityResponseData.name);
@@ -262,7 +262,7 @@ test.describe('Explore Assets Discovery', () => {
     page,
   }) => {
     await sidebarClick(page, SidebarItem.EXPLORE);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
 
     // The user should not be visible in the owners filter when the deleted switch is off
@@ -315,13 +315,13 @@ test.describe('Explore Assets Discovery', () => {
     page,
   }) => {
     await sidebarClick(page, SidebarItem.EXPLORE);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
 
     // Click on the show deleted toggle button
     await page.getByTestId('show-deleted').click();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
 
     // The user should be visible in the owners filter when the deleted switch is on
@@ -352,7 +352,7 @@ test.describe('Explore Assets Discovery', () => {
     await page.getByTestId('update-btn').click();
     await fetchWithOwner;
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
 
     // The domain should be visible in the domains filter when the deleted switch is on
@@ -386,7 +386,7 @@ test.describe('Explore Assets Discovery', () => {
     await page.getByTestId('update-btn').click();
     await fetchWithDomain;
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
 
     // Only the table option should be visible for the data assets filter when the deleted switch is on
