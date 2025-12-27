@@ -121,13 +121,16 @@ jest.mock('../../../common/Loader/Loader', () => {
 jest.mock('../../SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockImplementation(() => <div>SchemaEditor.component</div>);
 });
-jest.mock('../../../../utils/date-time/DateTimeUtils', () => {
-  return {
-    formatDateTime: jest.fn(),
-    getCurrentMillis: jest.fn(),
-    getEpochMillisForPastDays: jest.fn(),
-  };
-});
+jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
+  formatDateTime: jest.fn().mockReturnValue('Jan 01, 2024'),
+  getCurrentMillis: jest.fn().mockReturnValue(1711583974000),
+  getEpochMillisForPastDays: jest.fn().mockReturnValue(1709424034000),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  convertSecondsToHumanReadableFormat: jest
+    .fn()
+    .mockImplementation((val) => `${val}ms`),
+}));
 
 jest.mock(
   '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
@@ -215,5 +218,91 @@ describe('TestSummaryGraph', () => {
     render(<TestSummaryGraph {...mockProps} />);
 
     expect(mockSetShowAILearningBanner).toHaveBeenCalledWith(false);
+  });
+
+  it('should display selectedTimeRange in error message when no results', () => {
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        selectedTimeRange="Last 7 days"
+        testCaseResults={[]}
+      />
+    );
+
+    expect(screen.getByText('ErrorPlaceHolder.component')).toBeInTheDocument();
+  });
+
+  it('should render with minHeight prop', () => {
+    render(<TestSummaryGraph {...mockProps} minHeight={500} />);
+
+    expect(
+      queryByAttribute('id', document.body, `${mockProps.testCaseName}_graph`)
+    ).toBeInTheDocument();
+  });
+
+  it('should handle testDefinitionName for freshness tests', () => {
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testDefinitionName="tableDataToBeFresh"
+      />
+    );
+
+    expect(
+      queryByAttribute('id', document.body, `${mockProps.testCaseName}_graph`)
+    ).toBeInTheDocument();
+  });
+
+  it('should handle mouse enter and leave on legend', async () => {
+    render(<TestSummaryGraph {...mockProps} />);
+    const minButton = screen.getByTestId('min');
+
+    await act(async () => {
+      fireEvent.mouseEnter(minButton);
+    });
+
+    expect(minButton).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.mouseLeave(minButton);
+    });
+
+    expect(minButton).toBeInTheDocument();
+  });
+
+  it('should render reference line when single parameter value', () => {
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testCaseParameterValue={[
+          {
+            name: 'threshold',
+            value: '100',
+          },
+        ]}
+      />
+    );
+
+    expect(
+      queryByAttribute('id', document.body, `${mockProps.testCaseName}_graph`)
+    ).toBeInTheDocument();
+  });
+
+  it('should render incident areas when entity threads exist', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(
+      queryByAttribute('id', document.body, `${mockProps.testCaseName}_graph`)
+    ).toBeInTheDocument();
+  });
+
+  it('should handle empty testCaseParameterValue', () => {
+    render(
+      <TestSummaryGraph {...mockProps} testCaseParameterValue={undefined} />
+    );
+
+    expect(
+      queryByAttribute('id', document.body, `${mockProps.testCaseName}_graph`)
+    ).toBeInTheDocument();
   });
 });

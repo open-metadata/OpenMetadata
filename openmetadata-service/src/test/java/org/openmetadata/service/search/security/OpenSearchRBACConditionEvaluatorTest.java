@@ -21,7 +21,7 @@ import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import os.org.opensearch.index.query.QueryBuilder;
+import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 
 class OpenSearchRBACConditionEvaluatorTest {
 
@@ -74,8 +74,8 @@ class OpenSearchRBACConditionEvaluatorTest {
     when(mockUser.getRoles()).thenReturn(List.of(role));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
-    String generatedQuery = openSearchQuery.toString();
+    Query openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
+    String generatedQuery = openSearchQuery.toJsonString();
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
@@ -104,8 +104,8 @@ class OpenSearchRBACConditionEvaluatorTest {
     when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
-    String generatedQuery = openSearchQuery.toString();
+    Query openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
+    String generatedQuery = openSearchQuery.toJsonString();
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
@@ -123,8 +123,8 @@ class OpenSearchRBACConditionEvaluatorTest {
     when(mockUser.getId()).thenReturn(UUID.randomUUID());
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
-    String generatedQuery = openSearchQuery.toString();
+    Query openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
+    String generatedQuery = openSearchQuery.toJsonString();
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
@@ -159,8 +159,8 @@ class OpenSearchRBACConditionEvaluatorTest {
     when(mockUser.getTeams()).thenReturn(List.of(team));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
-    String generatedQuery = openSearchQuery.toString();
+    Query openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
+    String generatedQuery = openSearchQuery.toJsonString();
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 

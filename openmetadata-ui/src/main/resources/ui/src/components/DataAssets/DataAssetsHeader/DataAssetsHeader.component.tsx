@@ -34,6 +34,10 @@ import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/Enti
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
+  CustomizeEntityType,
+  ENTITY_PAGE_TYPE_MAP,
+} from '../../../constants/Customize.constants';
+import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_TYPES,
 } from '../../../constants/Services.constant';
@@ -47,15 +51,19 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { Container } from '../../../generated/entity/data/container';
-import { ContractExecutionStatus } from '../../../generated/entity/data/dataContract';
+import {
+  ContractExecutionStatus,
+  DataContract,
+} from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
-import { PageType } from '../../../generated/system/ui/page';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
+import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
@@ -107,7 +115,6 @@ export const DataAssetsHeader = ({
   showDomain = true,
   afterDeleteAction,
   dataAsset,
-  dataContract,
   onUpdateVote,
   onOwnerUpdate,
   onTierUpdate,
@@ -131,6 +138,7 @@ export const DataAssetsHeader = ({
   afterTriggerAction,
   isAutoPilotWorkflowStatusLoading = false,
   onCertificationUpdate,
+  disableRunAgentsButtonMessage,
 }: DataAssetsHeaderProps) => {
   const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceCategory;
@@ -140,13 +148,26 @@ export const DataAssetsHeader = ({
   const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
-  const { customizedPage } = useCustomPages(PageType.Table);
+  const { customizedPage } = useCustomPages(
+    ENTITY_PAGE_TYPE_MAP[entityType as CustomizeEntityType]
+  );
   const [parentContainers, setParentContainers] = useState<Container[]>([]);
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const navigate = useNavigate();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
+  const { entityRules } = useEntityRules(entityType);
+  const [dataContract, setDataContract] = useState<DataContract>();
+
+  const fetchDataContract = async (entityId: string) => {
+    try {
+      const contract = await getContractByEntityId(entityId, entityType);
+      setDataContract(contract);
+    } catch {
+      // Do nothing
+    }
+  };
 
   const icon = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
@@ -537,7 +558,11 @@ export const DataAssetsHeader = ({
     const isLoading = isAutoPilotWorkflowStatusLoading || isAutoPilotTriggering;
 
     return (
-      <Tooltip title={t('message.trigger-auto-pilot-application')}>
+      <Tooltip
+        title={
+          disableRunAgentsButtonMessage ??
+          t('message.trigger-auto-pilot-application')
+        }>
         <Button
           className="font-semibold"
           data-testid="trigger-auto-pilot-application-button"
@@ -546,7 +571,7 @@ export const DataAssetsHeader = ({
           loading={isLoading}
           type="primary"
           onClick={triggerTheAutoPilotApplication}>
-          {t('label.run-agent-plural')}
+          {t('label.trigger-entity', { entity: t('label.auto-pilot') })}
         </Button>
       </Tooltip>
     );
@@ -555,7 +580,14 @@ export const DataAssetsHeader = ({
     isAutoPilotWorkflowStatusLoading,
     isAutoPilotTriggering,
     triggerTheAutoPilotApplication,
+    disableRunAgentsButtonMessage,
   ]);
+
+  useEffect(() => {
+    if (dataAsset.id) {
+      fetchDataContract(dataAsset.id);
+    }
+  }, [dataAsset?.id]);
 
   return (
     <>
@@ -698,7 +730,6 @@ export const DataAssetsHeader = ({
               <>
                 <DomainLabel
                   headerLayout
-                  multiple
                   showDashPlaceholder
                   afterDomainUpdateAction={afterDomainUpdateAction}
                   domains={(dataAsset as EntitiesWithDomainField).domains}
@@ -706,6 +737,7 @@ export const DataAssetsHeader = ({
                   entityId={dataAsset.id ?? ''}
                   entityType={entityType}
                   hasPermission={editDomainPermission}
+                  multiple={entityRules.canAddMultipleDomains}
                   textClassName="render-domain-lebel-style"
                 />
                 <Divider
@@ -720,6 +752,10 @@ export const DataAssetsHeader = ({
               hasPermission={editOwnerPermission}
               isCompactView={false}
               maxVisibleOwners={4}
+              multiple={{
+                user: entityRules.canAddMultipleUserOwners,
+                team: entityRules.canAddMultipleTeamOwner,
+              }}
               owners={dataAsset?.owners}
               onUpdate={onOwnerUpdate}
             />

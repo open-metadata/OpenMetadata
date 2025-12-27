@@ -74,6 +74,10 @@
       "description" : "Children domains or sub-domains.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "childrenCount": {
+      "description": "Count of all nested children domains under this domain",
+      "type": "integer"
+    },
     "owners": {
       "description": "Owners of this Domain.",
       "$ref": "../../type/entityReferenceList.json"

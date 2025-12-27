@@ -48,6 +48,10 @@ export interface Pipeline {
      */
     domains?: EntityReference[];
     /**
+     * End date of the workflow.
+     */
+    endDate?: Date;
+    /**
      * Status of the Pipeline.
      */
     entityStatus?: EntityStatus;
@@ -731,6 +735,7 @@ export enum PipelineServiceType {
     KafkaConnect = "KafkaConnect",
     KinesisFirehose = "KinesisFirehose",
     Matillion = "Matillion",
+    Mulesoft = "Mulesoft",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
     Snowplow = "Snowplow",

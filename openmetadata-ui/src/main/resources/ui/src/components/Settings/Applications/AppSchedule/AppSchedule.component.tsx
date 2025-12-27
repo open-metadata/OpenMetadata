@@ -15,6 +15,7 @@ import cronstrue from 'cronstrue';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SCHEDULAR_OPTIONS } from '../../../../constants/Schedular.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import {
   AppScheduleClass,
@@ -157,6 +158,16 @@ const AppSchedule = ({
     };
   }, [appData.name, appData.appType, appData.appSchedule, pipelineSchedules]);
 
+  const translatedSchedularOptions = useMemo(
+    () =>
+      SCHEDULAR_OPTIONS.map((option) => ({
+        ...option,
+        title: t(option.title),
+        description: t(option.description),
+      })),
+    [t]
+  );
+
   useEffect(() => {
     fetchPipelineDetails();
   }, []);
@@ -260,6 +271,7 @@ const AppSchedule = ({
           defaultSchedule={defaultCron}
           includePeriodOptions={initialOptions}
           initialData={initialData}
+          schedularOptions={translatedSchedularOptions}
           status={isSaveLoading ? 'waiting' : 'initial'}
           onBack={onDialogCancel}
           onDeploy={onDialogSave}

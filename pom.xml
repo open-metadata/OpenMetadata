@@ -26,7 +26,7 @@
     based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services,
     OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
   </description>
-  <version>1.10.0-SNAPSHOT</version>
+  <version>1.12.0-SNAPSHOT</version>
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
     <module>openmetadata-spec</module>
@@ -64,16 +64,7 @@
     </developer>
   </developers>
 
-  <distributionManagement>
-    <snapshotRepository>
-      <id>ossrh</id>
-      <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-    </snapshotRepository>
-    <repository>
-      <id>ossrh</id>
-      <url>https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/</url>
-    </repository>
-  </distributionManagement>
+  <!-- distributionManagement section removed - not needed with central-publishing-maven-plugin -->
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -84,7 +75,7 @@
     <dropwizard.version>4.0.14</dropwizard.version>
     <dropwizard-jdbi3.version>4.0.14</dropwizard-jdbi3.version>
     <diffMatch.version>1.0</diffMatch.version>
-    <jersey-bom.version>3.1.5</jersey-bom.version>
+    <jersey-bom.version>3.1.10</jersey-bom.version>
     <javax.ws.rs-api.version>2.1.1</javax.ws.rs-api.version>
     <!-- update from here -->
     <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
@@ -115,7 +106,7 @@
     <openapiswagger.version>2.2.25</openapiswagger.version>
     <httpclient.version>4.5.14</httpclient.version>
     <spring.version>6.2.11</spring.version>
-    <log4j.version>2.21.0</log4j.version>
+    <log4j.version>2.25.3</log4j.version>
     <org.junit.jupiter.version>5.9.3</org.junit.jupiter.version>
     <dropwizard-health.version>4.0.14</dropwizard-health.version>
     <handlebars.version>4.5.0</handlebars.version>
@@ -151,17 +142,20 @@
     <slack.version>1.29.2</slack.version>
     <spotless.version>2.41.1</spotless.version>
     <picocli.version>4.7.6</picocli.version>
-    <logback-core.version>1.5.18</logback-core.version>
+    <logback-core.version>1.5.19</logback-core.version>
     <logback-classic.version>1.5.18</logback-classic.version>
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
     <jetty.version>11.0.25</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
-    <mcp-sdk.version>0.11.2</mcp-sdk.version>
+    <mcp-sdk.version>0.14.0</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
     <flyway.version>9.22.3</flyway.version>
     <angus-mail.version>2.0.4</angus-mail.version>
+    <commonmark.version>0.26.0</commonmark.version>
+    <flexmark.version>0.64.8</flexmark.version>
+    <owasp-html-sanitizer.version>20240325.1</owasp-html-sanitizer.version>
   </properties>
 
   <dependencyManagement>
@@ -175,6 +169,12 @@
         <groupId>org.antlr</groupId>
         <artifactId>antlr4-runtime</artifactId>
         <version>${antlr.version}</version>
+      </dependency>
+      <!-- Override grpc-netty-shaded globally to fix CVE-2024-1106 -->
+      <dependency>
+        <groupId>io.grpc</groupId>
+        <artifactId>grpc-netty-shaded</artifactId>
+        <version>1.76.0</version>
       </dependency>
       <dependency>
         <groupId>org.glassfish.jersey</groupId>
@@ -379,16 +379,6 @@
         <groupId>com.google.code.gson</groupId>
         <artifactId>gson</artifactId>
         <version>${gson.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.opensearch.client</groupId>
-        <artifactId>opensearch-rest-high-level-client</artifactId>
-        <version>${opensearch.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.elasticsearch.client</groupId>
-        <artifactId>elasticsearch-rest-high-level-client</artifactId>
-        <version>${elasticsearch.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.httpcomponents</groupId>
@@ -1077,14 +1067,14 @@
         </configuration>
       </plugin>
       <plugin>
-        <groupId>org.sonatype.plugins</groupId>
-        <artifactId>nexus-staging-maven-plugin</artifactId>
-        <version>1.6.13</version>
+        <groupId>org.sonatype.central</groupId>
+        <artifactId>central-publishing-maven-plugin</artifactId>
+        <version>0.9.0</version>
         <extensions>true</extensions>
         <configuration>
-          <serverId>ossrh</serverId>
-          <nexusUrl>https://ossrh-staging-api.central.sonatype.com/</nexusUrl>
-          <autoReleaseAfterClose>true</autoReleaseAfterClose>
+          <publishingServerId>central</publishingServerId>
+          <autoPublish>true</autoPublish>
+          <waitUntil>published</waitUntil>
         </configuration>
       </plugin>
     </plugins>

@@ -29,7 +29,7 @@ class TableColumnCountToBeBetween(TableTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = TableColumnCountToBeBetween(min_count=5, max_count=10)
         >>> test = TableColumnCountToBeBetween(min_count=5)  # Only minimum
     """
@@ -74,7 +74,7 @@ class TableColumnCountToEqual(TableTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = TableColumnCountToEqual(column_count=10)
     """
 
@@ -110,7 +110,7 @@ class TableRowCountToBeBetween(TableTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = TableRowCountToBeBetween(min_count=1000, max_count=5000)
         >>> test = TableRowCountToBeBetween(min_count=100)  # Only minimum
     """
@@ -155,7 +155,7 @@ class TableRowCountToEqual(TableTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = TableRowCountToEqual(row_count=50)
     """
 
@@ -194,7 +194,7 @@ class TableRowInsertedCountToBeBetween(TableTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = TableRowInsertedCountToBeBetween(min_count=100, max_count=1000, range_type="DAY", range_interval=1)
         >>> test = TableRowInsertedCountToBeBetween(min_count=50, range_type="HOUR", range_interval=6)
     """
@@ -249,7 +249,7 @@ class TableColumnToMatchSet(TableTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = TableColumnToMatchSet(column_names=["id", "name", "email"])
         >>> test = TableColumnToMatchSet(column_names=["col1", "col2"], ordered=True)
     """
@@ -289,7 +289,7 @@ class TableColumnNameToExist(TableTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = TableColumnNameToExist(column_name="user_id")
     """
 
@@ -325,7 +325,7 @@ class TableCustomSQLQuery(TableTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = TableCustomSQLQuery(
         ...     sql_expression="SELECT * FROM {table} WHERE price < 0",
         ...     strategy="ROWS"
@@ -369,7 +369,7 @@ class TableDiff(TableTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = TableDiff(
         ...     table2="service.database.schema.reference_table",
         ...     key_columns=["id"],

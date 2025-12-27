@@ -3,9 +3,9 @@ package org.openmetadata.service.notifications.template.handlebars;
 import com.github.jknack.handlebars.Handlebars;
 import com.github.jknack.handlebars.HandlebarsException;
 import com.github.jknack.handlebars.Template;
+import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.events.FieldValidation;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationResponse;
 import org.openmetadata.service.notifications.template.NotificationTemplateProcessor;
@@ -32,27 +32,25 @@ public class HandlebarsNotificationTemplateProcessor implements NotificationTemp
   @Override
   public NotificationTemplateValidationResponse validate(
       NotificationTemplateValidationRequest request) {
-    NotificationTemplateValidationResponse response = new NotificationTemplateValidationResponse();
-
-    // Validate template body
-    if (request.getTemplateBody() != null && !request.getTemplateBody().isEmpty()) {
-      FieldValidation bodyValidation = new FieldValidation();
-      String error = validateTemplateString(request.getTemplateBody());
-      bodyValidation.setPassed(error == null);
-      bodyValidation.setError(error);
-      response.setTemplateBody(bodyValidation);
-    }
+    String subjectError = null;
+    String bodyError = null;
 
     // Validate template subject
     if (request.getTemplateSubject() != null && !request.getTemplateSubject().isEmpty()) {
-      FieldValidation subjectValidation = new FieldValidation();
-      String error = validateTemplateString(request.getTemplateSubject());
-      subjectValidation.setPassed(error == null);
-      subjectValidation.setError(error);
-      response.setTemplateSubject(subjectValidation);
+      subjectError = validateTemplateString(request.getTemplateSubject());
     }
 
-    return response;
+    // Validate template body
+    if (request.getTemplateBody() != null && !request.getTemplateBody().isEmpty()) {
+      bodyError = validateTemplateString(request.getTemplateBody());
+    }
+
+    boolean isValid = (subjectError == null) && (bodyError == null);
+
+    return new NotificationTemplateValidationResponse()
+        .withIsValid(isValid)
+        .withSubjectError(subjectError)
+        .withBodyError(bodyError);
   }
 
   private String validateTemplateString(String templateString) {
@@ -77,5 +75,12 @@ public class HandlebarsNotificationTemplateProcessor implements NotificationTemp
     }
 
     return String.format("Template validation failed: %s", message);
+  }
+
+  @Override
+  public List<HandlebarsHelperMetadata> getHelperMetadata() {
+    return HandlebarsProvider.getAllHelperInstances().stream()
+        .map(HandlebarsHelper::getMetadata)
+        .toList();
   }
 }

@@ -2,6 +2,7 @@ package org.openmetadata.mcp;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.BufferedReader;
@@ -27,7 +28,8 @@ public class McpUtils {
         arguments.put("Authorization", JwtFilter.extractToken(request.getHeader("Authorization")));
       }
     }
-    return McpSchema.deserializeJsonRpcMessage(objectMapper, JsonUtils.pojoToJson(requestMessage));
+    return McpSchema.deserializeJsonRpcMessage(
+        new JacksonMcpJsonMapper(objectMapper), JsonUtils.pojoToJson(requestMessage));
   }
 
   @SuppressWarnings("unchecked")
@@ -79,12 +81,18 @@ public class McpUtils {
         throw new RuntimeException("Failed to load tool definitions");
       }
       LOG.debug("Successfully loaded {} tool definitions", cachedTools.size());
+      JacksonMcpJsonMapper jsonMapper = new JacksonMcpJsonMapper(JsonUtils.getObjectMapper());
       for (int i = 0; i < cachedTools.size(); i++) {
         Map<String, Object> toolDef = cachedTools.get(i);
         String name = (String) toolDef.get("name");
         String description = (String) toolDef.get("description");
         Map<String, Object> schema = JsonUtils.getMap(toolDef.get("parameters"));
-        result.add(new McpSchema.Tool(name, description, JsonUtils.pojoToJson(schema)));
+        result.add(
+            McpSchema.Tool.builder()
+                .name(name)
+                .description(description)
+                .inputSchema(jsonMapper, JsonUtils.pojoToJson(schema))
+                .build());
       }
       return result;
     } catch (Exception e) {

@@ -37,7 +37,9 @@ export interface ApplicationPipeline {
  *
  * Configuration for the Automator External Application.
  *
- * This schema defines the Slack App Token Configuration
+ * This schema defines the Slack App Information
+ *
+ * Configuration for the Collate AI Quality Agent.
  *
  * No configuration needed to instantiate the Data Insights Pipeline. The logic is handled
  * in the backend.
@@ -45,8 +47,6 @@ export interface ApplicationPipeline {
  * Search Indexing App.
  *
  * Cache Warmup Application Configuration.
- *
- * Configuration for the Collate AI Quality Agent.
  *
  * Configuration for the AutoPilot Application.
  */
@@ -59,6 +59,8 @@ export interface CollateAIAppConfig {
     filter?: string;
     /**
      * Patch the description if it is empty, instead of raising a suggestion
+     *
+     * Patch the tier if it is empty, instead of raising a suggestion
      */
     patchIfEmpty?: boolean;
     /**
@@ -79,9 +81,28 @@ export interface CollateAIAppConfig {
      */
     botToken?: string;
     /**
+     * Client Id of the Application
+     */
+    clientId?: string;
+    /**
+     * Client Secret of the Application.
+     */
+    clientSecret?: string;
+    /**
+     * Signing Secret of the Application. Confirm that each request comes from Slack by
+     * verifying its unique signature.
+     */
+    signingSecret?: string;
+    /**
      * User Token
      */
-    userToken?:             string;
+    userToken?: string;
+    /**
+     * Whether the suggested tests should be active or not upon suggestion
+     *
+     * Whether the AutoPilot Workflow should be active or not.
+     */
+    active?:                boolean;
     backfillConfiguration?: BackfillConfiguration;
     /**
      * Maximum number of events processed at a time (Default 100).
@@ -160,12 +181,6 @@ export interface CollateAIAppConfig {
      */
     force?: boolean;
     /**
-     * Whether the suggested tests should be active or not upon suggestion
-     *
-     * Whether the AutoPilot Workflow should be active or not.
-     */
-    active?: boolean;
-    /**
      * Enter the retention period for Activity Threads of type = 'Conversation' records in days
      * (e.g., 30 for one month, 60 for two months).
      */
@@ -175,6 +190,16 @@ export interface CollateAIAppConfig {
      * one month).
      */
     changeEventRetentionPeriod?: number;
+    /**
+     * Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two
+     * months).
+     */
+    profileDataRetentionPeriod?: number;
+    /**
+     * Enter the retention period for Test Case Results in days (e.g., 30 for one month, 60 for
+     * two months).
+     */
+    testCaseResultsRetentionPeriod?: number;
     /**
      * Service Entity Link for which to trigger the application.
      */
@@ -388,9 +413,22 @@ export interface Action {
      */
     propagationDepth?: number;
     /**
+     * Mode for calculating propagation depth. 'ROOT' calculates depth from root nodes (sources
+     * with no parents). 'DATA_ASSET' calculates depth relative to each data asset being
+     * processed, ensuring each asset only receives metadata from nodes within the specified
+     * number of hops upstream.
+     */
+    propagationDepthMode?: PropagationDepthMode;
+    /**
      * List of configurations to stop propagation based on conditions
      */
     propagationStopConfigs?: PropagationStopConfig[];
+    /**
+     * Use the optimized propagation algorithm that reduces memory usage and API calls.
+     * Recommended for large lineage graphs. If set to false, uses the original propagation
+     * algorithm. Default is true.
+     */
+    useOptimizedPropagation?: boolean;
 }
 
 /**
@@ -458,6 +496,17 @@ export enum LabelElement {
     Automated = "Automated",
     Manual = "Manual",
     Propagated = "Propagated",
+}
+
+/**
+ * Mode for calculating propagation depth. 'ROOT' calculates depth from root nodes (sources
+ * with no parents). 'DATA_ASSET' calculates depth relative to each data asset being
+ * processed, ensuring each asset only receives metadata from nodes within the specified
+ * number of hops upstream.
+ */
+export enum PropagationDepthMode {
+    DataAsset = "DATA_ASSET",
+    Root = "ROOT",
 }
 
 /**
@@ -940,6 +989,7 @@ export enum Type {
     CacheWarmup = "CacheWarmup",
     CollateAI = "CollateAI",
     CollateAIQualityAgent = "CollateAIQualityAgent",
+    CollateAITierAgent = "CollateAITierAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
     SearchIndexing = "SearchIndexing",
@@ -982,9 +1032,10 @@ export interface AppLimitsConfig {
      */
     actions: { [key: string]: number };
     /**
-     * The start of this limit cycle.
+     * The start of this limit cycle. DEPRECATED: Use central billingCycleStart from
+     * LimitsConfiguration in openmetadata.yaml
      */
-    billingCycleStart: Date;
+    billingCycleStart?: Date;
 }
 
 /**

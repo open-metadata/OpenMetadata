@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { uniqueId } from 'lodash';
+import { get, uniqueId } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -23,6 +23,7 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import SampleDataWithMessages from '../components/Database/SampleDataWithMessages/SampleDataWithMessages';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -54,7 +55,7 @@ export const makeData = (
 
 export const getSearchIndexDetailsTabs = ({
   searchIndexDetails,
-  viewAllPermission,
+  viewCustomPropertiesPermission,
   feedCount,
   activeTab,
   getEntityFeedCount,
@@ -112,7 +113,12 @@ export const getSearchIndexDetailsTabs = ({
         />
       ),
       key: EntityTabs.SAMPLE_DATA,
-      children: !viewSampleDataPermission ? (
+      children: viewSampleDataPermission ? (
+        <SampleDataWithMessages
+          entityId={searchIndexDetails?.id ?? ''}
+          entityType={EntityType.SEARCH_INDEX}
+        />
+      ) : (
         <div className="m-t-xlg">
           <ErrorPlaceHolder
             className="border-none"
@@ -122,11 +128,6 @@ export const getSearchIndexDetailsTabs = ({
             type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
           />
         </div>
-      ) : (
-        <SampleDataWithMessages
-          entityId={searchIndexDetails?.id ?? ''}
-          entityType={EntityType.SEARCH_INDEX}
-        />
       ),
     },
     {
@@ -170,6 +171,16 @@ export const getSearchIndexDetailsTabs = ({
     {
       label: (
         <TabsLabel
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
+    },
+    {
+      label: (
+        <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
           name={
             labelMap?.[EntityTabs.CUSTOM_PROPERTIES] ??
@@ -182,7 +193,7 @@ export const getSearchIndexDetailsTabs = ({
         <CustomPropertyTable<EntityType.SEARCH_INDEX>
           entityType={EntityType.SEARCH_INDEX}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

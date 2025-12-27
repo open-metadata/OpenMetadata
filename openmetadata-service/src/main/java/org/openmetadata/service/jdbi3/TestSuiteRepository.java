@@ -240,7 +240,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     // Initialize the test summary with 0 values
     TestSummary testSummary =
         new TestSummary().withAborted(0).withFailed(0).withSuccess(0).withQueued(0).withTotal(0);
-    Optional<JsonObject> summary = Optional.ofNullable(aggregation.getJsonObject("status_counts"));
+    Optional<JsonObject> summary =
+        Optional.ofNullable(aggregation.getJsonObject("sterms#status_counts"));
     return summary
         .map(
             s -> {
@@ -258,7 +259,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         new TestSummary().withAborted(0).withFailed(0).withSuccess(0).withQueued(0).withTotal(0);
     List<ColumnTestSummaryDefinition> columnTestSummaries = new ArrayList<>();
     Optional<JsonObject> entityLinkAgg =
-        Optional.ofNullable(getAggregationObject(aggregation, "entityLinks"));
+        Optional.ofNullable(getAggregationObject(aggregation, "sterms#entityLinks"));
 
     return entityLinkAgg
         .map(
@@ -303,6 +304,12 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       throws IOException {
     SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggQuery);
     return searchRepository.genericAggregation(q, index, searchAggregation);
+  }
+
+  public DataQualityReport getDataQualityReport(
+      String q, String aggQuery, String index, SubjectContext subjectContext) throws IOException {
+    SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggQuery);
+    return searchRepository.genericAggregation(q, index, searchAggregation, subjectContext);
   }
 
   public TestSummary getTestSummary(List<ResultSummary> testCaseResults) {

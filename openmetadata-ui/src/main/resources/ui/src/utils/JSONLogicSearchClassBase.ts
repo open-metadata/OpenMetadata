@@ -415,9 +415,9 @@ class JSONLogicSearchClassBase {
         label: t('label.reviewer-plural'),
         type: '!group',
         mode: 'some',
-        defaultField: 'fullyQualifiedName',
+        defaultField: EntityFields.FULLY_QUALIFIED_NAME,
         subfields: {
-          fullyQualifiedName: {
+          [EntityFields.FULLY_QUALIFIED_NAME]: {
             label: 'Reviewers New',
             type: 'select',
             mainWidgetProps: this.mainWidgetProps,
@@ -426,6 +426,11 @@ class JSONLogicSearchClassBase {
               asyncFetch: advancedSearchClassBase.autocomplete({
                 searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
                 entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+                sourceFields: 'displayName,fullyQualifiedName',
+                sourceFieldOptionType: {
+                  label: 'displayName',
+                  value: 'fullyQualifiedName',
+                },
               }),
               useAsyncSearch: true,
             },

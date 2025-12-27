@@ -187,7 +187,7 @@
       "javaType": "org.openmetadata.schema.type.ApiStatus",
       "description": "State of an action over API.",
       "type" : "string",
-      "enum" : ["success", "failure", "aborted", "partialSuccess"]
+      "enum" : ["success", "failure", "aborted", "partialSuccess", "running"]
     },
     "sourceUrl" : {
       "description": "Source Url of the respective entity.",

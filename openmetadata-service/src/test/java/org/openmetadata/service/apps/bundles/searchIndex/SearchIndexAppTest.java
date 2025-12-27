@@ -239,7 +239,7 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
         "dashboard_search_index_rebuild_old",
         Set.of("dashboard", "dashboard_search_index", "all", "dataAsset"));
 
-    SearchClient<Void> client = aliasState.toMock();
+    SearchClient client = aliasState.toMock();
     SearchRepository repo = mock(SearchRepository.class);
     when(repo.getSearchClient()).thenReturn(client);
 
@@ -289,7 +289,7 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
         Set.of("table", "table_search_index", "all", "dataAsset"));
     aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
-    SearchClient<Void> client = aliasState.toMock();
+    SearchClient client = aliasState.toMock();
     SearchRepository repo = mock(SearchRepository.class);
     when(repo.getSearchClient()).thenReturn(client);
 
@@ -1058,9 +1058,8 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
       indexAliases.put(indexName, new HashSet<>(aliases));
     }
 
-    SearchClient<Void> toMock() {
-      @SuppressWarnings("unchecked")
-      SearchClient<Void> client = mock(SearchClient.class);
+    SearchClient toMock() {
+      SearchClient client = mock(SearchClient.class);
 
       lenient().when(client.isClientAvailable()).thenReturn(true);
       lenient()

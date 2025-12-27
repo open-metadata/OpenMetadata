@@ -37,6 +37,9 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNC
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.jdbi3.UserRepository.TEAMS_FIELD;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReference;
+import static org.openmetadata.service.util.EntityUtil.fieldAdded;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 
 import io.jsonwebtoken.lang.Collections;
 import jakarta.json.JsonPatch;
@@ -66,6 +69,7 @@ import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.feed.ThreadCount;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
@@ -146,8 +150,13 @@ public class FeedRepository {
   }
 
   public int getNextTaskId() {
-    dao.feedDAO().updateTaskId();
-    return dao.feedDAO().getTaskId();
+    return Entity.getJdbi()
+        .inTransaction(
+            handle -> {
+              CollectionDAO.FeedDAO feed = handle.attach(CollectionDAO.FeedDAO.class);
+              feed.updateTaskId();
+              return feed.getTaskId();
+            });
   }
 
   @Getter
@@ -236,6 +245,112 @@ public class FeedRepository {
 
     protected final EntityLink getAbout() {
       return threadContext.getAbout();
+    }
+  }
+
+  /** Inner class to track changes to Thread fields and build ChangeDescription */
+  public static class ThreadUpdater {
+    private final Thread original;
+    private final Thread updated;
+    private final ChangeDescription changeDescription = new ChangeDescription();
+
+    public ThreadUpdater(Thread original, Thread updated) {
+      this.original = original;
+      this.updated = updated;
+    }
+
+    public void update() {
+      updateMessage();
+      updateResolved();
+      updateAnnouncement();
+      updateTaskAssignees();
+      updateReactions();
+    }
+
+    private void updateMessage() {
+      if (!Objects.equals(original.getMessage(), updated.getMessage())) {
+        fieldUpdated(changeDescription, "message", original.getMessage(), updated.getMessage());
+      }
+    }
+
+    private void updateResolved() {
+      if (!Objects.equals(original.getResolved(), updated.getResolved())) {
+        fieldUpdated(changeDescription, "resolved", original.getResolved(), updated.getResolved());
+      }
+    }
+
+    private void updateAnnouncement() {
+      if (original.getAnnouncement() != null && updated.getAnnouncement() != null) {
+        // Check description changes
+        if (!Objects.equals(
+            original.getAnnouncement().getDescription(),
+            updated.getAnnouncement().getDescription())) {
+          fieldUpdated(
+              changeDescription,
+              "announcement.description",
+              original.getAnnouncement().getDescription(),
+              updated.getAnnouncement().getDescription());
+        }
+
+        // Check startTime changes
+        if (!Objects.equals(
+            original.getAnnouncement().getStartTime(), updated.getAnnouncement().getStartTime())) {
+          fieldUpdated(
+              changeDescription,
+              "announcement.startTime",
+              original.getAnnouncement().getStartTime(),
+              updated.getAnnouncement().getStartTime());
+        }
+
+        // Check endTime changes
+        if (!Objects.equals(
+            original.getAnnouncement().getEndTime(), updated.getAnnouncement().getEndTime())) {
+          fieldUpdated(
+              changeDescription,
+              "announcement.endTime",
+              original.getAnnouncement().getEndTime(),
+              updated.getAnnouncement().getEndTime());
+        }
+      } else if (original.getAnnouncement() == null && updated.getAnnouncement() != null) {
+        fieldAdded(changeDescription, "announcement", updated.getAnnouncement());
+      } else if (original.getAnnouncement() != null && updated.getAnnouncement() == null) {
+        fieldDeleted(changeDescription, "announcement", original.getAnnouncement());
+      }
+    }
+
+    private void updateTaskAssignees() {
+      if (original.getTask() != null && updated.getTask() != null) {
+        List<EntityReference> origAssignees = listOrEmpty(original.getTask().getAssignees());
+        List<EntityReference> updatedAssignees = listOrEmpty(updated.getTask().getAssignees());
+
+        // Sort for consistent comparison
+        origAssignees.sort(compareEntityReference);
+        updatedAssignees.sort(compareEntityReference);
+
+        if (!origAssignees.equals(updatedAssignees)) {
+          fieldUpdated(changeDescription, "task.assignees", origAssignees, updatedAssignees);
+        }
+      }
+    }
+
+    private void updateReactions() {
+      List<Reaction> origReactions = listOrEmpty(original.getReactions());
+      List<Reaction> updatedReactions = listOrEmpty(updated.getReactions());
+
+      if (origReactions.size() != updatedReactions.size()
+          || !origReactions.containsAll(updatedReactions)) {
+        fieldUpdated(changeDescription, "reactions", origReactions, updatedReactions);
+      }
+    }
+
+    public ChangeDescription getChangeDescription() {
+      return changeDescription;
+    }
+
+    public boolean hasChanges() {
+      return !listOrEmpty(changeDescription.getFieldsAdded()).isEmpty()
+          || !listOrEmpty(changeDescription.getFieldsUpdated()).isEmpty()
+          || !listOrEmpty(changeDescription.getFieldsDeleted()).isEmpty();
     }
   }
 
@@ -416,6 +531,20 @@ public class FeedRepository {
     JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
     EntityRepository<?> repository = threadContext.getEntityRepository();
     repository.patch(null, aboutEntity.getId(), user, patch);
+    if (!origJson.equals(updatedEntityJson)) {
+      ChangeEvent changeEvent =
+          new ChangeEvent()
+              .withId(UUID.randomUUID())
+              .withEventType(EventType.ENTITY_UPDATED)
+              .withEntityId(aboutEntity.getId())
+              .withEntityType(threadContext.getAbout().getEntityType())
+              .withEntityFullyQualifiedName(aboutEntity.getFullyQualifiedName())
+              .withUserName(user)
+              .withTimestamp(System.currentTimeMillis())
+              .withEntity(updatedEntity);
+
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
+    }
 
     // Update the attributes
     threadContext.getThread().getTask().withNewValue(resolveTask.getNewValue());
@@ -906,6 +1035,11 @@ public class FeedRepository {
     if (updated.getAnnouncement() != null) {
       validateAnnouncement(updated);
     }
+
+    // Compute change description using ThreadUpdater
+    ThreadUpdater threadUpdater = new ThreadUpdater(original, updated);
+    threadUpdater.update();
+    updated.setChangeDescription(threadUpdater.getChangeDescription());
 
     // Update the attributes
     EventType change = patchUpdate(original, updated) ? THREAD_UPDATED : ENTITY_NO_CHANGE;

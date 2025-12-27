@@ -179,7 +179,7 @@ function FollowingWidget({
     () => (
       <WidgetEmptyState
         actionButtonLink={ROUTES.EXPLORE}
-        actionButtonText={t('label.browse-assets')}
+        actionButtonText={t('label.explore-assets')}
         description={t('message.not-followed-anything')}
         icon={
           <NoDataAssetsPlaceholder height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
@@ -261,6 +261,15 @@ function FollowingWidget({
     );
   }, [followedData, emptyState, isExpanded]);
 
+  const translatedSortOptions = useMemo(
+    () =>
+      FOLLOWING_WIDGET_FILTER_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   const widgetHeader = useMemo(
     () => (
       <WidgetHeader
@@ -270,10 +279,9 @@ function FollowingWidget({
         icon={<FollowingAssetsIcon height={22} width={22} />}
         isEditView={isEditView}
         selectedSortBy={selectedEntityFilter}
-        sortOptions={FOLLOWING_WIDGET_FILTER_OPTIONS}
+        sortOptions={translatedSortOptions}
         title={t('label.following-assets')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
         onSortChange={(key) => handleEntityFilterChange({ key })}
         onTitleClick={() =>
           navigate(getUserPath(currentUser?.name ?? '', UserPageTabs.FOLLOWING))
@@ -290,6 +298,7 @@ function FollowingWidget({
       widgetKey,
       widgetData?.w,
       handleEntityFilterChange,
+      translatedSortOptions,
     ]
   );
 

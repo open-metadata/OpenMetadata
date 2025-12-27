@@ -436,7 +436,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     SearchAggregationNode root = new SearchAggregationNode("root", "root", null);
 
     // Create terms aggregation by groupBy field
-    SearchAggregationNode termsAgg = SearchAggregation.terms("sterms#byTerms", groupBy);
+    SearchAggregationNode termsAgg = SearchAggregation.terms("byTerms", groupBy);
 
     // Add latest_overall (replaces the old "latest" aggregation for parsing compatibility)
     termsAgg.addChild(SearchAggregation.topHits("latest", 1, "timestamp", "desc"));

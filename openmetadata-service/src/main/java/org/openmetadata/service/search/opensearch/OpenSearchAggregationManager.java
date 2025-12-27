@@ -13,16 +13,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.search.AggregationRequest;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.AggregationManagementClient;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsBuilder;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
+import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import os.org.opensearch.client.json.JsonData;
-import os.org.opensearch.client.json.JsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.SortOrder;
@@ -36,10 +44,19 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
   private final OpenSearchClient client;
   private final boolean isClientAvailable;
   private final ObjectMapper mapper;
+  private RBACConditionEvaluator rbacConditionEvaluator;
 
   public OpenSearchAggregationManager(OpenSearchClient client) {
     this.client = client;
     this.isClientAvailable = client != null;
+    mapper = new ObjectMapper();
+  }
+
+  public OpenSearchAggregationManager(
+      OpenSearchClient client, RBACConditionEvaluator rbacConditionEvaluator) {
+    this.client = client;
+    this.isClientAvailable = client != null;
+    this.rbacConditionEvaluator = rbacConditionEvaluator;
     mapper = new ObjectMapper();
   }
 
@@ -159,7 +176,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
 
       SearchResponse<JsonData> searchResponse =
           client.search(searchRequestBuilder.build(), JsonData.class);
-      return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
+      return Response.status(Response.Status.OK).entity(searchResponse.toJsonString()).build();
     } catch (Exception e) {
       LOG.error("Failed to execute aggregation", e);
       throw new IOException("Failed to execute aggregation: " + e.getMessage(), e);
@@ -203,35 +220,8 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       SearchResponse<JsonData> searchResponse =
           client.search(searchRequestBuilder.build(), JsonData.class);
 
-      // Extract aggregations directly from the response
-      Map<String, os.org.opensearch.client.opensearch._types.aggregations.Aggregate>
-          aggregationsMap = searchResponse.aggregations();
-
-      if (aggregationsMap == null || aggregationsMap.isEmpty()) {
-        return SearchIndexUtils.parseAggregationResults(
-            Optional.empty(), aggregationMetadata.getAggregationMetadata());
-      }
-
-      // Serialize aggregations to JSON for parsing
-      JsonpMapper mapper = client._transport().jsonpMapper();
-      jakarta.json.spi.JsonProvider provider = mapper.jsonProvider();
-      java.io.StringWriter stringWriter = new java.io.StringWriter();
-      jakarta.json.stream.JsonGenerator generator = provider.createGenerator(stringWriter);
-
-      generator.writeStartObject();
-      generator.writeKey("aggregations");
-      generator.writeStartObject();
-      for (Map.Entry<String, os.org.opensearch.client.opensearch._types.aggregations.Aggregate>
-          entry : aggregationsMap.entrySet()) {
-        generator.writeKey(entry.getKey());
-        entry.getValue().serialize(generator, mapper);
-      }
-      generator.writeEnd();
-      generator.writeEnd();
-      generator.close();
-
-      String aggregationsJson = stringWriter.toString();
-      JsonObject jsonResponse = JsonUtils.readJson(aggregationsJson).asJsonObject();
+      String response = searchResponse.toJsonString();
+      JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
       Optional<JsonObject> aggregationResults =
           Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
       return SearchIndexUtils.parseAggregationResults(
@@ -239,6 +229,86 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
     } catch (Exception e) {
       LOG.error("Failed to execute generic aggregation", e);
       throw new IOException("Failed to execute generic aggregation: " + e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public DataQualityReport genericAggregation(
+      String query,
+      String index,
+      SearchAggregation aggregationMetadata,
+      SubjectContext subjectContext)
+      throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot perform aggregation.");
+      throw new IOException("OpenSearch client is not available");
+    }
+
+    try {
+      OpenAggregationsBuilder aggregationsBuilder =
+          new OpenAggregationsBuilder(client._transport().jsonpMapper());
+      Map<String, Aggregation> aggregations =
+          aggregationsBuilder.buildAggregations(aggregationMetadata.getAggregationTree());
+
+      SearchRequest.Builder searchRequestBuilder = new SearchRequest.Builder();
+      String indexName = Entity.getSearchRepository().getIndexOrAliasName(index);
+      searchRequestBuilder.index(indexName);
+
+      Query parsedQuery = null;
+      if (query != null) {
+        // Check if query string contains outer "query" wrapper and extract inner query
+        if (query.trim().startsWith("{")) {
+          final var queryToProcess = praseJsonQuery(query);
+          parsedQuery = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
+        } else {
+          parsedQuery = Query.of(q -> q.queryString(qs -> qs.query(query)));
+        }
+      }
+
+      // Apply RBAC conditions
+      if (SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
+        OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
+        if (rbacQueryBuilder != null) {
+          Query rbacQuery = ((OpenSearchQueryBuilder) rbacQueryBuilder).buildV2();
+          if (parsedQuery != null) {
+            final Query existingQuery = parsedQuery;
+            Query combinedQuery =
+                Query.of(
+                    qb ->
+                        qb.bool(
+                            b -> {
+                              b.must(existingQuery);
+                              b.filter(rbacQuery);
+                              return b;
+                            }));
+            parsedQuery = combinedQuery;
+          } else {
+            parsedQuery = rbacQuery;
+          }
+        }
+      }
+
+      if (parsedQuery != null) {
+        searchRequestBuilder.query(parsedQuery);
+      }
+
+      searchRequestBuilder.aggregations(aggregations);
+      searchRequestBuilder.size(0);
+      searchRequestBuilder.timeout("30s");
+
+      SearchResponse<JsonData> searchResponse =
+          client.search(searchRequestBuilder.build(), JsonData.class);
+
+      String response = searchResponse.toJsonString();
+      JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
+      Optional<JsonObject> aggregationResults =
+          Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
+      return SearchIndexUtils.parseAggregationResults(
+          aggregationResults, aggregationMetadata.getAggregationMetadata());
+    } catch (Exception e) {
+      LOG.error("Failed to execute generic aggregation with RBAC", e);
+      throw new IOException(
+          "Failed to execute generic aggregation with RBAC: " + e.getMessage(), e);
     }
   }
 
@@ -306,34 +376,106 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       SearchResponse<JsonData> searchResponse =
           client.search(searchRequestBuilder.build(), JsonData.class);
 
-      // Extract aggregations directly from the response
-      Map<String, os.org.opensearch.client.opensearch._types.aggregations.Aggregate>
-          aggregationsMap = searchResponse.aggregations();
-
-      if (aggregationsMap == null || aggregationsMap.isEmpty()) {
-        return null;
-      }
-
-      // Serialize aggregations to JSON for parsing
-      JsonpMapper mapper = client._transport().jsonpMapper();
-      jakarta.json.spi.JsonProvider provider = mapper.jsonProvider();
-      java.io.StringWriter stringWriter = new java.io.StringWriter();
-      jakarta.json.stream.JsonGenerator generator = provider.createGenerator(stringWriter);
-
-      generator.writeStartObject();
-      for (Map.Entry<String, os.org.opensearch.client.opensearch._types.aggregations.Aggregate>
-          entry : aggregationsMap.entrySet()) {
-        generator.writeKey(entry.getKey());
-        entry.getValue().serialize(generator, mapper);
-      }
-      generator.writeEnd();
-      generator.close();
-
-      String aggregationsJson = stringWriter.toString();
-      return JsonUtils.readJson(aggregationsJson).asJsonObject();
+      String response = searchResponse.toJsonString();
+      JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
+      return jsonResponse.getJsonObject("aggregations");
     } catch (Exception e) {
       LOG.error("Failed to execute aggregation", e);
       throw new IOException("Failed to execute aggregation: " + e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public Response getEntityTypeCounts(
+      org.openmetadata.schema.search.SearchRequest request, String index) throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot perform get entity type counts");
+      throw new IOException("OpenSearch client is not available");
+    }
+
+    try {
+      // Get search settings for consistency with other search operations
+      SearchSettings searchSettings =
+          SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+
+      // Build request using the source builder factory for consistency
+      OpenSearchSourceBuilderFactory searchBuilderFactory =
+          new OpenSearchSourceBuilderFactory(searchSettings);
+      OpenSearchRequestBuilder requestBuilder =
+          searchBuilderFactory.getSearchSourceBuilderV2(
+              index,
+              request.getQuery() != null ? request.getQuery() : "*",
+              0, // from
+              0, // size - we only need aggregations
+              false); // explain
+
+      // Apply deleted filter if specified
+      if (request.getDeleted() != null && request.getDeleted()) {
+        Query currentQuery = requestBuilder.query();
+        Query deletedQuery =
+            Query.of(
+                q -> q.term(t -> t.field("deleted").value(FieldValue.of(request.getDeleted()))));
+
+        if (currentQuery != null) {
+          final Query finalQuery = currentQuery;
+          Query combined = Query.of(q -> q.bool(b -> b.must(finalQuery).must(deletedQuery)));
+          requestBuilder.query(combined);
+        } else {
+          requestBuilder.query(deletedQuery);
+        }
+      }
+
+      // Apply query filter if specified
+      if (request.getQueryFilter() != null
+          && !request.getQueryFilter().isEmpty()
+          && !request.getQueryFilter().equals("{}")) {
+        try {
+          String queryToProcess = OsUtils.parseJsonQuery(request.getQueryFilter());
+          Query filter = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
+          Query currentQuery = requestBuilder.query();
+
+          if (currentQuery != null) {
+            final Query finalQuery = currentQuery;
+            Query combined = Query.of(q -> q.bool(b -> b.must(finalQuery).must(filter)));
+            requestBuilder.query(combined);
+          } else {
+            requestBuilder.query(filter);
+          }
+        } catch (Exception ex) {
+          LOG.error(
+              "Error parsing query_filter from query parameters, ignoring filter: {}",
+              request.getQueryFilter(),
+              ex);
+        }
+      }
+
+      // Set basic parameters
+      requestBuilder.from(0);
+      requestBuilder.size(0);
+      requestBuilder.trackTotalHits(true);
+
+      // Resolve the index alias properly
+      String resolvedIndex =
+          Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
+
+      // Build and execute search
+      SearchRequest searchRequest = requestBuilder.build(resolvedIndex);
+      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+
+      LOG.info("Entity type counts query for index '{}' (resolved: '{}')", index, resolvedIndex);
+
+      // Serialize response
+      String jsonResponse = searchResponse.toJsonString();
+      return Response.status(Response.Status.OK).entity(jsonResponse).build();
+
+    } catch (Exception e) {
+      LOG.error(
+          "Error executing entity type counts search for index: {}, query: {}",
+          index,
+          request.getQuery(),
+          e);
+      throw new SearchException(
+          String.format("Failed to get entity type counts: %s", e.getMessage()));
     }
   }
 }
