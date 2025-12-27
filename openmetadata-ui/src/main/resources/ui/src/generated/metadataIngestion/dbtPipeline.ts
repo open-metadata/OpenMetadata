@@ -39,6 +39,10 @@ export interface DbtPipeline {
      */
     includeTags?: boolean;
     /**
+     * Set the 'Override Lineage' toggle to control whether to override the existing lineage.
+     */
+    overrideLineage?: boolean;
+    /**
      * Configuration to set the timeout for parsing the query in seconds.
      */
     parsingTimeoutLimit?: number;

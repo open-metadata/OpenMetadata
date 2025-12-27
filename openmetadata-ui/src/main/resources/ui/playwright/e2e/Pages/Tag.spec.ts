@@ -167,7 +167,11 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await expect(adminPage.getByRole('dialog')).toBeVisible();
 
-    await adminPage.getByTestId('color-color-input').fill('#6366f1');
+    await adminPage.getByTestId('icon-picker-btn').click();
+    await adminPage.getByRole('button', { name: `Select icon Cube01` }).click();
+    await adminPage
+      .getByRole('button', { name: 'Select color #F14C75' })
+      .click();
 
     const updateColor = adminPage.waitForResponse(`/api/v1/tags/*`);
     await adminPage.locator('button[type="submit"]').click();
@@ -250,11 +254,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await adminPage.click('[data-testid="add-new-tag-button"]');
 
-    await adminPage.waitForSelector('.ant-modal-content', {
-      state: 'visible',
-    });
-
-    await expect(adminPage.locator('.ant-modal-content')).toBeVisible();
+    await expect(adminPage.getByTestId('tags-form')).toBeVisible();
 
     await validateForm(adminPage);
 
