@@ -21,6 +21,12 @@ from typing import Dict, Iterable, List, Optional, cast
 from metadata.data_quality.api.models import TableAndTests
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    ConnectionArguments,
+)
+from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
+    PinotDBConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -156,7 +162,38 @@ class TestSuiteSource(Source):
                 )
                 raise exc
 
-        return self.service_connection_map[service_name]
+        service_connection = self.service_connection_map[service_name]
+        self._apply_service_connection_modifiers(service_connection)
+        return service_connection
+
+    def _apply_service_connection_modifiers(
+        self, service_connection: DatabaseConnection
+    ) -> None:
+        """Apply service-specific connection modifications.
+
+        Args:
+            service_connection: The database connection to modify in place.
+        """
+        if isinstance(service_connection.config, PinotDBConnection):
+            self._apply_pinotdb_modifiers(service_connection.config)
+
+    def _apply_pinotdb_modifiers(self, pinot_config: PinotDBConnection) -> None:
+        """Enable multi-stage query engine for PinotDB connections.
+
+        PinotDB requires multi-stage query engine for certain SQL operations
+        used in data quality tests (e.g., JOINs, complex aggregations).
+
+        Args:
+            pinot_config: The PinotDB connection config to modify in place.
+        """
+        conn_args = pinot_config.connectionArguments
+        if isinstance(conn_args, ConnectionArguments):
+            args_dict = conn_args.root or {}
+        else:
+            args_dict = conn_args or {}
+
+        args_dict["use_multistage_engine"] = True
+        pinot_config.connectionArguments = ConnectionArguments(root=args_dict)
 
     def _get_test_cases_from_test_suite(self, test_suite: TestSuite) -> List[TestCase]:
         """Return test cases if the test suite exists and has them"""
