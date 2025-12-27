@@ -42,17 +42,10 @@ permissions:
 concurrency:
   group: integration-tests-mysql-es-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
-
 jobs:
   integration-tests-mysql-elasticsearch:
     runs-on: ubuntu-latest
-    # Only run on non-draft PRs that have "safe to test" label (for PR), or on push to main
-    if: >
-      (github.event_name == 'push') ||
-      (github.event_name == 'workflow_dispatch') ||
-      (github.event_name == 'pull_request_target' &&
-       !github.event.pull_request.draft &&
-       contains(github.event.pull_request.labels.*.name, 'safe to test'))
+    if: ${{ !github.event.pull_request.draft }}
     steps:
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.3.4
@@ -70,15 +63,12 @@ jobs:
           github-token: '${{ secrets.GITHUB_TOKEN }}'
           valid-labels: 'safe to test'
           pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true
+          disable-reviews: true  # To not auto approve changes
 
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # For PRs, checkout the PR head; for push, checkout the pushed commit
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # Prevent credential persistence for security
-          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Cache Maven dependencies
         id: cache-output
@@ -90,25 +80,35 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Set up JDK 21
+        if: steps.cache-output.outputs.exit-code == 0
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
 
       - name: Install Ubuntu dependencies
+        if: steps.cache-output.outputs.exit-code == 0
         run: |
           sudo apt-get update
           sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
           librdkafka-dev unixodbc-dev libevent-dev jq
           sudo make install_antlr_cli
 
-      - name: Build dependencies
-        run: |
-          mvn -DskipTests clean install -pl '!openmetadata-ui,!openmetadata-docs,!openmetadata-docs-v1' -am
+      - name: Build with Maven
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -DskipTests clean install -pl '!openmetadata-ui,!openmetadata-docs,!openmetadata-docs-v1' -am
 
       - name: Run Integration Tests (MySQL + Elasticsearch)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn test -pl :openmetadata-integration-tests -Pmysql-elasticsearch
+
+      - name: Clean Up
         run: |
-          mvn test -pl :openmetadata-integration-tests -Pmysql-elasticsearch
+          cd ./docker/development
+          docker compose down --remove-orphans
+          sudo rm -rf ${PWD}/docker-volume
 
       - name: Publish Test Report
         if: ${{ always() }}
@@ -117,12 +117,3 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_test_failures: true
           report_paths: 'openmetadata-integration-tests/target/surefire-reports/TEST-*.xml'
-
-      - name: Upload Test Logs
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-tests-mysql-es-logs
-          path: |
-            openmetadata-integration-tests/target/surefire-reports/
-          retention-days: 7
