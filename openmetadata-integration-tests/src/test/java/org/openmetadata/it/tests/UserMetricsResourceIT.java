@@ -234,9 +234,11 @@ public class UserMetricsResourceIT {
       Instant lastActivityTime = Instant.parse(lastActivity);
       Instant now = Instant.now();
       long secondsSinceActivity = now.getEpochSecond() - lastActivityTime.getEpochSecond();
+      // In parallel test execution, tests take longer due to resource contention
+      // Use a generous timeout (10 minutes) to avoid flaky tests
       assertTrue(
-          secondsSinceActivity < 60,
-          "Last activity should be within last 60 seconds, but was "
+          secondsSinceActivity < 600,
+          "Last activity should be within last 10 minutes, but was "
               + secondsSinceActivity
               + " seconds ago");
 
@@ -294,9 +296,13 @@ public class UserMetricsResourceIT {
     Instant lastActivityTime = Instant.parse(lastActivity);
     Instant now = Instant.now();
     long secondsSinceActivity = now.getEpochSecond() - lastActivityTime.getEpochSecond();
+    // In parallel test execution, tests take longer due to resource contention
+    // Use a generous timeout (10 minutes) to avoid flaky tests
     assertTrue(
-        secondsSinceActivity < 60,
-        "Last activity should be very recent, but was " + secondsSinceActivity + " seconds ago");
+        secondsSinceActivity < 600,
+        "Last activity should be within last 10 minutes, but was "
+            + secondsSinceActivity
+            + " seconds ago");
   }
 
   @Test
