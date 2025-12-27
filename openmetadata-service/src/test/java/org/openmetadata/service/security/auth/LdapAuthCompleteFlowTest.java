@@ -252,7 +252,7 @@ class LdapAuthCompleteFlowTest extends OpenMetadataApplicationTest {
     securityConfig.put("authorizerConfiguration", authorizerConfig);
 
     Invocation.Builder request =
-        APP.client()
+        client
             .target(getServerUrl() + "/api/v1/system/security/config")
             .request(MediaType.APPLICATION_JSON);
 
@@ -295,7 +295,7 @@ class LdapAuthCompleteFlowTest extends OpenMetadataApplicationTest {
     loginRequest.setPassword(Base64.getEncoder().encodeToString(TEST_USER_PASSWORD.getBytes()));
 
     Response response =
-        APP.client()
+        client
             .target(getServerUrl() + AUTH_LOGIN_ENDPOINT)
             .request(MediaType.APPLICATION_JSON)
             .property(ClientProperties.FOLLOW_REDIRECTS, false)
@@ -328,7 +328,7 @@ class LdapAuthCompleteFlowTest extends OpenMetadataApplicationTest {
     loginRequest.setPassword(Base64.getEncoder().encodeToString("wrongpassword".getBytes()));
 
     Response response =
-        APP.client()
+        client
             .target(getServerUrl() + AUTH_LOGIN_ENDPOINT)
             .request(MediaType.APPLICATION_JSON)
             .property(ClientProperties.FOLLOW_REDIRECTS, false)
@@ -351,7 +351,7 @@ class LdapAuthCompleteFlowTest extends OpenMetadataApplicationTest {
     loginRequest.setPassword(Base64.getEncoder().encodeToString("password".getBytes()));
 
     Response response =
-        APP.client()
+        client
             .target(getServerUrl() + AUTH_LOGIN_ENDPOINT)
             .request(MediaType.APPLICATION_JSON)
             .property(ClientProperties.FOLLOW_REDIRECTS, false)
@@ -371,7 +371,7 @@ class LdapAuthCompleteFlowTest extends OpenMetadataApplicationTest {
     loginRequest.setPassword(Base64.getEncoder().encodeToString(TEST_USER_PASSWORD.getBytes()));
 
     Response loginResponse =
-        APP.client()
+        client
             .target(getServerUrl() + AUTH_LOGIN_ENDPOINT)
             .request(MediaType.APPLICATION_JSON)
             .property(ClientProperties.FOLLOW_REDIRECTS, false)
@@ -382,7 +382,7 @@ class LdapAuthCompleteFlowTest extends OpenMetadataApplicationTest {
     Map<String, NewCookie> cookies = loginResponse.getCookies();
 
     Invocation.Builder logoutRequest =
-        APP.client()
+        client
             .target(getServerUrl() + AUTH_LOGOUT_ENDPOINT)
             .request(MediaType.APPLICATION_JSON)
             .property(ClientProperties.FOLLOW_REDIRECTS, false);
@@ -408,7 +408,7 @@ class LdapAuthCompleteFlowTest extends OpenMetadataApplicationTest {
         Base64.getEncoder().encodeToString(ADMIN_PRINCIPAL_USER_PASSWORD.getBytes()));
 
     Response response =
-        APP.client()
+        client
             .target(getServerUrl() + AUTH_LOGIN_ENDPOINT)
             .request(MediaType.APPLICATION_JSON)
             .property(ClientProperties.FOLLOW_REDIRECTS, false)
@@ -453,7 +453,7 @@ class LdapAuthCompleteFlowTest extends OpenMetadataApplicationTest {
       loginRequest.setPassword(Base64.getEncoder().encodeToString("wrongpassword".getBytes()));
 
       Response response =
-          APP.client()
+          client
               .target(getServerUrl() + AUTH_LOGIN_ENDPOINT)
               .request(MediaType.APPLICATION_JSON)
               .property(ClientProperties.FOLLOW_REDIRECTS, false)
