@@ -79,6 +79,7 @@ export default defineConfig({
       teardown: 'entity-data-teardown',
       testIgnore: [
         '**/nightly/**',
+        '**/Auth/SSOAuthentication.spec.ts', // SSO tests run separately in nightly workflow
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',

@@ -1,0 +1,144 @@
+version: "3.9"
+
+# Docker Compose for OpenMetadata with LDAP SSO
+# Complete local SSO testing environment - no external dependencies
+
+services:
+  # OpenLDAP Directory Server
+  openldap:
+    image: osixia/openldap:1.5.0
+    container_name: openldap-sso
+    environment:
+      LDAP_ORGANISATION: "OpenMetadata"
+      LDAP_DOMAIN: "openmetadata.org"
+      LDAP_ADMIN_PASSWORD: "admin123"
+      LDAP_CONFIG_PASSWORD: "config123"
+      LDAP_READONLY_USER: "true"
+      LDAP_READONLY_USER_USERNAME: "readonly"
+      LDAP_READONLY_USER_PASSWORD: "readonly123"
+      LDAP_RFC2307BIS_SCHEMA: "true"
+      LDAP_REMOVE_CONFIG_AFTER_SETUP: "true"
+      LDAP_TLS: "false"
+    ports:
+      - "389:1389"
+      - "636:1636"
+    volumes:
+      - ldap-data:/var/lib/ldap
+      - ldap-config:/etc/ldap/slapd.d
+      - ./ldap-init.ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom/init.ldif:ro
+    healthcheck:
+      test: ["CMD", "ldapsearch", "-x", "-H", "ldap://localhost:1389", "-b", "dc=openmetadata,dc=org", "-D", "cn=admin,dc=openmetadata,dc=org", "-w", "admin123"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - openmetadata-sso
+
+  # phpLDAPadmin (Optional - for LDAP management UI)
+  phpldapadmin:
+    image: osixia/phpldapadmin:0.9.0
+    container_name: phpldapadmin
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: openldap
+      PHPLDAPADMIN_HTTPS: "false"
+    ports:
+      - "8081:80"
+    depends_on:
+      - openldap
+    networks:
+      - openmetadata-sso
+
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: openmetadata-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: openmetadata_db
+      MYSQL_USER: openmetadata_user
+      MYSQL_PASSWORD: openmetadata_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - openmetadata-sso
+
+  # Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.15
+    container_name: openmetadata-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - openmetadata-sso
+
+  # OpenMetadata Server
+  openmetadata-server:
+    image: openmetadata/server:latest
+    container_name: openmetadata-server
+    depends_on:
+      mysql:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      openldap:
+        condition: service_healthy
+    ports:
+      - "8585:8585"
+    environment:
+      DB_DRIVER_CLASS: com.mysql.cj.jdbc.Driver
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: openmetadata_user
+      DB_USER_PASSWORD: openmetadata_password
+      OM_DATABASE: openmetadata_db
+      ELASTICSEARCH_HOST: elasticsearch
+      ELASTICSEARCH_PORT: 9200
+      AUTHENTICATION_PROVIDER: ldap
+      AUTHENTICATION_LDAP_HOST: openldap
+      AUTHENTICATION_LDAP_PORT: 1389
+      AUTHENTICATION_LDAP_DN_ADMIN_PRINCIPAL: cn=admin,dc=openmetadata,dc=org
+      AUTHENTICATION_LDAP_DN_ADMIN_PASSWORD: admin123
+      AUTHENTICATION_LDAP_USER_BASE_DN: ou=users,dc=openmetadata,dc=org
+      AUTHENTICATION_LDAP_GROUP_BASE_DN: ou=groups,dc=openmetadata,dc=org
+      AUTHORIZER_CLASS_NAME: org.openmetadata.service.security.DefaultAuthorizer
+      AUTHORIZER_REQUEST_FILTER: org.openmetadata.service.security.JwtFilter
+      AUTHORIZER_ADMIN_PRINCIPALS: '[admin@openmetadata.org, adminuser]'
+      AUTHORIZER_PRINCIPAL_DOMAIN: openmetadata.org
+    volumes:
+      - ./openmetadata-ldap.yaml:/openmetadata.yaml:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8585/api/v1/system/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - openmetadata-sso
+
+volumes:
+  ldap-data:
+  ldap-config:
+  mysql-data:
+  es-data:
+
+networks:
+  openmetadata-sso:
+    driver: bridge

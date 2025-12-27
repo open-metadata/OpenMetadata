@@ -1,0 +1,116 @@
+version: "3.9"
+
+# Docker Compose for OpenMetadata with Keycloak SAML SSO
+# Complete local SSO testing environment - no external dependencies
+
+services:
+  # Keycloak SAML Identity Provider
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: keycloak-saml-sso
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+      KC_HTTP_PORT: 8080
+    ports:
+      - "8080:8080"
+    command:
+      - start-dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - openmetadata-sso
+
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: openmetadata-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: openmetadata_db
+      MYSQL_USER: openmetadata_user
+      MYSQL_PASSWORD: openmetadata_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - openmetadata-sso
+
+  # Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.15
+    container_name: openmetadata-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - openmetadata-sso
+
+  # OpenMetadata Server
+  openmetadata-server:
+    image: openmetadata/server:latest
+    container_name: openmetadata-server
+    depends_on:
+      mysql:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    ports:
+      - "8585:8585"
+    environment:
+      DB_DRIVER_CLASS: com.mysql.cj.jdbc.Driver
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: openmetadata_user
+      DB_USER_PASSWORD: openmetadata_password
+      OM_DATABASE: openmetadata_db
+      ELASTICSEARCH_HOST: elasticsearch
+      ELASTICSEARCH_PORT: 9200
+      AUTHENTICATION_PROVIDER: saml
+      AUTHENTICATION_PUBLIC_KEYS: '[http://keycloak:8080/realms/openmetadata/protocol/saml/descriptor]'
+      AUTHENTICATION_AUTHORITY: http://localhost:8080
+      AUTHENTICATION_CLIENT_ID: http://localhost:8585
+      AUTHENTICATION_CALLBACK_URL: http://localhost:8585/callback
+      AUTHORIZER_CLASS_NAME: org.openmetadata.service.security.DefaultAuthorizer
+      AUTHORIZER_REQUEST_FILTER: org.openmetadata.service.security.JwtFilter
+      AUTHORIZER_ADMIN_PRINCIPALS: '[admin@openmetadata.org, adminuser]'
+      AUTHORIZER_PRINCIPAL_DOMAIN: http://localhost:8080
+    volumes:
+      - ./openmetadata-keycloak-saml.yaml:/openmetadata.yaml:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8585/api/v1/system/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - openmetadata-sso
+
+volumes:
+  mysql-data:
+  es-data:
+
+networks:
+  openmetadata-sso:
+    driver: bridge

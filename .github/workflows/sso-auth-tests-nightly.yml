@@ -80,9 +80,8 @@ jobs:
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: "3.10"
-          # Skip ingestion setup for SSO tests
-          args: "-d postgresql -i false"
-          ingestion_dependency: "all"
+          args: "-d mysql"
+          ingestion_dependency: "mysql,elasticsearch"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
