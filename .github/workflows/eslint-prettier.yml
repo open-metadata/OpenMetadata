@@ -29,23 +29,22 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
 
-      steps:
-        - name: Free Disk Space (Ubuntu)
-          uses: jlumbroso/free-disk-space@main
-          with:
-              tool-cache: false
-              android: true
-              dotnet: true
-              haskell: true
-              large-packages: false
-              swap-storage: true
-              docker-images: false
+      - name: Checkout
+        uses: actions/checkout@v4
 
-        - name: Checkout
-          uses: actions/checkout@v4
-
-        - name: Set up Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
