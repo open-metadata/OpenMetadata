@@ -107,7 +107,7 @@ jobs:
 
       - name: Create a comment in the PR with the instructions
         if: steps.eslint.outcome != 'success' || steps.prettier.outcome != 'success' || steps.license.outcome != 'success' || steps.imports.outcome != 'success' || steps.git.outcome != 'success'
-        uses: peter-evans/create-or-update-comment@v1
+        uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
