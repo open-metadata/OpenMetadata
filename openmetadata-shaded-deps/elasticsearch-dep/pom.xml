@@ -21,7 +21,7 @@
         <dependency>
             <groupId>co.elastic.clients</groupId>
             <artifactId>elasticsearch-java</artifactId>
-            <version>8.11.0</version>
+            <version>8.19.7</version>
             <optional>true</optional>
             <exclusions>
                 <exclusion>
