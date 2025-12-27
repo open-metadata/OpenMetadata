@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from '@mui/material';
 import { Form } from 'antd';
-import { FC, useState } from 'react';
+import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Style } from '../../../generated/type/schema';
 import { iconTooltipDataRender } from '../../../utils/DomainUtils';
@@ -55,15 +55,16 @@ const IconColorModal: FC<StyleModalProps> = ({
       open={open}
       slotProps={{
         paper: {
+          'data-testid': 'icon-color-modal',
           sx: {
             borderRadius: 1,
             width: 520,
             maxWidth: '100%',
           },
-        },
+        } as React.HTMLAttributes<HTMLDivElement>,
       }}
       onClose={saving ? undefined : onCancel}>
-      <Box>
+      <Box data-testid="icon-color-modal-content">
         <DialogTitle
           sx={{
             '&.MuiDialogTitle-root': {

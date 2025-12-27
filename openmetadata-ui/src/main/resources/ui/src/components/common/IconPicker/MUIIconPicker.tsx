@@ -217,8 +217,12 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
                 }}
                 value={activeTab}
                 onChange={handleTabChange}>
-                <Tab label={t('label.icon-plural')} value="icons" />
-                <Tab label={t('label.url')} value="url" />
+                <Tab
+                  data-testid="icon-tab"
+                  label={t('label.icon-plural')}
+                  value="icons"
+                />
+                <Tab data-testid="url-tab" label={t('label.url')} value="url" />
               </Tabs>
             )}
 
@@ -359,6 +363,11 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
                   fullWidth
                   placeholder={placeholder}
                   size="small"
+                  slotProps={{
+                    htmlInput: {
+                      'data-testid': 'icon-url-input',
+                    },
+                  }}
                   value={urlValue}
                   onChange={(e) => handleUrlChange(e.target.value)}
                 />
