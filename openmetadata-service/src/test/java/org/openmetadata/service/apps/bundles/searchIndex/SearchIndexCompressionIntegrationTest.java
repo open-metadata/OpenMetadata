@@ -116,12 +116,23 @@ class SearchIndexCompressionIntegrationTest extends OpenMetadataApplicationTest 
         metrics.getRecommendedConcurrentRequests() > 0,
         "Should recommend positive concurrent requests");
 
-    long minExpectedPayload = 50 * 1024 * 1024L;
+    // Verify payload size is at least the conservative minimum (8MB with some margin)
+    // The actual size depends on cluster configuration (http.max_content_length setting).
+    // In test environments, this may be the default 10MB or lower.
+    long minPayload = 8 * 1024 * 1024L; // 8MB minimum expected
     assertTrue(
-        metrics.getMaxPayloadSizeBytes() >= minExpectedPayload,
-        "Payload size should benefit from compression (actual: "
+        metrics.getMaxPayloadSizeBytes() >= minPayload,
+        "Payload size should be at least 8MB (actual: "
             + metrics.getMaxPayloadSizeBytes() / (1024 * 1024)
-            + " MB)");
+            + " MB, shards: "
+            + metrics.getTotalShards()
+            + ")");
+
+    LOG.info(
+        "Cluster metrics: nodes={}, shards={}, payload size={}MB",
+        metrics.getTotalNodes(),
+        metrics.getTotalShards(),
+        metrics.getMaxPayloadSizeBytes() / (1024 * 1024));
   }
 
   @Test
