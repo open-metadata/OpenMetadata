@@ -10,7 +10,7 @@ public class TestDefinitionService
     extends EntityServiceBase<org.openmetadata.schema.tests.TestDefinition> {
 
   public TestDefinitionService(HttpClient httpClient) {
-    super(httpClient, "/v1/testDefinitions");
+    super(httpClient, "/v1/dataQuality/testDefinitions");
   }
 
   @Override

@@ -43,5 +43,20 @@ public class AllModels {
     public void setTotal(Integer total) {
       this.total = total;
     }
+
+    public Paging withAfter(String after) {
+      this.after = after;
+      return this;
+    }
+
+    public Paging withBefore(String before) {
+      this.before = before;
+      return this;
+    }
+
+    public Paging withTotal(Integer total) {
+      this.total = total;
+      return this;
+    }
   }
 }
