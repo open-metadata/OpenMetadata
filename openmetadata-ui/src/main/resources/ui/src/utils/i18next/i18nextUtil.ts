@@ -31,6 +31,7 @@ import thTH from '../../locale/languages/th-th.json';
 import trTR from '../../locale/languages/tr-tr.json';
 import zhCN from '../../locale/languages/zh-cn.json';
 import zhTW from '../../locale/languages/zh-tw.json';
+import arSA from '../../locale/languages/ar-sa.json';
 import { SupportedLocales } from './LocalUtil.interface';
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
@@ -61,6 +62,7 @@ export const getInitOptions = (): InitOptions => {
       'th-TH': { translation: thTH },
       'mr-IN': { translation: mrIN },
       'tr-TR': { translation: trTR },
+      'ar-SA': { translation: arSA },
     },
     fallbackLng: ['en-US'],
     detection: {
@@ -113,4 +115,5 @@ export const languageMap: Record<string, SupportedLocales> = {
   pr: SupportedLocales.Persian,
   th: SupportedLocales.Thai,
   tr: SupportedLocales.Türkçe,
+  ar: SupportedLocales.العربية,
 };
