@@ -23,6 +23,13 @@ public class DatabaseBuilder {
   private final CreateDatabase request;
   private EntityReference serviceRef;
 
+  /**
+   * Create a new DatabaseBuilder with the given client.
+   */
+  public static DatabaseBuilder create(OpenMetadataClient client) {
+    return new DatabaseBuilder(client);
+  }
+
   public DatabaseBuilder(OpenMetadataClient client) {
     this.client = client;
     this.request = new CreateDatabase();
@@ -127,32 +134,7 @@ public class DatabaseBuilder {
    * Create the database and return the created entity.
    */
   public Database create() {
-    CreateDatabase createRequest = build();
-    // Convert CreateDatabase to Database
-    Database entity = new Database();
-    entity.setName(createRequest.getName());
-    if (createRequest.getDisplayName() != null)
-      entity.setDisplayName(createRequest.getDisplayName());
-    if (createRequest.getDescription() != null)
-      entity.setDescription(createRequest.getDescription());
-    // TODO: Map other fields as needed
-    return client.databases().create(entity);
-  }
-
-  /**
-   * Create or update the database (upsert).
-   */
-  public Database createOrUpdate() {
-    CreateDatabase createRequest = build();
-    // Convert CreateDatabase to Database
-    Database entity = new Database();
-    entity.setName(createRequest.getName());
-    if (createRequest.getDisplayName() != null)
-      entity.setDisplayName(createRequest.getDisplayName());
-    if (createRequest.getDescription() != null)
-      entity.setDescription(createRequest.getDescription());
-    // TODO: Map other fields as needed
-    return client.databases().upsert(entity);
+    return client.databases().create(build());
   }
 
   // ==================== Helper Methods ====================

@@ -91,7 +91,7 @@ public class RdfRepository {
 
     try {
       String entityType = entity.getEntityReference().getType();
-      LOG.info(
+      LOG.debug(
           "Storing entity in RDF - Type: {}, FQN: {}, Name: {}, ID: {}",
           entityType,
           entity.getFullyQualifiedName(),
