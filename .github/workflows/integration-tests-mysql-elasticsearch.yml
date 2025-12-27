@@ -105,10 +105,15 @@ jobs:
           librdkafka-dev unixodbc-dev libevent-dev jq
           sudo make install_antlr_cli
 
-      - name: Build and Run Integration Tests (MySQL + Elasticsearch)
+      - name: Build Dependencies (skip tests)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn clean install -pl :openmetadata-integration-tests -Pmysql-elasticsearch -am
+        run: mvn -DskipTests clean install -pl :openmetadata-integration-tests -am
+
+      - name: Run Integration Tests (MySQL + Elasticsearch)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn test -pl :openmetadata-integration-tests -Pmysql-elasticsearch
 
       - name: Clean Up
         run: |
