@@ -97,7 +97,7 @@ jobs:
       - name: Build with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -DskipTests clean install -pl '!openmetadata-ui,!openmetadata-docs,!openmetadata-docs-v1' -am
+        run: mvn -DskipTests clean install -pl '!openmetadata-ui' -am
 
       - name: Run Integration Tests (MySQL + Elasticsearch)
         env:
