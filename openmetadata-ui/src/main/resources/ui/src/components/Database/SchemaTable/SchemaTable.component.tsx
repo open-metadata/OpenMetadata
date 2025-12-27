@@ -11,24 +11,17 @@
  *  limitations under the License.
  */
 
+import { EntityTags, TagFilterOptions } from 'Models';
 import { Button, Col, Form, Row, Select, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit, uniqBy } from 'lodash';
-import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_LARGE,
-} from '../../../constants/constants';
 import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
   TABLE_SCROLL_VALUE,
@@ -38,6 +31,13 @@ import {
   DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+  NO_DATA_PLACEHOLDER,
+  PAGE_SIZE_LARGE,
+} from '../../../constants/constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import {
   Column,
@@ -85,11 +85,6 @@ import {
   updateColumnInNestedStructure,
 } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../common/Table/Table';
-import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import {
@@ -97,6 +92,12 @@ import {
   EntityNameWithAdditionFields,
 } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
+import Table from '../../common/Table/Table';
+import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
+import { ColumnDetailPanel } from '../ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
@@ -109,6 +110,8 @@ const SchemaTable = () => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
   const [editColumn, setEditColumn] = useState<Column>();
+  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
+  const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
 
   const {
     currentPage,
@@ -158,7 +161,9 @@ const SchemaTable = () => {
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
+    viewCustomPropertiesPermission,
     editDisplayNamePermission,
+    viewAllPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -169,6 +174,8 @@ const SchemaTable = () => {
       editGlossaryTermsPermission:
         (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
         !deleted,
+      viewCustomPropertiesPermission:
+        tablePermissions.ViewAll || tablePermissions.ViewCustomFields,
       editAllPermission: tablePermissions.EditAll && !deleted,
       editLineagePermission:
         (tablePermissions.EditAll || tablePermissions.EditLineage) && !deleted,
@@ -504,10 +511,14 @@ const SchemaTable = () => {
                   tableConstraints,
                 })}
                 <Typography.Text
-                  className={classNames('m-b-0 d-block break-word', {
-                    'text-grey-600': !isEmpty(displayName),
-                  })}
-                  data-testid="column-name">
+                  className={classNames(
+                    'm-b-0 d-block break-word cursor-pointer',
+                    {
+                      'text-grey-600': !isEmpty(displayName),
+                    }
+                  )}
+                  data-testid="column-name"
+                  onClick={() => handleColumnClick(record)}>
                   {stringToHTML(highlightSearchText(name, searchText))}
                 </Typography.Text>
               </div>
@@ -672,6 +683,31 @@ const SchemaTable = () => {
     navigate(getEntityBulkEditPath(EntityType.TABLE, decodedEntityFqn));
   };
 
+  const handleColumnClick = (column: Column) => {
+    setSelectedColumn(column);
+    setIsColumnDetailOpen(true);
+  };
+
+  const handleCloseColumnDetail = () => {
+    setIsColumnDetailOpen(false);
+    setSelectedColumn(null);
+  };
+
+  const handleColumnUpdate = (updatedColumn: Column) => {
+    setTableColumns((prev) =>
+      prev.map((col) =>
+        col.fullyQualifiedName === updatedColumn.fullyQualifiedName
+          ? updatedColumn
+          : col
+      )
+    );
+    setSelectedColumn(updatedColumn);
+  };
+
+  const handleColumnNavigate = (column: Column) => {
+    setSelectedColumn(column);
+  };
+
   useEffect(() => {
     setExpandedRowKeys(
       getAllRowKeysByKeyName<Column>(tableColumns ?? [], 'fullyQualifiedName')
@@ -755,6 +791,10 @@ const SchemaTable = () => {
           searchProps={searchProps}
           size="middle"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+          //   onRow={(record) => ({
+          //     onClick: () => handleColumnClick(record),
+          //     style: { cursor: 'pointer' },
+          //   })}
         />
       </Col>
       {editColumn && (
@@ -785,6 +825,23 @@ const SchemaTable = () => {
           onSave={handleEditColumnData}
         />
       )}
+      <ColumnDetailPanel
+        allColumns={tableColumns}
+        column={selectedColumn}
+        hasEditPermission={{
+          tags: editTagsPermission,
+          glossaryTerms: editGlossaryTermsPermission,
+          description: editDescriptionPermission,
+          viewAllPermission: viewAllPermission,
+          customProperties: viewCustomPropertiesPermission,
+        }}
+        isOpen={isColumnDetailOpen}
+        tableConstraints={table?.tableConstraints}
+        tableFqn={tableFqn}
+        onClose={handleCloseColumnDetail}
+        onColumnUpdate={handleColumnUpdate}
+        onNavigate={handleColumnNavigate}
+      />
     </Row>
   );
 };

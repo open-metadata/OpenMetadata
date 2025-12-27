@@ -145,7 +145,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
         }}
         onUpdate={handleTagSelection}>
         <div className="d-none tag-selector-display">
-          {editingTags.length > 0 && (
+          {editingTags.length > 0 ? (
             <div className="selected-tags-list">
               {editingTags.map((tag) => (
                 <div
@@ -157,6 +157,12 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
                 </div>
               ))}
             </div>
+          ) : (
+            <span className="no-data-placeholder">
+              {t('label.no-entity-assigned', {
+                entity: t('label.tag-plural'),
+              })}
+            </span>
           )}
         </div>
       </TagSelectableList>
