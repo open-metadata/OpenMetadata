@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import DownloadIcon from '@mui/icons-material/SaveAlt';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import { Divider, IconButton, Menu, MenuItem } from '@mui/material';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Handle, NodeProps, Position } from 'reactflow';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
@@ -142,6 +149,90 @@ const ExpandCollapseHandles = memo(
   }
 );
 
+const MeatballMenu = ({
+  data,
+}: {
+  data: { nodeId: string; xPos: number; yPos: number };
+}) => {
+  const { t } = useTranslation();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+  const { onNodeAdd } = useLineageProvider();
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleAddUpstream = () => {
+    handleClose();
+    onNodeAdd(data.nodeId, data.xPos, data.yPos);
+  };
+
+  return (
+    <div className="manage-node">
+      <IconButton
+        aria-controls={open ? 'menu' : undefined}
+        aria-haspopup="true"
+        aria-label="more options"
+        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+          e.stopPropagation();
+          // setAnchorEl(e.currentTarget);
+          handleAddUpstream();
+        }}>
+        <MoreVertIcon sx={{ pointerEvents: 'none' }} />
+      </IconButton>
+
+      <Menu
+        anchorEl={anchorEl}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        className="manage-node-menu"
+        id="menu"
+        open={false}
+        sx={{
+          '.MuiPaper-root': {
+            width: 'max-content',
+            marginLeft: '6px',
+            marginTop: 0,
+            '.MuiMenuItem-root': {
+              fontWeight: 400,
+              svg: {
+                fontSize: 20,
+              },
+            },
+          },
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
+        onClose={() => setAnchorEl(null)}>
+        <MenuItem onClick={handleAddUpstream}>
+          <ArrowForwardIcon />
+          {t('label.edit-downstream')}
+        </MenuItem>
+        <MenuItem onClick={handleClose}>
+          <ArrowBackIcon />
+          {t('label.edit-upstream')}
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={handleClose}>
+          <TrendingDownIcon />
+          {t('label.view-impact')}
+        </MenuItem>
+        <MenuItem onClick={handleClose}>
+          <DownloadIcon /> {t('label.download-impact')}
+        </MenuItem>
+      </Menu>
+    </div>
+  );
+};
+
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
 
@@ -170,12 +261,12 @@ const CustomNodeV1 = (props: NodeProps) => {
   const nodeType = isEditMode ? EntityLineageNodeType.DEFAULT : type;
   const isSelected = selectedNode === node;
   const {
-    id,
     fullyQualifiedName,
     upstreamLineage = [],
     upstreamExpandPerformed = false,
     downstreamExpandPerformed = false,
   } = node;
+  const { id } = props;
   const [isTraced, setIsTraced] = useState(false);
 
   const showDqTracing = useMemo(
@@ -340,6 +431,11 @@ const CustomNodeV1 = (props: NodeProps) => {
           node={node}
         />
       </div>
+      {!isNewNode && (
+        <MeatballMenu
+          data={{ nodeId: id, xPos: props.xPos, yPos: props.yPos }}
+        />
+      )}
     </div>
   );
 };
