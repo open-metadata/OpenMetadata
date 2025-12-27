@@ -34,6 +34,7 @@
     <module>common</module>
     <module>openmetadata-shaded-deps</module>
     <module>openmetadata-service</module>
+    <module>openmetadata-integration-tests</module>
     <module>openmetadata-mcp</module>
     <module>openmetadata-ui-core-components</module>
     <module>openmetadata-ui</module>
@@ -106,7 +107,7 @@
     <openapiswagger.version>2.2.25</openapiswagger.version>
     <httpclient.version>4.5.14</httpclient.version>
     <spring.version>6.2.11</spring.version>
-    <log4j.version>2.21.0</log4j.version>
+    <log4j.version>2.25.3</log4j.version>
     <org.junit.jupiter.version>5.9.3</org.junit.jupiter.version>
     <dropwizard-health.version>5.0.0</dropwizard-health.version>
     <handlebars.version>4.5.0</handlebars.version>
@@ -149,7 +150,7 @@
     <json-patch.version>1.13</json-patch.version>
     <jetty.version>12.1.1</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
-    <mcp-sdk.version>0.11.2</mcp-sdk.version>
+    <mcp-sdk.version>0.14.0</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
     <flyway.version>9.22.3</flyway.version>
     <angus-mail.version>2.0.4</angus-mail.version>

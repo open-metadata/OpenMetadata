@@ -91,6 +91,7 @@ import org.testcontainers.utility.DockerImageName;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class OpenMetadataApplicationTest {
   protected static Boolean runWithOpensearch = false;
+  protected static Boolean runWithRdf = false;
 
   protected static final String CONFIG_PATH =
       ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
@@ -546,13 +547,10 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   private static void setupRdfIfEnabled() {
-    String enableRdf = System.getProperty("enableRdf");
-    String rdfContainerImage = System.getProperty("rdfContainerImage");
-    if ("true".equals(enableRdf)) {
-      LOG.info("RDF is enabled for tests. Starting Fuseki container...");
-      if (CommonUtil.nullOrEmpty(rdfContainerImage)) {
-        rdfContainerImage = "stain/jena-fuseki:latest";
-      }
+    if (Boolean.TRUE.equals(runWithRdf) || "true".equals(System.getProperty("enableRdf"))) {
+      String rdfContainerImage = System.getProperty("rdfContainerImage", "stain/jena-fuseki:5.0.0");
+      LOG.info(
+          "RDF is enabled for tests. Starting Fuseki container with image: {}", rdfContainerImage);
 
       try {
         RDF_CONTAINER =
@@ -582,6 +580,7 @@ public abstract class OpenMetadataApplicationTest {
         configOverrides.add(ConfigOverride.config("rdf.username", "admin"));
         configOverrides.add(ConfigOverride.config("rdf.password", "test-admin"));
         configOverrides.add(ConfigOverride.config("rdf.baseUri", "https://open-metadata.org/"));
+        configOverrides.add(ConfigOverride.config("rdf.dataset", "openmetadata"));
 
         LOG.info("RDF configuration overrides added");
       } catch (Exception e) {
@@ -590,7 +589,8 @@ public abstract class OpenMetadataApplicationTest {
         configOverrides.add(ConfigOverride.config("rdf.enabled", "false"));
       }
     } else {
-      LOG.info("RDF not enabled for tests (enableRdf={})", enableRdf);
+      LOG.info("RDF not enabled for tests (runWithRdf={})", runWithRdf);
+      configOverrides.add(ConfigOverride.config("rdf.enabled", "false"));
     }
   }
 

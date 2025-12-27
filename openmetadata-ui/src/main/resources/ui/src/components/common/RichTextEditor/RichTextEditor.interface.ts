@@ -17,7 +17,7 @@ import { ExtensionOptions } from '../../BlockEditor/BlockEditor.interface';
 export type TextVariant = 'white' | 'black';
 
 export interface PreviewerProp {
-  markdown: string;
+  markdown?: string;
   maxLength?: number;
   className?: string;
   enableSeeMoreVariant?: boolean;
