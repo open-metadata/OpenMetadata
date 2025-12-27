@@ -13,8 +13,8 @@ name: ESLint and Prettier
 
 on:
   # Trigger analysis when creating or updating a pull request.
-  pull_request_target:
-    types: [opened, synchronize, reopened, labeled]
+  pull_request:
+    types: [opened, synchronize, reopened]
     paths:
       - 'openmetadata-ui/src/main/resources/ui/**'
 
@@ -30,39 +30,20 @@ jobs:
     permissions:
       pull-requests: write
 
-    steps:
-      - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
-        with:
-            tool-cache: false
-            android: true
-            dotnet: true
-            haskell: true
-            large-packages: false
-            swap-storage: true
-            docker-images: false
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4  
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
+      steps:
+        - name: Free Disk Space (Ubuntu)
+          uses: jlumbroso/free-disk-space@main
+          with:
+              tool-cache: false
+              android: true
+              dotnet: true
+              haskell: true
+              large-packages: false
+              swap-storage: true
+              docker-images: false
 
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true  # To not auto approve changes
-
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+        - name: Checkout
+          uses: actions/checkout@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
