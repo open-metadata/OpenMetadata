@@ -97,7 +97,7 @@ jobs:
       - name: Build with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -DskipTests clean install -pl '!openmetadata-ui' -am
+        run: mvn -DskipTests clean install -pl '!openmetadata-ui,!openmetadata-dist' -am
 
       - name: Run Integration Tests (PostgreSQL + OpenSearch)
         env:
