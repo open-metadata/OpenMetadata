@@ -39,3 +39,28 @@ export const ENTITY_RIGHT_PANEL_LINEAGE_TABS = [
   EntityType.API_ENDPOINT,
   EntityType.DIRECTORY,
 ];
+
+export const ENTITY_RIGHT_PANEL_CUSTOM_PROPERTIES_TABS = [
+  EntityType.API_COLLECTION,
+  EntityType.API_ENDPOINT,
+  EntityType.CHART,
+  EntityType.CONTAINER,
+  EntityType.DASHBOARD,
+  EntityType.DASHBOARD_DATA_MODEL,
+  EntityType.DATABASE,
+  EntityType.DATABASE_SCHEMA,
+  EntityType.DATA_PRODUCT,
+  EntityType.DIRECTORY,
+  EntityType.DOMAIN,
+  EntityType.FILE,
+  EntityType.GLOSSARY_TERM,
+  EntityType.METRIC,
+  EntityType.MLMODEL,
+  EntityType.PIPELINE,
+  EntityType.SEARCH_INDEX,
+  EntityType.SPREADSHEET,
+  EntityType.STORED_PROCEDURE,
+  EntityType.TABLE,
+  EntityType.TOPIC,
+  EntityType.WORKSHEET,
+];

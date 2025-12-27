@@ -545,9 +545,11 @@ describe('EntityRightPanelVerticalNav', () => {
         />
       );
 
-      // Should only show overview and custom properties tabs
+      // Should only show overview tab for unknown entity types
       expect(screen.getByText('label.overview')).toBeInTheDocument();
-      expect(screen.getByText('label.custom-property')).toBeInTheDocument();
+      expect(
+        screen.queryByText('label.custom-property')
+      ).not.toBeInTheDocument();
       expect(screen.queryByText('label.schema')).not.toBeInTheDocument();
       expect(screen.queryByText('label.lineage')).not.toBeInTheDocument();
       expect(screen.queryByText('label.data-quality')).not.toBeInTheDocument();
