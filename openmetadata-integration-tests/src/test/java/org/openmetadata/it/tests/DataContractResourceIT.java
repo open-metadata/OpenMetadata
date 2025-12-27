@@ -1044,7 +1044,8 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   @Test
   void testDataContractWithReviewers(TestNamespace ns) {
     Table table = createTestTable(ns);
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
 
     // Use shared user as reviewer
     List<EntityReference> reviewers = List.of(shared.USER1_REF);
@@ -1076,7 +1077,8 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     // Add reviewers via patch (using the admin user as reviewer)
     // Get admin user reference from shared entities
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
     List<EntityReference> reviewers = List.of(shared.USER1_REF);
 
     contract.setReviewers(reviewers);
@@ -1186,7 +1188,8 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   @Test
   void testDataContractWithAllFields(TestNamespace ns) {
     Table table = createTestTable(ns);
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
 
     List<SemanticsRule> semanticsRules =
         List.of(
@@ -1728,7 +1731,8 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     Table table = createTestTable(ns);
 
     DataContracts.setDefaultClient(SdkClients.adminClient());
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
 
     DataContract contract =
         DataContracts.create()
@@ -2112,7 +2116,8 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
   @Test
   void testTableOwnerCanCreateDataContract(TestNamespace ns) {
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
 
     // Create table owned by USER1
     Table table = createTestTable(ns);
@@ -2155,7 +2160,8 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
   @Test
   void testTableOwnerCanUpdateTheirDataContract(TestNamespace ns) {
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
 
     // Create table owned by USER1
     Table table = createTestTable(ns);
@@ -2184,7 +2190,8 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
   @Test
   void testRegularUserCannotUpdateOthersDataContract(TestNamespace ns) {
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
 
     // Create table owned by USER1
     Table table = createTestTable(ns);
@@ -2213,7 +2220,8 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
   @Test
   void testTableOwnerCanPatchTheirDataContract(TestNamespace ns) {
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
 
     // Create table owned by USER1
     Table table = createTestTable(ns);
@@ -2240,7 +2248,8 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
   @Test
   void testRegularUserCannotPatchOthersDataContract(TestNamespace ns) {
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
 
     // Create table owned by USER1
     Table table = createTestTable(ns);
@@ -2268,7 +2277,8 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
   @Test
   void testTableOwnerCanDeleteTheirDataContract(TestNamespace ns) {
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
 
     // Create table owned by USER1
     Table table = createTestTable(ns);
@@ -2296,7 +2306,8 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
   @Test
   void testRegularUserCannotDeleteOthersDataContract(TestNamespace ns) {
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
 
     // Create table owned by USER1
     Table table = createTestTable(ns);
@@ -2405,7 +2416,8 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   @Test
   void testPatchDataContractRemoveReviewers(TestNamespace ns) {
     Table table = createTestTable(ns);
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
 
     // Create contract with reviewers
     CreateDataContract request =
@@ -2642,7 +2654,8 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   @Test
   void testPatchDataContractUpdateReviewers(TestNamespace ns) {
     Table table = createTestTable(ns);
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
 
     // Create contract with one reviewer
     CreateDataContract request =

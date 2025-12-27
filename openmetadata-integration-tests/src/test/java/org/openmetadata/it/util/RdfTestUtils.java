@@ -26,7 +26,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
-import org.openmetadata.it.env.TestSuiteBootstrap;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;

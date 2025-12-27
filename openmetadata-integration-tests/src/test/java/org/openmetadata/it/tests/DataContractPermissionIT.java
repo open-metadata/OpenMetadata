@@ -82,7 +82,8 @@ public class DataContractPermissionIT {
 
   @Test
   void testAllUsersCanReadDataContracts(TestNamespace ns) {
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
     Table table = createTestTable(ns, ns.prefix("read_test_table"));
 
     CreateDataContract request =
@@ -105,7 +106,8 @@ public class DataContractPermissionIT {
 
   @Test
   void testTableOwnerCanCreateDataContract(TestNamespace ns) {
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
 
     CreateTable tableRequest = new CreateTable();
     tableRequest.setName(ns.prefix("owner_table"));
@@ -138,7 +140,8 @@ public class DataContractPermissionIT {
 
   @Test
   void testTableOwnerCanDeleteTheirDataContract(TestNamespace ns) {
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
 
     CreateTable tableRequest = new CreateTable();
     tableRequest.setName(ns.prefix("delete_owner_table"));
@@ -173,7 +176,8 @@ public class DataContractPermissionIT {
 
   @Test
   void testTableOwnerCanPatchTheirDataContract(TestNamespace ns) {
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
 
     CreateTable tableRequest = new CreateTable();
     tableRequest.setName(ns.prefix("patch_owner_table"));
@@ -209,7 +213,8 @@ public class DataContractPermissionIT {
 
   @Test
   void testTableOwnerCanUpdateTheirDataContract(TestNamespace ns) {
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
 
     CreateTable tableRequest = new CreateTable();
     tableRequest.setName(ns.prefix("update_owner_table"));
@@ -327,7 +332,8 @@ public class DataContractPermissionIT {
 
   @Test
   void testUserWithCreateDataContractPermissionCanCreate(TestNamespace ns) {
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
 
     CreateTable tableRequest = new CreateTable();
     tableRequest.setName(ns.prefix("permission_table"));

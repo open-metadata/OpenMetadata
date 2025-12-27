@@ -333,7 +333,8 @@ public class PermissionsResourceIT {
   @Test
   void test_debugPermissions_userCannotDebugOtherUserPermissions() throws Exception {
     OpenMetadataClient user1Client = SdkClients.user1Client();
-    org.openmetadata.it.env.SharedEntities shared = org.openmetadata.it.env.SharedEntities.get();
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
 
     // user1 tries to debug user2's permissions - should fail
     assertThrows(
