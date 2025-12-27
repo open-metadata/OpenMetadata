@@ -47,6 +47,17 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: false
+          swap-storage: true
+
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.3.4
         if: ${{ github.event_name == 'pull_request_target' }}
@@ -94,15 +105,10 @@ jobs:
           librdkafka-dev unixodbc-dev libevent-dev jq
           sudo make install_antlr_cli
 
-      - name: Build with Maven
+      - name: Build and Run Integration Tests (PostgreSQL + OpenSearch)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -DskipTests clean install -pl '!openmetadata-ui,!openmetadata-dist' -am
-
-      - name: Run Integration Tests (PostgreSQL + OpenSearch)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn test -pl :openmetadata-integration-tests -Ppostgres-opensearch
+        run: mvn clean install -pl :openmetadata-integration-tests -Ppostgres-opensearch -am
 
       - name: Clean Up
         run: |
