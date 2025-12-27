@@ -33,7 +33,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.apiSchema import APISchema
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
 from metadata.generated.schema.type.schema import DataTypeTopic, FieldModel
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -531,8 +531,19 @@ class RestSource(ApiServiceSource):
                                 logger.debug(
                                     f"Skipping array fields inside schema: {children_ref} to avoid infinite recursion"
                                 )
+                    # Extract description if available
+                    description = val.get("description")
+                    description_obj = (
+                        Markdown(root=description) if description is not None else None
+                    )
+
                     fetched_fields.append(
-                        FieldModel(name=key, dataType=parsed_dtype, children=children)
+                        FieldModel(
+                            name=key,
+                            dataType=parsed_dtype,
+                            children=children,
+                            description=description_obj,
+                        )
                     )
                 else:
                     # If type of field is not defined then check for sub-schema
@@ -548,12 +559,19 @@ class RestSource(ApiServiceSource):
                             logger.debug(
                                 f"Skipping object fields inside schema: {val.get('$ref')} to avoid infinite recursion"
                             )
+                    # Extract description if available
+                    description = val.get("description")
+                    description_obj = (
+                        Markdown(root=description) if description is not None else None
+                    )
+
                     fetched_fields.append(
                         FieldModel(
                             name=key,
                             dataType=DataTypeTopic.UNKNOWN,
                             dataTypeDisplay="OBJECT",
                             children=children,
+                            description=description_obj,
                         )
                     )
             if parent_refs and (schema_ref in parent_refs):
