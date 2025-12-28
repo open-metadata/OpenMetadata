@@ -1,0 +1,103 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../styles/variables.less';
+
+.learning-resource-form {
+  .ant-form-item {
+    margin-bottom: @size-lg;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .form-card-section {
+    background-color: @grey-26;
+    border-radius: @border-rad-sm;
+    margin-bottom: @size-mlg;
+    border: none;
+
+    .ant-card-body {
+      padding: @size-md;
+    }
+
+    .ant-form-item {
+      margin-bottom: @size-lg;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    .card-title-container {
+      margin-bottom: @margin-md;
+
+      .card-title-text {
+        color: @grey-700;
+        font-weight: @font-semibold;
+        font-size: @font-size-base;
+        margin-bottom: 0;
+      }
+
+      .card-title-description {
+        color: @grey-600;
+        font-size: @font-size-base;
+        margin-top: @margin-xs;
+      }
+    }
+  }
+
+  .context-list-item {
+    display: flex;
+    align-items: flex-start;
+    gap: @size-xs;
+    margin-bottom: @size-md;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    .context-fields {
+      display: flex;
+      gap: @size-xs;
+      flex-wrap: wrap;
+    }
+
+    .context-page-id {
+      min-width: 180px;
+    }
+
+    .context-component-id {
+      min-width: 180px;
+    }
+  }
+
+  .add-context-btn {
+    margin-top: @margin-sm;
+  }
+}
+
+.learning-resource-form-drawer {
+  .ant-drawer-body {
+    padding: @padding-lg;
+  }
+
+  .ant-drawer-header {
+    border-bottom: 1px solid @grey-200;
+  }
+
+  .ant-drawer-footer {
+    border-top: 1px solid @grey-200;
+    padding: @padding-md @padding-lg;
+  }
+}
