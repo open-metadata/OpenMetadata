@@ -441,20 +441,43 @@ export const assignTier = async (
   endpoint: string,
   initiatorId = 'edit-tier'
 ) => {
-  await page.getByTestId(initiatorId).click();
+  // Wait for the edit button to be visible and clickable
+  const editButton = page.getByTestId(initiatorId);
+  await editButton.waitFor({ state: 'visible'});
+  await editButton.click();
+
+  // Wait for all loaders to disappear
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-  await page.getByTestId(`radio-btn-${tier}`).click();
+
+  // Wait for the tier selection radio buttons to be visible
+  const tierRadioButton = page.getByTestId(`radio-btn-${tier}`);
+  await tierRadioButton.waitFor({ state: 'visible' });
+
+  // Set up response wait before clicking
+  const patchRequest = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/${endpoint}`) &&
+      response.request().method() === 'PATCH'
+  );
+
+  await tierRadioButton.click();
 
   // Wait for the update button to be visible and clickable
-  await page.waitForSelector('[data-testid="update-tier-card"]', {
-    state: 'visible',
-  });
-  await page.click(`[data-testid="update-tier-card"]`);
+  const updateButton = page.getByTestId('update-tier-card');
+  await updateButton.waitFor({ state: 'visible' });
+  await updateButton.click();
 
-  await patchRequest;
+  // Wait for the PATCH request to complete and validate status
+  const response = await patchRequest;
+  expect(response.status()).toBe(200);
+
+  // Wait for loaders to finish
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  // Close the tier popover
   await clickOutside(page);
 
+  // Verify the tier was updated
   await expect(page.getByTestId('Tier')).toContainText(tier);
 };
 
@@ -468,7 +491,10 @@ export const removeTier = async (page: Page, endpoint: string) => {
   );
   await page.getByTestId('clear-tier').click();
 
-  await patchRequest;
+  const response = await patchRequest;
+  expect(response.status()).toBe(200);
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await clickOutside(page);
 
   await expect(page.getByTestId('Tier')).toContainText('--');
@@ -480,10 +506,15 @@ export const assignCertification = async (
   endpoint: string
 ) => {
   const certificationResponse = page.waitForResponse(
-    '/api/v1/tags?*parent=Certification*'
+    (response) =>
+      response.url().includes('/api/v1/tags') &&
+      response.url().includes('parent=Certification')
   );
   await page.getByTestId('edit-certification').click();
-  await certificationResponse;
+
+  const tagsResponse = await certificationResponse;
+  expect(tagsResponse.status()).toBe(200);
+
   await page.waitForSelector('.certification-card-popover', {
     state: 'visible',
   });
@@ -500,9 +531,17 @@ export const assignCertification = async (
   await page
     .getByTestId(`radio-btn-${certification.responseData.fullyQualifiedName}`)
     .click();
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  const patchRequest = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/${endpoint}`) &&
+      response.request().method() === 'PATCH'
+  );
   await page.getByTestId('update-certification').click();
-  await patchRequest;
+
+  const patchResponse = await patchRequest;
+  expect(patchResponse.status()).toBe(200);
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await clickOutside(page);
 
   await expect(page.getByTestId('certification-label')).toContainText(
@@ -516,9 +555,17 @@ export const removeCertification = async (page: Page, endpoint: string) => {
     state: 'visible',
   });
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  const patchRequest = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/${endpoint}`) &&
+      response.request().method() === 'PATCH'
+  );
   await page.getByTestId('clear-certification').click();
-  await patchRequest;
+
+  const response = await patchRequest;
+  expect(response.status()).toBe(200);
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await clickOutside(page);
 
   await expect(page.getByTestId('certification-label')).toContainText('--');
