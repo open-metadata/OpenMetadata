@@ -186,7 +186,7 @@ const AddIngestion = ({
       name = '',
       enableDebugLog,
       displayName,
-      raiseOnError,
+      raiseOnError: _raiseOnError,
       rootProcessingEngine,
       ...rest
     } = workflowData ?? {};

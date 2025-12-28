@@ -155,14 +155,8 @@ public class DatabaseServiceBuilder {
    */
   public DatabaseService create() {
     CreateDatabaseService createRequest = build();
-    // Convert CreateDatabaseService to DatabaseService
-    DatabaseService service = new DatabaseService();
-    service.setName(createRequest.getName());
-    service.setDisplayName(createRequest.getDisplayName());
-    service.setDescription(createRequest.getDescription());
-    // TODO: Map service type
-    service.setConnection(createRequest.getConnection());
-    return client.databaseServices().create(service);
+    // Use the API that accepts CreateDatabaseService to avoid sending entity fields like 'version'
+    return client.databaseServices().create(createRequest);
   }
 
   /**
@@ -170,13 +164,6 @@ public class DatabaseServiceBuilder {
    */
   public DatabaseService createOrUpdate() {
     CreateDatabaseService createRequest = build();
-    // Convert CreateDatabaseService to DatabaseService
-    DatabaseService service = new DatabaseService();
-    service.setName(createRequest.getName());
-    service.setDisplayName(createRequest.getDisplayName());
-    service.setDescription(createRequest.getDescription());
-    // TODO: Map service type
-    service.setConnection(createRequest.getConnection());
-    return client.databaseServices().create(service);
+    return client.databaseServices().create(createRequest);
   }
 }

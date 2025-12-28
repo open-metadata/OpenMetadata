@@ -45,6 +45,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
   defaultIcon,
   onChange,
   customStyles,
+  'data-testid': dataTestId,
 }) => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -143,6 +144,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
 
       {/* Inline icon display - just a box */}
       <Box
+        data-testid={dataTestId}
         ref={anchorRef}
         sx={{
           display: 'inline-flex',
