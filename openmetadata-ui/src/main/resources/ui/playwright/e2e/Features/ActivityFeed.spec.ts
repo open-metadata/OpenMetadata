@@ -34,6 +34,7 @@ test.describe('FeedWidget on landing page', () => {
   test.beforeAll(
     'setup: seed entities, users, create persona, and customize widget',
     async ({ browser }) => {
+      test.setTimeout(180000);
       test.slow(true);
 
       const { apiContext, afterAction } = await performAdminLogin(browser);

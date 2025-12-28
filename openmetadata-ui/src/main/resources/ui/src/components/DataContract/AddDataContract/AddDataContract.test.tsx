@@ -113,7 +113,7 @@ jest.mock('../ContractQualityFormTab/ContractQualityFormTab', () => ({
       </div>
     )),
 }));
-jest.mock('../ContractSchemaFormTab/ContractScehmaFormTab', () => ({
+jest.mock('../ContractSchemaFormTab/ContractSchemaFormTab', () => ({
   ContractSchemaFormTab: jest
     .fn()
     .mockImplementation(({ onChange, onNext, onPrev }) => (

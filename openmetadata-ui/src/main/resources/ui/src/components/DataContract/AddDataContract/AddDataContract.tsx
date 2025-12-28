@@ -46,7 +46,7 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericPr
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ContractDetailFormTab } from '../ContractDetailFormTab/ContractDetailFormTab';
 import { ContractQualityFormTab } from '../ContractQualityFormTab/ContractQualityFormTab';
-import { ContractSchemaFormTab } from '../ContractSchemaFormTab/ContractScehmaFormTab';
+import { ContractSchemaFormTab } from '../ContractSchemaFormTab/ContractSchemaFormTab';
 import { ContractSecurityFormTab } from '../ContractSecurityFormTab/ContractSecurityFormTab';
 import { ContractSemanticFormTab } from '../ContractSemanticFormTab/ContractSemanticFormTab';
 import { ContractSLAFormTab } from '../ContractSLAFormTab/ContractSLAFormTab';
@@ -84,7 +84,7 @@ const AddDataContract: React.FC<{
 
   const [activeTab, setActiveTab] = useState(
     entityContractTabs[0]?.toString() ||
-      EDataContractTab.CONTRACT_DETAIL.toString()
+    EDataContractTab.CONTRACT_DETAIL.toString()
   );
 
   const handleTabChange = useCallback((key: string) => {
@@ -98,15 +98,15 @@ const AddDataContract: React.FC<{
 
     const validSecurity = formValues.security
       ? {
-          ...formValues.security,
-          policies: formValues.security.policies?.map((policy) => ({
-            ...policy,
-            rowFilters: policy.rowFilters?.filter(
-              (filter) =>
-                !isEmpty(filter?.columnName) && !isEmpty(filter?.values)
-            ),
-          })),
-        }
+        ...formValues.security,
+        policies: formValues.security.policies?.map((policy) => ({
+          ...policy,
+          rowFilters: policy.rowFilters?.filter(
+            (filter) =>
+              !isEmpty(filter?.columnName) && !isEmpty(filter?.values)
+          ),
+        })),
+      }
       : undefined;
 
     return {
@@ -203,7 +203,7 @@ const AddDataContract: React.FC<{
         currentActiveTabIndex < entityContractTabs.length - 1,
       nextTabLabel:
         currentActiveTabIndex !== -1 &&
-        currentActiveTabIndex < entityContractTabs.length - 1
+          currentActiveTabIndex < entityContractTabs.length - 1
           ? getContractTabLabel(entityContractTabs[currentActiveTabIndex + 1])
           : '',
       prevTabLabel:

@@ -23,7 +23,7 @@ import { Column } from '../../../generated/entity/data/table';
 import { useFqn } from '../../../hooks/useFqn';
 import { mockTableData } from '../../../mocks/TableVersion.mock';
 import { getTableColumnsByFQN } from '../../../rest/tableAPI';
-import { ContractSchemaFormTab } from './ContractScehmaFormTab';
+import { ContractSchemaFormTab } from './ContractSchemaFormTab';
 
 jest.mock('../../../rest/tableAPI', () => ({
   getTableColumnsByFQN: jest.fn(),

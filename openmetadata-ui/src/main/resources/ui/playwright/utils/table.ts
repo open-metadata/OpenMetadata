@@ -14,10 +14,20 @@ import { expect, Page } from '@playwright/test';
 
 // Pagination is performed for "performance_test_table" Table Entity
 export const columnPaginationTable = async (page: Page) => {
-  // 50 Row + 1 Header row
-  expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(51);
+  // Ensure we are on 25 page size
+  await page.getByTestId('page-size-selection-dropdown').click({ force: true });
+  await page.waitForSelector('.ant-dropdown', { state: 'visible' });
+  await page.getByRole('menuitem', { name: '25 / Page', exact: true }).click({ force: true });
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+  // 25 Row + 1 Header row
+  expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(26);
+  await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
+    '25 / Page'
+  );
 
-  expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 40`);
+  expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 80`);
 
   await page.getByTestId('next').click();
 
@@ -25,17 +35,18 @@ export const columnPaginationTable = async (page: Page) => {
     state: 'detached',
   });
 
-  expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 40`);
+  expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 80`);
 
-  expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(51);
+  expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(26);
 
   await page.getByTestId('previous').click();
 
-  expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 40`);
+  expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 80`);
 
   // Change page size to 15
-  await page.getByTestId('page-size-selection-dropdown').click();
-  await page.getByRole('menuitem', { name: '15 / Page' }).click();
+  await page.getByTestId('page-size-selection-dropdown').click({ force: true });
+  await page.waitForSelector('.ant-dropdown', { state: 'visible' });
+  await page.getByRole('menuitem', { name: '15 / Page', exact: true }).click({ force: true });
 
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
@@ -45,8 +56,9 @@ export const columnPaginationTable = async (page: Page) => {
   expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(16);
 
   // Change page size to 25
-  await page.getByTestId('page-size-selection-dropdown').click();
-  await page.getByRole('menuitem', { name: '25 / Page' }).click();
+  await page.getByTestId('page-size-selection-dropdown').click({ force: true });
+  await page.waitForSelector('.ant-dropdown', { state: 'visible' });
+  await page.getByRole('menuitem', { name: '25 / Page', exact: true }).click({ force: true });
 
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',

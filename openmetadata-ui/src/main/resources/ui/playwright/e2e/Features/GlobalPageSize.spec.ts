@@ -32,7 +32,7 @@ test.describe('Table & Data Model columns table pagination', () => {
 
     // Change Asset page size to 25
     await page.getByTestId('page-size-selection-dropdown').click();
-    await page.getByRole('menuitem', { name: '25 / Page' }).click();
+    await page.getByRole('menuitem', { name: '25 / Page', exact: true }).click();
 
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -40,7 +40,7 @@ test.describe('Table & Data Model columns table pagination', () => {
 
     // Verify 25 is selected
     // Note: If default logic changes, this ensures we explicitly set it to 25 for the test.
-    await expect(page.getByText('25 / page')).toBeVisible();
+    await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText('25 / Page');
 
     // 2. Go to Explore Page (Global List)
     await sidebarClick(page, SidebarItem.EXPLORE);
@@ -50,11 +50,14 @@ test.describe('Table & Data Model columns table pagination', () => {
       state: 'detached',
     });
 
-    // Verify Global Page Size did NOT change to 25
-    // This proves independence. We don't verify "15 / page" since default might vary or pagination might be hidden.
-    // If pagination is hidden, '25 / page' is also not visible, satisfying the check.
-    // If pagination is visible, it should show default (15), so '25 / page' should be not visible.
-    await expect(page.getByText('25 / page')).not.toBeVisible();
+    // Verify Global Page Size is 15 (default)
+    await expect(page.getByTestId('search-error-placeholder')).toBeHidden(); // Ensure no errors
+    // Search table might take a moment to appear if previously empty or loading
+    await expect(page.locator('.ant-table-row').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('page-size-selection-dropdown')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
+      '15 / Page'
+    );
 
     // 3. Go to Users Page (Global List)
     await settingClick(page, GlobalSettingOptions.USERS);
@@ -64,8 +67,10 @@ test.describe('Table & Data Model columns table pagination', () => {
       state: 'detached',
     });
 
-    // Verify Global Page Size did NOT change to 25 here either
-    await expect(page.getByText('25 / page')).not.toBeVisible();
+    // Verify Global Page Size is 15 here too
+    await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
+      '15 / Page'
+    );
 
     // 4. Go back to Table Page (Asset List)
     await page.goto(
@@ -77,6 +82,6 @@ test.describe('Table & Data Model columns table pagination', () => {
     });
 
     // Verify Asset Page Size persisted as 25 (independent of Global)
-    await expect(page.getByText('25 / page')).toBeVisible();
+    await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText('25 / Page');
   });
 });

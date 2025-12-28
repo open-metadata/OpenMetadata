@@ -188,23 +188,42 @@ export const setUserDefaultPersona = async (
 ) => {
   await visitOwnProfilePage(page);
 
-  await page.locator('[data-testid="default-edit-user-persona"]').click();
+  const editButton = page.locator('[data-testid="default-edit-user-persona"]');
+  await editButton.waitFor({ state: 'visible' });
+  await editButton.click();
 
-  await expect(
-    page.locator('[data-testid="default-persona-select-list"]')
-  ).toBeVisible();
+  const selectList = page.locator('[data-testid="default-persona-select-list"]');
+  await expect(selectList).toBeVisible();
 
-  await page.locator('[data-testid="default-persona-select-list"]').click();
-  await page.waitForLoadState('networkidle');
+  // Click to open the dropdown
+  await selectList.click();
+
+  // Wait for the dropdown to appear specifically by class
+  const dropdown = page.locator('.persona-custom-dropdown-class');
+  await dropdown.waitFor({ state: 'visible' });
 
   const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
 
-  // Click on the persona option by text within the dropdown
-  await page.locator(`[data-testid="${personaName}-option"]`).click();
+  // Click on the persona option - Ant Design often renders options in a separate portal
+  // We use role='option' and the name or the data-testid we found in the component
+  const option = page.locator(
+    `.persona-custom-dropdown-class [data-testid="${personaName}-option"]`
+  );
 
-  await page
-    .locator('[data-testid="user-profile-default-persona-edit-save"]')
-    .click();
+  // If data-testid fails, fallback to text-based matching which is common for AntD
+  if (!(await option.isVisible())) {
+    await page
+      .locator('.persona-custom-dropdown-class .ant-select-item-option-content')
+      .getByText(personaName, { exact: true })
+      .click();
+  } else {
+    await option.click();
+  }
+
+  const saveButton = page.locator(
+    '[data-testid="user-profile-default-persona-edit-save"]'
+  );
+  await saveButton.click();
 
   await setDefaultPersona;
 

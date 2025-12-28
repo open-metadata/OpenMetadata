@@ -70,6 +70,24 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await page.getByText('Name', { exact: true }).click();
 
+    await page.getByTestId('page-size-selection-dropdown').click({ force: true });
+    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
+    await page.getByRole('menuitem', { name: '15 / Page', exact: true }).click({ force: true });
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await page.getByTestId('page-size-selection-dropdown').click({ force: true });
+    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
+    await page.getByRole('menuitem', { name: '25 / Page', exact: true }).click({ force: true });
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
+      '25 / Page'
+    );
+
     await page.getByTestId('next').click();
 
     await page.waitForLoadState('networkidle');
@@ -77,7 +95,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       state: 'detached',
     });
 
-    expect(await page.locator('.ant-table-row').count()).toBe(15);
+    expect(await page.locator('.ant-table-row').count()).toBe(25);
   });
 
   test('Table search with sorting should works', async ({
@@ -215,14 +233,14 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page
       .getByTestId('page-size-selection-dropdown')
       .scrollIntoViewIfNeeded();
-    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.getByTestId('page-size-selection-dropdown').click({ force: true });
     await page.waitForSelector('.ant-dropdown', { state: 'visible' });
 
     await expect(
-      page.getByRole('menuitem', { name: '15 / Page' })
+      page.getByRole('menuitem', { name: '15 / Page', exact: true })
     ).toBeVisible();
 
-    await page.getByRole('menuitem', { name: '15 / Page' }).click();
+    await page.getByRole('menuitem', { name: '15 / Page', exact: true }).click({ force: true });
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -251,6 +269,11 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
       '15 / Page'
     );
+
+    // Reset to 25 for other tests? Or handled by explicit sets.
+    await page.getByTestId('page-size-selection-dropdown').click({ force: true });
+    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
+    await page.getByRole('menuitem', { name: '25 / Page', exact: true }).click({ force: true });
   });
 });
 
@@ -287,12 +310,12 @@ test.describe('Table & Data Model columns table pagination', () => {
       state: 'detached',
     });
 
-    // 50 Row + 1 Header row
+    // 25 Row + 1 Header row
     expect(
       page.getByTestId('data-model-column-table').getByRole('row')
-    ).toHaveCount(51);
+    ).toHaveCount(26);
 
-    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 36`);
+    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 72`);
 
     await page.getByTestId('next').click();
 
@@ -300,23 +323,25 @@ test.describe('Table & Data Model columns table pagination', () => {
       state: 'detached',
     });
 
-    expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 36`);
+    expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 72`);
 
     expect(
       page.getByTestId('data-model-column-table').getByRole('row')
-    ).toHaveCount(51);
+    ).toHaveCount(26);
 
     await page.getByTestId('previous').click();
 
-    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 36`);
+    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 72`);
 
     // Change page size to 15
-    await page.getByTestId('page-size-selection-dropdown').click();
-    await page.getByRole('menuitem', { name: '15 / Page' }).click();
+    await page.getByTestId('page-size-selection-dropdown').click({ force: true });
+    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
+    await page.getByRole('menuitem', { name: '15 / Page', exact: true }).click({ force: true });
 
     // Change page size to 15
-    await page.getByTestId('page-size-selection-dropdown').click();
-    await page.getByRole('menuitem', { name: '15 / Page' }).click();
+    await page.getByTestId('page-size-selection-dropdown').click({ force: true });
+    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
+    await page.getByRole('menuitem', { name: '15 / Page', exact: true }).click({ force: true });
 
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -328,8 +353,9 @@ test.describe('Table & Data Model columns table pagination', () => {
     ).toHaveCount(16);
 
     // Change page size to 25
-    await page.getByTestId('page-size-selection-dropdown').click();
-    await page.getByRole('menuitem', { name: '25 / Page' }).click();
+    await page.getByTestId('page-size-selection-dropdown').click({ force: true });
+    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
+    await page.getByRole('menuitem', { name: '25 / Page', exact: true }).click({ force: true });
 
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -347,6 +373,14 @@ test.describe('Table & Data Model columns table pagination', () => {
     await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
 
     await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // Ensure we are on page having 'shipping_address' or set page size large enough
+    await page.getByTestId('page-size-selection-dropdown').click({ force: true });
+    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
+    await page.getByRole('menuitem', { name: '50 / Page', exact: true }).click({ force: true });
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -420,6 +454,14 @@ test.describe('Table & Data Model columns table pagination', () => {
     );
 
     await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // Change page size to 50 to ensure test_col_0044 is visible
+    await page.getByTestId('page-size-selection-dropdown').click({ force: true });
+    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
+    await page.getByRole('menuitem', { name: '50 / Page', exact: true }).click({ force: true });
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
