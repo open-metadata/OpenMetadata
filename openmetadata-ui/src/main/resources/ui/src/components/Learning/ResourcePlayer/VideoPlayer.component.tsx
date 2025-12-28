@@ -26,23 +26,55 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ resource }) => {
   const embedUrl = useMemo(() => {
     const url = resource.source.url;
 
-    if (url.includes('youtube.com') || url.includes('youtu.be')) {
-      let videoId = '';
-      if (url.includes('youtu.be/')) {
-        videoId = url.split('youtu.be/')[1].split('?')[0];
-      } else if (url.includes('watch?v=')) {
-        videoId = url.split('watch?v=')[1].split('&')[0];
-      } else if (url.includes('embed/')) {
-        return url;
-      }
-
-      return `https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${window.location.origin}`;
+    let parsedUrl: URL | undefined;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      // If URL parsing fails, fall back to the original URL.
+      return url;
     }
 
-    if (url.includes('vimeo.com')) {
-      const videoId = url.split('vimeo.com/')[1].split('?')[0];
+    const hostname = parsedUrl.hostname.toLowerCase();
 
-      return `https://player.vimeo.com/video/${videoId}`;
+    const isYouTubeHost =
+      hostname === 'youtube.com' ||
+      hostname === 'www.youtube.com' ||
+      hostname === 'm.youtube.com' ||
+      hostname === 'youtu.be';
+
+    if (isYouTubeHost) {
+      // Handle different YouTube URL formats
+      if (hostname === 'youtu.be') {
+        // Short URL: https://youtu.be/<videoId>?...
+        const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+        const videoId = pathParts[0] || '';
+        if (videoId) {
+          return `https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${window.location.origin}`;
+        }
+      } else if (parsedUrl.pathname.startsWith('/watch')) {
+        // Watch URL: https://www.youtube.com/watch?v=<videoId>&...
+        const videoId = parsedUrl.searchParams.get('v') || '';
+        if (videoId) {
+          return `https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${window.location.origin}`;
+        }
+      } else if (parsedUrl.pathname.startsWith('/embed/')) {
+        // Already an embed URL; preserve as-is.
+        return url;
+      }
+    }
+
+    const isVimeoHost =
+      hostname === 'vimeo.com' || hostname === 'www.vimeo.com' || hostname === 'player.vimeo.com';
+
+    if (isVimeoHost) {
+      // Vimeo URL: https://vimeo.com/<videoId> or https://player.vimeo.com/video/<videoId>
+      const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+      // For both vimeo.com/<id> and player.vimeo.com/video/<id>, the last path segment is typically the video ID.
+      const videoId = pathParts[pathParts.length - 1] || '';
+
+      if (videoId) {
+        return `https://player.vimeo.com/video/${videoId}`;
+      }
     }
 
     return url;
