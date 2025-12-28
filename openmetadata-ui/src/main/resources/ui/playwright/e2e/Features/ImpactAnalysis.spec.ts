@@ -278,8 +278,7 @@ test.describe('Impact Analysis', () => {
     ).toBeVisible();
   });
 
-  // we are not getting domain in aggregation response that's why this test is marked as fixme
-  test.fixme(
+  test(
     'verify domain for Asset level impact analysis',
     async ({ page }) => {
       await page.getByRole('button', { name: 'Filters' }).click();
