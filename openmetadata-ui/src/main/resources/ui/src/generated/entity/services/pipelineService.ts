@@ -57,6 +57,10 @@ export interface PipelineService {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
@@ -184,6 +188,8 @@ export interface PipelineConnection {
  *
  * Glue Pipeline Connection Config
  *
+ * AWS Kinesis Firehose Pipeline Connection Config
+ *
  * Airbyte Metadata Database Connection Config
  *
  * Fivetran Metadata Database Connection Config
@@ -218,6 +224,8 @@ export interface PipelineConnection {
  * Stitch Connection
  *
  * Snowplow Pipeline Connection Config
+ *
+ * MuleSoft Anypoint Platform Connection Config
  */
 export interface ConfigObject {
     /**
@@ -240,6 +248,9 @@ export interface ConfigObject {
      * KafkaConnect Service Management/UI URI.
      *
      * Host and port of the Stitch API host
+     *
+     * MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud,
+     * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
      */
     hostPort?: string;
     /**
@@ -248,6 +259,8 @@ export interface ConfigObject {
     numberOfStatus?: number;
     /**
      * Regex exclude pipelines.
+     *
+     * Regex to filter MuleSoft applications by name.
      */
     pipelineFilterPattern?:      FilterPattern;
     supportsMetadataExtraction?: boolean;
@@ -267,19 +280,24 @@ export interface ConfigObject {
     packageConnection?: S3Connection | string;
     awsConfig?:         AWSCredentials;
     /**
+     * Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g.
+     * local_kafka
+     *
+     * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
+     * e.g. local_kafka
+     */
+    messagingServiceName?: string;
+    /**
      * Airbyte API version.
      */
     apiVersion?: string;
     /**
-     * Password to connect to Airbyte.
+     * Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials
+     * (for Airbyte Cloud)
      */
-    password?: string;
+    auth?: PurpleAuthentication;
     /**
-     * Username to connect to Airbyte.
-     */
-    username?: string;
-    /**
-     * Fivetran API Secret.
+     * Fivetran API Key.
      *
      * API Key for Snowplow Console API
      */
@@ -360,6 +378,11 @@ export interface ConfigObject {
      */
     httpPath?: string;
     /**
+     * Number of days to look back when fetching lineage data from Databricks system tables
+     * (system.access.table_lineage and system.access.column_lineage). Default is 90 days.
+     */
+    lineageLookBackDays?: number;
+    /**
      * Spline UI Host & Port.
      */
     uiHostPort?: string;
@@ -400,11 +423,6 @@ export interface ConfigObject {
      */
     KafkaConnectConfig?: UsernamePasswordAuthentication;
     /**
-     * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
-     * e.g. local_kafka
-     */
-    messagingServiceName?: string;
-    /**
      * ID of your DBT cloud account
      */
     accountId?: string;
@@ -412,6 +430,10 @@ export interface ConfigObject {
      * DBT cloud Metadata API URL.
      */
     discoveryAPI?: string;
+    /**
+     * List of IDs of your DBT cloud environments separated by comma `,`
+     */
+    environmentIds?: string[];
     /**
      * List of IDs of your DBT cloud jobs seperated by comma `,`
      */
@@ -462,8 +484,20 @@ export interface ConfigObject {
     deployment?: SnowplowDeployment;
     /**
      * Snowplow BDP Organization ID
+     *
+     * Anypoint Platform Organization ID. If not provided, the connector will use the user's
+     * default organization.
      */
     organizationId?: string;
+    /**
+     * Choose between Connected App (OAuth 2.0) or Basic Authentication.
+     */
+    authentication?: FluffyAuthentication;
+    /**
+     * Anypoint Platform Environment ID. If not provided, the connector will discover all
+     * accessible environments.
+     */
+    environmentId?: string;
     [property: string]: any;
 }
 
@@ -481,6 +515,59 @@ export interface UsernamePasswordAuthentication {
      * KafkaConnect user to authenticate to the API.
      */
     username?: string;
+}
+
+/**
+ * Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials
+ * (for Airbyte Cloud)
+ *
+ * Username and password authentication
+ *
+ * OAuth 2.0 client credentials authentication for Airbyte Cloud
+ */
+export interface PurpleAuthentication {
+    /**
+     * Password to connect to Airbyte.
+     */
+    password?: string;
+    /**
+     * Username to connect to Airbyte.
+     */
+    username?: string;
+    /**
+     * Client ID for the application registered in Airbyte.
+     */
+    clientId?: string;
+    /**
+     * Client Secret for the application registered in Airbyte.
+     */
+    clientSecret?: string;
+}
+
+/**
+ * Choose between Connected App (OAuth 2.0) or Basic Authentication.
+ *
+ * Basic Auth Credentials
+ *
+ * OAuth 2.0 client credentials authentication for Airbyte Cloud
+ */
+export interface FluffyAuthentication {
+    /**
+     * Password to access the service.
+     */
+    password?: string;
+    /**
+     * Username to access the service.
+     */
+    username?: string;
+    /**
+     * Client ID for the application registered in Airbyte.
+     */
+    clientId?: string;
+    /**
+     * Client Secret for the application registered in Airbyte.
+     */
+    clientSecret?: string;
 }
 
 /**
@@ -728,6 +815,8 @@ export interface AuthConfigurationType {
  * Regex to only include/exclude tables that matches the pattern.
  *
  * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to filter MuleSoft applications by name.
  */
 export interface FilterPattern {
     /**
@@ -833,6 +922,9 @@ export enum Scheme {
  *
  * Client SSL configuration
  *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
  * OpenMetadata Client configured to validate SSL certificates.
  */
 export interface Config {
@@ -906,6 +998,11 @@ export interface DatabaseConnectionClass {
      */
     driver?: string;
     /**
+     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
+     * between the client and server will be encrypted.
+     */
+    encrypt?: boolean;
+    /**
      * Host and port of the MSSQL service.
      */
     hostPort?: string;
@@ -925,7 +1022,12 @@ export interface DatabaseConnectionClass {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                     MssqlScheme;
+    scheme?: MssqlScheme;
+    /**
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
+     */
+    sslConfig?:                  Config;
     supportsDatabase?:           boolean;
     supportsDataDiff?:           boolean;
     supportsDBTExtraction?:      boolean;
@@ -938,6 +1040,11 @@ export interface DatabaseConnectionClass {
      * Regex to only include/exclude tables that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
+    /**
+     * Trust the server certificate without validation. Set to false in production to validate
+     * server certificates against the certificate authority.
+     */
+    trustServerCertificate?: boolean;
     /**
      * Service Type
      */
@@ -1022,6 +1129,10 @@ export interface S3Connection {
     bucketNames?:         string[];
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
+    /**
+     * Console EndPoint URL for S3-compatible services
+     */
+    consoleEndpointURL?: string;
     /**
      * Regex to only fetch containers that matches the pattern.
      */
@@ -1108,7 +1219,9 @@ export enum PipelineServiceType {
     Flink = "Flink",
     GluePipeline = "GluePipeline",
     KafkaConnect = "KafkaConnect",
+    KinesisFirehose = "KinesisFirehose",
     Matillion = "Matillion",
+    Mulesoft = "Mulesoft",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
     Snowplow = "Snowplow",
@@ -1273,9 +1386,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**

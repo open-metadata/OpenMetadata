@@ -26,6 +26,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -79,7 +80,11 @@ public class ChangeEventHandler implements EventHandler {
           Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
           try {
             if (Entity.getAuditLogRepository() != null) {
-              Entity.getAuditLogRepository().write(changeEvent);
+              boolean isBot = false;
+              if (securityContext instanceof CatalogSecurityContext catalogContext) {
+                isBot = catalogContext.isBot();
+              }
+              Entity.getAuditLogRepository().write(changeEvent, isBot);
             }
           } catch (Exception auditEx) {
             LOG.warn(
@@ -104,6 +109,7 @@ public class ChangeEventHandler implements EventHandler {
         .withEntityType(changeEvent.getEntityType())
         .withEntityFullyQualifiedName(changeEvent.getEntityFullyQualifiedName())
         .withUserName(changeEvent.getUserName())
+        .withImpersonatedBy(changeEvent.getImpersonatedBy())
         .withTimestamp(changeEvent.getTimestamp())
         .withChangeDescription(changeEvent.getChangeDescription())
         .withCurrentVersion(changeEvent.getCurrentVersion());

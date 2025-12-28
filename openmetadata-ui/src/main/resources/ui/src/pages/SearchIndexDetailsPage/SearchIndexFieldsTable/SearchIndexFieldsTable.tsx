@@ -325,16 +325,16 @@ const SearchIndexFieldsTable = ({
   );
 
   useEffect(() => {
-    if (!searchText) {
-      setSearchedFields(sortByOrdinalPosition);
-      setExpandedRowKeys([]);
-    } else {
+    if (searchText) {
       const searchFields = searchInFields<SearchIndexField>(
         sortByOrdinalPosition,
         searchText
       );
       setSearchedFields(searchFields);
       setExpandedRowKeys(fieldAllRowKeys);
+    } else {
+      setSearchedFields(sortByOrdinalPosition);
+      setExpandedRowKeys([]);
     }
   }, [searchText, searchIndexFields]);
 
@@ -362,7 +362,7 @@ const SearchIndexFieldsTable = ({
         scroll={TABLE_SCROLL_VALUE}
         searchProps={{
           placeholder: `${t('message.find-in-table')}`,
-          value: searchText,
+          searchValue: searchText,
           typingInterval: 500,
           onSearch: handleSearchAction,
         }}

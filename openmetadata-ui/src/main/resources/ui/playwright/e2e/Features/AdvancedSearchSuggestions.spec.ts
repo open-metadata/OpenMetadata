@@ -15,8 +15,6 @@ import { toLower } from 'lodash';
 import { ADVANCED_SEARCH_SUGGESTION_FIELDS } from '../../constant/advancedSearch';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
-import { performAdminLogin } from '../../utils/admin';
 import {
   getFieldsSuggestionSearchText,
   selectOption,
@@ -31,21 +29,10 @@ import {
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
-const creationConfig: EntityDataClassCreationConfig = {
-  database: true,
-  databaseSchema: true,
-  apiCollection: true,
-  entityDetails: true,
-};
-
 test.describe('Advanced Search Suggestions', () => {
   const testData = { fieldSearchData: {} as Record<string, string> };
 
-  test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
-
-    await EntityDataClass.preRequisitesForTests(apiContext, creationConfig);
-
+  test.beforeAll('Setup pre-requests', async () => {
     testData.fieldSearchData = {
       database: EntityDataClass.database.entityResponseData.name,
       databaseSchema: EntityDataClass.databaseSchema.entityResponseData.name,
@@ -58,8 +45,6 @@ test.describe('Advanced Search Suggestions', () => {
         EntityDataClass.certificationTag1.responseData.fullyQualifiedName,
       tier: EntityDataClass.tierTag1.responseData.fullyQualifiedName,
     };
-
-    await afterAction();
   });
 
   ADVANCED_SEARCH_SUGGESTION_FIELDS.forEach((field) => {

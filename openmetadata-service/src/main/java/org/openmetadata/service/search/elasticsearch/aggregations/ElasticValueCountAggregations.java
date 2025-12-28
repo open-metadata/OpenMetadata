@@ -1,8 +1,8 @@
 package org.openmetadata.service.search.elasticsearch.aggregations;
 
-import es.org.elasticsearch.search.aggregations.AggregationBuilder;
-import es.org.elasticsearch.search.aggregations.AggregationBuilders;
-import es.org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
+import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
+import es.co.elastic.clients.elasticsearch._types.aggregations.ValueCountAggregation;
+import java.util.HashMap;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
@@ -12,27 +12,21 @@ import org.openmetadata.service.search.SearchAggregationNode;
 @Getter
 public class ElasticValueCountAggregations implements ElasticAggregations {
   static final String aggregationType = "value_count";
-  AggregationBuilder elasticAggregationBuilder;
+  private String aggregationName;
+  private Aggregation aggregation;
+  private Map<String, Aggregation> subAggregations = new HashMap<>();
 
   @Override
   public void createAggregation(SearchAggregationNode node) {
     Map<String, String> params = node.getValue();
-    AggregationBuilder aggregationBuilders =
-        AggregationBuilders.count(node.getName()).field(params.get("field"));
-    setElasticAggregationBuilder(aggregationBuilders);
+    this.aggregationName = node.getName();
+    this.aggregation =
+        Aggregation.of(
+            a -> a.valueCount(ValueCountAggregation.of(count -> count.field(params.get("field")))));
   }
 
   @Override
-  public void setSubAggregation(PipelineAggregationBuilder aggregation) {
-    if (elasticAggregationBuilder != null) {
-      elasticAggregationBuilder.subAggregation(aggregation);
-    }
-  }
-
-  @Override
-  public void setSubAggregation(AggregationBuilder aggregation) {
-    if (elasticAggregationBuilder != null) {
-      elasticAggregationBuilder.subAggregation(aggregation);
-    }
+  public void setSubAggregations(Map<String, Aggregation> subAggregations) {
+    this.subAggregations = subAggregations;
   }
 }

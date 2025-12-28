@@ -6,19 +6,13 @@
   "description": "A `DataContract` entity defines the schema and quality guarantees for a data asset.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.DataContract",
-  "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface"
-  ],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "contractStatus": {
       "javaType": "org.openmetadata.schema.type.ContractStatus",
       "description": "Status of the data contract.",
       "type": "string",
-      "enum": [
-        "Draft",
-        "Active",
-        "Deprecated"
-      ],
+      "enum": ["Draft", "Active", "Deprecated"],
       "javaEnums": [
         {
           "name": "Draft"
@@ -44,6 +38,10 @@
           "description": "User who updated the contract.",
           "type": "string"
         },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
         "changeDescription": {
           "description": "Description of changes made to the contract.",
           "$ref": "../../type/basic.json#/definitions/markdown"
@@ -53,11 +51,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "timestamp",
-        "updatedBy",
-        "version"
-      ],
+      "required": ["timestamp", "updatedBy", "version"],
       "additionalProperties": false
     },
     "rowFilter": {
@@ -251,6 +245,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "createdAt": {
       "description": "Timestamp in Unix epoch time milliseconds corresponding to when the data contract was created.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
@@ -283,6 +281,7 @@
         "$ref": "./table.json#/definitions/column"
       },
       "default": null
+
     },
     "semantics": {
       "description": "Semantics rules defined in the data contract.",
@@ -386,10 +385,6 @@
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
-  "required": [
-    "id",
-    "name",
-    "entity"
-  ],
+  "required": ["id", "name", "entity"],
   "additionalProperties": false
 }

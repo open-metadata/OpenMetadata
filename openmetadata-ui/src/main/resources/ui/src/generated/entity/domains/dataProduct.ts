@@ -69,13 +69,17 @@ export interface DataProduct {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
-     * Input ports for consuming data into this data product
+     * Input ports - data assets consumed by this data product
      */
-    inputPorts?: DataProductPort[];
+    inputPorts?: EntityReference[];
     /**
      * Current lifecycle stage of the data product
      */
@@ -85,9 +89,9 @@ export interface DataProduct {
      */
     name: string;
     /**
-     * Output ports for exposing data from this data product
+     * Output ports - data assets produced/exposed by this data product
      */
-    outputPorts?: DataProductPort[];
+    outputPorts?: EntityReference[];
     /**
      * Owners of this Data Product.
      */
@@ -136,8 +140,6 @@ export interface DataProduct {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Reference to the data asset exposed through this port
  */
 export interface EntityReference {
     /**
@@ -263,76 +265,6 @@ export enum EntityStatus {
 }
 
 /**
- * Port definition for data product input/output
- */
-export interface DataProductPort {
-    /**
-     * Reference to the data asset exposed through this port
-     */
-    dataAsset?: EntityReference;
-    /**
-     * Description of the port
-     */
-    description?: string;
-    /**
-     * Display name of the port
-     */
-    displayName?: string;
-    /**
-     * Endpoint URL or connection string
-     */
-    endpoint?: string;
-    format?:   PortFormat;
-    /**
-     * Name of the port
-     */
-    name:      string;
-    portType:  PortType;
-    protocol?: PortProtocol;
-}
-
-/**
- * Data format supported by the port
- */
-export enum PortFormat {
-    Avro = "AVRO",
-    CSV = "CSV",
-    Custom = "CUSTOM",
-    Delta = "DELTA",
-    Iceberg = "ICEBERG",
-    JSON = "JSON",
-    Orc = "ORC",
-    Parquet = "PARQUET",
-    Protobuf = "PROTOBUF",
-    XML = "XML",
-}
-
-/**
- * Type of the data product port
- */
-export enum PortType {
-    Input = "INPUT",
-    Output = "OUTPUT",
-}
-
-/**
- * Protocol used by the port for data access
- */
-export enum PortProtocol {
-    AzureBlob = "AZURE_BLOB",
-    Custom = "CUSTOM",
-    File = "FILE",
-    Gcs = "GCS",
-    Graphql = "GRAPHQL",
-    Grpc = "GRPC",
-    JDBC = "JDBC",
-    Kafka = "KAFKA",
-    REST = "REST",
-    S3 = "S3",
-    Webhook = "WEBHOOK",
-}
-
-/**
  * Current lifecycle stage of the data product
  *
  * Lifecycle stage of the data product
@@ -395,9 +327,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**

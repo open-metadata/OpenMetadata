@@ -20,9 +20,9 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==2.10.5",
+    "airflow": "apache-airflow==3.1.5",
     "adlfs": "adlfs>=2023.1.0",
-    "avro": "avro>=1.11.3,<1.12",
+    "avro": "avro>=1.11.4,<1.12",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
@@ -35,7 +35,7 @@ VERSIONS = {
     "neo4j": "neo4j~=5.3",
     "pandas": "pandas~=2.0.3",
     "pyarrow": "pyarrow~=16.0",
-    "pydantic": "pydantic~=2.0,>=2.7.0",
+    "pydantic": "pydantic~=2.0,>=2.7.0,<2.12",  # Pin down to <2.12 due to breaking changes in 2.12.0
     "pydantic-settings": "pydantic-settings~=2.0,>=2.7.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
@@ -63,13 +63,16 @@ VERSIONS = {
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
-    "pydoris": "pydoris==1.0.2",
+    "pydoris": "pydoris-custom>=1.0.2,<1.5",
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.0",
-    "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.2.2",
+    "sqlalchemy-bigquery": "sqlalchemy-bigquery~=1.15.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
     "asammdf": "asammdf~=7.4.5",
+    "kafka-connect": "kafka-connect-py==0.10.11",
+    "griffe2md": "griffe2md~=1.2",
+    "factory-boy": "factory-boy~=3.3.3",
 }
 
 COMMONS = {
@@ -137,7 +140,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "chardet==4.0.0",  # Used in the profiler
     "cryptography>=42.0.0",
-    "google-cloud-secret-manager==2.22.1",
+    "google-cloud-secret-manager==2.24.0",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
@@ -155,11 +158,11 @@ base_requirements = {
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=1.4.0,<2",
-    "collate-sqllineage~=1.6.0",
+    "collate-sqllineage~=2.0",
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
-    "setuptools~=70.0",
+    "setuptools~=78.1.1",
     "shapely",
     "collate-data-diff>=0.11.6",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
@@ -167,12 +170,12 @@ base_requirements = {
     "snowflake-connector-python>=3.13.1,<4.0.0",
     "mysql-connector-python>=8.0.29;python_version<'3.9'",
     "mysql-connector-python>=9.1;python_version>='3.9'",
+    "httpx~=0.28.0",
 }
 
 plugins: Dict[str, Set[str]] = {
     "airflow": {
-        "opentelemetry-exporter-otlp==1.27.0",
-        "protobuf<5",
+        "opentelemetry-exporter-otlp==1.37.0",
         "attrs",
         VERSIONS["airflow"],
     },  # Same as ingestion container. For development.
@@ -188,7 +191,7 @@ plugins: Dict[str, Set[str]] = {
         "google-cloud-logging",
         VERSIONS["pyarrow"],
         VERSIONS["numpy"],
-        "sqlalchemy-bigquery>=1.2.2",
+        "sqlalchemy-bigquery~=1.15.0",
     },
     "bigtable": {
         VERSIONS["google-cloud-bigtable"],
@@ -254,7 +257,6 @@ plugins: Dict[str, Set[str]] = {
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
         VERSIONS["elasticsearch8"],
-        "httpx>=0.23.0",
     },  # also requires requests-aws4auth which is in base
     "opensearch": {VERSIONS["opensearch"]},
     "exasol": {
@@ -293,7 +295,7 @@ plugins: Dict[str, Set[str]] = {
         "thrift-sasl~=0.4",
     },
     "kafka": {*COMMONS["kafka"]},
-    "kafkaconnect": {"kafka-connect-py==0.10.11"},
+    "kafkaconnect": {VERSIONS["kafka-connect"]},
     "kinesis": {VERSIONS["boto3"]},
     "looker": {
         VERSIONS["looker-sdk"],
@@ -302,7 +304,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["giturlparse"],
         "python-liquid",
     },
-    "mlflow": {"mlflow-skinny~=2.22.0"},
+    "mlflow": {"mlflow-skinny~=3.6.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
@@ -361,6 +363,10 @@ plugins: Dict[str, Set[str]] = {
     "teradata": {VERSIONS["teradata"]},
     "trino": {VERSIONS["trino"], DATA_DIFF["trino"]},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5", DATA_DIFF["vertica"]},
+    # SDK Data Quality: Required for DataFrame validation (DataFrameValidator)
+    # Install with: pip install 'openmetadata-ingestion[pandas]'
+    "pandas": {VERSIONS["pandas"], VERSIONS["numpy"]},
+    "pyarrow": {VERSIONS["pyarrow"]},
     "pii-processor": {
         VERSIONS["spacy"],
         VERSIONS["pandas"],
@@ -372,6 +378,7 @@ plugins: Dict[str, Set[str]] = {
 
 dev = {
     "black==22.3.0",
+    "uvloop==0.21.0",
     "datamodel-code-generator==0.25.6",
     "boto3-stubs",
     "mypy-boto3-glue",
@@ -394,11 +401,12 @@ test_unit = {
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
     # TODO: Remove once no unit test requires testcontainers
     "testcontainers",
+    VERSIONS["factory-boy"],
 }
 
 test = {
     # Install Airflow as it's not part of `all` plugin
-    "opentelemetry-exporter-otlp==1.27.0",
+    "opentelemetry-exporter-otlp==1.37.0",
     VERSIONS["airflow"],
     "boto3-stubs",
     "mypy-boto3-glue",
@@ -444,7 +452,7 @@ test = {
     *plugins["kafka"],
     "kafka-python==2.0.2",
     *plugins["pii-processor"],
-    "requests==2.31.0",
+    "requests>=2.31.0,<3",
     f"{DATA_DIFF['mysql']}",
     *plugins["deltalake"],
     *plugins["datalake-gcs"],
@@ -464,6 +472,12 @@ test = {
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
     *plugins["exasol"],
     VERSIONS["opensearch"],
+    VERSIONS["kafka-connect"],
+    VERSIONS["factory-boy"],
+}
+
+docs = {
+    VERSIONS["griffe2md"],
 }
 
 if sys.version_info >= (3, 9):
@@ -536,5 +550,6 @@ setup(
                 "sklearn",
             }
         ),
+        "docs": docs,
     },
 )

@@ -17,6 +17,18 @@
     "signingSecret": {
       "description": "Signing Secret of the Application. Confirm that each request comes from Slack by verifying its unique signature.",
       "type": "string"
+    },
+    "userToken": {
+      "title": "User Token",
+      "description": "User Token",
+      "type": "string",
+      "format": "password"
+    },
+    "botToken": {
+      "title": "Bot Token",
+      "description": "Bot Token",
+      "type": "string",
+      "format": "password"
     }
   },
   "required": ["clientId", "clientSecret","signingSecret"],

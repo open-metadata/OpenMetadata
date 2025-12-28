@@ -1161,30 +1161,3 @@ CREATE TABLE `web_analytic_event` (
   UNIQUE KEY `fqnHash` (`fqnHash`),
   KEY `name_index` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Table structure for table `audit_log_event`
---
-
-DROP TABLE IF EXISTS `audit_log_event`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `audit_log_event` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `change_event_id` char(36) NOT NULL,
-  `event_ts` bigint NOT NULL,
-  `event_type` varchar(32) NOT NULL,
-  `user_name` varchar(256) DEFAULT NULL,
-  `entity_type` varchar(128) DEFAULT NULL,
-  `entity_id` char(36) DEFAULT NULL,
-  `entity_fqn` varchar(768) DEFAULT NULL,
-  `entity_fqn_hash` varchar(768) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
-  `event_json` longtext NOT NULL,
-  `created_at` bigint DEFAULT (UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3)) * 1000),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `idx_audit_log_event_change_event_id` (`change_event_id`),
-  KEY `idx_audit_log_event_ts` (`event_ts` DESC),
-  KEY `idx_audit_log_event_user_ts` (`user_name`,`event_ts` DESC),
-  KEY `idx_audit_log_event_entity_hash_ts` (`entity_fqn_hash`,`event_ts` DESC)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;

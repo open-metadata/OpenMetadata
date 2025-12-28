@@ -19,6 +19,9 @@ public class AuditLogRecordMapper implements RowMapper<AuditLogRecord> {
         .eventTs(rs.getLong("event_ts"))
         .eventType(rs.getString("event_type"))
         .userName(rs.getString("user_name"))
+        .actorType(getActorType(rs, "actor_type"))
+        .impersonatedBy(rs.getString("impersonated_by"))
+        .serviceName(rs.getString("service_name"))
         .entityType(rs.getString("entity_type"))
         .entityId(getUuid(rs, "entity_id"))
         .entityFQN(rs.getString("entity_fqn"))
@@ -38,6 +41,19 @@ public class AuditLogRecordMapper implements RowMapper<AuditLogRecord> {
     } catch (IllegalArgumentException ex) {
       LOG.warn("Invalid UUID value '{}' for column '{}'", value, column, ex);
       return null;
+    }
+  }
+
+  private AuditLogRecord.ActorType getActorType(ResultSet rs, String column) throws SQLException {
+    String value = rs.getString(column);
+    if (value == null || value.isBlank()) {
+      return AuditLogRecord.ActorType.USER;
+    }
+    try {
+      return AuditLogRecord.ActorType.valueOf(value);
+    } catch (IllegalArgumentException ex) {
+      LOG.warn("Invalid ActorType value '{}' for column '{}'", value, column);
+      return AuditLogRecord.ActorType.USER;
     }
   }
 }

@@ -34,6 +34,7 @@ import {
   Home02,
   Image01,
   Laptop01,
+  LayersThree01,
   Link01,
   Lock01,
   Mail01,
@@ -54,7 +55,7 @@ import {
   Users01,
   XClose,
 } from '@untitledui/icons';
-import { ComponentType } from 'react';
+import { ComponentType, FC } from 'react';
 
 // Map of icon names to their components
 export const ICON_MAP: Record<
@@ -102,6 +103,26 @@ export const ICON_MAP: Record<
   Rss01: Rss01,
   Browser: Browser,
   Calendar: Calendar,
+  LayersThree01: LayersThree01,
+};
+
+/**
+ * Creates an icon component with custom stroke width
+ * @param IconComponent - The icon component from @untitledui/icons
+ * @param strokeWidth - Custom stroke width (default icons use 2)
+ * @returns Wrapped icon component with custom stroke width
+ */
+export const createIconWithStroke = (
+  IconComponent: ComponentType<{
+    size?: number;
+    strokeWidth?: number;
+    style?: React.CSSProperties;
+  }>,
+  strokeWidth: number
+) => {
+  return (props: { size?: number; style?: React.CSSProperties }) => (
+    <IconComponent {...props} strokeWidth={strokeWidth} />
+  );
 };
 
 interface RenderIconOptions {
@@ -160,7 +181,7 @@ export const renderIcon = (
  * @param entityType - The type of entity
  * @returns The icon component
  */
-export const getDefaultIconForEntityType = (entityType?: string) => {
+export const getDefaultIconForEntityType = (entityType?: string): FC => {
   if (entityType === 'dataProduct') {
     return Cube01;
   }

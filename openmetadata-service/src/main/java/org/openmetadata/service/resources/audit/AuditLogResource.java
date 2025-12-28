@@ -77,6 +77,14 @@ public class AuditLogResource {
       @Parameter(description = "Filter by username", schema = @Schema(type = "string"))
           @QueryParam("userName")
           String userName,
+      @Parameter(
+              description = "Filter by actor type (USER, BOT, AGENT)",
+              schema = @Schema(type = "string"))
+          @QueryParam("actorType")
+          String actorType,
+      @Parameter(description = "Filter by service name", schema = @Schema(type = "string"))
+          @QueryParam("serviceName")
+          String serviceName,
       @Parameter(description = "Filter by entity type", schema = @Schema(type = "string"))
           @QueryParam("entityType")
           String entityType,
@@ -104,7 +112,16 @@ public class AuditLogResource {
     authorizer.authorize(securityContext, operationContext, new AuditLogResourceContext());
 
     return repository.list(
-        userName, entityType, entityFqn, eventType, startTs, endTs, limit, after);
+        userName,
+        actorType,
+        serviceName,
+        entityType,
+        entityFqn,
+        eventType,
+        startTs,
+        endTs,
+        limit,
+        after);
   }
 
   static class AuditLogResourceContext implements ResourceContextInterface {

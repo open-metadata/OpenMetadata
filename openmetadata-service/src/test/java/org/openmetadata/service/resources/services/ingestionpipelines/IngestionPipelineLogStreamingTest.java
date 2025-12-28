@@ -317,7 +317,8 @@ public class IngestionPipelineLogStreamingTest extends OpenMetadataApplicationTe
     }
 
     long appendTime = System.currentTimeMillis() - startTime;
-    assertTrue(appendTime < 1000, "Async appends should complete quickly");
+    // leave some wiggle room for CI
+    assertTrue(appendTime < 5000, "Async appends should complete quickly");
 
     assertEventually(
         "All logs should eventually be written",

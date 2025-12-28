@@ -12,19 +12,19 @@
  */
 import { Button, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, noop } from 'lodash';
+import { noop } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../components/common/Table/Table';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../../constants/constants';
+import { METRICS_DOCS } from '../../../constants/docs.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -43,7 +43,10 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
-import { ownerTableObject } from '../../../utils/TableColumn.util';
+import {
+  descriptionTableObject,
+  ownerTableObject,
+} from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const MetricListPage = () => {
@@ -58,6 +61,7 @@ const MetricListPage = () => {
     handlePagingChange,
     showPagination,
     paging,
+    pagingCursor,
   } = usePaging();
 
   const { getResourcePermission } = usePermissionProvider();
@@ -75,11 +79,22 @@ const MetricListPage = () => {
       const permission = await getResourcePermission(ResourceEntity.METRIC);
       setPermission(permission);
       if (permission.ViewAll || permission.ViewBasic) {
-        const metricResponse = await getMetrics({
-          fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS],
-          limit: pageSize,
-          include: Include.All,
-        });
+        const { cursorType, cursorValue } = pagingCursor ?? {};
+        let metricResponse;
+        if (cursorType && cursorValue) {
+          metricResponse = await getMetrics({
+            [cursorType]: cursorValue,
+            fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS],
+            limit: pageSize,
+            include: Include.All,
+          });
+        } else {
+          metricResponse = await getMetrics({
+            fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS],
+            limit: pageSize,
+            include: Include.All,
+          });
+        }
         setMetrics(metricResponse.data);
         handlePagingChange(metricResponse.paging);
       }
@@ -126,7 +141,14 @@ const MetricListPage = () => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         fetchMetrics({ [cursorType]: paging[cursorType] });
-        handlePageChange(currentPage);
+        handlePageChange(
+          currentPage,
+          {
+            cursorType,
+            cursorValue: paging[cursorType],
+          },
+          pageSize
+        );
       }
     },
     [paging, pageSize]
@@ -156,23 +178,7 @@ const MetricListPage = () => {
           );
         },
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        flex: true,
-        width: 300,
-        key: 'description',
-        render: (description: string) =>
-          isEmpty(description) ? (
-            <Typography.Text className="text-grey-muted">
-              {t('label.no-entity', {
-                entity: t('label.description'),
-              })}
-            </Typography.Text>
-          ) : (
-            <RichTextEditorPreviewerNew markdown={description} />
-          ),
-      },
+      ...descriptionTableObject({ width: 300 }),
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
@@ -218,7 +224,7 @@ const MetricListPage = () => {
 
   useEffect(() => {
     init();
-  }, [pageSize]);
+  }, [pageSize, pagingCursor]);
 
   if (loading) {
     return <Loader />;
@@ -275,6 +281,7 @@ const MetricListPage = () => {
               emptyText: (
                 <ErrorPlaceHolder
                   className="p-y-md border-none"
+                  doc={METRICS_DOCS}
                   heading={t('label.metric')}
                   permission={permission.Create}
                   permissionValue={t('label.create-entity', {

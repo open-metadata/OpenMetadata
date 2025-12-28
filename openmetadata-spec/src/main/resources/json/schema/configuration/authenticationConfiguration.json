@@ -19,6 +19,7 @@
   },
   "properties": {
     "clientType": {
+      "title": "Client Type",
       "javaType": "org.openmetadata.schema.api.security.ClientType",
       "description": "Client Type",
       "type": "string",
@@ -27,17 +28,21 @@
       "default": "public"
     },
     "provider": {
+      "title": "Provider",
       "$ref": "../entity/services/connections/metadata/openMetadataConnection.json#/definitions/authProvider"
     },
     "responseType": {
+      "title": "Response Type",
       "description": "This is used by auth provider provide response as either id_token or code.",
       "$ref": "#/definitions/responseType"
     },
     "providerName": {
+      "title": "Provider Name",
       "description": "Custom OIDC Authentication Provider Name",
       "type": "string"
     },
     "publicKeyUrls": {
+      "title": "Public Key URLs",
       "description": "List of Public Key URLs",
       "type": "array",
       "items": {
@@ -45,24 +50,29 @@
       }
     },
     "tokenValidationAlgorithm": {
+      "title": "Token Validation Algorithm",
       "description": "Token Validation Algorithm to use.",
       "type": "string",
       "enum": ["RS256", "RS384", "RS512"],
       "default": "RS256"
     },
     "authority": {
+      "title": "Authority",
       "description": "Authentication Authority",
       "type": "string"
     },
     "clientId": {
+      "title": "Client ID",
       "description": "Client ID",
       "type": "string"
     },
     "callbackUrl": {
+      "title": "Callback URL",
       "description": "Callback URL",
       "type": "string"
     },
     "jwtPrincipalClaims": {
+      "title": "Jwt Principal Claims",
       "description": "Jwt Principal Claim",
       "type": "array",
       "items": {
@@ -70,6 +80,7 @@
       }
     },
     "jwtPrincipalClaimsMapping": {
+      "title": "Jwt Principal Claims Mapping",
       "description": "Jwt Principal Claim Mapping",
       "type": "array",
       "items": {
@@ -77,21 +88,36 @@
       }
     },
     "enableSelfSignup": {
+      "title": "Enable Self Sign Up",
       "description": "Enable Self Sign Up",
       "type": "boolean",
       "default": false
     },
     "ldapConfiguration": {
+      "title": "LDAP Configuration",
       "description": "LDAP Configuration in case the Provider is LDAP",
       "$ref": "./ldapConfiguration.json"
     },
     "samlConfiguration": {
+      "title": "Saml Configuration",
       "description": "Saml Configuration that is applicable only when the provider is Saml",
       "$ref": "../security/client/samlSSOClientConfig.json"
     },
     "oidcConfiguration": {
+      "title": "Oidc Configuration",
       "description": "Oidc Configuration for Confidential Client Type",
       "$ref": "../security/client/oidcClientConfig.json"
+    },
+    "forceSecureSessionCookie": {
+      "description": "Force secure flag on session cookies even when not using HTTPS directly. Enable this when running behind a proxy/load balancer that handles SSL termination.",
+      "type": "boolean",
+      "default": false
+    },
+    "enableAutoRedirect": {
+      "title": "Enable Auto Redirect",
+      "description": "Enable automatic redirect from the sign-in page to the configured SSO provider.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["provider", "providerName", "publicKeyUrls", "authority", "callbackUrl", "clientId", "jwtPrincipalClaims"],

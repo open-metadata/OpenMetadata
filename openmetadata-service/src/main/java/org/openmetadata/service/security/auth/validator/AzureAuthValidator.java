@@ -343,13 +343,13 @@ public class AzureAuthValidator {
           return null;
         } else {
           return ValidationErrorBuilder.createFieldError(
-              ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID, "Client ID validation failed");
+              ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID, "Client ID validation failed");
         }
       }
 
     } catch (Exception e) {
       return ValidationErrorBuilder.createFieldError(
-          ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID, "Client ID validation failed");
+          ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID, "Client ID validation failed");
     }
   }
 

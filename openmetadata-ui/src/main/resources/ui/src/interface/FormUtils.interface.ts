@@ -30,8 +30,10 @@ export enum FieldTypes {
   TEXT = 'text',
   TEXT_MUI = 'text_mui',
   PASSWORD = 'password',
+  PASSWORD_MUI = 'password_mui',
   FILTER_PATTERN = 'filter_pattern',
   SWITCH = 'switch',
+  SWITCH_MUI = 'switch_mui',
   SELECT = 'select',
   SELECT_MUI = 'select_mui',
   ASYNC_SELECT_LIST = 'async_select_list',
@@ -51,8 +53,11 @@ export enum FieldTypes {
   DOMAIN_SELECT = 'domain_select',
   DOMAIN_SELECT_MUI = 'domain_select_mui',
   ICON_PICKER_MUI = 'icon_picker_mui',
+  COVER_IMAGE_UPLOAD_MUI = 'cover_image_upload_mui',
   CRON_EDITOR = 'cron_editor',
   TREE_ASYNC_SELECT_LIST = 'tree_async_select_list',
+  AUTOCOMPLETE_MUI = 'autocomplete_mui',
+  CHIP_SELECT = 'chip_select',
 }
 
 export enum HelperTextType {

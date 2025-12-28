@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
+import { act } from 'react';
 import { Table } from '../../generated/entity/data/table';
 import { MOCK_PERMISSIONS } from '../../mocks/Glossary.mock';
 import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
+import '../../test/unit/mocks/mui.mock';
 import IncidentManager from './IncidentManager.component';
 
 jest.mock('../common/NextPrevious/NextPrevious', () => {
@@ -30,6 +32,8 @@ jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
           handleDateRangeChange({
             startTs: 1709556624254,
             endTs: 1710161424255,
+            key: 'last7days',
+            title: 'Last 7 days',
           })
         }>
         time filter
@@ -75,6 +79,11 @@ jest.mock('../../rest/incidentManagerAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),
   updateTestCaseIncidentById: jest.fn(),
+  postTestCaseIncidentStatus: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {},
+    })
+  ),
 }));
 jest.mock('../../rest/miscAPI', () => ({
   getUserAndTeamSearch: jest
@@ -152,6 +161,8 @@ describe('IncidentManagerPage', () => {
       limit: 10,
       startTs: 1709556624254,
       include: 'non-deleted',
+      domain: undefined,
+      originEntityFQN: undefined,
     });
   });
 
@@ -174,6 +185,8 @@ describe('IncidentManagerPage', () => {
       limit: 10,
       startTs: 1709556624254,
       include: 'deleted',
+      domain: undefined,
+      originEntityFQN: undefined,
     });
   });
 

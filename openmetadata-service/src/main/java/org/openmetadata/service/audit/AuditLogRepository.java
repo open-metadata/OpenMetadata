@@ -31,6 +31,9 @@ public class AuditLogRepository {
           EventType.ENTITY_DELETED,
           EventType.ENTITY_RESTORED);
 
+  private static final Set<String> AGENT_INDICATORS =
+      Set.of("agent", "documentation", "classification", "automator");
+
   private final CollectionDAO.AuditLogDAO auditLogDAO;
 
   public AuditLogRepository(CollectionDAO daoCollection) {
@@ -38,6 +41,10 @@ public class AuditLogRepository {
   }
 
   public void write(ChangeEvent changeEvent) {
+    write(changeEvent, false);
+  }
+
+  public void write(ChangeEvent changeEvent, boolean isBot) {
     if (!SUPPORTED_EVENT_TYPES.contains(changeEvent.getEventType())) {
       return;
     }
@@ -45,6 +52,9 @@ public class AuditLogRepository {
       String entityFqn = changeEvent.getEntityFullyQualifiedName();
       String entityFqnHash =
           nullOrEmpty(entityFqn) ? null : FullyQualifiedName.buildHash(entityFqn);
+
+      AuditLogRecord.ActorType actorType = determineActorType(changeEvent.getUserName(), isBot);
+      String serviceName = extractServiceName(entityFqn);
 
       AuditLogRecord record =
           AuditLogRecord.builder()
@@ -55,6 +65,9 @@ public class AuditLogRepository {
                       : System.currentTimeMillis())
               .eventType(changeEvent.getEventType().value())
               .userName(changeEvent.getUserName())
+              .actorType(actorType)
+              .impersonatedBy(changeEvent.getImpersonatedBy())
+              .serviceName(serviceName)
               .entityType(changeEvent.getEntityType())
               .entityId(changeEvent.getEntityId())
               .entityFQN(entityFqn)
@@ -68,8 +81,34 @@ public class AuditLogRepository {
     }
   }
 
+  private AuditLogRecord.ActorType determineActorType(String userName, boolean isBot) {
+    if (!isBot) {
+      return AuditLogRecord.ActorType.USER;
+    }
+    if (nullOrEmpty(userName)) {
+      return AuditLogRecord.ActorType.BOT;
+    }
+    String lowerName = userName.toLowerCase();
+    for (String indicator : AGENT_INDICATORS) {
+      if (lowerName.contains(indicator)) {
+        return AuditLogRecord.ActorType.AGENT;
+      }
+    }
+    return AuditLogRecord.ActorType.BOT;
+  }
+
+  private String extractServiceName(String entityFqn) {
+    if (nullOrEmpty(entityFqn)) {
+      return null;
+    }
+    String[] parts = FullyQualifiedName.split(entityFqn);
+    return parts.length > 0 ? parts[0] : null;
+  }
+
   public ResultList<AuditLogEntry> list(
       String userName,
+      String actorType,
+      String serviceName,
       String entityType,
       String entityFqn,
       String eventType,
@@ -96,6 +135,8 @@ public class AuditLogRepository {
             condition,
             ORDER_DESC,
             userName,
+            actorType,
+            serviceName,
             entityType,
             entityFqn,
             entityFqnHash,
@@ -115,6 +156,8 @@ public class AuditLogRepository {
         auditLogDAO.count(
             baseCondition,
             userName,
+            actorType,
+            serviceName,
             entityType,
             entityFqn,
             entityFqnHash,
@@ -176,6 +219,9 @@ public class AuditLogRepository {
               .eventTs(record.getEventTs())
               .eventType(record.getEventType())
               .userName(record.getUserName())
+              .actorType(record.getActorType() != null ? record.getActorType().name() : "USER")
+              .impersonatedBy(record.getImpersonatedBy())
+              .serviceName(record.getServiceName())
               .entityType(record.getEntityType())
               .entityId(record.getEntityId())
               .entityFQN(record.getEntityFQN())
@@ -195,6 +241,8 @@ public class AuditLogRepository {
 
   private String buildBaseCondition() {
     return "WHERE (:userName IS NULL OR user_name = :userName) "
+        + "AND (:actorType IS NULL OR actor_type = :actorType) "
+        + "AND (:serviceName IS NULL OR service_name = :serviceName) "
         + "AND (:entityType IS NULL OR entity_type = :entityType) "
         + "AND (:entityFQN IS NULL OR entity_fqn = :entityFQN) "
         + "AND (:entityFQNHASH IS NULL OR entity_fqn_hash = :entityFQNHASH) "

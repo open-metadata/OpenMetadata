@@ -11,29 +11,22 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Paper,
-  TableContainer,
-  Typography,
-  useTheme,
-} from '@mui/material';
+import { Box, Paper, TableContainer, useTheme } from '@mui/material';
 import { useForm } from 'antd/lib/form/Form';
-import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import { useSnackbar } from 'notistack';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ERROR_MESSAGE } from '../../constants/constants';
+import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
+import { DRAWER_HEADER_STYLING } from '../../constants/DomainsListPage.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../generated/api/domains/createDomain';
 import { withPageLayout } from '../../hoc/withPageLayout';
-import { addDomains } from '../../rest/domainAPI';
-import { getIsErrorMatch } from '../../utils/CommonUtils';
-import {
-  showNotistackError,
-  showNotistackSuccess,
-} from '../../utils/NotistackUtils';
+import { addDomains, patchDomains } from '../../rest/domainAPI';
+import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../common/atoms/domain/ui/useDomainFilters';
@@ -47,8 +40,10 @@ import { useViewToggle } from '../common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../common/atoms/pagination/usePaginationControls';
 import { useCardView } from '../common/atoms/table/useCardView';
 import { useDataTable } from '../common/atoms/table/useDataTable';
+import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import AddDomainForm from '../Domain/AddDomainForm/AddDomainForm.component';
 import { DomainFormType } from '../Domain/DomainPage.interface';
+import DomainTreeView from './components/DomainTreeView';
 import { useDomainListingData } from './hooks/useDomainListingData';
 
 const DomainListPage = () => {
@@ -59,6 +54,7 @@ const DomainListPage = () => {
   const [form] = useForm();
   const [isLoading, setIsLoading] = useState(false);
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
+  const [treeRefreshToken, setTreeRefreshToken] = useState(0);
 
   // Use the simplified domain filters configuration
   const { quickFilters, defaultFilters } = useDomainFilters({
@@ -80,6 +76,9 @@ const DomainListPage = () => {
     anchor: 'right',
     width: 670,
     closeOnEscape: false,
+    header: {
+      sx: DRAWER_HEADER_STYLING,
+    },
     onCancel: () => {
       form.resetFields();
     },
@@ -95,44 +94,21 @@ const DomainListPage = () => {
         onSubmit={async (formData: CreateDomain | CreateDataProduct) => {
           setIsLoading(true);
           try {
-            await addDomains(formData as CreateDomain);
-            showNotistackSuccess(
+            await createEntityWithCoverImage({
+              formData: formData as CreateDomain,
+              entityType: EntityType.DOMAIN,
+              entityLabel: t('label.domain'),
+              entityPluralLabel: 'domains',
+              createEntity: addDomains,
+              patchEntity: patchDomains,
+              onSuccess: () => {
+                closeDrawer();
+                refreshAllDomains();
+              },
               enqueueSnackbar,
-              <Typography sx={{ fontWeight: 600 }} variant="body2">
-                {t('server.create-entity-success', {
-                  entity: t('label.domain'),
-                })}
-              </Typography>,
-              closeSnackbar
-            );
-            // Close drawer only on successful creation
-            closeDrawer();
-            domainListing.refetch();
-          } catch (error) {
-            showNotistackError(
-              enqueueSnackbar,
-              getIsErrorMatch(
-                error as AxiosError,
-                ERROR_MESSAGE.alreadyExist
-              ) ? (
-                <Typography sx={{ fontWeight: 600 }} variant="body2">
-                  {t('server.entity-already-exist', {
-                    entity: t('label.domain'),
-                    entityPlural: 'domains',
-                    name: formData.name,
-                  })}
-                </Typography>
-              ) : (
-                (error as AxiosError)
-              ),
-              t('server.add-entity-error', {
-                entity: t('label.domain').toLowerCase(),
-              }),
-              { vertical: 'top', horizontal: 'center' },
-              closeSnackbar
-            );
-
-            throw error; // Re-throw to reject the promise
+              closeSnackbar,
+              t,
+            });
           } finally {
             setIsLoading(false);
           }
@@ -149,8 +125,7 @@ const DomainListPage = () => {
 
   // Composable hooks for each UI component
   const { breadcrumbs } = useBreadcrumbs({
-    entityLabelKey: 'label.domain',
-    basePath: '/domain',
+    items: [{ name: t('label.domain-plural'), url: '/domain' }],
   });
 
   const { pageHeader } = usePageHeader({
@@ -174,8 +149,16 @@ const DomainListPage = () => {
     initialSearchQuery: domainListing.urlState.searchQuery,
   });
 
-  const { view, viewToggle } = useViewToggle();
+  const { view, viewToggle, isTreeView } = useViewToggle({
+    views: ['table', 'card', 'tree'],
+  });
   const { domainCardTemplate } = useDomainCardTemplates();
+
+  useEffect(() => {
+    if (isTreeView && !isEmpty(domainListing.urlState.filters)) {
+      domainListing.handleFilterChange([]);
+    }
+  }, [isTreeView]);
 
   const { dataTable } = useDataTable({
     listing: domainListing,
@@ -197,6 +180,13 @@ const DomainListPage = () => {
     loading: domainListing.loading,
   });
 
+  const { refetch: refetchDomainListing } = domainListing;
+
+  const refreshAllDomains = useCallback(() => {
+    refetchDomainListing();
+    setTreeRefreshToken((prev) => prev + 1);
+  }, [refetchDomainListing]);
+
   // Map selected IDs to actual entities for the delete hook
   const selectedDomainEntities = useMemo(
     () =>
@@ -212,12 +202,86 @@ const DomainListPage = () => {
     selectedEntities: selectedDomainEntities,
     onDeleteComplete: () => {
       domainListing.clearSelection();
-      domainListing.refetch();
+      refreshAllDomains();
     },
   });
 
+  const content = useMemo(() => {
+    if (isTreeView) {
+      return (
+        <Box sx={{ px: 6, pb: 6 }}>
+          <DomainTreeView
+            filters={domainListing.urlState.filters}
+            openAddDomainDrawer={openDrawer}
+            refreshToken={treeRefreshToken}
+            searchQuery={domainListing.urlState.searchQuery}
+          />
+        </Box>
+      );
+    }
+
+    if (!domainListing.loading && isEmpty(domainListing.entities)) {
+      return (
+        <ErrorPlaceHolder
+          buttonId="domain-add-button"
+          buttonTitle={t('label.add-entity', {
+            entity: t('label.domain'),
+          })}
+          className="border-none"
+          heading={t('message.no-data-message', {
+            entity: t('label.domain-lowercase-plural'),
+          })}
+          icon={<FolderEmptyIcon />}
+          permission={permissions.domain?.Create}
+          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
+          onClick={openDrawer}
+        />
+      );
+    }
+
+    if (view === 'table') {
+      return (
+        <>
+          {dataTable}
+          {paginationControls}
+        </>
+      );
+    }
+
+    return (
+      <>
+        {cardView}
+        {paginationControls}
+      </>
+    );
+  }, [
+    isTreeView,
+    domainListing.loading,
+    domainListing.entities,
+    domainListing.urlState.filters,
+    domainListing.urlState.searchQuery,
+    view,
+    dataTable,
+    cardView,
+    paginationControls,
+    treeRefreshToken,
+    openDrawer,
+    refreshAllDomains,
+    t,
+    permissions.domain?.Create,
+  ]);
+
   return (
-    <>
+    <Box
+      sx={
+        isTreeView
+          ? {
+              display: 'flex',
+              flexDirection: 'column',
+              height: 'calc(100vh - 80px)',
+            }
+          : {}
+      }>
       {breadcrumbs}
       {pageHeader}
 
@@ -235,21 +299,18 @@ const DomainListPage = () => {
           <Box sx={{ display: 'flex', gap: 5, alignItems: 'center' }}>
             {titleAndCount}
             {search}
-            {quickFilters}
+            {!isTreeView && quickFilters}
             <Box ml="auto" />
             {viewToggle}
             {deleteIconButton}
           </Box>
-          {filterSelectionDisplay}
+          {!isTreeView && filterSelectionDisplay}
         </Box>
-
-        {view === 'table' ? dataTable : cardView}
-
-        {paginationControls}
+        {content}
       </TableContainer>
       {deleteModal}
       {formDrawer}
-    </>
+    </Box>
   );
 };
 

@@ -41,6 +41,7 @@ export enum SettingType {
     JwtTokenConfiguration = "jwtTokenConfiguration",
     LineageSettings = "lineageSettings",
     LoginConfiguration = "loginConfiguration",
+    OpenLineageSettings = "openLineageSettings",
     OpenMetadataBaseURLConfiguration = "openMetadataBaseUrlConfiguration",
     ProfilerConfiguration = "profilerConfiguration",
     SandboxModeEnabled = "sandboxModeEnabled",
@@ -94,6 +95,9 @@ export enum SettingType {
  * This schema defines the Workflow Settings.
  *
  * Complete security configuration including authentication and authorization
+ *
+ * Settings for OpenLineage HTTP API integration. Configure how OpenMetadata receives and
+ * processes lineage events from external systems like Spark, Airflow, and Flink.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -119,6 +123,8 @@ export interface PipelineServiceClientConfiguration {
      * can set this value to false to not check the Pipeline Service Client component health.
      *
      * Is Task Notification Enabled?
+     *
+     * Enable or disable the OpenLineage HTTP API endpoint.
      */
     enabled?: boolean;
     /**
@@ -179,9 +185,18 @@ export interface PipelineServiceClientConfiguration {
      */
     clientType?: ClientType;
     /**
+     * Enable automatic redirect from the sign-in page to the configured SSO provider.
+     */
+    enableAutoRedirect?: boolean;
+    /**
      * Enable Self Sign Up
      */
     enableSelfSignup?: boolean;
+    /**
+     * Force secure flag on session cookies even when not using HTTPS directly. Enable this when
+     * running behind a proxy/load balancer that handles SSL termination.
+     */
+    forceSecureSessionCookie?: boolean;
     /**
      * Jwt Principal Claim
      */
@@ -280,6 +295,14 @@ export interface PipelineServiceClientConfiguration {
      * Keep Alive Timeout in Seconds
      */
     keepAliveTimeoutSecs?: number;
+    /**
+     * Maximum connections per host/route in the connection pool
+     */
+    maxConnPerRoute?: number;
+    /**
+     * Maximum total connections in the connection pool across all hosts
+     */
+    maxConnTotal?: number;
     /**
      * Configuration for natural language search capabilities
      */
@@ -385,6 +408,10 @@ export interface PipelineServiceClientConfiguration {
      */
     openMetadataUrl?: string;
     /**
+     * Bot Token
+     */
+    botToken?: string;
+    /**
      * Client Secret of the Application.
      */
     clientSecret?: string;
@@ -392,7 +419,11 @@ export interface PipelineServiceClientConfiguration {
      * Signing Secret of the Application. Confirm that each request comes from Slack by
      * verifying its unique signature.
      */
-    signingSecret?:       string;
+    signingSecret?: string;
+    /**
+     * User Token
+     */
+    userToken?:           string;
     metricConfiguration?: MetricConfigurationDefinition[];
     /**
      * Configurations of allowed searchable fields for each entity type
@@ -428,9 +459,17 @@ export interface PipelineServiceClientConfiguration {
      */
     downstreamDepth?: number;
     /**
+     * Performance configuration for lineage graph builder.
+     */
+    graphPerformanceConfig?: GraphPerformanceConfig;
+    /**
      * Lineage Layer.
      */
     lineageLayer?: LineageLayer;
+    /**
+     * Pipeline View Mode for Lineage.
+     */
+    pipelineViewMode?: PipelineViewMode;
     /**
      * Upstream Depth for Lineage.
      */
@@ -444,6 +483,10 @@ export interface PipelineServiceClientConfiguration {
      */
     historyCleanUpConfiguration?: HistoryCleanUpConfiguration;
     /**
+     * Used to set up the History CleanUp Settings.
+     */
+    runTimeCleanUpConfiguration?: RunTimeCleanUpConfiguration;
+    /**
      * Semantics rules defined in the data contract.
      */
     entitySemantics?: SemanticsRule[];
@@ -455,6 +498,27 @@ export interface PipelineServiceClientConfiguration {
      * Authorization configuration
      */
     authorizerConfiguration?: AuthorizerConfiguration;
+    /**
+     * Automatically create Table and Pipeline entities when they are referenced in OpenLineage
+     * events but don't exist in OpenMetadata.
+     */
+    autoCreateEntities?: boolean;
+    /**
+     * Name of the Pipeline Service to use when auto-creating Pipeline entities from OpenLineage
+     * jobs. This service must exist in OpenMetadata.
+     */
+    defaultPipelineService?: string;
+    /**
+     * List of OpenLineage event types to process. Only events matching these types will create
+     * lineage. Default is to only process COMPLETE events.
+     */
+    eventTypeFilter?: EventTypeFilter[];
+    /**
+     * Mapping of OpenLineage dataset namespaces to OpenMetadata Database Service names. Used to
+     * resolve dataset references to existing tables. Example: 'postgresql://prod-db:5432' ->
+     * 'prod-postgres'
+     */
+    namespaceToServiceMapping?: { [key: string]: string };
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -915,9 +979,18 @@ export interface AuthenticationConfiguration {
      */
     clientType?: ClientType;
     /**
+     * Enable automatic redirect from the sign-in page to the configured SSO provider.
+     */
+    enableAutoRedirect?: boolean;
+    /**
      * Enable Self Sign Up
      */
     enableSelfSignup?: boolean;
+    /**
+     * Force secure flag on session cookies even when not using HTTPS directly. Enable this when
+     * running behind a proxy/load balancer that handles SSL termination.
+     */
+    forceSecureSessionCookie?: boolean;
     /**
      * Jwt Principal Claim
      */
@@ -1483,10 +1556,24 @@ export enum ProviderType {
     User = "user",
 }
 
+export enum EventTypeFilter {
+    Abort = "ABORT",
+    Complete = "COMPLETE",
+    Fail = "FAIL",
+    Other = "OTHER",
+    Running = "RUNNING",
+    Start = "START",
+}
+
 /**
  * Used to set up the Workflow Executor Settings.
  */
 export interface ExecutorConfiguration {
+    /**
+     * The interval in milliseconds to acquire async jobs. Default: 60 seconds. This controls
+     * how often Flowable polls for new jobs.
+     */
+    asyncJobAcquisitionInterval?: number;
     /**
      * Default worker Pool Size. The Workflow Executor by default has this amount of workers.
      */
@@ -1509,6 +1596,11 @@ export interface ExecutorConfiguration {
      * more.
      */
     tasksDuePerAcquisition?: number;
+    /**
+     * The interval in milliseconds to acquire timer jobs. Default: 60 seconds. This controls
+     * how often Flowable polls for scheduled jobs.
+     */
+    timerJobAcquisitionInterval?: number;
 }
 
 export interface GlobalSettings {
@@ -1538,13 +1630,87 @@ export interface GlobalSettings {
 }
 
 /**
+ * Performance configuration for lineage graph builder.
+ *
+ * Configuration for lineage graph performance and scalability
+ */
+export interface GraphPerformanceConfig {
+    /**
+     * Cache time-to-live in seconds
+     */
+    cacheTTLSeconds?: number;
+    /**
+     * Enable caching for small/medium graphs
+     */
+    enableCaching?: boolean;
+    /**
+     * Enable progress tracking for long-running queries
+     */
+    enableProgressTracking?: boolean;
+    /**
+     * Batch size for fetching large graph nodes
+     */
+    largeGraphBatchSize?: number;
+    /**
+     * Maximum number of graphs to cache
+     */
+    maxCachedGraphs?: number;
+    /**
+     * Maximum nodes to keep in memory before switching to streaming
+     */
+    maxInMemoryNodes?: number;
+    /**
+     * Batch size for fetching medium graph nodes
+     */
+    mediumGraphBatchSize?: number;
+    /**
+     * Node count threshold for medium graphs (optimized batching)
+     */
+    mediumGraphThreshold?: number;
+    /**
+     * Report progress every N nodes processed
+     */
+    progressReportInterval?: number;
+    /**
+     * Scroll context timeout in minutes
+     */
+    scrollTimeoutMinutes?: number;
+    /**
+     * Batch size for fetching small graph nodes from search backend
+     */
+    smallGraphBatchSize?: number;
+    /**
+     * Node count threshold for small graphs (eligible for caching)
+     */
+    smallGraphThreshold?: number;
+    /**
+     * Batch size for streaming very large graphs
+     */
+    streamingBatchSize?: number;
+    /**
+     * Use Elasticsearch/OpenSearch scroll API for large result sets
+     */
+    useScrollForLargeGraphs?: boolean;
+}
+
+/**
  * Used to set up the History CleanUp Settings.
  */
 export interface HistoryCleanUpConfiguration {
     /**
+     * Batch size used when cleaning up Flowable History data
+     */
+    batchSize?: number;
+    /**
      * Cleans the Workflow Task that were finished, after given number of days.
      */
     cleanAfterNumberOfDays?: number;
+    /**
+     * Cron expression used by Flowable's history cleaning job
+     * (setHistoryCleaningTimeCycleConfig). For example: '0 0 1 * * ?' runs daily at 01:00, '0 *
+     * * ? * *' runs every minute (testing only).
+     */
+    timeCycleConfig?: string;
 }
 
 /**
@@ -1848,6 +2014,10 @@ export interface NaturalLanguageSearch {
      */
     bedrock?: Bedrock;
     /**
+     * Embedding generation using Deep Java Library (DJL)
+     */
+    djl?: Djl;
+    /**
      * The provider to use for generating vector embeddings (e.g., bedrock, openai).
      */
     embeddingProvider?: string;
@@ -1893,6 +2063,16 @@ export interface Bedrock {
      * Set to true to use IAM role based authentication instead of access/secret keys.
      */
     useIamRole?: boolean;
+}
+
+/**
+ * Embedding generation using Deep Java Library (DJL)
+ */
+export interface Djl {
+    /**
+     * DJL model name for embedding generation
+     */
+    embeddingModel?: string;
 }
 
 /**
@@ -2027,6 +2207,26 @@ export interface TitleSection {
      */
     title?: string;
     [property: string]: any;
+}
+
+/**
+ * Pipeline View Mode for Lineage.
+ *
+ * Determines the view mode for pipelines in lineage.
+ */
+export enum PipelineViewMode {
+    Edge = "Edge",
+    Node = "Node",
+}
+
+/**
+ * Used to set up the History CleanUp Settings.
+ */
+export interface RunTimeCleanUpConfiguration {
+    /**
+     * Batch size used when cleaning up Flowable Run Time data
+     */
+    batchSize?: number;
 }
 
 /**

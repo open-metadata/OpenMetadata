@@ -149,12 +149,9 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         hashToFqnMap.put(hash, fqn);
       }
 
-      // Convert the list to JSON array for MySQL
-      String jsonHashes = JsonUtils.pojoToJson(classificationHashes);
-
-      // Use the DAO method for database-specific query
+      // Use the DAO method with simple IN clause - much more efficient
       List<Pair<String, Integer>> results =
-          daoCollection.classificationDAO().bulkGetTermCounts(jsonHashes, classificationHashes);
+          daoCollection.classificationDAO().bulkGetTermCounts(classificationHashes);
 
       // Process results
       for (Pair<String, Integer> result : results) {

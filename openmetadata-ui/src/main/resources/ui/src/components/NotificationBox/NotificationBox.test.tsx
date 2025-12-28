@@ -61,6 +61,7 @@ const mockShowErrorToast = jest.fn();
 const mockOnMarkTaskNotificationRead = jest.fn();
 
 const mockProps = {
+  activeTab: ThreadType.Task,
   hasMentionNotification: true,
   hasTaskNotification: true,
   onMarkMentionsNotificationRead: jest.fn(),
@@ -139,10 +140,10 @@ describe('Test NotificationBox Component', () => {
   it('should render no data in case of no notification', async () => {
     (getFeedsWithFilter as jest.Mock).mockImplementation(() =>
       Promise.resolve({ data: [] })
-    ),
-      await act(async () => {
-        render(<NotificationBox {...mockProps} />);
-      });
+    );
+    await act(async () => {
+      render(<NotificationBox {...mockProps} />);
+    });
 
     expect(
       await screen.findByText('message.no-notification-found')

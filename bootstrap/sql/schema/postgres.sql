@@ -1943,26 +1943,6 @@ CREATE INDEX field_relationship_to_index ON public.field_relationship USING btre
 
 CREATE INDEX name_index ON public.web_analytic_event USING btree (name);
 
--- Name: audit_log_event; Type: TABLE; Schema: public; Owner: openmetadata_user
-CREATE TABLE public.audit_log_event (
-    id BIGSERIAL PRIMARY KEY,
-    change_event_id UUID NOT NULL,
-    event_ts BIGINT NOT NULL,
-    event_type CHARACTER VARYING(32) NOT NULL,
-    user_name CHARACTER VARYING(256),
-    entity_type CHARACTER VARYING(128),
-    entity_id UUID,
-    entity_fqn CHARACTER VARYING(768),
-    entity_fqn_hash CHARACTER VARYING(768),
-    event_json TEXT NOT NULL,
-    created_at BIGINT DEFAULT (EXTRACT(EPOCH FROM now()) * 1000)::BIGINT
-);
-
-CREATE UNIQUE INDEX idx_audit_log_event_change_event_id ON public.audit_log_event USING btree (change_event_id);
-CREATE INDEX idx_audit_log_event_ts ON public.audit_log_event USING btree (event_ts DESC);
-CREATE INDEX idx_audit_log_event_user_ts ON public.audit_log_event USING btree (user_name, event_ts DESC);
-CREATE INDEX idx_audit_log_event_entity_hash_ts ON public.audit_log_event USING btree (entity_fqn_hash, event_ts DESC);
-
 
 --
 -- Name: thread_entity_created_by_index; Type: INDEX; Schema: public; Owner: openmetadata_user
@@ -2009,3 +1989,4 @@ GRANT ALL ON SCHEMA public TO openmetadata_user;
 --
 -- PostgreSQL database dump complete
 --
+

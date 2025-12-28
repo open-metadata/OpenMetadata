@@ -28,6 +28,9 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 def get_connection(connection: SalesforceConnection) -> Salesforce:
@@ -36,14 +39,19 @@ def get_connection(connection: SalesforceConnection) -> Salesforce:
     """
     return Salesforce(
         username=connection.username,
-        password=connection.password.get_secret_value(),
-        security_token=connection.securityToken.get_secret_value()
-        if connection.securityToken
-        else "",
-        organizationId=connection.organizationId if connection.organizationId else "",
+        password=connection.password and connection.password.get_secret_value(),
+        security_token=connection.securityToken
+        and connection.securityToken.get_secret_value(),
+        consumer_key=connection.consumerKey,
+        consumer_secret=connection.consumerSecret
+        and connection.consumerSecret.get_secret_value(),
+        organizationId=connection.organizationId,
         domain=connection.salesforceDomain,
         version=connection.salesforceApiVersion,
-        **connection.connectionArguments.root if connection.connectionArguments else {},
+        **(
+            (connection.connectionArguments and connection.connectionArguments.root)
+            or {}
+        ),
     )
 
 

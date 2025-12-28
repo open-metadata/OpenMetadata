@@ -9,7 +9,9 @@
     "AirbyteType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Airbyte"],
+      "enum": [
+        "Airbyte"
+      ],
       "default": "Airbyte"
     }
   },
@@ -26,16 +28,19 @@
       "type": "string",
       "format": "uri"
     },
-    "username": {
-      "title": "Username",
-      "description": "Username to connect to Airbyte.",
-      "type": "string"
-    },
-    "password": {
-      "title": "Password",
-      "description": "Password to connect to Airbyte.",
-      "type": "string",
-      "format": "password"
+    "auth": {
+      "title": "Authentication",
+      "description": "Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials (for Airbyte Cloud)",
+      "oneOf": [
+        {
+          "title": "Basic Authentication",
+          "$ref": "./airbyte/basicAuth.json"
+        },
+        {
+          "title": "OAuth 2.0 Client Credentials Authentication",
+          "$ref": "./airbyte/oauthClientAuth.json"
+        }
+      ]
     },
     "apiVersion": {
       "title": "API Version",
@@ -54,5 +59,7 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort"]
+  "required": [
+    "hostPort"
+  ]
 }

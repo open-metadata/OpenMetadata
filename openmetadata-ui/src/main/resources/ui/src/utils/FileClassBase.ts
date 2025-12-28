@@ -62,6 +62,7 @@ class FileClassBase {
       EntityTabs.OVERVIEW,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.LINEAGE,
+      EntityTabs.CONTRACT,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,
