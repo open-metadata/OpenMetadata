@@ -19,7 +19,6 @@ import {
 } from '@ant-design/icons';
 import { Card, Progress, Space, Tag, Typography } from 'antd';
 import React, { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { LEARNING_CATEGORIES } from '../Learning.interface';
 import { LearningResourceCardProps } from './LearningResourceCard.interface';
 import './LearningResourceCard.less';
@@ -31,8 +30,6 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
   showProgress = false,
   onClick,
 }) => {
-  const { t } = useTranslation();
-
   const resourceTypeIcon = useMemo(() => {
     switch (resource.resourceType) {
       case 'Video':
@@ -45,19 +42,6 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
         return <FileTextOutlined />;
     }
   }, [resource.resourceType]);
-
-  const difficultyColor = useMemo(() => {
-    switch (resource.difficulty) {
-      case 'Intro':
-        return 'green';
-      case 'Intermediate':
-        return 'orange';
-      case 'Advanced':
-        return 'red';
-      default:
-        return 'default';
-    }
-  }, [resource.difficulty]);
 
   const formattedDuration = useMemo(() => {
     if (!resource.estimatedDuration) {
@@ -105,12 +89,8 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
         )}
 
         <Space wrap className="learning-resource-meta" size="small">
-          {resource.difficulty && (
-            <Tag color={difficultyColor}>{resource.difficulty}</Tag>
-          )}
-          {categoryInfo && (
-            <Tag color={categoryInfo.color}>{categoryInfo.label}</Tag>
-          )}
+          {resource.difficulty && <Tag>{resource.difficulty}</Tag>}
+          {categoryInfo && <Tag>{categoryInfo.label}</Tag>}
           {formattedDuration && (
             <Tag icon={<ClockCircleOutlined />}>{formattedDuration}</Tag>
           )}

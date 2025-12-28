@@ -308,6 +308,7 @@
     "container": "存储容器",
     "container-column": "存储容器列",
     "container-plural": "存储容器",
+    "context": "上下文",
     "contract": "合同",
     "contract-detail-plural": "合同详情",
     "contract-execution-history": "合同执行历史",

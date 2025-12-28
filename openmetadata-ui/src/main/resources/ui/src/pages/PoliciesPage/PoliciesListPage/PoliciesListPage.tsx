@@ -285,6 +285,7 @@ const PoliciesListPage = () => {
                 header: t(PAGE_HEADERS.POLICIES.header),
                 subHeader: t(PAGE_HEADERS.POLICIES.subHeader),
               }}
+              learningPageId="policies"
             />
 
             {addPolicyPermission && (

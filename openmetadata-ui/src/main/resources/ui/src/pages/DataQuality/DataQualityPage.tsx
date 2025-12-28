@@ -139,6 +139,7 @@ const DataQualityPage = () => {
                     header: t('label.data-quality'),
                     subHeader: t('message.page-sub-header-for-data-quality'),
                   }}
+                  learningPageId="dataQuality"
                 />
               </Col>
 

@@ -15,7 +15,6 @@ import { ReactComponent as APICollectionIcon } from '../assets/svg/api-collectio
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-colored.svg';
 import { ReactComponent as IconAPI } from '../assets/svg/apis-colored.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
-import { ReactComponent as LearningIcon } from '../assets/svg/book.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored-new.svg';
@@ -32,6 +31,7 @@ import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
 import { ReactComponent as FileIcon } from '../assets/svg/file-colored-new.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-term-colored-new.svg';
 import { ReactComponent as HealthIcon } from '../assets/svg/health-check.svg';
+import { ReactComponent as LearningIcon } from '../assets/svg/learning-colored.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/lineage-colored.svg';
 import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored-new.svg';

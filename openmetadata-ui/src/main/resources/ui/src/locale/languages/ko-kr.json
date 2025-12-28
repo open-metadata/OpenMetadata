@@ -308,6 +308,7 @@
     "container": "컨테이너",
     "container-column": "컨테이너 열",
     "container-plural": "컨테이너들",
+    "context": "컨텍스트",
     "contract": "계약",
     "contract-detail-plural": "계약 세부사항",
     "contract-execution-history": "계약 실행 기록",

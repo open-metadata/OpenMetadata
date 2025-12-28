@@ -103,6 +103,7 @@ const DomainListPage = () => {
               patchEntity: patchDomains,
               onSuccess: () => {
                 closeDrawer();
+                // eslint-disable-next-line @typescript-eslint/no-use-before-define
                 refreshAllDomains();
               },
               enqueueSnackbar,
@@ -135,6 +136,7 @@ const DomainListPage = () => {
     addButtonLabelKey: 'label.add-domain',
     addButtonTestId: 'add-domain',
     onAddClick: openDrawer,
+    learningPageId: 'domain',
   });
 
   const { titleAndCount } = useTitleAndCount({

@@ -128,6 +128,7 @@ const DataProductListPage = () => {
     createPermission: permissions.dataProduct?.Create || false,
     addButtonLabelKey: 'label.add-data-product',
     onAddClick: openDrawer,
+    learningPageId: 'dataProduct',
   });
 
   const { titleAndCount } = useTitleAndCount({

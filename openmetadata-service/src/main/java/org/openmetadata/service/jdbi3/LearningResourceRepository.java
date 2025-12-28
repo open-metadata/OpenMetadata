@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -50,6 +51,54 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
         UPDATE_FIELDS,
         PATCH_FIELDS);
     supportsSearch = false;
+  }
+
+  /**
+   * Initialize seed data with merge/update support. Unlike the default initializeEntity which skips
+   * existing entities, this method will update existing resources if the seed data has changed.
+   */
+  public void initSeedDataWithMerge() throws java.io.IOException {
+    List<LearningResource> seedEntities = getEntitiesFromSeedData();
+    for (LearningResource seedEntity : seedEntities) {
+      setFullyQualifiedName(seedEntity);
+      LearningResource existingEntity =
+          findByNameOrNull(seedEntity.getFullyQualifiedName(), Include.ALL);
+
+      if (existingEntity == null) {
+        // New entity - create it
+        LOG.info("Creating new learning resource: {}", seedEntity.getName());
+        seedEntity.setUpdatedBy(ADMIN_USER_NAME);
+        seedEntity.setUpdatedAt(System.currentTimeMillis());
+        seedEntity.setId(java.util.UUID.randomUUID());
+        create(null, seedEntity);
+      } else {
+        // Existing entity - check if update is needed by comparing key fields
+        boolean needsUpdate = hasChanges(existingEntity, seedEntity);
+        if (needsUpdate) {
+          LOG.info("Updating learning resource: {}", seedEntity.getName());
+          seedEntity.setId(existingEntity.getId());
+          seedEntity.setUpdatedBy(ADMIN_USER_NAME);
+          seedEntity.setUpdatedAt(System.currentTimeMillis());
+          seedEntity.setVersion(existingEntity.getVersion());
+          createOrUpdate(null, seedEntity, ADMIN_USER_NAME);
+        } else {
+          LOG.debug("Learning resource {} is up to date", seedEntity.getName());
+        }
+      }
+    }
+  }
+
+  private boolean hasChanges(LearningResource existing, LearningResource seed) {
+    // Compare fields that matter for seed data updates
+    if (!java.util.Objects.equals(existing.getDisplayName(), seed.getDisplayName())) return true;
+    if (!java.util.Objects.equals(existing.getDescription(), seed.getDescription())) return true;
+    if (!java.util.Objects.equals(existing.getResourceType(), seed.getResourceType())) return true;
+    if (!java.util.Objects.equals(existing.getCategories(), seed.getCategories())) return true;
+    if (!java.util.Objects.equals(existing.getContexts(), seed.getContexts())) return true;
+    if (!java.util.Objects.equals(existing.getDifficulty(), seed.getDifficulty())) return true;
+    if (!java.util.Objects.equals(existing.getSource(), seed.getSource())) return true;
+    if (!java.util.Objects.equals(existing.getStatus(), seed.getStatus())) return true;
+    return false;
   }
 
   @Override

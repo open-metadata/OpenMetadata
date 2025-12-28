@@ -1,0 +1,17 @@
+{
+  "name": "CollateClues_GovernanceWorkflows",
+  "displayName": "Collate Clues: Governance Workflows",
+  "description": "Learn how Governance Workflows help automate and enforce data governance policies across your organization.",
+  "resourceType": "Video",
+  "categories": ["DataGovernance"],
+  "source": {
+    "url": "https://www.youtube.com/watch?v=d6GEwZ-FGsw",
+    "provider": "YouTube"
+  },
+  "contexts": [
+    {"pageId": "governanceWorkflows"},
+    {"pageId": "domain"},
+    {"pageId": "dataProduct"}
+  ],
+  "status": "Active"
+}

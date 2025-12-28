@@ -13,14 +13,12 @@
 
 import { CloseOutlined, LoadingOutlined } from '@ant-design/icons';
 import { Button, Drawer, Empty, Space, Spin, Typography } from 'antd';
-import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getLearningResourcesByContext,
   LearningResource,
 } from '../../../rest/learningResourceAPI';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import { LearningResourceCard } from '../LearningResourceCard/LearningResourceCard.component';
 import { ResourcePlayerModal } from '../ResourcePlayer/ResourcePlayerModal.component';
 import { LearningDrawerProps } from './LearningDrawer.interface';
@@ -52,16 +50,13 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
         fields: 'categories,contexts,difficulty,estimatedDuration',
       });
       setResources(response.data || []);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.learning-resources-fetch-error')
-      );
+    } catch {
+      // Silently fail - learning resources are optional
       setResources([]);
     } finally {
       setIsLoading(false);
     }
-  }, [open, pageId, t]);
+  }, [open, pageId]);
 
   useEffect(() => {
     if (open) {

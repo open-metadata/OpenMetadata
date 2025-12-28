@@ -79,7 +79,8 @@ public class LearningResourceResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    repository.initSeedDataFromResources();
+    // Use merge method to add new resources and update existing ones
+    repository.initSeedDataWithMerge();
   }
 
   @Override

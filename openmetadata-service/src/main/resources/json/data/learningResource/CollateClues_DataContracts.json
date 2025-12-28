@@ -1,0 +1,20 @@
+{
+  "name": "CollateClues_DataContracts",
+  "displayName": "Collate Clues: Data Contracts",
+  "description": "Learn how Data Contracts help align data consumers and producers, ensuring data quality and reliability across your organization.",
+  "resourceType": "Video",
+  "categories": ["DataGovernance", "DataQuality"],
+  "source": {
+    "url": "https://www.youtube.com/watch?v=xtQ_7IOpW7c",
+    "provider": "YouTube"
+  },
+  "contexts": [
+    {"pageId": "table"},
+    {"pageId": "topic"},
+    {"pageId": "dashboard"},
+    {"pageId": "pipeline"},
+    {"pageId": "mlmodel"},
+    {"pageId": "container"}
+  ],
+  "status": "Active"
+}

@@ -10,11 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) '../../../styles/variables.less';
 
 .learning-icon {
   transition: all 0.3s ease;
+  color: @text-color;
 
   &:hover {
+    color: @primary-color;
     transform: scale(1.05);
   }
 
@@ -23,6 +26,13 @@
   }
 
   .anticon {
-    font-size: 18px;
+    font-size: 16px;
+    color: inherit;
+  }
+}
+
+.learning-icon-badge {
+  .ant-badge-count {
+    background-color: @error-color;
   }
 }

@@ -1,0 +1,18 @@
+{
+  "name": "Demo_ConnectorAgents",
+  "displayName": "Connector Agents Overview",
+  "description": "Learn about the variety of connector agents that Collate uses to automate and simplify your work. Get an overview of Metadata Agents and AI Agents designed to help teams automate workflows.",
+  "resourceType": "Storylane",
+  "categories": ["Discovery", "Administration"],
+  "difficulty": "Intro",
+  "source": {
+    "url": "https://collate.storylane.io/demo/yquttvft7hxj",
+    "provider": "Collate"
+  },
+  "estimatedDuration": 300,
+  "contexts": [
+    {"pageId": "explore"},
+    {"pageId": "pipeline"}
+  ],
+  "status": "Active"
+}

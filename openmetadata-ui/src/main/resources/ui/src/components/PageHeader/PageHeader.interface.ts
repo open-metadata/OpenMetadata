@@ -23,4 +23,5 @@ export interface HeaderProps {
   titleProps?: TypographyProps;
   subHeaderProps?: ParagraphProps;
   isBeta?: boolean;
+  learningPageId?: string;
 }

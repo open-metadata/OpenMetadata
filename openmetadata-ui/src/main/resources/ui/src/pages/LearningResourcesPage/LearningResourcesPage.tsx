@@ -143,16 +143,8 @@ export const LearningResourcesPage: React.FC = () => {
     {
       dataIndex: 'resourceType',
       key: 'resourceType',
-      render: (type) => <Tag color="blue">{type}</Tag>,
+      render: (type) => <Tag>{type}</Tag>,
       title: t('label.type'),
-      width: 100,
-    },
-    {
-      dataIndex: 'difficulty',
-      key: 'difficulty',
-      render: (difficulty) =>
-        difficulty ? <Tag>{difficulty}</Tag> : <span>-</span>,
-      title: t('label.difficulty'),
       width: 120,
     },
     {
@@ -160,10 +152,8 @@ export const LearningResourcesPage: React.FC = () => {
       key: 'categories',
       render: (categories: string[]) => (
         <Space wrap size={4}>
-          {categories.map((cat) => (
-            <Tag color="green" key={cat}>
-              {cat}
-            </Tag>
+          {categories?.map((cat) => (
+            <Tag key={cat}>{cat}</Tag>
           ))}
         </Space>
       ),
@@ -175,7 +165,7 @@ export const LearningResourcesPage: React.FC = () => {
       key: 'contexts',
       render: (contexts: Array<{ pageId: string; componentId?: string }>) => (
         <Space wrap size={4}>
-          {contexts.map((ctx, idx) => (
+          {contexts?.map((ctx, idx) => (
             <Tag key={idx}>
               {ctx.pageId}
               {ctx.componentId ? `:${ctx.componentId}` : ''}
@@ -183,15 +173,8 @@ export const LearningResourcesPage: React.FC = () => {
           ))}
         </Space>
       ),
-      title: t('label.context-plural'),
+      title: t('label.context'),
       width: 200,
-    },
-    {
-      dataIndex: 'estimatedDuration',
-      key: 'estimatedDuration',
-      render: (duration) => (duration ? `${Math.floor(duration / 60)}m` : '-'),
-      title: t('label.duration'),
-      width: 80,
     },
     {
       dataIndex: 'status',
@@ -264,11 +247,7 @@ export const LearningResourcesPage: React.FC = () => {
           pagination={{
             pageSize: 20,
             showSizeChanger: true,
-            showTotal: (total) =>
-              t('label.total-entity-count', {
-                count: total,
-                entity: t('label.resource-lowercase-plural'),
-              }),
+            showTotal: (total) => `${total} ${t('label.resource-plural')}`,
           }}
           rowKey="id"
           scroll={{ x: 1200 }}

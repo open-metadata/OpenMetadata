@@ -160,6 +160,7 @@ const ApplicationPage = () => {
               ),
               subHeader: t(PAGE_HEADERS.APPLICATION.subHeader),
             }}
+            learningPageId="automations"
           />
         </Col>
         <Col className="d-flex justify-end" span={8}>

@@ -308,6 +308,7 @@
     "container": "Konteyner",
     "container-column": "Konteyner Sütunu",
     "container-plural": "Konteynerler",
+    "context": "Bağlam",
     "contract": "Contract",
     "contract-detail-plural": "Contract Details",
     "contract-execution-history": "Sözleşme Yürütme Geçmişi",

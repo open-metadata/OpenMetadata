@@ -308,6 +308,7 @@
     "container": "Container",
     "container-column": "Container Column",
     "container-plural": "Containers",
+    "context": "Context",
     "contract": "Contract",
     "contract-detail-plural": "Contract Details",
     "contract-execution-history": "Contract Execution History",

@@ -308,6 +308,7 @@
     "container": "אחסון",
     "container-column": "Container Column",
     "container-plural": "אחסון (Storage)",
+    "context": "הקשר",
     "contract": "חוזה",
     "contract-detail-plural": "פרטי חוזה",
     "contract-execution-history": "סטטוס ביצוע חוזה",

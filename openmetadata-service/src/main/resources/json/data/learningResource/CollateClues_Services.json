@@ -1,0 +1,21 @@
+{
+  "name": "CollateClues_Services",
+  "displayName": "Collate Clues: Services Setup",
+  "description": "Quick guide to setting up and configuring services in Collate to connect your data sources.",
+  "resourceType": "Video",
+  "categories": ["Administration"],
+  "source": {
+    "url": "https://www.youtube.com/watch?v=SCqAnJeViCE",
+    "provider": "YouTube"
+  },
+  "contexts": [
+    {"pageId": "services"},
+    {"pageId": "databaseServices"},
+    {"pageId": "messagingServices"},
+    {"pageId": "dashboardServices"},
+    {"pageId": "pipelineServices"},
+    {"pageId": "mlmodelServices"},
+    {"pageId": "storageServices"}
+  ],
+  "status": "Active"
+}

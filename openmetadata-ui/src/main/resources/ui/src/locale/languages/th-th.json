@@ -308,6 +308,7 @@
     "container": "คอนเทนเนอร์",
     "container-column": "คอลัมน์คอนเทนเนอร์",
     "container-plural": "คอนเทนเนอร์",
+    "context": "บริบท",
     "contract": "Contract",
     "contract-detail-plural": "Contract Details",
     "contract-execution-history": "ประวัติการดำเนินการสัญญา",
