@@ -18,6 +18,11 @@ import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
+/**
+ * Create, update, and delete a TestSuite pipeline from the entity page
+ * @description Creates a test case, configures and deploys a weekly TestSuite pipeline, updates the schedule,
+ * and finally deletes pipelines to validate the empty state and action CTA visibility.
+ */
 test(
   'TestSuite multi pipeline support',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
@@ -32,6 +37,11 @@ test(
     const testCaseName = `multi-pipeline-test-${uuid()}`;
     const pipelineName = `test suite pipeline 2`;
 
+    /**
+     * Step 1: Create a new pipeline
+     * @description Navigates to Data Observability → Table Profile, creates a test case, opens Pipeline tab,
+     * selects the new test case, sets a weekly schedule, deploys, and verifies success modal.
+     */
     await test.step('Create a new pipeline', async () => {
       await page.getByText('Data Observability').click();
       await page
@@ -90,6 +100,11 @@ test(
       await page.getByTestId('view-service-button').click();
     });
 
+    /**
+     * Step 2: Update the pipeline
+     * @description Opens pipeline actions, enters edit flow, adjusts the weekly schedule segment, deploys, and
+     * validates the updated success messaging before returning to the service view.
+     */
     await test.step('Update the pipeline', async () => {
       await page.getByRole('tab', { name: 'Pipeline' }).click();
       await page
@@ -123,6 +138,11 @@ test(
       await page.getByTestId('view-service-button').click();
     });
 
+    /**
+     * Step 3: Delete the pipeline(s)
+     * @description Deletes the created pipeline(s) via actions menu, confirms with DELETE text, waits for API completion,
+     * then verifies the Pipeline tab shows the assignment placeholder and add CTA.
+     */
     await test.step('Delete the pipeline', async () => {
       await page.getByRole('tab', { name: 'Pipeline' }).click();
       await page
@@ -172,6 +192,11 @@ test(
   }
 );
 
+/**
+ * Edit the pipeline's test cases
+ * @description Creates multiple test cases and a TestSuite pipeline, edits the pipeline to unselect a test case,
+ * deploys the change, and verifies the persisted selection on re-open.
+ */
 test(
   "Edit the pipeline's test case",
   PLAYWRIGHT_INGESTION_TAG_OBJ,

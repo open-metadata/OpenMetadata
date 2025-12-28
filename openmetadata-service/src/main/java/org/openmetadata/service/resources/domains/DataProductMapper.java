@@ -19,5 +19,7 @@ public class DataProductMapper implements EntityMapper<DataProduct, CreateDataPr
         .withExperts(
             EntityUtil.validateAndPopulateEntityReferences(
                 getEntityReferences(Entity.USER, experts)));
+        .withInputPorts(create.getInputPorts())
+        .withOutputPorts(create.getOutputPorts());
   }
 }
