@@ -14,7 +14,7 @@
 import fnmatch
 import traceback
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import lkml
 from pydantic import ValidationError
@@ -24,6 +24,9 @@ from metadata.ingestion.source.dashboard.looker.models import (
     LkmlFile,
     LookMlView,
     ViewName,
+)
+from metadata.ingestion.source.dashboard.looker.template_processor import (
+    apply_template_transformations,
 )
 from metadata.readers.file.base import Reader, ReadException
 from metadata.utils.logger import ingestion_logger
@@ -56,7 +59,15 @@ class LkmlParser:
         no. Then keep parsing `includes` until the response is yes.
     """
 
-    def __init__(self, reader: Reader):
+    def __init__(
+        self,
+        reader: Reader,
+        liquid_variables: Optional[Dict[str, Any]] = None,
+        lookml_constants: Optional[Dict[str, str]] = None,
+        manifest_constants: Optional[Dict[str, str]] = None,
+        looker_environment: str = "prod",
+        enable_template_processing: bool = True,
+    ):
         self._views_cache: Dict[ViewName, LookMlView] = {}
         self._visited_files: Dict[Includes, List[Includes]] = {}
 
@@ -66,6 +77,13 @@ class LkmlParser:
         self.reader = reader
 
         self._file_tree: Optional[List[Includes]] = None
+
+        # Template processing configuration
+        self.liquid_variables = liquid_variables or {}
+        self.lookml_constants = lookml_constants or {}
+        self.manifest_constants = manifest_constants or {}
+        self.looker_environment = looker_environment
+        self.enable_template_processing = enable_template_processing
 
     @property
     def file_tree(self) -> List[Includes]:
@@ -112,10 +130,33 @@ class LkmlParser:
 
     def _process_file(self, path: Includes) -> Optional[List[Includes]]:
         """
-        Processing of a single path
+        Processing of a single path with template language processing
         """
         file = self._read_file(path)
-        lkml_file = LkmlFile.model_validate(lkml.load(file))
+        parsed_dict = lkml.load(file)
+
+        # Apply template processing if enabled
+        if self.enable_template_processing:
+            try:
+                apply_template_transformations(
+                    lkml_data=parsed_dict,
+                    liquid_vars=self.liquid_variables,
+                    constants=self.lookml_constants,
+                    manifest_constants=self.manifest_constants,
+                    environment=self.looker_environment,
+                    process_constants=bool(
+                        self.lookml_constants or self.manifest_constants
+                    ),
+                )
+                logger.debug(f"Template processing applied to {path}")
+            except Exception as exc:
+                logger.warning(
+                    f"Error during template processing for {path}: {exc}. "
+                    f"Continuing with unprocessed templates."
+                )
+                logger.debug(traceback.format_exc())
+
+        lkml_file = LkmlFile.model_validate(parsed_dict)
         self.parsed_files[path] = file
 
         # Cache everything
