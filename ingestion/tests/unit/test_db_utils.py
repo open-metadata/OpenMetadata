@@ -22,6 +22,9 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
 from metadata.generated.schema.type.basic import (
     EntityName,
     FullyQualifiedEntityName,
@@ -154,6 +157,7 @@ class TestDbUtils(TestCase):
                 service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
+                parser_type=QueryParserType.Auto,
             )
         )
 
@@ -223,6 +227,7 @@ class TestDbUtils(TestCase):
                 service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
+                parser_type=QueryParserType.Auto,
             )
         )
 
@@ -302,6 +307,7 @@ class TestDbUtils(TestCase):
                 service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
+                parser_type=QueryParserType.Auto,
             )
         )
 
@@ -357,6 +363,7 @@ class TestDbUtils(TestCase):
                 service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
+                parser_type=QueryParserType.Auto,
             )
         )
 
@@ -406,6 +413,7 @@ class TestDbUtils(TestCase):
                 service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
+                parser_type=QueryParserType.Auto,
             )
         )
 
@@ -441,6 +449,7 @@ class TestDbUtils(TestCase):
                 service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
+                parser_type=QueryParserType.Auto,
             )
         )
 
@@ -492,6 +501,7 @@ class TestDbUtils(TestCase):
                 service_names="test_service",
                 connection_type="mysql",
                 timeout_seconds=self.timeout_seconds,
+                parser_type=QueryParserType.Auto,
             )
         )
 
@@ -551,6 +561,7 @@ class TestDbUtils(TestCase):
                 service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
+                parser_type=QueryParserType.Auto,
             )
         )
 
@@ -591,6 +602,7 @@ class TestDbUtils(TestCase):
                 service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
+                parser_type=QueryParserType.Auto,
             )
         )
 
@@ -607,6 +619,7 @@ class TestDbUtils(TestCase):
                 service_names=self.service_name,
                 connection_type=123,  # Invalid type
                 timeout_seconds=self.timeout_seconds,
+                parser_type=QueryParserType.Auto,
             )
         )
 
@@ -641,6 +654,7 @@ class TestDbUtils(TestCase):
                 service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=custom_timeout,
+                parser_type=QueryParserType.Auto,
             )
         )
 

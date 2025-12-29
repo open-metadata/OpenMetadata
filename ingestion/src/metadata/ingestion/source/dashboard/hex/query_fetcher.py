@@ -412,6 +412,7 @@ class HexQueryFetcher:
                     query=query_text,
                     dialect=dialect,
                     timeout_seconds=10,  # Use a reasonable timeout
+                    parser_type=self.get_query_parser_type(),
                 )
                 query_hash = lineage_parser.query_hash
 

@@ -635,6 +635,7 @@ class TableauSource(DashboardServiceSource):
                                     if db_service_entity
                                     else Dialect.ANSI
                                 ),
+                                parser_type=self.get_query_parser_type(),
                             )
                             query_hash = lineage_parser.query_hash
                             for source_table in lineage_parser.source_tables or []:
@@ -979,6 +980,7 @@ class TableauSource(DashboardServiceSource):
                         if db_service_entity
                         else Dialect.ANSI
                     ),
+                    parser_type=self.get_query_parser_type(),
                 )
                 query_hash = lineage_parser.query_hash
                 for source_table in lineage_parser.source_tables or []:

@@ -564,12 +564,12 @@ export const getServiceNameQueryFilter = (serviceName: string) => ({
 });
 
 /**
- * Gets the active field name for application documentation by converting the path format
+ * Get the complete active field name by converting the path format
  * from "root/field1/field2" to "field1.field2"
  * @param activeField Optional string containing the active field path
  * @returns The field name in dot notation, or undefined if no active field
  */
-export const getActiveFieldNameForAppDocs = (activeField?: string) => {
+export const getCompleteActiveFieldName = (activeField?: string) => {
   if (!activeField) {
     return undefined;
   }

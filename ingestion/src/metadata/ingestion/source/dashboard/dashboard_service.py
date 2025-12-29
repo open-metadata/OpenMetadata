@@ -38,6 +38,9 @@ from metadata.generated.schema.entity.services.dashboardService import (
 from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
     DashboardServiceMetadataPipeline,
 )
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -348,6 +351,17 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             self.source_config.lineageInformation.dbServicePrefixes or []
             if self.source_config.lineageInformation
             else []
+        )
+
+    def get_query_parser_type(self) -> Optional[QueryParserType]:
+        """
+        Get the query parser type from config.
+        Returns Auto as default if not specified.
+        """
+        return (
+            self.source_config.queryParserConfig.type
+            if self.source_config.queryParserConfig
+            else None
         )
 
     def parse_db_service_prefix(
