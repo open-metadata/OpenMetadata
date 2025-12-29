@@ -105,15 +105,27 @@ public class McpServer implements McpServerProvider {
       //                          .build();
       // Create connector-based OAuth provider (redirect-free, internal OAuth)
       String baseUrl = "http://localhost:8585";
+      // Get default connector from environment (null in production, set for dev/testing)
+      String defaultConnector = System.getenv("MCP_DEFAULT_CONNECTOR");
+      if (defaultConnector == null || defaultConnector.trim().isEmpty()) {
+        defaultConnector = null; // No default in production
+        log.info("MCP OAuth: No default connector configured (production mode)");
+      } else {
+        log.warn(
+            "MCP OAuth: Using default connector '{}' from MCP_DEFAULT_CONNECTOR (dev/test only)",
+            defaultConnector);
+      }
       ConnectorOAuthProvider authProvider =
           new ConnectorOAuthProvider(
               SecretsManagerFactory.getSecretsManager(),
               (DatabaseServiceRepository) Entity.getEntityRepository(Entity.DATABASE_SERVICE),
-              baseUrl);
+              baseUrl,
+              defaultConnector);
 
       // Register default MCP client (for dynamic client registration)
       // Check if client already exists to avoid duplicate entry errors on server restart
-      OAuthClientInformation existingClient = authProvider.getClient("openmetadata-mcp-client").get();
+      OAuthClientInformation existingClient =
+          authProvider.getClient("openmetadata-mcp-client").get();
       if (existingClient == null) {
         OAuthClientInformation mcpClient = new OAuthClientInformation();
         mcpClient.setClientId("openmetadata-mcp-client");

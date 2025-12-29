@@ -77,6 +77,7 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
   private final DatabaseServiceRepository serviceRepository;
   private final HttpClient httpClient;
   private final String baseUrl;
+  private final String defaultConnectorName;
 
   // Database-backed repositories for OAuth persistence
   private final org.openmetadata.mcp.server.auth.repository.OAuthClientRepository clientRepository;
@@ -90,13 +91,18 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
    * @param secretsManager SecretsManager for decrypting OAuth credentials
    * @param serviceRepository Repository for accessing database service configurations
    * @param baseUrl Base URL of the OpenMetadata server
+   * @param defaultConnectorName Default connector to use when none specified (null in production)
    */
   public ConnectorOAuthProvider(
-      SecretsManager secretsManager, DatabaseServiceRepository serviceRepository, String baseUrl) {
+      SecretsManager secretsManager,
+      DatabaseServiceRepository serviceRepository,
+      String baseUrl,
+      String defaultConnectorName) {
     this.secretsManager = secretsManager;
     this.serviceRepository = serviceRepository;
     this.httpClient = HttpClient.newBuilder().build();
     this.baseUrl = baseUrl;
+    this.defaultConnectorName = defaultConnectorName;
 
     // Initialize database repositories
     this.clientRepository = new org.openmetadata.mcp.server.auth.repository.OAuthClientRepository();
@@ -185,10 +191,22 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
         }
       }
 
-      // If still no connector name, use default for MCP Inspector
+      // If still no connector name, use configured default (if any)
       if (connectorName == null || connectorName.isEmpty()) {
-        connectorName = "test-snowflake-mcp"; // Default connector for testing
-        LOG.info("No connector_name provided, using default: {}", connectorName);
+        if (defaultConnectorName != null && !defaultConnectorName.isEmpty()) {
+          connectorName = defaultConnectorName;
+          LOG.info("No connector_name provided, using configured default: {}", connectorName);
+        } else {
+          throw new AuthorizeException(
+              "invalid_request", "connector_name parameter is required (no default configured)");
+        }
+      }
+
+      // Validate connector name format to prevent injection attacks
+      if (!connectorName.matches("^[a-zA-Z0-9_-]+$")) {
+        throw new AuthorizeException(
+            "invalid_request",
+            "Connector name contains invalid characters (only a-z, A-Z, 0-9, _, - allowed)");
       }
 
       LOG.info("Internal OAuth authorization requested for connector: {}", connectorName);
@@ -395,12 +413,25 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
       // Parse new token from response
       JsonNode tokenResponse = JsonUtils.getObjectMapper().readTree(response.body());
 
-      // Update OAuth credentials with new token
-      oauth.setAccessToken(tokenResponse.get("access_token").asText());
+      // Validate required fields exist
+      JsonNode accessTokenNode = tokenResponse.get("access_token");
+      if (accessTokenNode == null || accessTokenNode.isNull()) {
+        throw new RuntimeException("Token refresh response missing access_token field");
+      }
+      JsonNode expiresInNode = tokenResponse.get("expires_in");
+      if (expiresInNode == null || expiresInNode.isNull()) {
+        throw new RuntimeException("Token refresh response missing expires_in field");
+      }
 
-      // Calculate new expiry time
-      long expiresIn = tokenResponse.get("expires_in").asLong();
-      oauth.setExpiresAt((int) Instant.now().plusSeconds(expiresIn).getEpochSecond());
+      // Update OAuth credentials with new token
+      oauth.setAccessToken(accessTokenNode.asText());
+
+      // Calculate new expiry time with validation
+      long expiresIn = expiresInNode.asLong();
+      if (expiresIn <= 0 || expiresIn > 31536000) { // Max 1 year
+        throw new RuntimeException("Invalid expires_in value: " + expiresIn);
+      }
+      oauth.setExpiresAt(Instant.now().plusSeconds(expiresIn).getEpochSecond());
 
       // Some providers return new refresh token on each refresh
       if (tokenResponse.has("refresh_token")) {
@@ -657,7 +688,7 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
       accessToken.setClientId(client.getClientId());
       accessToken.setScopes(dbCode.scopes());
       long accessTokenExpiresAt = Instant.now().plusSeconds(3600).getEpochSecond();
-      accessToken.setExpiresAt((int) accessTokenExpiresAt);
+      accessToken.setExpiresAt(accessTokenExpiresAt);
 
       // Store access token in database with connector name for token->connector mapping
       tokenRepository.storeAccessToken(
@@ -676,7 +707,7 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
       refreshToken.setScopes(dbCode.scopes());
       long refreshTokenExpiresAt =
           Instant.now().plusSeconds(86400 * 30).getEpochSecond(); // 30 days
-      refreshToken.setExpiresAt((int) refreshTokenExpiresAt);
+      refreshToken.setExpiresAt(refreshTokenExpiresAt);
 
       // Store refresh token in database
       tokenRepository.storeRefreshToken(
@@ -828,8 +859,7 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
       newAccessToken.setToken(mcpAccessToken);
       newAccessToken.setClientId(client.getClientId());
       newAccessToken.setScopes(scopes != null ? scopes : storedToken.getScopes());
-      newAccessToken.setExpiresAt(
-          (int) Instant.now().plusSeconds(tokenExpirySeconds).getEpochSecond());
+      newAccessToken.setExpiresAt(Instant.now().plusSeconds(tokenExpirySeconds).getEpochSecond());
 
       // Store new access token in database
       tokenRepository.storeAccessToken(

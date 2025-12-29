@@ -3,7 +3,6 @@ package org.openmetadata.mcp.auth;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -90,7 +89,8 @@ public class OAuthClientMetadata {
 
     for (String requestedScopeItem : requestedScopes) {
       if (!allowedScopes.contains(requestedScopeItem)) {
-        throw new InvalidScopeException("Client was not registered with scope " + requestedScopeItem);
+        throw new InvalidScopeException(
+            "Client was not registered with scope " + requestedScopeItem);
       }
     }
 
