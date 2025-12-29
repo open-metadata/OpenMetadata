@@ -82,6 +82,9 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   public void handleLogin(HttpServletRequest req, HttpServletResponse resp) {
     try {
       String callbackUrl = req.getParameter("callback");
+      if (callbackUrl == null) {
+        callbackUrl = req.getParameter("redirectUri");
+      }
       if (callbackUrl != null) {
         req.getSession(true).setAttribute(SESSION_REDIRECT_URI, callbackUrl);
       }
@@ -163,10 +166,21 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       // Update last login time
       Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
 
-      // Redirect to auth callback with access token (unified pattern like Basic/LDAP)
-      String callbackUrl =
-          "/auth/callback?id_token="
-              + URLEncoder.encode(jwtAuthMechanism.getJWTToken(), StandardCharsets.UTF_8);
+      // Get stored redirect URI from session
+      String redirectUri = (String) req.getSession().getAttribute(SESSION_REDIRECT_URI);
+      LOG.debug("SAML Callback - redirectUri from session: {}", redirectUri);
+
+      String callbackUrl;
+      if (redirectUri != null) {
+        callbackUrl =
+            redirectUri
+                + "?id_token="
+                + URLEncoder.encode(jwtAuthMechanism.getJWTToken(), StandardCharsets.UTF_8);
+      } else {
+        callbackUrl =
+            "/auth/callback?id_token="
+                + URLEncoder.encode(jwtAuthMechanism.getJWTToken(), StandardCharsets.UTF_8);
+      }
       resp.sendRedirect(callbackUrl);
 
     } catch (Exception e) {

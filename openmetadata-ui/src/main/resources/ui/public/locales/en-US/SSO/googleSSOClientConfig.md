@@ -246,7 +246,7 @@ These fields are only shown when Client Type is set to **Confidential**.
 ### <span data-id="adminPrincipals">Admin Principals</span>
 
 - **Definition:** List of user principals who will have admin access.
-- **Example:** ["admin@company.com", "superuser@company.com"]
+- **Example:** ["admin", "superuser"]
 - **Why it matters:** These users will have full administrative privileges in OpenMetadata.
 - **Note:** Use email addresses that match the JWT principal claims
 
