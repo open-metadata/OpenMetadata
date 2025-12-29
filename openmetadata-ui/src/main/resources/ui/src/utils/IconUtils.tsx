@@ -56,6 +56,7 @@ import {
   XClose,
 } from '@untitledui/icons';
 import { ComponentType, FC } from 'react';
+import { IMAGE_URL_PATTERN } from '../constants/regex.constants';
 
 /**
  * Get the proper image source URL for tag/classification icons
@@ -152,7 +153,7 @@ interface RenderIconOptions {
  * Utility function to render an icon from either a URL or an icon name
  * @param iconValue - Either a URL string or an icon name from ICON_MAP
  * @param options - Options for rendering the icon
- * @returns React element of the icon or image
+ * @returns React element of the icon or image, or null if invalid
  */
 export const renderIcon = (
   iconValue: string | undefined,
@@ -171,7 +172,12 @@ export const renderIcon = (
     return <IconComponent size={size} style={{ strokeWidth, ...style }} />;
   }
 
-  // Otherwise, treat it as an image URL
+  // Only render as image if it looks like a valid URL/path or has an image extension
+  if (!IMAGE_URL_PATTERN.test(iconValue)) {
+    return null;
+  }
+
+  // Render as image with error handling
   return (
     <img
       alt="icon"
@@ -182,6 +188,10 @@ export const renderIcon = (
         height: size,
         objectFit: 'contain',
         ...style,
+      }}
+      onError={(e) => {
+        // Hide broken image icon by setting display to none
+        (e.target as HTMLImageElement).style.display = 'none';
       }}
     />
   );
