@@ -31,6 +31,7 @@ from metadata.generated.antlr.FqnLexer import FqnLexer
 from metadata.generated.antlr.FqnParser import FqnParser
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.apiCollection import APICollection
+from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -312,6 +313,22 @@ def _(
             f"Args should be informed, but got service=`{service_name}`, collection=`{api_collection_name}``"
         )
     return _build(service_name, api_collection_name)
+
+
+@fqn_build_registry.add(APIEndpoint)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for API endpoint FQN building
+    *,
+    service_name: str,
+    api_collection_name: str,
+    api_endpoint_name: str,
+) -> str:
+    if not service_name or not api_collection_name or not api_endpoint_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, "
+            f"collection=`{api_collection_name}`, endpoint=`{api_endpoint_name}`"
+        )
+    return _build(service_name, api_collection_name, api_endpoint_name)
 
 
 @fqn_build_registry.add(Chart)

@@ -78,7 +78,10 @@ class ApiServiceTopology(ServiceTopology):
             ),
         ],
         children=["api_collection"],
-        post_process=["mark_api_collections_as_deleted"],
+        post_process=[
+            "mark_api_collections_as_deleted",
+            "mark_api_endpoints_as_deleted",
+        ],
     )
     api_collection: Annotated[
         TopologyNode, Field(description="API Collection Processing Node")
@@ -202,6 +205,36 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
         self.api_collection_source_state.add(api_collection_fqn)
+
+    def register_record_api_endpoint(
+        self, endpoint_request: CreateAPIEndpointRequest
+    ) -> None:
+        """
+        Mark the api endpoint record as scanned and update
+        the api_endpoint_source_state
+        """
+        api_endpoint_fqn = fqn.build(
+            self.metadata,
+            entity_type=APIEndpoint,
+            service_name=self.context.get().api_service,
+            api_collection_name=endpoint_request.apiCollection.root.split(".")[-1],
+            api_endpoint_name=endpoint_request.name.root,
+        )
+
+        self.api_endpoint_source_state.add(api_endpoint_fqn)
+
+    def mark_api_endpoints_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """
+        Method to mark api endpoints as deleted for all collections
+        """
+        if self.source_config.markDeletedApiEndpoints:
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=APIEndpoint,
+                entity_source_state=self.api_endpoint_source_state,
+                mark_deleted_entity=self.source_config.markDeletedApiEndpoints,
+                params={"service": self.context.get().api_service},
+            )
 
     def prepare(self):
         """By default, nothing to prepare"""
