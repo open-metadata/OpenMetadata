@@ -37,6 +37,7 @@ public class AuthorizationHandler {
     String codeChallengeMethod = params.get("code_challenge_method");
     String state = params.get("state");
     String scope = params.get("scope");
+    String connectorName = params.get("connector_name");
 
     // Validate required parameters
     if (clientId == null || responseType == null || codeChallenge == null) {
@@ -94,6 +95,7 @@ public class AuthorizationHandler {
               authParams.setCodeChallenge(codeChallenge);
               authParams.setRedirectUri(redirectUri);
               authParams.setRedirectUriProvidedExplicitly(redirectUriStr != null);
+              authParams.setConnectorName(connectorName);
 
               // Let the provider handle the authorization
               try {

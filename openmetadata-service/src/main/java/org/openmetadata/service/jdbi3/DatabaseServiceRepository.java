@@ -80,7 +80,10 @@ public class DatabaseServiceRepository
    * @return The updated database service
    */
   public DatabaseService persistOAuthCredentials(DatabaseService service) {
-    dao.update(service.getId(), service.getFullyQualifiedName(), org.openmetadata.schema.utils.JsonUtils.pojoToJson(service));
+    dao.update(
+        service.getId(),
+        service.getFullyQualifiedName(),
+        org.openmetadata.schema.utils.JsonUtils.pojoToJson(service));
     LOG.info("Persisted OAuth credentials to database for service: {}", service.getName());
     return service;
   }

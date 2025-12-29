@@ -18,6 +18,8 @@ public class AuthorizationParams {
 
   private boolean redirectUriProvidedExplicitly;
 
+  private String connectorName;
+
   public AuthorizationParams() {}
 
   public AuthorizationParams(
@@ -71,5 +73,13 @@ public class AuthorizationParams {
 
   public void setRedirectUriProvidedExplicitly(boolean redirectUriProvidedExplicitly) {
     this.redirectUriProvidedExplicitly = redirectUriProvidedExplicitly;
+  }
+
+  public String getConnectorName() {
+    return connectorName;
+  }
+
+  public void setConnectorName(String connectorName) {
+    this.connectorName = connectorName;
   }
 }

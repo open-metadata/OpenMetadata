@@ -20,6 +20,7 @@ public class OAuthRecords {
       String code,
       String clientId,
       String connectorName,
+      String userName,
       String codeChallenge,
       String codeChallengeMethod,
       String redirectUri,

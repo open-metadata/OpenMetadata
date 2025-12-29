@@ -8,11 +8,13 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Filter to handle OAuth well-known endpoints at the root level.
  * Redirects requests to the appropriate MCP servlet endpoint.
  */
+@Slf4j
 public class OAuthWellKnownFilter implements Filter {
 
   @Override
@@ -23,6 +25,8 @@ public class OAuthWellKnownFilter implements Filter {
     HttpServletRequest request = (HttpServletRequest) servletRequest;
     HttpServletResponse response = (HttpServletResponse) servletResponse;
     String path = request.getRequestURI();
+
+    LOG.debug("OAuthWellKnownFilter processing request: {}", path);
 
     // Handle OAuth Authorization Server metadata discovery per RFC 8414
     if (path.equals("/.well-known/oauth-authorization-server/mcp")

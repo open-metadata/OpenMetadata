@@ -84,6 +84,11 @@
             <version>${dropwizard.version}</version>
         </dependency>
         <dependency>
+            <groupId>io.dropwizard</groupId>
+            <artifactId>dropwizard-jersey</artifactId>
+            <version>${dropwizard.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-servlet</artifactId>
             <version>${jetty.version}</version>
