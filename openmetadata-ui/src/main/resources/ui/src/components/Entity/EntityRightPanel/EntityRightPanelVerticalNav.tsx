@@ -24,7 +24,7 @@ import {
   hasCustomPropertiesTab,
   hasLineageTab,
   hasSchemaTab,
-} from './EntityRightPanelVerticalNav.constants';
+} from '../../../utils/EntityUtils';
 import {
   EntityRightPanelTab,
   EntityRightPanelVerticalNavProps,

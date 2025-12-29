@@ -43,6 +43,7 @@ import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { listTestCases } from '../../rest/testAPI';
 import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { hasLineageTab } from '../../utils/EntityUtils';
 import { generateEntityLink, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DataProductsSection from '../common/DataProductsSection/DataProductsSection';
@@ -61,7 +62,6 @@ import {
   DataAssetSummaryPanelProps,
   TestCaseStatusCounts,
 } from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
-import { hasLineageTab } from '../Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
 
 export const DataAssetSummaryPanelV1 = ({
   dataAsset,

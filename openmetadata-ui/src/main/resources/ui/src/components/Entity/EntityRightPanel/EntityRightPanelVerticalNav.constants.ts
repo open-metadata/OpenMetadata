@@ -12,8 +12,8 @@
  */
 import { EntityType } from '../../../enums/entity.enum';
 
-// Internal Sets for O(1) lookup performance
-const SCHEMA_TABS_SET = new Set<EntityType>([
+// Sets for O(1) lookup performance - exported for reuse across the codebase
+export const SCHEMA_TABS_SET = new Set<EntityType>([
   EntityType.API_COLLECTION,
   EntityType.API_ENDPOINT,
   EntityType.CONTAINER,
@@ -27,7 +27,7 @@ const SCHEMA_TABS_SET = new Set<EntityType>([
   EntityType.TOPIC,
 ]);
 
-const LINEAGE_TABS_SET = new Set<EntityType>([
+export const LINEAGE_TABS_SET = new Set<EntityType>([
   EntityType.API_ENDPOINT,
   EntityType.CHART,
   EntityType.CONTAINER,
@@ -41,7 +41,7 @@ const LINEAGE_TABS_SET = new Set<EntityType>([
   EntityType.TOPIC,
 ]);
 
-const CUSTOM_PROPERTIES_TABS_SET = new Set<EntityType>([
+export const CUSTOM_PROPERTIES_TABS_SET = new Set<EntityType>([
   EntityType.API_COLLECTION,
   EntityType.API_ENDPOINT,
   EntityType.CHART,
@@ -72,13 +72,3 @@ export const ENTITY_RIGHT_PANEL_LINEAGE_TABS = Array.from(LINEAGE_TABS_SET);
 export const ENTITY_RIGHT_PANEL_CUSTOM_PROPERTIES_TABS = Array.from(
   CUSTOM_PROPERTIES_TABS_SET
 );
-
-// Helper functions for cleaner and more performant usage
-export const hasSchemaTab = (entityType: EntityType): boolean =>
-  SCHEMA_TABS_SET.has(entityType);
-
-export const hasLineageTab = (entityType: EntityType): boolean =>
-  LINEAGE_TABS_SET.has(entityType);
-
-export const hasCustomPropertiesTab = (entityType: EntityType): boolean =>
-  CUSTOM_PROPERTIES_TABS_SET.has(entityType);

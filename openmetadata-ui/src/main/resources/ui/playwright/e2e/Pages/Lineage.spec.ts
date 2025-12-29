@@ -1612,10 +1612,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
         const upstreamTableId = upstreamTable.entityResponseData?.id;
         const downstreamTableId = downstreamTable.entityResponseData?.id;
 
-        if (!currentTableId || !upstreamTableId || !downstreamTableId) {
-          throw new Error('Entity IDs are missing');
-        }
-
         await connectEdgeBetweenNodesViaAPI(
           apiContext,
           {
@@ -1647,9 +1643,7 @@ test.describe.serial('Test pagination in column level lineage', () => {
         const searchTerm =
           currentTable.entityResponseData?.['fullyQualifiedName'] ||
           currentTable.entity.name;
-        if (!searchTerm) {
-          throw new Error('Cannot determine search term for entity');
-        }
+        
         await currentTable.visitEntityPage(page, searchTerm);
 
         // Navigate to lineage tab (this navigates to the full lineage page)
@@ -1658,9 +1652,7 @@ test.describe.serial('Test pagination in column level lineage', () => {
         // Click on the current entity node to open the sidebar drawer
         const nodeFqn =
           currentTable.entityResponseData?.['fullyQualifiedName'];
-        if (!nodeFqn) {
-          throw new Error('Entity fullyQualifiedName is missing');
-        }
+        
         await clickLineageNode(page, nodeFqn);
 
         // Wait for the lineage entity panel (sidebar drawer) to open
@@ -1671,23 +1663,10 @@ test.describe.serial('Test pagination in column level lineage', () => {
         await waitForAllLoadersToDisappear(page);
 
         // Try to find custom properties tab in the lineage sidebar - use data-testid first (priority 1)
-        let customPropertiesTab = lineagePanel.getByTestId('custom-properties-tab');
-        const isTabVisible = await customPropertiesTab.isVisible();
+        const customPropertiesTab = lineagePanel.getByTestId('custom-properties-tab');
 
-        if (!isTabVisible) {
-          // Fallback: use getByRole (priority 2) within the lineage panel
-          customPropertiesTab = lineagePanel.getByRole('menuitem', {
-            name: /custom propert/i,
-          });
-        }
-
-        // Verify the custom properties tab is visible in the lineage sidebar
         await expect(customPropertiesTab).toBeVisible();
 
-        // Verify the tab is clickable
-        await expect(customPropertiesTab).toBeEnabled();
-
-        // Click the tab to verify it works
         await customPropertiesTab.click();
         await waitForAllLoadersToDisappear(page);
       });
@@ -1700,190 +1679,173 @@ test.describe.serial('Test pagination in column level lineage', () => {
       await afterAction();
     }
   });
+});
 
-  test('Verify custom properties tab visibility logic for supported entity types', async ({
-    page,
-  }) => {
-    test.slow();
+test.describe('Verify custom properties tab visibility logic for supported entity types', () => {
+  const supportedEntities = [
+    { entity: new TableClass(), type: 'table' },
+    { entity: new TopicClass(), type: 'topic' },
+    { entity: new DashboardClass(), type: 'dashboard' },
+    { entity: new PipelineClass(), type: 'pipeline' },
+    { entity: new MlModelClass(), type: 'mlmodel' },
+    { entity: new ContainerClass(), type: 'container' },
+    { entity: new SearchIndexClass(), type: 'searchIndex' },
+    { entity: new ApiEndpointClass(), type: 'apiEndpoint' },
+    { entity: new MetricClass(), type: 'metric' },
+    { entity: new ChartClass(), type: 'chart' },
+  ];
 
-    const { apiContext, afterAction } = await getApiContext(page);
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
 
-    const supportedEntities = [
-      { entity: new TableClass(), type: 'table' },
-      { entity: new TopicClass(), type: 'topic' },
-      { entity: new DashboardClass(), type: 'dashboard' },
-      { entity: new PipelineClass(), type: 'pipeline' },
-      { entity: new MlModelClass(), type: 'mlmodel' },
-      { entity: new ContainerClass(), type: 'container' },
-      { entity: new SearchIndexClass(), type: 'searchIndex' },
-      { entity: new ApiEndpointClass(), type: 'apiEndpoint' },
-      { entity: new MetricClass(), type: 'metric' },
-      { entity: new ChartClass(), type: 'chart' },
-    ];
-
-    try {
-      await test.step('Create entities for testing', async () => {
-        for (const { entity } of supportedEntities) {
-          await entity.create(apiContext);
-        }
-      });
-
-      for (const { entity, type } of supportedEntities) {
-        await test.step(`Verify custom properties tab IS visible for supported type: ${type}`, async () => {
-          const searchTerm =
-            entity.entityResponseData?.['fullyQualifiedName'] ||
-            entity.entity.name;
-          if (!searchTerm) {
-            throw new Error(`Cannot determine search term for ${type}`);
-          }
-
-          await entity.visitEntityPage(page, searchTerm);
-          await visitLineageTab(page);
-
-          const nodeFqn = entity.entityResponseData?.['fullyQualifiedName'];
-          if (!nodeFqn) {
-            throw new Error(`Entity fullyQualifiedName is missing for ${type}`);
-          }
-
-          await clickLineageNode(page, nodeFqn);
-
-          const lineagePanel = page.getByTestId('lineage-entity-panel');
-          await expect(lineagePanel).toBeVisible();
-          await waitForAllLoadersToDisappear(page);
-
-          let customPropertiesTab = lineagePanel.getByTestId(
-            'custom-properties-tab'
-          );
-          const isTabVisible = await customPropertiesTab
-            .isVisible()
-            .catch(() => false);
-
-          if (!isTabVisible) {
-            customPropertiesTab = lineagePanel.getByRole('menuitem', {
-              name: /custom propert/i,
-            });
-          }
-
-          await expect(customPropertiesTab).toBeVisible();
-          await expect(customPropertiesTab).toBeEnabled();
-
-          const closeButton = lineagePanel.getByTestId('drawer-close-icon');
-          if (await closeButton.isVisible()) {
-            await closeButton.click();
-            await expect(lineagePanel).not.toBeVisible();
-          }
-        });
-      }
-    } finally {
-      for (const { entity } of supportedEntities) {
-        await entity.delete(apiContext);
-      }
-      await afterAction();
+    for (const { entity } of supportedEntities) {
+      await entity.create(apiContext);
     }
+
+    await afterAction();
   });
 
-  test('Verify custom properties tab is NOT visible for unsupported entity types in platform lineage', async ({
-    page,
-  }) => {
-    test.slow();
+  test.afterAll(async ({ browser }) => {
+    const { afterAction } = await createNewPage(browser);
 
-    const { apiContext, afterAction } = await getApiContext(page);
+    await afterAction();
+  });
 
-    const unsupportedServices = [
-      { service: new DatabaseServiceClass(), type: 'databaseService' },
-      { service: new MessagingServiceClass(), type: 'messagingService' },
-      { service: new DashboardServiceClass(), type: 'dashboardService' },
-      { service: new PipelineServiceClass(), type: 'pipelineService' },
-      { service: new MlmodelServiceClass(), type: 'mlmodelService' },
-      { service: new StorageServiceClass(), type: 'storageService' },
-      { service: new ApiServiceClass(), type: 'apiService' },
-    ];
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
 
-    try {
-      await test.step('Create service entities for testing', async () => {
-        for (const { service } of unsupportedServices) {
-          await service.create(apiContext);
-        }
+  for (const { entity, type } of supportedEntities) {
+    test(`Verify custom properties tab IS visible for supported type: ${type}`, async ({
+      page,
+    }) => {
+      test.slow();
+
+      const searchTerm =
+        entity.entityResponseData?.['fullyQualifiedName'] ||
+        entity.entity.name;
+
+      await entity.visitEntityPage(page, searchTerm);
+      await visitLineageTab(page);
+
+      const nodeFqn = entity.entityResponseData?.['fullyQualifiedName'];
+
+      await clickLineageNode(page, nodeFqn);
+
+      const lineagePanel = page.getByTestId('lineage-entity-panel');
+      await expect(lineagePanel).toBeVisible();
+      await waitForAllLoadersToDisappear(page);
+
+      const customPropertiesTab = lineagePanel.getByTestId(
+        'custom-properties-tab'
+      );
+      await expect(customPropertiesTab).toBeVisible();
+
+      const closeButton = lineagePanel.getByTestId('drawer-close-icon');
+      if (await closeButton.isVisible()) {
+        await closeButton.click();
+        await expect(lineagePanel).not.toBeVisible();
+      }
+    });
+  }
+});
+
+test.describe('Verify custom properties tab is NOT visible for unsupported entity types in platform lineage', () => {
+  const unsupportedServices = [
+    { service: new DatabaseServiceClass(), type: 'databaseService' },
+    { service: new MessagingServiceClass(), type: 'messagingService' },
+    { service: new DashboardServiceClass(), type: 'dashboardService' },
+    { service: new PipelineServiceClass(), type: 'pipelineService' },
+    { service: new MlmodelServiceClass(), type: 'mlmodelService' },
+    { service: new StorageServiceClass(), type: 'storageService' },
+    { service: new ApiServiceClass(), type: 'apiService' },
+  ];
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    for (const { service } of unsupportedServices) {
+      await service.create(apiContext);
+    }
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { afterAction } = await createNewPage(browser);
+    
+    await afterAction();
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
+  for (const { service, type } of unsupportedServices) {
+    test(`Verify custom properties tab is NOT visible for ${type} in platform lineage`, async ({
+      page,
+    }) => {
+      test.slow();
+
+      const serviceFqn = get(
+        service,
+        'entityResponseData.fullyQualifiedName'
+      );
+
+      await sidebarClick(page, SidebarItem.LINEAGE);
+
+      const searchEntitySelect = page.getByTestId('search-entity-select');
+      await expect(searchEntitySelect).toBeVisible();
+      await searchEntitySelect.click();
+
+      const searchInput = page
+        .getByTestId('search-entity-select')
+        .locator('.ant-select-selection-search-input');
+      await searchInput.fill(service.entity.name);
+
+      await page.waitForRequest(
+        (req) =>
+          req.url().includes('/api/v1/search/query') &&
+          req.url().includes('deleted=false')
+      );
+
+      const nodeSuggestion = page.getByTestId(
+        `node-suggestion-${serviceFqn}`
+      );
+      await expect(nodeSuggestion).toBeVisible();
+      await nodeSuggestion.click();
+
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/lineage/getLineage') &&
+          response.status() === 200
+      );
+
+      await expect(
+        page.getByTestId(`lineage-node-${serviceFqn}`)
+      ).toBeVisible();
+
+      await clickLineageNode(page, serviceFqn);
+
+      const lineagePanel = page.getByTestId('lineage-entity-panel');
+      await expect(lineagePanel).toBeVisible();
+      await waitForAllLoadersToDisappear(page);
+
+      const customPropertiesTab = lineagePanel.getByTestId(
+        'custom-properties-tab'
+      );
+      const customPropertiesTabByRole = lineagePanel.getByRole('menuitem', {
+        name: /custom propert/i,
       });
 
-      for (const { service, type } of unsupportedServices) {
-        await test.step(`Verify custom properties tab is NOT visible for ${type} in platform lineage`, async () => {
-          const serviceFqn = get(
-            service,
-            'entityResponseData.fullyQualifiedName'
-          );
+      await expect(customPropertiesTab).not.toBeVisible();
+      await expect(customPropertiesTabByRole).not.toBeVisible();
 
-          if (!serviceFqn) {
-            throw new Error(`Service fullyQualifiedName is missing for ${type}`);
-          }
-
-          await sidebarClick(page, SidebarItem.LINEAGE);
-
-          const searchEntitySelect = page.getByTestId('search-entity-select');
-          await expect(searchEntitySelect).toBeVisible();
-          await searchEntitySelect.click();
-
-          // Use getByTestId for the input field if available, otherwise fallback to locator
-          const searchInput = page
-            .getByTestId('search-entity-select')
-            .locator('.ant-select-selection-search-input');
-          await searchInput.fill(service.entity.name);
-
-          await page.waitForRequest(
-            (req) =>
-              req.url().includes('/api/v1/search/query') &&
-              req.url().includes('deleted=false')
-          );
-
-          // Wait for dropdown to appear using data-testid if available, otherwise use visible state
-          const dropdown = page.locator('.ant-select-dropdown');
-          await expect(dropdown).toBeVisible();
-
-          const nodeSuggestion = page.getByTestId(
-            `node-suggestion-${serviceFqn}`
-          );
-          await expect(nodeSuggestion).toBeVisible();
-          await nodeSuggestion.click();
-
-          // Wait for specific lineage API response
-          await page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/lineage/getLineage') &&
-              response.status() === 200
-          );
-
-          await expect(
-            page.getByTestId(`lineage-node-${serviceFqn}`)
-          ).toBeVisible();
-
-          await clickLineageNode(page, serviceFqn);
-
-          const lineagePanel = page.getByTestId('lineage-entity-panel');
-          await expect(lineagePanel).toBeVisible();
-          await waitForAllLoadersToDisappear(page);
-
-          const customPropertiesTab = lineagePanel.getByTestId(
-            'custom-properties-tab'
-          );
-          const customPropertiesTabByRole = lineagePanel.getByRole('menuitem', {
-            name: /custom propert/i,
-          });
-
-          await expect(customPropertiesTab).not.toBeVisible();
-          await expect(customPropertiesTabByRole).not.toBeVisible();
-
-          const closeButton = lineagePanel.getByTestId('drawer-close-icon');
-          if (await closeButton.isVisible()) {
-            await closeButton.click();
-            await expect(lineagePanel).not.toBeVisible();
-          }
-        });
+      const closeButton = lineagePanel.getByTestId('drawer-close-icon');
+      if (await closeButton.isVisible()) {
+        await closeButton.click();
+        await expect(lineagePanel).not.toBeVisible();
       }
-    } finally {
-      for (const { service } of unsupportedServices) {
-        await service.delete(apiContext);
-      }
-      await afterAction();
-    }
-  });
+    });
+  }
 });
