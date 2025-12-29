@@ -267,13 +267,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     try {
       validatePrefixedTokenRequest(jwtFilter, tokenWithType);
-      //      // Use the BearerAuthenticator to validate the token
-      //      AccessToken token = bearerAuthenticator.authenticate(authHeader).join();
-      //
-      //      // Create auth context and store it in request attributes and thread-local
-      //      AuthContext authContext = new AuthContext(token);
-      //      request.setAttribute("authContext", authContext);
-      //      AuthContext.setCurrent(authContext);
 
       return true;
     } catch (Exception e) {
@@ -386,6 +379,24 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     }
   }
 
+  // TODO: SECURITY - Missing Rate Limiting (85% confidence)
+  // OAuth endpoints (authorize, token, revoke) have no rate limiting.
+  // An attacker can brute-force authorization codes, tokens, or client credentials.
+  //
+  // Impact: Brute force attacks on OAuth flows, token enumeration possible.
+  //
+  // Fix Required: Implement rate limiting per client_id and IP address:
+  // - Use token bucket or sliding window algorithm
+  // - Recommended limits:
+  //   * Authorization endpoint: 10 requests/minute per IP
+  //   * Token endpoint: 5 requests/minute per client_id
+  //   * Failed auth attempts: 3 failures triggers temporary block
+  // - Store rate limit state in Redis or database
+  // - Return 429 Too Many Requests when limit exceeded
+  //
+  // Libraries to consider: Bucket4j, Resilience4j, Guava RateLimiter
+  // See: https://datatracker.ietf.org/doc/html/rfc6749#section-10.11
+
   private void handleAuthorizeRequest(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
     // Extract parameters
@@ -421,55 +432,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       getObjectMapper().writeValue(response.getOutputStream(), error);
     }
   }
-
-  // private void handleAuthorizeRequest(HttpServletRequest request, HttpServletResponse
-  // response) throws IOException {
-  // if ("GET".equalsIgnoreCase(request.getMethod())) {
-  // // Render consent page
-  // String clientId = request.getParameter("client_id");
-  // String redirectUri = request.getParameter("redirect_uri");
-  // String scope = request.getParameter("scope");
-  // String state = request.getParameter("state");
-  // String codeChallenge = request.getParameter("code_challenge");
-  // String codeChallengeMethod = request.getParameter("code_challenge_method");
-  // String responseType = request.getParameter("response_type");
-
-  // response.setContentType("text/html");
-  // response.getWriter()
-  // .write("<html><body>" + "<h1>Authorize Access</h1>" + "<p>Client <b>" + clientId
-  // + "</b> is requesting access with scope: <b>" + scope + "</b></p>"
-  // + "<form method='post' action='/authorize'>" + "<input type='hidden'
-  // name='client_id' value='"
-  // + clientId + "'/>" + "<input type='hidden' name='redirect_uri' value='" +
-  // redirectUri + "'/>"
-  // + "<input type='hidden' name='scope' value='" + scope + "'/>"
-  // + "<input type='hidden' name='state' value='" + state + "'/>"
-  // + "<input type='hidden' name='code_challenge' value='" + codeChallenge + "'/>"
-  // + "<input type='hidden' name='code_challenge_method' value='" + codeChallengeMethod
-  // + "'/>"
-  // + "<input type='hidden' name='response_type' value='" + responseType + "'/>"
-  // + "<button type='submit'>Authorize</button>" + "</form>" + "</body></html>");
-  // }
-  // else if ("POST".equalsIgnoreCase(request.getMethod())) {
-  // // Extract parameters from form
-  // Map<String, String> params = new HashMap<>();
-  // request.getParameterMap().forEach((key, values) -> {
-  // if (values.length > 0) {
-  // params.put(key, values[0]);
-  // }
-  // });
-
-  // try {
-  // String redirectUrl = authorizationHandler.handle(params).join().getRedirectUrl();
-  // response.setHeader("Location", redirectUrl);
-  // response.setHeader("Cache-Control", "no-store");
-  // response.setStatus(302); // Found
-  // }
-  // catch (CompletionException ex) {
-  // response.setStatus(400);
-  // }
-  // }
-  // }
 
   private void handleTokenRequest(HttpServletRequest request, HttpServletResponse response)
       throws IOException {

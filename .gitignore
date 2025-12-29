@@ -184,9 +184,14 @@ memory
 
 
 
-# Local test files for OAuth development  
+# Local test files for OAuth development
 register-claude-client-local.sh
 test-local-google-oauth.sh
 conf/google-oauth-test.env
 ingestion/redshift_simple.yaml
 
+# MCP OAuth Test Credentials (local only - do not commit)
+openmetadata-mcp/scripts/mcp-oauth-tests/create-*-service.json
+!openmetadata-mcp/scripts/mcp-oauth-tests/create-*-service.json.example
+openmetadata-mcp/scripts/mcp-oauth-tests/*.sh
+!openmetadata-mcp/scripts/mcp-oauth-tests/*.sh.example
