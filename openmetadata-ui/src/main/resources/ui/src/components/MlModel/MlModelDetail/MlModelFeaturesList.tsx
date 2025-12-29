@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { EntityTags } from 'Models';
 import { Card, Col, Divider, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
+import { EntityTags } from 'Models';
 import { Fragment, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
@@ -22,13 +22,13 @@ import { Column } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/type/schema';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnDetailPanel } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import SourceList from './SourceList.component';
 
 const MlModelFeaturesList = () => {
@@ -322,11 +322,9 @@ const MlModelFeaturesList = () => {
         )}
 
         <ColumnDetailPanel
-          allColumns={
-            (mlFeatures ?? []).map(
-              (feature) => feature as unknown as Column
-            ) as Column[]
-          }
+          allColumns={(mlFeatures ?? []).map(
+            (feature) => feature as unknown as Column
+          )}
           column={selectedColumn}
           entityType={EntityType.MLMODEL}
           hasEditPermission={{

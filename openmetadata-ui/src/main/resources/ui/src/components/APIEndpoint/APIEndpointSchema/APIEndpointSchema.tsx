@@ -247,18 +247,19 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   const renderSchemaName = useCallback(
     (_: string, record: Field) => (
       <div
+        aria-disabled={isVersionView}
+        aria-label={getEntityName(record)}
         className="d-inline-flex w-max-90 vertical-align-inherit"
         data-testid="column-name"
+        role="button"
         style={{ cursor: isVersionView ? 'default' : 'pointer' }}
+        tabIndex={isVersionView ? -1 : 0}
         onClick={(e) => {
           if (isVersionView) {
             return;
           }
           // Don't open detail panel if clicking on edit button or link
-          if (
-            (e.target as HTMLElement).closest('button') ||
-            (e.target as HTMLElement).closest('a')
-          ) {
+          if ((e.target as HTMLElement).closest('button, a')) {
             return;
           }
           handleColumnClick(record);
@@ -510,11 +511,9 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
       )}
 
       <ColumnDetailPanel
-        allColumns={
-          activeSchemaFields.map(
-            (field) => field as unknown as Column
-          ) as Column[]
-        }
+        allColumns={activeSchemaFields.map(
+          (field) => field as unknown as Column
+        )}
         column={selectedColumn}
         entityType={EntityType.API_ENDPOINT}
         hasEditPermission={{

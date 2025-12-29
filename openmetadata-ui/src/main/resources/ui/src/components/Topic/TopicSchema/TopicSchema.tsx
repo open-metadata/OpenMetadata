@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { EntityTags, TagFilterOptions } from 'Models';
 import { Col, Row, Segmented, Tag, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { Key } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
+import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -56,6 +56,11 @@ import {
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import Table from '../../common/Table/Table';
+import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnDetailPanel } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
@@ -63,11 +68,6 @@ import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import Table from '../../common/Table/Table';
-import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import {
   SchemaViewType,
   TopicSchemaFieldsProps,
@@ -240,18 +240,19 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const renderSchemaName = useCallback(
     (_: unknown, record: Field) => (
       <div
+        aria-disabled={isVersionView}
+        aria-label={getEntityName(record)}
         className="d-inline-flex w-max-90 vertical-align-inherit"
         data-testid="column-name"
+        role="button"
         style={{ cursor: isVersionView ? 'default' : 'pointer' }}
+        tabIndex={isVersionView ? -1 : 0}
         onClick={(e) => {
           if (isVersionView) {
             return;
           }
           // Don't open detail panel if clicking on edit button or link
-          if (
-            (e.target as HTMLElement).closest('button') ||
-            (e.target as HTMLElement).closest('a')
-          ) {
+          if ((e.target as HTMLElement).closest('button, a')) {
             return;
           }
           handleColumnClick(record);

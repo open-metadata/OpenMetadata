@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityTags, TagFilterOptions } from 'Models';
 import { Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import {
@@ -21,6 +20,7 @@ import {
   toLower,
   uniqBy,
 } from 'lodash';
+import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -47,14 +47,14 @@ import {
   getTableExpandableConfig,
   pruneEmptyChildren,
 } from '../../../utils/TableUtils';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Table from '../../common/Table/Table';
 import { ColumnDetailPanel } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Table from '../../common/Table/Table';
 import { ContainerDataModelProps } from './ContainerDataModel.interface';
 
 const ContainerDataModel: FC<ContainerDataModelProps> = ({
@@ -160,17 +160,18 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         width: 300,
         render: (_, record: Column) => (
           <div
+            aria-disabled={isReadOnly}
+            aria-label={getEntityName(record)}
             data-testid="column-name"
+            role="button"
             style={{ cursor: isReadOnly ? 'default' : 'pointer' }}
+            tabIndex={isReadOnly ? -1 : 0}
             onClick={(e) => {
               if (isReadOnly) {
                 return;
               }
               // Don't open detail panel if clicking on edit button or link
-              if (
-                (e.target as HTMLElement).closest('button') ||
-                (e.target as HTMLElement).closest('a')
-              ) {
+              if ((e.target as HTMLElement).closest('button, a')) {
                 return;
               }
               handleColumnClick(record);

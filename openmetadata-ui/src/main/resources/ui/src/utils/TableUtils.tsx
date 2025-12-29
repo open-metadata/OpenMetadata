@@ -1525,7 +1525,7 @@ export const findFieldByFQN = <
  * Returns dataTypeDisplay if available, otherwise falls back to dataType
  */
 export const getDataTypeDisplay = (
-  column: { dataTypeDisplay?: string; dataType?: string | unknown } | null
+  column: { dataTypeDisplay?: string; dataType?: string } | null
 ): string | undefined => {
   if (!column) {
     return undefined;

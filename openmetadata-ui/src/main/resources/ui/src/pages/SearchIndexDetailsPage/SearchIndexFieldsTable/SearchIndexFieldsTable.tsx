@@ -262,18 +262,19 @@ const SearchIndexFieldsTable = ({
         sorter: getColumnSorter<SearchIndexField, 'name'>('name'),
         render: (_, record: SearchIndexField) => (
           <div
+            aria-disabled={isReadOnly}
+            aria-label={getEntityName(record)}
             className="d-inline-flex w-max-90"
             data-testid="column-name"
+            role="button"
             style={{ cursor: isReadOnly ? 'default' : 'pointer' }}
+            tabIndex={isReadOnly ? -1 : 0}
             onClick={(e) => {
               if (isReadOnly) {
                 return;
               }
               // Don't open detail panel if clicking on edit button or link
-              if (
-                (e.target as HTMLElement).closest('button') ||
-                (e.target as HTMLElement).closest('a')
-              ) {
+              if ((e.target as HTMLElement).closest('button, a')) {
                 return;
               }
               handleColumnClick(record);
@@ -446,11 +447,9 @@ const SearchIndexFieldsTable = ({
       )}
 
       <ColumnDetailPanel
-        allColumns={
-          searchIndexFields.map(
-            (field) => field as unknown as Column
-          ) as Column[]
-        }
+        allColumns={searchIndexFields.map(
+          (field) => field as unknown as Column
+        )}
         column={selectedColumn}
         entityType={EntityType.SEARCH_INDEX}
         hasEditPermission={{

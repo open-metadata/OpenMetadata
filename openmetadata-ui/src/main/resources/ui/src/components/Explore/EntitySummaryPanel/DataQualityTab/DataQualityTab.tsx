@@ -16,7 +16,7 @@ import { Card, Col, Row, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
@@ -336,7 +336,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     }
   };
 
-  const fetchIncidents = async () => {
+  const fetchIncidents = useCallback(async () => {
     if (!entityFQN) {
       setIsIncidentsLoading(false);
 
@@ -354,24 +354,19 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       let allIncidents: TestCaseResolutionStatus[] = [];
 
       if (isColumnDetailPanel && testCases.length > 0) {
-        const BATCH_SIZE = 10;
-        for (let i = 0; i < testCases.length; i += BATCH_SIZE) {
-          const batch = testCases.slice(i, i + BATCH_SIZE);
-          const batchPromises = batch.map((testCase) =>
-            getListTestCaseIncidentStatus({
-              latest: true,
-              include: Include.NonDeleted,
-              testCaseFQN: testCase.fullyQualifiedName,
-              startTs,
-              endTs,
-              limit: 100,
-            }).catch(() => ({ data: [] }))
-          );
+        const allPromises = testCases.map((testCase) =>
+          getListTestCaseIncidentStatus({
+            latest: true,
+            include: Include.NonDeleted,
+            testCaseFQN: testCase.fullyQualifiedName,
+            startTs,
+            endTs,
+            limit: 50,
+          }).catch(() => ({ data: [] }))
+        );
 
-          const results = await Promise.all(batchPromises);
-          const batchIncidents = results.flatMap((result) => result.data || []);
-          allIncidents = [...allIncidents, ...batchIncidents];
-        }
+        const results = await Promise.all(allPromises);
+        allIncidents = results.flatMap((result) => result.data || []);
       } else {
         // For table/entity level, use originEntityFQN
         const response = await getListTestCaseIncidentStatus({
@@ -440,7 +435,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     } finally {
       setIsIncidentsLoading(false);
     }
-  };
+  }, [entityFQN, isColumnDetailPanel, testCases]);
 
   useEffect(() => {
     fetchTestCases();
@@ -453,7 +448,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     if (isColumnDetailPanel && testCases.length > 0) {
       fetchIncidents();
     }
-  }, [testCases.length, isColumnDetailPanel]);
+  }, [fetchIncidents, isColumnDetailPanel, testCases.length]);
 
   // Filter test cases based on active filter and search text
   const filteredTestCases = useMemo(() => {

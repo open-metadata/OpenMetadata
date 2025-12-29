@@ -10,18 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityTags, TagFilterOptions } from 'Models';
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { groupBy, isEmpty, omit, uniqBy } from 'lodash';
+import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../../../../constants/TableKeys.constants';
-import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
 import { EntityType, TabSpecificField } from '../../../../../enums/entity.enum';
 import {
   Column,
@@ -44,6 +44,11 @@ import {
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
 import { pruneEmptyChildren } from '../../../../../utils/TableUtils';
+import DisplayName from '../../../../common/DisplayName/DisplayName';
+import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
+import Table from '../../../../common/Table/Table';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
 import { ColumnDetailPanel } from '../../../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
@@ -54,11 +59,6 @@ import {
   EntityNameWithAdditionFields,
 } from '../../../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import DisplayName from '../../../../common/DisplayName/DisplayName';
-import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../../../common/Table/Table';
 
 const ModelTab = () => {
   const { t } = useTranslation();
@@ -324,13 +324,17 @@ const ModelTab = () => {
 
           return (
             <div
+              aria-label={getEntityName(record)}
               data-testid="column-name"
+              role="button"
               style={{ cursor: 'pointer' }}
+              tabIndex={0}
               onClick={(e) => {
                 // Don't open detail panel if clicking on edit button or link
                 if (
-                  (e.target as HTMLElement).closest('button') ||
-                  (e.target as HTMLElement).closest('a')
+                  (e.target as HTMLElement).closest(
+                    'button, a, input, textarea, select'
+                  )
                 ) {
                   return;
                 }

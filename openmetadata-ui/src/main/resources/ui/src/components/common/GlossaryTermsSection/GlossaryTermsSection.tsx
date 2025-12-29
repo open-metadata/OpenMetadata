@@ -17,7 +17,6 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { EntityType } from '../../../enums/entity.enum';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
@@ -84,7 +83,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
 
         const result = await updateEntityField({
           entityId,
-          entityType: entityType as EntityType,
+          entityType: entityType,
           fieldName: 'tags',
           currentValue: displayTags,
           newValue: updatedTags,

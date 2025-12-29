@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../../enums/entity.enum';
-import { Column, ColumnProfile } from '../../../../generated/entity/data/table';
+import { ColumnProfile } from '../../../../generated/entity/data/table';
 import { getTableColumnsByFQN } from '../../../../rest/tableAPI';
 import {
   calculatePercentage,
@@ -55,7 +55,7 @@ export const KeyProfileMetrics = ({
 
       const columnData = response.data?.find(
         (col) => col.fullyQualifiedName === columnFqn
-      ) as Column | undefined;
+      );
 
       setProfile(columnData?.profile);
     } catch (error) {
