@@ -577,10 +577,7 @@ const StoredProcedurePage = () => {
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.stored-procedure'),
-      })}>
+    <PageLayoutV1 pageTitle={entityName}>
       <Row gutter={[0, 12]}>
         <Col data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
