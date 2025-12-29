@@ -287,10 +287,27 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private PipelineStatus getPipelineStatus(Pipeline pipeline) {
-    return JsonUtils.readValue(
-        getLatestExtensionFromTimeSeries(
-            pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
-        PipelineStatus.class);
+    PipelineStatus status =
+        JsonUtils.readValue(
+            getLatestExtensionFromTimeSeries(
+                pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
+            PipelineStatus.class);
+
+    if (status != null && status.getTaskStatus() != null && !status.getTaskStatus().isEmpty()) {
+      status
+          .getTaskStatus()
+          .sort(
+              (t1, t2) -> {
+                Long start1 = t1.getStartTime();
+                Long start2 = t2.getStartTime();
+                if (start1 == null && start2 == null) return 0;
+                if (start1 == null) return 1;
+                if (start2 == null) return -1;
+                return start1.compareTo(start2);
+              });
+    }
+
+    return status;
   }
 
   public RestUtil.PutResponse<?> addPipelineStatus(String fqn, PipelineStatus pipelineStatus) {
@@ -1157,6 +1174,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   JsonUtils.readValue(
                       record.getJson(), org.openmetadata.schema.type.PipelineObservability.class);
 
+              // Calculate and set average runtime
+              if (observability.getPipeline() != null) {
+                Double avgRuntime =
+                    calculateAverageRuntime(observability.getPipeline().getFullyQualifiedName());
+                observability.setAverageRunTime(avgRuntime);
+              }
+
               // Apply filters
               boolean matchesFilter = true;
 
@@ -1625,6 +1649,72 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         .withScheduleInterval(pipeline.getScheduleInterval())
         .withImpactedAssetsCount(0)
         .withImpactedAssets(Collections.emptyList());
+  }
+
+  private Double calculateAverageRuntime(String pipelineFqn) {
+    if (nullOrEmpty(pipelineFqn)) {
+      return null;
+    }
+
+    try {
+      long thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000);
+      long now = System.currentTimeMillis();
+
+      List<PipelineStatus> statuses =
+          JsonUtils.readObjects(
+              getResultsFromAndToTimestamps(
+                  pipelineFqn, PIPELINE_STATUS_EXTENSION, thirtyDaysAgo, now),
+              PipelineStatus.class);
+
+      if (statuses == null || statuses.isEmpty()) {
+        return null;
+      }
+
+      List<Double> runtimes = new ArrayList<>();
+
+      for (PipelineStatus status : statuses) {
+        Double runtime = null;
+
+        if (status.getTaskStatus() != null && !status.getTaskStatus().isEmpty()) {
+          Long minStart = null;
+          Long maxEnd = null;
+
+          for (org.openmetadata.schema.type.Status task : status.getTaskStatus()) {
+            if (task.getStartTime() != null && task.getEndTime() != null) {
+              if (minStart == null || task.getStartTime() < minStart) {
+                minStart = task.getStartTime();
+              }
+              if (maxEnd == null || task.getEndTime() > maxEnd) {
+                maxEnd = task.getEndTime();
+              }
+            }
+          }
+
+          if (minStart != null && maxEnd != null) {
+            runtime = (double) (maxEnd - minStart);
+          }
+        }
+
+        if (runtime == null && status.getEndTime() != null && status.getTimestamp() != null) {
+          runtime = (double) (status.getEndTime() - status.getTimestamp());
+        }
+
+        if (runtime != null && runtime > 0) {
+          runtimes.add(runtime);
+        }
+      }
+
+      if (runtimes.isEmpty()) {
+        return null;
+      }
+
+      return runtimes.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to calculate average runtime for pipeline {}: {}", pipelineFqn, e.getMessage());
+      return null;
+    }
   }
 
   private int getImpactedAssetsCount(String pipelineFqn) {
