@@ -36,6 +36,11 @@ public abstract class ExternalSecretsManager extends SecretsManager {
     // check if value does not start with 'config:' only String can have password annotation
     if (Boolean.FALSE.equals(isSecret(value))) {
       if (store) {
+        // If value is null, delete the secret instead of storing it
+        if (value == null) {
+          deleteSecretIfExists(fieldSecretId);
+          return null;
+        }
         upsertSecret(fieldSecretId, value);
       }
       return SECRET_FIELD_PREFIX + fieldSecretId;
@@ -45,11 +50,17 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   }
 
   public void upsertSecret(String secretName, String secretValue) {
+    // Don't store null secrets - delete them instead
+    if (secretValue == null) {
+      deleteSecretIfExists(secretName);
+      return;
+    }
+
     if (existSecret(secretName)) {
-      updateSecret(secretName, secretValue != null ? secretValue : NULL_SECRET_STRING);
+      updateSecret(secretName, secretValue);
       sleep();
     } else {
-      storeSecret(secretName, secretValue != null ? secretValue : NULL_SECRET_STRING);
+      storeSecret(secretName, secretValue);
       sleep();
     }
   }
@@ -83,4 +94,39 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   public String cleanNullOrEmpty(String secretValue) {
     return Objects.isNull(secretValue) || secretValue.isEmpty() ? NULL_SECRET_STRING : secretValue;
   }
+
+  /**
+   * Helper method to delete a secret if it exists. Used to clean up null secrets.
+   */
+  private void deleteSecretIfExists(String secretName) {
+    try {
+      if (existSecret(secretName)) {
+        deleteSecretInternal(secretName);
+        sleep();
+      }
+    } catch (Exception e) {
+      // Ignore errors when deleting secrets that don't exist
+    }
+  }
+
+  @Override
+  public String getSecret(String secretName) {
+    try {
+      String secretValue = getSecretInternal(secretName);
+      // Clean up existing null secrets: if we retrieve "null" string, delete it and return null
+      if (NULL_SECRET_STRING.equals(secretValue)) {
+        deleteSecretIfExists(secretName);
+        return null;
+      }
+      return secretValue;
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  /**
+   * Internal method to get the secret value from the secrets manager implementation.
+   * Subclasses should implement this instead of overriding getSecret().
+   */
+  protected abstract String getSecretInternal(String secretName);
 }
