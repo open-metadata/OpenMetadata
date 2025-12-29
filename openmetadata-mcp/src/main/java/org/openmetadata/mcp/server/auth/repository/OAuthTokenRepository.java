@@ -1,5 +1,10 @@
 package org.openmetadata.mcp.server.auth.repository;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.auth.AccessToken;
 import org.openmetadata.mcp.auth.RefreshToken;
@@ -9,12 +14,6 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAccessTokenRecord;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthRefreshTokenRecord;
-
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Base64;
-import java.util.List;
 
 /**
  * Repository for managing OAuth access and refresh tokens with database persistence,
@@ -53,8 +52,7 @@ public class OAuthTokenRepository {
         connectorName,
         userName,
         JsonUtils.pojoToJson(scopes),
-        token.getExpiresAt()
-    );
+        token.getExpiresAt());
 
     LOG.debug("Stored access token in database for client: {}", clientId);
   }
@@ -119,8 +117,7 @@ public class OAuthTokenRepository {
         connectorName,
         userName,
         JsonUtils.pojoToJson(scopes),
-        token.getExpiresAt()
-    );
+        token.getExpiresAt());
 
     LOG.debug("Stored refresh token in database for client: {}", clientId);
   }
@@ -178,7 +175,7 @@ public class OAuthTokenRepository {
    * Delete all expired tokens.
    */
   public void deleteExpiredTokens() {
-    long currentTime = System.currentTimeMillis();
+    long currentTime = java.time.Instant.now().getEpochSecond();
     accessTokenDAO.deleteExpired(currentTime);
     refreshTokenDAO.deleteExpired(currentTime);
     LOG.info("Deleted expired access and refresh tokens");

@@ -46,8 +46,11 @@ public class RegistrationHandler {
       }
     }
 
-    // Validate scopes if provided
-    if (clientMetadata.getScope() != null && options.getValidScopes() != null) {
+    // Validate scopes if provided (only if validScopes is non-empty)
+    // For connector-based OAuth, we allow any scope during registration
+    if (clientMetadata.getScope() != null
+        && options.getValidScopes() != null
+        && !options.getValidScopes().isEmpty()) {
       String[] requestedScopes = clientMetadata.getScope().split(" ");
       for (String scope : requestedScopes) {
         if (!options.getValidScopes().contains(scope)) {

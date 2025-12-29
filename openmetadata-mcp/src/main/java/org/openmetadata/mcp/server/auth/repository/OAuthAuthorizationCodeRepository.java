@@ -1,13 +1,12 @@
 package org.openmetadata.mcp.server.auth.repository;
 
+import java.net.URI;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAuthorizationCodeRecord;
-
-import java.net.URI;
-import java.util.List;
 
 /**
  * Repository for managing OAuth authorization codes with database persistence.
@@ -27,6 +26,7 @@ public class OAuthAuthorizationCodeRepository {
       String code,
       String clientId,
       String connectorName,
+      String userName,
       String codeChallenge,
       String codeChallengeMethod,
       URI redirectUri,
@@ -37,14 +37,15 @@ public class OAuthAuthorizationCodeRepository {
         code,
         clientId,
         connectorName,
+        userName,
         codeChallenge,
         codeChallengeMethod,
         redirectUri.toString(),
         JsonUtils.pojoToJson(scopes),
-        expiresAt
-    );
+        expiresAt);
 
-    LOG.debug("Stored authorization code in database for client: {}", clientId);
+    LOG.debug(
+        "Stored authorization code in database for client: {} by user: {}", clientId, userName);
   }
 
   /**
@@ -74,7 +75,7 @@ public class OAuthAuthorizationCodeRepository {
    * Delete all expired authorization codes.
    */
   public void deleteExpired() {
-    long currentTime = System.currentTimeMillis();
+    long currentTime = java.time.Instant.now().getEpochSecond();
     dao.deleteExpired(currentTime);
     LOG.info("Deleted expired authorization codes");
   }

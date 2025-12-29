@@ -40,6 +40,7 @@ public class McpServer implements McpServerProvider {
   private Limits limits;
   protected DefaultToolContext toolContext;
   protected DefaultPromptsContext promptsContext;
+  private Environment environment;
 
   // Default constructor for dynamic loading
   public McpServer() {
@@ -111,26 +112,28 @@ public class McpServer implements McpServerProvider {
               baseUrl);
 
       // Register default MCP client (for dynamic client registration)
-      OAuthClientInformation mcpClient = new OAuthClientInformation();
-      mcpClient.setClientId("openmetadata-mcp-client");
-      mcpClient.setClientSecret("mcp-client-secret"); // Not used for connector OAuth
-      mcpClient.setRedirectUris(
-          Collections.singletonList(new URI("http://localhost:3000/callback")));
-      mcpClient.setTokenEndpointAuthMethod("none"); // Public client
-      mcpClient.setGrantTypes(Arrays.asList("authorization_code", "refresh_token"));
-      mcpClient.setResponseTypes(Collections.singletonList("code"));
-      authProvider.registerClient(mcpClient).get();
+      // Check if client already exists to avoid duplicate entry errors on server restart
+      OAuthClientInformation existingClient = authProvider.getClient("openmetadata-mcp-client").get();
+      if (existingClient == null) {
+        OAuthClientInformation mcpClient = new OAuthClientInformation();
+        mcpClient.setClientId("openmetadata-mcp-client");
+        mcpClient.setClientSecret("mcp-client-secret"); // Not used for connector OAuth
+        mcpClient.setRedirectUris(
+            Collections.singletonList(new URI("http://localhost:3000/callback")));
+        mcpClient.setTokenEndpointAuthMethod("none"); // Public client
+        mcpClient.setGrantTypes(Arrays.asList("authorization_code", "refresh_token"));
+        mcpClient.setResponseTypes(Collections.singletonList("code"));
+        authProvider.registerClient(mcpClient).get();
+        LOG.info("Registered new MCP OAuth client: openmetadata-mcp-client");
+      } else {
+        LOG.info("MCP OAuth client already exists: openmetadata-mcp-client");
+      }
 
       // Create registration options
       ClientRegistrationOptions registrationOptions = new ClientRegistrationOptions();
       registrationOptions.setAllowLocalhostRedirect(true);
-      registrationOptions.setValidScopes(
-          Arrays.asList(
-              "openid",
-              "profile",
-              "email",
-              "offline_access",
-              "api://0a957c01-29f8-4fce-a1dc-3b9f12447b60/.default"));
+      // Don't validate scopes for connector-based OAuth - allow any scope
+      registrationOptions.setValidScopes(null);
 
       // Create revocation options
       RevocationOptions revocationOptions = new RevocationOptions();
@@ -138,8 +141,16 @@ public class McpServer implements McpServerProvider {
 
       // Configure allowed origins for CORS (matches MCPConfiguration defaults)
       // These should be configured via MCPConfiguration in production
+      // Adding common MCP Inspector ports (6274, etc.) and development ports
       List<String> allowedOrigins =
-          Arrays.asList("http://localhost:3000", "http://localhost:8585", "http://localhost:9090");
+          Arrays.asList(
+              "http://localhost:3000",
+              "http://localhost:8585",
+              "http://localhost:9090",
+              "http://localhost:6274",
+              "http://localhost:6275",
+              "http://localhost:6276",
+              "http://localhost:6277");
 
       OAuthHttpStatelessServerTransportProvider statelessOauthTransport =
           new OAuthHttpStatelessServerTransportProvider(

@@ -37,6 +37,15 @@ public class McpAuthFilter implements Filter {
     HttpServletRequest httpServletRequest = (HttpServletRequest) servletRequest;
     HttpServletResponse httpServletResponse = (HttpServletResponse) servletResponse;
 
+    String requestPath = httpServletRequest.getRequestURI();
+
+    // Allow OAuth endpoints without authentication
+    if (isOAuthEndpoint(requestPath)) {
+      LOG.debug("Allowing OAuth endpoint without authentication: {}", requestPath);
+      filterChain.doFilter(servletRequest, servletResponse);
+      return;
+    }
+
     try {
       // Extract Authorization header
       String tokenWithType = httpServletRequest.getHeader("Authorization");
@@ -65,6 +74,20 @@ public class McpAuthFilter implements Filter {
           "Authentication failed: " + message,
           HttpServletResponse.SC_UNAUTHORIZED);
     }
+  }
+
+  /**
+   * Check if the request path is an OAuth endpoint that should be publicly accessible.
+   * OAuth discovery and flow endpoints must be accessible without authentication.
+   */
+  private boolean isOAuthEndpoint(String path) {
+    return path.endsWith("/.well-known/oauth-authorization-server")
+        || path.endsWith("/.well-known/oauth-protected-resource")
+        || path.endsWith("/.well-known/openid-configuration")
+        || path.endsWith("/register")
+        || path.endsWith("/authorize")
+        || path.endsWith("/token")
+        || path.endsWith("/revoke");
   }
 
   private void sendError(HttpServletResponse response, String errorMessage, int statusCode)

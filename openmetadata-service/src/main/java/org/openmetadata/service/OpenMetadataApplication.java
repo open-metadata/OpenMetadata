@@ -387,6 +387,35 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         McpServerProvider mcpServer =
             (McpServerProvider) mcpServerClass.getDeclaredConstructor().newInstance();
         mcpServer.initializeMcpServer(environment, authorizer, limits, catalogConfig);
+
+        // Register OAuth JAX-RS resources (they take precedence over servlets in Jersey)
+        try {
+          Object oauthTransport = mcpServerClass.getMethod("getOAuthTransport").invoke(mcpServer);
+          if (oauthTransport != null) {
+            Class<?> mcpResourceClass =
+                Class.forName("org.openmetadata.mcp.resources.OAuthEndpointsResource");
+            Object mcpResource =
+                mcpResourceClass
+                    .getConstructor(oauthTransport.getClass())
+                    .newInstance(oauthTransport);
+            environment.jersey().register(mcpResource);
+            LOG.info("Registered JAX-RS OAuth endpoints at /mcp/*");
+
+            Class<?> rootResourceClass =
+                Class.forName("org.openmetadata.mcp.resources.RootOAuthEndpointsResource");
+            Object rootResource =
+                rootResourceClass
+                    .getConstructor(oauthTransport.getClass())
+                    .newInstance(oauthTransport);
+            environment.jersey().register(rootResource);
+            LOG.info("Registered JAX-RS OAuth endpoints at root level for RFC 8414 discovery");
+          }
+        } catch (Exception ex) {
+          LOG.warn(
+              "Could not register OAuth JAX-RS resources, OAuth endpoints may not work: "
+                  + ex.getMessage());
+        }
+
         LOG.info("MCP Server registered successfully");
       }
     } catch (ClassNotFoundException ex) {

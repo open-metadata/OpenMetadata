@@ -1,5 +1,8 @@
 package org.openmetadata.mcp.server.auth.repository;
 
+import java.net.URI;
+import java.util.List;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.auth.OAuthClientMetadata;
@@ -8,10 +11,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthClientRecord;
-
-import java.net.URI;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Repository for managing OAuth client registrations with database persistence and secret encryption.
@@ -35,19 +34,18 @@ public class OAuthClientRepository {
 
     // Convert scope from String to List<String> for database storage
     String scope = clientInfo.getScope();
-    List<String> scopeList = scope != null && !scope.isEmpty()
-        ? List.of(scope.split(" "))
-        : List.of();
+    List<String> scopeList =
+        scope != null && !scope.isEmpty() ? List.of(scope.split(" ")) : List.of();
 
     dao.insert(
         clientInfo.getClientId(),
         encryptedSecret,
         clientInfo.getClientName(),
-        JsonUtils.pojoToJson(clientInfo.getRedirectUris().stream().map(URI::toString).collect(Collectors.toList())),
+        JsonUtils.pojoToJson(
+            clientInfo.getRedirectUris().stream().map(URI::toString).collect(Collectors.toList())),
         JsonUtils.pojoToJson(clientInfo.getGrantTypes()),
         clientInfo.getTokenEndpointAuthMethod(),
-        JsonUtils.pojoToJson(scopeList)
-    );
+        JsonUtils.pojoToJson(scopeList));
 
     LOG.info("Registered OAuth client in database: {}", clientInfo.getClientId());
   }
@@ -63,14 +61,17 @@ public class OAuthClientRepository {
 
     OAuthClientMetadata metadata = new OAuthClientMetadata();
     metadata.setClientName(record.clientName());
-    metadata.setRedirectUris(record.redirectUris().stream().map(URI::create).collect(Collectors.toList()));
+    metadata.setRedirectUris(
+        record.redirectUris().stream().map(URI::create).collect(Collectors.toList()));
     metadata.setGrantTypes(record.grantTypes());
     metadata.setTokenEndpointAuthMethod(record.tokenEndpointAuthMethod());
     // Convert scope from List<String> to space-separated String
     metadata.setScope(String.join(" ", record.scopes()));
 
-    String decryptedSecret = record.clientSecretEncrypted() != null ?
-        fernet.decrypt(record.clientSecretEncrypted()) : null;
+    String decryptedSecret =
+        record.clientSecretEncrypted() != null
+            ? fernet.decrypt(record.clientSecretEncrypted())
+            : null;
 
     OAuthClientInformation clientInfo = new OAuthClientInformation();
     clientInfo.setClientId(record.clientId());

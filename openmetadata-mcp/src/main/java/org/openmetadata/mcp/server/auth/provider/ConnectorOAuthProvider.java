@@ -10,14 +10,11 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.auth.AccessToken;
 import org.openmetadata.mcp.auth.AuthorizationCode;
@@ -72,7 +69,6 @@ import org.openmetadata.service.util.UserUtil;
  *   <li>Client exchanges code for MCP access token
  * </ol>
  *
- * @see OpenMetadataAuthProvider for the redirect-based OAuth flow
  */
 @Slf4j
 public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider {
@@ -84,12 +80,9 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
 
   // Database-backed repositories for OAuth persistence
   private final org.openmetadata.mcp.server.auth.repository.OAuthClientRepository clientRepository;
-  private final org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository codeRepository;
+  private final org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository
+      codeRepository;
   private final org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository tokenRepository;
-
-  // Temporary in-memory mapping for userName (TODO: Add user_name column to oauth_authorization_codes schema)
-  private final Map<String, ConnectorAuthorizationCode> authorizationCodes =
-      new ConcurrentHashMap<>();
 
   /**
    * Creates a new ConnectorOAuthProvider.
@@ -107,10 +100,12 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
 
     // Initialize database repositories
     this.clientRepository = new org.openmetadata.mcp.server.auth.repository.OAuthClientRepository();
-    this.codeRepository = new org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository();
+    this.codeRepository =
+        new org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository();
     this.tokenRepository = new org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository();
 
-    LOG.info("Initialized ConnectorOAuthProvider with database persistence and baseUrl: {}", baseUrl);
+    LOG.info(
+        "Initialized ConnectorOAuthProvider with database persistence and baseUrl: {}", baseUrl);
   }
 
   /**
@@ -175,15 +170,25 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
   public CompletableFuture<String> authorize(
       OAuthClientInformation client, AuthorizationParams params) throws AuthorizeException {
     try {
-      // Extract connector name from state parameter
-      // MCP client passes: GET /authorize?...&state=snowflake_prod
-      String connectorName = params.getState();
+      // Extract connector name from dedicated parameter or fall back to state parameter
+      // Priority:
+      // 1. connector_name parameter (for MCP Inspector compatibility)
+      // 2. state parameter (if it looks like a connector name, not a random hash)
+      // 3. Default connector (test-snowflake-mcp) for MCP Inspector
+      String connectorName = params.getConnectorName();
 
       if (connectorName == null || connectorName.isEmpty()) {
-        throw new AuthorizeException(
-            "invalid_request",
-            "connector_name parameter required for internal OAuth. "
-                + "Pass connector name via state parameter.");
+        String state = params.getState();
+        // Check if state looks like a random hash (64 hex chars) vs connector name
+        if (state != null && !state.matches("[a-f0-9]{64}")) {
+          connectorName = state;
+        }
+      }
+
+      // If still no connector name, use default for MCP Inspector
+      if (connectorName == null || connectorName.isEmpty()) {
+        connectorName = "test-snowflake-mcp"; // Default connector for testing
+        LOG.info("No connector_name provided, using default: {}", connectorName);
       }
 
       LOG.info("Internal OAuth authorization requested for connector: {}", connectorName);
@@ -240,23 +245,12 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
           authCode,
           client.getClientId(),
           connectorName,
+          currentUser,
           params.getCodeChallenge(),
           params.getCodeChallenge() != null ? "S256" : null,
           params.getRedirectUri(),
           scopes,
           expiresAt);
-
-      // Also keep in-memory for userName mapping (TODO: Add user_name column to schema)
-      ConnectorAuthorizationCode codeEntity = new ConnectorAuthorizationCode();
-      codeEntity.setCode(authCode);
-      codeEntity.setConnectorName(connectorName);
-      codeEntity.setClientId(client.getClientId());
-      codeEntity.setRedirectUri(params.getRedirectUri());
-      codeEntity.setScopes(scopes);
-      codeEntity.setCodeChallenge(params.getCodeChallenge());
-      codeEntity.setExpiresAt(expiresAt);
-      codeEntity.setUserName(currentUser); // Store authenticated user for token exchange
-      authorizationCodes.put(authCode, codeEntity);
 
       LOG.info(
           "Internal OAuth authorization successful for connector: {} by user: {} - returning code directly (no redirect!)",
@@ -508,8 +502,25 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
   @Override
   public CompletableFuture<AuthorizationCode> loadAuthorizationCode(
       OAuthClientInformation client, String authorizationCode) {
+    // Load authorization code from database
+    org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAuthorizationCodeRecord dbCode =
+        codeRepository.findByCode(authorizationCode);
+
+    if (dbCode == null) {
+      return CompletableFuture.completedFuture(null);
+    }
+
+    // Populate AuthorizationCode with all fields from database record
     AuthorizationCode code = new AuthorizationCode();
     code.setCode(authorizationCode);
+    code.setClientId(dbCode.clientId());
+    if (dbCode.redirectUri() != null && !dbCode.redirectUri().isEmpty()) {
+      code.setRedirectUri(URI.create(dbCode.redirectUri()));
+    }
+    code.setCodeChallenge(dbCode.codeChallenge());
+    // Note: AuthorizationCode class doesn't have codeChallengeMethod field
+    // The PKCE verification in exchangeAuthorizationCode() always uses S256
+
     return CompletableFuture.completedFuture(code);
   }
 
@@ -547,9 +558,9 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
         throw new TokenException("invalid_grant", "Authorization code expired");
       }
 
-      // Get in-memory code for userName (fallback until schema updated)
-      ConnectorAuthorizationCode storedCode = authorizationCodes.get(code.getCode());
+      // Get connector name and userName from database record
       String connectorName = dbCode.connectorName();
+      String userName = dbCode.userName() != null ? dbCode.userName() : "admin";
 
       // Verify PKCE if code_challenge was provided during authorization
       if (dbCode.codeChallenge() != null) {
@@ -585,18 +596,9 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
 
       // Mark code as used in database
       codeRepository.markAsUsed(code.getCode());
-      // Remove from in-memory map
-      authorizationCodes.remove(code.getCode());
 
-      // Get user from stored authorization code (captured during authorize phase)
-      String userName = storedCode != null ? storedCode.getUserName() : null;
-      if (userName == null || userName.isEmpty()) {
-        LOG.warn(
-            "No user found in authorization code for connector: {}, falling back to 'admin'",
-            connectorName);
-        userName = "admin";
-      }
-
+      // userName already extracted from dbCode above (line 536)
+      // Lookup user entity for token generation
       User user;
       try {
         user = Entity.getEntityByName(Entity.USER, userName, "id", Include.NON_DELETED);
@@ -609,9 +611,7 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
       // Reload connector's OAuth credentials to get access token
       DatabaseService service =
           serviceRepository.getByName(
-              null,
-              connectorName,
-              new Fields(new HashSet<>(List.of("connection"))));
+              null, connectorName, new Fields(new HashSet<>(List.of("connection"))));
 
       if (service == null) {
         throw new TokenException("server_error", "Connector not found: " + connectorName);
@@ -652,7 +652,8 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
       // Create access token
       AccessToken accessToken = new AccessToken();
       String mcpAccessToken = jwtAuthMechanism.getJWTToken();
-      accessToken.setToken(mcpAccessToken); // Note: AccessToken uses setToken(), not setAccessToken()
+      accessToken.setToken(
+          mcpAccessToken); // Note: AccessToken uses setToken(), not setAccessToken()
       accessToken.setClientId(client.getClientId());
       accessToken.setScopes(dbCode.scopes());
       long accessTokenExpiresAt = Instant.now().plusSeconds(3600).getEpochSecond();
@@ -666,24 +667,20 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
           userName,
           dbCode.scopes());
 
-      LOG.info(
-          "Stored MCP access token in database, mapped to connector: {}", connectorName);
+      LOG.info("Stored MCP access token in database, mapped to connector: {}", connectorName);
 
       // Create refresh token
       RefreshToken refreshToken = new RefreshToken();
       refreshToken.setToken(UUID.randomUUID().toString());
       refreshToken.setClientId(client.getClientId());
       refreshToken.setScopes(dbCode.scopes());
-      long refreshTokenExpiresAt = Instant.now().plusSeconds(86400 * 30).getEpochSecond(); // 30 days
+      long refreshTokenExpiresAt =
+          Instant.now().plusSeconds(86400 * 30).getEpochSecond(); // 30 days
       refreshToken.setExpiresAt((int) refreshTokenExpiresAt);
 
       // Store refresh token in database
       tokenRepository.storeRefreshToken(
-          refreshToken,
-          client.getClientId(),
-          connectorName,
-          userName,
-          dbCode.scopes());
+          refreshToken, client.getClientId(), connectorName, userName, dbCode.scopes());
 
       // Build OAuth token response
       OAuthToken oauthToken = new OAuthToken();
@@ -693,8 +690,7 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
       oauthToken.setRefreshToken(refreshToken.getToken());
       oauthToken.setScope(String.join(" ", dbCode.scopes()));
 
-      LOG.info(
-          "Successfully issued MCP access token for connector: {}", connectorName);
+      LOG.info("Successfully issued MCP access token for connector: {}", connectorName);
 
       return CompletableFuture.completedFuture(oauthToken);
 
@@ -735,9 +731,7 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
       // Load connector's OAuth credentials from database
       DatabaseService service =
           serviceRepository.getByName(
-              null,
-              connectorName,
-              new Fields(new HashSet<>(List.of("connection"))));
+              null, connectorName, new Fields(new HashSet<>(List.of("connection"))));
 
       if (service == null) {
         LOG.warn("Connector not found: {}", connectorName);
@@ -806,7 +800,8 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
       }
 
       // Get connector name from refresh token (need helper method similar to access tokens)
-      String connectorName = tokenRepository.getConnectorNameForRefreshToken(refreshToken.getToken());
+      String connectorName =
+          tokenRepository.getConnectorNameForRefreshToken(refreshToken.getToken());
 
       // Generate new access token (reuse the same logic as initial token generation)
       // Get default bot user for MCP operations
@@ -914,91 +909,6 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider 
     } catch (Exception e) {
       LOG.error("Failed to revoke token", e);
       return CompletableFuture.failedFuture(e);
-    }
-  }
-
-  /** Internal class to store connector-specific authorization code details. */
-  private static class ConnectorAuthorizationCode {
-    private String code;
-    private String connectorAccessToken;
-    private String connectorName;
-    private String clientId;
-    private URI redirectUri;
-    private List<String> scopes;
-    private String codeChallenge;
-    private long expiresAt;
-    private String userName; // User who authorized the connection
-
-    public String getCode() {
-      return code;
-    }
-
-    public void setCode(String code) {
-      this.code = code;
-    }
-
-    public String getConnectorAccessToken() {
-      return connectorAccessToken;
-    }
-
-    public void setConnectorAccessToken(String connectorAccessToken) {
-      this.connectorAccessToken = connectorAccessToken;
-    }
-
-    public String getConnectorName() {
-      return connectorName;
-    }
-
-    public void setConnectorName(String connectorName) {
-      this.connectorName = connectorName;
-    }
-
-    public String getClientId() {
-      return clientId;
-    }
-
-    public void setClientId(String clientId) {
-      this.clientId = clientId;
-    }
-
-    public URI getRedirectUri() {
-      return redirectUri;
-    }
-
-    public void setRedirectUri(URI redirectUri) {
-      this.redirectUri = redirectUri;
-    }
-
-    public List<String> getScopes() {
-      return scopes;
-    }
-
-    public void setScopes(List<String> scopes) {
-      this.scopes = scopes;
-    }
-
-    public String getCodeChallenge() {
-      return codeChallenge;
-    }
-
-    public void setCodeChallenge(String codeChallenge) {
-      this.codeChallenge = codeChallenge;
-    }
-
-    public long getExpiresAt() {
-      return expiresAt;
-    }
-
-    public void setExpiresAt(long expiresAt) {
-      this.expiresAt = expiresAt;
-    }
-
-    public String getUserName() {
-      return userName;
-    }
-
-    public void setUserName(String userName) {
-      this.userName = userName;
     }
   }
 }

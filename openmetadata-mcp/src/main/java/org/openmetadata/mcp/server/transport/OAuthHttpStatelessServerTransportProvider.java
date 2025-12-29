@@ -18,11 +18,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionException;
+import org.openmetadata.mcp.auth.AuthorizationCode;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
+import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.auth.OAuthClientMetadata;
 import org.openmetadata.mcp.auth.OAuthMetadata;
 import org.openmetadata.mcp.auth.OAuthToken;
 import org.openmetadata.mcp.auth.ProtectedResourceMetadata;
+import org.openmetadata.mcp.auth.RefreshToken;
+import org.openmetadata.mcp.auth.exception.TokenException;
 import org.openmetadata.mcp.server.auth.handlers.AuthorizationHandler;
 import org.openmetadata.mcp.server.auth.handlers.MetadataHandler;
 import org.openmetadata.mcp.server.auth.handlers.ProtectedResourceMetadataHandler;
@@ -74,6 +78,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   private final List<String> allowedOrigins;
 
+  private final OAuthAuthorizationServerProvider authProvider;
+
   /**
    * Creates a new OAuthHttpServletSseServerTransportProvider.
    * @param objectMapper The JSON object mapper
@@ -96,6 +102,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       List<String> allowedOrigins) {
     super(objectMapper, mcpEndpoint, contextExtractor);
     this.objectMapper = objectMapper;
+    this.authProvider = authProvider;
     logger.info(
         "Initializing OAuthHttpServletSseServerTransportProvider with base URL: " + baseUrl);
 
@@ -106,9 +113,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     // Create Authorization Server metadata (RFC 8414)
     // Endpoints are relative to /mcp prefix since servlet is mounted there
     OAuthMetadata metadata = new OAuthMetadata();
-    metadata.setIssuer(URI.create(baseUrl + "/mcp"));
-    metadata.setAuthorizationEndpoint(URI.create(baseUrl + "/authorize"));
-    metadata.setTokenEndpoint(URI.create(baseUrl + "/token"));
+    metadata.setIssuer(URI.create(baseUrl + mcpEndpoint));
+    metadata.setAuthorizationEndpoint(URI.create(baseUrl + mcpEndpoint + "/authorize"));
+    metadata.setTokenEndpoint(URI.create(baseUrl + mcpEndpoint + "/token"));
     metadata.setScopesSupported(
         List.of("openid", "profile", "email", "offline_access", "api://apiId/.default"));
     metadata.setResponseTypesSupported(java.util.Arrays.asList("code"));
@@ -198,7 +205,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   }
 
   @Override
-  protected void doGet(HttpServletRequest request, HttpServletResponse response)
+  public void doGet(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
 
     logger.info("Handling OAuth GET request: " + request.getRequestURI());
@@ -207,6 +214,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     // Handle OAuth GET routes
     if (path.endsWith("/.well-known/oauth-authorization-server")) {
       handleMetadataRequest(request, response);
+    } else if (path.endsWith("/.well-known/oauth-protected-resource")) {
+      handleProtectedResourceMetadataRequest(request, response);
     } else if (path.endsWith("/authorize")) {
       HttpSession session = getHttpSession(request, true);
       handleAuthorizeRequest(request, response);
@@ -296,7 +305,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   }
 
   @Override
-  protected void doPost(HttpServletRequest request, HttpServletResponse response)
+  public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
 
     logger.info("Handling OAuth POST request: " + request.getRequestURI());
@@ -362,13 +371,23 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
             });
 
     try {
+      logger.info("Authorization request params: " + params);
       String redirectUrl = authorizationHandler.handle(params).join().getRedirectUrl();
       response.setHeader("Location", redirectUrl);
       response.setHeader("Cache-Control", "no-store");
       setCorsHeaders(request, response);
       response.sendRedirect(redirectUrl);
-    } catch (CompletionException ex) {
+    } catch (Exception ex) {
+      logger.error("Authorization request failed", ex);
+      setCorsHeaders(request, response);
+      response.setContentType("application/json");
       response.setStatus(400);
+
+      Map<String, String> error = new HashMap<>();
+      error.put("error", "invalid_request");
+      Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+      error.put("error_description", cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
+      getObjectMapper().writeValue(response.getOutputStream(), error);
     }
   }
 
@@ -434,18 +453,96 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
               }
             });
 
-    System.out.println("TOKEN REQUEST PARAMS: " + params);
+    logger.info("Token request params: " + params);
 
     try {
-      OAuthToken token = tokenHandler.handle(params).join();
+      String grantType = params.get("grant_type");
+      OAuthToken token = null;
+
+      if ("authorization_code".equals(grantType)) {
+        // Handle authorization code exchange
+        String clientId = params.get("client_id");
+        String code = params.get("code");
+        String redirectUri = params.get("redirect_uri");
+        String codeVerifier = params.get("code_verifier");
+
+        if (code == null || code.isEmpty()) {
+          throw new TokenException("invalid_request", "code parameter is required");
+        }
+
+        OAuthClientInformation client = authProvider.getClient(clientId).join();
+        if (client == null) {
+          throw new TokenException("invalid_client", "Client not found: " + clientId);
+        }
+
+        // Load the authorization code to validate client_id and redirect_uri
+        AuthorizationCode storedCode = authProvider.loadAuthorizationCode(client, code).join();
+        if (storedCode == null) {
+          throw new TokenException("invalid_grant", "Invalid authorization code");
+        }
+
+        // Validate that the code was issued to this client
+        if (!storedCode.getClientId().equals(clientId)) {
+          throw new TokenException("invalid_grant", "Authorization code was not issued to this client");
+        }
+
+        // Validate redirect_uri if it was provided during authorization
+        if (storedCode.getRedirectUri() != null && redirectUri != null) {
+          if (!storedCode.getRedirectUri().toString().equals(redirectUri)) {
+            throw new TokenException("invalid_grant", "redirect_uri does not match authorization request");
+          }
+        }
+
+        AuthorizationCode authCode = new AuthorizationCode();
+        authCode.setCode(code);
+        authCode.setClientId(clientId);
+        if (redirectUri != null) {
+          authCode.setRedirectUri(URI.create(redirectUri));
+        }
+        authCode.setCodeVerifier(codeVerifier);
+
+        token = authProvider.exchangeAuthorizationCode(client, authCode).join();
+
+      } else if ("refresh_token".equals(grantType)) {
+        // Handle refresh token
+        String clientId = params.get("client_id");
+        OAuthClientInformation client = authProvider.getClient(clientId).join();
+
+        if (client == null) {
+          throw new TokenException("invalid_client", "Client not found: " + clientId);
+        }
+
+        RefreshToken refreshToken = new RefreshToken();
+        refreshToken.setToken(params.get("refresh_token"));
+        refreshToken.setClientId(clientId);
+
+        // Parse scopes if provided
+        String scopeParam = params.get("scope");
+        List<String> scopes = scopeParam != null ? java.util.Arrays.asList(scopeParam.split(" ")) : null;
+
+        token = authProvider.exchangeRefreshToken(client, refreshToken, scopes).join();
+
+      } else {
+        throw new TokenException("unsupported_grant_type", "Grant type not supported: " + grantType);
+      }
+
       response.setContentType("application/json");
       response.setHeader("Cache-Control", "no-store");
       response.setHeader("Pragma", "no-cache");
       setCorsHeaders(request, response);
       response.setStatus(200);
       getObjectMapper().writeValue(response.getOutputStream(), token);
-    } catch (CompletionException ex) {
+    } catch (Exception ex) {
+      logger.error("Token request failed", ex);
+      setCorsHeaders(request, response);
+      response.setContentType("application/json");
       response.setStatus(400);
+
+      Map<String, String> error = new HashMap<>();
+      error.put("error", "invalid_grant");
+      Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+      error.put("error_description", cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
+      getObjectMapper().writeValue(response.getOutputStream(), error);
     }
   }
 
@@ -460,6 +557,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     }
 
     try {
+      logger.info("Client registration request body: " + body.toString());
       OAuthClientMetadata clientMetadata =
           getObjectMapper().readValue(body.toString(), OAuthClientMetadata.class);
 
@@ -468,8 +566,18 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       response.setContentType("application/json");
       response.setStatus(201); // Created
       getObjectMapper().writeValue(response.getOutputStream(), clientInfo);
-    } catch (CompletionException ex) {
+    } catch (Exception ex) {
+      logger.error("Client registration failed", ex);
+      setCorsHeaders(request, response);
+      response.setContentType("application/json");
       response.setStatus(400);
+
+      // Send error response with details
+      Map<String, String> error = new HashMap<>();
+      error.put("error", "invalid_client_metadata");
+      Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+      error.put("error_description", cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
+      getObjectMapper().writeValue(response.getOutputStream(), error);
     }
   }
 
@@ -487,10 +595,21 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
             });
 
     try {
+      logger.info("Revocation request params: " + params);
       revocationHandler.handle(params).join();
+      setCorsHeaders(request, response);
       response.setStatus(200);
-    } catch (CompletionException ex) {
+    } catch (Exception ex) {
+      logger.error("Revocation request failed", ex);
+      setCorsHeaders(request, response);
+      response.setContentType("application/json");
       response.setStatus(400);
+
+      Map<String, String> error = new HashMap<>();
+      error.put("error", "invalid_request");
+      Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+      error.put("error_description", cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
+      getObjectMapper().writeValue(response.getOutputStream(), error);
     }
   }
 }
