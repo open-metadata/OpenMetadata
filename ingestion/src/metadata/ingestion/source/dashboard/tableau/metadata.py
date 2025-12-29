@@ -1179,6 +1179,8 @@ class TableauSource(DashboardServiceSource):
         """
         Yield the usage of the dashboard
         """
+        if not self.source_config.includeUsage:
+            return
         try:
             dashboard_fqn = fqn.build(
                 metadata=self.metadata,
