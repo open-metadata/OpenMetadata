@@ -52,6 +52,8 @@ import {
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
 import {
   addMultiOwner,
+  closeColumnDetailPanel,
+  openColumnDetailPanel,
   removeOwner,
   removeOwnersFromList,
 } from '../../utils/entity';
@@ -436,24 +438,22 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         await test.step(
           'Add and remove tags via column detail panel',
           async () => {
-            // Open column detail panel
             const columnNameTestId =
               entity.type === 'Pipeline' ? 'task-name' : 'column-name';
-            const columnName = page
-              .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-              .getByTestId(columnNameTestId)
-              .first();
-            await columnName.scrollIntoViewIfNeeded();
-            await columnName.click();
 
-            await expect(page.locator('.column-detail-panel')).toBeVisible();
-
-            const panelContainer = page.locator('.column-detail-panel');
+            const panelContainer = await openColumnDetailPanel({
+              page,
+              rowSelector,
+              columnId: entity.childrenSelectorId ?? '',
+              columnNameTestId,
+            });
 
             // Add tag via panel
-            await panelContainer
-              .locator('[data-testid="edit-icon-tags"]')
-              .click();
+            const editButton = panelContainer.getByTestId(
+              'edit-icon-tags'
+            );
+            await editButton.click();
+
             await page
               .locator('[data-testid="selectable-list"]')
               .waitFor({ state: 'visible' });
@@ -472,7 +472,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             const tagOption = page.getByTitle('SpecialCategory');
             await tagOption.click();
 
-            // Wait for update response - could be columns endpoint or entity-specific endpoint
             const updateResponse = page.waitForResponse(
               (response) =>
                 response.url().includes('/api/v1/columns/name/') ||
@@ -487,12 +486,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
                 .getByTestId('tag-PersonalData.SpecialCategory')
             ).toBeVisible();
 
-            // Close panel
-            await panelContainer.getByTestId('close-button').click();
-
-            await expect(
-              page.locator('.column-detail-panel')
-            ).not.toBeVisible();
+            await closeColumnDetailPanel(page);
           }
         );
       });
@@ -511,24 +505,21 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         await test.step(
           'Verify tag updates preserve glossary terms',
           async () => {
-            // Open column detail panel
             const columnNameTestId =
               entity.type === 'Pipeline' ? 'task-name' : 'column-name';
-            const columnName = page
-              .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-              .getByTestId(columnNameTestId)
-              .first();
-            await columnName.scrollIntoViewIfNeeded();
-            await columnName.click();
 
-            await expect(page.locator('.column-detail-panel')).toBeVisible();
-
-            const panelContainer = page.locator('.column-detail-panel');
+            const panelContainer = await openColumnDetailPanel({
+              page,
+              rowSelector,
+              columnId: entity.childrenSelectorId ?? '',
+              columnNameTestId,
+            });
 
             // Step 1: Add a glossary term first
-            await panelContainer
-              .locator('[data-testid="edit-glossary-terms"]')
-              .click();
+            const glossaryEditButton = panelContainer.getByTestId(
+              'edit-glossary-terms'
+            );
+            await glossaryEditButton.click();
             await page
               .locator('[data-testid="selectable-list"]')
               .waitFor({ state: 'visible' });
@@ -605,12 +596,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               )
             ).toBeVisible();
 
-            // Close panel
-            await panelContainer.getByTestId('close-button').click();
-
-            await expect(
-              page.locator('.column-detail-panel')
-            ).not.toBeVisible();
+            await closeColumnDetailPanel(page);
           }
         );
       });
@@ -1218,23 +1204,22 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         await test.step(
           'Add and remove glossary terms via column detail panel',
           async () => {
-            // Open column detail panel
             const columnNameTestId =
               entity.type === 'Pipeline' ? 'task-name' : 'column-name';
-            const columnName = page
-              .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-              .getByTestId(columnNameTestId)
-              .first();
-            await columnName.click();
 
-            await expect(page.locator('.column-detail-panel')).toBeVisible();
-
-            const panelContainer = page.locator('.column-detail-panel');
+            const panelContainer = await openColumnDetailPanel({
+              page,
+              rowSelector,
+              columnId: entity.childrenSelectorId ?? '',
+              columnNameTestId,
+            });
 
             // Add glossary term via panel
-            await panelContainer
-              .locator('[data-testid="edit-glossary-terms"]')
-              .click();
+            const editButton = panelContainer.getByTestId(
+              'edit-glossary-terms'
+            );
+            await editButton.click();
+
             await page
               .locator('[data-testid="selectable-list"]')
               .waitFor({ state: 'visible' });
@@ -1254,7 +1239,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             });
             await termOption.click();
 
-            // Wait for update response - could be columns endpoint or entity-specific endpoint
             const updateResponse = page.waitForResponse(
               (response) =>
                 response.url().includes('/api/v1/columns/name/') ||
@@ -1269,12 +1253,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               )
             ).toBeVisible();
 
-            // Close panel
-            await panelContainer.getByTestId('close-button').click();
-
-            await expect(
-              page.locator('.column-detail-panel')
-            ).not.toBeVisible();
+            await closeColumnDetailPanel(page);
           }
         );
       });
