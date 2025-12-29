@@ -57,6 +57,22 @@ import {
 } from '@untitledui/icons';
 import { ComponentType, FC } from 'react';
 
+/**
+ * Get the proper image source URL for tag/classification icons
+ * Handles absolute URLs, data URIs, and relative paths
+ */
+export const getTagImageSrc = (iconURL: string): string => {
+  if (!iconURL) {
+    return '';
+  }
+
+  if (iconURL.startsWith('http') || iconURL.startsWith('data:image')) {
+    return iconURL;
+  }
+
+  return `${globalThis.location.origin}/${iconURL}`;
+};
+
 // Map of icon names to their components
 export const ICON_MAP: Record<
   string,
@@ -148,23 +164,6 @@ export const renderIcon = (
     return null;
   }
 
-  // Check if it's a URL (starts with http, https, or /)
-  if (iconValue.startsWith('http') || iconValue.startsWith('/')) {
-    return (
-      <img
-        alt="icon"
-        className={className}
-        src={iconValue}
-        style={{
-          width: size,
-          height: size,
-          objectFit: 'contain',
-          ...style,
-        }}
-      />
-    );
-  }
-
   // Check if it's a known icon name
   const IconComponent = ICON_MAP[iconValue];
   if (IconComponent) {
@@ -172,8 +171,20 @@ export const renderIcon = (
     return <IconComponent size={size} style={{ strokeWidth, ...style }} />;
   }
 
-  // If not a URL and not a known icon, return null
-  return null;
+  // Otherwise, treat it as an image URL
+  return (
+    <img
+      alt="icon"
+      className={className}
+      src={getTagImageSrc(iconValue)}
+      style={{
+        width: size,
+        height: size,
+        objectFit: 'contain',
+        ...style,
+      }}
+    />
+  );
 };
 
 /**

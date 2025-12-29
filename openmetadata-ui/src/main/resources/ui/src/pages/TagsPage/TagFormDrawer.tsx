@@ -24,6 +24,7 @@ import { isUndefined } from 'lodash';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ProviderType } from '../../generated/api/classification/createTag';
+import './TagFormDrawer.less';
 import TagsForm from './TagsForm';
 import { TagFormDrawerProps } from './TagsPage.interface';
 
@@ -54,11 +55,10 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
       onClose={onClose}>
       {/* Header */}
       <Box
+        className="tag-form-drawer-header"
         sx={{
           px: 6,
           py: 5,
-          borderBottom: 1,
-          borderColor: 'divider',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -91,11 +91,10 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
 
       {/* Footer */}
       <Box
+        className="tag-form-drawer-footer"
         sx={{
           px: 6,
           py: 3,
-          borderTop: 1,
-          borderColor: 'divider',
           display: 'flex',
           justifyContent: 'flex-end',
           gap: 2,

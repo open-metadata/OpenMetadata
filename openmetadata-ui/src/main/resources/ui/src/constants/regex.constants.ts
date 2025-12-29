@@ -71,3 +71,8 @@ export const INTEGER_ZERO_TO_HUNDRED_REGEX = /^(100|[1-9]?\d)$/;
 // Matches: en, fr, de, en-US, fr-CA, de-DE, etc.
 // Format: two lowercase letters optionally followed by hyphen and two uppercase letters
 export const LOCALE_CODE_REGEX = /^[a-z]{2}(-[A-Z]{2})?$/;
+
+// Matches URLs (http/https), absolute paths (/), or files with image extensions
+// Matches: http://example.com/image.png, /path/to/image.jpg, example.svg, etc.
+export const IMAGE_URL_PATTERN =
+  /^(https?:\/\/|\/)|.*\.(png|jpg|jpeg|gif|svg|webp|bmp|ico)$/i;

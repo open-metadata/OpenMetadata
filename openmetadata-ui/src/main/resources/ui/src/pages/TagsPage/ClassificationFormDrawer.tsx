@@ -22,6 +22,7 @@ import {
 import { XClose } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import './TagFormDrawer.less';
 import TagsForm from './TagsForm';
 import { ClassificationFormDrawerProps } from './TagsPage.interface';
 
@@ -50,11 +51,10 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
       onClose={onClose}>
       {/* Header */}
       <Box
+        className="tag-form-drawer-header"
         sx={{
           px: 6,
           py: 5,
-          borderBottom: 1,
-          borderColor: 'divider',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -86,11 +86,10 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
 
       {/* Footer */}
       <Box
+        className="tag-form-drawer-footer"
         sx={{
           px: 6,
           py: 3,
-          borderTop: 1,
-          borderColor: 'divider',
           display: 'flex',
           justifyContent: 'flex-end',
           gap: 2,
