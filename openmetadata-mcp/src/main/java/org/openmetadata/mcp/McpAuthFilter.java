@@ -38,6 +38,14 @@ public class McpAuthFilter implements Filter {
     HttpServletResponse httpServletResponse = (HttpServletResponse) servletResponse;
 
     String requestPath = httpServletRequest.getRequestURI();
+    String method = httpServletRequest.getMethod();
+
+    // Allow CORS preflight OPTIONS requests without authentication
+    if ("OPTIONS".equalsIgnoreCase(method)) {
+      LOG.debug("Allowing OPTIONS preflight request without authentication: {}", requestPath);
+      filterChain.doFilter(servletRequest, servletResponse);
+      return;
+    }
 
     // Allow OAuth endpoints without authentication
     if (isOAuthEndpoint(requestPath)) {

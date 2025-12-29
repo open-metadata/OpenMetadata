@@ -178,6 +178,35 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   }
 
   /**
+   * Sanitizes request parameters by removing sensitive values for logging.
+   * Removes tokens, secrets, codes, and verifiers to prevent credential leakage in logs.
+   * @param params The original parameters map
+   * @return A sanitized copy of the parameters safe for logging
+   */
+  private Map<String, String> sanitizeParamsForLogging(Map<String, String> params) {
+    if (params == null) {
+      return new HashMap<>();
+    }
+
+    Map<String, String> sanitized = new HashMap<>(params);
+
+    // Remove all sensitive OAuth parameters
+    sanitized.remove("client_secret");
+    sanitized.remove("code");
+    sanitized.remove("code_verifier");
+    sanitized.remove("refresh_token");
+    sanitized.remove("access_token");
+    sanitized.remove("token");
+
+    // Replace code_challenge with indicator (still safe to log)
+    if (sanitized.containsKey("code_challenge")) {
+      sanitized.put("code_challenge", "<present>");
+    }
+
+    return sanitized;
+  }
+
+  /**
    * Sets CORS headers with origin validation.
    * Only allows specific origins from the allowedOrigins list.
    * Rejects requests from origins not in the allowed list.
@@ -371,7 +400,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
             });
 
     try {
-      logger.info("Authorization request params: " + params);
+      logger.info("Authorization request params (sanitized): " + sanitizeParamsForLogging(params));
       String redirectUrl = authorizationHandler.handle(params).join().getRedirectUrl();
       response.setHeader("Location", redirectUrl);
       response.setHeader("Cache-Control", "no-store");
@@ -386,7 +415,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       Map<String, String> error = new HashMap<>();
       error.put("error", "invalid_request");
       Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-      error.put("error_description", cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
+      error.put(
+          "error_description",
+          cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
       getObjectMapper().writeValue(response.getOutputStream(), error);
     }
   }
@@ -453,7 +484,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
               }
             });
 
-    logger.info("Token request params: " + params);
+    logger.info("Token request params (sanitized): " + sanitizeParamsForLogging(params));
 
     try {
       String grantType = params.get("grant_type");
@@ -483,13 +514,15 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
         // Validate that the code was issued to this client
         if (!storedCode.getClientId().equals(clientId)) {
-          throw new TokenException("invalid_grant", "Authorization code was not issued to this client");
+          throw new TokenException(
+              "invalid_grant", "Authorization code was not issued to this client");
         }
 
         // Validate redirect_uri if it was provided during authorization
         if (storedCode.getRedirectUri() != null && redirectUri != null) {
           if (!storedCode.getRedirectUri().toString().equals(redirectUri)) {
-            throw new TokenException("invalid_grant", "redirect_uri does not match authorization request");
+            throw new TokenException(
+                "invalid_grant", "redirect_uri does not match authorization request");
           }
         }
 
@@ -518,12 +551,14 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
         // Parse scopes if provided
         String scopeParam = params.get("scope");
-        List<String> scopes = scopeParam != null ? java.util.Arrays.asList(scopeParam.split(" ")) : null;
+        List<String> scopes =
+            scopeParam != null ? java.util.Arrays.asList(scopeParam.split(" ")) : null;
 
         token = authProvider.exchangeRefreshToken(client, refreshToken, scopes).join();
 
       } else {
-        throw new TokenException("unsupported_grant_type", "Grant type not supported: " + grantType);
+        throw new TokenException(
+            "unsupported_grant_type", "Grant type not supported: " + grantType);
       }
 
       response.setContentType("application/json");
@@ -541,7 +576,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       Map<String, String> error = new HashMap<>();
       error.put("error", "invalid_grant");
       Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-      error.put("error_description", cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
+      error.put(
+          "error_description",
+          cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
       getObjectMapper().writeValue(response.getOutputStream(), error);
     }
   }
@@ -576,7 +613,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       Map<String, String> error = new HashMap<>();
       error.put("error", "invalid_client_metadata");
       Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-      error.put("error_description", cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
+      error.put(
+          "error_description",
+          cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
       getObjectMapper().writeValue(response.getOutputStream(), error);
     }
   }
@@ -595,7 +634,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
             });
 
     try {
-      logger.info("Revocation request params: " + params);
+      logger.info("Revocation request params (sanitized): " + sanitizeParamsForLogging(params));
       revocationHandler.handle(params).join();
       setCorsHeaders(request, response);
       response.setStatus(200);
@@ -608,7 +647,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       Map<String, String> error = new HashMap<>();
       error.put("error", "invalid_request");
       Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-      error.put("error_description", cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
+      error.put(
+          "error_description",
+          cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
       getObjectMapper().writeValue(response.getOutputStream(), error);
     }
   }

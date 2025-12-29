@@ -12,7 +12,7 @@ public class AuthorizationCode {
 
   private List<String> scopes;
 
-  private double expiresAt;
+  private long expiresAt;
 
   private String clientId;
 
@@ -29,7 +29,7 @@ public class AuthorizationCode {
   public AuthorizationCode(
       String code,
       List<String> scopes,
-      double expiresAt,
+      long expiresAt,
       String clientId,
       String codeChallenge,
       URI redirectUri,
@@ -59,11 +59,11 @@ public class AuthorizationCode {
     this.scopes = scopes;
   }
 
-  public double getExpiresAt() {
+  public long getExpiresAt() {
     return expiresAt;
   }
 
-  public void setExpiresAt(double expiresAt) {
+  public void setExpiresAt(long expiresAt) {
     this.expiresAt = expiresAt;
   }
 

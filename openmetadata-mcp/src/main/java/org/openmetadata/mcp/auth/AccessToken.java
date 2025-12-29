@@ -13,13 +13,13 @@ public class AccessToken {
 
   private List<String> scopes;
 
-  private Integer expiresAt;
+  private Long expiresAt;
 
   private List<String> audience;
 
   public AccessToken() {}
 
-  public AccessToken(String token, String clientId, List<String> scopes, Integer expiresAt) {
+  public AccessToken(String token, String clientId, List<String> scopes, Long expiresAt) {
     this.token = token;
     this.clientId = clientId;
     this.scopes = scopes;
@@ -27,11 +27,7 @@ public class AccessToken {
   }
 
   public AccessToken(
-      String token,
-      String clientId,
-      List<String> scopes,
-      Integer expiresAt,
-      List<String> audience) {
+      String token, String clientId, List<String> scopes, Long expiresAt, List<String> audience) {
     this.token = token;
     this.clientId = clientId;
     this.scopes = scopes;
@@ -63,11 +59,11 @@ public class AccessToken {
     this.scopes = scopes;
   }
 
-  public Integer getExpiresAt() {
+  public Long getExpiresAt() {
     return expiresAt;
   }
 
-  public void setExpiresAt(Integer expiresAt) {
+  public void setExpiresAt(Long expiresAt) {
     this.expiresAt = expiresAt;
   }
 

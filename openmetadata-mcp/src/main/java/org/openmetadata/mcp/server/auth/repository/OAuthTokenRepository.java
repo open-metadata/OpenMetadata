@@ -72,7 +72,7 @@ public class OAuthTokenRepository {
 
     AccessToken token = new AccessToken();
     token.setToken(decryptedToken);
-    token.setExpiresAt((int) record.expiresAt());
+    token.setExpiresAt(record.expiresAt());
     token.setClientId(record.clientId());
     token.setScopes(record.scopes());
 
@@ -137,7 +137,7 @@ public class OAuthTokenRepository {
 
     RefreshToken token = new RefreshToken();
     token.setToken(decryptedToken);
-    token.setExpiresAt((int) record.expiresAt());
+    token.setExpiresAt(record.expiresAt());
     token.setClientId(record.clientId());
     token.setScopes(record.scopes());
 

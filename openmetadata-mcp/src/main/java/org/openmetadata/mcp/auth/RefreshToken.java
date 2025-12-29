@@ -13,11 +13,11 @@ public class RefreshToken {
 
   private List<String> scopes;
 
-  private Integer expiresAt;
+  private Long expiresAt;
 
   public RefreshToken() {}
 
-  public RefreshToken(String token, String clientId, List<String> scopes, Integer expiresAt) {
+  public RefreshToken(String token, String clientId, List<String> scopes, Long expiresAt) {
     this.token = token;
     this.clientId = clientId;
     this.scopes = scopes;
@@ -48,11 +48,11 @@ public class RefreshToken {
     this.scopes = scopes;
   }
 
-  public Integer getExpiresAt() {
+  public Long getExpiresAt() {
     return expiresAt;
   }
 
-  public void setExpiresAt(Integer expiresAt) {
+  public void setExpiresAt(Long expiresAt) {
     this.expiresAt = expiresAt;
   }
 }
