@@ -185,6 +185,10 @@ export interface PipelineServiceClientConfiguration {
      */
     clientType?: ClientType;
     /**
+     * Enable automatic redirect from the sign-in page to the configured SSO provider.
+     */
+    enableAutoRedirect?: boolean;
+    /**
      * Enable Self Sign Up
      */
     enableSelfSignup?: boolean;
@@ -974,6 +978,10 @@ export interface AuthenticationConfiguration {
      * Client Type
      */
     clientType?: ClientType;
+    /**
+     * Enable automatic redirect from the sign-in page to the configured SSO provider.
+     */
+    enableAutoRedirect?: boolean;
     /**
      * Enable Self Sign Up
      */

@@ -31,13 +31,13 @@ export interface AuthenticationConfiguration {
      */
     clientType?: ClientType;
     /**
-     * Enable Self Sign Up
-     */
-    enableSelfSignup?: boolean;
-    /**
      * Enable automatic redirect from the sign-in page to the configured SSO provider.
      */
     enableAutoRedirect?: boolean;
+    /**
+     * Enable Self Sign Up
+     */
+    enableSelfSignup?: boolean;
     /**
      * Force secure flag on session cookies even when not using HTTPS directly. Enable this when
      * running behind a proxy/load balancer that handles SSL termination.

@@ -75,9 +75,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public void setFullyQualifiedName(DashboardDataModel dashboardDataModel) {
+    // Use getFullyQualifiedName() instead of getName() to properly handle service names with dots
+    // Service FQN is already properly quoted (e.g., "service.with.dots" for names containing dots)
+    String serviceFqn = dashboardDataModel.getService().getFullyQualifiedName();
     dashboardDataModel.setFullyQualifiedName(
-        FullyQualifiedName.add(
-            dashboardDataModel.getService().getName() + ".model", dashboardDataModel.getName()));
+        FullyQualifiedName.add(serviceFqn + ".model", dashboardDataModel.getName()));
     ColumnUtil.setColumnFQN(
         dashboardDataModel.getFullyQualifiedName(), dashboardDataModel.getColumns());
   }

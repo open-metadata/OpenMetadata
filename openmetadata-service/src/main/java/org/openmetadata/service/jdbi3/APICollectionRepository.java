@@ -54,7 +54,8 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   @Override
   public void setFullyQualifiedName(APICollection apiCollection) {
     apiCollection.setFullyQualifiedName(
-        FullyQualifiedName.build(apiCollection.getService().getName(), apiCollection.getName()));
+        FullyQualifiedName.add(
+            apiCollection.getService().getFullyQualifiedName(), apiCollection.getName()));
   }
 
   @Override
