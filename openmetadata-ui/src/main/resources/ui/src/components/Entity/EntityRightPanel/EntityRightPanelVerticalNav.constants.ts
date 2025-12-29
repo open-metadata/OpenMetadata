@@ -12,35 +12,36 @@
  */
 import { EntityType } from '../../../enums/entity.enum';
 
-export const ENTITY_RIGHT_PANEL_SCHEMA_TABS = [
-  EntityType.TABLE,
-  EntityType.TOPIC,
-  EntityType.DASHBOARD,
-  EntityType.DATABASE_SCHEMA,
-  EntityType.DATABASE,
-  EntityType.PIPELINE,
+// Internal Sets for O(1) lookup performance
+const SCHEMA_TABS_SET = new Set<EntityType>([
   EntityType.API_COLLECTION,
-  EntityType.SEARCH_INDEX,
-  EntityType.DASHBOARD_DATA_MODEL,
   EntityType.API_ENDPOINT,
-  EntityType.CONTAINER,
-];
-
-export const ENTITY_RIGHT_PANEL_LINEAGE_TABS = [
-  EntityType.TABLE,
-  EntityType.TOPIC,
   EntityType.CONTAINER,
   EntityType.DASHBOARD,
-  EntityType.CHART,
-  EntityType.PIPELINE,
-  EntityType.MLMODEL,
-  EntityType.SEARCH_INDEX,
   EntityType.DASHBOARD_DATA_MODEL,
-  EntityType.API_ENDPOINT,
-  EntityType.DIRECTORY,
-];
+  EntityType.DATABASE,
+  EntityType.DATABASE_SCHEMA,
+  EntityType.PIPELINE,
+  EntityType.SEARCH_INDEX,
+  EntityType.TABLE,
+  EntityType.TOPIC,
+]);
 
-export const ENTITY_RIGHT_PANEL_CUSTOM_PROPERTIES_TABS = [
+const LINEAGE_TABS_SET = new Set<EntityType>([
+  EntityType.API_ENDPOINT,
+  EntityType.CHART,
+  EntityType.CONTAINER,
+  EntityType.DASHBOARD,
+  EntityType.DASHBOARD_DATA_MODEL,
+  EntityType.DIRECTORY,
+  EntityType.MLMODEL,
+  EntityType.PIPELINE,
+  EntityType.SEARCH_INDEX,
+  EntityType.TABLE,
+  EntityType.TOPIC,
+]);
+
+const CUSTOM_PROPERTIES_TABS_SET = new Set<EntityType>([
   EntityType.API_COLLECTION,
   EntityType.API_ENDPOINT,
   EntityType.CHART,
@@ -63,4 +64,21 @@ export const ENTITY_RIGHT_PANEL_CUSTOM_PROPERTIES_TABS = [
   EntityType.TABLE,
   EntityType.TOPIC,
   EntityType.WORKSHEET,
-];
+]);
+
+// Exported arrays for backward compatibility
+export const ENTITY_RIGHT_PANEL_SCHEMA_TABS = Array.from(SCHEMA_TABS_SET);
+export const ENTITY_RIGHT_PANEL_LINEAGE_TABS = Array.from(LINEAGE_TABS_SET);
+export const ENTITY_RIGHT_PANEL_CUSTOM_PROPERTIES_TABS = Array.from(
+  CUSTOM_PROPERTIES_TABS_SET
+);
+
+// Helper functions for cleaner and more performant usage
+export const hasSchemaTab = (entityType: EntityType): boolean =>
+  SCHEMA_TABS_SET.has(entityType);
+
+export const hasLineageTab = (entityType: EntityType): boolean =>
+  LINEAGE_TABS_SET.has(entityType);
+
+export const hasCustomPropertiesTab = (entityType: EntityType): boolean =>
+  CUSTOM_PROPERTIES_TABS_SET.has(entityType);

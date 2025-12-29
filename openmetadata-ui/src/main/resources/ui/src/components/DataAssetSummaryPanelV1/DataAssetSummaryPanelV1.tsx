@@ -61,7 +61,7 @@ import {
   DataAssetSummaryPanelProps,
   TestCaseStatusCounts,
 } from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
-import { ENTITY_RIGHT_PANEL_LINEAGE_TABS } from '../Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
+import { hasLineageTab } from '../Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
 
 export const DataAssetSummaryPanelV1 = ({
   dataAsset,
@@ -168,7 +168,7 @@ export const DataAssetSummaryPanelV1 = ({
   }, [dataAsset, entityType, highlights, charts, chartsDetailsLoading]);
 
   const shouldShowLineageSection = useMemo(
-    () => ENTITY_RIGHT_PANEL_LINEAGE_TABS.includes(entityType),
+    () => hasLineageTab(entityType),
     [entityType]
   );
 

@@ -21,9 +21,9 @@ import { ReactComponent as SchemaIcon } from '../../../assets/svg/explore-vertic
 import { ReactComponent as DataQualityIcon } from '../../../assets/svg/ic-data-contract.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import {
-  ENTITY_RIGHT_PANEL_CUSTOM_PROPERTIES_TABS,
-  ENTITY_RIGHT_PANEL_LINEAGE_TABS,
-  ENTITY_RIGHT_PANEL_SCHEMA_TABS,
+  hasCustomPropertiesTab,
+  hasLineageTab,
+  hasSchemaTab,
 } from './EntityRightPanelVerticalNav.constants';
 import {
   EntityRightPanelTab,
@@ -46,7 +46,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       ];
 
       // Add schema tab for entities that have schema
-      if (ENTITY_RIGHT_PANEL_SCHEMA_TABS.includes(entityType)) {
+      if (hasSchemaTab(entityType)) {
         items.push({
           key: EntityRightPanelTab.SCHEMA,
           icon: <SchemaIcon height={16} width={16} />,
@@ -55,7 +55,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
         });
       }
       // Add lineage tab for most entities
-      if (ENTITY_RIGHT_PANEL_LINEAGE_TABS.includes(entityType)) {
+      if (hasLineageTab(entityType)) {
         items.push({
           key: EntityRightPanelTab.LINEAGE,
           icon: <PlatformLineageIcon height={16} width={16} />,
@@ -75,7 +75,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       }
 
       // Add custom properties tab
-      if (ENTITY_RIGHT_PANEL_CUSTOM_PROPERTIES_TABS.includes(entityType)) {
+      if (hasCustomPropertiesTab(entityType)) {
         items.push({
           key: EntityRightPanelTab.CUSTOM_PROPERTIES,
           icon: <CustomPropertiesIcon height={16} width={16} />,

@@ -1665,16 +1665,14 @@ test.describe.serial('Test pagination in column level lineage', () => {
 
         // Wait for the lineage entity panel (sidebar drawer) to open
         const lineagePanel = page.getByTestId('lineage-entity-panel');
-        await expect(lineagePanel).toBeVisible({ timeout: 10000 });
+        await expect(lineagePanel).toBeVisible();
 
         // Wait for the panel content to load
         await waitForAllLoadersToDisappear(page);
 
         // Try to find custom properties tab in the lineage sidebar - use data-testid first (priority 1)
         let customPropertiesTab = lineagePanel.getByTestId('custom-properties-tab');
-        const isTabVisible = await customPropertiesTab
-          .isVisible({ timeout: 2000 })
-          .catch(() => false);
+        const isTabVisible = await customPropertiesTab.isVisible();
 
         if (!isTabVisible) {
           // Fallback: use getByRole (priority 2) within the lineage panel
@@ -1684,9 +1682,7 @@ test.describe.serial('Test pagination in column level lineage', () => {
         }
 
         // Verify the custom properties tab is visible in the lineage sidebar
-        await expect(customPropertiesTab).toBeVisible({
-          timeout: 10000,
-        });
+        await expect(customPropertiesTab).toBeVisible();
 
         // Verify the tab is clickable
         await expect(customPropertiesTab).toBeEnabled();
@@ -1695,8 +1691,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
         await customPropertiesTab.click();
         await waitForAllLoadersToDisappear(page);
       });
-
-      
     } finally {
       await Promise.all([
         currentTable.delete(apiContext),
@@ -1825,13 +1819,15 @@ test.describe.serial('Test pagination in column level lineage', () => {
 
           await sidebarClick(page, SidebarItem.LINEAGE);
 
-          await page.waitForSelector('[data-testid="search-entity-select"]');
-          await page.click('[data-testid="search-entity-select"]');
+          const searchEntitySelect = page.getByTestId('search-entity-select');
+          await expect(searchEntitySelect).toBeVisible();
+          await searchEntitySelect.click();
 
-          await page.fill(
-            '[data-testid="search-entity-select"] .ant-select-selection-search-input',
-            service.entity.name
-          );
+          // Use getByTestId for the input field if available, otherwise fallback to locator
+          const searchInput = page
+            .getByTestId('search-entity-select')
+            .locator('.ant-select-selection-search-input');
+          await searchInput.fill(service.entity.name);
 
           await page.waitForRequest(
             (req) =>
@@ -1839,19 +1835,25 @@ test.describe.serial('Test pagination in column level lineage', () => {
               req.url().includes('deleted=false')
           );
 
-          await page.waitForSelector('.ant-select-dropdown');
+          // Wait for dropdown to appear using data-testid if available, otherwise use visible state
+          const dropdown = page.locator('.ant-select-dropdown');
+          await expect(dropdown).toBeVisible();
 
-          await page.waitForSelector(
-            `[data-testid="node-suggestion-${serviceFqn}"]`
+          const nodeSuggestion = page.getByTestId(
+            `node-suggestion-${serviceFqn}`
           );
-          await page
-            .locator(`[data-testid="node-suggestion-${serviceFqn}"]`)
-            .dispatchEvent('click');
+          await expect(nodeSuggestion).toBeVisible();
+          await nodeSuggestion.click();
 
-          await page.waitForResponse('/api/v1/lineage/getLineage?*');
+          // Wait for specific lineage API response
+          await page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/lineage/getLineage') &&
+              response.status() === 200
+          );
 
           await expect(
-            page.locator(`[data-testid="lineage-node-${serviceFqn}"]`)
+            page.getByTestId(`lineage-node-${serviceFqn}`)
           ).toBeVisible();
 
           await clickLineageNode(page, serviceFqn);
