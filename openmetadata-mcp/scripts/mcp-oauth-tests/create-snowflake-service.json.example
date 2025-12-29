@@ -1,0 +1,20 @@
+{
+  "name": "your-connector-name",
+  "serviceType": "Snowflake",
+  "connection": {
+    "config": {
+      "type": "Snowflake",
+      "account": "YOUR_ACCOUNT_ID",
+      "warehouse": "YOUR_WAREHOUSE",
+      "database": "YOUR_DATABASE",
+      "authType": {
+        "clientId": "BASE64_ENCODED_CLIENT_ID",
+        "clientSecret": "BASE64_ENCODED_CLIENT_SECRET",
+        "accessToken": "YOUR_SNOWFLAKE_ACCESS_TOKEN",
+        "refreshToken": "YOUR_SNOWFLAKE_REFRESH_TOKEN",
+        "tokenEndpoint": "https://YOUR_ACCOUNT_ID.snowflakecomputing.com/oauth/token-request",
+        "expiresAt": 1735426259
+      }
+    }
+  }
+}

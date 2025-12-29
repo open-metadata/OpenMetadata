@@ -66,7 +66,7 @@ class ConnectorOAuthProviderTest {
   @BeforeEach
   void setUp() {
     // Create provider with mocked dependencies
-    provider = new ConnectorOAuthProvider(secretsManager, serviceRepository, baseUrl);
+    provider = new ConnectorOAuthProvider(secretsManager, serviceRepository, baseUrl, null);
     // Use reflection to inject mocked HttpClient
     setHttpClient(provider, httpClient);
   }

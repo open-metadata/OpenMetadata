@@ -95,23 +95,17 @@ public class McpServer implements McpServerProvider {
               .tools(true)
               .prompts(true)
               .resources(true, true)
-              .logging()
               .build();
-      //          HttpServletStatelessServerTransport statelessTransport =
-      //                  HttpServletStatelessServerTransport.builder()
-      //                          .jsonMapper(new JacksonMcpJsonMapper(JsonUtils.getObjectMapper()))
-      //                          .messageEndpoint("/mcp")
-      //                          .contextExtractor(new AuthEnrichedMcpContextExtractor())
-      //                          .build();
       // Create connector-based OAuth provider (redirect-free, internal OAuth)
-      String baseUrl = "http://localhost:8585";
+      // Get base URL from system settings, fallback to localhost for development
+      String baseUrl = getBaseUrlFromSettings();
       // Get default connector from environment (null in production, set for dev/testing)
       String defaultConnector = System.getenv("MCP_DEFAULT_CONNECTOR");
       if (defaultConnector == null || defaultConnector.trim().isEmpty()) {
         defaultConnector = null; // No default in production
-        log.info("MCP OAuth: No default connector configured (production mode)");
+        LOG.info("MCP OAuth: No default connector configured (production mode)");
       } else {
-        log.warn(
+        LOG.warn(
             "MCP OAuth: Using default connector '{}' from MCP_DEFAULT_CONNECTOR (dev/test only)",
             defaultConnector);
       }
@@ -189,12 +183,6 @@ public class McpServer implements McpServerProvider {
       contextHandler.addFilter(
           new FilterHolder(authFilter), "/mcp/*", EnumSet.of(DispatcherType.REQUEST));
 
-      // Register MCP OAuth callback servlet
-      //      McpOAuthCallbackServlet callbackServlet = new McpOAuthCallbackServlet(authProvider);
-      //      ServletHolder callbackHolder = new ServletHolder(callbackServlet);
-      //      contextHandler.addServlet(callbackHolder, "/mcp/auth/callback");
-      //      LOG.info("Registered MCP OAuth callback servlet at mcp/auth/callback");
-
       // Register OAuth setup endpoint (one-time admin setup)
       // Use /api/v1/mcp/oauth/setup to avoid conflict with /mcp/* wildcard pattern
       org.openmetadata.mcp.server.auth.handlers.OAuthSetupHandler setupHandler =
@@ -244,5 +232,30 @@ public class McpServer implements McpServerProvider {
     return new McpStatelessServerFeatures.SyncPromptSpecification(
         prompt,
         (exchange, arguments) -> promptsContext.callPrompt(jwtFilter, prompt.name(), arguments));
+  }
+
+  /**
+   * Get base URL from system settings, with fallback to localhost for development.
+   */
+  private String getBaseUrlFromSettings() {
+    try {
+      org.openmetadata.service.jdbi3.SystemRepository systemRepository =
+          Entity.getSystemRepository();
+      if (systemRepository != null) {
+        org.openmetadata.schema.settings.Settings settings =
+            systemRepository.getOMBaseUrlConfigInternal();
+        if (settings != null && settings.getConfigValue() != null) {
+          org.openmetadata.schema.settings.OpenMetadataBaseUrlConfiguration urlConfig =
+              (org.openmetadata.schema.settings.OpenMetadataBaseUrlConfiguration)
+                  settings.getConfigValue();
+          if (urlConfig != null && urlConfig.getOpenMetadataUrl() != null) {
+            return urlConfig.getOpenMetadataUrl();
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOG.debug("Could not get instance URL from SystemSettings", e);
+    }
+    return "http://localhost:8585";
   }
 }

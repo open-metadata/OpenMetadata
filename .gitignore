@@ -183,3 +183,9 @@ hive-mind-prompt-*.txt
 memory
 
 
+
+# MCP OAuth Test Credentials (local only - do not commit)
+openmetadata-mcp/scripts/mcp-oauth-tests/create-*-service.json
+!openmetadata-mcp/scripts/mcp-oauth-tests/create-*-service.json.example
+openmetadata-mcp/scripts/mcp-oauth-tests/*.sh
+!openmetadata-mcp/scripts/mcp-oauth-tests/*.sh.example

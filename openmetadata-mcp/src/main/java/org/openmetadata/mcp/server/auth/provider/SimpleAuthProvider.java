@@ -110,7 +110,7 @@ public class SimpleAuthProvider implements OAuthAuthorizationServerProvider {
     accessToken.setToken(accessTokenValue);
     accessToken.setClientId(client.getClientId());
     accessToken.setScopes(authorizationCode.getScopes());
-    accessToken.setExpiresAt((int) Instant.now().plusSeconds(3600).getEpochSecond());
+    accessToken.setExpiresAt(Instant.now().plusSeconds(3600).getEpochSecond());
     if (resourceServerAudience != null) {
       accessToken.setAudience(List.of(resourceServerAudience));
     }
@@ -120,7 +120,7 @@ public class SimpleAuthProvider implements OAuthAuthorizationServerProvider {
     refreshToken.setToken(refreshTokenValue);
     refreshToken.setClientId(client.getClientId());
     refreshToken.setScopes(authorizationCode.getScopes());
-    refreshToken.setExpiresAt((int) Instant.now().plusSeconds(86400).getEpochSecond());
+    refreshToken.setExpiresAt(Instant.now().plusSeconds(86400).getEpochSecond());
 
     // Store tokens
     accessTokens.put(accessTokenValue, accessToken);
@@ -161,7 +161,7 @@ public class SimpleAuthProvider implements OAuthAuthorizationServerProvider {
     accessToken.setToken(accessTokenValue);
     accessToken.setClientId(client.getClientId());
     accessToken.setScopes(scopes);
-    accessToken.setExpiresAt((int) Instant.now().plusSeconds(3600).getEpochSecond());
+    accessToken.setExpiresAt(Instant.now().plusSeconds(3600).getEpochSecond());
     if (resourceServerAudience != null) {
       accessToken.setAudience(List.of(resourceServerAudience));
     }
@@ -171,7 +171,7 @@ public class SimpleAuthProvider implements OAuthAuthorizationServerProvider {
     newRefreshToken.setToken(refreshTokenValue);
     newRefreshToken.setClientId(client.getClientId());
     newRefreshToken.setScopes(scopes);
-    newRefreshToken.setExpiresAt((int) Instant.now().plusSeconds(86400).getEpochSecond());
+    newRefreshToken.setExpiresAt(Instant.now().plusSeconds(86400).getEpochSecond());
 
     // Store tokens
     accessTokens.put(accessTokenValue, accessToken);
