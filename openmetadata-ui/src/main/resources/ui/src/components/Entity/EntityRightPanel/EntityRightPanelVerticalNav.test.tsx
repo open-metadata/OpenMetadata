@@ -23,29 +23,122 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-// Mock antd Menu component
-jest.mock('antd', () => ({
-  Menu: jest.fn().mockImplementation(({ items, onClick, selectedKeys }) => (
-    <ul
-      className="ant-menu ant-menu-root ant-menu-vertical ant-menu-light vertical-nav-menu"
-      role="menu">
-      {items.map(
-        (item: { key: string; icon: React.ReactNode; label: string }) => (
-          <li
-            className={`ant-menu-item ${
-              selectedKeys.includes(item.key) ? 'ant-menu-item-selected' : ''
-            }`}
-            key={item.key}
-            role="menuitem"
-            onClick={() => onClick({ key: item.key })}>
-            <span className="ant-menu-item-icon">{item.icon}</span>
-            <span className="ant-menu-title-content">{item.label}</span>
-          </li>
-        )
-      )}
-    </ul>
-  )),
-}));
+// Mock EntityUtils
+jest.mock('../../../utils/EntityUtils', () => {
+  const LINEAGE_TABS_SET = new Set([
+    'apiEndpoint',
+    'chart',
+    'container',
+    'dashboard',
+    'dashboardDataModel',
+    'directory',
+    'mlmodel',
+    'pipeline',
+    'searchIndex',
+    'table',
+    'topic',
+  ]);
+  const SCHEMA_TABS_SET = new Set([
+    'apiCollection',
+    'apiEndpoint',
+    'container',
+    'dashboard',
+    'dashboardDataModel',
+    'database',
+    'databaseSchema',
+    'pipeline',
+    'searchIndex',
+    'table',
+    'topic',
+  ]);
+  const CUSTOM_PROPERTIES_TABS_SET = new Set([
+    'apiCollection',
+    'apiEndpoint',
+    'chart',
+    'container',
+    'dashboard',
+    'dashboardDataModel',
+    'database',
+    'databaseSchema',
+    'dataProduct',
+    'directory',
+    'domain',
+    'file',
+    'glossaryTerm',
+    'metric',
+    'mlmodel',
+    'pipeline',
+    'searchIndex',
+    'spreadsheet',
+    'storedProcedure',
+    'table',
+    'topic',
+    'worksheet',
+  ]);
+
+  return {
+    hasLineageTab: jest.fn((entityType) => LINEAGE_TABS_SET.has(entityType)),
+    hasSchemaTab: jest.fn((entityType) => SCHEMA_TABS_SET.has(entityType)),
+    hasCustomPropertiesTab: jest.fn((entityType) =>
+      CUSTOM_PROPERTIES_TABS_SET.has(entityType)
+    ),
+  };
+});
+
+// Mock antd Menu component and Typography
+jest.mock('antd', () => {
+  const actual = jest.requireActual('antd');
+
+  return {
+    ...actual,
+    Menu: jest.fn().mockImplementation(({ items, onClick, selectedKeys }) => (
+      <ul
+        className="ant-menu ant-menu-root ant-menu-vertical ant-menu-light vertical-nav-menu"
+        role="menu">
+        {items.map(
+          (item: { key: string; icon: React.ReactNode; label: string }) => (
+            <li
+              className={`ant-menu-item ${
+                selectedKeys.includes(item.key) ? 'ant-menu-item-selected' : ''
+              }`}
+              key={item.key}
+              role="menuitem"
+              onClick={() => onClick({ key: item.key })}>
+              <span className="ant-menu-item-icon">{item.icon}</span>
+              <span className="ant-menu-title-content">{item.label}</span>
+            </li>
+          )
+        )}
+      </ul>
+    )),
+    Typography: actual.Typography
+      ? {
+          ...actual.Typography,
+          Text: jest
+            .fn()
+            .mockImplementation(({ children, className, ...props }) => (
+              <span
+                className={className}
+                data-testid="typography-text"
+                {...props}>
+                {children}
+              </span>
+            )),
+        }
+      : {
+          Text: jest
+            .fn()
+            .mockImplementation(({ children, className, ...props }) => (
+              <span
+                className={className}
+                data-testid="typography-text"
+                {...props}>
+                {children}
+              </span>
+            )),
+        },
+  };
+});
 
 describe('EntityRightPanelVerticalNav', () => {
   const mockOnTabChange = jest.fn();
