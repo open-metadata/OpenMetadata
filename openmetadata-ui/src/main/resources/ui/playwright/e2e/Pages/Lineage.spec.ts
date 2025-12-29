@@ -1590,16 +1590,16 @@ test.describe.serial('Test pagination in column level lineage', () => {
       await afterAction();
     }
   });
+  });
 
   test('Verify custom properties tab visibility in lineage sidebar', async ({
     page,
   }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
+    const { apiContext } = await getApiContext(page);
     const currentTable = new TableClass();
     const upstreamTable = new TableClass();
     const downstreamTable = new TableClass();
 
-    try {
       // Create test entities
       await Promise.all([
         currentTable.create(apiContext),
@@ -1670,16 +1670,7 @@ test.describe.serial('Test pagination in column level lineage', () => {
         await customPropertiesTab.click();
         await waitForAllLoadersToDisappear(page);
       });
-    } finally {
-      await Promise.all([
-        currentTable.delete(apiContext),
-        upstreamTable.delete(apiContext),
-        downstreamTable.delete(apiContext),
-      ]);
-      await afterAction();
-    }
-  });
-});
+    });
 
 test.describe('Verify custom properties tab visibility logic for supported entity types', () => {
   const supportedEntities = [
@@ -1696,19 +1687,12 @@ test.describe('Verify custom properties tab visibility logic for supported entit
   ];
 
   test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext } = await createNewPage(browser);
 
     for (const { entity } of supportedEntities) {
       await entity.create(apiContext);
     }
 
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { afterAction } = await createNewPage(browser);
-
-    await afterAction();
   });
 
   test.beforeEach(async ({ page }) => {
@@ -1762,20 +1746,14 @@ test.describe('Verify custom properties tab is NOT visible for unsupported entit
   ];
 
   test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext } = await createNewPage(browser);
 
     for (const { service } of unsupportedServices) {
       await service.create(apiContext);
     }
 
-    await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { afterAction } = await createNewPage(browser);
-    
-    await afterAction();
-  });
 
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
