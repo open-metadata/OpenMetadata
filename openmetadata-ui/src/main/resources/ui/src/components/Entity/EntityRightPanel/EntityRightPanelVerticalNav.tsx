@@ -19,7 +19,7 @@ import { ReactComponent as ExploreIcon } from '../../../assets/svg/explore-verti
 import { ReactComponent as PlatformLineageIcon } from '../../../assets/svg/explore-vertical-nav-icons/ic-platform-lineage.svg';
 import { ReactComponent as SchemaIcon } from '../../../assets/svg/explore-vertical-nav-icons/ic-schema.svg';
 import { ReactComponent as DataQualityIcon } from '../../../assets/svg/ic-data-contract.svg';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import {
   ENTITY_RIGHT_PANEL_LINEAGE_TABS,
   ENTITY_RIGHT_PANEL_SCHEMA_TABS,
@@ -31,7 +31,13 @@ import {
 import './EntityRightPanelVerticalNav.less';
 
 const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
-  ({ isSideDrawer = false, activeTab, entityType, onTabChange }) => {
+  ({
+    activeTab,
+    entityType,
+    onTabChange,
+    verticalNavConatinerclassName,
+    isSideDrawer = false,
+  }) => {
     const { t } = useTranslation();
 
     const getTabItems = () => {
@@ -45,7 +51,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       ];
 
       // Add schema tab for entities that have schema
-      if (ENTITY_RIGHT_PANEL_SCHEMA_TABS.includes(entityType)) {
+      if (ENTITY_RIGHT_PANEL_SCHEMA_TABS.includes(entityType as EntityType)) {
         items.push({
           key: EntityRightPanelTab.SCHEMA,
           icon: <SchemaIcon height={16} width={16} />,
@@ -54,7 +60,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
         });
       }
       // Add lineage tab for most entities
-      if (ENTITY_RIGHT_PANEL_LINEAGE_TABS.includes(entityType)) {
+      if (ENTITY_RIGHT_PANEL_LINEAGE_TABS.includes(entityType as EntityType)) {
         items.push({
           key: EntityRightPanelTab.LINEAGE,
           icon: <PlatformLineageIcon height={16} width={16} />,
@@ -64,7 +70,10 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       }
 
       // Add data quality tab for tables
-      if (entityType === EntityType.TABLE) {
+      if (
+        entityType === EntityType.TABLE ||
+        entityType === TabSpecificField.COLUMNS
+      ) {
         items.push({
           key: EntityRightPanelTab.DATA_QUALITY,
           icon: <DataQualityIcon height={16} width={16} />,
@@ -88,9 +97,11 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
 
     return (
       <div
-        className={classNames('entity-right-panel-vertical-nav', {
-          'drawer-entity-right-panel-vertical-nav': isSideDrawer,
-        })}>
+        className={classNames(
+          'entity-right-panel-vertical-nav',
+          verticalNavConatinerclassName,
+          { 'drawer-entity-right-panel-vertical-nav': isSideDrawer }
+        )}>
         <Menu
           className="vertical-nav-menu"
           items={getTabItems()}

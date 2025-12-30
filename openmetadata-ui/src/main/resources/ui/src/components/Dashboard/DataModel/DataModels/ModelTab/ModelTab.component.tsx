@@ -50,6 +50,7 @@ import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/Filt
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../../../common/Table/Table';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
+import { ColumnDetailPanel } from '../../../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../../Database/TableTags/TableTags.component';
@@ -63,6 +64,8 @@ const ModelTab = () => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
   const [searchText, setSearchText] = useState('');
+  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
+  const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
 
   const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true);
@@ -111,7 +114,7 @@ const ModelTab = () => {
 
         setPaginatedColumns(pruneEmptyChildren(response.data) || []);
         handlePagingChange(response.paging);
-      } catch (error) {
+      } catch {
         setPaginatedColumns([]);
         handlePagingChange({
           offset: 1,
@@ -144,6 +147,7 @@ const ModelTab = () => {
     hasEditTagsPermission,
     hasEditGlossaryTermPermission,
     editDisplayNamePermission,
+    viewCustomPropertiesPermission,
   } = useMemo(() => {
     return {
       hasEditDescriptionPermission:
@@ -153,6 +157,8 @@ const ModelTab = () => {
         permissions.EditAll || permissions.EditGlossaryTerms,
       editDisplayNamePermission:
         (permissions.EditDisplayName || permissions.EditAll) && !deleted,
+      viewCustomPropertiesPermission:
+        permissions.ViewAll || permissions.ViewCustomFields,
     };
   }, [permissions]);
 
@@ -244,6 +250,31 @@ const ModelTab = () => {
     );
   };
 
+  const handleColumnClick = useCallback((column: Column) => {
+    setSelectedColumn(column);
+    setIsColumnDetailOpen(true);
+  }, []);
+
+  const handleCloseColumnDetail = useCallback(() => {
+    setIsColumnDetailOpen(false);
+    setSelectedColumn(null);
+  }, []);
+
+  const handleColumnUpdate = useCallback((updatedColumn: Column) => {
+    setPaginatedColumns((prev) =>
+      prev.map((col) =>
+        col.fullyQualifiedName === updatedColumn.fullyQualifiedName
+          ? updatedColumn
+          : col
+      )
+    );
+    setSelectedColumn(updatedColumn);
+  }, []);
+
+  const handleColumnNavigate = useCallback((column: Column) => {
+    setSelectedColumn(column);
+  }, []);
+
   const searchProps = useMemo(
     () => ({
       placeholder: t('message.find-in-table'),
@@ -292,13 +323,36 @@ const ModelTab = () => {
           const { displayName } = record;
 
           return (
-            <DisplayName
-              displayName={displayName}
-              hasEditPermission={editDisplayNamePermission}
-              id={record.fullyQualifiedName ?? ''}
-              name={record.name}
-              onEditDisplayName={handleEditColumnData}
-            />
+            <div
+              aria-label={getEntityName(record)}
+              data-testid="column-name"
+              style={{ cursor: 'pointer' }}
+              tabIndex={0}
+              onClick={(e) => {
+                // Don't open detail panel if clicking on edit button or link
+                if (
+                  (e.target as HTMLElement).closest(
+                    'button, a, input, textarea, select'
+                  )
+                ) {
+                  return;
+                }
+                handleColumnClick(record);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleColumnClick(record);
+                }
+              }}>
+              <DisplayName
+                displayName={displayName}
+                hasEditPermission={editDisplayNamePermission}
+                id={record.fullyQualifiedName ?? ''}
+                name={record.name}
+                onEditDisplayName={handleEditColumnData}
+              />
+            </div>
           );
         },
       },
@@ -389,6 +443,9 @@ const ModelTab = () => {
       editColumnDescription,
       hasEditDescriptionPermission,
       handleFieldTagsChange,
+      handleColumnClick,
+      editDisplayNamePermission,
+      handleEditColumnData,
     ]
   );
 
@@ -431,6 +488,34 @@ const ModelTab = () => {
           />
         </EntityAttachmentProvider>
       )}
+
+      <ColumnDetailPanel
+        allColumns={paginatedColumns}
+        column={selectedColumn}
+        entityType={EntityType.DASHBOARD_DATA_MODEL}
+        hasEditPermission={{
+          tags: hasEditTagsPermission,
+          glossaryTerms: hasEditGlossaryTermPermission,
+          description: hasEditDescriptionPermission,
+          viewAllPermission: permissions.ViewAll,
+          customProperties: viewCustomPropertiesPermission,
+        }}
+        isOpen={isColumnDetailOpen}
+        tableFqn={entityFqn ?? ''}
+        updateColumnDescription={async (fqn, description) => {
+          const response = await updateDataModelColumn(fqn, { description });
+
+          return response;
+        }}
+        updateColumnTags={async (fqn, tags) => {
+          const response = await updateDataModelColumn(fqn, { tags });
+
+          return response;
+        }}
+        onClose={handleCloseColumnDetail}
+        onColumnUpdate={handleColumnUpdate}
+        onNavigate={handleColumnNavigate}
+      />
     </>
   );
 };

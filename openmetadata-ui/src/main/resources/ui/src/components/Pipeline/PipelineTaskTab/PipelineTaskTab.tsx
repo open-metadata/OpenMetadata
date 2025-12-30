@@ -50,6 +50,7 @@ import { createTagObject } from '../../../utils/TagsUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Table from '../../common/Table/Table';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { ColumnDetailPanel } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
@@ -72,12 +73,15 @@ export const PipelineTaskTab = () => {
     task: Task;
     index: number;
   }>();
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
   const { deleted } = pipelineDetails ?? {};
 
   const {
     editDescriptionPermission,
     editTagsPermission,
     editGlossaryTermsPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editDescriptionPermission:
@@ -85,6 +89,8 @@ export const PipelineTaskTab = () => {
       editTagsPermission: permissions?.EditAll || permissions?.EditTags,
       editGlossaryTermsPermission:
         permissions?.EditAll || permissions?.EditGlossaryTerms,
+      viewCustomPropertiesPermission:
+        permissions?.ViewAll || permissions?.ViewCustomFields,
     }),
     [permissions]
   );
@@ -127,6 +133,70 @@ export const PipelineTaskTab = () => {
 
   const closeEditTaskModal = (): void => {
     setEditTask(undefined);
+  };
+
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+    setIsDetailPanelOpen(true);
+  };
+
+  const handleDetailPanelClose = () => {
+    setIsDetailPanelOpen(false);
+    setSelectedTask(null);
+  };
+
+  const handleTaskDescriptionUpdate = async (
+    fqn: string,
+    description: string
+  ): Promise<Task> => {
+    const taskToUpdate = tasksInternal.find(
+      (t) => t.fullyQualifiedName === fqn
+    );
+
+    if (!taskToUpdate) {
+      throw new Error('Task not found');
+    }
+
+    const updatedTask = { ...taskToUpdate, description };
+    const updatedTasks = tasksInternal.map((t) =>
+      t.fullyQualifiedName === fqn ? updatedTask : t
+    );
+
+    const updatedPipeline = { ...pipelineDetails, tasks: updatedTasks };
+    await onUpdate(updatedPipeline);
+
+    return updatedTask;
+  };
+
+  const handleTaskTagsUpdate = async (
+    fqn: string,
+    tags: TagLabel[]
+  ): Promise<Task> => {
+    const taskToUpdate = tasksInternal.find(
+      (t) => t.fullyQualifiedName === fqn
+    );
+
+    if (!taskToUpdate) {
+      throw new Error('Task not found');
+    }
+
+    const updatedTask = { ...taskToUpdate, tags };
+    const updatedTasks = tasksInternal.map((t) =>
+      t.fullyQualifiedName === fqn ? updatedTask : t
+    );
+
+    const updatedPipeline = { ...pipelineDetails, tasks: updatedTasks };
+    await onUpdate(updatedPipeline);
+
+    return updatedTask;
+  };
+
+  const handleTaskDetailUpdate = (updatedTask: Task) => {
+    setSelectedTask(updatedTask);
+  };
+
+  const handleTaskNavigate = (task: Task) => {
+    setSelectedTask(task);
   };
 
   const onTaskUpdate = async (taskDescription: string) => {
@@ -184,25 +254,32 @@ export const PipelineTaskTab = () => {
         width: 220,
         fixed: 'left',
         sorter: getColumnSorter<Task, 'name'>('name'),
-        render: (_, record) =>
-          isEmpty(record.sourceUrl) ? (
-            <span>{getEntityName(record)}</span>
-          ) : (
-            <Link
-              className="flex items-center gap-2"
-              target="_blank"
-              to={record.sourceUrl ?? ''}>
-              <div className="d-flex items-center">
-                <span className="break-all">{getEntityName(record)}</span>
+        render: (_, record) => {
+          const taskName = getEntityName(record);
 
-                <Icon
-                  className="m-l-xs flex-none"
-                  component={ExternalLinkIcon}
-                  style={DATA_ASSET_ICON_DIMENSION}
-                />
-              </div>
-            </Link>
-          ),
+          return (
+            <div className="d-flex items-center gap-2">
+              <Typography.Text
+                className="break-word cursor-pointer"
+                data-testid="task-name"
+                onClick={() => handleTaskClick(record)}>
+                {taskName}
+              </Typography.Text>
+              {!isEmpty(record.sourceUrl) && (
+                <Link
+                  data-testid="external-task-link"
+                  target="_blank"
+                  to={record.sourceUrl ?? ''}>
+                  <Icon
+                    className="flex-none"
+                    component={ExternalLinkIcon}
+                    style={DATA_ASSET_ICON_DIMENSION}
+                  />
+                </Link>
+              )}
+            </div>
+          );
+        },
       },
       {
         key: TABLE_COLUMNS_KEYS.TASK_TYPE,
@@ -336,6 +413,25 @@ export const PipelineTaskTab = () => {
           />
         </EntityAttachmentProvider>
       )}
+
+      <ColumnDetailPanel<Task>
+        allColumns={tasksInternal}
+        column={selectedTask}
+        entityType={EntityType.PIPELINE}
+        hasEditPermission={{
+          tags: editTagsPermission,
+          glossaryTerms: editGlossaryTermsPermission,
+          description: editDescriptionPermission,
+          customProperties: viewCustomPropertiesPermission,
+        }}
+        isOpen={isDetailPanelOpen}
+        tableFqn={pipelineFQN}
+        updateColumnDescription={handleTaskDescriptionUpdate}
+        updateColumnTags={handleTaskTagsUpdate}
+        onClose={handleDetailPanelClose}
+        onColumnUpdate={handleTaskDetailUpdate}
+        onNavigate={handleTaskNavigate}
+      />
     </div>
   );
 };

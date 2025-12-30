@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 
 export enum EntityRightPanelTab {
   OVERVIEW = 'overview',
@@ -21,8 +21,9 @@ export enum EntityRightPanelTab {
 }
 
 export interface EntityRightPanelVerticalNavProps {
+  verticalNavConatinerclassName?: string;
   isSideDrawer?: boolean;
   activeTab: EntityRightPanelTab;
-  entityType: EntityType;
+  entityType: EntityType | TabSpecificField.COLUMNS;
   onTabChange: (tab: EntityRightPanelTab) => void;
 }
