@@ -75,4 +75,4 @@ export const LOCALE_CODE_REGEX = /^[a-z]{2}(-[A-Z]{2})?$/;
 // Matches URLs (http/https/absolute paths) OR filenames with image extensions
 // Filenames restricted to alphanumeric, hyphens, underscores, and dots for security
 export const IMAGE_URL_PATTERN =
-  /^(https?:\/\/|\/)|^[\w\-.]+\.(png|jpg|jpeg|gif|svg|webp|bmp|ico)$/i;
+  /^(https?:\/\/.+|\/[^\s]+)|^[\w\-.]+\.(png|jpg|jpeg|gif|svg|webp|bmp|ico)$/i;
