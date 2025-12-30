@@ -20,9 +20,11 @@ import { ReactComponent as ArrowIcon } from '../../../assets/svg/arrow-right-ful
 import { ReactComponent as FailedIcon } from '../../../assets/svg/fail-badge.svg';
 import { ReactComponent as CompletedIcon } from '../../../assets/svg/ic-check-circle-colored.svg';
 import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { Column } from '../../../generated/entity/data/table';
 import { SchemaValidation } from '../../../generated/entity/datacontract/dataContractResult';
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import Table from '../../common/Table/Table';
 import './contract-schema.less';
@@ -33,6 +35,7 @@ const ContractSchemaTable: React.FC<{
   latestSchemaValidationResult?: SchemaValidation;
 }> = ({ schemaDetail, contractStatus, latestSchemaValidationResult }) => {
   const { t } = useTranslation();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
   const tablePaginationProps: TablePaginationConfig = useMemo(
     () => ({
@@ -66,24 +69,28 @@ const ContractSchemaTable: React.FC<{
           </Tag>
         ),
       },
-      {
-        title: t('label.constraint-plural'),
-        dataIndex: 'constraint',
-        key: 'constraint',
-        render: (constraint: string) => (
-          <div>
-            {constraint ? (
-              <Tag className="custom-tag" color="blue">
-                {constraint}
-              </Tag>
-            ) : (
-              <Typography.Text data-testid="no-constraints">
-                {NO_DATA_PLACEHOLDER}
-              </Typography.Text>
-            )}
-          </div>
-        ),
-      },
+      ...(entityType === EntityType.TABLE
+        ? [
+            {
+              title: t('label.constraint-plural'),
+              dataIndex: 'constraint',
+              key: 'constraint',
+              render: (constraint: string) => (
+                <div>
+                  {constraint ? (
+                    <Tag className="custom-tag" color="blue">
+                      {constraint}
+                    </Tag>
+                  ) : (
+                    <Typography.Text data-testid="no-constraints">
+                      {NO_DATA_PLACEHOLDER}
+                    </Typography.Text>
+                  )}
+                </div>
+              ),
+            },
+          ]
+        : []),
       ...(latestSchemaValidationResult
         ? [
             {
@@ -108,7 +115,7 @@ const ContractSchemaTable: React.FC<{
           ]
         : []),
     ],
-    [latestSchemaValidationResult]
+    [entityType, latestSchemaValidationResult]
   );
 
   return (

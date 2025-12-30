@@ -44,6 +44,67 @@ ALLOWED_VALUE_COUNT = "allowedValueCount"
 class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
     """Validator for column value to be in set test case"""
 
+    ALLOWED_VALUES = "allowedValues"
+    MATCH_ENUM = "matchEnum"
+
+    def _run_validation(self) -> TestCaseResult:
+        """Execute the specific test validation logic
+
+        This method contains the core validation logic that was previously
+        in the run_validation method.
+
+        Returns:
+            TestCaseResult: The test case result for the overall validation
+        """
+        test_params = self._get_test_parameters()
+
+        try:
+            column: Union[SQALikeColumn, Column] = self.get_column()
+            count_in_set = self._run_results(
+                Metrics.COUNT_IN_SET, column, values=test_params[self.ALLOWED_VALUES]
+            )
+
+            metric_values = {
+                Metrics.COUNT_IN_SET.name: count_in_set,
+            }
+
+            if test_params[self.MATCH_ENUM]:
+                row_count = self._run_results(
+                    Metrics.ROW_COUNT, column, values=test_params[self.ALLOWED_VALUES]
+                )
+                metric_values[Metrics.ROW_COUNT.name] = row_count
+
+        except (ValueError, RuntimeError) as exc:
+            msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
+            logger.debug(traceback.format_exc())
+            logger.warning(msg)
+            return self.get_test_case_result_object(
+                self.execution_date,
+                TestCaseStatus.Aborted,
+                msg,
+                [TestResultValue(name=ALLOWED_VALUE_COUNT, value=None)],
+            )
+
+        evaluation = self._evaluate_test_condition(metric_values, test_params)
+        result_message = self._format_result_message(
+            metric_values, test_params=test_params
+        )
+        test_result_values = self._get_test_result_values(metric_values)
+
+        if self.test_case.computePassedFailedRowCount:
+            row_count = self.get_row_count()
+        else:
+            row_count = None
+
+        return self.get_test_case_result_object(
+            self.execution_date,
+            self.get_test_case_status(evaluation["matched"]),
+            result_message,
+            test_result_values,
+            row_count=row_count,
+            passed_rows=evaluation["passed_rows"],
+        )
+
     def _get_test_parameters(self) -> dict:
         """Extract test-specific parameters from test case
 
@@ -52,16 +113,16 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         """
         allowed_values = self.get_test_case_param_value(
             self.test_case.parameterValues,
-            "allowedValues",
+            self.ALLOWED_VALUES,
             literal_eval,
         )
         match_enum = utils.get_bool_test_case_param(
-            self.test_case.parameterValues, "matchEnum"
+            self.test_case.parameterValues, self.MATCH_ENUM
         )
 
         return {
-            "allowed_values": allowed_values,
-            "match_enum": match_enum,
+            self.ALLOWED_VALUES: allowed_values,
+            self.MATCH_ENUM: match_enum,
         }
 
     def _get_metrics_to_compute(self, test_params: dict) -> dict:
@@ -77,7 +138,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             Metrics.COUNT_IN_SET.name: Metrics.COUNT_IN_SET,
         }
 
-        if test_params["match_enum"]:
+        if test_params[self.MATCH_ENUM]:
             metrics[Metrics.ROW_COUNT.name] = Metrics.ROW_COUNT
 
         return metrics
@@ -109,7 +170,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
                 "test_params is required for columnValuesToBeInSet._evaluate_test_condition"
             )
         count_in_set = metric_values[Metrics.COUNT_IN_SET.name]
-        match_enum = test_params["match_enum"]
+        match_enum = test_params[self.MATCH_ENUM]
 
         if match_enum:
             row_count = metric_values.get(Metrics.ROW_COUNT.name, 0)
@@ -170,109 +231,6 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             ),
         ]
 
-    def _run_validation(self) -> TestCaseResult:
-        """Execute the specific test validation logic
-
-        This method contains the core validation logic that was previously
-        in the run_validation method.
-
-        Returns:
-            TestCaseResult: The test case result for the overall validation
-        """
-        test_params = self._get_test_parameters()
-
-        try:
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
-            count_in_set = self._run_results(
-                Metrics.COUNT_IN_SET, column, values=test_params["allowed_values"]
-            )
-
-            metric_values = {
-                Metrics.COUNT_IN_SET.name: count_in_set,
-            }
-
-            if test_params["match_enum"]:
-                row_count = self._run_results(
-                    Metrics.ROW_COUNT, column, values=test_params["allowed_values"]
-                )
-                metric_values[Metrics.ROW_COUNT.name] = row_count
-
-        except (ValueError, RuntimeError) as exc:
-            msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
-            logger.debug(traceback.format_exc())
-            logger.warning(msg)
-            return self.get_test_case_result_object(
-                self.execution_date,
-                TestCaseStatus.Aborted,
-                msg,
-                [TestResultValue(name=ALLOWED_VALUE_COUNT, value=None)],
-            )
-
-        evaluation = self._evaluate_test_condition(metric_values, test_params)
-        result_message = self._format_result_message(
-            metric_values, test_params=test_params
-        )
-        test_result_values = self._get_test_result_values(metric_values)
-
-        if self.test_case.computePassedFailedRowCount:
-            row_count = self.get_row_count()
-        else:
-            row_count = None
-
-        return self.get_test_case_result_object(
-            self.execution_date,
-            self.get_test_case_status(evaluation["matched"]),
-            result_message,
-            test_result_values,
-            row_count=row_count,
-            passed_rows=evaluation["passed_rows"],
-        )
-
-    def _run_dimensional_validation(self) -> List[DimensionResult]:
-        """Execute dimensional validation for column values to be in set
-
-        The new approach runs separate queries for each dimension column instead of
-        combining them with GROUP BY. For example, if dimensionColumns = ["region", "age"],
-        this method will:
-        1. Run one query: GROUP BY region -> {"mumbai": result1, "delhi": result2}
-        2. Run another query: GROUP BY age -> {"25": result3, "30": result4}
-
-        Returns:
-            List[DimensionResult]: List of dimension-specific test results
-        """
-        try:
-            dimension_columns = self.test_case.dimensionColumns or []
-            if not dimension_columns:
-                return []
-
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
-
-            test_params = self._get_test_parameters()
-            metrics_to_compute = self._get_metrics_to_compute(test_params)
-
-            dimension_results = []
-            for dimension_column in dimension_columns:
-                try:
-                    dimension_col = self._get_column_name(dimension_column)
-
-                    single_dimension_results = self._execute_dimensional_validation(
-                        column, dimension_col, metrics_to_compute, test_params
-                    )
-
-                    dimension_results.extend(single_dimension_results)
-
-                except Exception as exc:
-                    logger.warning(
-                        f"Error executing dimensional query for column {dimension_column}: {exc}"
-                    )
-                    continue
-
-            return dimension_results
-
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional validation: {exc}")
-            return []
-
     def _create_dimension_result(
         self,
         row: dict,
@@ -304,7 +262,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         )
 
         # Apply test-specific logic: non-enum mode doesn't have meaningful impact score
-        if test_params and not test_params.get("match_enum", True):
+        if test_params and not test_params.get(self.MATCH_ENUM, True):
             dimension_result.impactScore = None
 
         return dimension_result
@@ -332,10 +290,6 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         raise NotImplementedError
 
     @abstractmethod
-    def _get_column_name(self, column_name: Optional[str] = None):
-        raise NotImplementedError
-
-    @abstractmethod
     def _run_results(
         self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs
     ):
@@ -359,4 +313,4 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         Returns:
             Tuple[int, int]:
         """
-        return self.compute_row_count(self._get_column_name())
+        return self.compute_row_count(self.get_column())

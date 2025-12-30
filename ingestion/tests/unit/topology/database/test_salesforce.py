@@ -67,6 +67,41 @@ mock_salesforce_config = {
         }
     },
 }
+
+mock_salesforce_oauth_config = {
+    "source": {
+        "type": "salesforce",
+        "serviceName": "local_salesforce_oauth",
+        "serviceConnection": {
+            "config": {
+                "type": "Salesforce",
+                "username": "username",
+                "password": "password",
+                "consumerKey": "test_consumer_key",
+                "consumerSecret": "test_consumer_secret",
+                "salesforceDomain": "login",
+                "sobjectName": "sobjectName",
+            }
+        },
+        "sourceConfig": {
+            "config": {
+                "type": "DatabaseMetadata",
+            }
+        },
+    },
+    "sink": {
+        "type": "metadata-rest",
+        "config": {},
+    },
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {"jwtToken": "salesforce"},
+        }
+    },
+}
+
 MOCK_DATABASE_SERVICE = DatabaseService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="salesforce_source",
@@ -470,11 +505,31 @@ class SalesforceUnitTest(TestCase):
         "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection"
     )
     @patch("simple_salesforce.api.Salesforce")
+    def test_oauth_connection(self, salesforce, test_connection) -> None:
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(
+            mock_salesforce_oauth_config
+        )
+        self.salesforce_source = SalesforceSource.create(
+            mock_salesforce_oauth_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        self.assertTrue(
+            self.salesforce_source.config.serviceConnection.root.config.consumerKey
+        )
+        self.assertTrue(
+            self.salesforce_source.config.serviceConnection.root.config.consumerSecret
+        )
+
+    @patch(
+        "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection"
+    )
+    @patch("simple_salesforce.api.Salesforce")
     def test_check_ssl(self, salesforce, test_connection) -> None:
         mock_salesforce_config["source"]["serviceConnection"]["config"]["sslConfig"] = {
             "caCertificate": """
         -----BEGIN CERTIFICATE-----
-        sample caCertificateData  
+        sample caCertificateData
         -----END CERTIFICATE-----
         """
         }
@@ -483,7 +538,7 @@ class SalesforceUnitTest(TestCase):
             "sslKey"
         ] = """
         -----BEGIN CERTIFICATE-----
-        sample caCertificateData  
+        sample caCertificateData
         -----END CERTIFICATE-----
         """
         mock_salesforce_config["source"]["serviceConnection"]["config"]["sslConfig"][

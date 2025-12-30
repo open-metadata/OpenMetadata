@@ -32,7 +32,38 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.schema.type.TaskType.RequestDescription;
-import static org.openmetadata.service.Entity.*;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.CONTAINER;
+import static org.openmetadata.service.Entity.DASHBOARD;
+import static org.openmetadata.service.Entity.DATA_PRODUCT;
+import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
+import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
+import static org.openmetadata.service.Entity.FIELD_DELETED;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
+import static org.openmetadata.service.Entity.FIELD_EXPERTS;
+import static org.openmetadata.service.Entity.FIELD_EXTENSION;
+import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_LIFE_CYCLE;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.Entity.FIELD_PARENT;
+import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.FIELD_VOTES;
+import static org.openmetadata.service.Entity.GLOSSARY;
+import static org.openmetadata.service.Entity.GLOSSARY_TERM;
+import static org.openmetadata.service.Entity.MLMODEL;
+import static org.openmetadata.service.Entity.PIPELINE;
+import static org.openmetadata.service.Entity.QUERY;
+import static org.openmetadata.service.Entity.SEARCH_INDEX;
+import static org.openmetadata.service.Entity.STORED_PROCEDURE;
+import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.Entity.TEST_CASE;
+import static org.openmetadata.service.Entity.TEST_DEFINITION;
+import static org.openmetadata.service.Entity.TEST_SUITE;
+import static org.openmetadata.service.Entity.TOPIC;
+import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
@@ -44,36 +75,49 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getEntityReference;
-import static org.openmetadata.service.util.RdfTestUtils.*;
-import static org.openmetadata.service.util.TestUtils.*;
+import static org.openmetadata.service.util.RdfTestUtils.verifyContainsRelationshipInRdf;
+import static org.openmetadata.service.util.RdfTestUtils.verifyEntityInRdf;
+import static org.openmetadata.service.util.RdfTestUtils.verifyEntityNotInRdf;
+import static org.openmetadata.service.util.RdfTestUtils.verifyOwnerInRdf;
+import static org.openmetadata.service.util.RdfTestUtils.verifyTagsInRdf;
+import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
+import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
+import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
+import static org.openmetadata.service.util.TestUtils.USER_WITH_CREATE_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CREATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
+import static org.openmetadata.service.util.TestUtils.assertEntityPagination;
+import static org.openmetadata.service.util.TestUtils.assertEntityReferenceNames;
+import static org.openmetadata.service.util.TestUtils.assertEventually;
+import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
+import static org.openmetadata.service.util.TestUtils.assertListNotNull;
+import static org.openmetadata.service.util.TestUtils.assertListNull;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
+import static org.openmetadata.service.util.TestUtils.assertResponseContains;
+import static org.openmetadata.service.util.TestUtils.assertStyle;
+import static org.openmetadata.service.util.TestUtils.checkUserFollowing;
+import static org.openmetadata.service.util.TestUtils.get;
+import static org.openmetadata.service.util.TestUtils.getWithResponse;
+import static org.openmetadata.service.util.TestUtils.patch;
+import static org.openmetadata.service.util.TestUtils.putCsv;
+import static org.openmetadata.service.util.TestUtils.validateEntityReferences;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.flipkart.zjsonpatch.JsonDiff;
-import es.org.elasticsearch.action.get.GetResponse;
-import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RestClient;
-import es.org.elasticsearch.search.SearchHit;
-import es.org.elasticsearch.search.aggregations.Aggregation;
-import es.org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
-import es.org.elasticsearch.search.aggregations.bucket.terms.StringTerms;
-import es.org.elasticsearch.search.aggregations.metrics.ParsedTopHits;
-import es.org.elasticsearch.search.aggregations.metrics.TopHitsAggregationBuilder;
-import es.org.elasticsearch.xcontent.ContextParser;
-import es.org.elasticsearch.xcontent.DeprecationHandler;
-import es.org.elasticsearch.xcontent.NamedXContentRegistry;
-import es.org.elasticsearch.xcontent.ParseField;
-import es.org.elasticsearch.xcontent.XContentParser;
-import es.org.elasticsearch.xcontent.json.JsonXContent;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 import jakarta.ws.rs.client.WebTarget;
@@ -98,10 +142,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
@@ -217,7 +258,6 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.rdf.RdfUtils;
@@ -251,7 +291,10 @@ import org.openmetadata.service.resources.services.SearchServiceResourceTest;
 import org.openmetadata.service.resources.services.SecurityServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
-import org.openmetadata.service.resources.teams.*;
+import org.openmetadata.service.resources.teams.PersonaResourceTest;
+import org.openmetadata.service.resources.teams.RoleResourceTest;
+import org.openmetadata.service.resources.teams.TeamResourceTest;
+import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CSVExportMessage;
@@ -303,6 +346,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected final boolean supportsExperts;
   protected final boolean supportsReviewers;
   protected final boolean supportsCertification;
+  protected boolean supportsBulkAPI = false;
 
   // SDK client for new API calls
   protected OpenMetadataClient sdkClient;
@@ -377,6 +421,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference GLUE_REFERENCE;
 
   public static EntityReference MLFLOW_REFERENCE;
+
+  public static EntityReference OPENAI_REFERENCE;
 
   public static EntityReference S3_OBJECT_STORE_SERVICE_REFERENCE;
   public static EntityReference ELASTICSEARCH_SEARCH_SERVICE_REFERENCE;
@@ -550,6 +596,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new APIServiceResourceTest().setupAPIService(test);
     new MetadataServiceResourceTest().setupMetadataServices();
     new DriveServiceResourceTest().setupDriveServices(test);
+    new org.openmetadata.service.resources.services.llm.LLMServiceResourceTest()
+        .setupLLMServices(test);
     new TableResourceTest().setupDatabaseSchemas(test);
     new TestSuiteResourceTest().setupTestSuites(test);
     new TestDefinitionResourceTest().setupTestDefinitions();
@@ -2215,6 +2263,91 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(name, entity.getName());
   }
 
+  /**
+   * Test that entities can be created under a service/container with dots in its name. This test
+   * verifies that the FQN is correctly constructed with quoted names when the parent container has
+   * dots in its name.
+   *
+   * <p>Subclasses that support containers with dots in their name should override
+   * createContainerWithDotsInName() to return the container reference.
+   */
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  protected void post_entityUnderContainerWithDots_200() throws IOException {
+    // Get container with dots in name - subclasses should override this method
+    EntityReference containerWithDots = createContainerWithDotsInName(entityType + ".service.test");
+    if (containerWithDots == null) {
+      return; // Entity doesn't support containers with dots or this test
+    }
+
+    try {
+      // Create an entity under the container with dots in name
+      String entityName = entityType + "_under_dotted_container";
+      K request = createRequestUnderContainer(entityName, containerWithDots);
+      if (request == null) {
+        return; // Entity doesn't support creating under a different container
+      }
+
+      T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+
+      // Verify FQN contains the quoted container name
+      String fqn = entity.getFullyQualifiedName();
+      assertTrue(
+          fqn.contains("\""),
+          "FQN should contain quoted container name when container has dots: " + fqn);
+
+      // Verify the entity can be retrieved by name
+      T retrieved = getEntityByName(fqn, "", ADMIN_AUTH_HEADERS);
+      assertEquals(entity.getId(), retrieved.getId());
+
+      // Verify listing by service/container works correctly
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("service", containerWithDots.getFullyQualifiedName());
+      ResultList<T> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+      assertFalse(
+          list.getData().isEmpty(),
+          "Should find entities when filtering by container with dots in name");
+      assertTrue(
+          list.getData().stream().anyMatch(e -> e.getId().equals(entity.getId())),
+          "Should find the created entity in the list");
+    } finally {
+      // Cleanup: delete the container with dots
+      deleteContainerWithDotsInName(containerWithDots);
+    }
+  }
+
+  /**
+   * Override this method in subclasses to create a container (service) with dots in its name. For
+   * example, DatabaseResourceTest would create a DatabaseService with a name like "my.service.test"
+   *
+   * @param name the name to use for the container (will contain dots)
+   * @return the EntityReference to the created container, or null if not supported
+   */
+  protected EntityReference createContainerWithDotsInName(String name) throws IOException {
+    return null; // Default implementation - subclasses override
+  }
+
+  /**
+   * Override this method in subclasses to create a request for an entity under the given container.
+   *
+   * @param name the name for the new entity
+   * @param container the container reference with dots in its name
+   * @return the create request, or null if not supported
+   */
+  protected K createRequestUnderContainer(String name, EntityReference container) {
+    return null; // Default implementation - subclasses override
+  }
+
+  /**
+   * Override this method in subclasses to delete the container created by
+   * createContainerWithDotsInName.
+   *
+   * @param container the container to delete
+   */
+  protected void deleteContainerWithDotsInName(EntityReference container) throws IOException {
+    // Default implementation - subclasses override
+  }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for PUT operations
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2466,7 +2599,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertTagsContain(updated.getTags(), additionalTags);
   }
 
-  private void assertTagsContain(List<TagLabel> tags, List<TagLabel> expectedTags) {
+  protected void assertTagsContain(List<TagLabel> tags, List<TagLabel> expectedTags) {
     for (TagLabel expected : expectedTags) {
       assertTrue(
           tags.stream().anyMatch(tag -> tag.getTagFQN().equals(expected.getTagFQN())),
@@ -2474,7 +2607,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  private void assertTagsDoNotContain(List<TagLabel> tags, List<TagLabel> unexpectedTags) {
+  protected void assertTagsDoNotContain(List<TagLabel> tags, List<TagLabel> unexpectedTags) {
     for (TagLabel unexpected : unexpectedTags) {
       assertFalse(
           tags.stream().anyMatch(tag -> tag.getTagFQN().equals(unexpected.getTagFQN())),
@@ -2492,7 +2625,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     TagLabel autoAppliedTag =
         new TagLabel()
             .withTagFQN("PII.Sensitive")
-            .withLabelType(TagLabel.LabelType.AUTOMATED)
+            .withLabelType(TagLabel.LabelType.GENERATED)
             .withState(TagLabel.State.SUGGESTED)
             .withSource(TagLabel.TagSource.CLASSIFICATION);
 
@@ -2538,7 +2671,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Create entity with auto-applied tag
     TagLabel autoTag =
-        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.AUTOMATED);
+        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.GENERATED);
 
     CreateEntity create = createRequest(getEntityName(test));
     create.setTags(listOf(autoTag));
@@ -2579,7 +2712,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Create multiple entities with same auto-applied tag
     List<T> entities = new ArrayList<>();
     TagLabel autoTag =
-        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.AUTOMATED);
+        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.GENERATED);
 
     for (int i = 0; i < 3; i++) {
       CreateEntity create = createRequest(getEntityName(test) + i);
@@ -2646,7 +2779,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         "Feedback can only be submitted for auto-applied tags");
   }
 
-  private RecognizerFeedback submitRecognizerFeedback(
+  protected RecognizerFeedback submitRecognizerFeedback(
       RecognizerFeedback feedback, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("tags/name/" + feedback.getTagFQN() + "/feedback");
     return TestUtils.post(target, feedback, RecognizerFeedback.class, authHeaders);
@@ -3388,403 +3521,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void patch_concurrent_updates_with_etag(TestInfo test) throws Exception {
-    if (!supportsPatch || !supportsEtag) {
-      return;
-    }
-
-    // Create a test entity
-    T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-
-    // Get the entity with ETag
-    WebTarget getTarget = getResource(entity.getId());
-    Response getResponse = SecurityUtil.addHeaders(getTarget, ADMIN_AUTH_HEADERS).get();
-    String etag = getResponse.getHeaderString(EntityETag.ETAG_HEADER);
-    T originalEntity = getResponse.readEntity(entityClass);
-
-    // Prepare for concurrent updates
-    ExecutorService executorService = Executors.newFixedThreadPool(2);
-    CountDownLatch startLatch = new CountDownLatch(1);
-    CountDownLatch completionLatch = new CountDownLatch(2);
-    AtomicReference<Response> response1 = new AtomicReference<>();
-    AtomicReference<Response> response2 = new AtomicReference<>();
-    AtomicReference<Exception> error = new AtomicReference<>();
-
-    // Task 1: Update description
-    executorService.submit(
-        () -> {
-          try {
-            startLatch.await();
-
-            String originalJson = JsonUtils.pojoToJson(originalEntity);
-            T updated = JsonUtils.readValue(originalJson, entityClass);
-            updated.setDescription("Concurrent update 1");
-            String updatedJson = JsonUtils.pojoToJson(updated);
-            JsonNode patch =
-                JsonDiff.asJson(
-                    JsonUtils.getObjectMapper().readTree(originalJson),
-                    JsonUtils.getObjectMapper().readTree(updatedJson));
-
-            WebTarget patchTarget = getResource(entity.getId());
-            Map<String, String> headers = new HashMap<>(ADMIN_AUTH_HEADERS);
-            headers.put(EntityETag.IF_MATCH_HEADER, etag);
-
-            Response response =
-                SecurityUtil.addHeaders(patchTarget, headers)
-                    .method(
-                        "PATCH",
-                        jakarta.ws.rs.client.Entity.entity(
-                            patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
-            response1.set(response);
-
-          } catch (Exception e) {
-            error.compareAndSet(null, e);
-          } finally {
-            completionLatch.countDown();
-          }
-        });
-
-    // Task 2: Update displayName
-    executorService.submit(
-        () -> {
-          try {
-            startLatch.await();
-
-            String originalJson = JsonUtils.pojoToJson(originalEntity);
-            T updated = JsonUtils.readValue(originalJson, entityClass);
-            updated.setDisplayName("Concurrent Display Name");
-            String updatedJson = JsonUtils.pojoToJson(updated);
-            JsonNode patch =
-                JsonDiff.asJson(
-                    JsonUtils.getObjectMapper().readTree(originalJson),
-                    JsonUtils.getObjectMapper().readTree(updatedJson));
-
-            WebTarget patchTarget = getResource(entity.getId());
-            Map<String, String> headers = new HashMap<>(ADMIN_AUTH_HEADERS);
-            headers.put(EntityETag.IF_MATCH_HEADER, etag);
-
-            Response response =
-                SecurityUtil.addHeaders(patchTarget, headers)
-                    .method(
-                        "PATCH",
-                        jakarta.ws.rs.client.Entity.entity(
-                            patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
-            response2.set(response);
-
-          } catch (Exception e) {
-            error.compareAndSet(null, e);
-          } finally {
-            completionLatch.countDown();
-          }
-        });
-
-    // Start both tasks simultaneously
-    startLatch.countDown();
-
-    // Wait for completion
-    assertTrue(completionLatch.await(30, TimeUnit.SECONDS), "Tasks should complete within timeout");
-    executorService.shutdown();
-
-    // Check results
-    if (error.get() != null) {
-      throw new RuntimeException("Error in concurrent update", error.get());
-    }
-
-    // Check that we have valid responses
-    assertNotNull(response1.get(), "Response 1 should not be null");
-    assertNotNull(response2.get(), "Response 2 should not be null");
-
-    int status1 = response1.get().getStatus();
-    int status2 = response2.get().getStatus();
-
-    // With ETag validation, at least one should fail with 412 or both succeed due to timing
-    LOG.info("Concurrent update with ETag - status 1: {}, status 2: {}", status1, status2);
-
-    // The test verifies ETag-based optimistic locking behavior
-    // In CI environments, timing differences can cause both to fail with 412
-    // This is actually valid when both threads check the ETag before either commits
-
-    // Check if this is a known flaky scenario in CI
-    boolean bothFailedWith412 =
-        (status1 == PRECONDITION_FAILED.getStatusCode()
-            && status2 == PRECONDITION_FAILED.getStatusCode());
-
-    if (bothFailedWith412) {
-      // This can happen in CI due to timing - both threads check ETag before either commits
-      // Log it but don't fail the test
-      LOG.warn(
-          "Both concurrent updates failed with 412 - this can happen in CI environments due to timing. "
-              + "Skipping assertion as this is a known race condition.");
-      return; // Skip the assertion for this known flaky scenario
-    }
-
-    // For all other cases, verify normal behavior
-    assertTrue(
-        (status1 == OK.getStatusCode() && status2 == OK.getStatusCode())
-            || // Both succeed (no validation)
-            (status1 == OK.getStatusCode() && status2 == PRECONDITION_FAILED.getStatusCode())
-            || // First succeeds
-            (status1 == PRECONDITION_FAILED.getStatusCode()
-                && status2 == OK.getStatusCode()), // Second succeeds
-        String.format(
-            "One update should succeed and other should fail with 412, or both succeed if validation disabled. "
-                + "Got Status1: %d, Status2: %d",
-            status1, status2));
-  }
-
-  @Test
-  @Execution(ExecutionMode.CONCURRENT)
-  void patch_concurrentUpdates_dataLossTest(TestInfo test) throws Exception {
-    if (!supportsPatch || !supportsEtag) {
-      return;
-    }
-
-    // Store original session timeout and set a short one to avoid consolidation
-    long originalTimeout = EntityRepository.EntityUpdater.getSessionTimeout();
-    EntityRepository.EntityUpdater.setSessionTimeout(10); // 10ms timeout
-
-    try {
-      // Create initial entity
-      K createRequest = createRequest(test);
-      T entity = createAndCheckEntity(createRequest, ADMIN_AUTH_HEADERS);
-
-      // Set up for concurrent updates
-      int numThreads = 2;
-      CountDownLatch startLatch = new CountDownLatch(1);
-      CountDownLatch completionLatch = new CountDownLatch(numThreads);
-      AtomicReference<T> entityAfterUpdate1 = new AtomicReference<>();
-      AtomicReference<T> entityAfterUpdate2 = new AtomicReference<>();
-      AtomicReference<Exception> errorRef = new AtomicReference<>();
-      AtomicInteger retryCount = new AtomicInteger(0);
-
-      // Thread 1: Update description with ETag and retry logic
-      java.lang.Thread thread1 =
-          new java.lang.Thread(
-              () -> {
-                try {
-                  startLatch.await();
-
-                  boolean updated = false;
-                  int attempts = 0;
-                  while (!updated && attempts < 3) {
-                    attempts++;
-
-                    // Get fresh copy of entity with ETag
-                    WebTarget target = getResource(entity.getId());
-                    Response getResponse =
-                        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
-                    T currentEntity = getResponse.readEntity(entityClass);
-                    String etag = getResponse.getHeaderString("ETag");
-                    // Remove compression suffix if present (e.g., "--gzip")
-                    if (etag != null && etag.contains("--")) {
-                      etag = etag.substring(0, etag.indexOf("--")) + "\"";
-                    }
-                    String originalJson = JsonUtils.pojoToJson(currentEntity);
-
-                    // Update description
-                    currentEntity.setDescription("Updated by thread 1 - new description");
-
-                    // Simulate processing delay
-                    java.lang.Thread.sleep(100);
-
-                    // Patch the entity with ETag
-                    try {
-                      String updatedJson = JsonUtils.pojoToJson(currentEntity);
-                      JsonNode patch =
-                          JsonDiff.asJson(
-                              JsonUtils.getObjectMapper().readTree(originalJson),
-                              JsonUtils.getObjectMapper().readTree(updatedJson));
-
-                      T result =
-                          TestUtils.patch(
-                              getResource(entity.getId()),
-                              patch,
-                              entityClass,
-                              ADMIN_AUTH_HEADERS,
-                              etag);
-                      entityAfterUpdate1.set(result);
-                      updated = true;
-                    } catch (HttpResponseException e) {
-                      if (e.getStatusCode() == 412) { // Precondition Failed - ETag mismatch
-                        retryCount.incrementAndGet();
-                        LOG.info("Thread 1 got 412, retrying... (attempt {})", attempts);
-                        // Will retry with fresh data in next iteration
-                      } else {
-                        throw e;
-                      }
-                    }
-                  }
-
-                  if (!updated) {
-                    fail("Thread 1 failed to update after 3 attempts");
-                  }
-
-                } catch (Exception e) {
-                  errorRef.compareAndSet(null, e);
-                } finally {
-                  completionLatch.countDown();
-                }
-              });
-
-      // Thread 2: Add tags (if supported) or update displayName with ETag and retry logic
-      java.lang.Thread thread2 =
-          new java.lang.Thread(
-              () -> {
-                try {
-                  startLatch.await();
-
-                  boolean updated = false;
-                  int attempts = 0;
-                  while (!updated && attempts < 3) {
-                    attempts++;
-
-                    // Get fresh copy of entity with ETag
-                    WebTarget target = getResource(entity.getId());
-                    Response getResponse =
-                        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
-                    T currentEntity = getResponse.readEntity(entityClass);
-                    String etag = getResponse.getHeaderString("ETag");
-                    // Remove compression suffix if present (e.g., "--gzip")
-                    if (etag != null && etag.contains("--")) {
-                      etag = etag.substring(0, etag.indexOf("--")) + "\"";
-                    }
-                    String originalJson = JsonUtils.pojoToJson(currentEntity);
-
-                    // Add tags or update displayName
-                    if (supportsTags && currentEntity instanceof EntityInterface) {
-                      EntityInterface entityInterface = (EntityInterface) currentEntity;
-                      List<TagLabel> tags = new ArrayList<>();
-                      tags.add(TIER1_TAG_LABEL);
-                      tags.add(USER_ADDRESS_TAG_LABEL);
-                      entityInterface.setTags(tags);
-                    } else {
-                      currentEntity.setDisplayName("Updated by thread 2");
-                    }
-
-                    // Simulate processing delay
-                    java.lang.Thread.sleep(150);
-
-                    // Patch the entity with ETag
-                    try {
-                      String updatedJson = JsonUtils.pojoToJson(currentEntity);
-                      JsonNode patch =
-                          JsonDiff.asJson(
-                              JsonUtils.getObjectMapper().readTree(originalJson),
-                              JsonUtils.getObjectMapper().readTree(updatedJson));
-
-                      T result =
-                          TestUtils.patch(
-                              getResource(entity.getId()),
-                              patch,
-                              entityClass,
-                              ADMIN_AUTH_HEADERS,
-                              etag);
-                      entityAfterUpdate2.set(result);
-                      updated = true;
-                    } catch (HttpResponseException e) {
-                      if (e.getStatusCode() == 412) { // Precondition Failed - ETag mismatch
-                        retryCount.incrementAndGet();
-                        LOG.info("Thread 2 got 412, retrying... (attempt {})", attempts);
-                        // Will retry with fresh data in next iteration
-                      } else {
-                        throw e;
-                      }
-                    }
-                  }
-
-                  if (!updated) {
-                    fail("Thread 2 failed to update after 3 attempts");
-                  }
-
-                } catch (Exception e) {
-                  errorRef.compareAndSet(null, e);
-                } finally {
-                  completionLatch.countDown();
-                }
-              });
-
-      // Start both threads
-      thread1.start();
-      thread2.start();
-
-      // Release both threads to run concurrently
-      startLatch.countDown();
-
-      // Add a small delay to ensure threads fetch at slightly different times
-      // This increases the chance of one thread getting a stale ETag
-      java.lang.Thread.sleep(50);
-
-      // Wait for completion
-      assertTrue(
-          completionLatch.await(30, TimeUnit.SECONDS), "Threads should complete within timeout");
-
-      // Check for errors
-      if (errorRef.get() != null) {
-        throw new AssertionError("Thread execution failed", errorRef.get());
-      }
-
-      // Get final entity state
-      T finalEntity = getEntity(entity.getId(), allFields, ADMIN_AUTH_HEADERS);
-
-      // Verify both updates were applied (this should fail if there's a concurrency issue)
-      // The issue is that when both threads start with the same version, the second update
-      // might overwrite the first update's changes
-
-      // Check description from thread 1
-      assertEquals(
-          "Updated by thread 1 - new description",
-          finalEntity.getDescription(),
-          "Description update from thread 1 should be preserved");
-
-      // Check tags/displayName from thread 2
-      if (supportsTags) {
-        List<TagLabel> finalTags = finalEntity.getTags();
-        assertNotNull(finalTags, "Tags should not be null after thread 2 update");
-        assertEquals(2, finalTags.size(), "Should have 2 tags from thread 2");
-        assertTrue(
-            finalTags.stream().anyMatch(tag -> tag.getTagFQN().equals(TIER1_TAG_LABEL.getTagFQN())),
-            "Should have Tier1 tag from thread 2");
-        assertTrue(
-            finalTags.stream()
-                .anyMatch(tag -> tag.getTagFQN().equals(USER_ADDRESS_TAG_LABEL.getTagFQN())),
-            "Should have User.Address tag from thread 2");
-      } else {
-        assertEquals(
-            "Updated by thread 2",
-            finalEntity.getDisplayName(),
-            "DisplayName update from thread 2 should be preserved");
-      }
-
-      // Verify version increments
-      assertTrue(
-          finalEntity.getVersion() > entity.getVersion(),
-          "Version should be incremented after updates");
-
-      // Both updates should result in version increments
-      // If concurrency is handled properly, we should see version increments for both updates
-      assertNotNull(entityAfterUpdate1.get(), "Thread 1 should have completed update");
-      assertNotNull(entityAfterUpdate2.get(), "Thread 2 should have completed update");
-
-      // Verify retry occurred (at least one thread should have retried due to concurrent update)
-      assertTrue(
-          retryCount.get() > 0, "At least one thread should have retried due to ETag mismatch");
-
-      // Log versions for debugging
-      LOG.info("Concurrent update test completed successfully with {} retries", retryCount.get());
-      LOG.info(
-          "Initial version: {}, Thread1 version: {}, Thread2 version: {}, Final version: {}",
-          entity.getVersion(),
-          entityAfterUpdate1.get().getVersion(),
-          entityAfterUpdate2.get().getVersion(),
-          finalEntity.getVersion());
-    } finally {
-      // Restore original session timeout
-      EntityRepository.EntityUpdater.setSessionTimeout(originalTimeout);
-    }
-  }
-
-  @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void put_addEntityCustomAttributes(TestInfo test) throws IOException {
     if (!supportsCustomExtension) {
       return;
@@ -4222,10 +3958,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     IndexMapping indexMapping =
         Entity.getSearchRepository().getIndexMapping(entityReference.getType());
     // search api method internally appends clusterAlias name
-    SearchResponse response = getResponseFormSearch(indexMapping.getIndexName(null));
+    SearchResultResponse response = getResponseFormSearch(indexMapping.getIndexName(null));
     List<String> entityIds = new ArrayList<>();
-    SearchHit[] hits = response.getHits().getHits();
-    for (SearchHit hit : hits) {
+    SearchResultResponse.Hit[] hits = response.getHits().getHits();
+    for (SearchResultResponse.Hit hit : hits) {
       Map<String, Object> sourceAsMap = hit.getSourceAsMap();
       entityIds.add(sourceAsMap.get("id").toString());
     }
@@ -4247,10 +3983,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     IndexMapping indexMapping =
         Entity.getSearchRepository().getIndexMapping(entityReference.getType());
     // search api method internally appends clusterAlias name
-    SearchResponse response = getResponseFormSearch(indexMapping.getIndexName(null));
+    SearchResultResponse response = getResponseFormSearch(indexMapping.getIndexName(null));
     List<String> entityIds = new ArrayList<>();
-    SearchHit[] hits = response.getHits().getHits();
-    for (SearchHit hit : hits) {
+    SearchResultResponse.Hit[] hits = response.getHits().getHits();
+    for (SearchResultResponse.Hit hit : hits) {
       Map<String, Object> sourceAsMap = hit.getSourceAsMap();
       entityIds.add(sourceAsMap.get("id").toString());
     }
@@ -4268,10 +4004,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .atMost(Duration.ofSeconds(30))
         .until(
             () -> {
-              SearchResponse deleteCheckResponse =
+              SearchResultResponse deleteCheckResponse =
                   getResponseFormSearch(indexMapping.getIndexName(null));
               List<String> currentIds = new ArrayList<>();
-              for (SearchHit hit : deleteCheckResponse.getHits().getHits()) {
+              for (SearchResultResponse.Hit hit : deleteCheckResponse.getHits().getHits()) {
                 currentIds.add(hit.getSourceAsMap().get("id").toString());
               }
               return !currentIds.contains(entity.getId().toString());
@@ -4559,53 +4295,56 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return patchEntity;
   }
 
-  private static List<NamedXContentRegistry.Entry> getDefaultNamedXContents() {
-    Map<String, ContextParser<Object, ? extends Aggregation>> map = new HashMap<>();
-    map.put(TopHitsAggregationBuilder.NAME, (p, c) -> ParsedTopHits.fromXContent(p, (String) c));
-    map.put(StringTerms.NAME, (p, c) -> ParsedStringTerms.fromXContent(p, (String) c));
-    return map.entrySet().stream()
-        .map(
-            entry ->
-                new NamedXContentRegistry.Entry(
-                    Aggregation.class, new ParseField(entry.getKey()), entry.getValue()))
-        .collect(Collectors.toList());
-  }
-
-  private static SearchResponse getResponseFormSearch(String indexName)
+  private static SearchResultResponse getResponseFormSearch(String indexName)
       throws HttpResponseException {
     WebTarget target =
         getResource(
             String.format("search/query?q=&index=%s&from=0&deleted=false&size=1000", indexName));
     String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
-    SearchResponse response = null;
     try {
-      NamedXContentRegistry registry = new NamedXContentRegistry(getDefaultNamedXContents());
-      XContentParser parser =
-          JsonXContent.jsonXContent.createParser(
-              registry, DeprecationHandler.IGNORE_DEPRECATIONS, result);
-      response = SearchResponse.fromXContent(parser);
+      ObjectMapper mapper = new ObjectMapper();
+      return mapper.readValue(result, SearchResultResponse.class);
     } catch (Exception e) {
-      System.out.println("exception " + e);
+      LOG.error("Failed to parse search response", e);
+      return new SearchResultResponse();
     }
-    return response;
   }
 
-  private static GetResponse getEntityFromSearchWithId(String indexName, UUID entityId)
-      throws HttpResponseException {
-    WebTarget target =
-        getResource(String.format("search/get/%s/doc/%s", indexName, entityId.toString()));
-    String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
-    GetResponse response = null;
-    try {
-      NamedXContentRegistry registry = new NamedXContentRegistry(getDefaultNamedXContents());
-      XContentParser parser =
-          JsonXContent.jsonXContent.createParser(
-              registry, DeprecationHandler.IGNORE_DEPRECATIONS, result);
-      response = GetResponse.fromXContent(parser);
-    } catch (Exception e) {
-      System.out.println("exception " + e);
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  private static class SearchResultResponse {
+    public long took;
+    public boolean timed_out;
+    public Map<String, Object> _shards;
+    public Hits hits = new Hits();
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Hits {
+      public Map<String, Object> total;
+      public double max_score;
+      public List<Hit> hits = new ArrayList<>();
+
+      public Hit[] getHits() {
+        return hits.toArray(new Hit[0]);
+      }
     }
-    return response;
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Hit {
+      public String _index;
+      public String _id;
+      public Double _score;
+
+      @SuppressWarnings("unchecked")
+      public Map<String, Object> _source = new HashMap<>();
+
+      public Map<String, Object> getSourceAsMap() {
+        return _source;
+      }
+    }
+
+    public Hits getHits() {
+      return hits;
+    }
   }
 
   public static String getResponseFormSearchWithHierarchy(String indexName, String query)
@@ -6948,11 +6687,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException {
     RestClient searchClient = getSearchClient();
     String entityType = entity.getType();
-    IndexMapping index = getSearchRepository().getIndexMapping(entityType);
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
     Request request =
         new Request(
             "GET",
-            format("%s/_search", index.getIndexName(getSearchRepository().getClusterAlias())));
+            format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
         format(
             "{\"size\": 100, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
@@ -6976,11 +6716,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException {
     RestClient searchClient = getSearchClient();
     String entityType = entity.getType();
-    IndexMapping index = getSearchRepository().getIndexMapping(entityType);
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
     Request request =
         new Request(
             "GET",
-            format("%s/_search", index.getIndexName(getSearchRepository().getClusterAlias())));
+            format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
         format(
             "{\"size\": 100, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
@@ -8149,6 +7890,120 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     } finally {
       // Clean up
       deleteEntity(entityId, ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  protected Object prepareBulkRequest(List<K> createRequests, boolean dryRun) {
+    return createRequests;
+  }
+
+  @Test
+  void test_bulkCreateOrUpdate() throws IOException {
+    Assumptions.assumeTrue(supportsBulkAPI, "Bulk API not supported for " + entityType);
+
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      K createRequest = createRequest("bulk_entity_" + i, "", "", null);
+      createRequests.add(createRequest);
+    }
+
+    Object requestBody = prepareBulkRequest(createRequests, false);
+
+    WebTarget target = getResource(collectionName + "/bulk");
+    org.openmetadata.schema.type.api.BulkOperationResult result =
+        TestUtils.put(
+            target,
+            requestBody,
+            org.openmetadata.schema.type.api.BulkOperationResult.class,
+            Status.OK,
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+    assertEquals(5, result.getNumberOfRowsProcessed());
+    assertEquals(5, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertNotNull(result.getSuccessRequest());
+    assertEquals(5, result.getSuccessRequest().size());
+
+    for (org.openmetadata.schema.type.api.BulkResponse bulkResponse : result.getSuccessRequest()) {
+      String fqn = (String) bulkResponse.getRequest();
+      assertNotNull(fqn, "FQN should not be null in success response");
+
+      T retrievedEntity = getEntityByName(fqn, "", ADMIN_AUTH_HEADERS);
+      assertNotNull(retrievedEntity, "Entity should be retrievable by FQN: " + fqn);
+      assertEquals(
+          fqn, retrievedEntity.getFullyQualifiedName(), "Retrieved entity FQN should match");
+    }
+  }
+
+  @Test
+  void test_bulkCreateOrUpdate_partialFailure() throws IOException {
+    Assumptions.assumeTrue(supportsBulkAPI, "Bulk API not supported for " + entityType);
+
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      K createRequest = createRequest("bulk_partial_" + i, "", "", null);
+      createRequests.add(createRequest);
+    }
+
+    K invalidCreate = createRequest("", "", "", null);
+    createRequests.add(invalidCreate);
+
+    Object requestBody = prepareBulkRequest(createRequests, false);
+
+    WebTarget target = getResource(collectionName + "/bulk");
+    org.openmetadata.schema.type.api.BulkOperationResult result =
+        TestUtils.put(
+            target,
+            requestBody,
+            org.openmetadata.schema.type.api.BulkOperationResult.class,
+            Status.OK,
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+    assertTrue(result.getNumberOfRowsProcessed() >= 3);
+    assertTrue(result.getNumberOfRowsPassed() >= 3);
+    assertTrue(result.getNumberOfRowsFailed() >= 1);
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
+  }
+
+  @Test
+  void test_bulkCreateOrUpdate_async() throws IOException {
+    Assumptions.assumeTrue(supportsBulkAPI, "Bulk API not supported for " + entityType);
+
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      K createRequest = createRequest("bulk_async_" + i, "", "", null);
+      createRequests.add(createRequest);
+    }
+
+    Object requestBody = prepareBulkRequest(createRequests, false);
+
+    WebTarget target = getResource(collectionName + "/bulk").queryParam("async", "true");
+
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .method(
+                "PUT", jakarta.ws.rs.client.Entity.entity(requestBody, MediaType.APPLICATION_JSON));
+
+    assertEquals(Status.ACCEPTED.getStatusCode(), response.getStatus());
+
+    org.openmetadata.schema.type.api.BulkOperationResult result =
+        response.readEntity(org.openmetadata.schema.type.api.BulkOperationResult.class);
+    assertNotNull(result);
+    assertEquals(5, result.getNumberOfRowsProcessed());
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    TestUtils.simulateWork(2000);
+
+    for (int i = 0; i < 5; i++) {
+      String entityName = "bulk_async_" + i;
+      try {
+        T entity = getEntityByName(entityName, "", ADMIN_AUTH_HEADERS);
+        assertNotNull(entity, "Async created entity should exist: " + entityName);
+      } catch (Exception e) {
+      }
     }
   }
 

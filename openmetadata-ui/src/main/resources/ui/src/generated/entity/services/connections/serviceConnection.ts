@@ -210,6 +210,8 @@ export interface ServiceConnectionClass {
  *
  * Alation Sink Connection Config
  *
+ * Collibra Connection Config
+ *
  * Airflow Metadata Database Connection Config
  *
  * Wherescape Metadata Database Connection Config
@@ -252,6 +254,8 @@ export interface ServiceConnectionClass {
  * Stitch Connection
  *
  * Snowplow Pipeline Connection Config
+ *
+ * MuleSoft Anypoint Platform Connection Config
  *
  * MlFlow Connection Config
  *
@@ -490,6 +494,8 @@ export interface ConfigObject {
      *
      * Host and port of the Alation service.
      *
+     * Host and port of the Collibra service.
+     *
      * Pipeline Service Management/UI URI.
      *
      * Pipeline Service Management/UI URL.
@@ -499,6 +505,9 @@ export interface ConfigObject {
      * KafkaConnect Service Management/UI URI.
      *
      * Host and port of the Stitch API host
+     *
+     * MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud,
+     * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
      *
      * Host and port of the ElasticSearch service.
      *
@@ -562,7 +571,7 @@ export interface ConfigObject {
      *
      * Password to connect to Redshift.
      *
-     * Password to connect to the Salesforce.
+     * Password to connect to Salesforce.
      *
      * Password to connect to SingleStore.
      *
@@ -594,7 +603,7 @@ export interface ConfigObject {
      *
      * password to connect  to the Atlas.
      *
-     * Password to connect to Airbyte.
+     * Password to connect to the Collibra.
      */
     password?: string;
     /**
@@ -650,8 +659,8 @@ export interface ConfigObject {
      * Username to connect to Redshift. This user should have privileges to read all the
      * metadata in Redshift.
      *
-     * Username to connect to the Salesforce. This user should have privileges to read all the
-     * metadata in Redshift.
+     * Username to connect to Salesforce. This user should have privileges to read all the
+     * metadata in Salesforce.
      *
      * Username to connect to SingleStore. This user should have privileges to read all the
      * metadata in MySQL.
@@ -707,9 +716,15 @@ export interface ConfigObject {
      * username to connect  to the Atlas. This user should have privileges to read all the
      * metadata in Atlas.
      *
-     * Username to connect to Airbyte.
+     * Username to connect to the Collibra. This user should have privileges to read all the
+     * metadata in Collibra.
      */
     username?: string;
+    /**
+     * API URL to call powerbi rest apis to extract metadata. Default to
+     * `https://api.powerbi.com`. You can provide youw own in case of different environment
+     */
+    apiURL?: string;
     /**
      * Authority URI for the PowerBI service.
      */
@@ -809,6 +824,9 @@ export interface ConfigObject {
     siteName?: string;
     /**
      * SSL Configuration details.
+     *
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
      *
      * SSL Configuration for OpenMetadata Server
      */
@@ -921,6 +939,8 @@ export interface ConfigObject {
     spaceTypes?: SpaceType[];
     /**
      * ThoughtSpot authentication configuration
+     *
+     * Choose between Connected App (OAuth 2.0) or Basic Authentication.
      */
     authentication?: Authenticationation;
     /**
@@ -1172,8 +1192,11 @@ export interface ConfigObject {
     configSource?: DeltaLakeConfigurationSource;
     /**
      * Authentication mode to connect to hive.
+     *
+     * Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials
+     * (for Airbyte Cloud)
      */
-    auth?: AuthEnum;
+    auth?: Authentication | AuthEnum;
     /**
      * Authentication options to pass to Hive connector. These options are based on SQLAlchemy.
      *
@@ -1199,6 +1222,16 @@ export interface ConfigObject {
      * Authentication mode to connect to Impala.
      */
     authMechanism?: AuthMechanismEnum;
+    /**
+     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
+     * between the client and server will be encrypted.
+     */
+    encrypt?: boolean;
+    /**
+     * Trust the server certificate without validation. Set to false in production to validate
+     * server certificates against the certificate authority.
+     */
+    trustServerCertificate?: boolean;
     /**
      * Use slow logs to extract lineage.
      */
@@ -1235,9 +1268,24 @@ export interface ConfigObject {
      */
     verify?: string;
     /**
+     * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
+     * your Salesforce Connected App configuration. Required along with Consumer Secret for
+     * OAuth authentication.
+     */
+    consumerKey?: string;
+    /**
+     * Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained
+     * from your Salesforce Connected App configuration. Required along with Consumer Key for
+     * OAuth authentication.
+     */
+    consumerSecret?: string;
+    /**
      * Salesforce Organization ID is the unique identifier for your Salesforce identity
      *
      * Snowplow BDP Organization ID
+     *
+     * Anypoint Platform Organization ID. If not provided, the connector will use the user's
+     * default organization.
      */
     organizationId?: string;
     /**
@@ -1249,7 +1297,7 @@ export interface ConfigObject {
      */
     salesforceDomain?: string;
     /**
-     * Salesforce Security Token.
+     * Salesforce Security Token for username/password authentication.
      */
     securityToken?: string;
     /**
@@ -1654,11 +1702,27 @@ export interface ConfigObject {
     ingestUsersAndGroups?: boolean;
     datasourceLinks?:      { [key: string]: string };
     /**
+     * Regex to only include/exclude domains that match the pattern.
+     */
+    domainFilterPattern?: FilterPattern;
+    /**
+     * Enable enrichment of existing OpenMetadata assets with Collibra metadata (descriptions,
+     * tags, owners). When enabled, the connector will match Collibra assets to OpenMetadata
+     * entities and apply metadata without creating new assets.
+     */
+    enableEnrichment?: boolean;
+    /**
+     * Regex to only include/exclude glossaries that match the pattern.
+     */
+    glossaryFilterPattern?: FilterPattern;
+    /**
      * Pipeline Service Number Of Status
      */
     numberOfStatus?: number;
     /**
      * Regex exclude pipelines.
+     *
+     * Regex to filter MuleSoft applications by name.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
@@ -1691,6 +1755,11 @@ export interface ConfigObject {
      * We support username/password or client certificate authentication
      */
     nifiConfig?: NifiCredentialsConfiguration;
+    /**
+     * Number of days to look back when fetching lineage data from Databricks system tables
+     * (system.access.table_lineage and system.access.column_lineage). Default is 90 days.
+     */
+    lineageLookBackDays?: number;
     /**
      * Spline UI Host & Port.
      */
@@ -1736,6 +1805,10 @@ export interface ConfigObject {
      */
     discoveryAPI?: string;
     /**
+     * List of IDs of your DBT cloud environments separated by comma `,`
+     */
+    environmentIds?: string[];
+    /**
      * List of IDs of your DBT cloud jobs seperated by comma `,`
      */
     jobIds?: string[];
@@ -1780,6 +1853,11 @@ export interface ConfigObject {
      */
     deployment?: SnowplowDeployment;
     /**
+     * Anypoint Platform Environment ID. If not provided, the connector will discover all
+     * accessible environments.
+     */
+    environmentId?: string;
+    /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
     mlModelFilterPattern?: FilterPattern;
@@ -1800,6 +1878,10 @@ export interface ConfigObject {
      * Bucket Names of the data source.
      */
     bucketNames?: string[];
+    /**
+     * Console EndPoint URL for S3-compatible services
+     */
+    consoleEndpointURL?: string;
     /**
      * Regex to only fetch containers that matches the pattern.
      */
@@ -1894,9 +1976,15 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only fetch topics that matches the pattern.
  *
+ * Regex to only include/exclude domains that match the pattern.
+ *
+ * Regex to only include/exclude glossaries that match the pattern.
+ *
  * Regex exclude pipelines.
  *
  * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to filter MuleSoft applications by name.
  *
  * Regex to only fetch MlModels with names matching the pattern.
  *
@@ -1919,6 +2007,33 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+/**
+ * Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials
+ * (for Airbyte Cloud)
+ *
+ * Username and password authentication
+ *
+ * OAuth 2.0 client credentials authentication for Airbyte Cloud
+ */
+export interface Authentication {
+    /**
+     * Password to connect to Airbyte.
+     */
+    password?: string;
+    /**
+     * Username to connect to Airbyte.
+     */
+    username?: string;
+    /**
+     * Client ID for the application registered in Airbyte.
+     */
+    clientId?: string;
+    /**
+     * Client Secret for the application registered in Airbyte.
+     */
+    clientSecret?: string;
 }
 
 /**
@@ -2250,6 +2365,10 @@ export enum NoConfigAuthenticationTypes {
  * Basic Auth Credentials
  *
  * API Access Token Auth Credentials
+ *
+ * Choose between Connected App (OAuth 2.0) or Basic Authentication.
+ *
+ * OAuth 2.0 client credentials authentication for Airbyte Cloud
  */
 export interface Authenticationation {
     /**
@@ -2264,6 +2383,14 @@ export interface Authenticationation {
      * Access Token for the API
      */
     accessToken?: string;
+    /**
+     * Client ID for the application registered in Airbyte.
+     */
+    clientId?: string;
+    /**
+     * Client Secret for the application registered in Airbyte.
+     */
+    clientSecret?: string;
 }
 
 export interface AuthenticationModeObject {
@@ -2272,7 +2399,7 @@ export interface AuthenticationModeObject {
      *
      * Authentication from Connection String for Azure Synapse.
      */
-    authentication?: Authentication;
+    authentication?: AuthenticationEnum;
     /**
      * Connection Timeout from Connection String for AzureSQL.
      *
@@ -2299,7 +2426,7 @@ export interface AuthenticationModeObject {
  *
  * Authentication from Connection String for Azure Synapse.
  */
-export enum Authentication {
+export enum AuthenticationEnum {
     ActiveDirectoryIntegrated = "ActiveDirectoryIntegrated",
     ActiveDirectoryPassword = "ActiveDirectoryPassword",
     ActiveDirectoryServicePrincipal = "ActiveDirectoryServicePrincipal",
@@ -2527,6 +2654,9 @@ export interface QlikCertificatesBy {
  * Client SSL configuration
  *
  * SSL Configuration details.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
  *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
@@ -3159,6 +3289,9 @@ export enum ConnectionScheme {
  *
  * SSL Configuration details.
  *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -3298,6 +3431,11 @@ export interface DatabaseConnectionClass {
      */
     driver?: string;
     /**
+     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
+     * between the client and server will be encrypted.
+     */
+    encrypt?: boolean;
+    /**
      * Host and port of the MSSQL service.
      */
     hostPort?: string;
@@ -3317,7 +3455,12 @@ export interface DatabaseConnectionClass {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                     MssqlScheme;
+    scheme?: MssqlScheme;
+    /**
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
+     */
+    sslConfig?:                  ConsumerConfigSSLClass;
     supportsDatabase?:           boolean;
     supportsDataDiff?:           boolean;
     supportsDBTExtraction?:      boolean;
@@ -3330,6 +3473,11 @@ export interface DatabaseConnectionClass {
      * Regex to only include/exclude tables that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
+    /**
+     * Trust the server certificate without validation. Set to false in production to validate
+     * server certificates against the certificate authority.
+     */
+    trustServerCertificate?: boolean;
     /**
      * Service Type
      */
@@ -3640,6 +3788,10 @@ export interface S3Connection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
+     * Console EndPoint URL for S3-compatible services
+     */
+    consoleEndpointURL?: string;
+    /**
      * Regex to only fetch containers that matches the pattern.
      */
     containerFilterPattern?:     FilterPattern;
@@ -3881,6 +4033,9 @@ export enum SpaceType {
  *
  * SSL Configuration details.
  *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -4038,6 +4193,8 @@ export enum TokenType {
  *
  * OpenMetadata service type
  *
+ * Collibra service type
+ *
  * Custom pipeline service type
  *
  * Custom Ml model service type
@@ -4083,6 +4240,7 @@ export enum ConfigType {
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
     Cockroach = "Cockroach",
+    Collibra = "Collibra",
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",
@@ -4136,6 +4294,7 @@ export enum ConfigType {
     Mode = "Mode",
     MongoDB = "MongoDB",
     Mssql = "Mssql",
+    Mulesoft = "Mulesoft",
     Mysql = "Mysql",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",

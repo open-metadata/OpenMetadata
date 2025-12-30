@@ -366,4 +366,101 @@ describe('MuiDatePickerMenu', () => {
       expect(button.textContent).not.toBe('');
     });
   });
+
+  describe('Custom Date Range with showSelectedCustomRange', () => {
+    it('should display custom range in arrow format when showSelectedCustomRange is true', () => {
+      render(
+        <MuiDatePickerMenu
+          showSelectedCustomRange
+          defaultDateRange={{
+            key: 'customRange',
+            title: '2024-03-01 -> 2024-03-31',
+            startTs: 1709251200000,
+            endTs: 1711929599999,
+          }}
+          handleDateRangeChange={mockHandleDateRangeChange}
+        />
+      );
+
+      expect(screen.getByText('2024-03-01 -> 2024-03-31')).toBeInTheDocument();
+    });
+
+    it('should initialize custom date value from defaultDateRange with timestamps', () => {
+      render(
+        <MuiDatePickerMenu
+          defaultDateRange={{
+            key: 'customRange',
+            title: 'Custom Range',
+            startTs: 1709251200000,
+            endTs: 1711929599999,
+          }}
+          handleDateRangeChange={mockHandleDateRangeChange}
+        />
+      );
+
+      expect(screen.getByTestId('mui-date-picker-menu')).toBeInTheDocument();
+    });
+
+    it('should not initialize custom date value when key is not customRange', () => {
+      render(
+        <MuiDatePickerMenu
+          defaultDateRange={{
+            key: 'last7days',
+            title: 'Last 7 days',
+          }}
+          handleDateRangeChange={mockHandleDateRangeChange}
+        />
+      );
+
+      expect(screen.getByText('Last 7 days')).toBeInTheDocument();
+    });
+
+    it('should not initialize custom date value when timestamps are missing', () => {
+      render(
+        <MuiDatePickerMenu
+          defaultDateRange={{
+            key: 'customRange',
+            title: 'Custom Range',
+          }}
+          handleDateRangeChange={mockHandleDateRangeChange}
+        />
+      );
+
+      expect(screen.getByText('Custom Range')).toBeInTheDocument();
+    });
+  });
+
+  describe('Custom Date Value State Management', () => {
+    it('should handle custom date range with both start and end dates', () => {
+      render(
+        <MuiDatePickerMenu
+          defaultDateRange={{
+            key: 'customRange',
+            startTs: 1709251200000,
+            endTs: 1711929599999,
+            title: '2024-03-01 -> 2024-03-31',
+          }}
+          handleDateRangeChange={mockHandleDateRangeChange}
+        />
+      );
+
+      expect(screen.getByTestId('mui-date-picker-menu')).toBeInTheDocument();
+    });
+
+    it('should render with custom range timestamps', () => {
+      render(
+        <MuiDatePickerMenu
+          defaultDateRange={{
+            key: 'customRange',
+            startTs: 1709251200000,
+            endTs: 1711929599999,
+            title: 'Mar 1 - Mar 31',
+          }}
+          handleDateRangeChange={mockHandleDateRangeChange}
+        />
+      );
+
+      expect(screen.getByText('Mar 1 - Mar 31')).toBeInTheDocument();
+    });
+  });
 });

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page, test as base } from '@playwright/test';
+import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -21,6 +22,7 @@ import {
   navigateToCustomizeLandingPage,
   setUserDefaultPersona,
 } from '../../utils/customizeLandingPage';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const test = base;
 
@@ -382,6 +384,7 @@ test.describe('FeedWidget on landing page', () => {
 test.describe('Mention notifications in Notification Box', () => {
   const adminUser = new UserClass();
   const user1 = new UserClass();
+  const entity = EntityDataClass.table1;
 
   const test = base.extend<{
     adminPage: Page;
@@ -407,7 +410,6 @@ test.describe('Mention notifications in Notification Box', () => {
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
     await user1.create(apiContext);
-    await entity.create(apiContext);
     await afterAction();
   });
 
@@ -417,17 +419,28 @@ test.describe('Mention notifications in Notification Box', () => {
   }) => {
     test.slow();
 
-    const entityFQN = 'sample_data.ecommerce_db.shopify.performance_test_table';
-
     await test.step(
       'Admin user creates a conversation on an entity',
       async () => {
-        await adminPage.goto(`/table/${entityFQN}`);
-
-        await adminPage.waitForLoadState('networkidle');
-        await adminPage.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await entity.visitEntityPage(adminPage);
+        // Added a safety check on waiting for activity feed count to avoid missing feed
+        // Poll the activity feed tab count from the page until it's a valid non-negative number
+        let count = NaN;
+        const maxRetries = 30;
+        for (let i = 0; i < maxRetries && (isNaN(count) || count <= 0); i++) {
+          const countText = await adminPage
+            .getByRole('tab', { name: 'Activity Feeds & Tasks' })
+            .getByTestId('count')
+            .textContent();
+          count = Number(countText ?? '0');
+          if (isNaN(count) || count <= 0) {
+            // wait for 2s before querying again
+            await adminPage.waitForTimeout(2000);
+            await adminPage.reload();
+            await adminPage.waitForLoadState('networkidle');
+            await waitForAllLoadersToDisappear(adminPage);
+          }
+        }
 
         await adminPage.getByTestId('activity_feed').click();
         await adminPage.waitForLoadState('networkidle');
@@ -463,11 +476,7 @@ test.describe('Mention notifications in Notification Box', () => {
     );
 
     await test.step('User1 mentions admin user in a reply', async () => {
-      await user1Page.goto(`/table/${entityFQN}`);
-      await user1Page.waitForLoadState('networkidle');
-      await user1Page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await entity.visitEntityPage(user1Page);
 
       await user1Page.getByTestId('activity_feed').click();
       await user1Page.waitForLoadState('networkidle');
@@ -484,11 +493,18 @@ test.describe('Mention notifications in Notification Box', () => {
 
       await editorLocator.fill('Hey ');
 
-      const userSuggestionsResponse = user1Page.waitForResponse(
-        `/api/v1/search/query?q=*${adminUser.responseData.name}***`
-      );
+      await editorLocator.click();
 
-      await editorLocator.pressSequentially(`@${adminUser.responseData.name}`);
+      await user1Page.keyboard.press('@');
+      const userSuggestionsResponse = user1Page.waitForResponse((response) => {
+        const url = response.url();
+
+        return (
+          url.includes('/api/v1/search/query') &&
+          url.includes(adminUser.responseData.displayName)
+        );
+      });
+      await editorLocator.pressSequentially(adminUser.responseData.displayName);
       await userSuggestionsResponse;
 
       await user1Page

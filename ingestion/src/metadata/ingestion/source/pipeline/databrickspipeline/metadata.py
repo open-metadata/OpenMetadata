@@ -97,6 +97,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
         self._databricks_services_cached = False
         self._databricks_services: List[str] = []
 
+        self._table_lookup_cache = {}
+        self._dlt_table_cache = {}
+
     @classmethod
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
@@ -109,6 +112,12 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 f"Expected DatabricksPipelineConnection, but got {connection}"
             )
         return cls(config, metadata)
+
+    def close(self):
+        """Method to implement any required logic after the ingestion process is completed"""
+        self._table_lookup_cache.clear()
+        self._dlt_table_cache.clear()
+        return super().close()
 
     def get_pipelines_list(self) -> Iterable[DataBrickPipelineDetails]:
         try:
@@ -433,6 +442,12 @@ class DatabrickspipelineSource(PipelineServiceSource):
             Table entity if found, None otherwise
         """
         try:
+            # Check cache first to avoid duplicate API calls
+            cache_key = f"{catalog}.{schema}.{table_name}"
+            if cache_key in self._dlt_table_cache:
+                logger.debug(f"DLT table found in cache: {cache_key}")
+                return self._dlt_table_cache[cache_key]
+
             logger.debug(
                 f"Searching for DLT table: catalog={catalog}, schema={schema}, table={table_name}"
             )
@@ -475,6 +490,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
                     if table:
                         logger.info(f"Found DLT table with FQN: {table_fqn}")
+                        # Cache the found table
+                        cache_key = f"{catalog}.{schema}.{table_name}"
+                        self._dlt_table_cache[cache_key] = table
                         return table
 
                 except Exception as exc:
@@ -501,6 +519,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
                         logger.info(
                             f"Found DLT table with FQN (lowercase): {table_fqn}"
                         )
+                        # Cache the found table
+                        cache_key = f"{catalog}.{schema}.{table_name}"
+                        self._dlt_table_cache[cache_key] = table
                         return table
 
                 except Exception as exc:
@@ -517,6 +538,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
             f"DLT table not found: {catalog}.{schema}.{table_name}. "
             f"Ensure the table is ingested from a Databricks/Unity Catalog database service."
         )
+        # Cache None to avoid repeated lookups for non-existent tables
+        cache_key = f"{catalog}.{schema}.{table_name}"
+        self._dlt_table_cache[cache_key] = None
         return None
 
     def _find_kafka_topic(self, topic_name: str) -> Optional[Topic]:
@@ -932,11 +956,14 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                                             type="topic",
                                                         ),
                                                         toEntity=EntityReference(
-                                                            id=target_table.id.root
-                                                            if hasattr(
-                                                                target_table.id, "root"
-                                                            )
-                                                            else target_table.id,
+                                                            id=(
+                                                                target_table.id.root
+                                                                if hasattr(
+                                                                    target_table.id,
+                                                                    "root",
+                                                                )
+                                                                else target_table.id
+                                                            ),
                                                             type="table",
                                                         ),
                                                         lineageDetails=LineageDetails(
@@ -1024,12 +1051,14 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                                                     type="container",
                                                                 ),
                                                                 toEntity=EntityReference(
-                                                                    id=target_table.id.root
-                                                                    if hasattr(
-                                                                        target_table.id,
-                                                                        "root",
-                                                                    )
-                                                                    else target_table.id,
+                                                                    id=(
+                                                                        target_table.id.root
+                                                                        if hasattr(
+                                                                            target_table.id,
+                                                                            "root",
+                                                                        )
+                                                                        else target_table.id
+                                                                    ),
                                                                     type="table",
                                                                 ),
                                                                 lineageDetails=LineageDetails(
@@ -1091,19 +1120,23 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                             right=AddLineageRequest(
                                                 edge=EntitiesEdge(
                                                     fromEntity=EntityReference(
-                                                        id=source_table.id.root
-                                                        if hasattr(
-                                                            source_table.id, "root"
-                                                        )
-                                                        else source_table.id,
+                                                        id=(
+                                                            source_table.id.root
+                                                            if hasattr(
+                                                                source_table.id, "root"
+                                                            )
+                                                            else source_table.id
+                                                        ),
                                                         type="table",
                                                     ),
                                                     toEntity=EntityReference(
-                                                        id=target_table.id.root
-                                                        if hasattr(
-                                                            target_table.id, "root"
-                                                        )
-                                                        else target_table.id,
+                                                        id=(
+                                                            target_table.id.root
+                                                            if hasattr(
+                                                                target_table.id, "root"
+                                                            )
+                                                            else target_table.id
+                                                        ),
                                                         type="table",
                                                     ),
                                                     lineageDetails=LineageDetails(
@@ -1191,78 +1224,98 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 for table_lineage in table_lineage_list:
                     source_table_full_name = table_lineage.get("source_table_full_name")
                     target_table_full_name = table_lineage.get("target_table_full_name")
-                    if source_table_full_name and target_table_full_name:
-                        source = fqn.split_table_name(source_table_full_name)
-                        target = fqn.split_table_name(target_table_full_name)
-                        for dbservicename in self.get_db_service_names() or ["*"]:
+                    if not (source_table_full_name and target_table_full_name):
+                        continue
 
-                            from_entity = self.metadata.get_by_name(
+                    source = fqn.split_table_name(source_table_full_name)
+                    target = fqn.split_table_name(target_table_full_name)
+                    for dbservicename in self.get_db_service_names() or ["*"]:
+
+                        # Build FQN for source table
+                        from_table_fqn = fqn.build(
+                            metadata=self.metadata,
+                            entity_type=Table,
+                            table_name=source.get("table"),
+                            database_name=source.get("database"),
+                            schema_name=source.get("database_schema"),
+                            service_name=dbservicename,
+                        )
+
+                        # Check cache first, then fetch if not cached
+                        if from_table_fqn not in self._table_lookup_cache:
+                            self._table_lookup_cache[
+                                from_table_fqn
+                            ] = self.metadata.get_by_name(
                                 entity=Table,
-                                fqn=fqn.build(
-                                    metadata=self.metadata,
-                                    entity_type=Table,
-                                    table_name=source.get("table"),
-                                    database_name=source.get("database"),
-                                    schema_name=source.get("database_schema"),
-                                    service_name=dbservicename,
-                                ),
+                                fqn=from_table_fqn,
                             )
 
-                            if from_entity is None:
-                                continue
+                        from_entity = self._table_lookup_cache[from_table_fqn]
 
-                            to_entity = self.metadata.get_by_name(
+                        if from_entity is None:
+                            continue
+
+                        # Build FQN for target table
+                        to_table_fqn = fqn.build(
+                            metadata=self.metadata,
+                            entity_type=Table,
+                            table_name=target.get("table"),
+                            database_name=target.get("database"),
+                            schema_name=target.get("database_schema"),
+                            service_name=dbservicename,
+                        )
+
+                        # Check cache first, then fetch if not cached
+                        if to_table_fqn not in self._table_lookup_cache:
+                            self._table_lookup_cache[
+                                to_table_fqn
+                            ] = self.metadata.get_by_name(
                                 entity=Table,
-                                fqn=fqn.build(
-                                    metadata=self.metadata,
-                                    entity_type=Table,
-                                    table_name=target.get("table"),
-                                    database_name=target.get("database"),
-                                    schema_name=target.get("database_schema"),
-                                    service_name=dbservicename,
-                                ),
+                                fqn=to_table_fqn,
                             )
 
-                            if to_entity is None:
-                                continue
+                        to_entity = self._table_lookup_cache[to_table_fqn]
 
-                            processed_column_lineage = (
-                                self._process_and_validate_column_lineage(
-                                    column_lineage=self.client.get_column_lineage(
-                                        job_id=pipeline_details.job_id,
-                                        TableKey=(
-                                            source_table_full_name,
-                                            target_table_full_name,
-                                        ),
+                        if to_entity is None:
+                            continue
+
+                        processed_column_lineage = (
+                            self._process_and_validate_column_lineage(
+                                column_lineage=self.client.get_column_lineage(
+                                    job_id=pipeline_details.job_id,
+                                    TableKey=(
+                                        source_table_full_name,
+                                        target_table_full_name,
                                     ),
-                                    from_entity=from_entity,
-                                    to_entity=to_entity,
-                                )
-                            )
-
-                            lineage_details = LineageDetails(
-                                pipeline=EntityReference(
-                                    id=pipeline_entity.id.root, type="pipeline"
                                 ),
-                                source=LineageSource.PipelineLineage,
-                                columnsLineage=processed_column_lineage,
+                                from_entity=from_entity,
+                                to_entity=to_entity,
                             )
+                        )
 
-                            yield Either(
-                                right=AddLineageRequest(
-                                    edge=EntitiesEdge(
-                                        fromEntity=EntityReference(
-                                            id=from_entity.id,
-                                            type="table",
-                                        ),
-                                        toEntity=EntityReference(
-                                            id=to_entity.id,
-                                            type="table",
-                                        ),
-                                        lineageDetails=lineage_details,
-                                    )
+                        lineage_details = LineageDetails(
+                            pipeline=EntityReference(
+                                id=pipeline_entity.id.root, type="pipeline"
+                            ),
+                            source=LineageSource.PipelineLineage,
+                            columnsLineage=processed_column_lineage,
+                        )
+
+                        yield Either(
+                            right=AddLineageRequest(
+                                edge=EntitiesEdge(
+                                    fromEntity=EntityReference(
+                                        id=from_entity.id,
+                                        type="table",
+                                    ),
+                                    toEntity=EntityReference(
+                                        id=to_entity.id,
+                                        type="table",
+                                    ),
+                                    lineageDetails=lineage_details,
                                 )
                             )
+                        )
 
                 else:
                     logger.debug(
@@ -1280,3 +1333,6 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+        finally:
+            # Clear pipeline-specific caches to free memory
+            logger.debug("Clearing table lookup caches for pipeline")

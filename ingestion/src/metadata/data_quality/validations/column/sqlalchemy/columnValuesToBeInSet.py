@@ -15,7 +15,7 @@ Validator for column value to be in set test case
 
 from typing import List, Optional
 
-from sqlalchemy import Column, inspect, literal
+from sqlalchemy import Column, literal
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
@@ -24,7 +24,6 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesToBeInSet import (
     BaseColumnValuesToBeInSetValidator,
 )
-from metadata.data_quality.validations.impact_score import DEFAULT_TOP_DIMENSIONS
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
@@ -40,31 +39,6 @@ class ColumnValuesToBeInSetValidator(
 ):
     """Validator for column value to be in set test case"""
 
-    def _get_column_name(self, column_name: Optional[str] = None) -> Column:
-        """Get column object for the given column name
-
-        If column_name is None, returns the main column being validated.
-        If column_name is provided, returns the column object for that specific column.
-
-        Args:
-            column_name: Optional column name. If None, returns the main validation column.
-
-        Returns:
-            Column: Column object
-        """
-        if column_name is None:
-            # Get the main column being validated (original behavior)
-            return self.get_column_name(
-                self.test_case.entityLink.root,
-                inspect(self.runner.dataset).c,
-            )
-        else:
-            # Get a specific column by name (for dimension columns)
-            return self.get_column_name(
-                column_name,
-                inspect(self.runner.dataset).c,
-            )
-
     def _run_results(self, metric: Metrics, column: Column, **kwargs) -> Optional[int]:
         """compute result of the test case
 
@@ -73,17 +47,6 @@ class ColumnValuesToBeInSetValidator(
             column: column
         """
         return self.run_query_results(self.runner, metric, column, **kwargs)
-
-    def compute_row_count(self, column: Column):
-        """Compute row count for the given column
-
-        Args:
-            column (Union[SQALikeColumn, Column]): column to compute row count for
-
-        Raises:
-            NotImplementedError:
-        """
-        return self._compute_row_count(self.runner, column)
 
     def _execute_dimensional_validation(
         self,
@@ -109,8 +72,10 @@ class ColumnValuesToBeInSetValidator(
         dimension_results = []
 
         try:
-            allowed_values = test_params["allowed_values"]
-            match_enum = test_params["match_enum"]
+            allowed_values = test_params[
+                BaseColumnValuesToBeInSetValidator.ALLOWED_VALUES
+            ]
+            match_enum = test_params[BaseColumnValuesToBeInSetValidator.MATCH_ENUM]
 
             # Build metric expressions using enum names as keys
             metric_expressions = {}
@@ -136,8 +101,14 @@ class ColumnValuesToBeInSetValidator(
                 ]
                 metric_expressions[DIMENSION_FAILED_COUNT_KEY] = literal(0)
 
-            result_rows = self._execute_with_others_aggregation(
-                dimension_col, metric_expressions, DEFAULT_TOP_DIMENSIONS
+            normalized_dimension = self._get_normalized_dimension_expression(
+                dimension_col
+            )
+
+            result_rows = self._run_dimensional_validation_query(
+                source=self.runner.dataset,
+                dimension_expr=normalized_dimension,
+                metric_expressions=metric_expressions,
             )
 
             for row in result_rows:
@@ -161,3 +132,14 @@ class ColumnValuesToBeInSetValidator(
             logger.debug("Full error details: ", exc_info=True)
 
         return dimension_results
+
+    def compute_row_count(self, column: Column):
+        """Compute row count for the given column
+
+        Args:
+            column (Union[SQALikeColumn, Column]): column to compute row count for
+
+        Raises:
+            NotImplementedError:
+        """
+        return self._compute_row_count(self.runner, column)

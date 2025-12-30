@@ -55,6 +55,7 @@ from metadata.profiler.orm.functions.md5 import MD5
 from metadata.profiler.orm.functions.substr import Substr
 from metadata.profiler.orm.registry import Dialects, PythonDialects
 from metadata.utils.collections import CaseInsensitiveList
+from metadata.utils.credentials import normalize_pem_string
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -283,7 +284,9 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.table1.key_columns,
             extra_columns=self.runtime_params.extraColumns,
             case_sensitive=self.get_case_sensitive(),
-            key_content=self.runtime_params.table1.privateKey.get_secret_value()
+            key_content=normalize_pem_string(
+                self.runtime_params.table1.privateKey.get_secret_value()
+            )
             if self.runtime_params.table1.privateKey
             else None,
             private_key_passphrase=self.runtime_params.table1.passPhrase.get_secret_value()
@@ -296,7 +299,9 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.table2.key_columns,
             extra_columns=self.runtime_params.extraColumns,
             case_sensitive=self.get_case_sensitive(),
-            key_content=self.runtime_params.table2.privateKey.get_secret_value()
+            key_content=normalize_pem_string(
+                self.runtime_params.table2.privateKey.get_secret_value()
+            )
             if self.runtime_params.table2.privateKey
             else None,
             private_key_passphrase=self.runtime_params.table2.passPhrase.get_secret_value()

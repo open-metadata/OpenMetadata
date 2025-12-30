@@ -26,18 +26,17 @@ type ClassificationData = {
 };
 
 export class ClassificationClass {
-  randomName = getRandomLastName();
-  data: ClassificationData = {
-    name: `pw-classification-${this.randomName}`,
-    displayName: `PW Classification ${this.randomName}`,
-    description: 'Classification for the Collate platform',
-  };
+  randomName: string;
+  data: ClassificationData;
 
   responseData: ClassificationData = {} as ClassificationData;
 
   constructor(classification?: Partial<ClassificationData>) {
+    this.randomName = getRandomLastName();
     this.data = {
-      ...this.data,
+      name: `pw-classification-${this.randomName}`,
+      displayName: `PW Classification ${this.randomName}`,
+      description: 'Classification for the Collate platform',
       ...classification,
     };
   }

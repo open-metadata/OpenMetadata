@@ -65,10 +65,10 @@ function toNameableEntity(
     return undefined;
   }
   const holder = entity as unknown as {
-    entity?: { name?: string; displayName?: string };
+    entityResponseData?: { name?: string; displayName?: string };
   };
 
-  return holder?.entity;
+  return holder?.entityResponseData;
 }
 
 const test = base.extend<{ page: Page }>({
@@ -90,9 +90,6 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   await adminUser.setAdminRole(apiContext);
   await persona.create(apiContext, [adminUser.responseData.id]);
 
-  // Use EntityDataClass for creating all test entities
-  await EntityDataClass.preRequisitesForTests(apiContext, { all: true });
-
   await afterAction();
 });
 
@@ -100,9 +97,6 @@ base.afterAll('Cleanup', async ({ browser }) => {
   test.slow(true);
 
   const { afterAction, apiContext } = await performAdminLogin(browser);
-
-  // Use EntityDataClass for cleanup
-  await EntityDataClass.postRequisitesForTests(apiContext, { all: true });
 
   // Delete user and persona
   await adminUser.delete(apiContext);

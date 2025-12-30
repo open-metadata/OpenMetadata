@@ -10,16 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Space, Typography } from 'antd';
 import { noop } from 'lodash';
-import { ReactComponent as DefaultDataProductIcon } from '../assets/svg/ic-data-product.svg';
+import {
+  ReactComponent as DataProductIcon,
+  ReactComponent as DefaultDataProductIcon,
+} from '../assets/svg/ic-data-product.svg';
 import ActivityFeedProvider from '../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
+import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { DomainLabelV2 } from '../components/DataAssets/DomainLabelV2/DomainLabelV2';
 import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../components/Explore/ExplorePage.interface';
 import AssetsTabs, {
@@ -27,14 +34,24 @@ import AssetsTabs, {
 } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { EntityReference } from '../generated/entity/data/table';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Operation } from '../generated/entity/policies/policy';
 import { PageType } from '../generated/system/ui/page';
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import {
+  convertDataProductsToEntityReferences as convertDataProductsToEntityReferencesUtil,
+  convertEntityReferencesToDataProducts as convertEntityReferencesToDataProductsUtil,
+} from './EntityReferenceUtils';
+import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
-import { getPrioritizedEditPermission } from './PermissionsUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from './PermissionsUtils';
 
 export interface DataProductDetailPageTabProps {
   dataProduct: DataProduct;
@@ -74,6 +91,10 @@ export const getDataProductIconByUrl = (iconURL?: string) => {
 };
 
 export const getDataProductWidgetsFromKey = (widgetConfig: WidgetConfig) => {
+  if (widgetConfig.i === DetailPageWidgetKeys.DOMAIN) {
+    return <DomainLabelV2 multiple showDomainHeading hasPermission={false} />;
+  }
+
   return (
     <CommonWidgets
       entityType={EntityType.DATA_PRODUCT}
@@ -112,8 +133,9 @@ export const getDataProductDetailTabs = ({
       key: EntityTabs.DOCUMENTATION,
       children: <GenericTab type={PageType.DataProduct} />,
     },
-    ...(!isVersionsView
-      ? [
+    ...(isVersionsView
+      ? []
+      : [
           {
             label: (
               <TabsLabel
@@ -162,7 +184,7 @@ export const getDataProductDetailTabs = ({
                     <AssetsTabs
                       assetCount={assetCount}
                       entityFqn={dataProduct.fullyQualifiedName}
-                      isSummaryPanelOpen={false}
+                      isSummaryPanelOpen={Boolean(previewAsset)}
                       permissions={dataProductPermission}
                       ref={assetTabRef}
                       type={AssetsOfEntity.DATA_PRODUCT}
@@ -172,7 +194,7 @@ export const getDataProductDetailTabs = ({
                     />
                   ),
                   minWidth: 800,
-                  flex: 0.87,
+                  flex: 0.67,
                 }}
                 hideSecondPanel={!previewAsset}
                 pageTitle={t('label.data-product')}
@@ -182,18 +204,21 @@ export const getDataProductDetailTabs = ({
                     <EntitySummaryPanel
                       entityDetails={previewAsset}
                       handleClosePanel={() => setPreviewAsset(undefined)}
+                      key={
+                        previewAsset.details.id ??
+                        previewAsset.details.fullyQualifiedName
+                      }
                     />
                   ),
                   minWidth: 400,
-                  flex: 0.13,
+                  flex: 0.33,
                   className:
                     'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
                 }}
               />
             ),
           },
-        ]
-      : []),
+        ]),
     {
       label: (
         <TabsLabel
@@ -214,10 +239,45 @@ export const getDataProductDetailTabs = ({
               Operation.EditCustomFields
             ) && !isVersionsView
           }
-          hasPermission={dataProductPermission.ViewAll}
+          hasPermission={getPrioritizedViewPermission(
+            dataProductPermission,
+            Operation.ViewCustomFields
+          )}
           isVersionView={isVersionsView}
         />
       ),
     },
   ];
+};
+
+export const DataProductListItemRenderer = (props: EntityReference) => {
+  return (
+    <Space direction="vertical" size={0}>
+      <Space>
+        <Icon component={DataProductIcon} style={{ fontSize: '16px' }} />
+        <Typography.Text>{getEntityName(props)}</Typography.Text>
+      </Space>
+      {props.description && (
+        <Typography.Paragraph
+          className="data-product-list-description"
+          ellipsis={{
+            tooltip: props.description,
+            rows: 2,
+          }}>
+          <RichTextEditorPreviewerV1 markdown={props.description} />
+        </Typography.Paragraph>
+      )}
+    </Space>
+  );
+};
+export const convertDataProductsToEntityReferences = (
+  dataProducts: DataProduct[]
+): EntityReference[] => {
+  return convertDataProductsToEntityReferencesUtil(dataProducts);
+};
+
+export const convertEntityReferencesToDataProducts = (
+  refs: EntityReference[]
+): DataProduct[] => {
+  return convertEntityReferencesToDataProductsUtil(refs);
 };

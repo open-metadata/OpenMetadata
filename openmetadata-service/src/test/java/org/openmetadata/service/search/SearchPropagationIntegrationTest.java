@@ -22,11 +22,13 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
@@ -35,12 +37,15 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.databases.DatabaseResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.domains.DataProductResourceTest;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
@@ -641,5 +646,309 @@ public class SearchPropagationIntegrationTest extends OpenMetadataApplicationTes
     // while others (description, tags at schema level) don't
     LOG.info(
         "Search propagation metrics test completed - conditional propagation in search layer working as expected");
+  }
+
+  @Test
+  @Order(9)
+  void testOwnerPropagationFromDomainToSubdomain() throws IOException, InterruptedException {
+    LOG.info("Testing owner propagation from parent domain to subdomain in search index");
+
+    CreateUser createDomainOwner =
+        new CreateUser()
+            .withName("test_domain_owner_propagation")
+            .withEmail("test_domain_owner_propagation@openmetadata.org")
+            .withDisplayName("Test Domain Owner for Propagation");
+    User domainOwner = userResourceTest.createEntity(createDomainOwner, ADMIN_AUTH_HEADERS);
+
+    CreateDomain createParentDomain =
+        new CreateDomain()
+            .withName("test_parent_domain_propagation")
+            .withDisplayName("Test Parent Domain for Propagation")
+            .withDescription("Parent domain to test owner propagation")
+            .withDomainType(CreateDomain.DomainType.AGGREGATE);
+    Domain parentDomain = domainResourceTest.createEntity(createParentDomain, ADMIN_AUTH_HEADERS);
+
+    CreateDomain createSubDomain =
+        new CreateDomain()
+            .withName("test_subdomain_propagation")
+            .withDisplayName("Test Subdomain for Propagation")
+            .withDescription("Subdomain to test owner propagation from parent")
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
+            .withParent(parentDomain.getFullyQualifiedName());
+    Domain subDomain = domainResourceTest.createEntity(createSubDomain, ADMIN_AUTH_HEADERS);
+
+    simulateWork(2000);
+
+    EntityReference ownerRef =
+        new EntityReference()
+            .withId(domainOwner.getId())
+            .withType("user")
+            .withName(domainOwner.getName())
+            .withFullyQualifiedName(domainOwner.getFullyQualifiedName());
+
+    String jsonPatch =
+        JsonUtils.pojoToJson(
+            List.of(Map.of("op", "add", "path", "/owners", "value", List.of(ownerRef))));
+
+    Domain patchedParentDomain =
+        domainResourceTest.patchEntity(
+            parentDomain.getId(), JsonUtils.readTree(jsonPatch), ADMIN_AUTH_HEADERS);
+
+    assertNotNull(patchedParentDomain.getOwners());
+    assertEquals(1, patchedParentDomain.getOwners().size());
+
+    simulateWork(3000);
+
+    WebTarget subDomainSearchTarget =
+        getResource("search/query")
+            .queryParam("q", "fullyQualifiedName:" + subDomain.getFullyQualifiedName())
+            .queryParam("index", "domain_search_index");
+
+    String subDomainSearchResponse =
+        TestUtils.get(subDomainSearchTarget, String.class, ADMIN_AUTH_HEADERS);
+    assertTrue(
+        subDomainSearchResponse.contains(domainOwner.getId().toString()),
+        "Subdomain search result should contain owner ID propagated from parent domain");
+
+    LOG.info(
+        "Owner propagation from domain to subdomain test passed - owner propagated in search index");
+  }
+
+  @Test
+  @Order(10)
+  void testOwnerPropagationFromDomainToDataProduct() throws IOException, InterruptedException {
+    LOG.info("Testing owner propagation from domain to data product in search index");
+
+    CreateUser createDomainOwner =
+        new CreateUser()
+            .withName("test_domain_owner_dp_propagation")
+            .withEmail("test_domain_owner_dp_propagation@openmetadata.org")
+            .withDisplayName("Test Domain Owner for DP Propagation");
+    User domainOwner = userResourceTest.createEntity(createDomainOwner, ADMIN_AUTH_HEADERS);
+
+    CreateDomain createDomain =
+        new CreateDomain()
+            .withName("test_domain_dp_propagation")
+            .withDisplayName("Test Domain for DP Propagation")
+            .withDescription("Domain to test owner propagation to data product")
+            .withDomainType(CreateDomain.DomainType.AGGREGATE);
+    Domain domain = domainResourceTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+
+    EntityReference ownerRef =
+        new EntityReference()
+            .withId(domainOwner.getId())
+            .withType("user")
+            .withName(domainOwner.getName())
+            .withFullyQualifiedName(domainOwner.getFullyQualifiedName());
+
+    String jsonPatch =
+        JsonUtils.pojoToJson(
+            List.of(Map.of("op", "add", "path", "/owners", "value", List.of(ownerRef))));
+
+    Domain patchedDomain =
+        domainResourceTest.patchEntity(
+            domain.getId(), JsonUtils.readTree(jsonPatch), ADMIN_AUTH_HEADERS);
+
+    assertNotNull(patchedDomain.getOwners());
+    assertEquals(1, patchedDomain.getOwners().size());
+
+    DataProductResourceTest dataProductResourceTest = new DataProductResourceTest();
+    CreateDataProduct createDataProduct =
+        new CreateDataProduct()
+            .withName("test_data_product_propagation")
+            .withDisplayName("Test Data Product for Propagation")
+            .withDescription("Data product to test owner propagation from domain")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct =
+        dataProductResourceTest.createEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+
+    simulateWork(3000);
+
+    WebTarget dataProductSearchTarget =
+        getResource("search/query")
+            .queryParam("q", "fullyQualifiedName:" + dataProduct.getFullyQualifiedName())
+            .queryParam("index", "data_product_search_index");
+
+    String dataProductSearchResponse =
+        TestUtils.get(dataProductSearchTarget, String.class, ADMIN_AUTH_HEADERS);
+    assertTrue(
+        dataProductSearchResponse.contains(domainOwner.getId().toString()),
+        "Data product search result should contain owner ID propagated from domain");
+
+    LOG.info(
+        "Owner propagation from domain to data product test passed - owner propagated in search index");
+  }
+
+  @Test
+  @Order(11)
+  void testDataProductInputOutputPortsInSearchIndex() throws IOException, InterruptedException {
+    LOG.info("Testing inputPorts and outputPorts are properly indexed in data product search");
+
+    // Create a domain for the data product
+    CreateDomain createDomain =
+        new CreateDomain()
+            .withName("test_domain_ports_search")
+            .withDisplayName("Test Domain for Ports Search")
+            .withDescription("Domain to test ports in search index")
+            .withDomainType(CreateDomain.DomainType.AGGREGATE);
+    Domain domain = domainResourceTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+
+    // Create tables to use as input and output ports
+    List<Column> columns = new ArrayList<>();
+    columns.add(new Column().withName("id").withDataType(ColumnDataType.INT));
+    columns.add(
+        new Column().withName("data").withDataType(ColumnDataType.VARCHAR).withDataLength(100));
+
+    CreateTable createInputTable =
+        new CreateTable()
+            .withName("test_input_port_table")
+            .withColumns(columns)
+            .withDatabaseSchema(testSchema.getFullyQualifiedName());
+    Table inputTable = tableResourceTest.createEntity(createInputTable, ADMIN_AUTH_HEADERS);
+
+    CreateTable createOutputTable =
+        new CreateTable()
+            .withName("test_output_port_table")
+            .withColumns(columns)
+            .withDatabaseSchema(testSchema.getFullyQualifiedName());
+    Table outputTable = tableResourceTest.createEntity(createOutputTable, ADMIN_AUTH_HEADERS);
+
+    // Create data product with input and output ports
+    DataProductResourceTest dataProductResourceTest = new DataProductResourceTest();
+    CreateDataProduct createDataProduct =
+        new CreateDataProduct()
+            .withName("test_data_product_ports_search")
+            .withDisplayName("Test Data Product for Ports Search")
+            .withDescription("Data product to test input/output ports in search index")
+            .withDomains(List.of(domain.getFullyQualifiedName()))
+            .withInputPorts(List.of(inputTable.getEntityReference()))
+            .withOutputPorts(List.of(outputTable.getEntityReference()));
+    DataProduct dataProduct =
+        dataProductResourceTest.createEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+
+    // Wait for search index to be updated
+    simulateWork(3000);
+
+    // Query search API to verify inputPorts and outputPorts are indexed
+    WebTarget dataProductSearchTarget =
+        getResource("search/query")
+            .queryParam("q", "fullyQualifiedName:" + dataProduct.getFullyQualifiedName())
+            .queryParam("index", "data_product_search_index");
+
+    String searchResponse =
+        TestUtils.get(dataProductSearchTarget, String.class, ADMIN_AUTH_HEADERS);
+
+    // Verify inputPorts is in the search response
+    assertTrue(
+        searchResponse.contains(inputTable.getId().toString()),
+        "Data product search result should contain input port table ID");
+    assertTrue(
+        searchResponse.contains("test_input_port_table"),
+        "Data product search result should contain input port table name");
+
+    // Verify outputPorts is in the search response
+    assertTrue(
+        searchResponse.contains(outputTable.getId().toString()),
+        "Data product search result should contain output port table ID");
+    assertTrue(
+        searchResponse.contains("test_output_port_table"),
+        "Data product search result should contain output port table name");
+
+    LOG.info(
+        "Input/Output ports search index test passed - ports are properly indexed in data product search");
+  }
+
+  @Test
+  @Order(12)
+  void testBulkAddPortsUpdatesSearchIndex() throws IOException, InterruptedException {
+    LOG.info("Testing bulk add input/output ports updates search index");
+
+    // Create a domain for the data product
+    CreateDomain createDomain =
+        new CreateDomain()
+            .withName("test_domain_bulk_ports_search")
+            .withDisplayName("Test Domain for Bulk Ports Search")
+            .withDescription("Domain to test bulk ports in search index")
+            .withDomainType(CreateDomain.DomainType.AGGREGATE);
+    Domain domain = domainResourceTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+
+    // Create tables to use as ports
+    List<Column> columns = new ArrayList<>();
+    columns.add(new Column().withName("id").withDataType(ColumnDataType.INT));
+
+    CreateTable createInputTable1 =
+        new CreateTable()
+            .withName("test_bulk_input_port_1")
+            .withColumns(columns)
+            .withDatabaseSchema(testSchema.getFullyQualifiedName());
+    Table inputTable1 = tableResourceTest.createEntity(createInputTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createInputTable2 =
+        new CreateTable()
+            .withName("test_bulk_input_port_2")
+            .withColumns(columns)
+            .withDatabaseSchema(testSchema.getFullyQualifiedName());
+    Table inputTable2 = tableResourceTest.createEntity(createInputTable2, ADMIN_AUTH_HEADERS);
+
+    // Create data product without ports initially
+    DataProductResourceTest dataProductResourceTest = new DataProductResourceTest();
+    CreateDataProduct createDataProduct =
+        new CreateDataProduct()
+            .withName("test_data_product_bulk_ports_search")
+            .withDisplayName("Test Data Product for Bulk Ports Search")
+            .withDescription("Data product to test bulk port addition in search index")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct =
+        dataProductResourceTest.createEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+
+    simulateWork(2000);
+
+    // Query search to verify no ports initially
+    WebTarget searchTarget =
+        getResource("search/query")
+            .queryParam("q", "fullyQualifiedName:" + dataProduct.getFullyQualifiedName())
+            .queryParam("index", "data_product_search_index");
+
+    String initialResponse = TestUtils.get(searchTarget, String.class, ADMIN_AUTH_HEADERS);
+    assertFalse(
+        initialResponse.contains("test_bulk_input_port_1"),
+        "Data product should not contain input port 1 initially");
+
+    // Bulk add input ports via API
+    WebTarget bulkAddTarget =
+        getResource("dataProducts/" + dataProduct.getFullyQualifiedName() + "/inputPorts/add");
+
+    BulkAssets bulkAssets =
+        new BulkAssets()
+            .withAssets(
+                List.of(inputTable1.getEntityReference(), inputTable2.getEntityReference()));
+
+    TestUtils.put(
+        bulkAddTarget,
+        bulkAssets,
+        BulkOperationResult.class,
+        jakarta.ws.rs.core.Response.Status.OK,
+        ADMIN_AUTH_HEADERS);
+
+    // Wait for search index to be updated
+    simulateWork(3000);
+
+    // Query search to verify ports are now indexed
+    String afterBulkResponse = TestUtils.get(searchTarget, String.class, ADMIN_AUTH_HEADERS);
+
+    assertTrue(
+        afterBulkResponse.contains(inputTable1.getId().toString()),
+        "Data product search result should contain bulk-added input port 1 ID");
+    assertTrue(
+        afterBulkResponse.contains(inputTable2.getId().toString()),
+        "Data product search result should contain bulk-added input port 2 ID");
+    assertTrue(
+        afterBulkResponse.contains("test_bulk_input_port_1"),
+        "Data product search result should contain bulk-added input port 1 name");
+    assertTrue(
+        afterBulkResponse.contains("test_bulk_input_port_2"),
+        "Data product search result should contain bulk-added input port 2 name");
+
+    LOG.info("Bulk add ports search index test passed - bulk added ports are properly indexed");
   }
 }

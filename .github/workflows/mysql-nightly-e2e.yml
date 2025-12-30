@@ -67,7 +67,7 @@ jobs:
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: "3.9"
+          python-version: "3.10"
           args: "-d mysql"
           ingestion_dependency: "playwright"
 
@@ -79,7 +79,26 @@ jobs:
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
-          npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+          if [ "${{ matrix.shardIndex }}" -eq "1" ]; then
+            echo "🔹 Running DataAssetRules-only tests on shard 1"
+
+            # The testMatch pattern ensures only DataAssetRules*.spec.ts files run
+            npx playwright test \
+              --project=setup \
+              --project=DataAssetRulesEnabled \
+              --project=DataAssetRulesDisabled
+
+          else
+            # Shards 2-6 handle chromium tests (5 workers total)
+            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 1 ))
+            echo "🔹 Running all tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/5"
+            npx playwright test \
+              --project=chromium \
+              --grep-invert @dataAssetRules \
+              --shard=${CHROMIUM_SHARD}/5
+              --workers=50%
+          fi
+
         env:
           PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}

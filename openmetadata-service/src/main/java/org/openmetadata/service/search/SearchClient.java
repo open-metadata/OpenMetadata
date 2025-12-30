@@ -2,7 +2,6 @@ package org.openmetadata.service.search;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
 
-import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.Set;
@@ -14,24 +13,18 @@ import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
-import org.openmetadata.schema.api.search.SearchSettings;
-import org.openmetadata.schema.search.AggregationRequest;
-import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.CustomExceptionMessage;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import os.org.opensearch.action.bulk.BulkRequest;
-import os.org.opensearch.action.bulk.BulkResponse;
-import os.org.opensearch.client.RequestOptions;
 
-public interface SearchClient<T>
+public interface SearchClient
     extends IndexManagementClient,
         EntityManagementClient,
         GenericClient,
-        DataInsightAggregatorClient {
+        AggregationManagementClient,
+        DataInsightAggregatorClient,
+        SearchManagementClient {
   String UPSTREAM_LINEAGE_FIELD = "upstreamLineage";
   String UPSTREAM_ENTITY_RELATIONSHIP_FIELD = "upstreamEntityRelationship";
   String FQN_FIELD = "fullyQualifiedName";
@@ -49,7 +42,14 @@ public interface SearchClient<T>
   String DEFAULT_UPDATE_SCRIPT =
       """
       for (k in params.keySet()) {
-        ctx._source.put(k, params.get(k))
+        if (k != 'fieldsToRemove') {
+          ctx._source.put(k, params.get(k))
+        }
+      }
+      if (params.containsKey('fieldsToRemove')) {
+        for (field in params.fieldsToRemove) {
+          ctx._source.remove(field)
+        }
       }
       """;
   String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
@@ -394,48 +394,21 @@ public interface SearchClient<T>
           "tier",
           "changeDescription");
 
+  Set<String> FIELDS_TO_REMOVE_WHEN_NULL = Set.of("tier", "certification");
+
   boolean isClientAvailable();
 
   boolean isNewClientAvailable();
 
   ElasticSearchConfiguration.SearchType getSearchType();
 
-  Response previewSearch(
-      SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
-      throws IOException;
+  <T> T getHighLevelClient();
 
-  Response search(SearchRequest request, SubjectContext subjectContext) throws IOException;
-
-  Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) throws IOException;
-
-  Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
-      throws IOException;
+  Object getLowLevelClient();
 
   default ExecutorService getAsyncExecutor() {
     return asyncExecutor;
   }
-
-  SearchResultListMapper listWithOffset(
-      String filter,
-      int limit,
-      int offset,
-      String index,
-      SearchSortFilter searchSortFilter,
-      String q,
-      String queryString)
-      throws IOException;
-
-  SearchResultListMapper listWithDeepPagination(
-      String index,
-      String query,
-      String filter,
-      String[] fields,
-      SearchSortFilter searchSortFilter,
-      int size,
-      Object[] searchAfter)
-      throws IOException;
-
-  Response searchBySourceUrl(String sourceUrl) throws IOException;
 
   SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException;
 
@@ -455,17 +428,6 @@ public interface SearchClient<T>
       throws IOException;
 
   SearchLineageResult searchPlatformLineage(String index, String queryFilter, boolean deleted)
-      throws IOException;
-
-  Response searchEntityRelationship(
-      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
-      throws IOException;
-
-  Response searchDataQualityLineage(
-      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException;
-
-  Response searchSchemaEntityRelationship(
-      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException;
 
   /*
@@ -493,43 +455,24 @@ public interface SearchClient<T>
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
-  Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
-      throws IOException;
-
-  Response aggregate(AggregationRequest request) throws IOException;
-
-  JsonObject aggregate(
-      String query, String index, SearchAggregation searchAggregation, String filters)
-      throws IOException;
-
-  Response getEntityTypeCounts(SearchRequest request, String index) throws IOException;
-
-  DataQualityReport genericAggregation(
-      String query, String index, SearchAggregation aggregationMetadata) throws IOException;
-
   /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
   void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);
 
-  default BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
+  void close();
 
-  default es.org.elasticsearch.action.bulk.BulkResponse bulk(
-      es.org.elasticsearch.action.bulk.BulkRequest data,
-      es.org.elasticsearch.client.RequestOptions options)
+  default es.co.elastic.clients.elasticsearch.core.BulkResponse bulkElasticSearch(
+      java.util.List<es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation> operations)
       throws IOException {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
-  void close();
-
-  Object getLowLevelClient();
-
-  Object getClient();
-
-  T getHighLevelClient();
+  default os.org.opensearch.client.opensearch.core.BulkResponse bulkOpenSearch(
+      java.util.List<os.org.opensearch.client.opensearch.core.bulk.BulkOperation> operations)
+      throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
 
   SearchEntityRelationshipResult searchEntityRelationship(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;

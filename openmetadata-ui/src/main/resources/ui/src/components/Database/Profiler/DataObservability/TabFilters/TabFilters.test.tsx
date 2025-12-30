@@ -345,6 +345,32 @@ describe('TabFilters', () => {
       ).not.toBeInTheDocument();
     });
 
+    it('should not render date picker on overview tab without active column', () => {
+      mockUseParams.mockReturnValue({ subTab: 'overview' });
+      mockUseCustomLocation.mockReturnValue({
+        search: '',
+        pathname: '/table/test-table/profiler',
+      });
+
+      renderComponent();
+
+      expect(
+        screen.queryByTestId('mui-date-picker-menu')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render date picker on overview tab when column is selected', () => {
+      mockUseParams.mockReturnValue({ subTab: 'overview' });
+      mockUseCustomLocation.mockReturnValue({
+        search: '?activeColumnFqn=table.column1',
+        pathname: '/table/test-table/profiler',
+      });
+
+      renderComponent();
+
+      expect(screen.getByTestId('mui-date-picker-menu')).toBeInTheDocument();
+    });
+
     it('should display date label when date picker is shown', () => {
       renderComponent();
 

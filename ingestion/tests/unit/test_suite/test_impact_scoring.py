@@ -22,7 +22,6 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from metadata.data_quality.validations.impact_score import (
     DEFAULT_NORMALIZATION_FACTOR,
     DEFAULT_SAMPLE_WEIGHT_THRESHOLD,
-    aggregate_others_pandas,
     calculate_impact_score_pandas,
     get_impact_score_expression,
     get_volume_factor,
@@ -199,58 +198,6 @@ class TestImpactScorePandas:
         result = calculate_impact_score_pandas(df_all_fail)
         # 100% failure with large sample should have high score
         assert result["impact_score"].iloc[0] > 0.5
-
-    def test_aggregate_others_pandas(self):
-        """Test aggregation of low-impact dimensions into Others"""
-        # Create dataframe with many dimensions
-        df = pd.DataFrame(
-            {
-                "dimension": [f"dim_{i}" for i in range(10)],
-                "failed_count": [
-                    100 - i * 10 for i in range(10)
-                ],  # Decreasing failures
-                "total_count": [100] * 10,
-            }
-        )
-
-        # Calculate impact scores
-        df = calculate_impact_score_pandas(df)
-
-        # Aggregate with top 5
-        result = aggregate_others_pandas(df, "dimension", top_n=5)
-
-        # Should have 6 rows: top 5 + Others
-        assert len(result) == 6
-
-        # Check Others row exists
-        assert "Others" in result["dimension"].values
-
-        # Verify Others aggregates the bottom 5 dimensions
-        others_row = result[result["dimension"] == "Others"].iloc[0]
-        assert others_row["total_count"] == 500  # 5 dimensions * 100 each
-
-        # Verify ordering by impact score
-        assert result.iloc[0]["impact_score"] >= result.iloc[1]["impact_score"]
-
-    def test_aggregate_others_with_nulls(self):
-        """Test aggregation handles NULL dimension values"""
-        df = pd.DataFrame(
-            {
-                "dimension": ["A", "B", "C", None, "E", "F"],
-                "failed_count": [50, 40, 30, 20, 10, 5],
-                "total_count": [100, 100, 100, 100, 100, 100],
-            }
-        )
-
-        # Calculate impact scores
-        df = calculate_impact_score_pandas(df)
-
-        # Aggregate with top 3
-        result = aggregate_others_pandas(df, "dimension", top_n=3)
-
-        # Should properly handle None values
-        assert len(result) == 4  # top 3 + Others
-        assert "Others" in result["dimension"].values
 
 
 class TestImpactScoreFormula:

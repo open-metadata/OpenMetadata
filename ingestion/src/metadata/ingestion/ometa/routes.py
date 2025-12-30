@@ -188,6 +188,10 @@ from metadata.generated.schema.entity.teams.persona import Persona
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
+from metadata.generated.schema.events.api.createEventSubscription import (
+    CreateEventSubscription,
+)
+from metadata.generated.schema.events.eventSubscription import EventSubscription
 from metadata.generated.schema.settings.settings import Settings
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
@@ -315,6 +319,9 @@ ROUTES = {
     # Suggestions
     Suggestion.__name__: "/suggestions",
     CreateSuggestionRequest.__name__: "/suggestions",
+    # Event Subscriptions
+    EventSubscription.__name__: "/events/subscriptions",
+    CreateEventSubscription.__name__: "/events/subscriptions",
     # Apps
     App.__name__: "/apps",
     CreateAppRequest.__name__: "/apps",

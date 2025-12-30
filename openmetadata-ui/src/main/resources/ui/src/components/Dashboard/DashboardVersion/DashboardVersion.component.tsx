@@ -26,6 +26,7 @@ import {
   ChangeDescription,
   EntityReference,
 } from '../../../generated/entity/data/dashboard';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
@@ -33,12 +34,13 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
+import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
-import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
@@ -127,17 +129,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         dataIndex: 'type',
         key: 'type',
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (text) =>
-          text ? (
-            <RichTextEditorPreviewerNew markdown={text} />
-          ) : (
-            <span className="text-grey-muted">{t('label.no-description')}</span>
-          ),
-      },
+      ...descriptionTableObject(),
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
@@ -171,6 +163,13 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       currentVersionData.displayName
     );
   }, [currentVersionData, changeDescription]);
+
+  const viewCustomPropertiesPermission = useMemo(() => {
+    return getPrioritizedViewPermission(
+      entityPermissions,
+      Operation.ViewCustomFields
+    );
+  }, [entityPermissions]);
 
   const tabItems: TabsProps['items'] = useMemo(
     () => [
@@ -241,12 +240,17 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
             isVersionView
             entityType={EntityType.DASHBOARD}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
     ],
-    [description, tableColumn, currentVersionData, entityPermissions]
+    [
+      description,
+      tableColumn,
+      currentVersionData,
+      viewCustomPropertiesPermission,
+    ]
   );
 
   return (

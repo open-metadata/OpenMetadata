@@ -36,6 +36,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateAPICollection;
+import org.openmetadata.schema.api.data.CreateAPIEndpoint;
 import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.CreateDashboard;
@@ -58,6 +59,7 @@ import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.APICollection;
+import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
@@ -78,6 +80,7 @@ import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.type.APIRequestMethod;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
@@ -90,6 +93,7 @@ import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.apis.APICollectionResourceTest;
+import org.openmetadata.service.resources.apis.APIEndpointResourceTest;
 import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseResourceTest;
@@ -133,6 +137,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   private static MlModelResourceTest mlModelTest;
   private static MlModelServiceResourceTest mlModelServiceTest;
   private static APICollectionResourceTest apiCollectionTest;
+  private static APIEndpointResourceTest apiEndpointTest;
   private static APIServiceResourceTest apiServiceTest;
   private static ContainerResourceTest containerTest;
   private static StorageServiceResourceTest storageServiceTest;
@@ -160,6 +165,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     mlModelTest = new MlModelResourceTest();
     mlModelServiceTest = new MlModelServiceResourceTest();
     apiCollectionTest = new APICollectionResourceTest();
+    apiEndpointTest = new APIEndpointResourceTest();
     apiServiceTest = new APIServiceResourceTest();
     containerTest = new ContainerResourceTest();
     storageServiceTest = new StorageServiceResourceTest();
@@ -1801,6 +1807,171 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
   @Test
   @Order(6)
+  void test_WorkflowFieldUpdateDoesNotCreateRedundantChangeEvents(TestInfo test) throws Exception {
+    LOG.info("Starting test to verify workflow field updates don't create redundant change events");
+
+    // Create a test table
+    CreateDatabaseService createService =
+        databaseServiceTest.createRequest(
+            "test_changeevent_service_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""));
+    DatabaseService service = databaseServiceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+
+    CreateDatabase createDatabase =
+        new CreateDatabase()
+            .withName(
+                "test_changeevent_db_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withService(service.getFullyQualifiedName());
+    Database database = databaseTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+    CreateDatabaseSchema createSchema =
+        new CreateDatabaseSchema()
+            .withName(
+                "test_changeevent_schema_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName(
+                "test_changeevent_table_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("name").withDataType(ColumnDataType.STRING)));
+    Table table = tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created test table: {}", table.getName());
+
+    // Record initial change event count
+    long initialOffset =
+        org.openmetadata.service.Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+    LOG.debug("Initial change event offset: {}", initialOffset);
+
+    // Create workflow that sets tags (this should create meaningful changes)
+    String workflowJson =
+        """
+    {
+      "name": "testRedundantChangeEvents",
+      "displayName": "Test Redundant Change Events",
+      "description": "Test workflow to verify no redundant change events",
+      "trigger": {
+        "type": "periodicBatchEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "schedule": {"scheduleTimeline": "None"},
+          "batchSize": 100,
+          "filters": {}
+        },
+        "output": ["relatedEntity", "updatedBy"]
+      },
+      "nodes": [
+        {"type": "startEvent", "subType": "startEvent", "name": "start", "displayName": "start"},
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "setTag",
+          "displayName": "Set Tag",
+          "config": {
+            "fieldName": "tags",
+            "fieldValue": "Tier.Tier1"
+          },
+          "input": ["relatedEntity", "updatedBy"],
+          "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"},
+          "output": []
+        },
+        {"type": "endEvent", "subType": "endEvent", "name": "end", "displayName": "end"}
+      ],
+      "edges": [
+        {"from": "start", "to": "setTag"},
+        {"from": "setTag", "to": "end"}
+      ],
+      "config": {"storeStageStatus": true}
+    }
+    """;
+
+    CreateWorkflowDefinition workflow =
+        JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class);
+
+    // Create and trigger workflow
+    Response response =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(workflow));
+    assertTrue(
+        response.getStatus() == Response.Status.CREATED.getStatusCode()
+            || response.getStatus() == Response.Status.OK.getStatusCode());
+
+    // Wait a moment for workflow setup
+    java.lang.Thread.sleep(2000);
+
+    // Trigger the workflow FIRST time
+    Response triggerResponse =
+        SecurityUtil.addHeaders(
+                getResource(
+                    "governance/workflowDefinitions/name/testRedundantChangeEvents/trigger"),
+                ADMIN_AUTH_HEADERS)
+            .post(Entity.json("{}"));
+    assertEquals(Response.Status.OK.getStatusCode(), triggerResponse.getStatus());
+
+    // Wait for workflow to complete
+    java.lang.Thread.sleep(15000);
+
+    // Count change events after first workflow run
+    long firstRunOffset =
+        org.openmetadata.service.Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+    long firstRunEventCount = firstRunOffset - initialOffset;
+
+    // Verify the tag was actually added (meaningful change)
+    Table updatedTable = tableTest.getEntity(table.getId(), "tags", ADMIN_AUTH_HEADERS);
+    boolean hasTag =
+        updatedTable.getTags() != null
+            && updatedTable.getTags().stream()
+                .anyMatch(tag -> "Tier.Tier1".equals(tag.getTagFQN()));
+    assertTrue(hasTag, "Table should have Tier.Tier1 tag after first workflow run");
+
+    LOG.info("First workflow run created {} change events", firstRunEventCount);
+    assertTrue(
+        firstRunEventCount > 0, "First workflow run should create at least one change event");
+
+    // Trigger the workflow SECOND time (should NOT create new events since no actual changes)
+    triggerResponse =
+        SecurityUtil.addHeaders(
+                getResource(
+                    "governance/workflowDefinitions/name/testRedundantChangeEvents/trigger"),
+                ADMIN_AUTH_HEADERS)
+            .post(Entity.json("{}"));
+    assertEquals(Response.Status.OK.getStatusCode(), triggerResponse.getStatus());
+
+    // Wait for second workflow to complete
+    java.lang.Thread.sleep(15000);
+
+    // Count change events after second workflow run
+    long secondRunOffset =
+        org.openmetadata.service.Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+    long secondRunEventCount = secondRunOffset - firstRunOffset;
+
+    LOG.info("Second workflow run created {} change events", secondRunEventCount);
+
+    // CRITICAL ASSERTION: Second run should create NO new change events
+    // because the tag is already set and EntityFieldUtils should not generate
+    // redundant events due to updateEntityMetadata timestamp changes
+    assertEquals(
+        0,
+        secondRunEventCount,
+        "Second workflow run should NOT create change events when no actual field changes occur. "
+            + "This verifies the fix for redundant updateEntityMetadata events.");
+
+    // Verify the tag is still there (no regression)
+    Table finalTable = tableTest.getEntity(table.getId(), "tags", ADMIN_AUTH_HEADERS);
+    boolean stillHasTag =
+        finalTable.getTags() != null
+            && finalTable.getTags().stream().anyMatch(tag -> "Tier.Tier1".equals(tag.getTagFQN()));
+    assertTrue(stillHasTag, "Table should still have the tag after second workflow run");
+
+    LOG.info("✓ PASSED: Workflow field updates do not create redundant change events");
+  }
+
+  @Test
+  @Order(7)
   void test_MultiEntityPeriodicQueryWithFilters(TestInfo test)
       throws IOException, InterruptedException {
     LOG.info("Starting test_MultiEntityPeriodicQueryWithFilters");
@@ -3080,6 +3251,11 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
           "from": "checkTask",
           "to": "end",
           "condition": "true"
+        },
+        {
+          "from": "checkTask",
+          "to": "end",
+          "condition": "false"
         }
       ]
     }
@@ -3459,7 +3635,13 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         },
         {
           "from": "userApproval",
-          "to": "setTask"
+          "to": "setTask",
+          "condition": "true"
+        },
+        {
+          "from": "userApproval",
+          "to": "setTask",
+          "condition": "false"
         },
         {
           "from": "setTask",
@@ -4017,6 +4199,233 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         "Expected cannot have outgoing edges error message, got: " + endWithOutgoingResponseBody);
     LOG.debug("End node with outgoing edges correctly rejected: {}", endWithOutgoingResponseBody);
 
+    // Test 8: Conditional task with missing FALSE condition should fail
+    String missingFalseConditionJson =
+        """
+    {
+      "name": "missingFalseConditionWorkflow",
+      "displayName": "Missing False Condition Workflow",
+      "description": "Workflow with conditional task missing FALSE condition",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["glossaryTerm"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "checkTask",
+          "displayName": "Check Task",
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "config": {
+            "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
+          },
+          "input": ["relatedEntity"],
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          },
+          "output": ["result"]
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "checkTask"
+        },
+        {
+          "from": "checkTask",
+          "to": "end",
+          "condition": "true"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition missingFalseConditionWorkflow =
+        JsonUtils.readValue(missingFalseConditionJson, CreateWorkflowDefinition.class);
+
+    Response missingFalseResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(missingFalseConditionWorkflow));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), missingFalseResponse.getStatus());
+    String missingFalseResponseBody = missingFalseResponse.readEntity(String.class);
+    assertTrue(
+        missingFalseResponseBody.contains("must have both TRUE and FALSE outgoing sequence flows"),
+        "Expected conditional task validation error, got: " + missingFalseResponseBody);
+    LOG.debug(
+        "Conditional task missing FALSE condition correctly rejected: {}",
+        missingFalseResponseBody);
+
+    // Test 9: UserApprovalTask with missing TRUE condition should fail
+    String missingTrueConditionJson =
+        """
+    {
+      "name": "missingTrueConditionWorkflow",
+      "displayName": "Missing True Condition Workflow",
+      "description": "Workflow with UserApprovalTask missing TRUE condition",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["glossaryTerm"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "approvalTask",
+          "displayName": "Approval Task",
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "config": {
+            "assignees": {
+              "addReviewers": true
+            }
+          },
+          "input": ["relatedEntity"],
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          },
+          "output": ["result"]
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "approvalTask"
+        },
+        {
+          "from": "approvalTask",
+          "to": "end",
+          "condition": "false"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition missingTrueConditionWorkflow =
+        JsonUtils.readValue(missingTrueConditionJson, CreateWorkflowDefinition.class);
+
+    Response missingTrueResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(missingTrueConditionWorkflow));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), missingTrueResponse.getStatus());
+    String missingTrueResponseBody = missingTrueResponse.readEntity(String.class);
+    assertTrue(
+        missingTrueResponseBody.contains("must have both TRUE and FALSE outgoing sequence flows"),
+        "Expected conditional task validation error, got: " + missingTrueResponseBody);
+    LOG.debug(
+        "UserApprovalTask missing TRUE condition correctly rejected: {}", missingTrueResponseBody);
+
+    // Test 10: Valid conditional task with both TRUE and FALSE conditions should pass
+    String validConditionalJson =
+        """
+    {
+      "name": "validConditionalWorkflow",
+      "displayName": "Valid Conditional Workflow",
+      "description": "Workflow with proper conditional task setup",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["glossaryTerm"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "checkTask",
+          "displayName": "Check Task",
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "config": {
+            "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
+          },
+          "input": ["relatedEntity"],
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          },
+          "output": ["result"]
+        },
+        {
+          "name": "endTrue",
+          "displayName": "End True",
+          "type": "endEvent",
+          "subType": "endEvent"
+        },
+        {
+          "name": "endFalse",
+          "displayName": "End False",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "checkTask"
+        },
+        {
+          "from": "checkTask",
+          "to": "endTrue",
+          "condition": "true"
+        },
+        {
+          "from": "checkTask",
+          "to": "endFalse",
+          "condition": "false"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition validConditionalWorkflow =
+        JsonUtils.readValue(validConditionalJson, CreateWorkflowDefinition.class);
+
+    Response validConditionalResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(validConditionalWorkflow));
+
+    assertEquals(Response.Status.OK.getStatusCode(), validConditionalResponse.getStatus());
+    String validConditionalResponseBody = validConditionalResponse.readEntity(String.class);
+    assertTrue(validConditionalResponseBody.contains("valid"));
+    LOG.debug("Valid conditional workflow passed validation: {}", validConditionalResponseBody);
+
     LOG.info("test_WorkflowValidationEndpoint completed successfully");
   }
 
@@ -4375,7 +4784,10 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     CreateUser createReviewer =
         new CreateUser()
             .withName("test_reviewer_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
-            .withEmail("test_reviewer@example.com")
+            .withEmail(
+                "test_reviewer_"
+                    + UUID.randomUUID().toString().substring(0, 8).replaceAll("[^a-zA-Z0-9]", "")
+                    + "@example.com")
             .withDisplayName("Test Reviewer");
     User reviewerUser = userTest.createEntity(createReviewer, ADMIN_AUTH_HEADERS);
     EntityReference reviewerRef = reviewerUser.getEntityReference();
@@ -4533,7 +4945,9 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
     CreateTag createTag =
         new CreateTag()
-            .withName("test_tag")
+            .withName(
+                "test_tag_"
+                    + UUID.randomUUID().toString().substring(0, 8).replaceAll("[^a-zA-Z0-9]", ""))
             .withDescription("Initial tag description")
             .withClassification(classification.getName())
             .withReviewers(listOf(reviewerRef));
@@ -4815,6 +5229,25 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     // Step 10: Verify descriptions were updated back by workflows
     verifyEntityDescriptionsUpdated(
         dataContract.getId(), tag.getId(), dataProduct.getId(), metric.getId(), testCase.getId());
+
+    // Step 11: Delete the unified workflow to prevent interference with other tests
+    try {
+      Response deleteResponse =
+          SecurityUtil.addHeaders(
+                  getResource("governance/workflowDefinitions/name/UnifiedApprovalWorkflow"),
+                  ADMIN_AUTH_HEADERS)
+              .delete();
+
+      if (deleteResponse.getStatus() == Response.Status.OK.getStatusCode()
+          || deleteResponse.getStatus() == Response.Status.NO_CONTENT.getStatusCode()) {
+        LOG.debug("Successfully deleted UnifiedApprovalWorkflow");
+      } else {
+        LOG.warn(
+            "Failed to delete UnifiedApprovalWorkflow. Status: {}", deleteResponse.getStatus());
+      }
+    } catch (Exception e) {
+      LOG.warn("Error while deleting UnifiedApprovalWorkflow: {}", e.getMessage());
+    }
 
     LOG.info("test_CustomApprovalWorkflowForNewEntities completed successfully");
   }
@@ -5202,5 +5635,621 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     LOG.debug("Updated workflow without entityTypes: {}", updatedWorkflowDef.getName());
 
     LOG.info("test_CreateWorkflowWithoutEntityTypes completed successfully");
+  }
+
+  @Test
+  @Order(22)
+  void test_reviewerChangeUpdatesApprovalTasks(TestInfo test) throws Exception {
+    LOG.info("Starting test_reviewerChangeUpdatesApprovalTasks");
+
+    // Create reviewer users for this test
+    CreateUser createReviewer1 =
+        new CreateUser()
+            .withName(
+                "test_reviewer1_"
+                    + UUID.randomUUID().toString().substring(0, 8).replaceAll("[^a-zA-Z0-9]", ""))
+            .withEmail(
+                "test_reviewer1_"
+                    + UUID.randomUUID().toString().substring(0, 8).replaceAll("[^a-zA-Z0-9]", "")
+                    + "@example.com")
+            .withDisplayName("Test Reviewer 1");
+    User reviewer1 = userTest.createEntity(createReviewer1, ADMIN_AUTH_HEADERS);
+    EntityReference reviewer1Ref = reviewer1.getEntityReference();
+    LOG.debug("Created reviewer user 1: {}", reviewer1.getName());
+
+    CreateUser createReviewer2 =
+        new CreateUser()
+            .withName(
+                "test_reviewer2_"
+                    + UUID.randomUUID().toString().substring(0, 8).replaceAll("[^a-zA-Z0-9]", ""))
+            .withEmail(
+                "test_reviewer2_"
+                    + UUID.randomUUID().toString().substring(0, 8).replaceAll("[^a-zA-Z0-9]", "")
+                    + "@example.com")
+            .withDisplayName("Test Reviewer 2");
+    User reviewer2 = userTest.createEntity(createReviewer2, ADMIN_AUTH_HEADERS);
+    EntityReference reviewer2Ref = reviewer2.getEntityReference();
+    LOG.debug("Created reviewer user 2: {}", reviewer2.getName());
+
+    // Create an approval workflow for tags (which support reviewers)
+    String approvalWorkflowJson =
+        """
+    {
+      "name": "tagApprovalWorkflow",
+      "displayName": "Tag Approval Workflow",
+      "description": "Workflow for testing reviewer change functionality",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["tag"],
+          "events": ["Created", "Updated"],
+          "exclude": ["reviewers"],
+          "filter": {}
+        },
+        "output": ["relatedEntity", "updatedBy"]
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "ApproveTag",
+          "displayName": "Approve Tag",
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "config": {
+            "assignees": {
+              "addReviewers": true
+            },
+            "approvalThreshold": 1,
+            "rejectionThreshold": 1
+          },
+          "input": ["relatedEntity"],
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          },
+          "output": ["updatedBy"],
+          "branches": ["true", "false"]
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "ApproveTag"
+        },
+        {
+          "from": "ApproveTag",
+          "to": "end",
+          "condition": "true"
+        },
+        {
+          "from": "ApproveTag",
+          "to": "end",
+          "condition": "false"
+        }
+      ],
+      "config": {
+        "storeStageStatus": true
+      }
+    }
+    """;
+
+    CreateWorkflowDefinition approvalWorkflow =
+        JsonUtils.readValue(approvalWorkflowJson, CreateWorkflowDefinition.class);
+
+    // Create the approval workflow
+    Response response =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(approvalWorkflow));
+
+    assertTrue(
+        response.getStatus() == Response.Status.CREATED.getStatusCode()
+            || response.getStatus() == Response.Status.OK.getStatusCode(),
+        "Should successfully create tag approval workflow");
+
+    WorkflowDefinition createdWorkflow = response.readEntity(WorkflowDefinition.class);
+    assertNotNull(createdWorkflow);
+    LOG.debug("Created tag approval workflow: {}", createdWorkflow.getName());
+
+    // Wait for workflow to be ready
+    java.lang.Thread.sleep(2000);
+
+    // Create a classification for our test tags
+    String classificationName =
+        "TestClassification_" + UUID.randomUUID().toString().substring(0, 8);
+    Classification classification =
+        classificationTest.createEntity(
+            classificationTest.createRequest(classificationName), ADMIN_AUTH_HEADERS);
+    LOG.debug("Created classification: {}", classification.getName());
+
+    // Create a tag with initial reviewer - simple test with reviewer1 first
+    String tagName = "TestTag_" + UUID.randomUUID().toString().substring(0, 8);
+    CreateTag createTag =
+        tagTest
+            .createRequest(tagName, classification.getName())
+            .withReviewers(List.of(reviewer1Ref));
+
+    // Create the tag with ADMIN (not a reviewer) so it triggers approval workflow
+    Tag tag = tagTest.createEntity(createTag, ADMIN_AUTH_HEADERS);
+    assertNotNull(tag.getEntityStatus(), "Tag should have an entity status");
+    assertEquals(1, tag.getReviewers().size(), "Tag should have 1 reviewer");
+    assertEquals(
+        reviewer1.getId(),
+        tag.getReviewers().getFirst().getId(),
+        "reviewer1 should be the reviewer");
+    LOG.debug("Created tag with reviewer1: {}, Status: {}", tag.getName(), tag.getEntityStatus());
+
+    // Wait for workflow to process the create event
+    java.lang.Thread.sleep(5000);
+
+    // Verify that an approval task was created and assigned to the reviewers
+    String entityLink =
+        new MessageParser.EntityLink(
+                org.openmetadata.service.Entity.TAG, tag.getFullyQualifiedName())
+            .getLinkString();
+
+    // Wait for task to be created
+    ThreadList threads = null;
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () -> {
+              ThreadList taskList =
+                  feedResourceTest.listTasks(
+                      entityLink,
+                      null,
+                      null,
+                      TaskStatus.Open,
+                      100,
+                      authHeaders(reviewer1.getName()));
+              if (taskList.getData().isEmpty()) {
+                LOG.debug("Waiting for task to be created for tag...");
+                return false;
+              }
+              return true;
+            });
+
+    threads =
+        feedResourceTest.listTasks(
+            entityLink, null, null, TaskStatus.Open, 100, authHeaders(reviewer1.getName()));
+
+    // The approval workflow should have created a task
+    assertFalse(threads.getData().isEmpty(), "Should have at least one task for the tag");
+
+    // Find the approval task (there might be other tasks too)
+    Thread approvalTask =
+        threads.getData().stream()
+            .filter(
+                t ->
+                    t.getTask() != null
+                        && org.openmetadata.schema.type.TaskType.RequestApproval.equals(
+                            t.getTask().getType()))
+            .findFirst()
+            .orElse(null);
+
+    if (approvalTask == null) {
+      // If no approval task, check if it's a different task type
+      LOG.warn("No approval task found. Found {} tasks total", threads.getData().size());
+      for (Thread t : threads.getData()) {
+        LOG.debug(
+            "Task type: {}, Status: {}",
+            t.getTask() != null ? t.getTask().getType() : "null",
+            t.getTask() != null ? t.getTask().getStatus() : "null");
+      }
+      // For now, just check that we have tasks
+      assertFalse(threads.getData().isEmpty(), "Should have tasks for the tag");
+      approvalTask = threads.getData().getFirst();
+    }
+
+    org.openmetadata.schema.type.TaskDetails taskDetails = approvalTask.getTask();
+    assertNotNull(taskDetails, "Task details should not be null");
+    assertEquals(TaskStatus.Open, taskDetails.getStatus(), "Task should be open");
+
+    // Verify initial assignee is reviewer1
+    List<EntityReference> assignees = taskDetails.getAssignees();
+    assertNotNull(assignees, "Assignees should not be null");
+    assertFalse(assignees.isEmpty(), "Task should have at least 1 assignee");
+    assertTrue(
+        assignees.stream().anyMatch(a -> a.getId().equals(reviewer1.getId())),
+        "reviewer1 should be an assignee");
+    LOG.debug("Initial task assignee verified: reviewer1");
+
+    // Now update the tag's reviewers - simple change from reviewer1 to reviewer2
+    // Create a JSON Patch to update reviewers
+    String jsonPatch =
+        "[{\"op\":\"replace\",\"path\":\"/reviewers\",\"value\":[{\"id\":\""
+            + reviewer2.getId()
+            + "\",\"type\":\"user\"}]}]";
+
+    Tag updatedTag =
+        tagTest.patchEntity(tag.getId(), JsonUtils.readTree(jsonPatch), ADMIN_AUTH_HEADERS);
+
+    assertEquals(1, updatedTag.getReviewers().size(), "Updated tag should have 1 reviewer");
+    assertEquals(
+        reviewer2.getId(),
+        updatedTag.getReviewers().getFirst().getId(),
+        "reviewer2 should now be the reviewer");
+    LOG.debug("Tag reviewer changed from reviewer1 to reviewer2");
+
+    // Debug: Let's see what the current task looks like immediately after reviewer change
+    ThreadList immediateTaskCheck =
+        feedResourceTest.listTasks(
+            entityLink, null, null, TaskStatus.Open, 100, authHeaders(reviewer1.getName()));
+    LOG.warn(
+        "DEBUGGING: Immediate task check after reviewer change - found {} tasks for reviewer1",
+        immediateTaskCheck.getData().size());
+
+    immediateTaskCheck =
+        feedResourceTest.listTasks(
+            entityLink, null, null, TaskStatus.Open, 100, authHeaders(reviewer2.getName()));
+    LOG.warn(
+        "DEBUGGING: Immediate task check after reviewer change - found {} tasks for reviewer2",
+        immediateTaskCheck.getData().size());
+
+    // Wait for the async task assignee update to complete using Awaitility
+    final Integer taskId = taskDetails.getId();
+    await()
+        .atMost(Duration.ofSeconds(180))
+        .pollInterval(Duration.ofSeconds(3))
+        .pollDelay(Duration.ofSeconds(5))
+        .until(
+            () -> {
+              try {
+                ThreadList taskThreads =
+                    feedResourceTest.listTasks(
+                        entityLink,
+                        null,
+                        null,
+                        TaskStatus.Open,
+                        100,
+                        authHeaders(reviewer2.getName()));
+
+                if (taskThreads.getData().isEmpty()) {
+                  return false;
+                }
+
+                Thread taskThread =
+                    taskThreads.getData().stream()
+                        .filter(
+                            t ->
+                                t.getTask() != null
+                                    && org.openmetadata.schema.type.TaskType.RequestApproval.equals(
+                                        t.getTask().getType())
+                                    && t.getTask().getId().equals(taskId))
+                        .findFirst()
+                        .orElse(null);
+
+                if (taskThread == null || taskThread.getTask() == null) {
+                  return false;
+                }
+
+                List<EntityReference> currentAssignees = taskThread.getTask().getAssignees();
+                if (currentAssignees == null || currentAssignees.isEmpty()) {
+                  return false;
+                }
+
+                boolean hasReviewer2 =
+                    currentAssignees.stream().anyMatch(a -> a.getId().equals(reviewer2.getId()));
+                boolean hasReviewer1 =
+                    currentAssignees.stream().anyMatch(a -> a.getId().equals(reviewer1.getId()));
+
+                LOG.warn(
+                    "DEBUGGING: Task ID: {}, Total assignees: {}, Reviewer1 ID: {}, Reviewer2 ID: {}, Has reviewer1: {}, Has reviewer2: {}",
+                    taskThread.getTask().getId(),
+                    currentAssignees.size(),
+                    reviewer1.getId(),
+                    reviewer2.getId(),
+                    hasReviewer1,
+                    hasReviewer2);
+
+                // Log actual assignee IDs
+                for (EntityReference assignee : currentAssignees) {
+                  LOG.warn(
+                      "DEBUGGING: Current assignee ID: {}, Name: {}",
+                      assignee.getId(),
+                      assignee.getName());
+                }
+
+                // Task assignees should have been updated: reviewer2 should be present, reviewer1
+                // should not
+                // In CI environments, allow for intermediate states where reviewer2 is added but
+                // reviewer1 isn't removed yet
+                if (hasReviewer2) {
+                  LOG.warn(
+                      "DEBUGGING: reviewer2 found in assignees, checking if reviewer1 removed...");
+                  return !hasReviewer1; // reviewer2 is there, just need reviewer1 to be gone
+                }
+                return false; // reviewer2 not found yet
+              } catch (Exception e) {
+                LOG.warn("Error checking task assignees: {}", e.getMessage(), e);
+                return false;
+              }
+            });
+
+    // Verify that the task assignees have been updated
+    threads =
+        feedResourceTest.listTasks(
+            entityLink, null, null, TaskStatus.Open, 100, authHeaders(reviewer2.getName()));
+
+    assertFalse(threads.getData().isEmpty(), "Should still have tasks");
+    approvalTask =
+        threads.getData().stream()
+            .filter(
+                t ->
+                    t.getTask() != null
+                        && org.openmetadata.schema.type.TaskType.RequestApproval.equals(
+                            t.getTask().getType())
+                        && t.getTask().getId().equals(taskDetails.getId()))
+            .findFirst()
+            .orElse(threads.getData().getFirst());
+
+    org.openmetadata.schema.type.TaskDetails updatedTaskDetails = approvalTask.getTask();
+
+    // Verify updated assignee is now reviewer2 instead of reviewer1
+    List<EntityReference> updatedAssignees = updatedTaskDetails.getAssignees();
+    assertNotNull(updatedAssignees, "Updated assignees should not be null");
+    assertFalse(updatedAssignees.isEmpty(), "Task should have at least 1 assignee after update");
+    assertTrue(
+        updatedAssignees.stream().anyMatch(a -> a.getId().equals(reviewer2.getId())),
+        "reviewer2 should now be an assignee after reviewer update");
+    assertFalse(
+        updatedAssignees.stream().anyMatch(a -> a.getId().equals(reviewer1.getId())),
+        "reviewer1 should no longer be an assignee after reviewer update");
+
+    // Step 11: Delete the unified workflow to prevent interference with other tests
+    try {
+      Response deleteResponse =
+          SecurityUtil.addHeaders(
+                  getResource("governance/workflowDefinitions/name/tagApprovalWorkflow"),
+                  ADMIN_AUTH_HEADERS)
+              .delete();
+
+      if (deleteResponse.getStatus() == Response.Status.OK.getStatusCode()
+          || deleteResponse.getStatus() == Response.Status.NO_CONTENT.getStatusCode()) {
+        LOG.debug("Successfully deleted tagApprovalWorkflow");
+      } else {
+        LOG.warn("Failed to delete tagApprovalWorkflow. Status: {}", deleteResponse.getStatus());
+      }
+    } catch (Exception e) {
+      LOG.warn("Error while deleting tagApprovalWorkflow: {}", e.getMessage());
+    }
+
+    LOG.info(
+        "test_reviewerChangeUpdatesApprovalTasks completed successfully - task assignee successfully changed from reviewer1 to reviewer2");
+  }
+
+  @Test
+  @Order(21)
+  void test_ApiEndpointPeriodicBatchWorkflow(TestInfo test)
+      throws IOException, InterruptedException {
+    LOG.info("Starting test_ApiEndpointPeriodicBatchWorkflow");
+
+    // Step 1: Create API service and API collection
+    CreateApiService createApiService =
+        apiServiceTest
+            .createRequest(test)
+            .withServiceType(CreateApiService.ApiServiceType.Rest)
+            .withConnection(org.openmetadata.service.util.TestUtils.API_SERVICE_CONNECTION);
+    ApiService apiService = apiServiceTest.createEntity(createApiService, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created API service: {}", apiService.getName());
+
+    // Create API Collection
+    CreateAPICollection createApiCollection =
+        apiCollectionTest
+            .createRequest(test)
+            .withService(apiService.getFullyQualifiedName())
+            .withDescription("API Collection for workflow testing");
+    APICollection apiCollection =
+        apiCollectionTest.createEntity(createApiCollection, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created API Collection: {}", apiCollection.getName());
+
+    // Step 2: Create API endpoints - one that matches filter, one that doesn't
+    CreateAPIEndpoint createMatchingApiEndpoint =
+        new CreateAPIEndpoint()
+            .withName(
+                "test_endpoint_matching_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withApiCollection(apiCollection.getFullyQualifiedName())
+            .withRequestMethod(APIRequestMethod.GET)
+            .withEndpointURL(java.net.URI.create("https://localhost:8585/api/v1/test"))
+            .withDescription(
+                "workflow processing description"); // Contains "workflow" - should match filter
+    APIEndpoint matchingApiEndpoint =
+        apiEndpointTest.createEntity(createMatchingApiEndpoint, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created API endpoint that should match filter: {}", matchingApiEndpoint.getName());
+
+    // Create API endpoint that should NOT match the filter
+    CreateAPIEndpoint createNonMatchingApiEndpoint =
+        new CreateAPIEndpoint()
+            .withName(
+                "test_endpoint_non_matching_"
+                    + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withApiCollection(apiCollection.getFullyQualifiedName())
+            .withRequestMethod(APIRequestMethod.POST)
+            .withEndpointURL(java.net.URI.create("https://localhost:8585/api/v1/other"))
+            .withDescription(
+                "simple test description"); // Does not contain "workflow" - should NOT match filter
+    APIEndpoint nonMatchingApiEndpoint =
+        apiEndpointTest.createEntity(createNonMatchingApiEndpoint, ADMIN_AUTH_HEADERS);
+    LOG.debug(
+        "Created API endpoint that should NOT match filter: {}", nonMatchingApiEndpoint.getName());
+
+    // Step 3: Create workflow with periodicBatchEntity trigger for apiEndpoint
+    String workflowJson =
+        """
+    {
+      "name": "ApiEndpointProcessingWorkflow",
+      "displayName": "API Endpoint Processing Workflow",
+      "description": "Workflow to process API endpoints with periodic batch trigger",
+      "trigger": {
+        "type": "periodicBatchEntity",
+        "config": {
+          "entityTypes": [
+            "apiEndpoint"
+          ],
+          "schedule": {
+            "scheduleTimeline": "None"
+          },
+          "batchSize": 100,
+          "filters": {
+            "apiEndpoint": "{\\\"query\\\":{\\\"match\\\":{\\\"description\\\":\\\"workflow\\\"}}}"
+          }
+        },
+        "output": [
+          "relatedEntity",
+          "updatedBy"
+        ]
+      },
+      "nodes": [
+        {
+          "type": "startEvent",
+          "subType": "startEvent",
+          "name": "start",
+          "displayName": "Start"
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "UpdateDescription",
+          "displayName": "Update API Endpoint Description",
+          "config": {
+            "fieldName": "description",
+            "fieldValue": "Processed by workflow - API endpoint updated"
+          },
+          "input": [
+            "relatedEntity",
+            "updatedBy"
+          ],
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "global"
+          },
+          "output": []
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "end",
+          "displayName": "End"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "UpdateDescription"
+        },
+        {
+          "from": "UpdateDescription",
+          "to": "end"
+        }
+      ],
+      "config": {
+        "storeStageStatus": true
+      }
+    }
+    """;
+
+    CreateWorkflowDefinition workflow =
+        JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class);
+
+    // Step 4: Create the workflow
+    Response response =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(workflow));
+
+    if (response.getStatus() == Response.Status.CREATED.getStatusCode()
+        || response.getStatus() == Response.Status.OK.getStatusCode()) {
+      WorkflowDefinition createdWorkflow = response.readEntity(WorkflowDefinition.class);
+      assertNotNull(createdWorkflow);
+      LOG.debug("ApiEndpointProcessingWorkflow created successfully");
+    } else {
+      String responseBody = response.readEntity(String.class);
+      LOG.error(
+          "Failed to create workflow. Status: {}, Response: {}",
+          response.getStatus(),
+          responseBody);
+      throw new RuntimeException("Failed to create workflow: " + responseBody);
+    }
+
+    // Step 5: Trigger the workflow
+    Response triggerResponse =
+        SecurityUtil.addHeaders(
+                getResource(
+                    "governance/workflowDefinitions/name/ApiEndpointProcessingWorkflow/trigger"),
+                ADMIN_AUTH_HEADERS)
+            .post(Entity.json("{}"));
+
+    if (triggerResponse.getStatus() == Response.Status.OK.getStatusCode()) {
+      LOG.debug("Workflow triggered successfully");
+    } else {
+      LOG.warn("Workflow trigger response: {}", triggerResponse.getStatus());
+    }
+
+    // Store IDs for lambda expressions
+    final UUID matchingApiEndpointId = matchingApiEndpoint.getId();
+    final UUID nonMatchingApiEndpointId = nonMatchingApiEndpoint.getId();
+
+    // Step 6: Wait for workflow to process using Awaitility
+    await()
+        .atMost(Duration.ofSeconds(120))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(
+            () -> {
+              try {
+                APIEndpoint checkMatchingEndpoint =
+                    apiEndpointTest.getEntity(matchingApiEndpointId, "", ADMIN_AUTH_HEADERS);
+                APIEndpoint checkNonMatchingEndpoint =
+                    apiEndpointTest.getEntity(nonMatchingApiEndpointId, "", ADMIN_AUTH_HEADERS);
+
+                boolean matchingUpdated =
+                    "Processed by workflow - API endpoint updated"
+                        .equals(checkMatchingEndpoint.getDescription());
+                boolean nonMatchingNotUpdated =
+                    "simple test description".equals(checkNonMatchingEndpoint.getDescription());
+
+                LOG.debug(
+                    "Matching endpoint description: {}", checkMatchingEndpoint.getDescription());
+                LOG.debug(
+                    "Non-matching endpoint description: {}",
+                    checkNonMatchingEndpoint.getDescription());
+
+                return matchingUpdated && nonMatchingNotUpdated;
+              } catch (Exception e) {
+                LOG.warn("Error checking API endpoint descriptions: {}", e.getMessage());
+                return false;
+              }
+            });
+
+    // Step 7: Verify only the matching API endpoint was updated
+    APIEndpoint updatedMatchingApiEndpoint =
+        apiEndpointTest.getEntity(matchingApiEndpoint.getId(), "", ADMIN_AUTH_HEADERS);
+    assertNotNull(updatedMatchingApiEndpoint);
+    assertEquals(
+        "Processed by workflow - API endpoint updated",
+        updatedMatchingApiEndpoint.getDescription());
+    LOG.debug(
+        "Matching API endpoint description successfully updated to: {}",
+        updatedMatchingApiEndpoint.getDescription());
+
+    // Verify the non-matching endpoint was NOT updated
+    APIEndpoint unchangedNonMatchingApiEndpoint =
+        apiEndpointTest.getEntity(nonMatchingApiEndpoint.getId(), "", ADMIN_AUTH_HEADERS);
+    assertNotNull(unchangedNonMatchingApiEndpoint);
+    assertEquals("simple test description", unchangedNonMatchingApiEndpoint.getDescription());
+    LOG.debug(
+        "Non-matching API endpoint description correctly unchanged: {}",
+        unchangedNonMatchingApiEndpoint.getDescription());
+
+    LOG.info("test_ApiEndpointPeriodicBatchWorkflow completed successfully");
   }
 }

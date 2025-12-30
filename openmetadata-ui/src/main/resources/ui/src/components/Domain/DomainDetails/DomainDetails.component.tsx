@@ -21,7 +21,8 @@ import { cloneDeep, isEmpty, isEqual, toString } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
@@ -46,19 +47,19 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { Thread } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { PageType } from '../../../generated/system/ui/page';
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { useFqn } from '../../../hooks/useFqn';
-import { FeedCounts } from '../../../interface/feed.interface';
 import {
   addDataProducts,
   patchDataProduct,
 } from '../../../rest/dataProductAPI';
 import { addDomains, patchDomains } from '../../../rest/domainAPI';
+import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getFeedCounts, getIsErrorMatch } from '../../../utils/CommonUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
@@ -73,7 +74,7 @@ import {
   getQueryFilterForDomain,
   getQueryFilterToExcludeDomainTerms,
 } from '../../../utils/DomainUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
 import { showNotistackError } from '../../../utils/NotistackUtils';
@@ -89,16 +90,21 @@ import {
 import { getTermQuery } from '../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
+  getDecodedFqn,
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
-import { useRequiredParams } from '../../../utils/useRequiredParams';
-import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { useFormDrawerWithRef } from '../../common/atoms/drawer';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
+
+import { DRAWER_HEADER_STYLING } from '../../../constants/DomainsListPage.constants';
+import { FeedCounts } from '../../../interface/feed.interface';
+import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
+import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
+import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
@@ -119,17 +125,42 @@ const DomainDetails = ({
   isFollowing,
   isFollowingLoading,
   handleFollowingClick,
+  activeTab: activeTabOverride,
+  onActiveTabChange,
+  domainFqnOverride,
+  onNavigate,
+  refreshDomains,
+  isTreeView = false,
 }: DomainDetailsProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const { getEntityPermission, permissions } = usePermissionProvider();
-  const navigate = useNavigate();
-  const { tab: activeTab, version } = useRequiredParams<{
-    tab: EntityTabs;
-    version: string;
-  }>();
-  const { fqn: domainFqn } = useFqn();
+  const routeParams =
+    useParams<{ fqn?: string; tab?: string; version?: string }>();
+  const reactNavigate = useNavigate();
+  const navigate = useCallback(
+    (path: string) => {
+      if (onNavigate) {
+        onNavigate(path);
+      } else {
+        reactNavigate(path);
+      }
+    },
+    [onNavigate, reactNavigate]
+  );
+  const domainFqn = useMemo(
+    () =>
+      domainFqnOverride ??
+      domain.fullyQualifiedName ??
+      (routeParams.fqn ? getDecodedFqn(routeParams.fqn) : ''),
+    [domainFqnOverride, domain.fullyQualifiedName, routeParams.fqn]
+  );
+  const activeTab = useMemo(
+    () => activeTabOverride ?? routeParams.tab ?? EntityTabs.DOCUMENTATION,
+    [activeTabOverride, routeParams.tab]
+  ) as EntityTabs;
+  const { version } = routeParams;
   const { currentUser } = useApplicationStore();
 
   const assetTabRef = useRef<AssetsTabRef>(null);
@@ -157,9 +188,13 @@ const DomainDetails = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+  const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
+    useState<boolean>(false);
+  const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
   const encodedFqn = getEncodedFqn(
     escapeESReservedCharacters(domain.fullyQualifiedName)
   );
+  const urlEncodedFqn = getEncodedFqn(domain.fullyQualifiedName ?? '');
   const { customizedPage, isLoading } = useCustomPages(PageType.Domain);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
   const isSubDomain = useMemo(() => !isEmpty(domain.parent), [domain]);
@@ -201,13 +236,82 @@ const DomainDetails = ({
     }
   };
 
+  const fetchDataProducts = async () => {
+    if (!isVersionsView) {
+      try {
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter: getTermQuery({
+            'domains.fullyQualifiedName': domain.fullyQualifiedName ?? '',
+          }),
+          searchIndex: SearchIndex.DATA_PRODUCT,
+        });
+
+        setDataProductsCount(res.hits.total.value ?? 0);
+      } catch (error) {
+        setDataProductsCount(0);
+        showNotistackError(
+          enqueueSnackbar,
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.data-product-lowercase'),
+          }),
+          { vertical: 'top', horizontal: 'center' }
+        );
+      }
+    }
+  };
+
+  const fetchSubDomainsCount = useCallback(async () => {
+    if (!isVersionsView) {
+      try {
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter: getTermQuery({
+            'parent.fullyQualifiedName.keyword':
+              domain.fullyQualifiedName ?? '',
+          }),
+          searchIndex: SearchIndex.DOMAIN,
+          trackTotalHits: true,
+        });
+
+        const totalCount = res.hits.total.value ?? 0;
+        setSubDomainsCount(totalCount);
+      } catch (error) {
+        setSubDomainsCount(0);
+        showNotistackError(
+          enqueueSnackbar,
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.sub-domain-lowercase'),
+          }),
+          { vertical: 'top', horizontal: 'center' }
+        );
+      }
+    }
+  }, [isVersionsView, encodedFqn]);
+
   const handleTabChange = (activeKey: string) => {
-    if (activeKey === 'assets') {
+    if (activeKey === EntityTabs.ASSETS) {
+      // refresh domain count when assets tab is selected
       fetchDomainAssets();
     }
     if (activeKey !== activeTab) {
-      navigate(getDomainDetailsPath(domainFqn, activeKey));
+      if (onActiveTabChange) {
+        onActiveTabChange(activeKey as EntityTabs);
+      } else if (domainFqn) {
+        navigate(getDomainDetailsPath(domainFqn, activeKey));
+      }
     }
+  };
+
+  const onDeleteSubDomain = () => {
+    fetchSubDomainsCount();
+    refreshDomains?.();
   };
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -231,6 +335,9 @@ const DomainDetails = ({
     anchor: 'right',
     width: 670,
     closeOnEscape: false,
+    header: {
+      sx: DRAWER_HEADER_STYLING,
+    },
     onCancel: () => {
       dataProductForm.resetFields();
     },
@@ -260,6 +367,7 @@ const DomainDetails = ({
               patchEntity: patchDataProduct,
               onSuccess: () => {
                 fetchDataProducts();
+                dataProductsTabRef.current?.refreshDataProducts();
                 handleTabChange(EntityTabs.DATA_PRODUCTS);
                 onUpdate?.(domain);
                 closeDataProductDrawer();
@@ -319,6 +427,33 @@ const DomainDetails = ({
     setIsAssetDrawerOpen(false);
   }, []);
 
+  const fetchActiveAnnouncement = async () => {
+    try {
+      const announcements = await getActiveAnnouncement(
+        getEntityFeedLink(EntityType.DOMAIN, domain.fullyQualifiedName ?? '')
+      );
+      if (isEmpty(announcements.data)) {
+        setActiveAnnouncement(undefined);
+      } else {
+        setActiveAnnouncement(announcements.data[0]);
+      }
+    } catch (error) {
+      showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
+        vertical: 'top',
+        horizontal: 'center',
+      });
+    }
+  };
+
+  const handleOpenAnnouncementDrawer = () => {
+    setIsAnnouncementDrawerOpen(true);
+  };
+
+  const handleCloseAnnouncementDrawer = () => {
+    setIsAnnouncementDrawerOpen(false);
+    fetchActiveAnnouncement();
+  };
+
   const [name, displayName] = useMemo(() => {
     if (isVersionsView) {
       const updatedName = getEntityVersionByField(
@@ -347,6 +482,9 @@ const DomainDetails = ({
     anchor: 'right',
     width: 670,
     closeOnEscape: false,
+    header: {
+      sx: DRAWER_HEADER_STYLING,
+    },
     onCancel: () => {
       subDomainForm.resetFields();
     },
@@ -373,6 +511,7 @@ const DomainDetails = ({
               patchEntity: patchDomains,
               onSuccess: () => {
                 fetchSubDomainsCount();
+                refreshDomains?.();
                 handleTabChange(EntityTabs.SUBDOMAINS);
                 closeSubDomainDrawer();
               },
@@ -427,37 +566,6 @@ const DomainDetails = ({
       : []),
   ];
 
-  const fetchSubDomainsCount = useCallback(async () => {
-    if (!isVersionsView) {
-      try {
-        const res = await searchQuery({
-          query: '',
-          pageNumber: 1,
-          pageSize: 0,
-          queryFilter: getTermQuery({
-            'parent.fullyQualifiedName.keyword':
-              domain.fullyQualifiedName ?? '',
-          }),
-          searchIndex: SearchIndex.DOMAIN,
-          trackTotalHits: true,
-        });
-
-        const totalCount = res.hits.total.value ?? 0;
-        setSubDomainsCount(totalCount);
-      } catch (error) {
-        setSubDomainsCount(0);
-        showNotistackError(
-          enqueueSnackbar,
-          error as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.sub-domain-lowercase'),
-          }),
-          { vertical: 'top', horizontal: 'center' }
-        );
-      }
-    }
-  }, [isVersionsView, encodedFqn]);
-
   const addSubDomain = useCallback(
     async (formData: CreateDomain) => {
       const data = {
@@ -497,39 +605,14 @@ const DomainDetails = ({
   );
 
   const handleVersionClick = async () => {
+    if (!domainFqn) {
+      return;
+    }
     const path = isVersionsView
       ? getDomainPath(domainFqn)
       : getDomainVersionsPath(domainFqn, toString(domain.version));
 
     navigate(path);
-  };
-
-  const fetchDataProducts = async () => {
-    if (!isVersionsView) {
-      try {
-        const res = await searchQuery({
-          query: '',
-          pageNumber: 1,
-          pageSize: 0,
-          queryFilter: getTermQuery({
-            'domains.fullyQualifiedName': domain.fullyQualifiedName ?? '',
-          }),
-          searchIndex: SearchIndex.DATA_PRODUCT,
-        });
-
-        setDataProductsCount(res.hits.total.value ?? 0);
-      } catch (error) {
-        setDataProductsCount(0);
-        showNotistackError(
-          enqueueSnackbar,
-          error as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.data-product-lowercase'),
-          }),
-          { vertical: 'top', horizontal: 'center' }
-        );
-      }
-    }
   };
 
   const fetchDomainPermission = async () => {
@@ -587,6 +670,26 @@ const DomainDetails = ({
   );
 
   const manageButtonContent: ItemType[] = [
+    ...(domainPermission?.EditAll
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.announcement-action-description')}
+                icon={IconAnnouncementsBlack}
+                id="announcement-button"
+                name={t('label.announcement-plural')}
+              />
+            ),
+            key: 'announcement-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              handleOpenAnnouncementDrawer();
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
     ...(editDisplayNamePermission
       ? ([
           {
@@ -680,10 +783,11 @@ const DomainDetails = ({
       handleAssetSave: () => {
         fetchDomainAssets();
         assetTabRef.current?.refreshAssets();
-        activeTab !== 'assets' && handleTabChange('assets');
+        activeTab !== EntityTabs.ASSETS && handleTabChange(EntityTabs.ASSETS);
       },
       setShowAddSubDomainModal: openSubDomainDrawer,
       onAddSubDomain: addSubDomain,
+      onDeleteSubDomain: onDeleteSubDomain,
       showAddSubDomainModal: false,
       labelMap: tabLabelMap,
       feedCount,
@@ -717,6 +821,7 @@ const DomainDetails = ({
     fetchDomainAssets();
     fetchDataProducts();
     getEntityFeedCount();
+    fetchActiveAnnouncement();
   }, [domain.fullyQualifiedName]);
 
   useEffect(() => {
@@ -726,22 +831,23 @@ const DomainDetails = ({
   const iconData = useMemo(() => {
     return (
       <EntityAvatar
+        className="entity-header-avatar"
         entity={{
           ...domain,
           entityType: 'domain',
           parent: isSubDomain ? { type: 'domain' } : undefined,
         }}
-        size={91}
+        size={isTreeView ? 60 : 91}
         sx={{
           borderRadius: '5px',
           border: '2px solid',
           borderColor: theme.palette.allShades.white,
-          marginTop: '-25px',
+          marginTop: isTreeView ? 0 : '-25px',
           marginRight: 2,
         }}
       />
     );
-  }, [domain, isSubDomain, theme]);
+  }, [domain, isSubDomain, theme, isTreeView]);
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
@@ -765,30 +871,25 @@ const DomainDetails = ({
           flexDirection: 'column',
           gap: 1.5,
         }}>
-        <CoverImage
-          imageUrl={
-            (domain.style as Style & { coverImage?: { url?: string } })
-              ?.coverImage?.url
-          }
-          position={
-            (domain.style as Style & { coverImage?: { position?: string } })
-              ?.coverImage?.position
-              ? {
-                  y: (
-                    domain.style as Style & {
-                      coverImage?: { position?: string };
-                    }
-                  ).coverImage!.position!,
-                }
-              : undefined
-          }
-        />
-        <Box sx={{ display: 'flex', mx: 5, alignItems: 'flex-end' }}>
+        {!isTreeView && (
+          <CoverImage
+            imageUrl={domain.style?.coverImage?.url}
+            position={{ y: domain.style?.coverImage?.position }}
+          />
+        )}
+        <Box
+          className="entity-header"
+          sx={{
+            display: 'flex',
+            mx: 5,
+            alignItems: 'flex-end',
+          }}>
           <Box sx={{ flex: 1 }}>
             <EntityHeader
               breadcrumb={[]}
               entityData={{ ...domain, displayName, name }}
               entityType={EntityType.DOMAIN}
+              entityUrl={`${globalThis.location.origin}/domain/${urlEncodedFqn}`}
               handleFollowingClick={handleFollowingClick}
               icon={iconData}
               isFollowing={isFollowing}
@@ -797,17 +898,18 @@ const DomainDetails = ({
               titleColor={domain.style?.color}
             />
           </Box>
-          <Box sx={{ width: '320px' }}>
+          <Box>
             <Box
+              className="domain-header-action-container"
               sx={{
                 display: 'flex',
                 gap: 3,
                 justifyContent: 'flex-end',
+                alignItems: 'center',
                 pb: '4px',
               }}>
               {!isVersionsView && addButtonContent.length > 0 && (
                 <Dropdown
-                  className="m-l-xs h-10"
                   data-testid="domain-details-add-button-menu"
                   menu={{
                     items: addButtonContent,
@@ -882,6 +984,12 @@ const DomainDetails = ({
                   </Dropdown>
                 )}
               </ButtonGroup>
+              {activeAnnouncement && (
+                <AnnouncementCard
+                  announcement={activeAnnouncement}
+                  onClick={handleOpenAnnouncementDrawer}
+                />
+              )}
             </Box>
           </Box>
         </Box>
@@ -896,7 +1004,7 @@ const DomainDetails = ({
           type={EntityType.DOMAIN}
           onUpdate={onUpdate}>
           <Box className="domain-details-page-tabs" sx={{ width: '100%' }}>
-            <Box sx={{ padding: 5 }}>
+            <Box sx={{ px: isTreeView ? 0 : 5, py: 5 }}>
               <Tabs
                 destroyInactiveTabPane
                 activeKey={activeTab}
@@ -931,7 +1039,7 @@ const DomainDetails = ({
         onSave={() => {
           fetchDomainAssets();
           assetTabRef.current?.refreshAssets();
-          activeTab !== 'assets' && handleTabChange('assets');
+          activeTab !== EntityTabs.ASSETS && handleTabChange(EntityTabs.ASSETS);
         }}
       />
 
@@ -964,13 +1072,29 @@ const DomainDetails = ({
         onSubmit={onStyleSave}
       />
       {subDomainDrawer}
+
+      <AnnouncementDrawer
+        showToastInSnackbar
+        createPermission={domainPermission?.EditAll}
+        entityFQN={domain.fullyQualifiedName ?? ''}
+        entityType={EntityType.DOMAIN}
+        open={isAnnouncementDrawerOpen}
+        onClose={handleCloseAnnouncementDrawer}
+      />
     </>
   );
 
   return (
     <>
       {breadcrumbs}
-      <Box sx={getDomainContainerStyles(theme)}>{content}</Box>
+      <Box
+        className={isTreeView ? 'domain-tree-view-variant' : ''}
+        sx={{
+          ...getDomainContainerStyles(theme),
+          ...(isTreeView && { border: 'none' }),
+        }}>
+        {content}
+      </Box>
     </>
   );
 };

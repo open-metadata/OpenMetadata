@@ -506,6 +506,11 @@ export interface ColumnProfile {
  */
 export interface CardinalityDistribution {
     /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
+    /**
      * List of category names including 'Others'.
      */
     categories?: string[];
@@ -729,6 +734,7 @@ export enum FileFormat {
     Jsonl = "jsonl",
     JsonlGz = "jsonl.gz",
     JsonlZip = "jsonl.zip",
+    Mf4 = "MF4",
     Parq = "parq",
     Parquet = "parquet",
     ParquetSnappy = "parquet.snappy",
