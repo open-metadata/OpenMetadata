@@ -253,6 +253,36 @@ describe('CustomNodeV1', () => {
     expect(screen.getByTestId('dbt-icon')).toBeInTheDocument();
   });
 
+  it('should render breadcrumb for node full path', () => {
+    const nodeWithFqn = {
+      ...mockNodeDataProps,
+      data: {
+        node: {
+          ...mockNodeDataProps.data.node,
+          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_customer',
+        },
+      },
+    };
+
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...nodeWithFqn} />
+      </ReactFlowProvider>
+    );
+
+    const breadcrumbItems = screen.getAllByText(
+      (_content, element) =>
+        element?.classList.contains('lineage-breadcrumb-item') ?? false
+    );
+
+    expect(breadcrumbItems).toHaveLength(3);
+    expect(breadcrumbItems[0]).toHaveTextContent('sample_data');
+    expect(breadcrumbItems[1]).toHaveTextContent('ecommerce_db');
+    expect(breadcrumbItems[2]).toHaveTextContent('shopify');
+
+    screen.debug(undefined, Infinity);
+  });
+
   it('should render footer only when there are children', () => {
     isColumnLayerActive = true;
     render(
