@@ -11,17 +11,24 @@
  *  limitations under the License.
  */
 
-import { EntityTags, TagFilterOptions } from 'Models';
 import { Button, Col, Form, Row, Select, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit, uniqBy } from 'lodash';
+import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+  NO_DATA_PLACEHOLDER,
+  PAGE_SIZE_LARGE,
+} from '../../../constants/constants';
 import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
   TABLE_SCROLL_VALUE,
@@ -31,13 +38,6 @@ import {
   DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_LARGE,
-} from '../../../constants/constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import {
   Column,
@@ -85,6 +85,11 @@ import {
   updateColumnInNestedStructure,
 } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
+import Table from '../../common/Table/Table';
+import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import {
@@ -92,11 +97,6 @@ import {
   EntityNameWithAdditionFields,
 } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../common/Table/Table';
-import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import { ColumnDetailPanel } from '../ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
@@ -694,14 +694,18 @@ const SchemaTable = () => {
   };
 
   const handleColumnUpdate = (updatedColumn: Column) => {
+    const cleanColumn = isEmpty(updatedColumn.children)
+      ? omit(updatedColumn, 'children')
+      : updatedColumn;
+
     setTableColumns((prev) =>
-      prev.map((col) =>
-        col.fullyQualifiedName === updatedColumn.fullyQualifiedName
-          ? updatedColumn
-          : col
+      updateColumnInNestedStructure(
+        prev,
+        updatedColumn.fullyQualifiedName ?? '',
+        cleanColumn
       )
     );
-    setSelectedColumn(updatedColumn);
+    setSelectedColumn(cleanColumn);
   };
 
   const handleColumnNavigate = (column: Column) => {

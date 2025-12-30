@@ -261,14 +261,18 @@ const ModelTab = () => {
   }, []);
 
   const handleColumnUpdate = useCallback((updatedColumn: Column) => {
+    const cleanColumn = isEmpty(updatedColumn.children)
+      ? omit(updatedColumn, 'children')
+      : updatedColumn;
+
     setPaginatedColumns((prev) =>
       prev.map((col) =>
-        col.fullyQualifiedName === updatedColumn.fullyQualifiedName
-          ? updatedColumn
+        col.fullyQualifiedName === cleanColumn.fullyQualifiedName
+          ? cleanColumn
           : col
       )
     );
-    setSelectedColumn(updatedColumn);
+    setSelectedColumn(cleanColumn);
   }, []);
 
   const handleColumnNavigate = useCallback((column: Column) => {

@@ -19,6 +19,7 @@ import {
   groupBy,
   isEmpty,
   isUndefined,
+  omit,
   sortBy,
   toLower,
   uniqBy,
@@ -177,7 +178,11 @@ const SearchIndexFieldsTable = ({
 
   const handleColumnUpdate = useCallback(
     (updatedColumn: Column) => {
-      const field = updatedColumn as unknown as SearchIndexField;
+      const cleanColumn = isEmpty(updatedColumn.children)
+        ? omit(updatedColumn, 'children')
+        : updatedColumn;
+
+      const field = cleanColumn as unknown as SearchIndexField;
       const fields = cloneDeep(searchIndexFields);
       updateFieldDescription<SearchIndexField>(
         field.fullyQualifiedName ?? '',
@@ -190,7 +195,7 @@ const SearchIndexFieldsTable = ({
         fields
       );
       onUpdate(fields);
-      setSelectedColumn(updatedColumn);
+      setSelectedColumn(cleanColumn);
     },
     [searchIndexFields, onUpdate]
   );

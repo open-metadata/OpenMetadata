@@ -17,6 +17,7 @@ import {
   groupBy,
   isEmpty,
   isUndefined,
+  omit,
   toLower,
   uniqBy,
 } from 'lodash';
@@ -120,19 +121,23 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
 
   const handleColumnUpdate = useCallback(
     (updatedColumn: Column) => {
+      const cleanColumn = isEmpty(updatedColumn.children)
+        ? omit(updatedColumn, 'children')
+        : updatedColumn;
+
       const containerDataModel = cloneDeep(dataModel);
       updateContainerColumnDescription(
         containerDataModel?.columns,
-        updatedColumn.fullyQualifiedName ?? '',
-        updatedColumn.description ?? ''
+        cleanColumn.fullyQualifiedName ?? '',
+        cleanColumn.description ?? ''
       );
       updateContainerColumnTags(
         containerDataModel?.columns,
-        updatedColumn.fullyQualifiedName ?? '',
-        updatedColumn.tags ?? []
+        cleanColumn.fullyQualifiedName ?? '',
+        cleanColumn.tags ?? []
       );
       onUpdate(containerDataModel);
-      setSelectedColumn(updatedColumn);
+      setSelectedColumn(cleanColumn);
     },
     [dataModel, onUpdate]
   );
