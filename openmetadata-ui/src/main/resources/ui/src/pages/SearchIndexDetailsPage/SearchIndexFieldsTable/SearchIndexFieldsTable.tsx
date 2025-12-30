@@ -266,7 +266,6 @@ const SearchIndexFieldsTable = ({
             aria-label={getEntityName(record)}
             className="d-inline-flex w-max-90"
             data-testid="column-name"
-            role="button"
             style={{ cursor: isReadOnly ? 'default' : 'pointer' }}
             tabIndex={isReadOnly ? -1 : 0}
             onClick={(e) => {
@@ -278,6 +277,15 @@ const SearchIndexFieldsTable = ({
                 return;
               }
               handleColumnClick(record);
+            }}
+            onKeyDown={(e) => {
+              if (isReadOnly) {
+                return;
+              }
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleColumnClick(record);
+              }
             }}>
             <span className="break-word">
               {stringToHTML(

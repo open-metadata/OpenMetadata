@@ -326,7 +326,6 @@ const ModelTab = () => {
             <div
               aria-label={getEntityName(record)}
               data-testid="column-name"
-              role="button"
               style={{ cursor: 'pointer' }}
               tabIndex={0}
               onClick={(e) => {
@@ -339,6 +338,12 @@ const ModelTab = () => {
                   return;
                 }
                 handleColumnClick(record);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleColumnClick(record);
+                }
               }}>
               <DisplayName
                 displayName={displayName}

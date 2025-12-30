@@ -251,7 +251,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         aria-label={getEntityName(record)}
         className="d-inline-flex w-max-90 vertical-align-inherit"
         data-testid="column-name"
-        role="button"
         style={{ cursor: isVersionView ? 'default' : 'pointer' }}
         tabIndex={isVersionView ? -1 : 0}
         onClick={(e) => {
@@ -263,6 +262,15 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             return;
           }
           handleColumnClick(record);
+        }}
+        onKeyDown={(e) => {
+          if (isVersionView) {
+            return;
+          }
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleColumnClick(record);
+          }
         }}>
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">

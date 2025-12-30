@@ -163,7 +163,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             aria-disabled={isReadOnly}
             aria-label={getEntityName(record)}
             data-testid="column-name"
-            role="button"
             style={{ cursor: isReadOnly ? 'default' : 'pointer' }}
             tabIndex={isReadOnly ? -1 : 0}
             onClick={(e) => {
@@ -175,6 +174,15 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
                 return;
               }
               handleColumnClick(record);
+            }}
+            onKeyDown={(e) => {
+              if (isReadOnly) {
+                return;
+              }
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleColumnClick(record);
+              }
             }}>
             <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
               <Typography.Text>{getEntityName(record)}</Typography.Text>
