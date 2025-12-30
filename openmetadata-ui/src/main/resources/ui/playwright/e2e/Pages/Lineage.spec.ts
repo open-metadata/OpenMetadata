@@ -1785,29 +1785,28 @@ test.describe(
         const searchInput = page
           .getByTestId('search-entity-select')
           .locator('.ant-select-selection-search-input');
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/search/query') &&
-            response.status() === 200
+          
+        const searchResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/search/query')
         );
         await searchInput.fill(service.entity.name);
 
-        await searchResponse;
+        const searchResponseResult = await searchResponse;
+        expect(searchResponseResult.status()).toBe(200);
 
         const nodeSuggestion = page.getByTestId(
           `node-suggestion-${serviceFqn}`
         );
         await expect(nodeSuggestion).toBeVisible();
 
-        const lineageResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/lineage/getLineage') &&
-            response.status() === 200
+        const lineageResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/lineage/getLineage')
         );
 
         await nodeSuggestion.click();
 
-        await lineageResponse;
+        const lineageResponseResult = await lineageResponse;
+        expect(lineageResponseResult.status()).toBe(200);
 
         await expect(
           page.getByTestId(`lineage-node-${serviceFqn}`)
