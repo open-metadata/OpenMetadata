@@ -67,6 +67,9 @@ runs:
     - name: Install Python Dependencies
       run: |
         source env/bin/activate
+        if [[ "${{ inputs.python-version }}" == '3.12' ]]; then
+          export PIP_CONSTRAINT=".github/workflows/py312-pip-constraints.txt"
+        fi
         make install_all install_test
       shell: bash
     # ------------------------------------------------------------------------------
