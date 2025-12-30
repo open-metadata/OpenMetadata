@@ -529,6 +529,33 @@ describe('withDomainFilter', () => {
       });
     });
 
+    it('should handle empty object query_filter gracefully', () => {
+      mockGetPathName.mockReturnValue('/api/search');
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const config = createMockConfig('get', '/search/query', {
+        index: SearchIndex.TABLE,
+        query_filter: '{}',
+      });
+      const result = withDomainFilter(config);
+
+      const filter = JSON.parse(result.params?.query_filter as string);
+
+      expect(filter).toEqual({
+        query: {
+          bool: {
+            must: [
+              {
+                prefix: {
+                  'domains.fullyQualifiedName': 'engineering',
+                },
+              },
+            ],
+          },
+        },
+      });
+    });
+
     it('should preserve existing params when adding query_filter', () => {
       mockGetPathName.mockReturnValue('/api/search');
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });

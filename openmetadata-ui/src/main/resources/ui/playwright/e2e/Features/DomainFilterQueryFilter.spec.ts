@@ -752,4 +752,112 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await afterAction();
     }
   });
+
+  test('Search suggestions should be filtered by selected domain', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const domainTable = new TableClass();
+    const nonDomainTable = new TableClass();
+
+    try {
+      await domain.create(apiContext);
+      await domainTable.create(apiContext);
+      await nonDomainTable.create(apiContext);
+
+      await domainTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains/0',
+            value: {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          },
+        ],
+      });
+
+      await redirectToExplorePage(page);
+      await waitForAllLoadersToDisappear(page);
+
+      await page.getByTestId('domain-dropdown').click();
+      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+        state: 'visible',
+      });
+
+      const searchDomainRes = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('domain_search_index')
+      );
+      await page
+        .getByTestId('domain-selectable-tree')
+        .getByTestId('searchbar')
+        .fill(domain.responseData.displayName);
+      await searchDomainRes;
+
+      const tagSelector = page.getByTestId(
+        `tag-${domain.responseData.fullyQualifiedName}`
+      );
+      await tagSelector.waitFor({ state: 'visible' });
+      await tagSelector.click();
+      await waitForAllLoadersToDisappear(page);
+      await page.waitForLoadState('networkidle');
+
+      const domainTableName = get(
+        domainTable,
+        'entityResponseData.displayName',
+        domainTable.entityResponseData.name
+      );
+
+      const suggestionSearchRes = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.request().method() === 'GET'
+      );
+
+      await page.getByTestId('searchBox').click();
+      await page.getByTestId('searchBox').fill(domainTableName.substring(0, 5));
+
+      await suggestionSearchRes;
+
+      await page.waitForSelector('[data-testid="global-search-suggestion-box"]', {
+        state: 'visible',
+        timeout: 10000,
+      });
+
+      const suggestionBox = page.locator('[data-testid="global-search-suggestion-box"]');
+      await expect(suggestionBox).toContainText(domainTableName);
+
+      const nonDomainTableName = get(
+        nonDomainTable,
+        'entityResponseData.displayName',
+        nonDomainTable.entityResponseData.name
+      );
+
+      const suggestionSearchRes2 = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.request().method() === 'GET'
+      );
+
+      await page.getByTestId('searchBox').clear();
+      await page.getByTestId('searchBox').fill(nonDomainTableName.substring(0, 5));
+
+      await suggestionSearchRes2;
+
+      await page.waitForTimeout(1000);
+
+      const suggestionBoxAfter = page.locator('[data-testid="global-search-suggestion-box"]');
+      await expect(suggestionBoxAfter).not.toContainText(nonDomainTableName);
+    } finally {
+      await domainTable.delete(apiContext);
+      await nonDomainTable.delete(apiContext);
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
 });

@@ -91,24 +91,24 @@ export const withDomainFilter = (
       if (config.params?.index === SearchIndex.TAG) {
         return config;
       }
-
       let filter: QueryFilterInterface = { query: { bool: {} } };
       if (config.params?.query_filter) {
         try {
-          filter = JSON.parse(config.params.query_filter as string);
+          const parsed = JSON.parse(config.params.query_filter as string);
+          filter = parsed?.query ? parsed : { query: { bool: {} } };
         } catch {
           filter = { query: { bool: {} } };
         }
       }
 
-      const mustArray = Array.isArray(filter.query.bool?.must)
+      const mustArray = Array.isArray(filter.query?.bool?.must)
         ? filter.query.bool.must
-        : filter.query.bool?.must
+        : filter.query?.bool?.must
           ? [filter.query.bool.must]
           : [];
 
       filter.query.bool = {
-        ...filter.query.bool,
+        ...filter.query?.bool,
         must: [
           ...mustArray,
           {
