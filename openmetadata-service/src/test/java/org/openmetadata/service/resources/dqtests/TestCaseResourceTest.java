@@ -1093,11 +1093,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 ts -> ts.getFullyQualifiedName().equals(testCaseForEL.getFullyQualifiedName())));
 
     queryParams.clear();
-    queryParams.put("q", "test_getSimpleListFromSearchb");
+    queryParams.put("q", "test_getSimpleListFromSearch");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    // Note: Since the "name" field and its ngram variant are  prioritized in the search query
-    // and the test case names are very similar, the fuzzy matching returns all test cases.
-    assertEquals(testCasesNum, allEntities.getData().size());
+    // Note: With edge_ngram tokenization preserving underscores, prefix-based matching
+    // only finds test cases linked to tables whose names START with "test_getSimpleListFromSearch"
+    // (tables at index 0 and 1). Tables 2-4 have names starting with "table_..." so don't match.
+    assertEquals(2, allEntities.getData().size());
 
     queryParams.clear();
     queryParams.put("entityLink", testCaseForEL.getEntityLink());
@@ -1218,8 +1219,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertNotNull(testCase.getId());
 
     // Test return only the specified dimension
+    // Note: TEST_DEFINITION4 (tableRowCountToBeBetween) has dataQualityDimension: "Integrity"
     queryParams.clear();
-    queryParams.put("dataQualityDimension", "Completeness");
+    queryParams.put("dataQualityDimension", "Integrity");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertNotEquals(0, allEntities.getData().size());
 
@@ -6058,5 +6060,112 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       TestUtils.restoreOrganizationDefaultRoles(savedDefaultRoles);
       TestUtils.restoreOrganizationPolicies(savedPolicies);
     }
+  }
+
+  @Test
+  @Order(Integer.MAX_VALUE)
+  void test_listTestCasesFromSearch_wildcardQuery(TestInfo testInfo) throws IOException {
+    if (!supportsSearchIndex) {
+      return;
+    }
+
+    TableResourceTest tableResourceTest = new TableResourceTest();
+
+    // Create a table for test cases
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(testInfo)
+            .withName("wildcardSearchTestTable")
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(
+                List.of(new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT)));
+    Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    // Create test cases with distinct names to test wildcard matching
+    // Test case 1: Should match "*api_e*" - contains "api_e" substring
+    CreateTestCase createApiEndpoint =
+        createRequest(testInfo)
+            .withName("api_endpoint_column_test")
+            .withEntityLink(tableLink)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
+    TestCase apiEndpointTestCase = createEntity(createApiEndpoint, ADMIN_AUTH_HEADERS);
+
+    // Test case 2: Should NOT match "*api_e*" - does NOT contain "api_e" substring
+    // (contains "api_" and "entity" separately but not "api_e")
+    CreateTestCase createApiService =
+        createRequest(testInfo)
+            .withName("api_service_entity_test")
+            .withEntityLink(tableLink)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
+    TestCase apiServiceTestCase = createEntity(createApiService, ADMIN_AUTH_HEADERS);
+
+    // Test case 3: Should NOT match "*api_e*" - completely different name
+    CreateTestCase createUnrelated =
+        createRequest(testInfo)
+            .withName("unrelated_column_test")
+            .withEntityLink(tableLink)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
+    TestCase unrelatedTestCase = createEntity(createUnrelated, ADMIN_AUTH_HEADERS);
+
+    // Wait for indexing
+    Awaitility.await()
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              Map<String, String> queryParams = new HashMap<>();
+              queryParams.put("entityLink", tableLink);
+              ResultList<TestCase> results =
+                  listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+              assertEquals(3, results.getData().size(), "All 3 test cases should be indexed");
+            });
+
+    // Test 1: Wildcard search with "*api_e*" pattern
+    // Expected: Only "api_endpoint_column_test" should match (contains "api_e")
+    // "api_service_entity_test" should NOT match (contains "api_s", not "api_e")
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("q", "*api_e*");
+    queryParams.put("includeAllTests", "true");
+    queryParams.put("entityLink", tableLink);
+
+    ResultList<TestCase> wildcardResults =
+        listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+
+    List<String> resultNames =
+        wildcardResults.getData().stream().map(TestCase::getName).collect(Collectors.toList());
+
+    // Verify correct wildcard matching behavior
+    assertTrue(
+        resultNames.contains("api_endpoint_column_test"),
+        "api_endpoint_column_test should match '*api_e*' pattern");
+
+    assertFalse(
+        resultNames.contains("api_service_entity_test"),
+        "api_service_entity_test should NOT match '*api_e*' pattern - "
+            + "it contains 'api_s' not 'api_e'");
+
+    assertFalse(
+        resultNames.contains("unrelated_column_test"),
+        "unrelated_column_test should NOT match '*api_e*' pattern");
+
+    // Test 2: Non-wildcard search should work normally
+    queryParams.clear();
+    queryParams.put("q", "api_endpoint");
+    queryParams.put("entityLink", tableLink);
+
+    ResultList<TestCase> exactResults =
+        listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+    List<String> exactResultNames =
+        exactResults.getData().stream().map(TestCase::getName).collect(Collectors.toList());
+
+    assertTrue(
+        exactResultNames.contains("api_endpoint_column_test"),
+        "api_endpoint_column_test should match 'api_endpoint' query");
+
+    deleteEntity(apiEndpointTestCase.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(apiServiceTestCase.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(unrelatedTestCase.getId(), true, true, ADMIN_AUTH_HEADERS);
+    tableResourceTest.deleteEntity(table.getId(), true, true, ADMIN_AUTH_HEADERS);
   }
 }

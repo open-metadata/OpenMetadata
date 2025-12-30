@@ -15,6 +15,11 @@
  */
 export interface EntityCountLineageRequest {
     /**
+     * Filter lineage by specific column names. Use comma-separated list (e.g., 'col1,col2') to
+     * filter columns.
+     */
+    columnFilter?: string;
+    /**
      * Direction of lineage traversal (upstream or downstream)
      */
     direction: LineageDirection;
@@ -47,6 +52,11 @@ export interface EntityCountLineageRequest {
      * -2), positive for downstream (1, 2), 0 for root entity
      */
     nodeDepth?: number;
+    /**
+     * Preserve all paths when applying node-level filters. When true, intermediate nodes that
+     * don't match filters are kept if they're part of a path to matching nodes.
+     */
+    preservePaths?: boolean;
     /**
      * Query Filter
      */

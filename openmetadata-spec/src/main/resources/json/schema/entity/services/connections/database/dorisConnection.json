@@ -104,6 +104,10 @@
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "supportsViewLineageExtraction": {
+      "title": "Supports View Lineage",
+      "$ref": "../connectionBasicType.json#/definitions/supportsViewLineageExtraction"
     }
   },
   "additionalProperties": false,

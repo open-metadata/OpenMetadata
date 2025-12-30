@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import 'rapidoc';
 import React from 'react';
 
@@ -125,54 +125,43 @@ const RapiDocReact = React.forwardRef<HTMLDivElement, RapiDocProps>(
           : localRef.current;
 
       const handleBeforeRender = (spec: any) => {
-        beforeRender && beforeRender(spec);
+        beforeRender?.(spec);
       };
 
       const handleSpecLoaded = (spec: any) => {
-        specLoaded && specLoaded(spec);
+        specLoaded?.(spec);
       };
 
       const handleBeforeTry = (request: any) => {
-        beforeTry && beforeTry(request);
+        beforeTry?.(request);
       };
 
       const handleAfterTry = (data: any) => {
-        afterTry && afterTry(data);
+        afterTry?.(data);
       };
 
       const handleApiServerChange = (server: any) => {
-        apiServerChange && apiServerChange(server);
+        apiServerChange?.(server);
       };
 
       if (rapiDocRef) {
-        beforeRender &&
-          rapiDocRef.addEventListener('before-render', handleBeforeRender);
-        specLoaded &&
-          rapiDocRef.addEventListener('spec-loaded', handleSpecLoaded);
-        beforeTry && rapiDocRef.addEventListener('before-try', handleBeforeTry);
-        afterTry && rapiDocRef.addEventListener('after-try', handleAfterTry);
-        apiServerChange &&
-          rapiDocRef.addEventListener(
-            'api-server-change',
-            handleApiServerChange
-          );
+        rapiDocRef.addEventListener('before-render', handleBeforeRender);
+        rapiDocRef.addEventListener('spec-loaded', handleSpecLoaded);
+        rapiDocRef.addEventListener('before-try', handleBeforeTry);
+        rapiDocRef.addEventListener('after-try', handleAfterTry);
+        rapiDocRef.addEventListener('api-server-change', handleApiServerChange);
       }
 
       return () => {
         if (rapiDocRef) {
-          beforeRender &&
-            rapiDocRef.removeEventListener('before-render', handleBeforeRender);
-          specLoaded &&
-            rapiDocRef.removeEventListener('spec-loaded', handleSpecLoaded);
-          beforeTry &&
-            rapiDocRef.removeEventListener('before-try', handleBeforeTry);
-          afterTry &&
-            rapiDocRef.removeEventListener('after-try', handleAfterTry);
-          apiServerChange &&
-            rapiDocRef.removeEventListener(
-              'api-server-change',
-              handleApiServerChange
-            );
+          rapiDocRef.removeEventListener('before-render', handleBeforeRender);
+          rapiDocRef.removeEventListener('spec-loaded', handleSpecLoaded);
+          rapiDocRef.removeEventListener('before-try', handleBeforeTry);
+          rapiDocRef.removeEventListener('after-try', handleAfterTry);
+          rapiDocRef.removeEventListener(
+            'api-server-change',
+            handleApiServerChange
+          );
         }
       };
     }, [
