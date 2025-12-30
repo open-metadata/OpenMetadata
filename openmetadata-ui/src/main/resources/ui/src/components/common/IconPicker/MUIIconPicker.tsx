@@ -121,13 +121,18 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
   };
 
   const handleUrlBlur = () => {
-    if (urlValue && onChange) {
+    if (urlValue && onChange && urlValue !== parsedValue.value) {
       onChange(urlValue);
     }
   };
 
   const handleUrlKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && urlValue && onChange) {
+    if (
+      e.key === 'Enter' &&
+      urlValue &&
+      onChange &&
+      urlValue !== parsedValue.value
+    ) {
       onChange(urlValue);
       setOpen(false);
     }

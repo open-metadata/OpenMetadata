@@ -72,8 +72,7 @@ export const INTEGER_ZERO_TO_HUNDRED_REGEX = /^(100|[1-9]?\d)$/;
 // Format: two lowercase letters optionally followed by hyphen and two uppercase letters
 export const LOCALE_CODE_REGEX = /^[a-z]{2}(-[A-Z]{2})?$/;
 
-// Matches URLs (http/https/absolute paths) OR any filename ending with image extension
-// Matches: http://example.com/image.png, /path/to/image.jpg, example.svg, etc.
-// Note: Plain filenames are intentional - they will be resolved to full URLs by getTagImageSrc()
+// Matches URLs (http/https/absolute paths) OR filenames with image extensions
+// Filenames restricted to alphanumeric, hyphens, underscores, and dots for security
 export const IMAGE_URL_PATTERN =
-  /^(https?:\/\/|\/)|^.*\.(png|jpg|jpeg|gif|svg|webp|bmp|ico)$/i;
+  /^(https?:\/\/|\/)|^[\w\-.]+\.(png|jpg|jpeg|gif|svg|webp|bmp|ico)$/i;
