@@ -99,7 +99,7 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
                 {breadcrumbs.map((breadcrumb, index) => (
                   <Fragment key={breadcrumb.name}>
                     <Typography.Text
-                      className="text-grey-muted lineage-breadcrumb-item"
+                      className="text-grey-muted lineage-breadcrumb-item w-16"
                       ellipsis={{ tooltip: true }}>
                       {breadcrumb.name}
                     </Typography.Text>
