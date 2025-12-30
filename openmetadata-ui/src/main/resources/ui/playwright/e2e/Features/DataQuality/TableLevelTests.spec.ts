@@ -110,18 +110,20 @@ test('Table Row Count To Be Between', async ({ page }) => {
       const testCaseDoc = page.waitForResponse(
         '/locales/en-US/OpenMetadata/TestCaseForm.md'
       );
+      const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
       await page.getByTestId(`action-dropdown-${testCase.name}`).click();
       await page.getByTestId(`edit-${testCase.name}`).click();
       await testCaseDoc;
+      await testDefinitionResponse;
 
       await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
         `Edit ${testCase.name}`
       );
 
-      await page.locator('#testCaseForm_params_minValue').clear();
-      await page.fill('#testCaseForm_params_minValue', '20');
-      await page.locator('#testCaseForm_params_maxValue').clear();
-      await page.fill('#testCaseForm_params_maxValue', '2000');
+      await page.locator('#tableTestForm_params_minValue').clear();
+      await page.fill('#tableTestForm_params_minValue', '20');
+      await page.locator('#tableTestForm_params_maxValue').clear();
+      await page.fill('#tableTestForm_params_maxValue', '2000');
 
       await clickUpdateButton(page);
     });
@@ -224,9 +226,11 @@ test('Table Row Count To Equal', async ({ page }) => {
       const testCaseDoc = page.waitForResponse(
         '/locales/en-US/OpenMetadata/TestCaseForm.md'
       );
+      const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
       await page.getByTestId(`action-dropdown-${testCase.name}`).click();
       await page.getByTestId(`edit-${testCase.name}`).click();
       await testCaseDoc;
+      await testDefinitionResponse;
 
       await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
         `Edit ${testCase.name}`
@@ -344,9 +348,11 @@ test('Table Column Count To Be Between', async ({ page }) => {
       const testCaseDoc = page.waitForResponse(
         '/locales/en-US/OpenMetadata/TestCaseForm.md'
       );
+      const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
       await page.getByTestId(`action-dropdown-${testCase.name}`).click();
       await page.getByTestId(`edit-${testCase.name}`).click();
       await testCaseDoc;
+      await testDefinitionResponse;
 
       await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
         `Edit ${testCase.name}`
@@ -461,9 +467,11 @@ test('Table Column Count To Equal', async ({ page }) => {
       const testCaseDoc = page.waitForResponse(
         '/locales/en-US/OpenMetadata/TestCaseForm.md'
       );
+      const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
       await page.getByTestId(`action-dropdown-${testCase.name}`).click();
       await page.getByTestId(`edit-${testCase.name}`).click();
       await testCaseDoc;
+      await testDefinitionResponse;
 
       await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
         `Edit ${testCase.name}`
@@ -573,9 +581,11 @@ test('Table Column Name To Exist', async ({ page }) => {
       const testCaseDoc = page.waitForResponse(
         '/locales/en-US/OpenMetadata/TestCaseForm.md'
       );
+      const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
       await page.getByTestId(`action-dropdown-${testCase.name}`).click();
       await page.getByTestId(`edit-${testCase.name}`).click();
       await testCaseDoc;
+      await testDefinitionResponse;
 
       await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
         `Edit ${testCase.name}`
@@ -689,17 +699,19 @@ test('Table Column To Match Set', async ({ page }) => {
       const testCaseDoc = page.waitForResponse(
         '/locales/en-US/OpenMetadata/TestCaseForm.md'
       );
+      const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
       await page.getByTestId(`action-dropdown-${testCase.name}`).click();
       await page.getByTestId(`edit-${testCase.name}`).click();
       await testCaseDoc;
+      await testDefinitionResponse;
 
       await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
         `Edit ${testCase.name}`
       );
 
       await page.fill(
-        '#testCaseForm_params_columnNames',
-        table.entity?.columns[2].name
+        '#tableTestForm_params_columnNames',
+        `,${table.entity?.columns[2].name}`
       );
 
       await page.click('#tableTestForm_params_ordered');
@@ -866,9 +878,11 @@ test('Table Difference', async ({ page }) => {
       const testCaseDoc = page.waitForResponse(
         '/locales/en-US/OpenMetadata/TestCaseForm.md'
       );
+      const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
       await page.getByTestId(`action-dropdown-${testCase.name}`).click();
       await page.getByTestId(`edit-${testCase.name}`).click();
       await testCaseDoc;
+      await testDefinitionResponse;
 
       await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
         `Edit ${testCase.name}`
@@ -1047,9 +1061,11 @@ test('Custom SQL Query', async ({ page }) => {
       const testCaseDoc = page.waitForResponse(
         '/locales/en-US/OpenMetadata/TestCaseForm.md'
       );
+      const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
       await page.getByTestId(`action-dropdown-${testCase.name}`).click();
       await page.getByTestId(`edit-${testCase.name}`).click();
       await testCaseDoc;
+      await testDefinitionResponse;
 
       await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
         `Edit ${testCase.name}`
@@ -1188,17 +1204,19 @@ test('Table Row Inserted Count To Be Between', async ({ page }) => {
       const testCaseDoc = page.waitForResponse(
         '/locales/en-US/OpenMetadata/TestCaseForm.md'
       );
+      const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
       await page.getByTestId(`action-dropdown-${testCase.name}`).click();
       await page.getByTestId(`edit-${testCase.name}`).click();
       await testCaseDoc;
+      await testDefinitionResponse;
 
       await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
         `Edit ${testCase.name}`
       );
 
-      await page.fill('#testCaseForm_params_minValue', '');
+      await page.locator('#testCaseForm_params_minValue').clear();
       await page.fill('#testCaseForm_params_minValue', '10');
-      await page.fill('#testCaseForm_params_maxValue', '');
+      await page.locator('#testCaseForm_params_maxValue').clear();
       await page.fill('#testCaseForm_params_maxValue', '1000');
 
       await clickUpdateButton(page);

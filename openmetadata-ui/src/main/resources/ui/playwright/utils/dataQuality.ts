@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, Response } from '@playwright/test';
+import { expect, Page, Response } from '@playwright/test';
 
 export const clickUpdateButton = async (page: Page) => {
   const updateTestCaseResponse = page.waitForResponse(
