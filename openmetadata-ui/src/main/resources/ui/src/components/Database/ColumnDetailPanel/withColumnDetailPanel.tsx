@@ -13,6 +13,7 @@
 
 import React, { ComponentType, useCallback, useMemo, useState } from 'react';
 import { cloneDeep } from 'lodash';
+import { useParams } from 'react-router-dom';
 import { Column } from '../../../generated/entity/data/table';
 import { EntityType } from '../../../enums/entity.enum';
 import { ColumnDetailPanel } from './ColumnDetailPanel.component';
@@ -23,35 +24,31 @@ import { TagLabel } from '../../../generated/type/tagLabel';
  * Configuration interface for the ColumnDetailPanel HOC.
  * Defines how to convert between entity-specific field types and Column type.
  */
-export interface ColumnDetailPanelConfig<TField> {
+export interface ColumnDetailPanelConfig<TField, TProps> {
   /** Entity type for the component */
   entityType: EntityType;
   /** Convert entity field to Column type */
-  toColumn: (field: TField) => Column;
-  /** Convert Column back to entity field */
-  fromColumn: (column: Column, originalField: TField) => TField;
+  column: (field: TField) => Column;
   /** Get all fields from component props */
-  getAllFields: (props: any) => TField[];
-  /** Get entity FQN from props */
-  getEntityFqn: (props: any) => string;
+  allFields: (props: TProps) => TField[];
   /** Get permissions from props */
-  getPermissions: (props: any) => {
+  permissions: (props: TProps) => {
     hasTagEditAccess: boolean;
     hasGlossaryTermEditAccess: boolean;
     hasDescriptionEditAccess: boolean;
   };
   /** Get readOnly state */
-  getReadOnly: (props: any) => boolean;
+  readOnly: (props: TProps) => boolean;
   /** Update handler */
-  onUpdate: (props: any, updatedFields: TField[]) => void | Promise<void>;
+  onUpdate: (props: TProps, updatedFields: TField[]) => void | Promise<void>;
 }
 
 /**
  * Props injected by the HOC into the wrapped component
  */
-export interface InjectedColumnDetailPanelProps {
+export interface InjectedColumnDetailPanelProps<TField = unknown> {
   /** Handler for column click to open detail panel */
-  handleColumnClick: (field: any) => void;
+  handleColumnClick: (field: TField) => void;
   /** Whether the column detail panel is open */
   isColumnDetailOpen: boolean;
   /** Handler to close the column detail panel */
@@ -72,45 +69,44 @@ export interface InjectedColumnDetailPanelProps {
  * 
  * @example
  * ```tsx
- * const config: ColumnDetailPanelConfig<SearchIndexField> = {
+ * const config: ColumnDetailPanelConfig<SearchIndexField, SearchIndexFieldsTableProps> = {
  *   entityType: EntityType.SEARCH_INDEX,
- *   toColumn: (field) => field as unknown as Column,
- *   fromColumn: (column, original) => column as unknown as SearchIndexField,
- *   getAllFields: (props) => props.searchIndexFields,
- *   getEntityFqn: (props) => props.entityFqn,
- *   getPermissions: (props) => ({
+ *   column: (field) => field as unknown as Column,
+ *   allFields: (props) => props.searchIndexFields,
+ *   permissions: (props) => ({
  *     hasTagEditAccess: props.hasTagEditAccess,
  *     hasGlossaryTermEditAccess: props.hasGlossaryTermEditAccess,
  *     hasDescriptionEditAccess: props.hasDescriptionEditAccess,
  *   }),
- *   getReadOnly: (props) => props.isReadOnly || false,
+ *   readOnly: (props) => props.isReadOnly || false,
  *   onUpdate: (props, fields) => props.onUpdate(fields),
  * };
  * 
  * export default withColumnDetailPanel(config)(SearchIndexFieldsTable);
  * ```
  */
-export function withColumnDetailPanel<TField, TProps = any>(
-  config: ColumnDetailPanelConfig<TField>
+export function withColumnDetailPanel<TField, TProps>(
+  config: ColumnDetailPanelConfig<TField, TProps>
 ) {
   return function (
-    WrappedComponent: ComponentType<TProps & InjectedColumnDetailPanelProps>
+    WrappedComponent: ComponentType<TProps & InjectedColumnDetailPanelProps<TField>>
   ): ComponentType<TProps> {
     const ComponentWithColumnDetailPanel: React.FC<TProps> = (props) => {
+      const { fqn } = useParams<{ fqn: string }>();
       const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
       const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
 
-      const allFields = useMemo(() => config.getAllFields(props), [props]);
-      const entityFqn = useMemo(() => config.getEntityFqn(props), [props]);
-      const permissions = useMemo(() => config.getPermissions(props), [props]);
-      const isReadOnly = useMemo(() => config.getReadOnly(props), [props]);
+      const allFields = useMemo(() => config.allFields(props), [props]);
+      const entityFqn = useMemo(() => fqn || '', [fqn]);
+      const permissions = useMemo(() => config.permissions(props), [props]);
+      const isReadOnly = useMemo(() => config.readOnly(props), [props]);
 
       /**
        * Handle click on a column to open the detail panel
        */
       const handleColumnClick = useCallback(
         (field: TField) => {
-          const column = config.toColumn(field);
+          const column = config.column(field);
           setSelectedColumn(column);
           setIsColumnDetailOpen(true);
         },
@@ -130,18 +126,17 @@ export function withColumnDetailPanel<TField, TProps = any>(
        */
       const handleColumnUpdate = useCallback(
         (updatedColumn: Column) => {
-          const field = updatedColumn as unknown as TField;
           const fields = cloneDeep(allFields);
-          const fqn = (updatedColumn as any).fullyQualifiedName ?? '';
+          const fqn = updatedColumn.fullyQualifiedName ?? '';
           
           updateFieldDescription<TField>(
             fqn,
-            (updatedColumn as any).description ?? '',
+            updatedColumn.description ?? '',
             fields
           );
           updateFieldTags<TField>(
             fqn,
-            (updatedColumn as any).tags ?? [],
+            updatedColumn.tags ?? [],
             fields
           );
           
@@ -197,7 +192,7 @@ export function withColumnDetailPanel<TField, TProps = any>(
             isColumnDetailOpen={isColumnDetailOpen}
           />
           <ColumnDetailPanel
-            allColumns={allFields.map((field) => field as unknown as Column)}
+            allColumns={allFields.map((field) => config.column(field))}
             column={selectedColumn}
             entityType={config.entityType}
             hasEditPermission={{

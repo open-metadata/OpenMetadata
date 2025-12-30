@@ -15,7 +15,7 @@ import { ReactNode } from 'react';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { InjectedColumnDetailPanelProps } from '../../../components/Database/ColumnDetailPanel/withColumnDetailPanel';
 
-export interface SearchIndexFieldsTableProps extends Partial<InjectedColumnDetailPanelProps> {
+export interface SearchIndexFieldsTableProps extends Partial<InjectedColumnDetailPanelProps<SearchIndexField>> {
   searchIndexFields: Array<SearchIndexField>;
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;

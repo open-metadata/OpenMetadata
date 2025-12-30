@@ -424,18 +424,16 @@ const SearchIndexFieldsTable = ({
 };
 
 // Configure the HOC for SearchIndexField type
-const columnDetailPanelConfig: ColumnDetailPanelConfig<SearchIndexField> = {
+const columnDetailPanelConfig: ColumnDetailPanelConfig<SearchIndexField, SearchIndexFieldsTableProps> = {
   entityType: EntityType.SEARCH_INDEX,
-  toColumn: (field) => field as unknown as Column,
-  fromColumn: (column, _original) => column as unknown as SearchIndexField,
-  getAllFields: (props) => props.searchIndexFields,
-  getEntityFqn: (props) => props.entityFqn,
-  getPermissions: (props) => ({
+  column: (field) => field as unknown as Column,
+  allFields: (props) => props.searchIndexFields,
+  permissions: (props) => ({
     hasTagEditAccess: props.hasTagEditAccess,
     hasGlossaryTermEditAccess: props.hasGlossaryTermEditAccess,
     hasDescriptionEditAccess: props.hasDescriptionEditAccess,
   }),
-  getReadOnly: (props) => props.isReadOnly || false,
+  readOnly: (props) => props.isReadOnly || false,
   onUpdate: (props, fields) => props.onUpdate(fields),
 };
 
