@@ -16,12 +16,17 @@
 
 .entity-right-panel-vertical-nav {
   &.drawer-entity-right-panel-vertical-nav {
+    height: 100vh;
     max-height: calc(100vh - 70px);
     margin-right: 8px;
+  }
+  &.column-detail-panel-vertical-nav {
+    height: 100%;
   }
   width: 80px;
   right: 2px;
   position: relative;
+  height: calc(100vh - 170px);
   background: @white;
   display: flex;
   flex-direction: column;
@@ -38,16 +43,17 @@
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+
     .ant-menu-item {
       display: flex;
-      gap: 6px;
+      gap: 8px;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       border: none;
       padding: 0;
-      margin-top: 0px;
+      margin-top: 16px !important;
+
       background: transparent;
       .ant-menu-item-icon {
         height: 16px;

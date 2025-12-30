@@ -97,6 +97,7 @@ import {
   EntityNameWithAdditionFields,
 } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { ColumnDetailPanel } from '../ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
@@ -109,6 +110,8 @@ const SchemaTable = () => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
   const [editColumn, setEditColumn] = useState<Column>();
+  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
+  const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
 
   const {
     currentPage,
@@ -158,7 +161,9 @@ const SchemaTable = () => {
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
+    viewCustomPropertiesPermission,
     editDisplayNamePermission,
+    viewAllPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -169,6 +174,8 @@ const SchemaTable = () => {
       editGlossaryTermsPermission:
         (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
         !deleted,
+      viewCustomPropertiesPermission:
+        tablePermissions.ViewAll || tablePermissions.ViewCustomFields,
       editAllPermission: tablePermissions.EditAll && !deleted,
       editLineagePermission:
         (tablePermissions.EditAll || tablePermissions.EditLineage) && !deleted,
@@ -504,10 +511,14 @@ const SchemaTable = () => {
                   tableConstraints,
                 })}
                 <Typography.Text
-                  className={classNames('m-b-0 d-block break-word', {
-                    'text-grey-600': !isEmpty(displayName),
-                  })}
-                  data-testid="column-name">
+                  className={classNames(
+                    'm-b-0 d-block break-word cursor-pointer',
+                    {
+                      'text-grey-600': !isEmpty(displayName),
+                    }
+                  )}
+                  data-testid="column-name"
+                  onClick={() => handleColumnClick(record)}>
                   {stringToHTML(highlightSearchText(name, searchText))}
                 </Typography.Text>
               </div>
@@ -672,6 +683,35 @@ const SchemaTable = () => {
     navigate(getEntityBulkEditPath(EntityType.TABLE, decodedEntityFqn));
   };
 
+  const handleColumnClick = (column: Column) => {
+    setSelectedColumn(column);
+    setIsColumnDetailOpen(true);
+  };
+
+  const handleCloseColumnDetail = () => {
+    setIsColumnDetailOpen(false);
+    setSelectedColumn(null);
+  };
+
+  const handleColumnUpdate = (updatedColumn: Column) => {
+    const cleanColumn = isEmpty(updatedColumn.children)
+      ? omit(updatedColumn, 'children')
+      : updatedColumn;
+
+    setTableColumns((prev) =>
+      updateColumnInNestedStructure(
+        prev,
+        updatedColumn.fullyQualifiedName ?? '',
+        cleanColumn
+      )
+    );
+    setSelectedColumn(cleanColumn);
+  };
+
+  const handleColumnNavigate = (column: Column) => {
+    setSelectedColumn(column);
+  };
+
   useEffect(() => {
     setExpandedRowKeys(
       getAllRowKeysByKeyName<Column>(tableColumns ?? [], 'fullyQualifiedName')
@@ -755,6 +795,10 @@ const SchemaTable = () => {
           searchProps={searchProps}
           size="middle"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+          //   onRow={(record) => ({
+          //     onClick: () => handleColumnClick(record),
+          //     style: { cursor: 'pointer' },
+          //   })}
         />
       </Col>
       {editColumn && (
@@ -785,6 +829,23 @@ const SchemaTable = () => {
           onSave={handleEditColumnData}
         />
       )}
+      <ColumnDetailPanel
+        allColumns={tableColumns}
+        column={selectedColumn}
+        hasEditPermission={{
+          tags: editTagsPermission,
+          glossaryTerms: editGlossaryTermsPermission,
+          description: editDescriptionPermission,
+          viewAllPermission: viewAllPermission,
+          customProperties: viewCustomPropertiesPermission,
+        }}
+        isOpen={isColumnDetailOpen}
+        tableConstraints={table?.tableConstraints}
+        tableFqn={tableFqn}
+        onClose={handleCloseColumnDetail}
+        onColumnUpdate={handleColumnUpdate}
+        onNavigate={handleColumnNavigate}
+      />
     </Row>
   );
 };

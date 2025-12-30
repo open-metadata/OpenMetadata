@@ -614,6 +614,7 @@ export const updateDescriptionForChildren = async (
   await page
     .locator(`[${rowSelector}="${rowId}"]`)
     .getByTestId('edit-button')
+    .first()
     .click();
 
   await page.waitForSelector('[role="dialog"]', { state: 'visible' });
@@ -721,6 +722,7 @@ export const assignTagToChildren = async ({
     .locator(`[${rowSelector}="${rowId}"]`)
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
+    .first()
     .click();
 
   const searchTags = page.waitForResponse(
@@ -816,6 +818,7 @@ export const removeTagsFromChildren = async ({
       .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('tags-container')
       .getByTestId('edit-button')
+      .first()
       .click();
 
     await page
@@ -907,6 +910,42 @@ export const assignGlossaryTerm = async (
   ).toBeVisible();
 };
 
+export const openColumnDetailPanel = async ({
+  page,
+  rowSelector = 'data-row-key',
+  columnId,
+  columnNameTestId = 'column-name',
+}: {
+  page: Page;
+  rowSelector?: string;
+  columnId: string;
+  columnNameTestId?: string;
+}) => {
+  const columnName = page
+    .locator(`[${rowSelector}="${columnId}"]`)
+    .getByTestId(columnNameTestId)
+    .first();
+  await columnName.scrollIntoViewIfNeeded();
+  await columnName.click();
+
+  await expect(page.locator('.column-detail-panel')).toBeVisible();
+
+  await page.waitForLoadState('networkidle');
+
+  const panelContainer = page.locator('.column-detail-panel');
+
+  await expect(panelContainer.getByTestId('entity-link')).toBeVisible();
+
+  return panelContainer;
+};
+
+export const closeColumnDetailPanel = async (page: Page) => {
+  const panelContainer = page.locator('.column-detail-panel');
+  await panelContainer.getByTestId('close-button').click();
+
+  await expect(page.locator('.column-detail-panel')).not.toBeVisible();
+};
+
 export const assignGlossaryTermToChildren = async ({
   page,
   glossaryTerm,
@@ -926,6 +965,7 @@ export const assignGlossaryTermToChildren = async ({
     .locator(`[${rowSelector}="${rowId}"]`)
     .getByTestId('glossary-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
+    .first()
     .click();
 
   const searchGlossaryTerm = page.waitForResponse(
@@ -1035,6 +1075,7 @@ export const removeGlossaryTermFromChildren = async ({
       .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('glossary-container')
       .getByTestId('edit-button')
+      .first()
       .click();
 
     await page

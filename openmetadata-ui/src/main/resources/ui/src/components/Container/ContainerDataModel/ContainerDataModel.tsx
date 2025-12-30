@@ -17,6 +17,7 @@ import {
   groupBy,
   isEmpty,
   isUndefined,
+  omit,
   toLower,
   uniqBy,
 } from 'lodash';
@@ -43,12 +44,14 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
+  findFieldByFQN,
   getTableExpandableConfig,
   pruneEmptyChildren,
 } from '../../../utils/TableUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
+import { ColumnDetailPanel } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
@@ -60,6 +63,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   hasDescriptionEditAccess,
   hasTagEditAccess,
   hasGlossaryTermEditAccess,
+  hasCustomPropertiesEditAccess,
   isReadOnly,
   onUpdate,
   entityFqn,
@@ -68,6 +72,8 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
 
   const [editContainerColumnDescription, setEditContainerColumnDescription] =
     useState<Column>();
+  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
+  const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
 
   const schema = pruneEmptyChildren(dataModel?.columns ?? []);
 
@@ -103,6 +109,43 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     setEditContainerColumnDescription(undefined);
   };
 
+  const handleColumnClick = useCallback((column: Column) => {
+    setSelectedColumn(column);
+    setIsColumnDetailOpen(true);
+  }, []);
+
+  const handleCloseColumnDetail = useCallback(() => {
+    setIsColumnDetailOpen(false);
+    setSelectedColumn(null);
+  }, []);
+
+  const handleColumnUpdate = useCallback(
+    (updatedColumn: Column) => {
+      const cleanColumn = isEmpty(updatedColumn.children)
+        ? omit(updatedColumn, 'children')
+        : updatedColumn;
+
+      const containerDataModel = cloneDeep(dataModel);
+      updateContainerColumnDescription(
+        containerDataModel?.columns,
+        cleanColumn.fullyQualifiedName ?? '',
+        cleanColumn.description ?? ''
+      );
+      updateContainerColumnTags(
+        containerDataModel?.columns,
+        cleanColumn.fullyQualifiedName ?? '',
+        cleanColumn.tags ?? []
+      );
+      onUpdate(containerDataModel);
+      setSelectedColumn(cleanColumn);
+    },
+    [dataModel, onUpdate]
+  );
+
+  const handleColumnNavigate = useCallback((column: Column) => {
+    setSelectedColumn(column);
+  }, []);
+
   const tagFilter = useMemo(() => {
     const tags = getAllTags(schema);
 
@@ -121,9 +164,35 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         fixed: 'left',
         width: 300,
         render: (_, record: Column) => (
-          <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
-            <Typography.Text>{getEntityName(record)}</Typography.Text>
-          </Tooltip>
+          <div
+            aria-disabled={isReadOnly}
+            aria-label={getEntityName(record)}
+            data-testid="column-name"
+            style={{ cursor: isReadOnly ? 'default' : 'pointer' }}
+            tabIndex={isReadOnly ? -1 : 0}
+            onClick={(e) => {
+              if (isReadOnly) {
+                return;
+              }
+              // Don't open detail panel if clicking on edit button or link
+              if ((e.target as HTMLElement).closest('button, a')) {
+                return;
+              }
+              handleColumnClick(record);
+            }}
+            onKeyDown={(e) => {
+              if (isReadOnly) {
+                return;
+              }
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleColumnClick(record);
+              }
+            }}>
+            <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
+              <Typography.Text>{getEntityName(record)}</Typography.Text>
+            </Tooltip>
+          </div>
         ),
       },
       {
@@ -228,6 +297,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       editContainerColumnDescription,
       getEntityName,
       handleFieldTagsChange,
+      handleColumnClick,
     ]
   );
 
@@ -271,6 +341,52 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
           />
         </EntityAttachmentProvider>
       )}
+
+      <ColumnDetailPanel
+        allColumns={schema}
+        column={selectedColumn}
+        entityType={EntityType.CONTAINER}
+        hasEditPermission={{
+          tags: hasTagEditAccess,
+          glossaryTerms: hasGlossaryTermEditAccess,
+          description: hasDescriptionEditAccess,
+          viewAllPermission: false,
+          customProperties: hasCustomPropertiesEditAccess,
+        }}
+        isOpen={isColumnDetailOpen}
+        tableFqn={entityFqn}
+        updateColumnDescription={async (fqn, description) => {
+          const containerDataModel = cloneDeep(dataModel);
+          updateContainerColumnDescription(
+            containerDataModel?.columns,
+            fqn,
+            description
+          );
+          await onUpdate(containerDataModel);
+          // Find and return the updated column
+          const updatedColumn = findFieldByFQN<Column>(
+            containerDataModel?.columns ?? [],
+            fqn
+          );
+
+          return updatedColumn as Column;
+        }}
+        updateColumnTags={async (fqn, tags) => {
+          const containerDataModel = cloneDeep(dataModel);
+          updateContainerColumnTags(containerDataModel?.columns, fqn, tags);
+          await onUpdate(containerDataModel);
+          // Find and return the updated column
+          const updatedColumn = findFieldByFQN<Column>(
+            containerDataModel?.columns ?? [],
+            fqn
+          );
+
+          return updatedColumn as Column;
+        }}
+        onClose={handleCloseColumnDetail}
+        onColumnUpdate={handleColumnUpdate}
+        onNavigate={handleColumnNavigate}
+      />
     </>
   );
 };

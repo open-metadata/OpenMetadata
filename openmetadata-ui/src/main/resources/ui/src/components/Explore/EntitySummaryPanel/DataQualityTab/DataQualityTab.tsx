@@ -16,7 +16,7 @@ import { Card, Col, Row, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
@@ -248,7 +248,10 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
   );
 };
 
-const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
+const DataQualityTab: React.FC<DataQualityTabProps> = ({
+  entityFQN,
+  isColumnDetailPanel = false,
+}) => {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [testCases, setTestCases] = useState<TestCase[]>([]);
@@ -333,7 +336,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
     }
   };
 
-  const fetchIncidents = async () => {
+  const fetchIncidents = useCallback(async () => {
     if (!entityFQN) {
       setIsIncidentsLoading(false);
 
@@ -348,19 +351,40 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
       );
       const endTs = getCurrentMillis();
 
-      const response = await getListTestCaseIncidentStatus({
-        latest: true,
-        include: Include.NonDeleted,
-        originEntityFQN: entityFQN,
-        startTs,
-        endTs,
-        limit: 100,
-      });
+      let allIncidents: TestCaseResolutionStatus[] = [];
 
-      setIncidents(response.data || []);
+      if (isColumnDetailPanel && testCases.length > 0) {
+        const allPromises = testCases.map((testCase) =>
+          getListTestCaseIncidentStatus({
+            latest: true,
+            include: Include.NonDeleted,
+            testCaseFQN: testCase.fullyQualifiedName,
+            startTs,
+            endTs,
+            limit: 50,
+          }).catch(() => ({ data: [] }))
+        );
+
+        const results = await Promise.all(allPromises);
+        allIncidents = results.flatMap((result) => result.data || []);
+      } else {
+        // For table/entity level, use originEntityFQN
+        const response = await getListTestCaseIncidentStatus({
+          latest: true,
+          include: Include.NonDeleted,
+          originEntityFQN: entityFQN,
+          startTs,
+          endTs,
+          limit: 100,
+        });
+
+        allIncidents = response.data || [];
+      }
+
+      setIncidents(allIncidents);
 
       // Calculate incident status counts
-      const counts = (response.data || []).reduce(
+      const counts = allIncidents.reduce(
         (acc, incident) => {
           const status = incident.testCaseResolutionStatusType;
 
@@ -411,12 +435,20 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
     } finally {
       setIsIncidentsLoading(false);
     }
-  };
+  }, [entityFQN, isColumnDetailPanel, testCases]);
 
   useEffect(() => {
     fetchTestCases();
-    fetchIncidents();
+    if (!isColumnDetailPanel) {
+      fetchIncidents();
+    }
   }, [entityFQN]);
+
+  useEffect(() => {
+    if (isColumnDetailPanel && testCases.length > 0) {
+      fetchIncidents();
+    }
+  }, [fetchIncidents, isColumnDetailPanel, testCases.length]);
 
   // Filter test cases based on active filter and search text
   const filteredTestCases = useMemo(() => {
@@ -682,7 +714,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                   type="button"
                   onClick={() => handleIncidentFilterChange('new')}>
                   <Typography.Text className="stat-count new">
-                    {incidentCounts.new.toString().padStart(2, '0')}
+                    {incidentCounts.new}
                   </Typography.Text>
                   <Typography.Text className="stat-label new">
                     {t('label.new')}
@@ -701,7 +733,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                   type="button"
                   onClick={() => handleIncidentFilterChange('ack')}>
                   <Typography.Text className="stat-count ack">
-                    {incidentCounts.ack.toString().padStart(2, '0')}
+                    {incidentCounts.ack}
                   </Typography.Text>
                   <Typography.Text className="stat-label ack">
                     {t('label.acknowledged')}
@@ -720,7 +752,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                   type="button"
                   onClick={() => handleIncidentFilterChange('assigned')}>
                   <Typography.Text className="stat-count assigned">
-                    {incidentCounts.assigned.toString().padStart(2, '0')}
+                    {incidentCounts.assigned}
                   </Typography.Text>
                   <Typography.Text className="stat-label assigned">
                     {t('label.assigned')}
@@ -738,7 +770,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                     {t('label.-with-colon', { text: t('label.resolved') })}
                   </Typography.Text>
                   <Typography.Text className="resolved-value">
-                    {incidentCounts.resolved.toString().padStart(2, '0')}
+                    {incidentCounts.resolved}
                   </Typography.Text>
                 </button>
               </div>
@@ -781,7 +813,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
     <div className="data-quality-tab-container">
       <Tabs
         activeKey={activeTab}
-        className="data-quality-tabs"
+        className={classNames('data-quality-tabs', {
+          'column-detail-data-quality-tabs': isColumnDetailPanel,
+        })}
         items={tabItems}
         onChange={handleTabChange}
       />

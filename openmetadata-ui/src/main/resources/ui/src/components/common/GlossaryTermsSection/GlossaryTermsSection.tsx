@@ -11,16 +11,17 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
+import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { EntityType } from '../../../enums/entity.enum';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { GlossaryTermSelectableList } from '../GlossaryTermSelectableList/GlossaryTermSelectableList.component';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
@@ -82,7 +83,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
 
         const result = await updateEntityField({
           entityId,
-          entityType: entityType as EntityType,
+          entityType: entityType,
           fieldName: 'tags',
           currentValue: displayTags,
           newValue: updatedTags,
@@ -101,6 +102,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
           setIsLoading(false);
         }
       } catch (error) {
+        showErrorToast(error as AxiosError);
         setIsLoading(false);
       }
     },
@@ -143,7 +145,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
         onCancel={handleCancel}
         onUpdate={handleGlossaryTermSelection}>
         <div className="d-none glossary-term-selector-display">
-          {editingGlossaryTerms.length > 0 && isEditing && (
+          {editingGlossaryTerms.length > 0 ? (
             <div className="selected-glossary-terms-list">
               {editingGlossaryTerms.map((term) => (
                 <div className="selected-glossary-term-chip" key={term.tagFQN}>
@@ -154,6 +156,12 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
                 </div>
               ))}
             </div>
+          ) : (
+            <span className="no-data-placeholder">
+              {t('label.no-entity-assigned', {
+                entity: t('label.glossary-term-plural'),
+              })}
+            </span>
           )}
         </div>
       </GlossaryTermSelectableList>
@@ -164,7 +172,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
       editingGlossaryTerms,
       handleCancel,
       handleGlossaryTermSelection,
-      isEditing,
+      t,
     ]
   );
 
