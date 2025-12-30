@@ -12,7 +12,8 @@
  *  limitations under the License.
  */
 
-import { createTheme, Theme, ThemeProvider } from '@mui/material';
+import { ThemeProvider } from '@mui/material';
+import { createMuiTheme } from '@openmetadata/ui-core-components';
 import {
   act,
   findAllByTestId,
@@ -57,19 +58,7 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children, ...rest }) => <a {...rest}>{children}</a>),
 }));
 
-const theme: Theme = createTheme({
-  palette: {
-    allShades: {
-      blueGray: {
-        100: '#EAECF5',
-        500: '#4E5BA6',
-      },
-      brand: {
-        500: '#2E90FA',
-      },
-    },
-  },
-});
+const theme = createMuiTheme();
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <ThemeProvider theme={theme}>

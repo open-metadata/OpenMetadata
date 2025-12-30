@@ -22,7 +22,6 @@ import {
 import { XClose } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import './TagFormDrawer.less';
 import TagsForm from './TagsForm';
 import { ClassificationFormDrawerProps } from './TagsPage.interface';
 
@@ -51,13 +50,13 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
       onClose={onClose}>
       {/* Header */}
       <Box
-        className="tag-form-drawer-header"
         sx={{
           px: 6,
           py: 5,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          boxShadow: (theme) => theme.shadows[1],
         }}>
         <Typography data-testid="form-heading" variant="h6">
           {t('label.adding-new-classification')}
@@ -86,13 +85,13 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
 
       {/* Footer */}
       <Box
-        className="tag-form-drawer-footer"
         sx={{
           px: 6,
           py: 3,
           display: 'flex',
           justifyContent: 'flex-end',
           gap: 2,
+          boxShadow: (theme) => `0px -4px 6px -2px ${theme.palette.grey[200]}`,
         }}>
         <Button
           data-testid="cancel-button"

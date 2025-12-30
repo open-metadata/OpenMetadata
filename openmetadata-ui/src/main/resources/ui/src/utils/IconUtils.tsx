@@ -198,10 +198,6 @@ export const renderIcon = (
         objectFit: 'contain',
         ...style,
       }}
-      onError={(e) => {
-        // Hide broken image icon by setting display to none
-        (e.target as HTMLImageElement).style.display = 'none';
-      }}
     />
   );
 };

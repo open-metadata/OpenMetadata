@@ -129,7 +129,6 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
       urlValue !== parsedValue.value
     ) {
       onChange(urlValue);
-      setOpen(false);
     }
   };
 
