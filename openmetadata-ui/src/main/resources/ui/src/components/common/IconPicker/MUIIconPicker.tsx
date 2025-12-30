@@ -25,8 +25,7 @@ import {
 } from '@mui/material';
 import { FC, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { IMAGE_URL_PATTERN } from '../../../constants/regex.constants';
-import { renderIcon } from '../../../utils/IconUtils';
+import { isImageUrl, renderIcon } from '../../../utils/IconUtils';
 import { useSearch } from '../atoms/navigation/useSearch';
 import { AVAILABLE_ICONS, DEFAULT_ICON_NAME } from './IconPicker.constants';
 import {
@@ -54,10 +53,6 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const resolvedIconName = defaultIcon?.name || DEFAULT_ICON_NAME;
-
-  const isImageUrl = (str: string): boolean => {
-    return IMAGE_URL_PATTERN.test(str);
-  };
 
   const parseValue = (val: string | IconPickerValue | undefined) => {
     if (!val) {

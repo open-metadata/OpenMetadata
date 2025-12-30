@@ -59,6 +59,15 @@ import { ComponentType, FC } from 'react';
 import { IMAGE_URL_PATTERN } from '../constants/regex.constants';
 
 /**
+ * Check if a string is a valid image URL
+ * @param str - String to check
+ * @returns true if the string is a valid image URL
+ */
+export const isImageUrl = (str: string): boolean => {
+  return IMAGE_URL_PATTERN.test(str);
+};
+
+/**
  * Get the proper image source URL for tag/classification icons
  * Handles absolute URLs, data URIs, and relative paths
  */
