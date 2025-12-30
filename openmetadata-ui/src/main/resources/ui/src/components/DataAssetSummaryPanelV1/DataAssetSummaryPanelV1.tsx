@@ -27,6 +27,7 @@ import { getEntityChildDetails } from '../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
+  hasLineageTab,
 } from '../../utils/EntityUtils';
 
 import { AxiosError } from 'axios';
@@ -43,7 +44,6 @@ import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { listTestCases } from '../../rest/testAPI';
 import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { hasLineageTab } from '../../utils/EntityUtils';
 import { generateEntityLink, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DataProductsSection from '../common/DataProductsSection/DataProductsSection';
