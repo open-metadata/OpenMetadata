@@ -28,7 +28,8 @@
 
 name: SSO Authentication Tests (Nightly)
 
-# schedule:
+on:
+  # schedule:
   #   # Run every night at 2 AM UTC
   #   - cron: '0 2 * * *'
   workflow_dispatch: # Allow manual trigger

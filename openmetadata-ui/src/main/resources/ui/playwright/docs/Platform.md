@@ -2,7 +2,7 @@
 
 # Platform
 
-> **12 Components** | **69 Files** | **1246 Tests** | **1626 Scenarios** 🚀
+> **12 Components** | **68 Files** | **1246 Tests** | **1628 Scenarios** 🚀
 
 ## Table of Contents
 - [Other](#other)
@@ -258,21 +258,6 @@
 | | ↳ *ViewBasic permission* | |
 | | ↳ *EditQuery permission* | |
 | | ↳ *EditTest permission* | |
-
-</details>
-
-<details open>
-<summary>📄 <b>ApiCollection.spec.ts</b> (1 tests, 2 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/ApiCollection.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ApiCollection.spec.ts)
-
-### API Collection Entity Special Test Cases
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **API Collection Entity Special Test Cases** - Verify Owner Propagation: owner should be propagated to the API Collection's API Endpoint | Owner Propagation: owner should be propagated to the API Collection's API Endpoint |
-| | ↳ *Verify user Owner Propagation: owner should be propagated to the API Collection's API Endpoint* | |
-| | ↳ *Verify team Owner Propagation: owner should be propagated to the API Collection's API Endpoint* | |
 
 </details>
 
@@ -2299,7 +2284,7 @@
 ## Personas & Customizations
 
 <details open>
-<summary>📄 <b>CustomizeDetailPage.spec.ts</b> (24 tests, 79 scenarios)</summary>
+<summary>📄 <b>CustomizeDetailPage.spec.ts</b> (25 tests, 83 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts)
 
@@ -2389,25 +2374,30 @@
 | | ↳ *should show all the tabs & widget as default when no customization is done* | |
 | | ↳ *apply customization* | |
 | | ↳ *Validate customization* | |
-| 15 | **Persona customization** - Glossary - customization should work | Glossary - customization should work |
+| 15 | **Persona customization** - Data Product - customization should work | Data Product - customization should work |
 | | ↳ *pre-requisite* | |
 | | ↳ *should show all the tabs & widget as default when no customization is done* | |
 | | ↳ *apply customization* | |
 | | ↳ *Validate customization* | |
-| 16 | **Persona customization** - Glossary Term - customization should work | Glossary Term - customization should work |
+| 16 | **Persona customization** - Glossary - customization should work | Glossary - customization should work |
 | | ↳ *pre-requisite* | |
 | | ↳ *should show all the tabs & widget as default when no customization is done* | |
 | | ↳ *apply customization* | |
 | | ↳ *Validate customization* | |
-| 17 | **Persona customization** - Validate Glossary Term details page after customization of tabs | Validate Glossary Term details page after customization of tabs |
+| 17 | **Persona customization** - Glossary Term - customization should work | Glossary Term - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 18 | **Persona customization** - Validate Glossary Term details page after customization of tabs | Validate Glossary Term details page after customization of tabs |
 | | ↳ *pre-requisite* | |
 | | ↳ *apply customization* | |
 | | ↳ *Validate customization* | |
-| 18 | **Persona customization** - customize tab label should only render if it's customize by user | Customize tab label should only render if it's customize by user |
+| 19 | **Persona customization** - customize tab label should only render if it's customize by user | Customize tab label should only render if it's customize by user |
 | | ↳ *pre-requisite* | |
 | | ↳ *apply tab label customization for Table* | |
 | | ↳ *validate applied label change and language support for page* | |
-| 19 | **Persona customization** - Domain - customize tab label should only render if it's customized by user | Domain - customize tab label should only render if it's customized by user |
+| 20 | **Persona customization** - Domain - customize tab label should only render if it's customized by user | Domain - customize tab label should only render if it's customized by user |
 | | ↳ *pre-requisite* | |
 | | ↳ *apply tab label customization for Domain* | |
 | | ↳ *validate applied label change for Domain Documentation tab* | |
