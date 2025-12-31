@@ -64,6 +64,26 @@ public class OAuthAuthorizationCodeRepository {
   }
 
   /**
+   * Atomically mark authorization code as used and return the updated record.
+   * This prevents race conditions by using a database-level UPDATE with WHERE clause
+   * that checks the code is not already used.
+   *
+   * @param code The authorization code to mark as used
+   * @return The updated record if successful, null if code was already used or doesn't exist
+   */
+  public OAuthAuthorizationCodeRecord markAsUsedAtomic(String code) {
+    int rowsAffected = dao.markAsUsedAtomic(code);
+    if (rowsAffected == 1) {
+      LOG.debug("Atomically marked authorization code as used: {}", code);
+      return dao.findByCode(code);
+    }
+    LOG.warn(
+        "Failed to atomically mark authorization code as used (already used or not found): {}",
+        code);
+    return null;
+  }
+
+  /**
    * Delete authorization code.
    */
   public void delete(String code) {

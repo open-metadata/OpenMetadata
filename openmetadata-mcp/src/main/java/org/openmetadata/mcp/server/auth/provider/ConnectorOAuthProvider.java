@@ -572,33 +572,13 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider,
   public CompletableFuture<OAuthToken> exchangeAuthorizationCode(
       OAuthClientInformation client, AuthorizationCode code) throws TokenException {
     try {
-      // Retrieve authorization code from database
+      // Atomically mark code as used - prevents race condition attacks
+      // This UPDATE query with WHERE used=FALSE ensures only one thread can succeed
       org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAuthorizationCodeRecord dbCode =
-          codeRepository.findByCode(code.getCode());
+          codeRepository.markAsUsedAtomic(code.getCode());
 
       if (dbCode == null) {
-        throw new TokenException("invalid_grant", "Invalid authorization code");
-      }
-
-      // TODO: SECURITY - Race Condition Vulnerability (95% confidence)
-      // The check-and-use pattern here is not atomic. Between checking dbCode.used()
-      // and calling codeRepository.markAsUsed() later in this method, another thread
-      // could use the same code, violating OAuth 2.0 security requirements.
-      //
-      // Impact: Authorization code replay attacks possible.
-      //
-      // Fix Required: Use database-level atomic operation with row locking:
-      //   UPDATE oauth_authorization_codes
-      //   SET used = TRUE
-      //   WHERE code = :code AND used = FALSE
-      //   RETURNING *
-      //
-      // This ensures only one thread can successfully mark the code as used.
-      // See: https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2
-
-      // Check if already used
-      if (dbCode.used()) {
-        throw new TokenException("invalid_grant", "Authorization code already used");
+        throw new TokenException("invalid_grant", "Invalid or already used authorization code");
       }
 
       // Check expiry
@@ -642,9 +622,6 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider,
           throw new TokenException("server_error", "Failed to verify code challenge");
         }
       }
-
-      // Mark code as used in database
-      codeRepository.markAsUsed(code.getCode());
 
       // userName already extracted from dbCode above (line 536)
       // Lookup user entity for token generation
@@ -841,9 +818,9 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider,
         throw new TokenException("invalid_grant", "Invalid refresh token");
       }
 
-      // Check expiration
+      // Check expiration (expiresAt is stored in seconds, not milliseconds)
       if (storedToken.getExpiresAt() != null
-          && Instant.now().isAfter(Instant.ofEpochMilli(storedToken.getExpiresAt()))) {
+          && Instant.now().isAfter(Instant.ofEpochSecond(storedToken.getExpiresAt()))) {
         tokenRepository.deleteRefreshToken(refreshToken.getToken());
         throw new TokenException("invalid_grant", "Refresh token expired");
       }
