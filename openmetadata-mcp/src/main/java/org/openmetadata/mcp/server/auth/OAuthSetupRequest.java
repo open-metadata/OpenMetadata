@@ -27,9 +27,6 @@ public class OAuthSetupRequest {
   @JsonProperty("clientSecret")
   private String clientSecret;
 
-  @JsonProperty("tokenEndpoint")
-  private String tokenEndpoint; // Optional - can be inferred from connector type
-
   @JsonProperty("scopes")
   private String scopes; // Space-separated scopes
 }
