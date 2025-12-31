@@ -520,7 +520,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
       } else if ("refresh_token".equals(grantType)) {
         // Handle refresh token
-        String clientId = params.get("client_id");
+        clientId = params.get("client_id");
         OAuthClientInformation client = authProvider.getClient(clientId).join();
 
         if (client == null) {
