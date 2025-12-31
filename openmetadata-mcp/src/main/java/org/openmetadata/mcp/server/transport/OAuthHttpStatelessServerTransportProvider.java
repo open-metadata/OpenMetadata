@@ -238,19 +238,24 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       throws ServletException, IOException {
 
     logger.info("Handling OAuth GET request: " + request.getRequestURI());
-    String path = request.getRequestURI();
+    try {
+      String path = request.getRequestURI();
 
-    // Handle OAuth GET routes
-    if (path.endsWith("/.well-known/oauth-authorization-server")) {
-      handleMetadataRequest(request, response);
-    } else if (path.endsWith("/.well-known/oauth-protected-resource")) {
-      handleProtectedResourceMetadataRequest(request, response);
-    } else if (path.endsWith("/authorize")) {
-      HttpSession session = getHttpSession(request, true);
-      handleAuthorizeRequest(request, response);
-    } else {
-      // Handle other GET requests using the parent class
-      super.doGet(request, response);
+      // Handle OAuth GET routes
+      if (path.endsWith("/.well-known/oauth-authorization-server")) {
+        handleMetadataRequest(request, response);
+      } else if (path.endsWith("/.well-known/oauth-protected-resource")) {
+        handleProtectedResourceMetadataRequest(request, response);
+      } else if (path.endsWith("/authorize")) {
+        HttpSession session = getHttpSession(request, true);
+        handleAuthorizeRequest(request, response);
+      } else {
+        // Handle other GET requests using the parent class
+        super.doGet(request, response);
+      }
+    } finally {
+      // Clear thread-local auth context after request is processed
+      AuthContext.clearCurrent();
     }
   }
 

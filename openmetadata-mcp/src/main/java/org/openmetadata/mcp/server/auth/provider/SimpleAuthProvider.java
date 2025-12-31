@@ -100,10 +100,11 @@ public class SimpleAuthProvider implements OAuthAuthorizationServerProvider {
     // Remove the used authorization code
     authCodes.remove(authorizationCode.getCode());
 
-    // Generate tokens
-    String accessTokenValue =
-        "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg";
-    String refreshTokenValue = UUID.randomUUID().toString();
+    // Generate tokens (using UUID for test provider - production should use real JWT)
+    // NOTE: This is a test/example provider only. Production implementations should generate
+    // proper JWT tokens with signatures and appropriate claims.
+    String accessTokenValue = "TEST_ACCESS_TOKEN_" + UUID.randomUUID().toString();
+    String refreshTokenValue = "TEST_REFRESH_TOKEN_" + UUID.randomUUID().toString();
 
     // Create access token with audience claim (RFC 8707)
     AccessToken accessToken = new AccessToken();
@@ -152,9 +153,9 @@ public class SimpleAuthProvider implements OAuthAuthorizationServerProvider {
     // Remove the used refresh token
     refreshTokens.remove(refreshToken.getToken());
 
-    // Generate new tokens
-    String accessTokenValue = "ACCESS_TOKEN_FOR_TESTING";
-    String refreshTokenValue = UUID.randomUUID().toString();
+    // Generate new tokens (test provider only)
+    String accessTokenValue = "TEST_ACCESS_TOKEN_" + UUID.randomUUID().toString();
+    String refreshTokenValue = "TEST_REFRESH_TOKEN_" + UUID.randomUUID().toString();
 
     // Create access token with audience claim (RFC 8707)
     AccessToken accessToken = new AccessToken();
