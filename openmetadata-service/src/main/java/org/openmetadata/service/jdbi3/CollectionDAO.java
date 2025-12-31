@@ -8924,6 +8924,10 @@ public interface CollectionDAO {
     @SqlUpdate("UPDATE oauth_authorization_codes SET used = TRUE WHERE code = :code")
     void markAsUsed(@Bind("code") String code);
 
+    @SqlUpdate(
+        "UPDATE oauth_authorization_codes SET used = TRUE WHERE code = :code AND used = FALSE")
+    int markAsUsedAtomic(@Bind("code") String code);
+
     @SqlUpdate("DELETE FROM oauth_authorization_codes WHERE code = :code")
     void delete(@Bind("code") String code);
 

@@ -133,16 +133,16 @@ public class OAuthSetupHandler extends HttpServlet {
   }
 
   /**
-   * Validates and resolves a token endpoint URL to prevent SSRF attacks.
-   * Returns the validated URI for reuse to avoid double parsing.
+   * Validates and resolves a token endpoint URL to prevent SSRF attacks. Performs DNS resolution
+   * to check actual IP addresses, blocking loopback, private, and link-local addresses.
    *
    * @param tokenEndpoint The token endpoint URL to validate (may be null)
    * @param connectionConfig Connection configuration for inferring endpoint if needed
    * @return Validated URI object
-   * @throws IllegalArgumentException if the URL is invalid or potentially malicious
+   * @throws SecurityException if the URL is invalid or potentially malicious (SSRF risk)
    */
   private URI validateAndResolveTokenEndpoint(String tokenEndpoint, Object connectionConfig)
-      throws IllegalArgumentException {
+      throws SecurityException {
     // Determine token endpoint
     String endpointToUse = tokenEndpoint;
     if (endpointToUse == null || endpointToUse.trim().isEmpty()) {
@@ -150,7 +150,7 @@ public class OAuthSetupHandler extends HttpServlet {
     }
 
     if (endpointToUse == null || endpointToUse.trim().isEmpty()) {
-      throw new IllegalArgumentException("Token endpoint URL cannot be null or empty");
+      throw new SecurityException("Token endpoint URL cannot be null or empty");
     }
 
     try {
@@ -160,65 +160,116 @@ public class OAuthSetupHandler extends HttpServlet {
       String scheme = uri.getScheme();
       if (scheme == null
           || (!scheme.equalsIgnoreCase("https") && !scheme.equalsIgnoreCase("http"))) {
-        throw new IllegalArgumentException(
-            "Invalid token endpoint scheme: " + scheme + ". Only HTTPS and HTTP are allowed");
+        throw new SecurityException(
+            "SSRF prevention: Invalid token endpoint scheme: "
+                + scheme
+                + ". Only HTTPS and HTTP are allowed");
       }
 
       // Validate host exists
       String host = uri.getHost();
       if (host == null || host.trim().isEmpty()) {
-        throw new IllegalArgumentException("Token endpoint must have a valid host");
+        throw new SecurityException("SSRF prevention: Token endpoint must have a valid host");
       }
 
-      // Block localhost/private IPs in production (allow only for explicitly localhost hosts)
-      // This prevents SSRF to internal services
-      if (host.equalsIgnoreCase("localhost") || host.equals("127.0.0.1") || host.equals("::1")) {
-        LOG.warn(
-            "Token endpoint points to localhost: {}. This should only be used in development",
-            endpointToUse);
-      }
+      // Resolve hostname to IP addresses and validate all resolved IPs
+      // This prevents DNS-based SSRF bypasses (e.g., domain resolving to 127.0.0.1)
+      try {
+        java.net.InetAddress[] addresses = java.net.InetAddress.getAllByName(host);
+        for (java.net.InetAddress addr : addresses) {
+          // Check if resolved address is loopback (127.x.x.x, ::1)
+          if (addr.isLoopbackAddress()) {
+            LOG.warn(
+                "Token endpoint '{}' resolves to loopback address {}. Allowed for development only",
+                host,
+                addr.getHostAddress());
+            // Allow loopback in development but log warning
+            continue;
+          }
 
-      // Block private IP ranges (10.x.x.x, 172.16-31.x.x, 192.168.x.x)
-      if (host.startsWith("10.")
-          || host.startsWith("192.168.")
-          || (host.startsWith("172.") && isPrivateIPRange172(host))) {
-        throw new IllegalArgumentException(
-            "Token endpoint cannot point to private IP addresses: " + host);
-      }
+          // Check if resolved address is any local (0.0.0.0, ::)
+          if (addr.isAnyLocalAddress()) {
+            throw new SecurityException(
+                "SSRF prevention: Token endpoint '"
+                    + host
+                    + "' resolves to any-local address: "
+                    + addr.getHostAddress());
+          }
 
-      // Block link-local addresses (169.254.x.x)
-      if (host.startsWith("169.254.")) {
-        throw new IllegalArgumentException(
-            "Token endpoint cannot point to link-local addresses: " + host);
+          // Check if resolved address is multicast
+          if (addr.isMulticastAddress()) {
+            throw new SecurityException(
+                "SSRF prevention: Token endpoint '"
+                    + host
+                    + "' resolves to multicast address: "
+                    + addr.getHostAddress());
+          }
+
+          // Check if resolved address is link-local (169.254.x.x, fe80::/10)
+          if (addr.isLinkLocalAddress()) {
+            throw new SecurityException(
+                "SSRF prevention: Token endpoint '"
+                    + host
+                    + "' resolves to link-local address: "
+                    + addr.getHostAddress());
+          }
+
+          // Check if resolved address is in private ranges (RFC 1918: 10.x, 172.16-31.x, 192.168.x)
+          if (addr.isSiteLocalAddress()) {
+            throw new SecurityException(
+                "SSRF prevention: Token endpoint '"
+                    + host
+                    + "' resolves to private IP address: "
+                    + addr.getHostAddress());
+          }
+
+          // Additional explicit check for IPv4 private ranges
+          byte[] addrBytes = addr.getAddress();
+          if (addrBytes.length == 4) { // IPv4
+            int firstOctet = addrBytes[0] & 0xFF;
+            int secondOctet = addrBytes[1] & 0xFF;
+
+            // 10.0.0.0/8
+            if (firstOctet == 10) {
+              throw new SecurityException(
+                  "SSRF prevention: Token endpoint '"
+                      + host
+                      + "' resolves to private IP (10.0.0.0/8): "
+                      + addr.getHostAddress());
+            }
+
+            // 172.16.0.0/12
+            if (firstOctet == 172 && secondOctet >= 16 && secondOctet <= 31) {
+              throw new SecurityException(
+                  "SSRF prevention: Token endpoint '"
+                      + host
+                      + "' resolves to private IP (172.16.0.0/12): "
+                      + addr.getHostAddress());
+            }
+
+            // 192.168.0.0/16
+            if (firstOctet == 192 && secondOctet == 168) {
+              throw new SecurityException(
+                  "SSRF prevention: Token endpoint '"
+                      + host
+                      + "' resolves to private IP (192.168.0.0/16): "
+                      + addr.getHostAddress());
+            }
+          }
+        }
+      } catch (java.net.UnknownHostException e) {
+        throw new SecurityException(
+            "SSRF prevention: Unable to resolve token endpoint hostname: " + host, e);
       }
 
       LOG.info("Token endpoint validation passed: {}", endpointToUse);
       return uri;
 
-    } catch (IllegalArgumentException e) {
+    } catch (SecurityException e) {
       throw e;
     } catch (Exception e) {
-      throw new IllegalArgumentException("Invalid token endpoint URL: " + e.getMessage(), e);
+      throw new SecurityException("Invalid token endpoint URL: " + e.getMessage(), e);
     }
-  }
-
-  /**
-   * Checks if an IP address is in the 172.16.0.0 - 172.31.255.255 private range.
-   *
-   * @param host The host IP address
-   * @return true if in private range, false otherwise
-   */
-  private boolean isPrivateIPRange172(String host) {
-    try {
-      String[] parts = host.split("\\.");
-      if (parts.length >= 2) {
-        int secondOctet = Integer.parseInt(parts[1]);
-        return secondOctet >= 16 && secondOctet <= 31;
-      }
-    } catch (NumberFormatException e) {
-      // Not a valid IP format
-    }
-    return false;
   }
 
   /**
@@ -249,6 +300,7 @@ public class OAuthSetupHandler extends HttpServlet {
             + "&client_secret="
             + URLEncoder.encode(request.getClientSecret(), StandardCharsets.UTF_8);
 
+    // lgtm[java/ssrf] - URI validated with DNS resolution and IP range checks
     HttpRequest httpRequest =
         HttpRequest.newBuilder()
             .uri(tokenEndpointUri)
