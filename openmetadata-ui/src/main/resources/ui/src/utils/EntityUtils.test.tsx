@@ -25,6 +25,9 @@ import {
   getEntityBreadcrumbs,
   getEntityLinkFromType,
   getEntityOverview,
+  hasCustomPropertiesTab,
+  hasLineageTab,
+  hasSchemaTab,
   highlightEntityNameAndDescription,
   highlightSearchArrayElement,
   highlightSearchText,
@@ -512,6 +515,84 @@ describe('EntityUtils unit tests', () => {
         EntityType.DATABASE,
         'sample_data.ecommerce_db'
       );
+    });
+  });
+
+  describe('hasSchemaTab', () => {
+    it('should return true for all entity types in SCHEMA_TABS_SET', () => {
+      const {
+        SCHEMA_TABS_SET,
+      } = require('../components/Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants');
+
+      SCHEMA_TABS_SET.forEach((entityType: EntityType) => {
+        expect(hasSchemaTab(entityType)).toBe(true);
+      });
+    });
+
+    it('should return false for entity types not in SCHEMA_TABS_SET', () => {
+      const {
+        SCHEMA_TABS_SET,
+      } = require('../components/Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants');
+      const allEntityTypes = Object.values(EntityType);
+      const entitiesWithoutSchema = allEntityTypes.filter(
+        (type) => !SCHEMA_TABS_SET.has(type)
+      );
+
+      entitiesWithoutSchema.forEach((entityType) => {
+        expect(hasSchemaTab(entityType)).toBe(false);
+      });
+    });
+  });
+
+  describe('hasLineageTab', () => {
+    it('should return true for all entity types in LINEAGE_TABS_SET', () => {
+      const {
+        LINEAGE_TABS_SET,
+      } = require('../components/Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants');
+
+      LINEAGE_TABS_SET.forEach((entityType: EntityType) => {
+        expect(hasLineageTab(entityType)).toBe(true);
+      });
+    });
+
+    it('should return false for entity types not in LINEAGE_TABS_SET', () => {
+      const {
+        LINEAGE_TABS_SET,
+      } = require('../components/Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants');
+      const allEntityTypes = Object.values(EntityType);
+      const entitiesWithoutLineage = allEntityTypes.filter(
+        (type) => !LINEAGE_TABS_SET.has(type)
+      );
+
+      entitiesWithoutLineage.forEach((entityType) => {
+        expect(hasLineageTab(entityType)).toBe(false);
+      });
+    });
+  });
+
+  describe('hasCustomPropertiesTab', () => {
+    it('should return true for all entity types in CUSTOM_PROPERTIES_TABS_SET', () => {
+      const {
+        CUSTOM_PROPERTIES_TABS_SET,
+      } = require('../components/Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants');
+
+      CUSTOM_PROPERTIES_TABS_SET.forEach((entityType: EntityType) => {
+        expect(hasCustomPropertiesTab(entityType)).toBe(true);
+      });
+    });
+
+    it('should return false for entity types not in CUSTOM_PROPERTIES_TABS_SET', () => {
+      const {
+        CUSTOM_PROPERTIES_TABS_SET,
+      } = require('../components/Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants');
+      const allEntityTypes = Object.values(EntityType);
+      const entitiesWithoutCustomProperties = allEntityTypes.filter(
+        (type) => !CUSTOM_PROPERTIES_TABS_SET.has(type)
+      );
+
+      entitiesWithoutCustomProperties.forEach((entityType) => {
+        expect(hasCustomPropertiesTab(entityType)).toBe(false);
+      });
     });
   });
 });
