@@ -23,43 +23,56 @@ import {
 import { Form } from 'antd';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  COLLATE_AUTO_TIER_APP_NAME,
-  COLLATE_DATA_QUALITY_APP_NAME,
-  COLLATE_DOCUMENTATION_APP_NAME,
-} from '../../../constants/Applications.constant';
 import { Style } from '../../../generated/type/schema';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { iconTooltipDataRender } from '../../../utils/DomainUtils';
+import { getField } from '../../../utils/formUtils';
+import imageClassBase from '../../BlockEditor/Extensions/image/ImageClassBase';
 import { MUIColorPicker } from '../../common/ColorPicker';
-import MUICoverImageUpload from '../../common/CoverImageUpload/MUICoverImageUpload';
 import { DEFAULT_TAG_ICON, MUIIconPicker } from '../../common/IconPicker';
 import { StyleModalProps } from '../StyleModal/StyleModal.interface';
+
 
 const IconColorModal: FC<StyleModalProps> = ({
   open,
   onCancel,
   onSubmit,
   style,
+  includeCoverImage = false,
 }) => {
-
-  console.log('style', style);
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState<boolean>(false);
-  const { applications } = useApplicationStore();
+
 
   const selectedColor = Form.useWatch('color', form);
 
-  const isCollateProduct = useMemo(() => {
-    return applications.some((app) =>
-      [
-        COLLATE_DOCUMENTATION_APP_NAME,
-        COLLATE_DATA_QUALITY_APP_NAME,
-        COLLATE_AUTO_TIER_APP_NAME,
-      ].includes(app)
-    );
-  }, [applications]);
+
+
+  const { onImageUpload } =
+    imageClassBase.getBlockEditorAttachmentProps() ?? {};
+  const isCoverImageUploadAvailable = !!onImageUpload;
+
+  const coverImageField: FieldProp | null = useMemo(
+    () =>
+      includeCoverImage && isCoverImageUploadAvailable
+        ? {
+          name: 'coverImage',
+          id: 'coverImage',
+          label: t('label.cover-image'),
+          required: false,
+          type: FieldTypes.COVER_IMAGE_UPLOAD_MUI,
+          props: {
+            'data-testid': 'cover-image-upload',
+          },
+          formItemProps: {
+            trigger: 'onChange',
+            valuePropName: 'value',
+          },
+        }
+        : null,
+    [includeCoverImage, isCoverImageUploadAvailable, t]
+  );
 
   const handleSubmit = async (values: Style & { coverImage?: unknown }) => {
     try {
@@ -133,19 +146,7 @@ const IconColorModal: FC<StyleModalProps> = ({
             }}
             layout="vertical"
             onFinish={handleSubmit}>
-            {isCollateProduct && (
-              <Box sx={{ mb: 3 }}>
-                <Form.Item
-                  name="coverImage"
-                  trigger="onChange"
-                  valuePropName="value">
-                  <MUICoverImageUpload
-                    data-testid="cover-image-upload"
-                    label={t('label.cover-image')}
-                  />
-                </Form.Item>
-              </Box>
-            )}
+            {coverImageField && <Box sx={{ mb: 3 }}>{getField(coverImageField)}</Box>}
             <Box sx={{ mb: 3 }}>
               <Form.Item
                 name="iconURL"
