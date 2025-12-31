@@ -133,18 +133,28 @@ public class OAuthSetupHandler extends HttpServlet {
   }
 
   /**
-   * Validates a token endpoint URL to prevent SSRF attacks.
+   * Validates and resolves a token endpoint URL to prevent SSRF attacks.
+   * Returns the validated URI for reuse to avoid double parsing.
    *
-   * @param tokenEndpoint The token endpoint URL to validate
+   * @param tokenEndpoint The token endpoint URL to validate (may be null)
+   * @param connectionConfig Connection configuration for inferring endpoint if needed
+   * @return Validated URI object
    * @throws IllegalArgumentException if the URL is invalid or potentially malicious
    */
-  private void validateTokenEndpoint(String tokenEndpoint) throws IllegalArgumentException {
-    if (tokenEndpoint == null || tokenEndpoint.trim().isEmpty()) {
+  private URI validateAndResolveTokenEndpoint(String tokenEndpoint, Object connectionConfig)
+      throws IllegalArgumentException {
+    // Determine token endpoint
+    String endpointToUse = tokenEndpoint;
+    if (endpointToUse == null || endpointToUse.trim().isEmpty()) {
+      endpointToUse = inferTokenEndpoint(connectionConfig);
+    }
+
+    if (endpointToUse == null || endpointToUse.trim().isEmpty()) {
       throw new IllegalArgumentException("Token endpoint URL cannot be null or empty");
     }
 
     try {
-      URI uri = URI.create(tokenEndpoint);
+      URI uri = URI.create(endpointToUse);
 
       // Validate scheme - only HTTPS and HTTP allowed (HTTP for localhost dev only)
       String scheme = uri.getScheme();
@@ -165,7 +175,7 @@ public class OAuthSetupHandler extends HttpServlet {
       if (host.equalsIgnoreCase("localhost") || host.equals("127.0.0.1") || host.equals("::1")) {
         LOG.warn(
             "Token endpoint points to localhost: {}. This should only be used in development",
-            tokenEndpoint);
+            endpointToUse);
       }
 
       // Block private IP ranges (10.x.x.x, 172.16-31.x.x, 192.168.x.x)
@@ -182,7 +192,8 @@ public class OAuthSetupHandler extends HttpServlet {
             "Token endpoint cannot point to link-local addresses: " + host);
       }
 
-      LOG.info("Token endpoint validation passed: {}", tokenEndpoint);
+      LOG.info("Token endpoint validation passed: {}", endpointToUse);
+      return uri;
 
     } catch (IllegalArgumentException e) {
       throw e;
@@ -220,16 +231,11 @@ public class OAuthSetupHandler extends HttpServlet {
   private OAuthCredentials exchangeAuthorizationCode(
       OAuthSetupRequest request, Object connectionConfig) throws Exception {
 
-    // Determine token endpoint
-    String tokenEndpoint = request.getTokenEndpoint();
-    if (tokenEndpoint == null || tokenEndpoint.isEmpty()) {
-      tokenEndpoint = inferTokenEndpoint(connectionConfig);
-    }
+    // Validate and resolve token endpoint (prevents SSRF attacks)
+    URI tokenEndpointUri =
+        validateAndResolveTokenEndpoint(request.getTokenEndpoint(), connectionConfig);
 
-    // Validate token endpoint to prevent SSRF attacks
-    validateTokenEndpoint(tokenEndpoint);
-
-    LOG.info("Exchanging authorization code with token endpoint: {}", tokenEndpoint);
+    LOG.info("Exchanging authorization code with token endpoint: {}", tokenEndpointUri);
 
     // Build token request
     String requestBody =
@@ -245,7 +251,7 @@ public class OAuthSetupHandler extends HttpServlet {
 
     HttpRequest httpRequest =
         HttpRequest.newBuilder()
-            .uri(java.net.URI.create(tokenEndpoint))
+            .uri(tokenEndpointUri)
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Accept", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(requestBody))
@@ -268,7 +274,7 @@ public class OAuthSetupHandler extends HttpServlet {
     credentials.setClientSecret(request.getClientSecret());
     credentials.setAccessToken(tokenResponse.get("access_token").asText());
     credentials.setRefreshToken(tokenResponse.get("refresh_token").asText());
-    credentials.setTokenEndpoint(URI.create(tokenEndpoint));
+    credentials.setTokenEndpoint(tokenEndpointUri);
 
     long expiresIn =
         tokenResponse.has("expires_in") ? tokenResponse.get("expires_in").asLong() : 3600;
