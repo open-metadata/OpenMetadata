@@ -415,7 +415,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         LOG.error("Refresh token is null for user session: {}", session.getId());
       }
 
-      // validateNonceIfRequired(session, credentials.getIdToken().getJWTClaimsSet());
+      validateNonceIfRequired(session, credentials.getIdToken().getJWTClaimsSet());
 
       // Put Credentials in Session
       session.setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
@@ -753,6 +753,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     String email = findEmailFromClaims(claimsMapping, claimsOrder, claims, principalDomain);
 
     String redirectUri = (String) httpSession.getAttribute(SESSION_REDIRECT_URI);
+    if (redirectUri == null || redirectUri.trim().isEmpty()) {
+      throw new IllegalStateException("Redirect URI not found in session");
+    }
     User user = getOrCreateOidcUser(userName, email, claims);
     Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
     // Store user info in session for logout audit

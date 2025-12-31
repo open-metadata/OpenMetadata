@@ -69,10 +69,11 @@ public class OAuthSetupHandler extends HttpServlet {
    *   "authorizationCode": "code_from_oauth_provider",
    *   "redirectUri": "http://localhost:3000/oauth/callback",
    *   "clientId": "your_client_id",
-   *   "clientSecret": "your_client_secret",
-   *   "tokenEndpoint": "https://account.snowflakecomputing.com/oauth/token-request" // optional
+   *   "clientSecret": "your_client_secret"
    * }
    * </pre>
+   *
+   * <p>Token endpoint is automatically inferred from connector configuration (SSRF prevention).
    */
   @Override
   protected void doPost(HttpServletRequest req, HttpServletResponse resp)
@@ -134,47 +135,10 @@ public class OAuthSetupHandler extends HttpServlet {
   }
 
   /**
-   * Validates token endpoint URL against allowlist to prevent SSRF attacks.
-   * Uses allowlist of known OAuth providers rather than arbitrary URL validation.
-   *
-   * @param tokenEndpoint The token endpoint URL to validate (may be null)
-   * @param connectionConfig Connection configuration for inferring endpoint if needed
-   * @return Validated URI from allowlist (never derived from user input)
-   * @throws SecurityException if the URL doesn't match allowlist
-   */
-  private URI validateAndResolveTokenEndpoint(String tokenEndpoint, Object connectionConfig)
-      throws SecurityException {
-    // If no endpoint provided, infer from connector config (uses allowlist internally)
-    String endpointToValidate = tokenEndpoint;
-    if (endpointToValidate == null || endpointToValidate.trim().isEmpty()) {
-      endpointToValidate = inferTokenEndpoint(connectionConfig);
-      return URI.create(endpointToValidate);
-    }
-
-    // Validate user-provided endpoint against allowlist
-    if (endpointToValidate.matches(
-        "https://[a-zA-Z0-9_-]+\\.snowflakecomputing\\.com/oauth/token-request")) {
-      String account =
-          endpointToValidate.replaceAll(
-              "https://([a-zA-Z0-9_-]+)\\.snowflakecomputing\\.com/oauth/token-request", "$1");
-      return URI.create(
-          ALLOWED_TOKEN_ENDPOINT_PATTERNS.get("snowflake").replace("{account}", account));
-    }
-
-    // For development/testing, allow localhost
-    if (endpointToValidate.startsWith("http://localhost:")
-        || endpointToValidate.startsWith("http://127.0.0.1:")) {
-      LOG.warn("DEVELOPMENT ONLY: Allowing localhost token endpoint: {}", endpointToValidate);
-      return URI.create(endpointToValidate);
-    }
-
-    throw new SecurityException(
-        "Token endpoint not in allowlist. Supported: Snowflake (*.snowflakecomputing.com). "
-            + "For other providers, add to ALLOWED_TOKEN_ENDPOINT_PATTERNS.");
-  }
-
-  /**
    * Exchange authorization code for access/refresh tokens.
+   *
+   * <p>SSRF Prevention: Token endpoint is always inferred from connector configuration stored in
+   * the database, never from user input. This ensures only allowlisted endpoints are contacted.
    *
    * @param request OAuth setup request with authorization code
    * @param connectionConfig Connection configuration (for determining token endpoint)
@@ -183,9 +147,9 @@ public class OAuthSetupHandler extends HttpServlet {
   private OAuthCredentials exchangeAuthorizationCode(
       OAuthSetupRequest request, Object connectionConfig) throws Exception {
 
-    // Validate and resolve token endpoint (prevents SSRF attacks)
-    URI tokenEndpointUri =
-        validateAndResolveTokenEndpoint(request.getTokenEndpoint(), connectionConfig);
+    // SSRF Prevention: Always infer endpoint from database config, never use user input
+    String tokenEndpoint = inferTokenEndpoint(connectionConfig);
+    URI tokenEndpointUri = URI.create(tokenEndpoint);
 
     LOG.info("Exchanging authorization code with token endpoint: {}", tokenEndpointUri);
 
@@ -201,7 +165,8 @@ public class OAuthSetupHandler extends HttpServlet {
             + "&client_secret="
             + URLEncoder.encode(request.getClientSecret(), StandardCharsets.UTF_8);
 
-    // SSRF Prevention: tokenEndpointUri is from allowlist, not user input
+    // SSRF Prevention: tokenEndpointUri is derived from database config using allowlist patterns,
+    // never from user-provided input. See inferTokenEndpoint() and ALLOWED_TOKEN_ENDPOINT_PATTERNS.
     HttpRequest httpRequest =
         HttpRequest.newBuilder()
             .uri(tokenEndpointUri)
@@ -246,10 +211,16 @@ public class OAuthSetupHandler extends HttpServlet {
       Map.of("snowflake", "https://{account}.snowflakecomputing.com/oauth/token-request");
 
   /**
-   * Infer token endpoint from connector configuration.
+   * Infer token endpoint from connector configuration using allowlist patterns.
+   *
+   * <p>SSRF Prevention: Only allowlisted endpoint patterns are used. To add support for a new
+   * connector type, add its pattern to ALLOWED_TOKEN_ENDPOINT_PATTERNS and implement the case
+   * below.
    *
    * @param connectionConfig Connection configuration object
-   * @return Token endpoint URL
+   * @return Token endpoint URL from allowlist
+   * @throws SecurityException if account name format is invalid
+   * @throws IllegalArgumentException if connector type is not supported
    */
   private String inferTokenEndpoint(Object connectionConfig) {
     if (connectionConfig instanceof SnowflakeConnection) {
@@ -263,9 +234,9 @@ public class OAuthSetupHandler extends HttpServlet {
     // Add more connector types as needed
 
     throw new IllegalArgumentException(
-        "Cannot infer token endpoint for connector type: "
+        "OAuth not yet supported for connector type: "
             + connectionConfig.getClass().getSimpleName()
-            + ". Please provide tokenEndpoint explicitly.");
+            + ". Add allowlist pattern to ALLOWED_TOKEN_ENDPOINT_PATTERNS and implement case above.");
   }
 
   /**
