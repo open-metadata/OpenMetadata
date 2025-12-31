@@ -38,11 +38,13 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
+  addEdge,
   Connection,
   Edge,
   getConnectedEdges,
   getIncomers,
   getOutgoers,
+  MarkerType,
   Node,
   NodeProps,
   ReactFlowInstance,
@@ -80,6 +82,7 @@ import {
 } from '../../constants/Export.constants';
 import {
   ELEMENT_DELETE_STATE,
+  NODE_WIDTH,
   ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
@@ -152,6 +155,7 @@ import {
   LineagePlatformView,
   LineageProviderProps,
 } from './LineageProvider.interface';
+import NodeSuggestionsAddStream from '../../components/Entity/EntityLineage/NodeSuggestionsAddStream.component';
 
 export const LineageContext = createContext({} as LineageContextType);
 
@@ -167,7 +171,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(true);
   const [selectedNode, setSelectedNode] = useState<SourceType>(
     {} as SourceType
   );
@@ -235,6 +239,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [columnsInCurrentPages, setColumnsInCurrentPages] = useState<
     Record<string, string[]>
   >({});
+  const [newlyLoadedNodeIds, setNewlyLoadedNodeIds] = useState<string[]>([]);
 
   // Add state for entityFqn that can be updated independently of URL params
   const [entityFqn, setEntityFqn] = useState<string>(decodedFqn);
@@ -610,6 +615,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         );
 
         const uniqueNodes = [...(entityLineage.nodes ?? [])];
+        const loadedNodeIds: string[] = [];
         for (const nNode of newNodes ?? []) {
           if (
             !uniqueNodes.some(
@@ -617,6 +623,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             )
           ) {
             uniqueNodes.push(nNode);
+            if (nNode.type !== EntityLineageNodeType.LOAD_MORE) {
+              loadedNodeIds.push(nNode.id);
+            }
           }
         }
 
@@ -668,6 +677,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             upstreamEdges: concatenatedLineageData.upstreamEdges,
           };
         });
+
+        setNewlyLoadedNodeIds(loadedNodeIds);
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -1012,6 +1023,52 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   };
 
+  const onNodeAdd = (sourceNodeId: string, xPos: number, yPos: number) => {
+    const position = {
+      x: xPos + NODE_WIDTH,
+      y: yPos,
+    };
+    const nodeId = uniqueId();
+    const newNode = {
+      id: nodeId,
+      nodeType: EntityLineageNodeType.DEFAULT,
+      position,
+      className: '',
+      // connectable: false,
+      selectable: false,
+      type: EntityLineageNodeType.DEFAULT,
+      data: {
+        label: (
+          <>
+            <LineageNodeRemoveButton
+              onRemove={() => removeNodeHandler(newNode as Node)}
+            />
+
+            <NodeSuggestionsAddStream
+              onSelectHandler={(value) => onEntitySelect(value, nodeId)}
+            />
+          </>
+        ),
+        isEditMode,
+        isNewNode: true,
+      },
+    };
+    setNodes([...nodes, newNode as Node]);
+    setNewAddedNode(newNode as Node);
+
+    const edge = {
+      source: sourceNodeId,
+      sourceHandle: sourceNodeId,
+      target: nodeId,
+      targetHandle: nodeId,
+
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+      },
+    } as Edge;
+    setEdges((eds) => addEdge(edge, eds));
+  };
+
   const selectLoadMoreNode = async (node: Node) => {
     const { pagination_data, direction } = node.data.node;
     const { parentId, index: from } = pagination_data;
@@ -1230,6 +1287,17 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const onConnect = useCallback(
     (params: Edge | Connection) => {
+      console.log('params', params);
+      // const edge = {
+      //   ...params,
+      //   type: 'custom-edge',
+      //   markerEnd: {
+      //     type: MarkerType.ArrowClosed,
+      //   },
+      // };
+      // setEdges((eds) => addEdge(edge, eds));
+      // return;
+
       const { target, source, sourceHandle, targetHandle } = params;
 
       if (target === source) {
@@ -1853,6 +1921,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onConnectStart,
       onConnectEnd,
       onNodeDrop,
+      onNodeAdd,
       onNodeCollapse,
       onColumnClick,
       onColumnMouseEnter,
@@ -1883,6 +1952,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       useUpdateNodeInternals,
       columnsInCurrentPages,
       setColumnsInCurrentPages,
+      newlyLoadedNodeIds,
     };
   }, [
     dataQualityLineage,
@@ -1917,6 +1987,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onConnectStart,
     onConnectEnd,
     onNodeDrop,
+    onNodeAdd,
     onNodeCollapse,
     onColumnClick,
     onColumnMouseEnter,
@@ -1945,6 +2016,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     useUpdateNodeInternals,
     columnsInCurrentPages,
     setColumnsInCurrentPages,
+    newlyLoadedNodeIds,
   ]);
 
   useEffect(() => {
