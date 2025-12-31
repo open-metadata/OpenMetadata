@@ -11,15 +11,14 @@
  *  limitations under the License.
  */
 import { CloseOutlined, RightOutlined } from '@ant-design/icons';
-import { Box, Chip } from '@mui/material';
-import { Button, Card, Drawer, Space, Tooltip, Typography } from 'antd';
+import { Box, Chip, IconButton, useTheme } from '@mui/material';
+import { ChevronDown, ChevronUp } from '@untitledui/icons';
+import { Card, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowSvg } from '../../../assets/svg/down-arrow-icon.svg';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-new.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
-import { ReactComponent as ArrowUp } from '../../../assets/svg/up-arrow-icon.svg';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
@@ -77,6 +76,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   entityType = EntityType.TABLE,
 }: ColumnDetailPanelProps<T>) => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const [isDescriptionLoading, setIsDescriptionLoading] = useState(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
@@ -556,13 +556,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
               </Typography.Text>
             </div>
             <div>
-              <Button
-                data-testid="close-button"
-                icon={<CloseOutlined />}
-                size="small"
-                type="text"
-                onClick={onClose}
-              />
+              <IconButton data-testid="close-button" onClick={onClose}>
+                <CloseOutlined
+                  color={theme.palette.allShades?.gray?.[600]}
+                  height={16}
+                  width={16}
+                />
+              </IconButton>
             </div>
           </div>
         </Tooltip>
@@ -630,20 +630,36 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       footer={
         <div className="d-flex justify-between items-center w-full navigation-container">
           <div className="d-flex items-center gap-1 m-t-sm">
-            <Button
+            <IconButton
               disabled={isPreviousDisabled}
-              icon={<ArrowUp />}
-              size="small"
-              type="text"
-              onClick={handlePreviousColumn}
-            />
-            <Button
+              sx={{
+                height: 6,
+                width: 6,
+                backgroundColor: theme.palette.allShades?.white,
+                padding: 4,
+              }}
+              onClick={handlePreviousColumn}>
+              <ChevronUp
+                color={theme.palette.allShades?.gray?.[600]}
+                height={16}
+                width={16}
+              />
+            </IconButton>
+            <IconButton
               disabled={isNextDisabled}
-              icon={<ArrowSvg />}
-              size="small"
-              type="text"
-              onClick={handleNextColumn}
-            />
+              sx={{
+                height: 6,
+                width: 6,
+                padding: 4,
+                backgroundColor: theme.palette.allShades?.white,
+              }}
+              onClick={handleNextColumn}>
+              <ChevronDown
+                color={theme.palette.allShades?.gray?.[600]}
+                height={16}
+                width={16}
+              />
+            </IconButton>
             <Typography.Text className="pagination-header-text text-medium">
               {actualColumnIndex + 1} {t('label.of-lowercase')}{' '}
               {flattenedColumns.length} {t('label.column-plural').toLowerCase()}

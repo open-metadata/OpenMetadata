@@ -13,7 +13,7 @@
 import { Col, Row, Segmented, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
+import { cloneDeep, groupBy, isEmpty, isUndefined, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -214,9 +214,13 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 
   const handleColumnUpdate = useCallback(
     (updatedColumn: Column) => {
+      const cleanColumn = isEmpty(updatedColumn.children)
+        ? omit(updatedColumn, 'children')
+        : updatedColumn;
+
       if (!isUndefined(onApiEndpointUpdate)) {
         const schema = cloneDeep(activeSchema);
-        const field = updatedColumn as unknown as Field;
+        const field = cleanColumn as unknown as Field;
         updateFieldDescription<Field>(
           field.fullyQualifiedName ?? '',
           field.description ?? '',
@@ -235,7 +239,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           activeSchemaKey
         );
       }
-      setSelectedColumn(updatedColumn);
+      setSelectedColumn(cleanColumn);
     },
     [activeSchema, activeSchemaKey, apiEndpointDetails, onApiEndpointUpdate]
   );

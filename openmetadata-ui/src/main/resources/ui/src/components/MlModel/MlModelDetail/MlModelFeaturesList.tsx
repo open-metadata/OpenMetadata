@@ -12,7 +12,7 @@
  */
 
 import { Card, Col, Divider, Row, Space, Typography } from 'antd';
-import { isEmpty } from 'lodash';
+import { isEmpty, omit } from 'lodash';
 import { EntityTags } from 'Models';
 import { Fragment, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -128,7 +128,11 @@ const MlModelFeaturesList = () => {
 
   const handleColumnUpdate = useCallback(
     (updatedColumn: Column) => {
-      const feature = updatedColumn as unknown as MlFeature;
+      const cleanColumn = isEmpty(updatedColumn.children)
+        ? omit(updatedColumn, 'children')
+        : updatedColumn;
+
+      const feature = cleanColumn as unknown as MlFeature;
       const updatedFeatures =
         mlFeatures?.map((f) => {
           if (f.name === feature.name) {
@@ -142,7 +146,7 @@ const MlModelFeaturesList = () => {
           }
         }) ?? [];
       handleFeaturesUpdate(updatedFeatures);
-      setSelectedColumn(updatedColumn);
+      setSelectedColumn(cleanColumn);
     },
     [mlFeatures, handleFeaturesUpdate]
   );
