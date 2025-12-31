@@ -17,6 +17,7 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
   changeTermHierarchyFromModal,
+  dragAndDropTerm,
   performExpandAll,
   selectActiveGlossary,
   selectActiveGlossaryTerm,
@@ -300,20 +301,11 @@ test.describe('Glossary Hierarchy', () => {
       await selectActiveGlossary(page, glossary.data.displayName);
 
       // Drag term1 to term2
-      await page
-        .getByRole('cell', {
-          name: term1.responseData.displayName,
-          exact: true,
-        })
-        .hover();
-      await page.mouse.down();
-      await page
-        .getByRole('cell', {
-          name: term2.responseData.displayName,
-          exact: true,
-        })
-        .hover();
-      await page.mouse.up();
+      await dragAndDropTerm(
+        page,
+        term1.responseData.displayName,
+        term2.responseData.displayName
+      );
 
       // Wait for confirmation modal content to be visible
       await expect(
