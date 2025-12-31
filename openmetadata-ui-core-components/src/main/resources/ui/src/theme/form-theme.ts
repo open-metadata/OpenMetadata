@@ -517,4 +517,11 @@ export const formTheme = (colors: any) => ({
       },
     },
   },
+  MuiFormLabel: {
+    styleOverrides: {
+      asterisk: {
+        color: colors.error[600],
+      },
+    },
+  },
 });
