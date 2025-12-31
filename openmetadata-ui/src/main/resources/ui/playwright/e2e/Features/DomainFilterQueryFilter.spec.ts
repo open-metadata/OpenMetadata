@@ -813,24 +813,14 @@ test.describe('Domain Filter - User Behavior Tests', () => {
         domainTable.entityResponseData.name
       );
 
-      const suggestionSearchRes = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.request().method() === 'GET'
-      );
-
       await page.getByTestId('searchBox').click();
-      await page.getByTestId('searchBox').fill(domainTableName.substring(0, 5));
 
-      await suggestionSearchRes;
+      await page.getByTestId('searchBox').fill(domainTableName);
+      await waitForAllLoadersToDisappear(page);
 
-      await page.waitForSelector('[data-testid="global-search-suggestion-box"]', {
-        state: 'visible',
-        timeout: 10000,
-      });
-
-      const suggestionBox = page.locator('[data-testid="global-search-suggestion-box"]');
-      await expect(suggestionBox).toContainText(domainTableName);
+      await expect(
+        page.getByText(domainTable.entityResponseData.fullyQualifiedName)
+      ).toBeVisible();
 
       const nonDomainTableName = get(
         nonDomainTable,
@@ -838,21 +828,14 @@ test.describe('Domain Filter - User Behavior Tests', () => {
         nonDomainTable.entityResponseData.name
       );
 
-      const suggestionSearchRes2 = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.request().method() === 'GET'
-      );
-
       await page.getByTestId('searchBox').clear();
-      await page.getByTestId('searchBox').fill(nonDomainTableName.substring(0, 5));
 
-      await suggestionSearchRes2;
+      await page.getByTestId('searchBox').fill(nonDomainTableName);
+      await waitForAllLoadersToDisappear(page);
 
-      await page.waitForTimeout(1000);
-
-      const suggestionBoxAfter = page.locator('[data-testid="global-search-suggestion-box"]');
-      await expect(suggestionBoxAfter).not.toContainText(nonDomainTableName);
+      await expect(
+        page.getByText(nonDomainTable.entityResponseData.fullyQualifiedName)
+      ).not.toBeVisible();
     } finally {
       await domainTable.delete(apiContext);
       await nonDomainTable.delete(apiContext);
