@@ -18,9 +18,26 @@ import org.openmetadata.mcp.auth.exception.RegistrationException;
 import org.openmetadata.mcp.auth.exception.TokenException;
 
 /**
- * Simple in-memory auth provider implementation.
+ * Simple in-memory auth provider implementation for TESTING AND DEVELOPMENT ONLY.
+ *
+ * <p><strong>WARNING:</strong> This provider uses non-cryptographic UUID-based tokens and stores
+ * all data in memory. It is NOT suitable for production use. Production deployments must use
+ * ConnectorOAuthProvider or a custom implementation with:
+ *
+ * <ul>
+ *   <li>Cryptographically secure JWT tokens
+ *   <li>Persistent database storage
+ *   <li>Proper token rotation and expiry
+ *   <li>Audit logging
+ * </ul>
+ *
+ * <p>This provider will log a warning on instantiation and should only be used in test/dev
+ * environments.
  */
 public class SimpleAuthProvider implements OAuthAuthorizationServerProvider {
+
+  private static final org.slf4j.Logger LOG =
+      org.slf4j.LoggerFactory.getLogger(SimpleAuthProvider.class);
 
   private final Map<String, OAuthClientInformation> clients = new ConcurrentHashMap<>();
 
@@ -40,6 +57,10 @@ public class SimpleAuthProvider implements OAuthAuthorizationServerProvider {
 
   public SimpleAuthProvider(String resourceServerAudience) {
     this.resourceServerAudience = resourceServerAudience;
+    LOG.warn(
+        "*** SimpleAuthProvider instantiated - THIS IS FOR TESTING/DEVELOPMENT ONLY ***\n"
+            + "This provider uses non-cryptographic UUID tokens and in-memory storage.\n"
+            + "DO NOT use in production. Use ConnectorOAuthProvider instead.");
   }
 
   @Override
