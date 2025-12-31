@@ -246,8 +246,8 @@ public class McpServer implements McpServerProvider {
         org.openmetadata.schema.settings.Settings settings =
             systemRepository.getOMBaseUrlConfigInternal();
         if (settings != null && settings.getConfigValue() != null) {
-          org.openmetadata.schema.settings.OpenMetadataBaseUrlConfiguration urlConfig =
-              (org.openmetadata.schema.settings.OpenMetadataBaseUrlConfiguration)
+          org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration urlConfig =
+              (org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration)
                   settings.getConfigValue();
           if (urlConfig != null && urlConfig.getOpenMetadataUrl() != null) {
             return urlConfig.getOpenMetadataUrl();
