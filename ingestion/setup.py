@@ -253,6 +253,7 @@ plugins: Dict[str, Set[str]] = {
     "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.6"},
     "domo": {VERSIONS["pydomo"]},
     "doris": {"pydoris==1.0.2"},
+    "starrocks": {"starrocks>=1.0.6"},
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
