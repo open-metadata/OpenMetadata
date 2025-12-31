@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Switch as MuiSwitch, Typography } from '@mui/material';
+import { Box, FormLabel, Switch as MuiSwitch } from '@mui/material';
 import { FC, memo, useCallback } from 'react';
 import { MUISwitchProps } from './MUISwitch.interface';
 
@@ -39,9 +39,15 @@ const MUISwitch: FC<MUISwitchProps> = ({
         {...props}
       />
       {label && (
-        <Typography fontWeight={500} variant="body2">
+        <FormLabel
+          component="span"
+          sx={{
+            color: (theme) => theme.palette.grey[700],
+            fontSize: (theme) => theme.typography.body2.fontSize,
+            fontWeight: (theme) => theme.typography.subtitle2.fontWeight,
+          }}>
           {label}
-        </Typography>
+        </FormLabel>
       )}
     </Box>
   );

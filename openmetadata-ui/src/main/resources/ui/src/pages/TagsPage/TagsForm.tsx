@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { Box, Grid } from '@mui/material';
+import { Box, FormLabel, Grid } from '@mui/material';
 import { Form } from 'antd';
 import { castArray } from 'lodash';
-import { Suspense, useEffect, useMemo } from 'react';
+import { ReactNode, Suspense, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
@@ -41,6 +41,18 @@ import {
 } from './tagFormFields';
 import './TagsForm.less';
 import { RenameFormProps, SubmitProps } from './TagsPage.interface';
+
+const StyledFormLabel = ({ children }: { children: ReactNode }) => (
+  <FormLabel
+    component="span"
+    sx={{
+      color: (theme) => theme.palette.grey[700],
+      fontSize: (theme) => theme.typography.body2.fontSize,
+      fontWeight: (theme) => theme.typography.subtitle2.fontWeight,
+    }}>
+    {children}
+  </FormLabel>
+);
 
 const TagsForm = ({
   formRef,
@@ -111,7 +123,7 @@ const TagsForm = ({
 
     return {
       ...field,
-      muiLabel: t(field.muiLabel),
+      muiLabel: <StyledFormLabel>{t(field.muiLabel)}</StyledFormLabel>,
       props: {
         ...field.props,
         placeholder: t(field.placeholder),
@@ -122,7 +134,7 @@ const TagsForm = ({
   const colorField = useMemo(
     () => ({
       ...COLOR_FIELD,
-      muiLabel: t(COLOR_FIELD.muiLabel),
+      muiLabel: <StyledFormLabel>{t(COLOR_FIELD.muiLabel)}</StyledFormLabel>,
     }),
     [t]
   );
@@ -132,8 +144,8 @@ const TagsForm = ({
 
     return {
       ...field,
-      label: <>{t(field.label as string)}</>,
-      placeholder: t(field.placeholder as string),
+      muiLabel: t(field.muiLabel),
+      placeholder: t(field.placeholder),
       rules: TAG_NAME_VALIDATION_RULES.map((rule) => ({
         ...rule,
         message: rule.message
@@ -156,7 +168,7 @@ const TagsForm = ({
 
     return {
       ...field,
-      label: t(field.label),
+      muiLabel: t(field.muiLabel),
       placeholder: t(field.placeholder),
     };
   }, [t, disableDisplayNameField]);
@@ -169,7 +181,7 @@ const TagsForm = ({
 
     return {
       ...field,
-      label: t(field.label),
+      muiLabel: t(field.muiLabel),
     };
   }, [
     t,
@@ -184,7 +196,7 @@ const TagsForm = ({
 
     return {
       ...field,
-      label: t(field.label),
+      muiLabel: t(field.muiLabel),
     };
   }, [entityRules.canAddMultipleDomains, t]);
 
@@ -197,7 +209,7 @@ const TagsForm = ({
     const fields: FieldProp[] = [
       {
         ...descriptionField,
-        label: t(descriptionField.label),
+        label: <StyledFormLabel>{t(descriptionField.label)}</StyledFormLabel>,
       },
     ];
 
@@ -232,7 +244,7 @@ const TagsForm = ({
 
     return {
       ...field,
-      label: t(field.label),
+      muiLabel: t(field.muiLabel),
     };
   }, [t, disableMutuallyExclusiveField, isMutuallyExclusive]);
 
