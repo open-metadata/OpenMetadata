@@ -23,9 +23,9 @@ import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { Glossary } from '../support/glossary/Glossary';
 import {
-  GlossaryData,
-  GlossaryTermData,
-  UserTeamRef,
+    GlossaryData,
+    GlossaryTermData,
+    UserTeamRef
 } from '../support/glossary/Glossary.interface';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../support/tag/ClassificationClass';
@@ -33,16 +33,16 @@ import { TagClass } from '../support/tag/TagClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-  clickOutside,
-  closeFirstPopupAlert,
-  descriptionBox,
-  getApiContext,
-  INVALID_NAMES,
-  NAME_MAX_LENGTH_VALIDATION_ERROR,
-  NAME_VALIDATION_ERROR,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    clickOutside,
+    closeFirstPopupAlert,
+    descriptionBox,
+    getApiContext,
+    INVALID_NAMES,
+    NAME_MAX_LENGTH_VALIDATION_ERROR,
+    NAME_VALIDATION_ERROR,
+    redirectToHomePage,
+    toastNotification,
+    uuid
 } from './common';
 import { addMultiOwner, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
@@ -676,7 +676,7 @@ export const updateGlossaryTermDataFromTree = async (
   await expect(page.locator('.ant-modal-title')).toContainText(
     'Edit Glossary Term'
   );
-
+  await page.locator(descriptionBox).clear();
   await page.locator(descriptionBox).fill('Updated description');
 
   const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
@@ -684,7 +684,7 @@ export const updateGlossaryTermDataFromTree = async (
   await glossaryTermResponse;
 
   await expect(
-    termRow.getByRole('cell', { name: 'Updated description' })
+    termRow.getByText('Updated description', { exact: true })
   ).toBeVisible();
 };
 
@@ -1029,10 +1029,23 @@ export const dragAndDropTerm = async (
   dragElement: string,
   dropTarget: string
 ) => {
-  await page.getByRole('cell', { name: dragElement, exact: true }).hover();
-  await page.mouse.down();
-  await page.getByRole('cell', { name: dropTarget, exact: true }).hover();
-  await page.mouse.up();
+  // Find the row containing the drag element text
+  const dragLocator = page
+    .locator('tr')
+    .filter({ hasText: dragElement })
+    .first();
+
+  // Find the row containing the drop target text (or the header if dropTarget is "Terms")
+  const dropLocator =
+    dropTarget === 'Terms'
+      ? page.locator('th:has-text("Terms")').first()
+      : page.locator('tr').filter({ hasText: dropTarget }).first();
+
+  await dragLocator.dragTo(dropLocator, {
+    force: true,
+    sourcePosition: { x: 10, y: 10 },
+    targetPosition: { x: 10, y: 10 },
+  });
 };
 
 export const confirmationDragAndDropGlossary = async (
