@@ -19,17 +19,17 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import {
-  clickOutside,
-  descriptionBox,
-  getApiContext,
-  redirectToHomePage,
+    clickOutside,
+    descriptionBox,
+    getApiContext,
+    redirectToHomePage,
 } from '../../../utils/common';
 import { addMultiOwner } from '../../../utils/entity';
 import {
-  addMultiOwnerInDialog,
-  openAddGlossaryTermModal,
-  selectActiveGlossary,
-  selectActiveGlossaryTerm,
+    addMultiOwnerInDialog,
+    openAddGlossaryTermModal,
+    selectActiveGlossary,
+    selectActiveGlossaryTerm,
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 
@@ -1287,7 +1287,7 @@ test.describe('Glossary Advanced Operations', () => {
     await page.click('[data-testid="cancel-glossary"]');
 
     // Verify we're back on glossary page and the glossary was not created
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // The glossary should not exist - check it's not in the list
     await expect(page.getByTestId(glossaryName)).not.toBeVisible();
@@ -1400,7 +1400,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       // Navigate to term1 details
       await page.getByTestId(term1.responseData.displayName).click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Verify term2 is shown as related term
       await expect(
@@ -1414,7 +1414,7 @@ test.describe('Glossary Advanced Operations', () => {
         .getByTestId('related-term-container')
         .getByTestId(term2.responseData.displayName)
         .click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Verify we're on term2 page
       await expect(

@@ -16,15 +16,15 @@ import { ADVANCED_SEARCH_SUGGESTION_FIELDS } from '../../constant/advancedSearch
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import {
-  getFieldsSuggestionSearchText,
-  selectOption,
-  showAdvancedSearchDialog,
+    getFieldsSuggestionSearchText,
+    selectOption,
+    showAdvancedSearchDialog,
 } from '../../utils/advancedSearch';
 import { redirectToHomePage } from '../../utils/common';
 import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-  waitForAllLoadersToDisappear,
+    escapeESReservedCharacters,
+    getEncodedFqn,
+    waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
@@ -51,7 +51,7 @@ test.describe('Advanced Search Suggestions', () => {
     test(`Verify suggestions for ${field.label} field`, async ({ page }) => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.EXPLORE);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await waitForAllLoadersToDisappear(page);
       await showAdvancedSearchDialog(page);
 

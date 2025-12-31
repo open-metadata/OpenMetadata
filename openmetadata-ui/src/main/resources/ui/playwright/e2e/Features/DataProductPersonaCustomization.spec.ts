@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import {
-  APIRequestContext,
-  expect,
-  Page,
-  test as base,
+    APIRequestContext,
+    test as base,
+    expect,
+    Page,
 } from '@playwright/test';
 import { ECustomizedGovernance } from '../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../constant/settings';
@@ -23,13 +23,13 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
 } from '../../utils/common';
 import {
-  getCustomizeDetailsDefaultTabs,
-  getCustomizeDetailsEntity,
+    getCustomizeDetailsDefaultTabs,
+    getCustomizeDetailsEntity,
 } from '../../utils/customizeDetails';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
@@ -138,7 +138,7 @@ test.describe('Data Product Persona customization', () => {
         );
 
         await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
-        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForLoadState('domcontentloaded');
         await adminPage.getByText('Governance').click();
         await adminPage.getByText('Data Product', { exact: true }).click();
 
@@ -210,7 +210,7 @@ test.describe('Data Product Persona customization', () => {
       await redirectToHomePage(userPage);
 
       await entity?.visitEntityPage(userPage);
-      await userPage.waitForLoadState('networkidle');
+      await userPage.waitForLoadState('domcontentloaded');
       await userPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });

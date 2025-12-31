@@ -11,26 +11,26 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { DELETE_TERM } from '../../constant/common';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  createNewPage,
-  descriptionBox,
-  redirectToHomePage,
-  uuid,
+    createNewPage,
+    descriptionBox,
+    redirectToHomePage,
+    uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateFormNameFieldInput } from '../../utils/form';
 import {
-  checkPersonaInProfile,
-  navigateToPersonaSettings,
-  navigateToPersonaWithPagination,
-  removePersonaDefault,
-  setPersonaAsDefault,
-  updatePersonaDisplayName,
+    checkPersonaInProfile,
+    navigateToPersonaSettings,
+    navigateToPersonaWithPagination,
+    removePersonaDefault,
+    setPersonaAsDefault,
+    updatePersonaDisplayName,
 } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 
@@ -87,7 +87,7 @@ test.describe.serial('Persona operations', () => {
     const personaListResponse = page.waitForResponse(`/api/v1/personas?*`);
     await settingClick(page, GlobalSettingOptions.PERSONA);
     await personaListResponse;
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   });
 
@@ -131,7 +131,7 @@ test.describe.serial('Persona operations', () => {
 
     await page.getByRole('button', { name: 'Create' }).click();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await navigateToPersonaSettings(page);
 
@@ -370,7 +370,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
 
         await adminPage.getByRole('button', { name: 'Create' }).click();
 
-        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForLoadState('domcontentloaded');
 
         await navigateToPersonaSettings(adminPage);
 
@@ -439,7 +439,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
         true
       );
 
-      await adminPage.waitForLoadState('networkidle');
+      await adminPage.waitForLoadState('domcontentloaded');
       await setPersonaAsDefault(adminPage);
     });
 

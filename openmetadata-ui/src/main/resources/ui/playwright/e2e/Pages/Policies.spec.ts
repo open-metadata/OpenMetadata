@@ -12,29 +12,29 @@
  */
 import test, { expect, Page } from '@playwright/test';
 import {
-  DEFAULT_POLICIES,
-  DESCRIPTION,
-  ERROR_MESSAGE_VALIDATION,
-  NEW_RULE_DESCRIPTION,
-  NEW_RULE_NAME,
-  POLICY_NAME,
-  RULE_DESCRIPTION,
-  RULE_DETAILS,
-  RULE_NAME,
-  UPDATED_DESCRIPTION,
-  UPDATED_POLICY_NAME,
-  UPDATED_RULE_NAME,
+    DEFAULT_POLICIES,
+    DESCRIPTION,
+    ERROR_MESSAGE_VALIDATION,
+    NEW_RULE_DESCRIPTION,
+    NEW_RULE_NAME,
+    POLICY_NAME,
+    RULE_DESCRIPTION,
+    RULE_DETAILS,
+    RULE_NAME,
+    UPDATED_DESCRIPTION,
+    UPDATED_POLICY_NAME,
+    UPDATED_RULE_NAME,
 } from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
-  PolicyClass,
-  PolicyRulesType,
+    PolicyClass,
+    PolicyRulesType,
 } from '../../support/access-control/PoliciesClass';
 import {
-  descriptionBox,
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
+    descriptionBox,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
 } from '../../utils/common';
 import { validateFormNameFieldInput } from '../../utils/form';
 import { getElementWithPagination } from '../../utils/roles';
@@ -394,7 +394,7 @@ test.describe('Policy page should work properly', () => {
 
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await getElementWithPagination(page, policyLocator);
 

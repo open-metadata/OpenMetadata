@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import {
-  addAssetsToDomain,
-  addServicesToDomain,
-  selectDomain,
-  setupAssetsForDomain,
+    addAssetsToDomain,
+    addServicesToDomain,
+    selectDomain,
+    setupAssetsForDomain,
 } from '../../utils/domain';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { sidebarClick } from '../../utils/sidebar';
@@ -50,7 +50,7 @@ const test = base.extend<{
 
     await setToken(page, tokenData.config.JWTToken);
     await redirectToHomePage(page);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('loader', { state: 'hidden' });
 
     await expect(page.getByTestId('nav-user-name')).toHaveText('ingestion-bot');
@@ -96,7 +96,7 @@ test.describe('Ingestion Bot ', () => {
     await test.step('Assign assets to domains', async () => {
       // Add assets to domain 1
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -105,7 +105,7 @@ test.describe('Ingestion Bot ', () => {
 
       // Add assets to domain 2
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -149,7 +149,7 @@ test.describe('Ingestion Bot ', () => {
       // Add assets to domain 1
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -159,7 +159,7 @@ test.describe('Ingestion Bot ', () => {
 
       // Add assets to domain 2
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });

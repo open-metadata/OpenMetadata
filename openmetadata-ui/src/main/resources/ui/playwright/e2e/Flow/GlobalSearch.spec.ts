@@ -26,7 +26,7 @@ test('searching for longer description should work', async ({ page }) => {
   await redirectToHomePage(page);
 
   await sidebarClick(page, SidebarItem.EXPLORE);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   await page.getByTestId('global-search-selector').click();
   await page.getByTestId('global-search-select-option-Table').click();

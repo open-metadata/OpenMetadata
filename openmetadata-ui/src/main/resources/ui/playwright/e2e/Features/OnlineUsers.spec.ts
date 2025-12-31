@@ -29,7 +29,7 @@ test.describe('Online Users Feature', () => {
     page,
   }) => {
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -72,13 +72,13 @@ test.describe('Online Users Feature', () => {
   }) => {
     // First, navigate around to generate activity
     await sidebarClick(page, SidebarItem.EXPLORE);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -97,7 +97,7 @@ test.describe('Online Users Feature', () => {
 
   test('Should not show bots in online users list', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Verify bot users are not shown (ingestion-bot should not be visible)
     const tableRows = page.locator('tbody tr');
@@ -113,7 +113,7 @@ test.describe('Online Users Feature', () => {
 
   test('Should filter users by time window', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -160,7 +160,7 @@ test.describe('Online Users Feature', () => {
     await sidebarClick(dataConsumerPage, SidebarItem.SETTINGS);
 
     await dataConsumerPage.getByTestId('members').click();
-    await dataConsumerPage.waitForLoadState('networkidle');
+    await dataConsumerPage.waitForLoadState('domcontentloaded');
 
     await expect(
       dataConsumerPage.getByTestId('members.online-users')
@@ -169,7 +169,7 @@ test.describe('Online Users Feature', () => {
 
   test('Should show correct last activity format', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',

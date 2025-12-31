@@ -15,9 +15,9 @@ import { expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  createNewPage,
-  redirectToHomePage,
-  visitOwnProfilePage,
+    createNewPage,
+    redirectToHomePage,
+    visitOwnProfilePage,
 } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
 import { visitUserProfilePage } from '../../utils/user';
@@ -49,7 +49,7 @@ test.describe('User Profile Online Status', () => {
 
     await redirectToHomePage(page);
     await visitUserProfilePage(page, activeUser.responseData.name);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check for online status badge
     const onlineStatusBadge = page.locator(
@@ -84,7 +84,7 @@ test.describe('User Profile Online Status', () => {
     // Navigate to user profile
     await redirectToHomePage(page);
     await visitUserProfilePage(page, activeUser.responseData.name);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Simulate that the user was active 30 minutes ago
     // (In real scenario, this would be set by backend based on actual activity)
@@ -104,7 +104,7 @@ test.describe('User Profile Online Status', () => {
     // Navigate to inactive user profile
     await redirectToHomePage(page);
     await visitUserProfilePage(page, inactiveUser.responseData.name);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check that online status badge is not visible
     const onlineStatusBadge = page.getByTestId('user-online-status');
@@ -125,7 +125,7 @@ test.describe('User Profile Online Status', () => {
     // Navigate to admin's profile (admin always has activity)
     await redirectToHomePage(page);
     await visitOwnProfilePage(page);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Verify email element is visible
     const emailElement = page.getByTestId('user-email-value');
@@ -157,7 +157,7 @@ test.describe('User Profile Online Status', () => {
     // First navigate to admin profile
     await redirectToHomePage(page);
     await visitOwnProfilePage(page);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Admin should always show online status since they're logged in
     const onlineStatusBadge = page.getByTestId('user-online-status');
@@ -167,10 +167,10 @@ test.describe('User Profile Online Status', () => {
 
     // Navigate away and back to verify status persists
     await sidebarClick(page, SidebarItem.EXPLORE);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await visitOwnProfilePage(page);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Status should still be visible
     await expect(onlineStatusBadge).toBeVisible();

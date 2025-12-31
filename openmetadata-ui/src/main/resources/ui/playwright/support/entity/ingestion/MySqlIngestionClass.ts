@@ -11,25 +11,25 @@
  *  limitations under the License.
  */
 import {
-  expect,
-  Page,
-  PlaywrightTestArgs,
-  PlaywrightWorkerArgs,
-  TestType,
+    expect,
+    Page,
+    PlaywrightTestArgs,
+    PlaywrightWorkerArgs,
+    TestType,
 } from '@playwright/test';
 import { env } from 'process';
 import { resetTokenFromBotPage } from '../../../utils/bot';
 import {
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
+    uuid,
 } from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
-  checkServiceFieldSectionHighlighting,
-  Services,
+    checkServiceFieldSectionHighlighting,
+    Services,
 } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
 
@@ -132,7 +132,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
       if (await metadataTab.isVisible()) {
         await metadataTab.click();
       }
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.click('[data-testid="add-new-ingestion-button"]');
 
       await page.waitForSelector(
@@ -157,7 +157,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
       if (await metadataTab2.isVisible()) {
         await metadataTab2.click();
       }
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await page
         .getByLabel('agents')

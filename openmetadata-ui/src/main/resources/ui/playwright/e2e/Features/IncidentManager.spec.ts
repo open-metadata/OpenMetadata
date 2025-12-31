@@ -21,18 +21,18 @@ import { addMentionCommentInFeed } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import { resetTokenFromBotPage } from '../../utils/bot';
 import {
-  clickOutside,
-  descriptionBox,
-  getApiContext,
-  redirectToHomePage,
+    clickOutside,
+    descriptionBox,
+    getApiContext,
+    redirectToHomePage,
 } from '../../utils/common';
 import { addOwner, waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  acknowledgeTask,
-  addAssigneeFromPopoverWidget,
-  assignIncident,
-  triggerTestSuitePipelineAndWaitForSuccess,
-  visitProfilerTab,
+    acknowledgeTask,
+    addAssigneeFromPopoverWidget,
+    assignIncident,
+    triggerTestSuitePipelineAndWaitForSuccess,
+    visitProfilerTab,
 } from '../../utils/incidentManager';
 import { makeRetryRequest } from '../../utils/serviceIngestion';
 import { sidebarClick } from '../../utils/sidebar';
@@ -156,7 +156,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await redirectToHomePage(adminPage);
 
       await table1.visitEntityPage(adminPage);
-      await adminPage.waitForLoadState('networkidle');
+      await adminPage.waitForLoadState('domcontentloaded');
       await adminPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -266,11 +266,11 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
           .innerText();
         await addMentionCommentInFeed(page, 'admin', true);
 
-        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForLoadState('domcontentloaded');
         await waitForAllLoadersToDisappear(adminPage);
         await adminPage.getByRole('button', { name: 'Notifications' }).click();
         await adminPage.getByText('Mentions').click();
-        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForLoadState('domcontentloaded');
         await waitForAllLoadersToDisappear(adminPage);
 
         await expect(adminPage.getByLabel('Mentions')).toContainText(

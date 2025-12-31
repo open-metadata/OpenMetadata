@@ -10,18 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage, toastNotification } from '../../utils/common';
 import {
-  checkAllDefaultWidgets,
-  navigateToCustomizeLandingPage,
-  openAddCustomizeWidgetModal,
-  removeAndCheckWidget,
-  saveCustomizeLayoutPage,
-  setUserDefaultPersona,
+    checkAllDefaultWidgets,
+    navigateToCustomizeLandingPage,
+    openAddCustomizeWidgetModal,
+    removeAndCheckWidget,
+    saveCustomizeLayoutPage,
+    setUserDefaultPersona,
 } from '../../utils/customizeLandingPage';
 
 const adminUser = new UserClass();
@@ -191,7 +191,7 @@ test.describe('Customize Landing Page Flow', () => {
 
       // Navigate to the landing page
       await redirectToHomePage(adminPage);
-      await adminPage.waitForLoadState('networkidle');
+      await adminPage.waitForLoadState('domcontentloaded');
 
       // Check if removed widgets are not present on the landing page
       await expect(
@@ -253,7 +253,7 @@ test.describe('Customize Landing Page Flow', () => {
         await redirectToHomePage(adminPage);
 
         // Ensures the page is fully loaded
-        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForLoadState('domcontentloaded');
 
         await checkAllDefaultWidgets(adminPage);
       }

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
@@ -37,20 +37,20 @@ import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignSingleSelectDomain,
-  generateRandomUsername,
-  getApiContext,
-  getAuthContext,
-  getToken,
-  redirectToHomePage,
-  removeSingleSelectDomain,
-  verifyDomainPropagation,
+    assignSingleSelectDomain,
+    generateRandomUsername,
+    getApiContext,
+    getAuthContext,
+    getToken,
+    redirectToHomePage,
+    removeSingleSelectDomain,
+    verifyDomainPropagation,
 } from '../../utils/common';
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
 import {
-  addMultiOwner,
-  removeOwner,
-  removeOwnersFromList,
+    addMultiOwner,
+    removeOwner,
+    removeOwnersFromList,
 } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 
@@ -657,7 +657,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
         // Navigate to the table entity page
         await entity.visitEntityPage(page);
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -678,7 +678,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await profilerTab.click();
           await profilerResponse;
 
-          await page.waitForLoadState('networkidle');
+          await page.waitForLoadState('domcontentloaded');
           await page.waitForSelector('[data-testid="loader"]', {
             state: 'detached',
           });
@@ -712,7 +712,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await activityFeedTab.click();
           await activityFeedResponse;
 
-          await page.waitForLoadState('networkidle');
+          await page.waitForLoadState('domcontentloaded');
           await page.waitForSelector('[data-testid="loader"]', {
             state: 'detached',
           });

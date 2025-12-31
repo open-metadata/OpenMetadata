@@ -21,24 +21,24 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  descriptionBox,
-  getApiContext,
-  redirectToHomePage,
-  uuid,
+    descriptionBox,
+    getApiContext,
+    redirectToHomePage,
+    uuid,
 } from '../../utils/common';
 import { addMultiOwner, removeOwner } from '../../utils/entity';
 import {
-  addAssetsToTag,
-  editTagPageDescription,
-  fillTagForm,
-  LIMITED_USER_RULES,
-  NEW_TAG,
-  removeAssetsFromTag,
-  setupAssetsForTag,
-  submitForm,
-  validateForm,
-  verifyCertificationTagPageUI,
-  verifyTagPageUI,
+    addAssetsToTag,
+    editTagPageDescription,
+    fillTagForm,
+    LIMITED_USER_RULES,
+    NEW_TAG,
+    removeAssetsFromTag,
+    setupAssetsForTag,
+    submitForm,
+    validateForm,
+    verifyCertificationTagPageUI,
+    verifyTagPageUI,
 } from '../../utils/tag';
 import { visitUserProfilePage } from '../../utils/user';
 
@@ -177,7 +177,7 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.locator('button[type="submit"]').click();
     await updateColor;
 
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     await expect(adminPage.getByText(tag.data.name)).toBeVisible();
   });
@@ -289,7 +289,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
     // Verify in My Data page
     await visitUserProfilePage(adminPage, user1.responseData.name);
-    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('domcontentloaded');
 
     const myDataRes = adminPage.waitForResponse(
       `/api/v1/search/query?q=*&index=all&*`

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
 import { UserClass } from '../../../support/user/UserClass';
@@ -19,14 +19,14 @@ import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
 import { addCustomPropertiesForEntity } from '../../../utils/customProperty';
 import {
-  assignRoleToUser,
-  cleanupPermissions,
-  initializePermissions,
+    assignRoleToUser,
+    cleanupPermissions,
+    initializePermissions,
 } from '../../../utils/permission';
 import {
-  settingClick,
-  SettingOptionsType,
-  sidebarClick,
+    settingClick,
+    SettingOptionsType,
+    sidebarClick,
 } from '../../../utils/sidebar';
 
 const adminUser = new UserClass();
@@ -120,7 +120,7 @@ test('Domain allow operations', async ({ testUserPage, browser }) => {
 
   const manageButtonElements = ['delete-button', 'rename-button'];
 
-  await testUserPage.waitForLoadState('networkidle');
+  await testUserPage.waitForLoadState('domcontentloaded');
 
   // Test direct elements first
   for (const testId of directElements) {
@@ -193,7 +193,7 @@ test('Domain deny operations', async ({ testUserPage, browser }) => {
 
   const manageButtonElements = ['delete-button', 'rename-button'];
 
-  await testUserPage.waitForLoadState('networkidle');
+  await testUserPage.waitForLoadState('domcontentloaded');
 
   for (const testId of directElements) {
     let element;

@@ -14,12 +14,12 @@
 import test, { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
-  clickOutside,
-  createNewPage,
-  descriptionBox,
-  generateRandomUsername,
-  redirectToHomePage,
-  uuid,
+    clickOutside,
+    createNewPage,
+    descriptionBox,
+    generateRandomUsername,
+    redirectToHomePage,
+    uuid,
 } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 import { visitUserProfilePage } from '../../utils/user';
@@ -48,7 +48,7 @@ test.describe.serial('Add role and assign it to the user', () => {
 
   test('Create role', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.ROLES);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.click('[data-testid="add-role"]');
 
@@ -81,7 +81,7 @@ test.describe.serial('Add role and assign it to the user', () => {
   test('Create new user and assign new role to him', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.USERS);
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.click('[data-testid="add-user"]');
 

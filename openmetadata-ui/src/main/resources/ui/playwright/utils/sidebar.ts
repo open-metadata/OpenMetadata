@@ -12,10 +12,10 @@
  */
 import { Page } from '@playwright/test';
 import {
-  SETTINGS_OPTIONS_PATH,
-  SETTING_CUSTOM_PROPERTIES_PATH,
+    SETTINGS_OPTIONS_PATH,
+    SETTING_CUSTOM_PROPERTIES_PATH,
 } from '../constant/settings';
-import { SidebarItem, SIDEBAR_LIST_ITEMS } from '../constant/sidebar';
+import { SIDEBAR_LIST_ITEMS, SidebarItem } from '../constant/sidebar';
 
 export type SettingOptionsType =
   | keyof typeof SETTINGS_OPTIONS_PATH
@@ -69,5 +69,5 @@ export const settingClick = async (
     await page.click(`[data-testid="${path}"]`);
   }
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 };

@@ -14,15 +14,15 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { isEmpty, startCase } from 'lodash';
 import {
-  ALERT_DESCRIPTION,
-  ALERT_WITHOUT_PERMISSION_POLICY_DETAILS,
-  ALERT_WITHOUT_PERMISSION_POLICY_NAME,
-  ALERT_WITHOUT_PERMISSION_ROLE_DETAILS,
-  ALERT_WITHOUT_PERMISSION_ROLE_NAME,
-  ALERT_WITH_PERMISSION_POLICY_DETAILS,
-  ALERT_WITH_PERMISSION_POLICY_NAME,
-  ALERT_WITH_PERMISSION_ROLE_DETAILS,
-  ALERT_WITH_PERMISSION_ROLE_NAME,
+    ALERT_DESCRIPTION,
+    ALERT_WITH_PERMISSION_POLICY_DETAILS,
+    ALERT_WITH_PERMISSION_POLICY_NAME,
+    ALERT_WITH_PERMISSION_ROLE_DETAILS,
+    ALERT_WITH_PERMISSION_ROLE_NAME,
+    ALERT_WITHOUT_PERMISSION_POLICY_DETAILS,
+    ALERT_WITHOUT_PERMISSION_POLICY_NAME,
+    ALERT_WITHOUT_PERMISSION_ROLE_DETAILS,
+    ALERT_WITHOUT_PERMISSION_ROLE_NAME,
 } from '../constant/alert';
 import { AlertDetails, EventDetails } from '../constant/alert.interface';
 import { DELETE_TERM } from '../constant/common';
@@ -31,18 +31,18 @@ import { DashboardClass } from '../support/entity/DashboardClass';
 import { TableClass } from '../support/entity/TableClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-  clickOutside,
-  descriptionBox,
-  getApiContext,
-  toastNotification,
-  uuid,
+    clickOutside,
+    descriptionBox,
+    getApiContext,
+    toastNotification,
+    uuid,
 } from './common';
 import { getEntityDisplayName, getTextFromHtmlString } from './entity';
 import { validateFormNameFieldInput } from './form';
 import {
-  addFilterWithUsersListInput,
-  addInternalDestination,
-  visitNotificationAlertPage,
+    addFilterWithUsersListInput,
+    addInternalDestination,
+    visitNotificationAlertPage,
 } from './notificationAlert';
 import { visitObservabilityAlertPage } from './observabilityAlert';
 
@@ -158,7 +158,7 @@ export const findPageWithAlert = async (
   alertDetails: AlertDetails
 ) => {
   const { id } = alertDetails;
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });

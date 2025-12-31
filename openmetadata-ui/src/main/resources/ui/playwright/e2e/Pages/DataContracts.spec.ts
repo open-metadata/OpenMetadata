@@ -10,17 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
-  DATA_CONTRACT_CONTAIN_SEMANTICS,
-  DATA_CONTRACT_DETAILS,
-  DATA_CONTRACT_NOT_CONTAIN_SEMANTICS,
-  DATA_CONTRACT_SECURITY_DETAILS_1,
-  DATA_CONTRACT_SECURITY_DETAILS_2,
-  DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
-  DATA_CONTRACT_SEMANTICS1,
-  DATA_CONTRACT_SEMANTICS2,
-  NEW_TABLE_TEST_CASE,
+    DATA_CONTRACT_CONTAIN_SEMANTICS,
+    DATA_CONTRACT_DETAILS,
+    DATA_CONTRACT_NOT_CONTAIN_SEMANTICS,
+    DATA_CONTRACT_SECURITY_DETAILS_1,
+    DATA_CONTRACT_SECURITY_DETAILS_2,
+    DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
+    DATA_CONTRACT_SEMANTICS1,
+    DATA_CONTRACT_SEMANTICS2,
+    NEW_TABLE_TEST_CASE,
 } from '../../constant/dataContracts';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
@@ -52,24 +52,24 @@ import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
 import { resetTokenFromBotPage } from '../../utils/bot';
 import {
-  clickOutside,
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
+    clickOutside,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
 } from '../../utils/common';
 import {
-  saveAndTriggerDataContractValidation,
-  saveSecurityAndSLADetails,
-  validateDataContractInsideBundleTestSuites,
-  validateSecurityAndSLADetails,
-  waitForDataContractExecution,
+    saveAndTriggerDataContractValidation,
+    saveSecurityAndSLADetails,
+    validateDataContractInsideBundleTestSuites,
+    validateSecurityAndSLADetails,
+    waitForDataContractExecution,
 } from '../../utils/dataContracts';
 import {
-  addOwner,
-  addOwnerWithoutValidation,
-  assignGlossaryTerm,
-  assignTag,
-  assignTier,
+    addOwner,
+    addOwnerWithoutValidation,
+    assignGlossaryTerm,
+    assignTag,
+    assignTier,
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
@@ -364,7 +364,7 @@ test.describe('Data Contracts', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -474,7 +474,7 @@ test.describe('Data Contracts', () => {
 
             await expect(page.getByRole('dialog')).not.toBeVisible();
 
-            await page.waitForLoadState('networkidle');
+            await page.waitForLoadState('domcontentloaded');
             await page.waitForSelector('[data-testid="loader"]', {
               state: 'detached',
             });
@@ -680,7 +680,7 @@ test.describe('Data Contracts', () => {
         await page.getByTestId('save-contract-btn').click();
         await saveContractResponse;
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -749,7 +749,7 @@ test.describe('Data Contracts', () => {
         await redirectToHomePage(page);
         await page.goto(`/table/${entityFQN}`);
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -920,7 +920,7 @@ test.describe('Data Contracts', () => {
 
         await saveContractResponse;
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -975,7 +975,7 @@ test.describe('Data Contracts', () => {
 
           await saveContractResponse;
 
-          await page.waitForLoadState('networkidle');
+          await page.waitForLoadState('domcontentloaded');
           await page.waitForSelector('[data-testid="loader"]', {
             state: 'detached',
           });
@@ -1002,7 +1002,7 @@ test.describe('Data Contracts', () => {
         await redirectToHomePage(page);
         await page.goto(`/table/${entityFQN}`);
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -1220,7 +1220,7 @@ test.describe('Data Contracts', () => {
 
     await page.reload();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1407,7 +1407,7 @@ test.describe('Data Contracts', () => {
 
     await page.reload();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1571,7 +1571,7 @@ test.describe('Data Contracts', () => {
 
     await page.reload();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -2136,7 +2136,7 @@ test.describe('Data Contracts', () => {
       await page.getByTestId('save-contract-btn').click();
       await saveContractResponse;
 
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -2374,7 +2374,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
             async () => {
               await redirectToHomePage(page);
               await entity.visitEntityPage(page);
-              await page.waitForLoadState('networkidle');
+              await page.waitForLoadState('domcontentloaded');
               await page.waitForSelector('[data-testid="loader"]', {
                 state: 'detached',
               });
@@ -2405,7 +2405,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
                 'Store Procedure': 'Stored Procedure',
               };
               await settingClick(page, GlobalSettingOptions.PERSONA);
-              await page.waitForLoadState('networkidle');
+              await page.waitForLoadState('domcontentloaded');
               await page.waitForSelector('[data-testid="loader"]', {
                 state: 'detached',
               });
@@ -2417,7 +2417,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
                 true
               );
               await page.getByRole('tab', { name: 'Customize UI' }).click();
-              await page.waitForLoadState('networkidle');
+              await page.waitForLoadState('domcontentloaded');
 
               // Navigate to Table customization
               await page
@@ -2456,7 +2456,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
 
               await redirectToHomePage(page);
               await entity.visitEntityPage(page);
-              await page.waitForLoadState('networkidle');
+              await page.waitForLoadState('domcontentloaded');
               await page.waitForSelector('[data-testid="loader"]', {
                 state: 'detached',
               });
