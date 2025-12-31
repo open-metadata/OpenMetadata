@@ -16,6 +16,7 @@ import org.eclipse.jetty.ee10.servlet.FilterHolder;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
+import org.openmetadata.mcp.server.auth.jobs.OAuthTokenCleanupScheduler;
 import org.openmetadata.mcp.server.auth.provider.ConnectorOAuthProvider;
 import org.openmetadata.mcp.server.auth.settings.ClientRegistrationOptions;
 import org.openmetadata.mcp.server.auth.settings.RevocationOptions;
@@ -149,19 +150,36 @@ public class McpServer implements McpServerProvider {
       revocationOptions.setEnabled(true);
 
       // Configure allowed origins for CORS
-      // TODO: Wire MCPConfiguration into OpenMetadataApplicationConfig and use
-      // config.getMcpConfiguration().getAllowedOrigins() instead of hardcoded defaults
-      // For production deployments, configure via MCPConfiguration in openmetadata.yaml
-      // These defaults are for development only (MCP Inspector ports 6274-6277, UI ports)
-      List<String> allowedOrigins =
-          Arrays.asList(
-              "http://localhost:3000",
-              "http://localhost:8585",
-              "http://localhost:9090",
-              "http://localhost:6274",
-              "http://localhost:6275",
-              "http://localhost:6276",
-              "http://localhost:6277");
+      // Check if we're in development mode (baseUrl contains localhost)
+      // In production, these should be configured via MCPConfiguration
+      List<String> allowedOrigins;
+      boolean isDevelopmentMode = baseUrl.contains("localhost") || baseUrl.contains("127.0.0.1");
+
+      if (isDevelopmentMode) {
+        // Development mode: Allow common localhost ports with warning
+        LOG.warn(
+            "MCP OAuth CORS: Using default localhost origins (development mode detected). "
+                + "For production, configure allowedOrigins via MCPConfiguration in openmetadata.yaml");
+        allowedOrigins =
+            Arrays.asList(
+                "http://localhost:3000",
+                "http://localhost:8585",
+                "http://localhost:9090",
+                "http://localhost:6274", // MCP Inspector
+                "http://localhost:6275",
+                "http://localhost:6276",
+                "http://localhost:6277");
+      } else {
+        // Production mode: Use minimal CORS (same origin only)
+        // TODO: Wire MCPConfiguration.getAllowedOrigins() when available
+        LOG.warn(
+            "MCP OAuth CORS: Production mode detected. Using same-origin policy only. "
+                + "Configure allowedOrigins via MCPConfiguration for cross-origin access.");
+        allowedOrigins = Collections.emptyList(); // No cross-origin requests allowed
+      }
+
+      // Initialize OAuth token cleanup scheduler (runs hourly to delete expired tokens)
+      OAuthTokenCleanupScheduler.initialize();
 
       OAuthHttpStatelessServerTransportProvider statelessOauthTransport =
           new OAuthHttpStatelessServerTransportProvider(
