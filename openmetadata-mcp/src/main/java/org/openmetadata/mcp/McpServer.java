@@ -125,6 +125,8 @@ public class McpServer implements McpServerProvider {
         mcpClient.setClientId("openmetadata-mcp-client");
         // Generate random client secret (not used for public PKCE clients, but required by spec)
         mcpClient.setClientSecret(java.util.UUID.randomUUID().toString());
+        // TODO: Make redirect URI configurable via MCPConfiguration
+        // This default is for development/testing only
         mcpClient.setRedirectUris(
             Collections.singletonList(new URI("http://localhost:3000/callback")));
         mcpClient.setTokenEndpointAuthMethod("none"); // Public client
@@ -146,9 +148,11 @@ public class McpServer implements McpServerProvider {
       RevocationOptions revocationOptions = new RevocationOptions();
       revocationOptions.setEnabled(true);
 
-      // Configure allowed origins for CORS (matches MCPConfiguration defaults)
-      // These should be configured via MCPConfiguration in production
-      // Adding common MCP Inspector ports (6274, etc.) and development ports
+      // Configure allowed origins for CORS
+      // TODO: Wire MCPConfiguration into OpenMetadataApplicationConfig and use
+      // config.getMcpConfiguration().getAllowedOrigins() instead of hardcoded defaults
+      // For production deployments, configure via MCPConfiguration in openmetadata.yaml
+      // These defaults are for development only (MCP Inspector ports 6274-6277, UI ports)
       List<String> allowedOrigins =
           Arrays.asList(
               "http://localhost:3000",

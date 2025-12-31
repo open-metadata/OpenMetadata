@@ -629,9 +629,18 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider,
       try {
         user = Entity.getEntityByName(Entity.USER, userName, "id", Include.NON_DELETED);
       } catch (Exception e) {
-        LOG.error("Failed to load user: {}, falling back to 'admin'", userName, e);
-        userName = "admin";
-        user = Entity.getEntityByName(Entity.USER, userName, "id", Include.NON_DELETED);
+        // Use ingestion-bot for MCP operations if user lookup fails
+        // This provides limited, service-specific permissions instead of admin privileges
+        LOG.warn(
+            "Failed to load user: {}, using ingestion-bot for MCP OAuth operation", userName, e);
+        userName = "ingestion-bot";
+        try {
+          user = Entity.getEntityByName(Entity.USER, userName, "id", Include.NON_DELETED);
+        } catch (Exception botEx) {
+          LOG.error("Failed to load ingestion-bot user", botEx);
+          throw new TokenException(
+              "server_error", "Failed to load user for token generation: " + userName);
+        }
       }
 
       // Reload connector's OAuth credentials to get access token
@@ -856,14 +865,14 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider,
       newAccessToken.setScopes(scopes != null ? scopes : storedToken.getScopes());
       newAccessToken.setExpiresAt(Instant.now().plusSeconds(tokenExpirySeconds).getEpochSecond());
 
-      // Validate connector name for auditability
+      // Validate connector name is present - required for proper token operation
       if (connectorName == null || connectorName.trim().isEmpty()) {
-        LOG.warn(
-            "Token refresh for client {} has no associated connector name. "
-                + "This reduces audit trail visibility. Token: {}",
-            client.getClientId(),
-            mcpAccessToken.substring(0, Math.min(20, mcpAccessToken.length())) + "...");
-        connectorName = "unknown";
+        LOG.error(
+            "Token refresh for client {} has no associated connector name. Cannot proceed.",
+            client.getClientId());
+        throw new TokenException(
+            "invalid_grant",
+            "Refresh token missing connector association. Token may be corrupted or database state is inconsistent.");
       }
 
       // Store new access token in database
