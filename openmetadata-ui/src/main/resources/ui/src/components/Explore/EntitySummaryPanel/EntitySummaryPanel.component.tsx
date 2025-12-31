@@ -94,6 +94,7 @@ export default function EntitySummaryPanel({
   downstreamDepth,
   pipelineViewMode,
   nodesPerLayer,
+  onEntityUpdate,
 }: EntitySummaryPanelProps) {
   // Fallback when tests mock EntityUtils and omit DRAWER_NAVIGATION_OPTIONS
   const NAV_OPTIONS = DRAWER_NAVIGATION_OPTIONS || {
@@ -327,8 +328,12 @@ export default function EntitySummaryPanel({
 
         return newState;
       });
+
+      if (onEntityUpdate) {
+        onEntityUpdate(updatedData);
+      }
     },
-    [entityDetails.details]
+    [entityDetails.details, onEntityUpdate]
   );
 
   const handleOwnerUpdate = useCallback(

@@ -23,6 +23,7 @@ import { getEntityChildDetails } from '../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
+  hasLineageTab,
 } from '../../utils/EntityUtils';
 import {
   getCurrentMillis,
@@ -49,7 +50,6 @@ import {
   DataAssetSummaryPanelProps,
   TestCaseStatusCounts,
 } from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
-import { ENTITY_RIGHT_PANEL_LINEAGE_TABS } from '../Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
 import DataProductsSection from '../common/DataProductsSection/DataProductsSection';
 import DataQualitySection from '../common/DataQualitySection/DataQualitySection';
 import DescriptionSection from '../common/DescriptionSection/DescriptionSection';
@@ -168,7 +168,7 @@ export const DataAssetSummaryPanelV1 = ({
   }, [dataAsset, entityType, highlights, charts, chartsDetailsLoading]);
 
   const shouldShowLineageSection = useMemo(
-    () => ENTITY_RIGHT_PANEL_LINEAGE_TABS.includes(entityType),
+    () => hasLineageTab(entityType),
     [entityType]
   );
 
