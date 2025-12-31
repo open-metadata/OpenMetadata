@@ -21,11 +21,18 @@ import {
   DialogTitle,
 } from '@mui/material';
 import { Form } from 'antd';
-import React, { FC, useState } from 'react';
+import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  COLLATE_AUTO_TIER_APP_NAME,
+  COLLATE_DATA_QUALITY_APP_NAME,
+  COLLATE_DOCUMENTATION_APP_NAME,
+} from '../../../constants/Applications.constant';
 import { Style } from '../../../generated/type/schema';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { iconTooltipDataRender } from '../../../utils/DomainUtils';
 import { MUIColorPicker } from '../../common/ColorPicker';
+import MUICoverImageUpload from '../../common/CoverImageUpload/MUICoverImageUpload';
 import { DEFAULT_TAG_ICON, MUIIconPicker } from '../../common/IconPicker';
 import { StyleModalProps } from '../StyleModal/StyleModal.interface';
 
@@ -35,16 +42,46 @@ const IconColorModal: FC<StyleModalProps> = ({
   onSubmit,
   style,
 }) => {
+
+  console.log('style', style);
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState<boolean>(false);
+  const { applications } = useApplicationStore();
 
   const selectedColor = Form.useWatch('color', form);
 
-  const handleSubmit = async (values: Style) => {
+  const isCollateProduct = useMemo(() => {
+    return applications.some((app) =>
+      [
+        COLLATE_DOCUMENTATION_APP_NAME,
+        COLLATE_DATA_QUALITY_APP_NAME,
+        COLLATE_AUTO_TIER_APP_NAME,
+      ].includes(app)
+    );
+  }, [applications]);
+
+  const handleSubmit = async (values: Style & { coverImage?: unknown }) => {
     try {
       setSaving(true);
-      await onSubmit(values);
+
+      const coverImageValue = values.coverImage as
+        | { url?: string; position?: { y?: string } }
+        | { file?: File; position?: { y?: string } }
+        | undefined;
+
+      const transformedValues: Style = {
+        ...values,
+        coverImage:
+          coverImageValue && ('url' in coverImageValue || 'file' in coverImageValue)
+            ? {
+              url: 'url' in coverImageValue ? coverImageValue.url : undefined,
+              position: coverImageValue.position?.y,
+            }
+            : undefined,
+      };
+
+      await onSubmit(transformedValues);
     } finally {
       setSaving(false);
     }
@@ -85,9 +122,30 @@ const IconColorModal: FC<StyleModalProps> = ({
             initialValues={{
               iconURL: style?.iconURL,
               color: style?.color,
+              coverImage: style?.coverImage?.url
+                ? {
+                  url: style.coverImage.url,
+                  position: style.coverImage.position
+                    ? { y: style.coverImage.position }
+                    : undefined,
+                }
+                : undefined,
             }}
             layout="vertical"
             onFinish={handleSubmit}>
+            {isCollateProduct && (
+              <Box sx={{ mb: 3 }}>
+                <Form.Item
+                  name="coverImage"
+                  trigger="onChange"
+                  valuePropName="value">
+                  <MUICoverImageUpload
+                    data-testid="cover-image-upload"
+                    label={t('label.cover-image')}
+                  />
+                </Form.Item>
+              </Box>
+            )}
             <Box sx={{ mb: 3 }}>
               <Form.Item
                 name="iconURL"

@@ -110,7 +110,7 @@ import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
-import StyleModal from '../../Modals/StyleModal/StyleModal.component';
+import IconColorModal from '../../Modals/IconColorModal';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
@@ -1065,7 +1065,7 @@ const DomainDetails = ({
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
       />
-      <StyleModal
+      <IconColorModal
         open={isStyleEditing}
         style={domain.style}
         onCancel={() => setIsStyleEditing(false)}
