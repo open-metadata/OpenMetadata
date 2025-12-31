@@ -51,7 +51,8 @@ const IconColorModal: FC<StyleModalProps> = ({
     imageClassBase.getBlockEditorAttachmentProps() ?? {};
   const isCoverImageUploadAvailable = !!onImageUpload;
 
-  const coverImageField: FieldProp | null = isCoverImageUploadAvailable
+  const coverImageField: FieldProp | null = 
+  isCoverImageUploadAvailable && includeCoverImage
     ? {
         name: 'coverImage',
         id: 'root/coverImage',
