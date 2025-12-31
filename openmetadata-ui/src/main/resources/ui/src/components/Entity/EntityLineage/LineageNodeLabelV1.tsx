@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Chip, IconButton, Tooltip } from '@mui/material';
+import { Breadcrumbs, Button, Chip, IconButton, Tooltip } from '@mui/material';
 import { Col, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
@@ -69,7 +69,22 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
     [node.id]
   );
   const childrenCount = children.length;
-  const breadcrumbs = getBreadcrumbsFromFqn(node.fullyQualifiedName ?? '');
+
+  const breadcrumbs = useMemo(
+    () => getBreadcrumbsFromFqn(node.fullyQualifiedName ?? ''),
+    [node.fullyQualifiedName]
+  );
+
+  const renderBreadcrumbItem = useCallback(
+    (item: string) => (
+      <Typography.Text
+        className="text-grey-muted lineage-breadcrumb-item"
+        ellipsis={{ tooltip: true }}>
+        {item}
+      </Typography.Text>
+    ),
+    []
+  );
 
   return (
     <Col
@@ -89,30 +104,18 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
             {getEntityName(node)}
           </Typography.Text>
 
-          <Space
-            align="start"
-            className="entity-header-name"
-            direction="horizontal"
-            size={6}>
-            {breadcrumbs.length > 0 && (
-              <div className="d-flex items-center m-b-xs lineage-breadcrumb">
-                {breadcrumbs.map((breadcrumb, index) => (
-                  <Fragment key={breadcrumb.name}>
-                    <Typography.Text
-                      className="text-grey-muted lineage-breadcrumb-item"
-                      ellipsis={{ tooltip: true }}
-                      style={{
-                        maxWidth: `${100 / breadcrumbs.length}%`,
-                      }}>
-                      {breadcrumb.name}
-                    </Typography.Text>
-                    {index !== breadcrumbs.length - 1 && (
-                      <span className="lineage-breadcrumb-item-separator" />
-                    )}
-                  </Fragment>
-                ))}
-              </div>
-            )}
+          <Space className="d-flex items-center m-b-xs lineage-breadcrumb">
+            <Breadcrumbs
+              separator={<span className="lineage-breadcrumb-item-separator" />}
+              sx={{
+                '& ol': {
+                  gap: 0,
+                },
+              }}>
+              {breadcrumbs.map((breadcrumb) =>
+                renderBreadcrumbItem(breadcrumb.name)
+              )}
+            </Breadcrumbs>
           </Space>
         </Space>
         {!showDeletedIcon && showDbtIcon && (
