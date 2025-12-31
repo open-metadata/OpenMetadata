@@ -247,6 +247,9 @@ class TestUnityCatalogLineage(TestCase):
         table_entity = Table(
             id=uuid4(),
             name=EntityName(root="test_table"),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root="service.db.schema.test_table"
+            ),
             columns=[
                 Column(
                     name=ColumnName(root="id"),
@@ -304,6 +307,9 @@ class TestUnityCatalogLineage(TestCase):
         table_entity = Table(
             id=uuid4(),
             name=EntityName(root="test_table"),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root="service.db.schema.test_table"
+            ),
             columns=[],
         )
 
@@ -354,6 +360,9 @@ class TestUnityCatalogLineage(TestCase):
         table_entity = Table(
             id=uuid4(),
             name=EntityName(root="test_table"),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root="service.db.schema.test_table"
+            ),
             columns=[],
         )
 
@@ -397,6 +406,9 @@ class TestUnityCatalogLineage(TestCase):
         table_entity = Table(
             id=uuid4(),
             name=EntityName(root="test_table"),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root="service.db.schema.test_table"
+            ),
             columns=[],
         )
 
@@ -440,6 +452,9 @@ class TestUnityCatalogLineage(TestCase):
         table_entity = Table(
             id=uuid4(),
             name=EntityName(root="test_table"),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root="service.db.schema.test_table"
+            ),
             columns=[],
         )
 
@@ -486,6 +501,9 @@ class TestUnityCatalogLineage(TestCase):
         table_entity = Table(
             id=uuid4(),
             name=EntityName(root="test_table"),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root="service.db.schema.test_table"
+            ),
             columns=[],
         )
 
@@ -525,12 +543,18 @@ class TestUnityCatalogLineage(TestCase):
         current_table = Table(
             id=uuid4(),
             name=EntityName(root="current_table"),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root="local_unitycatalog.demo-test-cat.test-schema.current_table"
+            ),
             columns=[],
         )
 
         upstream_table = Table(
             id=uuid4(),
             name=EntityName(root="source_table"),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root="local_unitycatalog.demo-test-cat.test-schema.source_table"
+            ),
             columns=[],
         )
 
@@ -574,6 +598,9 @@ class TestUnityCatalogLineage(TestCase):
         current_table = Table(
             id=uuid4(),
             name=EntityName(root="current_table"),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root="local_unitycatalog.demo-test-cat.test-schema.current_table"
+            ),
             columns=[],
         )
 
@@ -617,6 +644,9 @@ class TestUnityCatalogLineage(TestCase):
         abc1_table = Table(
             id=uuid4(),
             name=EntityName(root="ABC1"),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root="local_unitycatalog.demo-test-cat.test-schema.ABC1"
+            ),
             database=EntityReference(id=uuid4(), name="demo-test-cat", type="database"),
             databaseSchema=EntityReference(
                 id=uuid4(), name="test-schema", type="databaseSchema"
@@ -636,6 +666,9 @@ class TestUnityCatalogLineage(TestCase):
         abc_table = Table(
             id=uuid4(),
             name=EntityName(root="ABC"),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root="local_unitycatalog.demo-test-cat.test-schema.ABC"
+            ),
             database=EntityReference(id=uuid4(), name="demo-test-cat", type="database"),
             databaseSchema=EntityReference(
                 id=uuid4(), name="test-schema", type="databaseSchema"
