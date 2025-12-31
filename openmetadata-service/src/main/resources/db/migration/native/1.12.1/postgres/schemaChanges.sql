@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS oauth_authorization_codes (
     code VARCHAR(512) UNIQUE NOT NULL,
     client_id VARCHAR(255) NOT NULL,
     connector_name VARCHAR(255) NOT NULL,
+    user_name VARCHAR(255),
     code_challenge VARCHAR(255),
     code_challenge_method VARCHAR(10),
     redirect_uri TEXT NOT NULL,
@@ -59,6 +60,7 @@ CREATE TABLE IF NOT EXISTS oauth_authorization_codes (
 CREATE INDEX IF NOT EXISTS idx_oauth_authz_codes_code ON oauth_authorization_codes(code);
 CREATE INDEX IF NOT EXISTS idx_oauth_authz_codes_client_id ON oauth_authorization_codes(client_id);
 CREATE INDEX IF NOT EXISTS idx_oauth_authz_codes_connector ON oauth_authorization_codes(connector_name);
+CREATE INDEX IF NOT EXISTS idx_oauth_authz_codes_user ON oauth_authorization_codes(user_name);
 CREATE INDEX IF NOT EXISTS idx_oauth_authz_codes_expires_at ON oauth_authorization_codes(expires_at);
 CREATE INDEX IF NOT EXISTS idx_oauth_authz_codes_created_at ON oauth_authorization_codes(created_at);
 
