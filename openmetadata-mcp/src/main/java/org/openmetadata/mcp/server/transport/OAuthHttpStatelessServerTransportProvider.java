@@ -36,6 +36,7 @@ import org.openmetadata.mcp.server.auth.handlers.TokenHandler;
 import org.openmetadata.mcp.server.auth.middleware.AuthContext;
 import org.openmetadata.mcp.server.auth.middleware.BearerAuthenticator;
 import org.openmetadata.mcp.server.auth.middleware.ClientAuthenticator;
+import org.openmetadata.mcp.server.auth.ratelimit.SimpleRateLimiter;
 import org.openmetadata.mcp.server.auth.settings.ClientRegistrationOptions;
 import org.openmetadata.mcp.server.auth.settings.RevocationOptions;
 import org.openmetadata.service.security.JwtFilter;
@@ -79,6 +80,10 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   private final List<String> allowedOrigins;
 
   private final OAuthAuthorizationServerProvider authProvider;
+
+  private final SimpleRateLimiter authorizationRateLimiter;
+
+  private final SimpleRateLimiter tokenRateLimiter;
 
   /**
    * Creates a new OAuthHttpServletSseServerTransportProvider.
@@ -165,8 +170,12 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     this.allowedOrigins = allowedOrigins;
 
+    this.authorizationRateLimiter = new SimpleRateLimiter(10, 60);
+    this.tokenRateLimiter = new SimpleRateLimiter(5, 60);
+
     logger.info("OAuthHttpServletSseServerTransportProvider initialized with base URL: " + baseUrl);
     logger.info("CORS allowed origins: " + allowedOrigins);
+    logger.info("Rate limiting enabled: authorization (10 req/min), token (5 req/min)");
   }
 
   /**
@@ -384,26 +393,23 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     }
   }
 
-  // TODO: SECURITY - Missing Rate Limiting (85% confidence)
-  // OAuth endpoints (authorize, token, revoke) have no rate limiting.
-  // An attacker can brute-force authorization codes, tokens, or client credentials.
-  //
-  // Impact: Brute force attacks on OAuth flows, token enumeration possible.
-  //
-  // Fix Required: Implement rate limiting per client_id and IP address:
-  // - Use token bucket or sliding window algorithm
-  // - Recommended limits:
-  //   * Authorization endpoint: 10 requests/minute per IP
-  //   * Token endpoint: 5 requests/minute per client_id
-  //   * Failed auth attempts: 3 failures triggers temporary block
-  // - Store rate limit state in Redis or database
-  // - Return 429 Too Many Requests when limit exceeded
-  //
-  // Libraries to consider: Bucket4j, Resilience4j, Guava RateLimiter
+  // NOTE: Basic rate limiting implemented using SimpleRateLimiter (in-memory sliding window).
+  // For production deployments with multiple servers, consider migrating to a distributed
+  // rate limiting solution using Redis (Bucket4j + Redis) or database-backed state.
   // See: https://datatracker.ietf.org/doc/html/rfc6749#section-10.11
 
   private void handleAuthorizeRequest(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
+    String clientIp = request.getRemoteAddr();
+    if (!authorizationRateLimiter.allowRequest(clientIp)) {
+      response.setStatus(429);
+      response.setContentType("application/json");
+      response
+          .getWriter()
+          .write("{\"error\":\"too_many_requests\",\"error_description\":\"Rate limit exceeded\"}");
+      return;
+    }
+
     // Extract parameters
     Map<String, String> params = new HashMap<>();
     request
@@ -451,6 +457,16 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
               }
             });
 
+    String clientId = params.get("client_id");
+    if (clientId != null && !tokenRateLimiter.allowRequest(clientId)) {
+      response.setStatus(429);
+      response.setContentType("application/json");
+      response
+          .getWriter()
+          .write("{\"error\":\"too_many_requests\",\"error_description\":\"Rate limit exceeded\"}");
+      return;
+    }
+
     logger.info("Token request params (sanitized): " + sanitizeParamsForLogging(params));
 
     try {
@@ -459,7 +475,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
       if ("authorization_code".equals(grantType)) {
         // Handle authorization code exchange
-        String clientId = params.get("client_id");
         String code = params.get("code");
         String redirectUri = params.get("redirect_uri");
         String codeVerifier = params.get("code_verifier");
