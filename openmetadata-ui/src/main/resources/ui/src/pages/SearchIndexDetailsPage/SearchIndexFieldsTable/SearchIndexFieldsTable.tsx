@@ -19,7 +19,6 @@ import {
   groupBy,
   isEmpty,
   isUndefined,
-  omit,
   sortBy,
   toLower,
   uniqBy,
@@ -31,7 +30,10 @@ import { EntityAttachmentProvider } from '../../../components/common/EntityDescr
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
 import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
-import { ColumnDetailPanel } from '../../../components/Database/ColumnDetailPanel/ColumnDetailPanel.component';
+import {
+  ColumnDetailPanelConfig,
+  withColumnDetailPanel,
+} from '../../../components/Database/ColumnDetailPanel/withColumnDetailPanel';
 import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../components/Database/TableDescription/TableDescription.component';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
@@ -61,7 +63,6 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
-  findFieldByFQN,
   getTableExpandableConfig,
   searchInFields,
   updateFieldDescription,
@@ -81,6 +82,7 @@ const SearchIndexFieldsTable = ({
   isReadOnly = false,
   entityFqn,
   fieldAllRowKeys,
+  handleColumnClick,
 }: SearchIndexFieldsTableProps) => {
   const { t } = useTranslation();
   const [editField, setEditField] = useState<{
@@ -92,8 +94,6 @@ const SearchIndexFieldsTable = ({
     []
   );
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
-  const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
 
   const sortByOrdinalPosition = useMemo(
     () => sortBy(searchIndexFields, 'ordinalPosition'),
@@ -165,44 +165,6 @@ const SearchIndexFieldsTable = ({
     },
     [handleEditField]
   );
-
-  const handleColumnClick = useCallback((field: SearchIndexField) => {
-    setSelectedColumn(field as unknown as Column);
-    setIsColumnDetailOpen(true);
-  }, []);
-
-  const handleCloseColumnDetail = useCallback(() => {
-    setIsColumnDetailOpen(false);
-    setSelectedColumn(null);
-  }, []);
-
-  const handleColumnUpdate = useCallback(
-    (updatedColumn: Column) => {
-      const cleanColumn = isEmpty(updatedColumn.children)
-        ? omit(updatedColumn, 'children')
-        : updatedColumn;
-
-      const field = cleanColumn as unknown as SearchIndexField;
-      const fields = cloneDeep(searchIndexFields);
-      updateFieldDescription<SearchIndexField>(
-        field.fullyQualifiedName ?? '',
-        field.description ?? '',
-        fields
-      );
-      updateFieldTags<SearchIndexField>(
-        field.fullyQualifiedName ?? '',
-        field.tags ?? [],
-        fields
-      );
-      onUpdate(fields);
-      setSelectedColumn(cleanColumn);
-    },
-    [searchIndexFields, onUpdate]
-  );
-
-  const handleColumnNavigate = useCallback((column: Column) => {
-    setSelectedColumn(column);
-  }, []);
 
   const renderDataTypeDisplay: SearchIndexCellRendered<
     SearchIndexField,
@@ -281,7 +243,7 @@ const SearchIndexFieldsTable = ({
               if ((e.target as HTMLElement).closest('button, a')) {
                 return;
               }
-              handleColumnClick(record);
+              handleColumnClick?.(record);
             }}
             onKeyDown={(e) => {
               if (isReadOnly) {
@@ -289,7 +251,7 @@ const SearchIndexFieldsTable = ({
               }
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                handleColumnClick(record);
+                handleColumnClick?.(record);
               }
             }}>
             <span className="break-word">
@@ -458,46 +420,27 @@ const SearchIndexFieldsTable = ({
           />
         </EntityAttachmentProvider>
       )}
-
-      <ColumnDetailPanel
-        allColumns={searchIndexFields.map(
-          (field) => field as unknown as Column
-        )}
-        column={selectedColumn}
-        entityType={EntityType.SEARCH_INDEX}
-        hasEditPermission={{
-          tags: hasTagEditAccess,
-          glossaryTerms: hasGlossaryTermEditAccess,
-          description: hasDescriptionEditAccess,
-          viewAllPermission: false,
-          customProperties: false,
-        }}
-        isOpen={isColumnDetailOpen}
-        tableFqn={entityFqn}
-        updateColumnDescription={async (fqn, description) => {
-          const fields = cloneDeep(searchIndexFields);
-          updateFieldDescription<SearchIndexField>(fqn, description, fields);
-          await onUpdate(fields);
-          // Find and return the updated field
-          const updatedField = findFieldByFQN<SearchIndexField>(fields, fqn);
-
-          return updatedField as unknown as Column;
-        }}
-        updateColumnTags={async (fqn, tags) => {
-          const fields = cloneDeep(searchIndexFields);
-          updateFieldTags<SearchIndexField>(fqn, tags ?? [], fields);
-          await onUpdate(fields);
-          // Find and return the updated field
-          const updatedField = findFieldByFQN<SearchIndexField>(fields, fqn);
-
-          return updatedField as unknown as Column;
-        }}
-        onClose={handleCloseColumnDetail}
-        onColumnUpdate={handleColumnUpdate}
-        onNavigate={handleColumnNavigate}
-      />
     </>
   );
 };
 
-export default SearchIndexFieldsTable;
+const columnDetailPanelConfig: ColumnDetailPanelConfig<
+  SearchIndexField,
+  SearchIndexFieldsTableProps
+> = {
+  mode: 'props',
+  entityType: EntityType.SEARCH_INDEX,
+  column: (field) => field as unknown as Column,
+  allFields: (props) => props.searchIndexFields,
+  permissions: (props) => ({
+    hasTagEditAccess: props.hasTagEditAccess,
+    hasGlossaryTermEditAccess: props.hasGlossaryTermEditAccess,
+    hasDescriptionEditAccess: props.hasDescriptionEditAccess,
+  }),
+  readOnly: (props) => props.isReadOnly || false,
+  onUpdate: (props, fields) => props.onUpdate(fields),
+};
+
+export default withColumnDetailPanel(columnDetailPanelConfig)(
+  SearchIndexFieldsTable
+);

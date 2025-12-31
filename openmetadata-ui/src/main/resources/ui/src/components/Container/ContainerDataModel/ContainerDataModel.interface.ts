@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Container } from '../../../generated/entity/data/container';
+import { Column, Container } from '../../../generated/entity/data/container';
+import { InjectedColumnDetailPanelProps } from '../../Database/ColumnDetailPanel/withColumnDetailPanel';
 
-export interface ContainerDataModelProps {
+export interface ContainerDataModelProps
+  extends Partial<InjectedColumnDetailPanelProps<Column>> {
   dataModel: Container['dataModel'];
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;

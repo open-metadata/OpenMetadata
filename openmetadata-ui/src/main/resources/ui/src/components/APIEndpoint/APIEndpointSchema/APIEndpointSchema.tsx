@@ -70,6 +70,20 @@ export enum SchemaViewType {
   RESPONSE_SCHEMA = 'response-schema',
 }
 
+/**
+ * TODO: Migrate to withColumnDetailPanel HOC
+ *
+ * This component is not yet migrated to use the HOC because it handles
+ * dual schemas (requestSchema and responseSchema) that can be toggled.
+ *
+ * The HOC would need to be extended to support:
+ * 1. Dynamic schema key selection based on activeSchemaKey state
+ * 2. Switching between different field arrays (requestSchemaFields vs responseSchemaFields)
+ * 3. Proper context update with the correct schema key parameter
+ *
+ * For now, keeping manual ColumnDetailPanel integration.
+ * See: openmetadata-ui/src/main/resources/ui/src/components/Database/ColumnDetailPanel/REMAINING_HOC_MIGRATIONS.md
+ */
 const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   isVersionView = false,
 }) => {

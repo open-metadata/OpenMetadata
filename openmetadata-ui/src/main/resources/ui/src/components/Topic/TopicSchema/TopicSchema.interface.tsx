@@ -14,9 +14,11 @@
 import { TableProps } from 'antd';
 import { HTMLAttributes, ReactNode } from 'react';
 import { Field } from '../../../generated/entity/data/topic';
+import { InjectedColumnDetailPanelProps } from '../../Database/ColumnDetailPanel/withColumnDetailPanel';
 
 export interface TopicSchemaFieldsProps
-  extends HTMLAttributes<TableProps<Field>> {
+  extends HTMLAttributes<TableProps<Field>>,
+    Partial<InjectedColumnDetailPanelProps<Field>> {
   schemaTypePlaceholder?: ReactNode;
   defaultExpandAllRows?: boolean;
   showSchemaDisplayTypeSwitch?: boolean;
