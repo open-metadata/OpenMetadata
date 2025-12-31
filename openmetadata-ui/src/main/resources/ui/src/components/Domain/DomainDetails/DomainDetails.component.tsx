@@ -62,7 +62,10 @@ import { addDomains, patchDomains } from '../../../rest/domainAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getFeedCounts, getIsErrorMatch } from '../../../utils/CommonUtils';
-import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
+import {
+  createEntityWithCoverImage,
+  updateEntityWithCoverImage,
+} from '../../../utils/CoverImageUploadUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -647,20 +650,21 @@ const DomainDetails = ({
     setIsNameEditing(false);
   };
 
-  const onStyleSave = async (data: Style) => {
-    const style: Style = {
-      // if color/iconURL is empty or undefined send undefined
-      color: data.color ?? undefined,
-      iconURL: data.iconURL ?? undefined,
-      coverImage: data.coverImage ?? undefined,
-    };
-    const updatedDetails = {
-      ...domain,
-      style,
-    };
-
-    await onUpdate(updatedDetails);
-    setIsStyleEditing(false);
+  const onStyleSave = async (data: Style & { coverImage?: unknown }) => {
+    await updateEntityWithCoverImage({
+      styleData: data,
+      entity: domain,
+      entityType: EntityType.DOMAIN,
+      entityLabel: t('label.domain'),
+      patchEntity: patchDomains,
+      onSuccess: (updatedDomain) => {
+        onUpdate(updatedDomain);
+        setIsStyleEditing(false);
+      },
+      enqueueSnackbar,
+      closeSnackbar,
+      t,
+    });
   };
 
   const handleAssetClick = useCallback(
