@@ -879,11 +879,21 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider,
       newAccessToken.setScopes(scopes != null ? scopes : storedToken.getScopes());
       newAccessToken.setExpiresAt(Instant.now().plusSeconds(tokenExpirySeconds).getEpochSecond());
 
+      // Validate connector name for auditability
+      if (connectorName == null || connectorName.trim().isEmpty()) {
+        LOG.warn(
+            "Token refresh for client {} has no associated connector name. "
+                + "This reduces audit trail visibility. Token: {}",
+            client.getClientId(),
+            mcpAccessToken.substring(0, Math.min(20, mcpAccessToken.length())) + "...");
+        connectorName = "unknown";
+      }
+
       // Store new access token in database
       tokenRepository.storeAccessToken(
           newAccessToken,
           client.getClientId(),
-          connectorName != null ? connectorName : "unknown",
+          connectorName,
           botUser.getName(),
           scopes != null ? scopes : storedToken.getScopes());
 

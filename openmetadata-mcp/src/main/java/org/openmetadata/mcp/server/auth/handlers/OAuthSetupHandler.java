@@ -133,6 +133,84 @@ public class OAuthSetupHandler extends HttpServlet {
   }
 
   /**
+   * Validates a token endpoint URL to prevent SSRF attacks.
+   *
+   * @param tokenEndpoint The token endpoint URL to validate
+   * @throws IllegalArgumentException if the URL is invalid or potentially malicious
+   */
+  private void validateTokenEndpoint(String tokenEndpoint) throws IllegalArgumentException {
+    if (tokenEndpoint == null || tokenEndpoint.trim().isEmpty()) {
+      throw new IllegalArgumentException("Token endpoint URL cannot be null or empty");
+    }
+
+    try {
+      URI uri = URI.create(tokenEndpoint);
+
+      // Validate scheme - only HTTPS and HTTP allowed (HTTP for localhost dev only)
+      String scheme = uri.getScheme();
+      if (scheme == null
+          || (!scheme.equalsIgnoreCase("https") && !scheme.equalsIgnoreCase("http"))) {
+        throw new IllegalArgumentException(
+            "Invalid token endpoint scheme: " + scheme + ". Only HTTPS and HTTP are allowed");
+      }
+
+      // Validate host exists
+      String host = uri.getHost();
+      if (host == null || host.trim().isEmpty()) {
+        throw new IllegalArgumentException("Token endpoint must have a valid host");
+      }
+
+      // Block localhost/private IPs in production (allow only for explicitly localhost hosts)
+      // This prevents SSRF to internal services
+      if (host.equalsIgnoreCase("localhost") || host.equals("127.0.0.1") || host.equals("::1")) {
+        LOG.warn(
+            "Token endpoint points to localhost: {}. This should only be used in development",
+            tokenEndpoint);
+      }
+
+      // Block private IP ranges (10.x.x.x, 172.16-31.x.x, 192.168.x.x)
+      if (host.startsWith("10.")
+          || host.startsWith("192.168.")
+          || (host.startsWith("172.") && isPrivateIPRange172(host))) {
+        throw new IllegalArgumentException(
+            "Token endpoint cannot point to private IP addresses: " + host);
+      }
+
+      // Block link-local addresses (169.254.x.x)
+      if (host.startsWith("169.254.")) {
+        throw new IllegalArgumentException(
+            "Token endpoint cannot point to link-local addresses: " + host);
+      }
+
+      LOG.info("Token endpoint validation passed: {}", tokenEndpoint);
+
+    } catch (IllegalArgumentException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Invalid token endpoint URL: " + e.getMessage(), e);
+    }
+  }
+
+  /**
+   * Checks if an IP address is in the 172.16.0.0 - 172.31.255.255 private range.
+   *
+   * @param host The host IP address
+   * @return true if in private range, false otherwise
+   */
+  private boolean isPrivateIPRange172(String host) {
+    try {
+      String[] parts = host.split("\\.");
+      if (parts.length >= 2) {
+        int secondOctet = Integer.parseInt(parts[1]);
+        return secondOctet >= 16 && secondOctet <= 31;
+      }
+    } catch (NumberFormatException e) {
+      // Not a valid IP format
+    }
+    return false;
+  }
+
+  /**
    * Exchange authorization code for access/refresh tokens.
    *
    * @param request OAuth setup request with authorization code
@@ -147,6 +225,9 @@ public class OAuthSetupHandler extends HttpServlet {
     if (tokenEndpoint == null || tokenEndpoint.isEmpty()) {
       tokenEndpoint = inferTokenEndpoint(connectionConfig);
     }
+
+    // Validate token endpoint to prevent SSRF attacks
+    validateTokenEndpoint(tokenEndpoint);
 
     LOG.info("Exchanging authorization code with token endpoint: {}", tokenEndpoint);
 

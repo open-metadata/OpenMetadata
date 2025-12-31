@@ -123,7 +123,8 @@ public class McpServer implements McpServerProvider {
       if (existingClient == null) {
         OAuthClientInformation mcpClient = new OAuthClientInformation();
         mcpClient.setClientId("openmetadata-mcp-client");
-        mcpClient.setClientSecret("mcp-client-secret"); // Not used for connector OAuth
+        // Generate random client secret (not used for public PKCE clients, but required by spec)
+        mcpClient.setClientSecret(java.util.UUID.randomUUID().toString());
         mcpClient.setRedirectUris(
             Collections.singletonList(new URI("http://localhost:3000/callback")));
         mcpClient.setTokenEndpointAuthMethod("none"); // Public client
