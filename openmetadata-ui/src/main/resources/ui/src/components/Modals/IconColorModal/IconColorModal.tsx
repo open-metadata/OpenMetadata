@@ -23,7 +23,7 @@ import {
 import { Form } from 'antd';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CoverImage, Style } from '../../../generated/type/schema';
+import { Style } from '../../../generated/type/schema';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { iconTooltipDataRender } from '../../../utils/DomainUtils';
 import { getField } from '../../../utils/formUtils';
@@ -76,25 +76,8 @@ const IconColorModal: FC<StyleModalProps> = ({
   const handleSubmit = async (values: Style & { coverImage?: unknown }) => {
     try {
       setSaving(true);
-      console.log(values);
-
-      const coverImageValue = values.coverImage as
-        | { url?: string; position?: { y?: string } }
-        | { file?: File; position?: { y?: string } }
-        | undefined;
-
-      const transformedValues: Style = {
-        ...values,
-        coverImage:
-          coverImageValue && ('url' in coverImageValue || 'file' in coverImageValue)
-            ? {
-              url: 'file' in coverImageValue ? coverImageValue.file : undefined,
-              position: coverImageValue.position?.y,
-            } as CoverImage
-            : undefined,
-      };
-
-      await onSubmit(transformedValues);
+      // Keep 'coverImage' in values - parent will extract and handle upload
+      await onSubmit(values);
     } finally {
       setSaving(false);
     }
