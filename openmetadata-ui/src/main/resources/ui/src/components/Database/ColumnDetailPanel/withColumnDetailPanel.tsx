@@ -11,20 +11,50 @@
  *  limitations under the License.
  */
 
-import React, { ComponentType, useCallback, useMemo, useState } from 'react';
 import { cloneDeep } from 'lodash';
+import React, { ComponentType, useCallback, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Column } from '../../../generated/entity/data/table';
 import { EntityType } from '../../../enums/entity.enum';
-import { ColumnDetailPanel } from './ColumnDetailPanel.component';
-import { findFieldByFQN, updateFieldDescription, updateFieldTags } from '../../../utils/TableUtils';
+import { ContainerDataModel } from '../../../generated/entity/data/container';
+import { MlFeature } from '../../../generated/entity/data/mlmodel';
+import { Task } from '../../../generated/entity/data/pipeline';
+import { Column } from '../../../generated/entity/data/table';
+import {
+  Field,
+  MessageSchemaObject,
+} from '../../../generated/entity/data/topic';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import {
+  findFieldByFQN,
+  updateFieldDescription,
+  updateFieldTags,
+} from '../../../utils/TableUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { ColumnDetailPanel } from './ColumnDetailPanel.component';
 
 /**
- * Configuration interface for the ColumnDetailPanel HOC.
- * Defines how to convert between entity-specific field types and Column type.
+ * Type representing data that can be used in context mode
+ * Supports entities with:
+ * - messageSchema (Topic)
+ * - dataModel (Container)
+ * - columns (Table)
+ * - tasks (Pipeline)
+ * - mlFeatures (ML Model)
  */
-export interface ColumnDetailPanelConfig<TField, TProps> {
+type ContextEntityData = {
+  messageSchema?: MessageSchemaObject;
+  dataModel?: ContainerDataModel;
+  columns?: Column[];
+  tasks?: Task[];
+  mlFeatures?: MlFeature[];
+  deleted?: boolean;
+};
+
+/**
+ * Configuration interface for props-based components
+ */
+export interface PropsBasedConfig<TField, TProps> {
+  mode: 'props';
   /** Entity type for the component */
   entityType: EntityType;
   /** Convert entity field to Column type */
@@ -36,12 +66,34 @@ export interface ColumnDetailPanelConfig<TField, TProps> {
     hasTagEditAccess: boolean;
     hasGlossaryTermEditAccess: boolean;
     hasDescriptionEditAccess: boolean;
+    hasCustomPropertiesEditAccess?: boolean;
+    hasCustomPropertiesViewAccess?: boolean;
   };
   /** Get readOnly state */
   readOnly: (props: TProps) => boolean;
   /** Update handler */
   onUpdate: (props: TProps, updatedFields: TField[]) => void | Promise<void>;
 }
+
+/**
+ * Configuration interface for context-based components
+ */
+export interface ContextBasedConfig<TField, TProps> {
+  mode: 'context';
+  /** Entity type for the component */
+  entityType: EntityType;
+  /** Convert entity field to Column type */
+  column: (field: TField) => Column;
+  /** Get entity FQN (optional, defaults to useParams fqn) */
+  entityFqn?: (props: TProps) => string;
+}
+
+/**
+ * Union type for HOC configuration - supports both props and context modes
+ */
+export type ColumnDetailPanelConfig<TField, TProps> =
+  | PropsBasedConfig<TField, TProps>
+  | ContextBasedConfig<TField, TProps>;
 
 /**
  * Props injected by the HOC into the wrapped component
@@ -57,130 +109,231 @@ export interface InjectedColumnDetailPanelProps<TField = unknown> {
 
 /**
  * Higher-Order Component that adds ColumnDetailPanel functionality to table components.
- * 
- * This HOC encapsulates the common pattern of:
- * - Managing state for selected column and panel visibility
- * - Converting between entity-specific field types and Column type
- * - Handling column updates through the detail panel
- * - Rendering the ColumnDetailPanel component
- * 
- * @param config Configuration for field type conversion and prop mapping
+ *
+ * Supports two modes:
+ * 1. Props mode: Data comes from component props (e.g., SearchIndexFieldsTable)
+ * 2. Context mode: Data comes from useGenericContext (e.g., TopicSchema)
+ *
+ * @param config Configuration for field type conversion and data source
  * @returns A function that wraps a component with ColumnDetailPanel functionality
- * 
- * @example
+ *
+ * @example Props Mode
  * ```tsx
- * const config: ColumnDetailPanelConfig<SearchIndexField, SearchIndexFieldsTableProps> = {
+ * const config: PropsBasedConfig<SearchIndexField, SearchIndexFieldsTableProps> = {
+ *   mode: 'props',
  *   entityType: EntityType.SEARCH_INDEX,
  *   column: (field) => field as unknown as Column,
  *   allFields: (props) => props.searchIndexFields,
- *   permissions: (props) => ({
- *     hasTagEditAccess: props.hasTagEditAccess,
- *     hasGlossaryTermEditAccess: props.hasGlossaryTermEditAccess,
- *     hasDescriptionEditAccess: props.hasDescriptionEditAccess,
- *   }),
+ *   permissions: (props) => ({...}),
  *   readOnly: (props) => props.isReadOnly || false,
  *   onUpdate: (props, fields) => props.onUpdate(fields),
  * };
- * 
  * export default withColumnDetailPanel(config)(SearchIndexFieldsTable);
+ * ```
+ *
+ * @example Context Mode
+ * ```tsx
+ * const config: ContextBasedConfig<Field, TopicSchemaProps> = {
+ *   mode: 'context',
+ *   entityType: EntityType.TOPIC,
+ *   column: (field) => field as unknown as Column,
+ * };
+ * export default withColumnDetailPanel(config)(TopicSchema);
  * ```
  */
 export function withColumnDetailPanel<TField, TProps>(
   config: ColumnDetailPanelConfig<TField, TProps>
 ) {
   return function (
-    WrappedComponent: ComponentType<TProps & InjectedColumnDetailPanelProps<TField>>
+    WrappedComponent: ComponentType<
+      TProps & InjectedColumnDetailPanelProps<TField>
+    >
   ): ComponentType<TProps> {
     const ComponentWithColumnDetailPanel: React.FC<TProps> = (props) => {
       const { fqn } = useParams<{ fqn: string }>();
       const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
       const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
 
-      const allFields = useMemo(() => config.allFields(props), [props]);
-      const entityFqn = useMemo(() => fqn || '', [fqn]);
-      const permissions = useMemo(() => config.permissions(props), [props]);
-      const isReadOnly = useMemo(() => config.readOnly(props), [props]);
+      const context = useGenericContext();
 
-      /**
-       * Handle click on a column to open the detail panel
-       */
-      const handleColumnClick = useCallback(
-        (field: TField) => {
-          const column = config.column(field);
-          setSelectedColumn(column);
-          setIsColumnDetailOpen(true);
-        },
-        [config]
-      );
+      const allFields = useMemo(() => {
+        if (config.mode === 'props') {
+          return config.allFields(props);
+        }
 
-      /**
-       * Handle closing the column detail panel
-       */
+        const data = context?.data as ContextEntityData;
+
+        return (data?.messageSchema?.schemaFields ||
+          data?.dataModel?.columns ||
+          data?.columns ||
+          data?.tasks ||
+          data?.mlFeatures ||
+          []) as TField[];
+      }, [props, context]);
+
+      const entityFqn = useMemo(() => {
+        if (config.mode === 'context' && config.entityFqn) {
+          return config.entityFqn(props);
+        }
+
+        return fqn || '';
+      }, [fqn, props]);
+
+      const permissions = useMemo(() => {
+        if (config.mode === 'props') {
+          return config.permissions(props);
+        }
+
+        const contextPerms = context?.permissions || {};
+
+        return {
+          hasTagEditAccess: contextPerms.EditAll || contextPerms.EditTags,
+          hasGlossaryTermEditAccess:
+            contextPerms.EditAll || contextPerms.EditGlossaryTerms,
+          hasDescriptionEditAccess:
+            contextPerms.EditAll || contextPerms.EditDescription,
+          hasCustomPropertiesEditAccess:
+            contextPerms.EditAll || contextPerms.EditCustomFields,
+          hasCustomPropertiesViewAccess:
+            contextPerms.ViewAll || contextPerms.ViewCustomFields,
+        };
+      }, [props, context]);
+
+      const isReadOnly = useMemo(() => {
+        if (config.mode === 'props') {
+          return config.readOnly(props);
+        }
+
+        return context?.data?.deleted || false;
+      }, [props, context]);
+
+      const handleColumnClick = useCallback((field: TField) => {
+        const column = config.column(field);
+        setSelectedColumn(column);
+        setIsColumnDetailOpen(true);
+      }, []);
+
       const handleCloseColumnDetail = useCallback(() => {
         setIsColumnDetailOpen(false);
         setSelectedColumn(null);
       }, []);
 
-      /**
-       * Handle column update from the detail panel
-       */
-      const handleColumnUpdate = useCallback(
-        (updatedColumn: Column) => {
-          const fields = cloneDeep(allFields);
-          const fqn = updatedColumn.fullyQualifiedName ?? '';
-          
-          updateFieldDescription<TField>(
-            fqn,
-            updatedColumn.description ?? '',
-            fields
-          );
-          updateFieldTags<TField>(
-            fqn,
-            updatedColumn.tags ?? [],
-            fields
-          );
-          
-          config.onUpdate(props, fields);
-          setSelectedColumn(updatedColumn);
+      const handleUpdate = useCallback(
+        async (updatedFields: TField[]) => {
+          if (config.mode === 'props') {
+            await config.onUpdate(props, updatedFields);
+          } else if (context?.onUpdate) {
+            const originalData = context.data;
+            const data = cloneDeep(originalData);
+            const dataWithFields = data as ContextEntityData;
+
+            if (dataWithFields.messageSchema) {
+              dataWithFields.messageSchema = {
+                ...dataWithFields.messageSchema,
+                schemaFields: updatedFields as Field[],
+              };
+            } else if (dataWithFields.dataModel) {
+              dataWithFields.dataModel = {
+                ...dataWithFields.dataModel,
+                columns: updatedFields as Column[],
+              };
+            } else if (dataWithFields.tasks) {
+              dataWithFields.tasks = updatedFields as Task[];
+            } else if (dataWithFields.mlFeatures) {
+              dataWithFields.mlFeatures = updatedFields as MlFeature[];
+            } else {
+              dataWithFields.columns = updatedFields as Column[];
+            }
+            await context.onUpdate(data);
+          }
         },
-        [allFields, props, config]
+        [props, context]
       );
 
-      /**
-       * Handle column navigation
-       */
+      const handleColumnUpdate = useCallback(
+        async (updatedColumn: Column) => {
+          const fields = cloneDeep(allFields);
+          const fqn = updatedColumn.fullyQualifiedName ?? '';
+
+          // These utility functions work with any field type that has the necessary properties
+          (
+            updateFieldDescription as (
+              fqn: string,
+              description: string,
+              fields: TField[]
+            ) => void
+          )(fqn, updatedColumn.description ?? '', fields);
+          (
+            updateFieldTags as (
+              fqn: string,
+              tags: TagLabel[],
+              fields: TField[]
+            ) => void
+          )(fqn, updatedColumn.tags ?? [], fields);
+
+          await handleUpdate(fields);
+
+          const refreshedField = (
+            findFieldByFQN as (
+              fields: TField[],
+              fqn: string
+            ) => TField | undefined
+          )(fields, fqn);
+          if (refreshedField) {
+            setSelectedColumn(config.column(refreshedField));
+          }
+        },
+        [allFields, handleUpdate]
+      );
+
       const handleColumnNavigate = useCallback((column: Column) => {
         setSelectedColumn(column);
       }, []);
 
-      /**
-       * Update column description
-       */
       const updateColumnDescription = useCallback(
         async (fqn: string, description: string) => {
           const fields = cloneDeep(allFields);
-          updateFieldDescription<TField>(fqn, description, fields);
-          await config.onUpdate(props, fields);
-          const updatedField = findFieldByFQN<TField>(fields, fqn);
-          
+          (
+            updateFieldDescription as (
+              fqn: string,
+              description: string,
+              fields: TField[]
+            ) => void
+          )(fqn, description, fields);
+          await handleUpdate(fields);
+          const updatedField = (
+            findFieldByFQN as (
+              fields: TField[],
+              fqn: string
+            ) => TField | undefined
+          )(fields, fqn);
+
           return updatedField as unknown as Column;
         },
-        [allFields, props, config]
+        [allFields, handleUpdate]
       );
 
-      /**
-       * Update column tags
-       */
       const updateColumnTags = useCallback(
         async (fqn: string, tags: TagLabel[]) => {
           const fields = cloneDeep(allFields);
-          updateFieldTags<TField>(fqn, tags ?? [], fields);
-          await config.onUpdate(props, fields);
-          const updatedField = findFieldByFQN<TField>(fields, fqn);
-          
+          (
+            updateFieldTags as (
+              fqn: string,
+              tags: TagLabel[],
+              fields: TField[]
+            ) => void
+          )(fqn, tags ?? [], fields);
+          await handleUpdate(fields);
+          const updatedField = (
+            findFieldByFQN as (
+              fields: TField[],
+              fqn: string
+            ) => TField | undefined
+          )(fields, fqn);
+
           return updatedField as unknown as Column;
         },
-        [allFields, props, config]
+        [allFields, handleUpdate]
       );
 
       return (
@@ -196,11 +349,15 @@ export function withColumnDetailPanel<TField, TProps>(
             column={selectedColumn}
             entityType={config.entityType}
             hasEditPermission={{
-              tags: permissions.hasTagEditAccess,
-              glossaryTerms: permissions.hasGlossaryTermEditAccess,
-              description: permissions.hasDescriptionEditAccess,
-              viewAllPermission: false,
-              customProperties: false,
+              tags: permissions.hasTagEditAccess && !isReadOnly,
+              glossaryTerms:
+                permissions.hasGlossaryTermEditAccess && !isReadOnly,
+              description: permissions.hasDescriptionEditAccess && !isReadOnly,
+              viewAllPermission:
+                permissions.hasCustomPropertiesViewAccess || false,
+              customProperties:
+                (permissions.hasCustomPropertiesEditAccess && !isReadOnly) ||
+                false,
             }}
             isOpen={isColumnDetailOpen}
             tableFqn={entityFqn}

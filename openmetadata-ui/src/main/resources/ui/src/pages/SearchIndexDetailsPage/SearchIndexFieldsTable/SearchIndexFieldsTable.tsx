@@ -30,10 +30,13 @@ import { EntityAttachmentProvider } from '../../../components/common/EntityDescr
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
 import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
+import {
+  ColumnDetailPanelConfig,
+  withColumnDetailPanel,
+} from '../../../components/Database/ColumnDetailPanel/withColumnDetailPanel';
 import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../components/Database/TableDescription/TableDescription.component';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
-import { withColumnDetailPanel, ColumnDetailPanelConfig } from '../../../components/Database/ColumnDetailPanel/withColumnDetailPanel';
 import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -80,8 +83,6 @@ const SearchIndexFieldsTable = ({
   entityFqn,
   fieldAllRowKeys,
   handleColumnClick,
-  isColumnDetailOpen,
-  handleCloseColumnDetail,
 }: SearchIndexFieldsTableProps) => {
   const { t } = useTranslation();
   const [editField, setEditField] = useState<{
@@ -242,7 +243,7 @@ const SearchIndexFieldsTable = ({
               if ((e.target as HTMLElement).closest('button, a')) {
                 return;
               }
-              handleColumnClick(record);
+              handleColumnClick?.(record);
             }}
             onKeyDown={(e) => {
               if (isReadOnly) {
@@ -250,7 +251,7 @@ const SearchIndexFieldsTable = ({
               }
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                handleColumnClick(record);
+                handleColumnClick?.(record);
               }
             }}>
             <span className="break-word">
@@ -423,8 +424,11 @@ const SearchIndexFieldsTable = ({
   );
 };
 
-// Configure the HOC for SearchIndexField type
-const columnDetailPanelConfig: ColumnDetailPanelConfig<SearchIndexField, SearchIndexFieldsTableProps> = {
+const columnDetailPanelConfig: ColumnDetailPanelConfig<
+  SearchIndexField,
+  SearchIndexFieldsTableProps
+> = {
+  mode: 'props',
   entityType: EntityType.SEARCH_INDEX,
   column: (field) => field as unknown as Column,
   allFields: (props) => props.searchIndexFields,
@@ -437,4 +441,6 @@ const columnDetailPanelConfig: ColumnDetailPanelConfig<SearchIndexField, SearchI
   onUpdate: (props, fields) => props.onUpdate(fields),
 };
 
-export default withColumnDetailPanel(columnDetailPanelConfig)(SearchIndexFieldsTable);
+export default withColumnDetailPanel(columnDetailPanelConfig)(
+  SearchIndexFieldsTable
+);
