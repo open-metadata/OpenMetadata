@@ -319,7 +319,15 @@ public class OAuthSetupHandler extends HttpServlet {
             + "&client_secret="
             + URLEncoder.encode(request.getClientSecret(), StandardCharsets.UTF_8);
 
-    // lgtm[java/ssrf] - URI validated with DNS resolution and IP range checks
+    // SSRF Prevention: tokenEndpointUri is validated and sanitized via
+    // validateAndResolveTokenEndpoint()
+    // which performs:
+    // 1. DNS resolution of hostname to actual IP addresses using InetAddress.getAllByName()
+    // 2. Validation of all resolved IPs against loopback, link-local, multicast, and private ranges
+    // 3. URI reconstruction from validated components (breaks taint flow from user input)
+    // The URI passed to HttpRequest.newBuilder() is a newly constructed URI with no connection
+    // to the original user-provided input, ensuring proper SSRF mitigation.
+    // lgtm[java/ssrf]
     HttpRequest httpRequest =
         HttpRequest.newBuilder()
             .uri(tokenEndpointUri)
