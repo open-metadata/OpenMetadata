@@ -248,7 +248,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
         'entityResponseData.displayName',
         subDomainTable.entityResponseData.name
       );
-      console.log((subDomainTable.entityResponseData as any).domains)
       await page.getByTestId('searchBox').fill(subTableName);
       await page.getByTestId('searchBox').press('Enter');
       await page.waitForLoadState('networkidle');
