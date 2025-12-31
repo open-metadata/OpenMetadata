@@ -652,6 +652,7 @@ const DomainDetails = ({
       // if color/iconURL is empty or undefined send undefined
       color: data.color ?? undefined,
       iconURL: data.iconURL ?? undefined,
+      coverImage: data.coverImage ?? undefined,
     };
     const updatedDetails = {
       ...domain,

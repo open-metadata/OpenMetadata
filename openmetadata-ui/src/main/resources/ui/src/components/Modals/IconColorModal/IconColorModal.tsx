@@ -23,7 +23,7 @@ import {
 import { Form } from 'antd';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Style } from '../../../generated/type/schema';
+import { CoverImage, Style } from '../../../generated/type/schema';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { iconTooltipDataRender } from '../../../utils/DomainUtils';
 import { getField } from '../../../utils/formUtils';
@@ -47,36 +47,36 @@ const IconColorModal: FC<StyleModalProps> = ({
 
   const selectedColor = Form.useWatch('color', form);
 
-
-
   const { onImageUpload } =
     imageClassBase.getBlockEditorAttachmentProps() ?? {};
   const isCoverImageUploadAvailable = !!onImageUpload;
 
-  const coverImageField: FieldProp | null = useMemo(
-    () =>
-      includeCoverImage && isCoverImageUploadAvailable
-        ? {
-          name: 'coverImage',
-          id: 'coverImage',
-          label: t('label.cover-image'),
-          required: false,
-          type: FieldTypes.COVER_IMAGE_UPLOAD_MUI,
-          props: {
-            'data-testid': 'cover-image-upload',
-          },
-          formItemProps: {
-            trigger: 'onChange',
-            valuePropName: 'value',
-          },
-        }
-        : null,
-    [includeCoverImage, isCoverImageUploadAvailable, t]
-  );
+  const coverImageField: FieldProp | null = isCoverImageUploadAvailable
+    ? {
+        name: 'coverImage',
+        id: 'root/coverImage',
+        label: t('label.cover-image'),
+        muiLabel: t('label.cover-image'),
+        required: false,
+        type: FieldTypes.COVER_IMAGE_UPLOAD_MUI,
+        props: {
+          'data-testid': 'cover-image',
+          maxSizeMB: 5,
+          maxDimensions: { width: 800, height: 400 },
+          // NO onUpload prop - this makes MUICoverImageUpload store file locally
+          // Parent component will handle upload after domain is created
+        },
+        formItemProps: {
+          valuePropName: 'value',
+          trigger: 'onChange',
+        },
+      }
+    : null;
 
   const handleSubmit = async (values: Style & { coverImage?: unknown }) => {
     try {
       setSaving(true);
+      console.log(values);
 
       const coverImageValue = values.coverImage as
         | { url?: string; position?: { y?: string } }
@@ -88,9 +88,9 @@ const IconColorModal: FC<StyleModalProps> = ({
         coverImage:
           coverImageValue && ('url' in coverImageValue || 'file' in coverImageValue)
             ? {
-              url: 'url' in coverImageValue ? coverImageValue.url : undefined,
+              url: 'file' in coverImageValue ? coverImageValue.file : undefined,
               position: coverImageValue.position?.y,
-            }
+            } as CoverImage
             : undefined,
       };
 
