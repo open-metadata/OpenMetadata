@@ -843,4 +843,158 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await afterAction();
     }
   });
+
+  test('Domain filter should use exact match and prefix with dot to prevent false positives', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+
+    const engineeringDomain = new Domain();
+    const engineering123Domain = new Domain();
+
+    const engineeringTable = new TableClass();
+    const engineering123Table = new TableClass();
+    const engineeringDataTable = new TableClass();
+
+    let engineeringDataSubDomain: SubDomain | undefined;
+
+    try {
+      await engineeringDomain.create(apiContext);
+      await engineering123Domain.create(apiContext);
+
+      engineeringDataSubDomain = new SubDomain(engineeringDomain);
+      await engineeringDataSubDomain.create(apiContext);
+
+      await engineeringTable.create(apiContext);
+      await engineering123Table.create(apiContext);
+      await engineeringDataTable.create(apiContext);
+
+      await engineeringTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains/0',
+            value: {
+              id: engineeringDomain.responseData.id,
+              type: 'domain',
+            },
+          },
+        ],
+      });
+
+      await engineering123Table.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains/0',
+            value: {
+              id: engineering123Domain.responseData.id,
+              type: 'domain',
+            },
+          },
+        ],
+      });
+
+      await engineeringDataTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains/0',
+            value: {
+              id: engineeringDataSubDomain.responseData.id,
+              type: 'domain',
+            },
+          },
+        ],
+      });
+
+      await redirectToExplorePage(page);
+      await waitForAllLoadersToDisappear(page);
+
+      await page.getByTestId('domain-dropdown').click();
+      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+        state: 'visible',
+      });
+
+      const searchDomainRes = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('domain_search_index')
+      );
+      await page
+        .getByTestId('domain-selectable-tree')
+        .getByTestId('searchbar')
+        .fill(engineeringDomain.responseData.displayName);
+      await searchDomainRes;
+
+      const tagSelector = page.getByTestId(
+        `tag-${engineeringDomain.responseData.fullyQualifiedName}`
+      );
+      await tagSelector.waitFor({ state: 'visible' });
+      await tagSelector.click();
+      await waitForAllLoadersToDisappear(page);
+      await page.waitForLoadState('networkidle');
+
+      const engineeringTableName = get(
+        engineeringTable,
+        'entityResponseData.displayName',
+        engineeringTable.entityResponseData.name
+      );
+      await page.getByTestId('searchBox').fill(engineeringTableName);
+      await page.getByTestId('searchBox').press('Enter');
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.locator(
+          `[data-testid="table-data-card_${engineeringTable.entityResponseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+
+      const engineeringDataTableName = get(
+        engineeringDataTable,
+        'entityResponseData.displayName',
+        engineeringDataTable.entityResponseData.name
+      );
+      await page.getByTestId('searchBox').fill(engineeringDataTableName);
+      await page.getByTestId('searchBox').press('Enter');
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.locator(
+          `[data-testid="table-data-card_${engineeringDataTable.entityResponseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+
+      const engineering123TableName = get(
+        engineering123Table,
+        'entityResponseData.displayName',
+        engineering123Table.entityResponseData.name
+      );
+      await page.getByTestId('searchBox').fill(engineering123TableName);
+      await page.getByTestId('searchBox').press('Enter');
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.locator(
+          `[data-testid="table-data-card_${engineering123Table.entityResponseData.fullyQualifiedName}"]`
+        )
+      ).not.toBeVisible();
+    } finally {
+      await engineeringTable.delete(apiContext);
+      await engineering123Table.delete(apiContext);
+      await engineeringDataTable.delete(apiContext);
+      if (engineeringDataSubDomain) {
+        await engineeringDataSubDomain.delete(apiContext);
+      }
+      await engineeringDomain.delete(apiContext);
+      await engineering123Domain.delete(apiContext);
+      await afterAction();
+    }
+  });
 });

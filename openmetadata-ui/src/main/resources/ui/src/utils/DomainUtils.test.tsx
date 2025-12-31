@@ -396,7 +396,7 @@ describe('withDomainFilter', () => {
   });
 
   describe('search query requests', () => {
-    it('should add prefix filter for /search/query with active domain', () => {
+    it('should add should filter with term and prefix for /search/query with active domain', () => {
       mockGetPathName.mockReturnValue('/api/search');
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
@@ -414,8 +414,19 @@ describe('withDomainFilter', () => {
           bool: {
             must: [
               {
-                prefix: {
-                  'domains.fullyQualifiedName': 'engineering',
+                bool: {
+                  should: [
+                    {
+                      term: {
+                        'domains.fullyQualifiedName': 'engineering',
+                      },
+                    },
+                    {
+                      prefix: {
+                        'domains.fullyQualifiedName': 'engineering.',
+                      },
+                    },
+                  ],
                 },
               },
             ],
@@ -437,7 +448,7 @@ describe('withDomainFilter', () => {
       expect(result.params?.query_filter).toBeUndefined();
     });
 
-    it('should preserve existing query_filter and add prefix filter', () => {
+    it('should preserve existing query_filter and add should filter', () => {
       mockGetPathName.mockReturnValue('/api/search');
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
@@ -470,8 +481,19 @@ describe('withDomainFilter', () => {
         },
       });
       expect(filter.query.bool.must[1]).toEqual({
-        prefix: {
-          'domains.fullyQualifiedName': 'engineering',
+        bool: {
+          should: [
+            {
+              term: {
+                'domains.fullyQualifiedName': 'engineering',
+              },
+            },
+            {
+              prefix: {
+                'domains.fullyQualifiedName': 'engineering.',
+              },
+            },
+          ],
         },
       });
     });
@@ -493,8 +515,19 @@ describe('withDomainFilter', () => {
           bool: {
             must: [
               {
-                prefix: {
-                  'domains.fullyQualifiedName': 'engineering',
+                bool: {
+                  should: [
+                    {
+                      term: {
+                        'domains.fullyQualifiedName': 'engineering',
+                      },
+                    },
+                    {
+                      prefix: {
+                        'domains.fullyQualifiedName': 'engineering.',
+                      },
+                    },
+                  ],
                 },
               },
             ],
@@ -523,8 +556,19 @@ describe('withDomainFilter', () => {
 
       expect(filter.query.bool.must).toHaveLength(1);
       expect(filter.query.bool.must[0]).toEqual({
-        prefix: {
-          'domains.fullyQualifiedName': 'engineering',
+        bool: {
+          should: [
+            {
+              term: {
+                'domains.fullyQualifiedName': 'engineering',
+              },
+            },
+            {
+              prefix: {
+                'domains.fullyQualifiedName': 'engineering.',
+              },
+            },
+          ],
         },
       });
     });
@@ -546,8 +590,19 @@ describe('withDomainFilter', () => {
           bool: {
             must: [
               {
-                prefix: {
-                  'domains.fullyQualifiedName': 'engineering',
+                bool: {
+                  should: [
+                    {
+                      term: {
+                        'domains.fullyQualifiedName': 'engineering',
+                      },
+                    },
+                    {
+                      prefix: {
+                        'domains.fullyQualifiedName': 'engineering.',
+                      },
+                    },
+                  ],
                 },
               },
             ],
@@ -589,7 +644,7 @@ describe('withDomainFilter', () => {
       });
     });
 
-    it('should add prefix filter with nested domain for search queries', () => {
+    it('should add should filter with nested domain for search queries', () => {
       mockGetPathName.mockReturnValue('/api/search');
       mockGetState.mockReturnValue({
         activeDomain: 'engineering.backend.services',
@@ -603,8 +658,19 @@ describe('withDomainFilter', () => {
       const filter = JSON.parse(result.params?.query_filter as string);
 
       expect(filter.query.bool.must[0]).toEqual({
-        prefix: {
-          'domains.fullyQualifiedName': 'engineering.backend.services',
+        bool: {
+          should: [
+            {
+              term: {
+                'domains.fullyQualifiedName': 'engineering.backend.services',
+              },
+            },
+            {
+              prefix: {
+                'domains.fullyQualifiedName': 'engineering.backend.services.',
+              },
+            },
+          ],
         },
       });
     });

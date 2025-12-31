@@ -112,8 +112,19 @@ export const withDomainFilter = (
         must: [
           ...mustArray,
           {
-            prefix: {
-              'domains.fullyQualifiedName': activeDomain,
+            bool: {
+              should: [
+                {
+                  term: {
+                    'domains.fullyQualifiedName': activeDomain,
+                  },
+                },
+                {
+                  prefix: {
+                    'domains.fullyQualifiedName': `${activeDomain}.`,
+                  },
+                },
+              ],
             },
           } as QueryFieldInterface,
         ],
