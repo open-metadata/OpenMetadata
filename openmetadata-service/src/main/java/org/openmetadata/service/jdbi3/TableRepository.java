@@ -26,13 +26,11 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
-import static org.openmetadata.service.Entity.getEntities;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
@@ -70,7 +68,7 @@ import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
-import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.tests.CustomMetric;
@@ -86,6 +84,7 @@ import org.openmetadata.schema.type.EntityProfile;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
+import org.openmetadata.schema.type.PipelineObservability;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.SystemProfile;
@@ -126,9 +125,10 @@ import org.openmetadata.service.util.ValidatorUtil;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns";
+  public static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns";
   // Table fields that can be updated in a PUT request
-  static final String UPDATE_FIELDS = "tableConstraints,tablePartition,dataModel,sourceUrl,columns";
+  public static final String UPDATE_FIELDS =
+      "tableConstraints,tablePartition,dataModel,sourceUrl,columns";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -138,6 +138,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static final String TABLE_SAMPLE_DATA_EXTENSION = "table.sampleData";
   public static final String TABLE_PROFILER_CONFIG_EXTENSION = "table.tableProfilerConfig";
+  public static final String TABLE_PIPELINE_OBSERVABILITY_EXTENSION = "table.pipelineObservability";
   public static final String TABLE_COLUMN_EXTENSION = "table.column";
   public static final String TABLE_EXTENSION = "table.table";
   public static final String CUSTOM_METRICS_EXTENSION = "customMetrics.";
@@ -162,11 +163,11 @@ public class TableRepository extends EntityRepository<Table> {
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
     fieldFetchers.put("testSuite", this::fetchAndSetTestSuites);
-    fieldFetchers.put("queries", this::fetchAndSetQueries);
     fieldFetchers.put(TABLE_PROFILER_CONFIG, this::fetchAndSetTableProfilerConfigs);
     fieldFetchers.put("joins", this::fetchAndSetJoins);
     fieldFetchers.put(CUSTOM_METRICS, this::fetchAndSetCustomMetrics);
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
+    fieldFetchers.put("pipelineObservability", this::fetchAndSetPipelineObservability);
   }
 
   @Override
@@ -197,15 +198,6 @@ public class TableRepository extends EntityRepository<Table> {
       for (Column column : table.getColumns()) {
         column.setCustomMetrics(getCustomMetrics(table, column.getName()));
       }
-    }
-    if (fields.contains("queries")) {
-      List<Query> queriesEntity =
-          getEntities(
-              listOrEmpty(findTo(table.getId(), TABLE, Relationship.MENTIONED_IN, QUERY)),
-              "id",
-              ALL);
-      List<String> queries = listOrEmpty(queriesEntity).stream().map(Query::getQuery).toList();
-      table.setQueries(queries);
     }
   }
 
@@ -251,13 +243,6 @@ public class TableRepository extends EntityRepository<Table> {
     setFieldFromMap(true, tables, batchFetchTestSuites(tables), Table::setTestSuite);
   }
 
-  private void fetchAndSetQueries(List<Table> tables, Fields fields) {
-    if (!fields.contains("queries") || tables == null || tables.isEmpty()) {
-      return;
-    }
-    setFieldFromMap(true, tables, batchFetchQueries(tables), Table::setQueries);
-  }
-
   private void fetchAndSetTableProfilerConfigs(List<Table> tables, Fields fields) {
     if (!fields.contains(TABLE_PROFILER_CONFIG) || tables == null || tables.isEmpty()) {
       return;
@@ -292,7 +277,7 @@ public class TableRepository extends EntityRepository<Table> {
     Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
     for (Table table : tables) {
       table.setTags(
-          addDerivedTags(
+          addDerivedTagsGracefully(
               tagsMap.getOrDefault(table.getFullyQualifiedName(), Collections.emptyList())));
     }
 
@@ -300,6 +285,14 @@ public class TableRepository extends EntityRepository<Table> {
       bulkPopulateEntityFieldTags(
           tables, entityType, Table::getColumns, Table::getFullyQualifiedName);
     }
+  }
+
+  private void fetchAndSetPipelineObservability(List<Table> tables, Fields fields) {
+    if (!fields.contains("pipelineObservability") || tables == null || tables.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true, tables, batchFetchPipelineObservability(tables), Table::setPipelineObservability);
   }
 
   @Override
@@ -511,6 +504,153 @@ public class TableRepository extends EntityRepository<Table> {
     daoCollection.entityExtensionDAO().delete(tableId, TABLE_SAMPLE_DATA_EXTENSION);
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table;
+  }
+
+  @Transaction
+  public Table addPipelineObservability(
+      UUID tableId, List<PipelineObservability> pipelineObservabilityList) {
+    // Validate the request content
+    Table table = find(tableId, NON_DELETED);
+
+    // Store each pipeline observability individually using pipeline FQN as unique key
+    for (PipelineObservability observability : pipelineObservabilityList) {
+      if (observability.getPipeline() != null
+          && observability.getPipeline().getFullyQualifiedName() != null) {
+        String pipelineFqn = observability.getPipeline().getFullyQualifiedName();
+        String extension = TABLE_PIPELINE_OBSERVABILITY_EXTENSION + "." + pipelineFqn;
+
+        daoCollection
+            .entityExtensionDAO()
+            .insert(
+                tableId, extension, "pipelineObservability", JsonUtils.pojoToJson(observability));
+
+        // Index pipeline status data to Elasticsearch for Trends and Metrics APIs
+        try {
+          indexPipelineStatus(table, observability);
+        } catch (Exception e) {
+          LOG.error(
+              "Failed to index pipeline status for table {} and pipeline {}: {}",
+              table.getFullyQualifiedName(),
+              pipelineFqn,
+              e.getMessage(),
+              e);
+        }
+      }
+    }
+
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    // Return table with updated observability data
+    return table.withPipelineObservability(getAllPipelineObservability(table));
+  }
+
+  @Transaction
+  public Table addSinglePipelineObservability(
+      UUID tableId, PipelineObservability pipelineObservability) {
+    // Validate the request content
+    Table table = find(tableId, NON_DELETED);
+
+    if (pipelineObservability.getPipeline() != null
+        && pipelineObservability.getPipeline().getFullyQualifiedName() != null) {
+      String pipelineFqn = pipelineObservability.getPipeline().getFullyQualifiedName();
+      String extension = TABLE_PIPELINE_OBSERVABILITY_EXTENSION + "." + pipelineFqn;
+
+      daoCollection
+          .entityExtensionDAO()
+          .insert(
+              tableId,
+              extension,
+              "pipelineObservability",
+              JsonUtils.pojoToJson(pipelineObservability));
+
+      // Index pipeline status data to Elasticsearch for Trends and Metrics APIs
+      try {
+        indexPipelineStatus(table, pipelineObservability);
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to index pipeline status for table {} and pipeline {}: {}",
+            table.getFullyQualifiedName(),
+            pipelineFqn,
+            e.getMessage(),
+            e);
+      }
+    }
+
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    return table.withPipelineObservability(getAllPipelineObservability(table));
+  }
+
+  public List<PipelineObservability> getPipelineObservability(UUID tableId) {
+    // Validate the request content
+    Table table = find(tableId, NON_DELETED);
+    return getAllPipelineObservability(table);
+  }
+
+  public List<PipelineObservability> getPipelineObservabilityByName(String tableFqn) {
+    // Validate the request content
+    Table table = findByName(tableFqn, NON_DELETED);
+    return getAllPipelineObservability(table);
+  }
+
+  private List<PipelineObservability> getAllPipelineObservability(Table table) {
+    List<ExtensionRecord> extensionRecords =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensions(table.getId(), TABLE_PIPELINE_OBSERVABILITY_EXTENSION);
+
+    List<PipelineObservability> pipelineObservabilityList = new ArrayList<>();
+    for (ExtensionRecord extensionRecord : extensionRecords) {
+      PipelineObservability observability =
+          JsonUtils.readValue(extensionRecord.extensionJson(), PipelineObservability.class);
+
+      // Enrich with serviceType if not already present
+      if (observability.getServiceType() == null && observability.getPipeline() != null) {
+        try {
+          Pipeline pipeline =
+              Entity.getEntity(
+                  Entity.PIPELINE, observability.getPipeline().getId(), "", Include.NON_DELETED);
+          if (pipeline != null && pipeline.getServiceType() != null) {
+            observability.setServiceType(pipeline.getServiceType());
+          }
+        } catch (Exception e) {
+          LOG.warn(
+              "Failed to fetch serviceType for pipeline {}: {}",
+              observability.getPipeline().getFullyQualifiedName(),
+              e.getMessage());
+        }
+      }
+
+      pipelineObservabilityList.add(observability);
+    }
+
+    return pipelineObservabilityList;
+  }
+
+  @Transaction
+  public Table deletePipelineObservability(UUID tableId) {
+    // Validate the request content and delete all pipeline observability data
+    Table table = find(tableId, NON_DELETED);
+
+    List<ExtensionRecord> extensionRecords =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensions(tableId, TABLE_PIPELINE_OBSERVABILITY_EXTENSION);
+
+    for (ExtensionRecord record : extensionRecords) {
+      daoCollection.entityExtensionDAO().delete(tableId, record.extensionName());
+    }
+
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    return table;
+  }
+
+  @Transaction
+  public Table deleteSinglePipelineObservability(UUID tableId, String pipelineFqn) {
+    // Validate the request content and delete specific pipeline observability
+    Table table = find(tableId, NON_DELETED);
+    String extension = TABLE_PIPELINE_OBSERVABILITY_EXTENSION + "." + pipelineFqn;
+    daoCollection.entityExtensionDAO().delete(tableId, extension);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    return table.withPipelineObservability(getAllPipelineObservability(table));
   }
 
   public TableProfilerConfig getTableProfilerConfig(Table table) {
@@ -1995,6 +2135,56 @@ public class TableRepository extends EntityRepository<Table> {
     return configMap;
   }
 
+  private Map<UUID, List<PipelineObservability>> batchFetchPipelineObservability(
+      List<Table> tables) {
+    Map<UUID, List<PipelineObservability>> observabilityMap = new HashMap<>();
+    if (tables == null || tables.isEmpty()) {
+      return observabilityMap;
+    }
+
+    // Batch fetch all pipeline observability extensions for the tables
+    List<CollectionDAO.ExtensionRecordWithId> records =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensionBatch(entityListToStrings(tables), TABLE_PIPELINE_OBSERVABILITY_EXTENSION);
+
+    // Group records by table ID and collect all pipeline observability data
+    Map<UUID, List<CollectionDAO.ExtensionRecordWithId>> recordsByTableId = new HashMap<>();
+    for (CollectionDAO.ExtensionRecordWithId record : records) {
+      recordsByTableId.computeIfAbsent(record.id(), k -> new ArrayList<>()).add(record);
+    }
+
+    // Convert extension records to PipelineObservability objects for each table
+    for (Map.Entry<UUID, List<CollectionDAO.ExtensionRecordWithId>> entry :
+        recordsByTableId.entrySet()) {
+      UUID tableId = entry.getKey();
+      List<PipelineObservability> tableObservabilityList = new ArrayList<>();
+
+      for (CollectionDAO.ExtensionRecordWithId record : entry.getValue()) {
+        try {
+          PipelineObservability observability =
+              JsonUtils.readValue(record.extensionJson(), PipelineObservability.class);
+          tableObservabilityList.add(observability);
+        } catch (Exception e) {
+          LOG.warn(
+              "Failed to parse pipeline observability for table {}: {}", tableId, e.getMessage());
+        }
+      }
+
+      observabilityMap.put(
+          tableId, tableObservabilityList.isEmpty() ? null : tableObservabilityList);
+    }
+
+    // Ensure all tables have an entry in the map
+    for (Table table : tables) {
+      if (!observabilityMap.containsKey(table.getId())) {
+        observabilityMap.put(table.getId(), null);
+      }
+    }
+
+    return observabilityMap;
+  }
+
   private Map<UUID, EntityReference> batchFetchTestSuites(List<Table> tables) {
     Map<UUID, EntityReference> testSuiteMap = new HashMap<>();
     if (tables == null || tables.isEmpty()) {
@@ -2014,40 +2204,6 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     return testSuiteMap;
-  }
-
-  private Map<UUID, List<String>> batchFetchQueries(List<Table> tables) {
-    Map<UUID, List<String>> queriesMap = new HashMap<>();
-    if (tables == null || tables.isEmpty()) {
-      return queriesMap;
-    }
-
-    List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
-            .relationshipDAO()
-            .findToBatch(entityListToStrings(tables), Relationship.MENTIONED_IN.ordinal(), QUERY);
-
-    Map<UUID, List<EntityReference>> queryRefsMap = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject relRecord : records) {
-      UUID tableId = UUID.fromString(relRecord.getFromId());
-      EntityReference queryRef =
-          getEntityReferenceById(QUERY, UUID.fromString(relRecord.getToId()), NON_DELETED);
-      queryRefsMap.computeIfAbsent(tableId, k -> new ArrayList<>()).add(queryRef);
-    }
-
-    for (UUID tableId : queryRefsMap.keySet()) {
-      List<Query> queriesEntity = getEntities(queryRefsMap.get(tableId), "id", ALL);
-      List<String> queries = queriesEntity.stream().map(Query::getQuery).toList();
-      queriesMap.put(tableId, queries);
-    }
-
-    for (Table table : tables) {
-      if (!queriesMap.containsKey(table.getId())) {
-        queriesMap.put(table.getId(), List.of());
-      }
-    }
-
-    return queriesMap;
   }
 
   private Map<UUID, TableJoins> batchFetchJoins(List<Table> tables) {
@@ -2186,5 +2342,75 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
     return flattened;
+  }
+
+  private void indexPipelineStatus(Table table, PipelineObservability observability)
+      throws IOException {
+    if (observability.getPipeline() == null
+        || observability.getPipeline().getFullyQualifiedName() == null) {
+      return;
+    }
+
+    String pipelineFqn = observability.getPipeline().getFullyQualifiedName();
+    String pipelineId =
+        observability.getPipeline().getId() != null
+            ? observability.getPipeline().getId().toString()
+            : "";
+    String pipelineName = observability.getPipeline().getName();
+
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("pipelineId", pipelineId);
+    doc.put("pipelineFqn", pipelineFqn);
+    doc.put("pipelineName", pipelineName);
+    doc.put("serviceType", table.getServiceType());
+    doc.put("serviceName", table.getService() != null ? table.getService().getName() : "");
+    doc.put("tableId", table.getId().toString());
+    doc.put("tableFqn", table.getFullyQualifiedName());
+
+    if (observability.getLastRunStatus() != null) {
+      doc.put("executionStatus", observability.getLastRunStatus().value());
+    }
+
+    doc.put(
+        "timestamp",
+        observability.getLastRunTime() != null
+            ? observability.getLastRunTime()
+            : System.currentTimeMillis());
+
+    if (observability.getStartTime() != null) {
+      doc.put("startTime", observability.getStartTime());
+    }
+
+    if (observability.getEndTime() != null) {
+      doc.put("endTime", observability.getEndTime());
+
+      // Calculate runtime in milliseconds (endTime - startTime)
+      if (observability.getStartTime() != null) {
+        Long runtime = observability.getEndTime() - observability.getStartTime();
+        doc.put("runtime", runtime);
+      }
+    }
+
+    if (observability.getScheduleInterval() != null) {
+      doc.put("scheduleInterval", observability.getScheduleInterval());
+    }
+
+    doc.put("deleted", false);
+    doc.put("entityType", "pipelineStatus");
+
+    String docId = pipelineFqn + "_" + table.getId().toString();
+    String docJson = JsonUtils.pojoToJson(doc);
+
+    // Use getIndexOrAliasName to get the correct index name with prefix
+    String indexName =
+        Entity.getSearchRepository().getIndexOrAliasName("pipeline_status_search_index");
+    searchRepository.getSearchClient().createEntity(indexName, docId, docJson);
+
+    LOG.debug(
+        "Indexed pipeline status for table {} and pipeline {} to index {} with doc ID {}",
+        table.getFullyQualifiedName(),
+        pipelineFqn,
+        indexName,
+        docId);
   }
 }

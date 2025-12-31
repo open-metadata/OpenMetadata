@@ -3,6 +3,8 @@ package org.openmetadata.service.resources.domains;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -19,12 +21,17 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -33,12 +40,14 @@ import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TableRepository;
@@ -46,6 +55,7 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DomainResource.DomainList;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityHierarchyList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -282,70 +292,173 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     // Create another root domain without hierarchy
     Domain secondRootDomain = createEntity(createRequest("B_ROOT_DOMAIN"), ADMIN_AUTH_HEADERS);
 
-    List<EntityHierarchy> hierarchyList = getDomainsHierarchy(ADMIN_AUTH_HEADERS).getData();
-
+    // Store IDs and FQNs for lambda expressions
     UUID rootDomainId = rootDomain.getId();
+    UUID secondRootDomainId = secondRootDomain.getId();
     UUID subDomain1Id = subDomain1.getId();
     UUID subDomain2Id = subDomain2.getId();
     UUID subDomain3Id = subDomain3.getId();
     UUID subSubDomain1Id = subSubDomain1.getId();
     UUID subSubDomain2Id = subSubDomain2.getId();
     UUID subSubDomain3Id = subSubDomain3.getId();
-    UUID secondRootDomainId = secondRootDomain.getId();
+    String rootDomainFqn = rootDomain.getFullyQualifiedName();
+    String subDomain1Fqn = subDomain1.getFullyQualifiedName();
+    String secondRootDomainFqn = secondRootDomain.getFullyQualifiedName();
 
-    EntityHierarchy rootHierarchy =
-        hierarchyList.stream().filter(h -> h.getId().equals(rootDomainId)).findAny().orElse(null);
-    assertNotNull(rootHierarchy);
-    assertEquals(3, rootHierarchy.getChildren().size());
+    // Test 1: Get root domains (no directChildrenOf parameter) - should include our test root
+    // domains
+    EntityHierarchyList rootDomainsResult = getDomainsHierarchy(ADMIN_AUTH_HEADERS);
+    List<EntityHierarchy> rootDomains = rootDomainsResult.getData();
+    assertTrue(
+        rootDomains.size() >= 2,
+        "Should have at least our 2 root domains (may have more from other tests)");
+    assertTrue(
+        rootDomains.stream().anyMatch(h -> h.getId().equals(rootDomainId)),
+        "Should contain first root domain");
+    assertTrue(
+        rootDomains.stream().anyMatch(h -> h.getId().equals(secondRootDomainId)),
+        "Should contain second root domain");
+    assertNotNull(rootDomainsResult.getPaging(), "Paging should not be null");
+    assertTrue(
+        rootDomainsResult.getPaging().getTotal() >= 2,
+        "Total count should be at least 2 (may have more from other tests)");
 
-    List<EntityHierarchy> rootChildren = rootHierarchy.getChildren();
+    // Test 2: Get direct children of root domain
+    EntityHierarchyList rootChildrenResult =
+        getDomainsHierarchyWithDirectChildrenOf(rootDomainFqn, ADMIN_AUTH_HEADERS);
+    List<EntityHierarchy> rootChildren = rootChildrenResult.getData();
     assertEquals(3, rootChildren.size());
     assertTrue(rootChildren.stream().anyMatch(h -> h.getId().equals(subDomain1Id)));
     assertTrue(rootChildren.stream().anyMatch(h -> h.getId().equals(subDomain2Id)));
     assertTrue(rootChildren.stream().anyMatch(h -> h.getId().equals(subDomain3Id)));
+    assertNotNull(rootChildrenResult.getPaging(), "Paging should not be null");
+    assertEquals(3, rootChildrenResult.getPaging().getTotal(), "Total count should be 3");
 
-    EntityHierarchy subDomain1Hierarchy =
-        rootChildren.stream().filter(h -> h.getId().equals(subDomain1Id)).findAny().orElse(null);
-    assertNotNull(subDomain1Hierarchy);
-    assertEquals(3, subDomain1Hierarchy.getChildren().size());
+    // Test 2b: Test pagination - limit results but verify total count is still correct
+    // This specifically tests that total != data.size() when limit is applied
+    EntityHierarchyList rootChildrenPage1 =
+        getDomainsHierarchyWithPagination(rootDomainFqn, 2, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        2,
+        rootChildrenPage1.getData().size(),
+        "Should return only 2 items due to limit, even though there are 3 total");
+    assertNotNull(rootChildrenPage1.getPaging(), "Paging should not be null");
+    assertEquals(
+        3,
+        rootChildrenPage1.getPaging().getTotal(),
+        "Total should still be 3 even though only 2 items returned due to limit");
 
-    List<EntityHierarchy> subDomain1Children = subDomain1Hierarchy.getChildren();
+    EntityHierarchyList rootChildrenPage2 =
+        getDomainsHierarchyWithPagination(rootDomainFqn, 2, 2, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        1, rootChildrenPage2.getData().size(), "Should return only 1 remaining item on page 2");
+    assertNotNull(rootChildrenPage2.getPaging(), "Paging should not be null");
+    assertEquals(3, rootChildrenPage2.getPaging().getTotal(), "Total should still be 3 on page 2");
+
+    // Test 3: Get direct children of subDomain1
+    EntityHierarchyList subDomain1ChildrenResult =
+        getDomainsHierarchyWithDirectChildrenOf(subDomain1Fqn, ADMIN_AUTH_HEADERS);
+    List<EntityHierarchy> subDomain1Children = subDomain1ChildrenResult.getData();
+    assertEquals(3, subDomain1Children.size());
     assertTrue(subDomain1Children.stream().anyMatch(h -> h.getId().equals(subSubDomain1Id)));
     assertTrue(subDomain1Children.stream().anyMatch(h -> h.getId().equals(subSubDomain2Id)));
     assertTrue(subDomain1Children.stream().anyMatch(h -> h.getId().equals(subSubDomain3Id)));
+    assertNotNull(subDomain1ChildrenResult.getPaging(), "Paging should not be null");
+    assertEquals(3, subDomain1ChildrenResult.getPaging().getTotal(), "Total count should be 3");
 
-    EntityHierarchy subSubDomain1Hierarchy =
-        subDomain1Children.stream()
-            .filter(h -> h.getId().equals(subSubDomain1Id))
-            .findAny()
-            .orElse(null);
-    assertNotNull(subSubDomain1Hierarchy);
-    assertEquals(0, subSubDomain1Hierarchy.getChildren().size());
+    // Test 4: Verify second root domain has no children
+    EntityHierarchyList secondRootChildrenResult =
+        getDomainsHierarchyWithDirectChildrenOf(secondRootDomainFqn, ADMIN_AUTH_HEADERS);
+    List<EntityHierarchy> secondRootChildren = secondRootChildrenResult.getData();
+    assertEquals(0, secondRootChildren.size());
+    assertNotNull(secondRootChildrenResult.getPaging(), "Paging should not be null");
+    assertEquals(0, secondRootChildrenResult.getPaging().getTotal(), "Total count should be 0");
+  }
 
-    EntityHierarchy subSubDomain2Hierarchy =
-        subDomain1Children.stream()
-            .filter(h -> h.getId().equals(subSubDomain2Id))
-            .findAny()
-            .orElse(null);
-    assertNotNull(subSubDomain2Hierarchy);
-    assertEquals(0, subSubDomain2Hierarchy.getChildren().size());
+  @Test
+  void test_domainHierarchyPagination(TestInfo test) throws HttpResponseException {
+    // Create root domain for testing pagination
+    Domain paginationRoot = createEntity(createRequest("paginationRoot"), ADMIN_AUTH_HEADERS);
 
-    EntityHierarchy subSubDomain3Hierarchy =
-        subDomain1Children.stream()
-            .filter(h -> h.getId().equals(subSubDomain3Id))
-            .findAny()
-            .orElse(null);
-    assertNotNull(subSubDomain3Hierarchy);
-    assertEquals(0, subSubDomain3Hierarchy.getChildren().size());
+    // Create child domains under paginationRoot
+    Domain child1 =
+        createEntity(
+            createRequest("pagChild1").withParent(paginationRoot.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    Domain child2 =
+        createEntity(
+            createRequest("pagChild2").withParent(paginationRoot.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    Domain child3 =
+        createEntity(
+            createRequest("pagChild3").withParent(paginationRoot.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
 
-    // Verify the new root domain without hierarchy
-    EntityHierarchy secondRootDomainHierarchy =
-        hierarchyList.stream()
-            .filter(h -> h.getId().equals(secondRootDomainId))
-            .findAny()
-            .orElse(null);
-    assertNotNull(secondRootDomainHierarchy);
-    assertEquals(0, secondRootDomainHierarchy.getChildren().size());
+    // Test pagination of children with offset - should return 3 total children
+    List<EntityHierarchy> allChildren =
+        getDomainsHierarchyWithPagination(
+                paginationRoot.getFullyQualifiedName(), 100, 0, ADMIN_AUTH_HEADERS)
+            .getData();
+    assertEquals(3, allChildren.size(), "Should have 3 total children");
+
+    // Test first page (limit 2)
+    List<EntityHierarchy> childPage1 =
+        getDomainsHierarchyWithPagination(
+                paginationRoot.getFullyQualifiedName(), 2, 0, ADMIN_AUTH_HEADERS)
+            .getData();
+    assertEquals(2, childPage1.size(), "First page should have 2 children");
+
+    // Test second page (limit 2, offset 2)
+    List<EntityHierarchy> childPage2 =
+        getDomainsHierarchyWithPagination(
+                paginationRoot.getFullyQualifiedName(), 2, 2, ADMIN_AUTH_HEADERS)
+            .getData();
+    assertEquals(1, childPage2.size(), "Second page should have 1 remaining child");
+
+    // Verify all children IDs are present across pages
+    Set<UUID> allIds = new HashSet<>();
+    allIds.addAll(childPage1.stream().map(EntityHierarchy::getId).collect(Collectors.toSet()));
+    allIds.addAll(childPage2.stream().map(EntityHierarchy::getId).collect(Collectors.toSet()));
+    assertEquals(3, allIds.size(), "Combined pages should have all 3 unique children");
+  }
+
+  @Test
+  void test_domainChildrenCount(TestInfo test) throws HttpResponseException {
+    // Create root domain
+    Domain root = createEntity(createRequest("rootWithCount"), ADMIN_AUTH_HEADERS);
+
+    // Create child domains
+    Domain child1 =
+        createEntity(
+            createRequest("countChild1").withParent(root.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    Domain child2 =
+        createEntity(
+            createRequest("countChild2").withParent(root.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create grandchild domains under child1
+    Domain grandchild1 =
+        createEntity(
+            createRequest("grandchild1").withParent(child1.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    Domain grandchild2 =
+        createEntity(
+            createRequest("grandchild2").withParent(child1.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Get root domain with childrenCount field
+    Domain rootWithCount = getEntity(root.getId(), "childrenCount", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        4, rootWithCount.getChildrenCount()); // 2 children + 2 grandchildren = 4 total nested
+
+    // Get child1 with childrenCount field
+    Domain child1WithCount = getEntity(child1.getId(), "childrenCount", ADMIN_AUTH_HEADERS);
+    assertEquals(2, child1WithCount.getChildrenCount()); // 2 grandchildren
+
+    // Get child2 with childrenCount field
+    Domain child2WithCount = getEntity(child2.getId(), "childrenCount", ADMIN_AUTH_HEADERS);
+    assertEquals(0, child2WithCount.getChildrenCount()); // No children
   }
 
   private void assertParent(Domain domain, EntityReference expectedParent)
@@ -360,6 +473,26 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
       throws HttpResponseException {
     WebTarget target = getResource("domains/hierarchy");
     target = target.queryParam("limit", 25);
+    return TestUtils.get(target, EntityHierarchyList.class, authHeaders);
+  }
+
+  private EntityHierarchyList getDomainsHierarchyWithDirectChildrenOf(
+      String directChildrenOf, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource("domains/hierarchy");
+    target = target.queryParam("limit", 25);
+    target = target.queryParam("directChildrenOf", directChildrenOf);
+    return TestUtils.get(target, EntityHierarchyList.class, authHeaders);
+  }
+
+  private EntityHierarchyList getDomainsHierarchyWithPagination(
+      String directChildrenOf, int limit, int offset, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("domains/hierarchy");
+    target = target.queryParam("limit", limit);
+    target = target.queryParam("offset", offset);
+    if (directChildrenOf != null) {
+      target = target.queryParam("directChildrenOf", directChildrenOf);
+    }
     return TestUtils.get(target, EntityHierarchyList.class, authHeaders);
   }
 
@@ -428,9 +561,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
 
   @Test
   void test_domainAssetsAndAssetsCountWithSubdomainInheritance(TestInfo test) throws IOException {
-    // Verify that domain.assets and domain.assetsCount include:
-    // 1. Direct assets added to the domain
-    // 2. Assets inherited from all subdomains in the hierarchy
+    // Tests assets API includes direct assets and inherited assets from subdomains
     Domain domain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     Domain subDomain =
         createEntity(
@@ -443,59 +574,74 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     Table table2 =
         tableTest.createEntity(tableTest.createRequest(getEntityName(test, 3)), ADMIN_AUTH_HEADERS);
 
-    // Initially, domain should have no assets
-    Domain fetchedDomain = getEntity(domain.getId(), "assets,assetsCount", ADMIN_AUTH_HEADERS);
-    assertNotNull(fetchedDomain.getAssets());
-    assertEquals(0, fetchedDomain.getAssets().size());
-    assertNotNull(fetchedDomain.getAssetsCount());
-    assertEquals(0, fetchedDomain.getAssetsCount());
+    ResultList<EntityReference> assets = getAssets(domain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertNotNull(assets.getData());
+    assertEquals(0, assets.getData().size());
+    assertNotNull(assets.getPaging().getTotal());
+    assertEquals(0, assets.getPaging().getTotal());
 
-    // Add 1 direct asset to root domain
     bulkAddAssets(
         domain.getFullyQualifiedName(),
         new BulkAssets().withAssets(List.of(table1.getEntityReference())));
 
-    fetchedDomain = getEntity(domain.getId(), "assets,assetsCount", ADMIN_AUTH_HEADERS);
-    assertEquals(1, fetchedDomain.getAssets().size());
-    assertEquals(1, fetchedDomain.getAssetsCount());
-    assertTrue(fetchedDomain.getAssets().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assets = getAssets(domain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(1, assets.getData().size());
+    assertEquals(1, assets.getPaging().getTotal());
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
 
-    // Add 1 asset to subdomain
     bulkAddAssets(
         subDomain.getFullyQualifiedName(),
         new BulkAssets().withAssets(List.of(table2.getEntityReference())));
 
-    // Verify root domain now shows 2 assets: 1 direct + 1 inherited from subdomain
-    fetchedDomain = getEntity(domain.getId(), "assets,assetsCount", ADMIN_AUTH_HEADERS);
+    assets = getAssets(domain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
     assertEquals(
-        2,
-        fetchedDomain.getAssets().size(),
-        "Domain should have 1 direct asset + 1 from subdomain");
-    assertEquals(2, fetchedDomain.getAssetsCount());
-    assertTrue(fetchedDomain.getAssets().stream().anyMatch(a -> a.getId().equals(table1.getId())));
-    assertTrue(fetchedDomain.getAssets().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+        2, assets.getData().size(), "Domain should have 1 direct asset + 1 from subdomain");
+    assertEquals(2, assets.getPaging().getTotal());
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
 
-    // Verify subdomain shows only its direct asset
-    Domain fetchedSubDomain =
-        getEntity(subDomain.getId(), "assets,assetsCount", ADMIN_AUTH_HEADERS);
-    assertEquals(1, fetchedSubDomain.getAssets().size());
-    assertEquals(1, fetchedSubDomain.getAssetsCount());
-    assertTrue(
-        fetchedSubDomain.getAssets().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+    ResultList<EntityReference> subDomainAssets =
+        getAssets(subDomain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(1, subDomainAssets.getData().size());
+    assertEquals(1, subDomainAssets.getPaging().getTotal());
+    assertTrue(subDomainAssets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+
+    // Test bulk remove assets
+    bulkRemoveAssets(
+        subDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table2.getEntityReference())));
+
+    // Verify table2 is removed from subdomain
+    subDomainAssets = getAssets(subDomain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(0, subDomainAssets.getData().size());
+    assertEquals(0, subDomainAssets.getPaging().getTotal());
+
+    // Verify parent domain now only has table1
+    assets = getAssets(domain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(1, assets.getData().size());
+    assertEquals(1, assets.getPaging().getTotal());
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertFalse(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+
+    // Remove table1 from parent domain
+    bulkRemoveAssets(
+        domain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+
+    // Verify domain has no assets
+    assets = getAssets(domain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(0, assets.getData().size());
+    assertEquals(0, assets.getPaging().getTotal());
   }
 
   @Test
   void test_domainAssetsAndAssetsCountWithAssetInheritance(TestInfo test) throws IOException {
-    // Verify that when a domain is assigned to a parent entity (like database schema),
-    // the domain.assets and domain.assetsCount automatically include:
-    // 1. The parent entity itself (schema)
-    // 2. All child entities (tables) that belong to that parent
+    // Tests assets API includes parent entity and all child entities when domain is assigned
     Domain domain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
 
     DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
     TableResourceTest tableTest = new TableResourceTest();
 
-    // Create a schema with 2 tables
     DatabaseSchema schema =
         schemaTest.createEntity(
             schemaTest.createRequest(getEntityName(test, 1)), ADMIN_AUTH_HEADERS);
@@ -513,26 +659,132 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
                 .withDatabaseSchema(schema.getFullyQualifiedName()),
             ADMIN_AUTH_HEADERS);
 
-    // Assign domain to the schema (not using bulk assets API)
     String json = JsonUtils.pojoToJson(schema);
     schema.withDomains(List.of(domain.getEntityReference()));
     schemaTest.patchEntity(schema.getId(), json, schema, ADMIN_AUTH_HEADERS);
 
-    // Verify domain shows 3 assets: 1 schema + 2 tables inherited from that schema
-    Domain fetchedDomain = getEntity(domain.getId(), "assets,assetsCount", ADMIN_AUTH_HEADERS);
+    ResultList<EntityReference> assets = getAssets(domain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
     assertEquals(
-        3,
-        fetchedDomain.getAssets().size(),
-        "Domain should have 1 schema + 2 inherited tables from schema");
-    assertEquals(3, fetchedDomain.getAssetsCount());
-    assertTrue(fetchedDomain.getAssets().stream().anyMatch(a -> a.getId().equals(schema.getId())));
-    assertTrue(fetchedDomain.getAssets().stream().anyMatch(a -> a.getId().equals(table1.getId())));
-    assertTrue(fetchedDomain.getAssets().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+        3, assets.getData().size(), "Domain should have 1 schema + 2 inherited tables from schema");
+    assertEquals(3, assets.getPaging().getTotal());
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(schema.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
   }
 
   private void bulkAddAssets(String domainName, BulkAssets request) throws HttpResponseException {
     WebTarget target = getResource("domains/" + domainName + "/assets/add");
     TestUtils.put(target, request, Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  private void bulkRemoveAssets(String domainName, BulkAssets request)
+      throws HttpResponseException {
+    WebTarget target = getResource("domains/" + domainName + "/assets/remove");
+    TestUtils.put(target, request, Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_getDomainAssetsAPI(TestInfo test) throws IOException {
+    Domain rootDomain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    Domain subDomain =
+        createEntity(
+            createRequest(getEntityName(test, 1)).withParent(rootDomain.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    DataProductResourceTest dataProductTest = new DataProductResourceTest();
+    DataProduct dataProduct =
+        dataProductTest.createEntity(
+            dataProductTest
+                .createRequest(getEntityName(test, 2))
+                .withDomains(List.of(subDomain.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    Table table1 =
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 3)), ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 4)), ADMIN_AUTH_HEADERS);
+    Table table3 =
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 5)), ADMIN_AUTH_HEADERS);
+
+    bulkAddAssets(
+        rootDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+    bulkAddAssets(
+        subDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table2.getEntityReference())));
+
+    ResultList<EntityReference> assets = getAssets(rootDomain.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+
+    assertEquals(2, assets.getPaging().getTotal());
+    assertEquals(2, assets.getData().size());
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+    assertFalse(assets.getData().stream().anyMatch(a -> a.getId().equals(dataProduct.getId())));
+
+    ResultList<EntityReference> assetsByName =
+        getAssetsByName(rootDomain.getFullyQualifiedName(), 10, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(2, assetsByName.getPaging().getTotal());
+    assertEquals(2, assetsByName.getData().size());
+
+    ResultList<EntityReference> subDomainAssets =
+        getAssets(subDomain.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(1, subDomainAssets.getPaging().getTotal());
+    assertEquals(1, subDomainAssets.getData().size());
+    assertTrue(subDomainAssets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+
+    ResultList<EntityReference> page1 = getAssets(rootDomain.getId(), 1, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page1.getPaging().getTotal());
+    assertEquals(1, page1.getData().size());
+
+    ResultList<EntityReference> page2 = getAssets(rootDomain.getId(), 1, 1, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page2.getPaging().getTotal());
+    assertEquals(1, page2.getData().size());
+    assertNotEquals(page1.getData().getFirst().getId(), page2.getData().getFirst().getId());
+
+    bulkAddAssets(
+        rootDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table3.getEntityReference())));
+    ResultList<EntityReference> allAssets =
+        getAssets(rootDomain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(3, allAssets.getPaging().getTotal());
+    assertEquals(3, allAssets.getData().size());
+
+    // Test bulk remove assets
+    bulkRemoveAssets(
+        rootDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+
+    // Verify table1 is removed
+    assets = getAssets(rootDomain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(2, assets.getPaging().getTotal());
+    assertEquals(2, assets.getData().size());
+    assertFalse(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table3.getId())));
+
+    // Test pagination after removal
+    page1 = getAssets(rootDomain.getId(), 1, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page1.getPaging().getTotal());
+    assertEquals(1, page1.getData().size());
+
+    page2 = getAssets(rootDomain.getId(), 1, 1, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page2.getPaging().getTotal());
+    assertEquals(1, page2.getData().size());
+    assertNotEquals(page1.getData().getFirst().getId(), page2.getData().getFirst().getId());
+
+    // Remove remaining assets
+    bulkRemoveAssets(
+        rootDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table3.getEntityReference())));
+    bulkRemoveAssets(
+        subDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table2.getEntityReference())));
+
+    // Verify all assets are removed
+    assets = getAssets(rootDomain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(0, assets.getPaging().getTotal());
+    assertEquals(0, assets.getData().size());
   }
 
   @Override
@@ -541,5 +793,53 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
       return;
     }
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  @Test
+  void test_getAllDomainsWithAssetsCount(TestInfo test) throws IOException {
+    Domain rootDomain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    Domain subDomain =
+        createEntity(
+            createRequest(getEntityName(test, 1)).withParent(rootDomain.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    Domain anotherDomain = createEntity(createRequest(getEntityName(test, 2)), ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    Table table1 =
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 3)), ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 4)), ADMIN_AUTH_HEADERS);
+    Table table3 =
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 5)), ADMIN_AUTH_HEADERS);
+
+    bulkAddAssets(
+        rootDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+    bulkAddAssets(
+        subDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table2.getEntityReference())));
+    bulkAddAssets(
+        anotherDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table3.getEntityReference())));
+
+    Map<String, Integer> assetsCount = getAllDomainsWithAssetsCount();
+
+    assertNotNull(assetsCount);
+    assertEquals(
+        2,
+        assetsCount.get(rootDomain.getFullyQualifiedName()),
+        "Root domain should have 2 assets (1 direct + 1 from subdomain)");
+    assertEquals(
+        1, assetsCount.get(subDomain.getFullyQualifiedName()), "Subdomain should have 1 asset");
+    assertEquals(
+        1,
+        assetsCount.get(anotherDomain.getFullyQualifiedName()),
+        "Another domain should have 1 asset");
+  }
+
+  private Map<String, Integer> getAllDomainsWithAssetsCount() throws HttpResponseException {
+    WebTarget target = getResource("domains/assets/counts");
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    return response.readEntity(new GenericType<Map<String, Integer>>() {});
   }
 }

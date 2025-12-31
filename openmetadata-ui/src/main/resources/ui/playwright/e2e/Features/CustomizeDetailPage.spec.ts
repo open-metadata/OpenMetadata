@@ -10,20 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import {
+  APIRequestContext,
+  test as base,
+  expect,
+  Page,
+} from '@playwright/test';
 import {
   ECustomizedDataAssets,
   ECustomizedGovernance,
 } from '../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, toastNotification } from '../../utils/common';
+import {
+  clickOutside,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import {
   getCustomizeDetailsDefaultTabs,
   getCustomizeDetailsEntity,
@@ -32,7 +40,10 @@ import {
   checkDefaultStateForNavigationTree,
   validateLeftSidebarWithHiddenItems,
 } from '../../utils/customizeNavigation';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 
@@ -41,23 +52,6 @@ const persona = new PersonaClass();
 const navigationPersona = new PersonaClass();
 const adminUser = new AdminClass();
 const user = new UserClass();
-
-const creationConfig: EntityDataClassCreationConfig = {
-  table: true,
-  entityDetails: true,
-  topic: true,
-  dashboard: true,
-  mlModel: true,
-  pipeline: true,
-  dashboardDataModel: true,
-  apiCollection: true,
-  searchIndex: true,
-  container: true,
-  storedProcedure: true,
-  apiEndpoint: true,
-  database: true,
-  databaseSchema: true,
-};
 
 const test = base.extend<{
   adminPage: Page;
@@ -147,10 +141,12 @@ test.describe('Persona customize UI tab', async () => {
     await redirectToHomePage(adminPage);
 
     // Navigate to persona page
+    const personaListResponse = adminPage.waitForResponse(`/api/v1/personas?*`);
     await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-    await adminPage.waitForLoadState('networkidle');
-    await waitForAllLoadersToDisappear(adminPage, 'skeleton-card-loader');
-    await adminPage.getByText(persona.responseData.displayName).click();
+    await personaListResponse;
+
+    // Need to find persona card and click as the list might get paginated
+    await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
     await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
   });
 
@@ -189,6 +185,15 @@ test.describe('Persona customize UI tab', async () => {
   test('customize navigation should work', async ({ adminPage, userPage }) => {
     test.slow();
 
+    const personaListResponse = adminPage.waitForResponse(`/api/v1/personas?*`);
+    await adminPage.goBack();
+    await personaListResponse;
+    await adminPage.waitForLoadState('networkidle');
+    await navigateToPersonaWithPagination(
+      adminPage,
+      navigationPersona.data.name,
+      true
+    );
     await adminPage.getByText('Navigation').click();
 
     await test.step(
@@ -230,9 +235,20 @@ test.describe('Persona customize UI tab', async () => {
         );
 
         // Select navigation persona
-        await redirectToHomePage(userPage);
-        await userPage.reload();
-        await userPage.waitForLoadState('networkidle');
+        await userPage.getByTestId('dropdown-profile').click();
+        const personaDocsStore = userPage.waitForResponse(
+          `/api/v1/docStore/name/persona.${getEncodedFqn(
+            navigationPersona.responseData.fullyQualifiedName ?? ''
+          )}*`
+        );
+        await userPage
+          .getByRole('menuitem', {
+            name: navigationPersona.responseData.displayName,
+          })
+          .click();
+        await personaDocsStore;
+        await waitForAllLoadersToDisappear(userPage);
+        await clickOutside(userPage);
 
         // Validate changes in navigation tree
         await validateLeftSidebarWithHiddenItems(userPage, [
@@ -300,9 +316,16 @@ test.describe('Persona customize UI tab', async () => {
           /^Page layout (created|updated) successfully\.$/
         );
 
-        // Reload user page to validate changes
-        await userPage.reload();
-        await userPage.waitForLoadState('networkidle');
+        // Select navigation persona
+        await redirectToHomePage(userPage);
+        await userPage.getByTestId('dropdown-profile').click();
+        await userPage
+          .getByRole('menuitem', {
+            name: navigationPersona.responseData.displayName,
+          })
+          .click();
+        await clickOutside(userPage);
+        await userPage.waitForTimeout(500);
 
         // Validate changes in navigation tree
         await validateLeftSidebarWithHiddenItems(userPage, [
@@ -315,32 +338,26 @@ test.describe('Persona customize UI tab', async () => {
 });
 
 test.describe('Persona customization', () => {
-  test.beforeAll(async ({ browser }) => {
-    test.slow();
-
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    await EntityDataClass.preRequisitesForTests(apiContext, creationConfig);
-
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    test.slow();
-
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    await EntityDataClass.postRequisitesForTests(apiContext, creationConfig);
-
-    await afterAction();
-  });
-
   Object.values(ECustomizedDataAssets).forEach(async (type) => {
     test(`${type} - customization should work`, async ({
       adminPage,
       userPage,
     }) => {
       test.slow();
+
+      let entity:
+        | {
+            create: (context: APIRequestContext) => Promise<unknown>;
+            visitEntityPage: (page: Page) => Promise<unknown>;
+          }
+        | undefined = undefined;
+
+      await test.step('pre-requisite', async () => {
+        entity = getCustomizeDetailsEntity(type);
+        const { apiContext } = await getApiContext(adminPage);
+        // Ensure entity is created
+        await entity.create(apiContext);
+      });
 
       await test.step(
         `should show all the tabs & widget as default when no customization is done`,
@@ -400,6 +417,13 @@ test.describe('Persona customization', () => {
 
         await adminPage.getByRole('button', { name: 'Add tab' }).click();
 
+        await expect(adminPage.getByRole('dialog')).toBeVisible();
+
+        await adminPage
+          .getByRole('dialog')
+          .getByRole('textbox')
+          .fill('Custom Tab');
+
         await adminPage
           .getByRole('dialog')
           .getByRole('button', { name: 'Add' })
@@ -422,18 +446,17 @@ test.describe('Persona customization', () => {
       await test.step('Validate customization', async () => {
         await redirectToHomePage(userPage);
 
-        const entity = getCustomizeDetailsEntity(type);
-        await entity.visitEntityPage(userPage);
+        await entity?.visitEntityPage(userPage);
         await userPage.waitForLoadState('networkidle');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
 
         await expect(
-          userPage.getByRole('tab', { name: 'New Tab' })
+          userPage.getByRole('tab', { name: 'Custom Tab' })
         ).toBeVisible();
 
-        await userPage.getByRole('tab', { name: 'New Tab' }).click();
+        await userPage.getByRole('tab', { name: 'Custom Tab' }).click();
 
         const visibleDescription = userPage
           .getByTestId(/KnowledgePanel.Description-/)
@@ -450,6 +473,20 @@ test.describe('Persona customization', () => {
       userPage,
     }) => {
       test.slow();
+
+      let entity:
+        | {
+            create: (context: APIRequestContext) => Promise<unknown>;
+            visitEntityPage: (page: Page) => Promise<unknown>;
+          }
+        | undefined = undefined;
+
+      await test.step('pre-requisite', async () => {
+        entity = getCustomizeDetailsEntity(type);
+        const { apiContext } = await getApiContext(adminPage);
+        // Ensure entity is created
+        await entity.create(apiContext);
+      });
 
       await test.step(
         `should show all the tabs & widget as default when no customization is done`,
@@ -509,6 +546,11 @@ test.describe('Persona customization', () => {
 
         await adminPage
           .getByRole('dialog')
+          .getByRole('textbox')
+          .fill('Custom Tab');
+
+        await adminPage
+          .getByRole('dialog')
           .getByRole('button', { name: 'Add' })
           .click();
         await adminPage.getByTestId('add-widget-button').click();
@@ -528,16 +570,15 @@ test.describe('Persona customization', () => {
       await test.step('Validate customization', async () => {
         await redirectToHomePage(userPage);
 
-        const entity = getCustomizeDetailsEntity(type);
-        await entity.visitEntityPage(userPage);
+        await entity?.visitEntityPage(userPage);
         await userPage.waitForLoadState('networkidle');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
 
-        expect(userPage.getByRole('tab', { name: 'New Tab' })).toBeVisible();
+        expect(userPage.getByRole('tab', { name: 'Custom Tab' })).toBeVisible();
 
-        await userPage.getByRole('tab', { name: 'New Tab' }).click();
+        await userPage.getByRole('tab', { name: 'Custom Tab' }).click();
 
         const visibleDescription = userPage
           .getByTestId(/KnowledgePanel.Description-/)
@@ -553,6 +594,20 @@ test.describe('Persona customization', () => {
     userPage,
   }) => {
     test.slow();
+
+    let entity:
+      | {
+          create: (context: APIRequestContext) => Promise<unknown>;
+          visitEntityPage: (page: Page) => Promise<unknown>;
+        }
+      | undefined = undefined;
+
+    await test.step('pre-requisite', async () => {
+      entity = getCustomizeDetailsEntity(ECustomizedGovernance.GLOSSARY_TERM);
+      const { apiContext } = await getApiContext(adminPage);
+      // Ensure entity is created
+      await entity.create(apiContext);
+    });
 
     await test.step('apply customization', async () => {
       const personaListResponse =
@@ -589,30 +644,31 @@ test.describe('Persona customization', () => {
     await test.step('Validate customization', async () => {
       await redirectToHomePage(userPage);
 
-      const entity = getCustomizeDetailsEntity(
-        ECustomizedGovernance.GLOSSARY_TERM
-      );
-      await entity.visitEntityPage(userPage);
+      await entity?.visitEntityPage(userPage);
       await userPage.waitForLoadState('networkidle');
       await userPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
 
-      expect(userPage.getByRole('tab', { name: 'Overview' })).toBeVisible();
-      expect(
+      await expect(
+        userPage.getByRole('tab', { name: 'Overview' })
+      ).toBeVisible();
+      await expect(
         userPage.getByRole('tab', { name: 'Glossary Terms' })
       ).toBeVisible();
-      expect(
+      await expect(
         userPage.getByTestId('create-error-placeholder-Glossary Term')
       ).toBeVisible();
 
       await userPage.getByRole('tab', { name: 'Overview' }).click();
 
-      expect(userPage.getByTestId('asset-description-container')).toBeVisible();
+      await expect(
+        userPage.getByTestId('asset-description-container')
+      ).toBeVisible();
 
       await userPage.getByRole('tab', { name: 'Glossary Terms' }).click();
 
-      expect(
+      await expect(
         userPage.getByTestId('create-error-placeholder-Glossary Term')
       ).toBeVisible();
     });
@@ -622,6 +678,20 @@ test.describe('Persona customization', () => {
     adminPage,
     userPage,
   }) => {
+    let entity:
+      | {
+          create: (context: APIRequestContext) => Promise<unknown>;
+          visitEntityPage: (page: Page) => Promise<unknown>;
+        }
+      | undefined = undefined;
+
+    await test.step('pre-requisite', async () => {
+      const { apiContext } = await getApiContext(adminPage);
+      // Ensure entity is created
+      entity = getCustomizeDetailsEntity(ECustomizedDataAssets.TABLE);
+      await entity.create(apiContext);
+    });
+
     await test.step('apply tab label customization for Table', async () => {
       const personaListResponse =
         adminPage.waitForResponse(`/api/v1/personas?*`);
@@ -684,8 +754,7 @@ test.describe('Persona customization', () => {
       async () => {
         await redirectToHomePage(userPage);
 
-        const entity = getCustomizeDetailsEntity(ECustomizedDataAssets.TABLE);
-        await entity.visitEntityPage(userPage);
+        await entity?.visitEntityPage(userPage);
         await userPage.waitForLoadState('networkidle');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
@@ -709,6 +778,116 @@ test.describe('Persona customization', () => {
 
         await expect(
           userPage.getByRole('tab', { name: "Flux d'Activité & Tâches" })
+        ).toBeVisible();
+      }
+    );
+  });
+
+  test("Domain - customize tab label should only render if it's customized by user", async ({
+    adminPage,
+    userPage,
+  }) => {
+    let entity:
+      | {
+          create: (context: APIRequestContext) => Promise<unknown>;
+          visitEntityPage: (page: Page) => Promise<unknown>;
+        }
+      | undefined = undefined;
+
+    await test.step('pre-requisite', async () => {
+      const { apiContext } = await getApiContext(adminPage);
+      // Ensure entity is created
+      entity = getCustomizeDetailsEntity(ECustomizedGovernance.DOMAIN);
+      await entity.create(apiContext);
+    });
+
+    await test.step('apply tab label customization for Domain', async () => {
+      const personaListResponse =
+        adminPage.waitForResponse(`/api/v1/personas?*`);
+      await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+      await personaListResponse;
+
+      // Need to find persona card and click as the list might get paginated
+      await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
+
+      await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
+
+      await adminPage.getByText('Governance').click();
+      await adminPage.getByText('Domain', { exact: true }).click();
+
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await expect(
+        adminPage
+          .getByTestId('customize-tab-card')
+          .getByTestId(`tab-documentation`)
+      ).toBeVisible();
+
+      await adminPage
+        .getByTestId('customize-tab-card')
+        .getByTestId(`tab-documentation`)
+        .click();
+
+      await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
+
+      await expect(adminPage.getByRole('dialog')).toBeVisible();
+
+      await adminPage.getByRole('dialog').getByRole('textbox').clear();
+      await adminPage
+        .getByRole('dialog')
+        .getByRole('textbox')
+        .fill('Access Policy');
+
+      await adminPage
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Ok' })
+        .click();
+
+      await expect(
+        adminPage
+          .getByTestId('customize-tab-card')
+          .getByTestId(`tab-documentation`)
+      ).toHaveText('Access Policy');
+
+      await adminPage.getByTestId('save-button').click();
+
+      await toastNotification(
+        adminPage,
+        /^Page layout (created|updated) successfully\.$/
+      );
+    });
+
+    await test.step(
+      'validate applied label change for Domain Documentation tab',
+      async () => {
+        await redirectToHomePage(userPage);
+
+        const domainResponse = userPage.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/domains/name/') &&
+            response.status() === 200
+        );
+        await entity?.visitEntityPage(userPage);
+        await domainResponse;
+
+        await userPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        // Verify the custom tab name is displayed
+        await expect(
+          userPage.getByRole('tab', { name: 'Access Policy' })
+        ).toBeVisible();
+
+        // Verify other tabs still show default names
+        await expect(
+          userPage.getByRole('tab', { name: 'Sub Domains' })
+        ).toBeVisible();
+
+        await expect(
+          userPage.getByRole('tab', { name: 'Data Products' })
         ).toBeVisible();
       }
     );

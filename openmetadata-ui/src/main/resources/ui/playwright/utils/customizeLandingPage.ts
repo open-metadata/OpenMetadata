@@ -200,7 +200,7 @@ export const setUserDefaultPersona = async (
   const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
 
   // Click on the persona option by text within the dropdown
-  await page.locator(`[data-testid="${personaName}-option"]`).click();
+  await page.click(`.ant-select-dropdown:visible [title="${personaName}"]`);
 
   await page
     .locator('[data-testid="user-profile-default-persona-edit-save"]')
@@ -260,6 +260,8 @@ export const removeAndVerifyWidget = async (
 
   await redirectToHomePage(page);
 
+  await waitForAllLoadersToDisappear(page);
+
   await expect(page.getByTestId(widgetKey)).not.toBeVisible();
 };
 
@@ -292,6 +294,7 @@ export const addAndVerifyWidget = async (
   await redirectToHomePage(page);
 
   await waitForAllLoadersToDisappear(page);
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
   await expect(
     page.getByTestId('page-layout-v1').getByTestId(widgetKey)
@@ -484,6 +487,7 @@ export const verifyWidgetEntityNavigation = async (
   await response;
 
   // Wait for loaders after navigation
+  await waitForAllLoadersToDisappear(page);
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
   // Get widget after navigation to home page
@@ -583,4 +587,38 @@ export const verifyWidgetHeaderNavigation = async (
 
   // Navigate back to home page for next tests
   await redirectToHomePage(page);
+};
+
+export const verifyDomainCountInDomainWidget = async (
+  page: Page,
+  domainId: string,
+  expectedCount: number
+) => {
+  const domainWidget = page.getByTestId('KnowledgePanel.Domains');
+
+  await expect(domainWidget).toBeVisible();
+
+  const domainCountElement = domainWidget.locator(
+    `[data-testid="domain-card-${domainId}"] .domain-card-count`
+  );
+
+  await expect(domainCountElement).toBeVisible();
+  await expect(domainCountElement).toContainText(expectedCount.toString());
+};
+
+export const verifyDataProductCountInDataProductWidget = async (
+  page: Page,
+  dataProductId: string,
+  expectedCount: number
+) => {
+  const dataProductWidget = page.getByTestId('KnowledgePanel.DataProducts');
+
+  await expect(dataProductWidget).toBeVisible();
+
+  const dataProductCountElement = dataProductWidget.locator(
+    `[data-testid="data-product-card-${dataProductId}"] [data-testid="data-product-asset-count"]`
+  );
+
+  await expect(dataProductCountElement).toBeVisible();
+  await expect(dataProductCountElement).toContainText(expectedCount.toString());
 };

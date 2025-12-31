@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { get, omit, pick } from 'lodash';
 import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column-new.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-new.svg';
+import { CondensedBreadcrumb } from '../../components/CondensedBreadcrumb/CondensedBreadcrumb.component';
 import {
   ColumnLevelLineageNode,
   EdgeDetails,
+  NodeData,
 } from '../../components/Lineage/Lineage.interface';
-import {
-  EImpactLevel,
-  LineageNodeData,
-} from '../../components/LineageTable/LineageTable.interface';
+import { EImpactLevel } from '../../components/LineageTable/LineageTable.interface';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { TableSearchSource } from '../../interface/search.interface';
 import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
@@ -55,7 +55,7 @@ export const LINEAGE_DEPENDENCY_OPTIONS = [
 
 export const prepareColumnLevelNodesFromEdges = (
   edges: EdgeDetails[],
-  nodes: Record<string, LineageNodeData>,
+  nodes: Record<string, NodeData>,
   direction: LineageDirection = LineageDirection.Downstream
 ) => {
   const entityKey =
@@ -74,7 +74,11 @@ export const prepareColumnLevelNodesFromEdges = (
           0
         );
 
-        const picked = pick<LineageNodeData['entity']>(
+        if (!entityData) {
+          continue;
+        }
+
+        const picked = pick<NodeData['entity']>(
           entityData,
           'owners',
           'tier',
@@ -86,12 +90,17 @@ export const prepareColumnLevelNodesFromEdges = (
           'tags' | 'tier' | 'domains' | 'description' | 'owners' | 'id'
         >; // Type assertion to Include type to ensure only these fields are
 
-        acc.push({
-          ...omit(node, 'columns'),
-          column: col,
-          nodeDepth,
-          ...picked,
-        });
+        // flatten the fromColumns to create separate nodes for each
+        for (const fromCol of col.fromColumns || []) {
+          acc.push({
+            ...omit(node, 'columns'),
+            fromColumn: fromCol,
+            toColumn: col.toColumn,
+            docId: fromCol + '->' + col.toColumn,
+            nodeDepth,
+            ...picked,
+          });
+        }
       }
     }
 
@@ -101,7 +110,7 @@ export const prepareColumnLevelNodesFromEdges = (
 
 export const prepareDownstreamColumnLevelNodesFromDownstreamEdges = (
   edges: EdgeDetails[],
-  nodes: Record<string, LineageNodeData>
+  nodes: Record<string, NodeData>
 ) => {
   return prepareColumnLevelNodesFromEdges(
     edges,
@@ -112,7 +121,7 @@ export const prepareDownstreamColumnLevelNodesFromDownstreamEdges = (
 
 export const prepareUpstreamColumnLevelNodesFromUpstreamEdges = (
   edges: EdgeDetails[],
-  nodes: Record<string, LineageNodeData>
+  nodes: Record<string, NodeData>
 ) => {
   return prepareColumnLevelNodesFromEdges(
     edges,
@@ -122,21 +131,24 @@ export const prepareUpstreamColumnLevelNodesFromUpstreamEdges = (
 };
 
 export const getSearchNameEsQuery = (
-  searchText: string
+  searchText: string,
+  isColumnLevel = false
 ): QueryFieldInterface => {
   return {
     bool: {
       should: [
         {
           wildcard: {
-            'name.keyword': {
+            [isColumnLevel ? 'columns.name.keyword' : 'name.keyword']: {
               value: `*${searchText}*`,
             },
           },
         },
         {
           wildcard: {
-            'displayName.keyword': {
+            [isColumnLevel
+              ? 'columns.displayName.keyword'
+              : 'displayName.keyword']: {
               value: `*${searchText}*`,
             },
           },
@@ -144,4 +156,20 @@ export const getSearchNameEsQuery = (
       ],
     },
   };
+};
+
+export const getTruncatedPath = (path: string, className?: string) => {
+  if (!path) {
+    return path;
+  }
+
+  const parts = path.split('>');
+
+  return (
+    <CondensedBreadcrumb
+      className={className}
+      items={parts}
+      separator={<ChevronRightIcon className="right-arrow-icon" />}
+    />
+  );
 };

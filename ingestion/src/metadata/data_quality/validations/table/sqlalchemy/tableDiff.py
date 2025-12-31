@@ -55,6 +55,7 @@ from metadata.profiler.orm.functions.md5 import MD5
 from metadata.profiler.orm.functions.substr import Substr
 from metadata.profiler.orm.registry import Dialects, PythonDialects
 from metadata.utils.collections import CaseInsensitiveList
+from metadata.utils.credentials import normalize_pem_string
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -181,7 +182,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     runtime_params: TableDiffRuntimeParameters
 
-    def run_validation(self) -> TestCaseResult:
+    def _run_validation(self):
+        """Run validation for the table diff test"""
         self.runtime_params = self.get_runtime_parameters(TableDiffRuntimeParameters)
         try:
             self._validate_dialects()
@@ -212,6 +214,19 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             )
             logger.debug(result.result)
             return result
+
+    def _run_dimensional_validation(self):
+        """Execute dimensional validation for table diff test
+
+        Table diff tests don't currently support dimensional validation.
+        This method returns an empty list to indicate no dimensional results.
+
+        Returns:
+            List: Empty list for now (placeholder for future implementation)
+        """
+        # TODO: Implement dimensional validation for table diff tests if needed
+        # This would involve grouping by dimension columns and checking diffs per group
+        return []
 
     def _run(self) -> TestCaseResult:
         result = self.get_column_diff()
@@ -269,7 +284,9 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.table1.key_columns,
             extra_columns=self.runtime_params.extraColumns,
             case_sensitive=self.get_case_sensitive(),
-            key_content=self.runtime_params.table1.privateKey.get_secret_value()
+            key_content=normalize_pem_string(
+                self.runtime_params.table1.privateKey.get_secret_value()
+            )
             if self.runtime_params.table1.privateKey
             else None,
             private_key_passphrase=self.runtime_params.table1.passPhrase.get_secret_value()
@@ -282,7 +299,9 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.table2.key_columns,
             extra_columns=self.runtime_params.extraColumns,
             case_sensitive=self.get_case_sensitive(),
-            key_content=self.runtime_params.table2.privateKey.get_secret_value()
+            key_content=normalize_pem_string(
+                self.runtime_params.table2.privateKey.get_secret_value()
+            )
             if self.runtime_params.table2.privateKey
             else None,
             private_key_passphrase=self.runtime_params.table2.passPhrase.get_secret_value()

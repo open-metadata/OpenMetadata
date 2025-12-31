@@ -2,7 +2,6 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -61,7 +60,8 @@ import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.DefaultRecreateHandler;
-import org.openmetadata.service.search.RecreateIndexHandler;
+import org.openmetadata.service.search.EntityReindexContext;
+import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -202,7 +202,7 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
 
     searchIndexApp.init(testApp);
 
-    RecreateIndexHandler.ReindexContext context = new RecreateIndexHandler.ReindexContext();
+    ReindexContext context = new ReindexContext();
     context.add(
         "table",
         "cluster_table",
@@ -239,24 +239,27 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
         "dashboard_search_index_rebuild_old",
         Set.of("dashboard", "dashboard_search_index", "all", "dataAsset"));
 
-    SearchClient<Void> client = aliasState.toMock();
+    SearchClient client = aliasState.toMock();
     SearchRepository repo = mock(SearchRepository.class);
     when(repo.getSearchClient()).thenReturn(client);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getSearchRepository).thenReturn(repo);
 
-      RecreateIndexHandler.ReindexContext context = new RecreateIndexHandler.ReindexContext();
-      context.add(
-          "table",
-          "table_search_index",
-          "table_search_index_rebuild_old",
-          "table_search_index_rebuild_new",
-          Set.of("table", "table_search_index", "all", "dataAsset"),
-          "table",
-          List.of("all", "dataAsset", "database", "databaseSchema", "databaseService"));
+      EntityReindexContext entityReindexContext =
+          EntityReindexContext.builder()
+              .entityType("table")
+              .canonicalIndex("table_search_index")
+              .originalIndex("table_search_index_rebuild_old")
+              .activeIndex("table_search_index_rebuild_old")
+              .stagedIndex("table_search_index_rebuild_new")
+              .existingAliases(Set.of("table", "table_search_index", "all", "dataAsset"))
+              .canonicalAliases("table")
+              .parentAliases(
+                  Set.of("all", "dataAsset", "database", "databaseSchema", "databaseService"))
+              .build();
 
-      new DefaultRecreateHandler().finalizeReindex(context, true);
+      new DefaultRecreateHandler().finalizeReindex(entityReindexContext, true);
     }
 
     assertTrue(aliasState.deletedIndices.contains("table_search_index_rebuild_old"));
@@ -286,24 +289,26 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
         Set.of("table", "table_search_index", "all", "dataAsset"));
     aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
-    SearchClient<Void> client = aliasState.toMock();
+    SearchClient client = aliasState.toMock();
     SearchRepository repo = mock(SearchRepository.class);
     when(repo.getSearchClient()).thenReturn(client);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getSearchRepository).thenReturn(repo);
 
-      RecreateIndexHandler.ReindexContext context = new RecreateIndexHandler.ReindexContext();
-      context.add(
-          "table",
-          "table_search_index",
-          "table_search_index_rebuild_old1",
-          "table_search_index_rebuild_new",
-          Set.of("table", "table_search_index", "all", "dataAsset"),
-          "table",
-          List.of("all", "dataAsset"));
+      EntityReindexContext entityReindexContext =
+          EntityReindexContext.builder()
+              .entityType("table")
+              .canonicalIndex("table_search_index")
+              .originalIndex("table_search_index_rebuild_old1")
+              .activeIndex("table_search_index_rebuild_old1")
+              .stagedIndex("table_search_index_rebuild_new")
+              .existingAliases(Set.of("table", "table_search_index", "all", "dataAsset"))
+              .canonicalAliases("table")
+              .parentAliases(Set.of("all", "dataAsset"))
+              .build();
 
-      new DefaultRecreateHandler().finalizeReindex(context, true);
+      new DefaultRecreateHandler().finalizeReindex(entityReindexContext, true);
     }
 
     assertTrue(aliasState.deletedIndices.contains("table_search_index_rebuild_old1"));
@@ -323,7 +328,6 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
             .withName("SearchIndexingApplication")
             .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class));
     searchIndexApp.init(testApp);
-    searchIndexApp.getJobData().setStatus(EventPublisherJob.Status.RUNNING);
     injectMockSink();
 
     List<EntityError> entityErrors =
@@ -354,7 +358,11 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     List<EntityInterface> entities = List.of(mockEntity, mockEntity);
     ResultList<EntityInterface> resultList = new ResultList<>(entities, null, null, 2);
 
-    lenient().doThrow(searchIndexException).when(mockSink).write(eq(entities), any(Map.class));
+    Map<String, Object> contextData = new HashMap<>();
+    contextData.put("entityType", "table");
+    contextData.put("recreateIndex", false);
+
+    lenient().doThrow(searchIndexException).when(mockSink).write(eq(entities), eq(contextData));
 
     SearchIndexApp.IndexingTask<EntityInterface> task =
         new SearchIndexApp.IndexingTask<>("table", resultList, 0);
@@ -1042,379 +1050,6 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     assertEquals(1000000L, jobData.getPayLoadSize());
   }
 
-  @Test
-  void testPerEntityIndexFinalization() {
-    SearchRepository searchRepo = Entity.getSearchRepository();
-    SearchClient<?> searchClient = searchRepo.getSearchClient();
-    String clusterAlias = searchRepo.getClusterAlias();
-
-    // Create test indexes
-    String stagedIndex = "test_table_search_index_rebuild_" + System.currentTimeMillis();
-    String oldIndex = "test_table_search_index_old_" + System.currentTimeMillis();
-    String canonicalIndex = "test_table_search_index";
-
-    try {
-      // Setup: Create the old index with aliases
-      searchClient.createIndex(oldIndex, "{}");
-      searchClient.addAliases(oldIndex, Set.of("test_table", canonicalIndex, "test_all"));
-
-      // Create the staged index
-      searchClient.createIndex(stagedIndex, "{}");
-
-      RecreateIndexHandler.ReindexContext context = new RecreateIndexHandler.ReindexContext();
-      context.add(
-          "test_table",
-          canonicalIndex,
-          oldIndex,
-          stagedIndex,
-          Set.of("test_table", canonicalIndex, "test_all"),
-          "test_table",
-          List.of("test_all"));
-
-      DefaultRecreateHandler handler = new DefaultRecreateHandler();
-
-      // Finalize just the table entity
-      handler.finalizeEntityReindex(context, "test_table", true);
-
-      // Verify the staged index was promoted
-      assertFalse(searchClient.indexExists(oldIndex), "Old index should be deleted");
-      assertTrue(searchClient.indexExists(stagedIndex), "Staged index should exist");
-
-      Set<String> stagedAliases = searchClient.getAliases(stagedIndex);
-      assertTrue(stagedAliases.contains("test_table"));
-      assertTrue(stagedAliases.contains(canonicalIndex));
-      assertTrue(stagedAliases.contains("test_all"));
-
-      // Verify the entity is marked as finalized
-      assertTrue(context.isFinalized("test_table"));
-    } finally {
-      // Cleanup
-      if (searchClient.indexExists(stagedIndex)) {
-        searchClient.deleteIndex(stagedIndex);
-      }
-      if (searchClient.indexExists(oldIndex)) {
-        searchClient.deleteIndex(oldIndex);
-      }
-    }
-  }
-
-  @Test
-  void testFinalizedEntitiesNotReprocessed() {
-    SearchRepository searchRepo = Entity.getSearchRepository();
-    SearchClient<?> searchClient = searchRepo.getSearchClient();
-
-    long timestamp = System.currentTimeMillis();
-    String tableStaged = "test_table_staged_" + timestamp;
-    String tableOld = "test_table_old_" + timestamp;
-    String userStaged = "test_user_staged_" + timestamp;
-    String userOld = "test_user_old_" + timestamp;
-
-    try {
-      // Create test indexes
-      searchClient.createIndex(tableOld, "{}");
-      searchClient.addAliases(tableOld, Set.of("test_table_alias"));
-      searchClient.createIndex(tableStaged, "{}");
-
-      searchClient.createIndex(userOld, "{}");
-      searchClient.addAliases(userOld, Set.of("test_user_alias"));
-      searchClient.createIndex(userStaged, "{}");
-
-      RecreateIndexHandler.ReindexContext context = new RecreateIndexHandler.ReindexContext();
-      context.add(
-          "test_table",
-          "test_table_index",
-          tableOld,
-          tableStaged,
-          Set.of("test_table_alias"),
-          "test_table",
-          List.of());
-      context.add(
-          "test_user",
-          "test_user_index",
-          userOld,
-          userStaged,
-          Set.of("test_user_alias"),
-          "test_user",
-          List.of());
-
-      DefaultRecreateHandler handler = new DefaultRecreateHandler();
-
-      // Finalize table entity first
-      handler.finalizeEntityReindex(context, "test_table", true);
-      assertTrue(context.isFinalized("test_table"));
-      assertFalse(searchClient.indexExists(tableOld), "Table old index should be deleted");
-
-      // Now call batch finalization (should skip table, only process user)
-      handler.finalizeReindex(context, true);
-
-      // Both should be finalized
-      assertTrue(context.isFinalized("test_table"));
-      assertTrue(context.isFinalized("test_user"));
-
-      // User should be processed
-      assertFalse(searchClient.indexExists(userOld), "User old index should be deleted");
-      assertTrue(searchClient.indexExists(userStaged), "User staged index should exist");
-    } finally {
-      // Cleanup
-      for (String index : List.of(tableStaged, tableOld, userStaged, userOld)) {
-        if (searchClient.indexExists(index)) {
-          searchClient.deleteIndex(index);
-        }
-      }
-    }
-  }
-
-  @Test
-  void testEntityFinalizationOnSuccess() {
-    SearchRepository searchRepo = Entity.getSearchRepository();
-    SearchClient<?> searchClient = searchRepo.getSearchClient();
-
-    long timestamp = System.currentTimeMillis();
-    String stagedIndex = "test_dashboard_staged_" + timestamp;
-    String oldIndex = "test_dashboard_old_" + timestamp;
-
-    try {
-      // Create indexes
-      searchClient.createIndex(oldIndex, "{}");
-      searchClient.addAliases(oldIndex, Set.of("test_dashboard", "test_all"));
-      searchClient.createIndex(stagedIndex, "{}");
-
-      RecreateIndexHandler.ReindexContext context = new RecreateIndexHandler.ReindexContext();
-      context.add(
-          "test_dashboard",
-          "test_dashboard_index",
-          oldIndex,
-          stagedIndex,
-          Set.of("test_dashboard", "test_all"),
-          "test_dashboard",
-          List.of("test_all"));
-
-      DefaultRecreateHandler handler = new DefaultRecreateHandler();
-      handler.finalizeEntityReindex(context, "test_dashboard", true);
-
-      // On success, old index should be deleted and aliases moved
-      assertFalse(searchClient.indexExists(oldIndex), "Old index should be deleted");
-      assertTrue(searchClient.indexExists(stagedIndex), "Staged index should exist");
-
-      Set<String> aliases = searchClient.getAliases(stagedIndex);
-      assertTrue(aliases.contains("test_dashboard"));
-      assertTrue(aliases.contains("test_all"));
-      assertTrue(context.isFinalized("test_dashboard"));
-    } finally {
-      // Cleanup
-      for (String index : List.of(stagedIndex, oldIndex)) {
-        if (searchClient.indexExists(index)) {
-          searchClient.deleteIndex(index);
-        }
-      }
-    }
-  }
-
-  @Test
-  void testEntityFinalizationOnFailure() {
-    SearchRepository searchRepo = Entity.getSearchRepository();
-    SearchClient<?> searchClient = searchRepo.getSearchClient();
-
-    long timestamp = System.currentTimeMillis();
-    String stagedIndex = "test_pipeline_staged_" + timestamp;
-    String oldIndex = "test_pipeline_old_" + timestamp;
-
-    try {
-      // Create indexes
-      searchClient.createIndex(oldIndex, "{}");
-      searchClient.addAliases(oldIndex, Set.of("test_pipeline", "test_all"));
-      searchClient.createIndex(stagedIndex, "{}");
-
-      RecreateIndexHandler.ReindexContext context = new RecreateIndexHandler.ReindexContext();
-      context.add(
-          "test_pipeline",
-          "test_pipeline_index",
-          oldIndex,
-          stagedIndex,
-          Set.of("test_pipeline", "test_all"),
-          "test_pipeline",
-          List.of("test_all"));
-
-      DefaultRecreateHandler handler = new DefaultRecreateHandler();
-      handler.finalizeEntityReindex(context, "test_pipeline", false);
-
-      // On failure, staged index should be deleted, old index should remain
-      assertFalse(searchClient.indexExists(stagedIndex), "Staged index should be deleted");
-      assertTrue(searchClient.indexExists(oldIndex), "Old index should remain");
-
-      Set<String> aliases = searchClient.getAliases(oldIndex);
-      assertTrue(aliases.contains("test_pipeline"));
-      assertTrue(aliases.contains("test_all"));
-      assertTrue(context.isFinalized("test_pipeline"));
-    } finally {
-      // Cleanup
-      for (String index : List.of(stagedIndex, oldIndex)) {
-        if (searchClient.indexExists(index)) {
-          searchClient.deleteIndex(index);
-        }
-      }
-    }
-  }
-
-  @Test
-  void testPerEntityFinalizationWithClusterAlias() {
-    SearchRepository searchRepo = Entity.getSearchRepository();
-    SearchClient<?> searchClient = searchRepo.getSearchClient();
-    String clusterAlias = searchRepo.getClusterAlias();
-
-    long timestamp = System.currentTimeMillis();
-    String canonicalIndexName =
-        clusterAlias.isEmpty()
-            ? "test_cluster_table_index"
-            : clusterAlias + "_test_cluster_table_index";
-    String oldIndex = canonicalIndexName + "_old_" + timestamp;
-    String stagedIndex = canonicalIndexName + "_rebuild_" + timestamp;
-
-    try {
-      // Create old index with canonical name as alias
-      searchClient.createIndex(oldIndex, "{}");
-      if (!clusterAlias.isEmpty()) {
-        // Add canonical index name as alias (simulating existing setup)
-        searchClient.addAliases(oldIndex, Set.of(canonicalIndexName, "test_cluster_alias"));
-      } else {
-        searchClient.addAliases(oldIndex, Set.of("test_cluster_alias"));
-      }
-
-      // Create staged index
-      searchClient.createIndex(stagedIndex, "{}");
-
-      RecreateIndexHandler.ReindexContext context = new RecreateIndexHandler.ReindexContext();
-      Set<String> existingAliases =
-          clusterAlias.isEmpty()
-              ? Set.of("test_cluster_alias")
-              : Set.of(canonicalIndexName, "test_cluster_alias");
-
-      context.add(
-          "test_cluster_table",
-          canonicalIndexName,
-          oldIndex,
-          stagedIndex,
-          existingAliases,
-          "test_cluster_table",
-          List.of());
-
-      DefaultRecreateHandler handler = new DefaultRecreateHandler();
-
-      // Finalize the entity
-      handler.finalizeEntityReindex(context, "test_cluster_table", true);
-
-      // Verify old index is deleted
-      assertFalse(searchClient.indexExists(oldIndex), "Old index should be deleted");
-      assertTrue(searchClient.indexExists(stagedIndex), "Staged index should exist");
-
-      // Verify aliases are attached to staged index
-      Set<String> stagedAliases = searchClient.getAliases(stagedIndex);
-      assertTrue(stagedAliases.contains("test_cluster_alias"), "Should have test_cluster_alias");
-
-      // Verify canonical index name works as alias (if cluster alias is configured)
-      if (!clusterAlias.isEmpty()) {
-        assertTrue(
-            stagedAliases.contains(canonicalIndexName),
-            "Should have canonical index name as alias: " + canonicalIndexName);
-      }
-
-      assertTrue(context.isFinalized("test_cluster_table"));
-    } finally {
-      // Cleanup
-      for (String index : List.of(oldIndex, stagedIndex)) {
-        if (searchClient.indexExists(index)) {
-          searchClient.deleteIndex(index);
-        }
-      }
-    }
-  }
-
-  @Test
-  void testMultipleEntitiesWithPerEntityFinalization() {
-    SearchRepository searchRepo = Entity.getSearchRepository();
-    SearchClient<?> searchClient = searchRepo.getSearchClient();
-
-    long timestamp = System.currentTimeMillis();
-    String tableStaged = "test_multi_table_staged_" + timestamp;
-    String tableOld = "test_multi_table_old_" + timestamp;
-    String userStaged = "test_multi_user_staged_" + timestamp;
-    String userOld = "test_multi_user_old_" + timestamp;
-    String dashStaged = "test_multi_dash_staged_" + timestamp;
-    String dashOld = "test_multi_dash_old_" + timestamp;
-
-    try {
-      // Setup three entities
-      searchClient.createIndex(tableOld, "{}");
-      searchClient.addAliases(tableOld, Set.of("test_table", "test_all"));
-      searchClient.createIndex(tableStaged, "{}");
-
-      searchClient.createIndex(userOld, "{}");
-      searchClient.addAliases(userOld, Set.of("test_user", "test_all"));
-      searchClient.createIndex(userStaged, "{}");
-
-      searchClient.createIndex(dashOld, "{}");
-      searchClient.addAliases(dashOld, Set.of("test_dashboard", "test_all"));
-      searchClient.createIndex(dashStaged, "{}");
-
-      RecreateIndexHandler.ReindexContext context = new RecreateIndexHandler.ReindexContext();
-      context.add(
-          "test_table",
-          "test_table_index",
-          tableOld,
-          tableStaged,
-          Set.of("test_table", "test_all"),
-          "test_table",
-          List.of("test_all"));
-      context.add(
-          "test_user",
-          "test_user_index",
-          userOld,
-          userStaged,
-          Set.of("test_user", "test_all"),
-          "test_user",
-          List.of("test_all"));
-      context.add(
-          "test_dashboard",
-          "test_dashboard_index",
-          dashOld,
-          dashStaged,
-          Set.of("test_dashboard", "test_all"),
-          "test_dashboard",
-          List.of("test_all"));
-
-      DefaultRecreateHandler handler = new DefaultRecreateHandler();
-
-      // Simulate processing entities one by one
-      handler.finalizeEntityReindex(context, "test_table", true);
-      assertFalse(searchClient.indexExists(tableOld), "Table old index should be deleted");
-      assertTrue(context.isFinalized("test_table"));
-
-      handler.finalizeEntityReindex(context, "test_user", true);
-      assertFalse(searchClient.indexExists(userOld), "User old index should be deleted");
-      assertTrue(context.isFinalized("test_user"));
-
-      // Dashboard fails
-      handler.finalizeEntityReindex(context, "test_dashboard", false);
-      assertFalse(
-          searchClient.indexExists(dashStaged), "Dashboard staged should be deleted on failure");
-      assertTrue(searchClient.indexExists(dashOld), "Dashboard old should remain on failure");
-      assertTrue(context.isFinalized("test_dashboard"));
-
-      // Verify final state - successful entities have staged indexes
-      assertTrue(searchClient.indexExists(tableStaged));
-      assertTrue(searchClient.indexExists(userStaged));
-      assertFalse(searchClient.indexExists(dashStaged));
-    } finally {
-      // Cleanup
-      for (String index :
-          List.of(tableStaged, tableOld, userStaged, userOld, dashStaged, dashOld)) {
-        if (searchClient.indexExists(index)) {
-          searchClient.deleteIndex(index);
-        }
-      }
-    }
-  }
-
   private static class AliasState {
     final Map<String, Set<String>> indexAliases = new HashMap<>();
     final Set<String> deletedIndices = new HashSet<>();
@@ -1423,9 +1058,8 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
       indexAliases.put(indexName, new HashSet<>(aliases));
     }
 
-    SearchClient<Void> toMock() {
-      @SuppressWarnings("unchecked")
-      SearchClient<Void> client = mock(SearchClient.class);
+    SearchClient toMock() {
+      SearchClient client = mock(SearchClient.class);
 
       lenient().when(client.isClientAvailable()).thenReturn(true);
       lenient()

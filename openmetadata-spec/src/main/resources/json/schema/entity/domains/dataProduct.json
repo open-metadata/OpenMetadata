@@ -65,7 +65,7 @@
           "$ref": "../../type/entityReference.json"
         }
       },
-      "required": ["name", "portType"],
+      "required": ["name", "portType", "dataAsset"],
       "additionalProperties": false
     },
     "slaDefinition": {
@@ -137,6 +137,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -160,23 +164,19 @@
     },
     "assets": {
       "description": "Data assets collection that is part of this data product.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref" : "../../type/entityReferenceList.json",
+      "deprecated": true,
+      "$comment": "@deprecated Use GET /v1/dataProducts/{id}/assets API endpoint for paginated access to data product assets"
     },
     "inputPorts": {
-      "description": "Input ports for consuming data into this data product",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/dataProductPort"
-      },
-      "default": []
+      "description": "Input ports - data assets consumed by this data product",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "outputPorts": {
-      "description": "Output ports for exposing data from this data product",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/dataProductPort"
-      },
-      "default": []
+      "description": "Output ports - data assets produced/exposed by this data product",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "lifecycleStage": {
       "description": "Current lifecycle stage of the data product",
@@ -222,8 +222,7 @@
     },
     "entityStatus": {
       "description": "Status of the Data Product.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "description"],

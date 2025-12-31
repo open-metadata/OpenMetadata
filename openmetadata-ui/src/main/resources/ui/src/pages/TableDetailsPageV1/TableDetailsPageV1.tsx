@@ -1,4 +1,3 @@
-/* eslint-disable i18next/no-literal-string */
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +14,7 @@
 import { Col, Row, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -51,7 +50,6 @@ import {
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
-import { DataContract } from '../../generated/entity/data/dataContract';
 import { Table, TableType } from '../../generated/entity/data/table';
 import {
   Suggestion,
@@ -59,7 +57,7 @@ import {
 } from '../../generated/entity/feed/suggestion';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
-import { TestSummary } from '../../generated/tests/testCase';
+import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TagLabel } from '../../generated/type/tagLabel';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -67,7 +65,7 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
 import { FeedCounts } from '../../interface/feed.interface';
-import { getContractByEntityId } from '../../rest/contractAPI';
+import { fetchTestCaseResultByTestSuiteId } from '../../rest/dataQualityDashboardAPI';
 import { getDataQualityLineage } from '../../rest/lineageAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
@@ -78,7 +76,6 @@ import {
   restoreTable,
   updateTablesVotes,
 } from '../../rest/tableAPI';
-import { getTestCaseExecutionSummary } from '../../rest/testAPI';
 import {
   addToRecentViewed,
   getFeedCounts,
@@ -133,11 +130,9 @@ const TableDetailsPageV1: React.FC = () => {
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-  const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const { customizedPage, isLoading } = useCustomPages(PageType.Table);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
-  const [dataContract, setDataContract] = useState<DataContract>();
 
   const tableFqn = useMemo(
     () =>
@@ -233,7 +228,7 @@ const TableDetailsPageV1: React.FC = () => {
     }
   }, [tableFqn, viewUsagePermission]);
 
-  const fetchDQFailureCount = async () => {
+  const fetchDQUpstreamFailureCount = async () => {
     if (!tableClassBase.getAlertEnableStatus()) {
       setDqFailureCount(0);
     }
@@ -253,34 +248,38 @@ const TableDetailsPageV1: React.FC = () => {
     }
   };
 
-  const fetchTestCaseSummary = async () => {
+  const getTestCaseFailureCount = async () => {
     try {
-      if (isUndefined(tableDetails?.testSuite?.id)) {
-        setTestCaseSummary(undefined);
-        await fetchDQFailureCount();
+      if (!tableClassBase.getAlertEnableStatus()) {
+        setDqFailureCount(0);
 
         return;
       }
 
-      const response = await getTestCaseExecutionSummary(
-        tableDetails?.testSuite?.id
-      );
-      setTestCaseSummary(response);
+      if (isUndefined(tableDetails?.testSuite?.id)) {
+        await fetchDQUpstreamFailureCount();
 
-      const failureCount =
-        response.columnTestSummary?.reduce((acc, curr) => {
-          return acc + (curr.failed ?? 0);
-        }, response.failed ?? 0) ??
-        response.failed ??
-        0;
+        return;
+      }
+
+      const testSuiteId = tableDetails?.testSuite?.id;
+
+      const { data } = await fetchTestCaseResultByTestSuiteId(
+        testSuiteId,
+        TestCaseStatus.Failed
+      );
+      const failureCount = data.reduce(
+        (acc, curr) => acc + Number.parseInt(curr.document_count ?? '0'),
+        0
+      );
 
       if (failureCount === 0) {
-        await fetchDQFailureCount();
+        await fetchDQUpstreamFailureCount();
       } else {
         setDqFailureCount(failureCount);
       }
     } catch {
-      setTestCaseSummary(undefined);
+      setDqFailureCount(0);
     }
   };
 
@@ -296,15 +295,6 @@ const TableDetailsPageV1: React.FC = () => {
       setQueryCount(response.paging.total);
     } catch {
       setQueryCount(0);
-    }
-  };
-
-  const fetchDataContract = async (tableId: string) => {
-    try {
-      const contract = await getContractByEntityId(tableId, EntityType.TABLE);
-      setDataContract(contract);
-    } catch {
-      // Do nothing
     }
   };
 
@@ -463,7 +453,10 @@ const TableDetailsPageV1: React.FC = () => {
     if (!tableDetails) {
       return;
     }
-    const updatedTable = { ...tableDetails, displayName: data.displayName };
+    const updatedTable = {
+      ...tableDetails,
+      displayName: isEmpty(data.displayName) ? undefined : data.displayName,
+    };
     await onTableUpdate(updatedTable, 'displayName');
   };
 
@@ -486,6 +479,7 @@ const TableDetailsPageV1: React.FC = () => {
     viewProfilerPermission,
     viewAllPermission,
     viewBasicPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -527,6 +521,10 @@ const TableDetailsPageV1: React.FC = () => {
         tablePermissions,
         Operation.ViewBasic
       ),
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [tablePermissions, deleted]
   );
@@ -545,13 +543,13 @@ const TableDetailsPageV1: React.FC = () => {
       getEntityFeedCount,
       handleFeedCount,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       editCustomAttributePermission,
       viewSampleDataPermission,
       viewQueriesPermission,
       viewProfilerPermission,
       editLineagePermission,
       fetchTableDetails,
-      testCaseSummary,
       isViewTableType,
       labelMap: tabLabelMap,
     });
@@ -575,13 +573,13 @@ const TableDetailsPageV1: React.FC = () => {
     getEntityFeedCount,
     handleFeedCount,
     viewAllPermission,
+    viewCustomPropertiesPermission,
     editCustomAttributePermission,
     viewSampleDataPermission,
     viewQueriesPermission,
     viewProfilerPermission,
     editLineagePermission,
     fetchTableDetails,
-    testCaseSummary,
     isViewTableType,
   ]);
 
@@ -782,20 +780,14 @@ const TableDetailsPageV1: React.FC = () => {
       fetchTableDetails();
       getEntityFeedCount();
     }
-  }, [tableFqn, isTourOpen, isTourPage, tablePermissions]);
+  }, [tableFqn, isTourOpen, isTourPage, viewBasicPermission]);
 
   useEffect(() => {
     if (tableDetails) {
       fetchQueryCount();
-      fetchTestCaseSummary();
+      getTestCaseFailureCount();
     }
   }, [tableDetails?.fullyQualifiedName]);
-
-  useEffect(() => {
-    if (tableDetails) {
-      fetchDataContract(tableDetails.id);
-    }
-  }, [tableDetails?.id]);
 
   useSub(
     'updateDetails',
@@ -864,7 +856,6 @@ const TableDetailsPageV1: React.FC = () => {
               afterDomainUpdateAction={updateTableDetailsState}
               badge={alertBadge}
               dataAsset={tableDetails}
-              dataContract={dataContract}
               entityType={EntityType.TABLE}
               extraDropdownContent={extraDropdownContent}
               openTaskCount={feedCount.openTaskCount}

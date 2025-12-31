@@ -49,7 +49,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
 // use the admin user to login
 test.use({
   storageState: 'playwright/.auth/admin.json',
-  trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'on-first-retry',
+  trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'retain-on-failure',
   video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
 });
 
@@ -124,6 +124,12 @@ services.forEach((ServiceClass) => {
         ).toBeVisible();
 
         if (service.serviceType === 'Mysql') {
+          await page.reload();
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
           await page.getByTestId('agent-status-widget-view-more').click();
 
           await page.waitForSelector(

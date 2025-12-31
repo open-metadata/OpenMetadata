@@ -14,17 +14,26 @@
 package org.openmetadata.service.search;
 
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchConstants.DEFAULT_SORT_FIELD;
+import static org.openmetadata.service.search.SearchConstants.DEFAULT_SORT_ORDER;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonNumber;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonString;
+import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.search.SearchRequest;
@@ -85,12 +94,22 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
       }
 
       String queryFilter = getQueryFilter(query);
-      int currentFrom = query.getFrom();
+      int offset = query.getFrom();
+      int limit = query.getSize();
 
-      // Get total count from first batch response instead of separate count query
-      int batchSize = MAX_PAGE_SIZE;
+      // True pagination - cap limit at MAX_PAGE_SIZE for performance
+      // This ensures we never fetch more than 1000 records in a single request
+      int effectiveLimit = Math.min(limit, MAX_PAGE_SIZE);
+
       SearchRequest searchRequest =
-          buildSearchRequest(currentFrom, batchSize, queryFilter, true, ENTITY_REFERENCE_FIELDS);
+          buildSearchRequest(
+              offset,
+              effectiveLimit,
+              queryFilter,
+              true,
+              ENTITY_REFERENCE_FIELDS,
+              query.getSortField(),
+              query.getSortOrder());
 
       Response response = searchRepository.search(searchRequest, null);
       String responseBody = extractResponseBody(response);
@@ -102,34 +121,13 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
         return new InheritedFieldResult(Collections.emptyList(), 0);
       }
 
-      List<EntityReference> batchEntities =
-          extractEntityReferencesFromSearchResponse(searchResponse);
-      List<EntityReference> allEntities = new ArrayList<>(batchEntities);
-      currentFrom += batchSize;
+      // Extract entities from response
+      List<EntityReference> results = extractEntityReferencesFromSearchResponse(searchResponse);
 
-      while (allEntities.size() < totalCount) {
-        batchSize = Math.min(MAX_PAGE_SIZE, totalCount - allEntities.size());
-
-        searchRequest =
-            buildSearchRequest(currentFrom, batchSize, queryFilter, true, ENTITY_REFERENCE_FIELDS);
-
-        response = searchRepository.search(searchRequest, null);
-        responseBody = extractResponseBody(response);
-        searchResponse = JsonUtils.readTree(responseBody);
-
-        batchEntities = extractEntityReferencesFromSearchResponse(searchResponse);
-        if (batchEntities.isEmpty()) {
-          break;
-        }
-
-        allEntities.addAll(batchEntities);
-        currentFrom += batchSize;
-      }
-
-      return new InheritedFieldResult(allEntities, totalCount);
+      return new InheritedFieldResult(results, totalCount);
 
     } catch (Exception e) {
-      LOG.debug("Failed to fetch entities for inherited field, using fallback", e);
+      LOG.info("Failed to fetch entities for inherited field, using fallback", e);
       return fallback.get();
     }
   }
@@ -142,27 +140,22 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
       }
 
       String queryFilter = getQueryFilter(query);
-      SearchRequest searchRequest = buildSearchRequest(0, 0, queryFilter, false, null);
+      // For count queries, sorting doesn't matter - using defaults
+      SearchRequest searchRequest =
+          buildSearchRequest(
+              0, 0, queryFilter, false, null, DEFAULT_SORT_FIELD, DEFAULT_SORT_ORDER);
 
       Response response = searchRepository.search(searchRequest, null);
 
       String responseBody = extractResponseBody(response);
       JsonNode searchResponse = JsonUtils.readTree(responseBody);
-      return extractTotalCountFromSearchResponse(searchResponse);
+      int count = extractTotalCountFromSearchResponse(searchResponse);
+      return count;
 
     } catch (Exception e) {
-      LOG.debug("Failed to get count for inherited field, using fallback", e);
+      LOG.info("Failed to get count for inherited field, using fallback", e);
       return fallback.get();
     }
-  }
-
-  private String getQueryFilter(InheritedFieldQuery query) {
-    return switch (query.getFilterType()) {
-      case DOMAIN_ASSETS -> QueryFilterBuilder.buildDomainAssetsFilter(query);
-      case OWNER_ASSETS -> QueryFilterBuilder.buildOwnerAssetsFilter(query);
-      case TAG_ASSETS -> QueryFilterBuilder.buildTagAssetsFilter(query);
-      case GENERIC -> QueryFilterBuilder.buildGenericFilter(query);
-    };
   }
 
   private String extractResponseBody(Response response) {
@@ -230,7 +223,13 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
   }
 
   private SearchRequest buildSearchRequest(
-      int from, int size, String queryFilter, boolean fetchSource, List<String> includeFields) {
+      int from,
+      int size,
+      String queryFilter,
+      boolean fetchSource,
+      List<String> includeFields,
+      String sortField,
+      String sortOrder) {
     SearchRequest searchRequest = new SearchRequest();
     searchRequest.setIndex(searchRepository.getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     searchRequest.setQuery(EMPTY_QUERY);
@@ -240,10 +239,85 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
     searchRequest.setTrackTotalHits(true);
     searchRequest.setFetchSource(fetchSource);
 
+    // Use provided sorting or default to _score desc
+    searchRequest.setSortFieldParam(sortField != null ? sortField : DEFAULT_SORT_FIELD);
+    searchRequest.setSortOrder(sortOrder != null ? sortOrder : DEFAULT_SORT_ORDER);
+
     if (includeFields != null && !includeFields.isEmpty()) {
       searchRequest.setIncludeSourceFields(includeFields);
     }
 
     return searchRequest;
+  }
+
+  @Override
+  public Map<String, Integer> getAggregatedCountsByField(String fieldPath, String queryFilter) {
+    try {
+      if (isSearchUnavailable()) {
+        LOG.warn("Search unavailable for aggregated counts");
+        return Collections.emptyMap();
+      }
+
+      LOG.info("Aggregation field: {}, query: {}", fieldPath, queryFilter);
+
+      SearchAggregationNode aggregationNode =
+          SearchAggregation.terms("field_aggregation", fieldPath);
+      SearchAggregation searchAggregation = SearchAggregation.fromTree(aggregationNode);
+
+      JsonObject response =
+          searchRepository.aggregate(
+              queryFilter, GLOBAL_SEARCH_ALIAS, searchAggregation, new SearchListFilter());
+
+      LOG.info("Aggregation response: {}", response);
+
+      Map<String, Integer> result = parseAggregationResponse(response);
+      LOG.info("Parsed {} counts", result.size());
+
+      return result;
+
+    } catch (Exception e) {
+      LOG.error("Failed to execute aggregated counts query", e);
+      return Collections.emptyMap();
+    }
+  }
+
+  private String getQueryFilter(InheritedFieldQuery query) {
+    return switch (query.getFilterType()) {
+      case DOMAIN_ASSETS -> QueryFilterBuilder.buildDomainAssetsFilter(query);
+      case OWNER_ASSETS -> QueryFilterBuilder.buildOwnerAssetsFilter(query);
+      case TAG_ASSETS -> QueryFilterBuilder.buildTagAssetsFilter(query);
+      case USER_ASSETS -> QueryFilterBuilder.buildUserAssetsFilter(query);
+      case GENERIC -> QueryFilterBuilder.buildGenericFilter(query);
+    };
+  }
+
+  private Map<String, Integer> parseAggregationResponse(JsonObject response) {
+    Map<String, Integer> countsMap = new HashMap<>();
+
+    if (response == null) {
+      return countsMap;
+    }
+
+    JsonObject fieldAgg = null;
+    for (String key : response.keySet()) {
+      if (key.equals("field_aggregation") || key.endsWith("#field_aggregation")) {
+        fieldAgg = response.getJsonObject(key);
+        break;
+      }
+    }
+
+    if (fieldAgg == null || !fieldAgg.containsKey("buckets")) {
+      return countsMap;
+    }
+
+    JsonArray buckets = fieldAgg.getJsonArray("buckets");
+    for (JsonValue bucketValue : buckets) {
+      JsonObject bucket = bucketValue.asJsonObject();
+      String key = ((JsonString) bucket.get("key")).getString();
+      int count = ((JsonNumber) bucket.get("doc_count")).intValue();
+      countsMap.put(key, count);
+    }
+
+    return countsMap;
   }
 }

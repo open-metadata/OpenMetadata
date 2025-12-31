@@ -43,7 +43,6 @@ def parse_cdc_topic_name(topic_name: str, database_server_name: str = None) -> d
     - Examples:
       - MysqlKafkaV2.ecommerce.orders -> database=ecommerce, table=orders
       - PostgresKafkaCDC.public.orders -> database=public, table=orders
-      - ecommerce.customers -> database=ecommerce, table=customers (if server-name matches)
 
     Args:
         topic_name: The Kafka topic name
@@ -59,30 +58,47 @@ def parse_cdc_topic_name(topic_name: str, database_server_name: str = None) -> d
     if topic_name.startswith(("_", "dbhistory.", "__")):
         return {}
 
+    # If database_server_name is provided, check if topic starts with it
+    # This handles server names with dots like "collate.ecommerce.dev"
+    if database_server_name:
+        # Check if topic starts with the server name prefix
+        server_prefix = database_server_name + "."
+        if topic_name.startswith(server_prefix):
+            # Strip the server name prefix to get schema.table or just table
+            remaining = topic_name[len(server_prefix) :]
+            remaining_parts = remaining.split(".")
+
+            if len(remaining_parts) == 2:
+                # Pattern: {server-name}.{schema}.{table}
+                database, table = remaining_parts
+                return {"database": database, "table": table}
+            elif len(remaining_parts) == 1:
+                # Pattern: {server-name}.{table} (no explicit schema)
+                return {"database": database_server_name, "table": remaining_parts[0]}
+
+        # Check if topic exactly matches server name (edge case)
+        if topic_name.lower() == database_server_name.lower():
+            return {}
+
+    # Fallback: try to parse without server name
     parts = topic_name.split(".")
 
     # Pattern: {prefix}.{database}.{table} (3 parts)
     if len(parts) == 3:
         prefix, database, table = parts
-        # Verify prefix matches server name if provided
-        if database_server_name and prefix.lower() != database_server_name.lower():
-            # Might be schema.database.table for some connectors
-            pass
         return {"database": database, "table": table}
 
     # Pattern: {database}.{table} (2 parts)
     elif len(parts) == 2:
         database, table = parts
-        # Only accept if server name matches or not provided
-        if database_server_name and database.lower() == database_server_name.lower():
-            # This is server_name.table, so database is the server name
-            return {"database": database, "table": table}
-        # Or accept as database.table
         return {"database": database, "table": table}
 
-    # Pattern: just {table} (1 part) - use server name as database
-    elif len(parts) == 1 and database_server_name:
-        return {"database": database_server_name, "table": topic_name}
+    # Pattern: just {table} (1 part)
+    elif len(parts) == 1:
+        if database_server_name:
+            return {"database": database_server_name, "table": topic_name}
+        # Without server name, we can't determine the database
+        return {}
 
     return {}
 
@@ -110,16 +126,16 @@ class ConnectorConfigKeys:
         "db.name",
         "snowflake.database.name",
         "database.include.list",
-        "database.hostname",
-        "connection.url",
+        # "database.hostname",
+        # "connection.url",
         "database.dbname",
         "topic.prefix",
-        "database.server.name",  # Debezium V1
+        # "database.server.name",  # This maps the server name, not the actual database
         "databases.include",
         "database.names",
         "snowflake.database",
-        "connection.host",
-        "database.exclude.list",
+        # "connection.host",
+        # "database.exclude.list",
     ]
 
     CONTAINER_KEYS = [
@@ -138,6 +154,34 @@ SUPPORTED_DATASETS = {
     "database": ConnectorConfigKeys.DATABASE_KEYS,
     "container_name": ConnectorConfigKeys.CONTAINER_KEYS,
 }
+
+# Map Kafka Connect connector class names to OpenMetadata service types
+CONNECTOR_CLASS_TO_SERVICE_TYPE = {
+    "MySqlCdcSource": "Mysql",
+    "MySqlCdcSourceV2": "Mysql",
+    "PostgresCdcSource": "Postgres",
+    "PostgresSourceConnector": "Postgres",
+    "SqlServerCdcSource": "Mssql",
+    "MongoDbCdcSource": "MongoDB",
+    "OracleCdcSource": "Oracle",
+    "Db2CdcSource": "Db2",
+}
+
+# Map service types to hostname config keys
+SERVICE_TYPE_HOSTNAME_KEYS = {
+    "Mysql": ["database.hostname", "connection.host"],
+    "Postgres": ["database.hostname", "connection.host"],
+    "Mssql": ["database.hostname"],
+    "MongoDB": ["mongodb.connection.uri", "connection.uri"],
+    "Oracle": ["database.hostname"],
+}
+
+# Map service types to broker/endpoint config keys for messaging services
+MESSAGING_ENDPOINT_KEYS = [
+    "kafka.endpoint",
+    "bootstrap.servers",
+    "kafka.bootstrap.servers",
+]
 
 
 class KafkaConnectClient:

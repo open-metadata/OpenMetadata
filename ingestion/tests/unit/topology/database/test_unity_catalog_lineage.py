@@ -339,6 +339,92 @@ class TestUnityCatalogLineage(TestCase):
         "metadata.ingestion.source.database.unitycatalog.lineage.UnitycatalogLineageSource.test_connection"
     )
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata")
+    def test_handle_external_location_lineage_with_trailing_slash(
+        self, mock_metadata, mock_test_connection
+    ):
+        """Test _handle_external_location_lineage strips trailing slash from storage location"""
+        mock_test_connection.return_value = None
+
+        file_info = FileInfo(
+            path="s3://test-bucket/data/file.parquet",
+            storage_location="s3://test-bucket/data/",
+            securable_type="EXTERNAL_LOCATION",
+        )
+
+        table_entity = Table(
+            id=uuid4(),
+            name=EntityName(root="test_table"),
+            columns=[],
+        )
+
+        container_entity = Container(
+            id=uuid4(),
+            name=EntityName(root="test_container"),
+            service=EntityReference(id=uuid4(), type="storageService"),
+        )
+
+        mock_metadata.es_search_container_by_path.return_value = [container_entity]
+
+        lineage_source = UnitycatalogLineageSource(self.config, mock_metadata)
+
+        results = list(
+            lineage_source._handle_external_location_lineage(
+                file_info, table_entity, is_upstream=True
+            )
+        )
+
+        self.assertEqual(len(results), 1)
+        mock_metadata.es_search_container_by_path.assert_called_once_with(
+            full_path="s3://test-bucket/data", fields="dataModel"
+        )
+
+    @patch(
+        "metadata.ingestion.source.database.unitycatalog.lineage.UnitycatalogLineageSource.test_connection"
+    )
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata")
+    def test_handle_external_location_lineage_without_trailing_slash(
+        self, mock_metadata, mock_test_connection
+    ):
+        """Test _handle_external_location_lineage handles path without trailing slash"""
+        mock_test_connection.return_value = None
+
+        file_info = FileInfo(
+            path="s3://test-bucket/data/file.parquet",
+            storage_location="s3://test-bucket/data",
+            securable_type="EXTERNAL_LOCATION",
+        )
+
+        table_entity = Table(
+            id=uuid4(),
+            name=EntityName(root="test_table"),
+            columns=[],
+        )
+
+        container_entity = Container(
+            id=uuid4(),
+            name=EntityName(root="test_container"),
+            service=EntityReference(id=uuid4(), type="storageService"),
+        )
+
+        mock_metadata.es_search_container_by_path.return_value = [container_entity]
+
+        lineage_source = UnitycatalogLineageSource(self.config, mock_metadata)
+
+        results = list(
+            lineage_source._handle_external_location_lineage(
+                file_info, table_entity, is_upstream=True
+            )
+        )
+
+        self.assertEqual(len(results), 1)
+        mock_metadata.es_search_container_by_path.assert_called_once_with(
+            full_path="s3://test-bucket/data", fields="dataModel"
+        )
+
+    @patch(
+        "metadata.ingestion.source.database.unitycatalog.lineage.UnitycatalogLineageSource.test_connection"
+    )
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata")
     def test_handle_external_location_lineage_downstream(
         self, mock_metadata, mock_test_connection
     ):
@@ -511,3 +597,208 @@ class TestUnityCatalogLineage(TestCase):
         self.assertIsInstance(results[0], Either)
         self.assertEqual(results[0].right.edge.fromEntity.id, container_entity.id)
         self.assertEqual(results[0].right.edge.toEntity.id, current_table.id)
+
+    @patch(
+        "metadata.ingestion.source.database.unitycatalog.lineage.UnitycatalogLineageSource.test_connection"
+    )
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata")
+    def test_transitive_column_lineage(self, mock_metadata, mock_test_connection):
+        """Test transitive column lineage: ABC1.col1 -> ABC.col1 -> ABC.col2
+        Should result in: ABC1.col1 -> ABC.col1 and ABC1.col1 -> ABC.col2
+        No self-referencing lineage ABC.col1 -> ABC.col1 should be created"""
+        mock_test_connection.return_value = None
+
+        from metadata.ingestion.source.database.unitycatalog.models import (
+            DatabricksColumn,
+            LineageColumnStreams,
+        )
+
+        # Create ABC1 table with col1
+        abc1_table = Table(
+            id=uuid4(),
+            name=EntityName(root="ABC1"),
+            database=EntityReference(id=uuid4(), name="demo-test-cat", type="database"),
+            databaseSchema=EntityReference(
+                id=uuid4(), name="test-schema", type="databaseSchema"
+            ),
+            columns=[
+                Column(
+                    name=ColumnName(root="col1"),
+                    dataType=DataType.STRING,
+                    fullyQualifiedName=FullyQualifiedEntityName(
+                        root="local_unitycatalog.demo-test-cat.test-schema.ABC1.col1"
+                    ),
+                )
+            ],
+        )
+
+        # Create ABC table with col1 and col2
+        abc_table = Table(
+            id=uuid4(),
+            name=EntityName(root="ABC"),
+            database=EntityReference(id=uuid4(), name="demo-test-cat", type="database"),
+            databaseSchema=EntityReference(
+                id=uuid4(), name="test-schema", type="databaseSchema"
+            ),
+            columns=[
+                Column(
+                    name=ColumnName(root="col1"),
+                    dataType=DataType.STRING,
+                    fullyQualifiedName=FullyQualifiedEntityName(
+                        root="local_unitycatalog.demo-test-cat.test-schema.ABC.col1"
+                    ),
+                ),
+                Column(
+                    name=ColumnName(root="col2"),
+                    dataType=DataType.STRING,
+                    fullyQualifiedName=FullyQualifiedEntityName(
+                        root="local_unitycatalog.demo-test-cat.test-schema.ABC.col2"
+                    ),
+                ),
+            ],
+        )
+
+        # Set up upstream table info
+        upstream_table_info = DatabricksTable(
+            name="ABC1",
+            catalog_name="demo-test-cat",
+            schema_name="test-schema",
+            table_type="TABLE",
+        )
+
+        table_streams = LineageTableStreams(
+            upstreams=[LineageEntity(tableInfo=upstream_table_info)], downstreams=[]
+        )
+
+        # Mock metadata.get_by_name to return ABC1 table
+        mock_metadata.get_by_name.return_value = abc1_table
+
+        lineage_source = UnitycatalogLineageSource(self.config, mock_metadata)
+        lineage_source.client = Mock()
+
+        # Mock column lineage responses
+        # For ABC.col1: upstream is ABC1.col1
+        col1_lineage = LineageColumnStreams(
+            upstream_cols=[
+                DatabricksColumn(
+                    name="col1",
+                    table_name="ABC1",
+                    schema_name="test-schema",
+                    catalog_name="demo-test-cat",
+                )
+            ]
+        )
+
+        # For ABC.col2: upstream should include both ABC.col1 (self-table) and ABC1.col1 (transitive)
+        col2_lineage = LineageColumnStreams(
+            upstream_cols=[
+                DatabricksColumn(
+                    name="col1",
+                    table_name="ABC",
+                    schema_name="test-schema",
+                    catalog_name="demo-test-cat",
+                ),
+                DatabricksColumn(
+                    name="col1",
+                    table_name="ABC1",
+                    schema_name="test-schema",
+                    catalog_name="demo-test-cat",
+                ),
+            ]
+        )
+
+        # Configure mock to return different lineage based on column name
+        def get_column_lineage_side_effect(table_fqn, column_name):
+            if column_name == "col1":
+                return col1_lineage
+            elif column_name == "col2":
+                return col2_lineage
+            return LineageColumnStreams(upstream_cols=[])
+
+        lineage_source.client.get_column_lineage.side_effect = (
+            get_column_lineage_side_effect
+        )
+
+        # Execute
+        results = list(
+            lineage_source._handle_upstream_table(
+                table_streams, abc_table, "demo-test-cat.test-schema.ABC"
+            )
+        )
+
+        # Verify only one lineage request is created
+        self.assertEqual(len(results), 1)
+        lineage_request = results[0].right
+        self.assertEqual(lineage_request.edge.fromEntity.id, abc1_table.id)
+        self.assertEqual(lineage_request.edge.toEntity.id, abc_table.id)
+
+        # Verify column lineage details
+        lineage_details = lineage_request.edge.lineageDetails
+        self.assertIsNotNone(lineage_details)
+        self.assertIsNotNone(lineage_details.columnsLineage)
+
+        # Check that we have exactly 2 column lineage entries
+        column_lineages = lineage_details.columnsLineage
+        self.assertEqual(
+            len(column_lineages),
+            2,
+            f"Expected exactly 2 column lineage entries, got {len(column_lineages)}",
+        )
+
+        # Track found lineages
+        col1_lineage_found = False
+        col2_transitive_lineage_found = False
+        unexpected_lineages = []
+
+        for col_lineage in column_lineages:
+            to_col = col_lineage.toColumn.root
+            from_cols = [fc.root for fc in col_lineage.fromColumns]
+
+            # Expected: ABC1.col1 -> ABC.col1
+            if to_col == "local_unitycatalog.demo-test-cat.test-schema.ABC.col1":
+                if (
+                    "local_unitycatalog.demo-test-cat.test-schema.ABC1.col1"
+                    in from_cols
+                ):
+                    col1_lineage_found = True
+                    # Verify only ABC1.col1 is in fromColumns, no other columns
+                    self.assertEqual(len(from_cols), 1)
+                else:
+                    unexpected_lineages.append(f"{from_cols} -> {to_col}")
+
+            # Expected: ABC1.col1 -> ABC.col2 (transitive lineage)
+            elif to_col == "local_unitycatalog.demo-test-cat.test-schema.ABC.col2":
+                if (
+                    "local_unitycatalog.demo-test-cat.test-schema.ABC1.col1"
+                    in from_cols
+                ):
+                    col2_transitive_lineage_found = True
+                    # Verify only ABC1.col1 is in fromColumns
+                    # Note: ABC.col1 should be filtered out as it's a self-table reference
+                    self.assertEqual(len(from_cols), 1)
+                    self.assertNotIn(
+                        "local_unitycatalog.demo-test-cat.test-schema.ABC.col1",
+                        from_cols,
+                        "Self-table column lineage ABC.col1 -> ABC.col2 should be handled separately, not in cross-table lineage",
+                    )
+                else:
+                    unexpected_lineages.append(f"{from_cols} -> {to_col}")
+            else:
+                unexpected_lineages.append(f"{from_cols} -> {to_col}")
+
+        # Verify expected lineages were found
+        self.assertTrue(
+            col1_lineage_found,
+            "Expected ABC1.col1 -> ABC.col1 lineage not found",
+        )
+        self.assertTrue(
+            col2_transitive_lineage_found,
+            "Expected transitive lineage ABC1.col1 -> ABC.col2 not found",
+        )
+
+        # Verify no unexpected lineages were created
+        self.assertEqual(
+            len(unexpected_lineages),
+            0,
+            f"Unexpected column lineages found: {unexpected_lineages}",
+        )

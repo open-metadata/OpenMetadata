@@ -41,14 +41,22 @@ export interface TreeSearchInputProps {
   selectedOptions: Array<{ id: string; label: string }>;
   hasClearableValue: boolean;
   inputRef: React.RefObject<HTMLInputElement>;
-  getRootProps: () => any;
-  getInputProps: () => any;
-  getTagProps: (params: { index: number }) => any;
-  getClearProps: () => any;
+  getRootProps: () => React.HTMLAttributes<HTMLDivElement>;
+  getInputProps: () => React.InputHTMLAttributes<HTMLInputElement> & {
+    ref: React.Ref<HTMLInputElement>;
+  };
+  getTagProps: (params: { index: number }) => {
+    key: number;
+    'data-tag-index': number;
+    tabIndex: -1;
+    onDelete: (event: React.SyntheticEvent) => void;
+  };
+  getClearProps: () => React.HTMLAttributes<HTMLButtonElement>;
   onFocus: () => void;
   onBlur: (e: React.FocusEvent) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
   onClear?: () => void;
+  'data-testid'?: string;
 }
 
 const TreeSearchInput: FC<TreeSearchInputProps> = ({
@@ -77,12 +85,45 @@ const TreeSearchInput: FC<TreeSearchInputProps> = ({
   onBlur,
   onKeyDown,
   onClear,
+  'data-testid': dataTestId,
 }) => {
   const { t } = useTranslation();
   const inputProps = getInputProps();
+  const [isFocused, setIsFocused] = React.useState(false);
+
+  const handleFocus = () => {
+    setIsFocused(true);
+    onFocus();
+  };
+
+  const handleBlur = (e: React.FocusEvent) => {
+    setIsFocused(false);
+    onBlur(e);
+  };
+
+  const inputBasePadding = React.useMemo(() => {
+    const hasEndAdornment = hasClearableValue || loading;
+    if (size === 'small') {
+      return hasEndAdornment ? '6px 39px 6px 6px' : '6px';
+    }
+
+    return hasEndAdornment ? '9px 39px 9px 9px' : '9px';
+  }, [size, hasClearableValue, loading]);
 
   return (
-    <Box {...getRootProps()}>
+    <Box
+      {...getRootProps()}
+      className={isFocused ? 'focused' : undefined}
+      sx={{
+        '&.focused .MuiIconButton-root': {
+          visibility: 'visible',
+        },
+        '@media (pointer: fine)': {
+          '&:hover .MuiIconButton-root': {
+            visibility: 'visible',
+          },
+        },
+      }}>
       <TextField
         autoFocus={autoFocus}
         disabled={disabled}
@@ -99,7 +140,10 @@ const TreeSearchInput: FC<TreeSearchInputProps> = ({
         required={required}
         size={size}
         slotProps={{
-          htmlInput: inputProps,
+          htmlInput: {
+            ...inputProps,
+            'data-testid': dataTestId,
+          },
           input: {
             endAdornment: (
               <InputAdornment position="end">
@@ -110,7 +154,7 @@ const TreeSearchInput: FC<TreeSearchInputProps> = ({
                     edge="end"
                     size="small"
                     sx={{
-                      visibility: hasClearableValue ? 'visible' : 'hidden',
+                      visibility: 'hidden',
                     }}
                     tabIndex={-1}
                     onMouseDown={(e) => {
@@ -146,7 +190,7 @@ const TreeSearchInput: FC<TreeSearchInputProps> = ({
                       key={option.id}
                       label={option.label}
                       size="small"
-                      onDelete={onDelete}
+                      onDelete={() => onDelete({} as React.SyntheticEvent)}
                     />
                   );
                 })}
@@ -156,25 +200,34 @@ const TreeSearchInput: FC<TreeSearchInputProps> = ({
         }}
         sx={{
           '& .MuiInputBase-root': {
+            position: 'relative',
             flexWrap: 'wrap',
-            alignItems: 'center',
-            paddingTop: '6px',
-            paddingBottom: '6px',
-            paddingLeft: '6px',
+            padding: inputBasePadding,
             '& .MuiInputBase-input': {
+              width: 0,
               minWidth: 30,
-              width: 'auto',
               flexGrow: 1,
-              padding: '4px 0 4px 6px',
+              padding:
+                size === 'small'
+                  ? '2.5px 4px 2.5px 8px'
+                  : '7.5px 4px 7.5px 5px',
             },
             '& .MuiChip-root': {
-              margin: '3px',
+              margin: size === 'small' ? '2px' : '3px',
+              maxWidth:
+                size === 'small' ? 'calc(100% - 4px)' : 'calc(100% - 6px)',
+            },
+            '& .MuiInputAdornment-root': {
+              position: 'absolute',
+              right: 9,
+              top: '50%',
+              transform: 'translateY(-50%)',
             },
           },
         }}
         variant="outlined"
-        onBlur={onBlur}
-        onFocus={onFocus}
+        onBlur={handleBlur}
+        onFocus={handleFocus}
         onKeyDown={onKeyDown}
       />
     </Box>

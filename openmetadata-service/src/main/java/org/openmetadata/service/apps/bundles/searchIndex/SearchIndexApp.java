@@ -17,7 +17,6 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDa
 import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -34,6 +33,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -64,13 +64,12 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;
-import org.openmetadata.service.search.RecreateIndexHandler.ReindexContext;
+import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.interfaces.Source;
@@ -262,7 +261,30 @@ public class SearchIndexApp extends AbstractNativeApplication {
       success = jobData != null && jobData.getStatus() == EventPublisherJob.Status.COMPLETED;
       handleJobCompletion();
     } finally {
-      finalizeRecreateIndexes(success);
+      finalizeAllEntityReindex(success);
+    }
+  }
+
+  private void finalizeAllEntityReindex(boolean finalSuccess) {
+    if (recreateIndexHandler == null || recreateContext == null) {
+      return;
+    }
+
+    try {
+      recreateContext
+          .getEntities()
+          .forEach(
+              entityType -> {
+                try {
+                  // Always promote indices regardless of failures
+                  // This handles common scenarios like partial deletions and corrupted data
+                  finalizeEntityReindex(entityType, true);
+                } catch (Exception ex) {
+                  LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
+                }
+              });
+    } finally {
+      recreateContext = null;
     }
   }
 
@@ -287,6 +309,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (searchIndexSink != null) {
       LOG.info("Forcing final flush of bulk processor");
       searchIndexSink.close();
+      syncSinkStatsFromBulkSink();
     }
   }
 
@@ -328,6 +351,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (searchIndexSink != null) {
       try {
         searchIndexSink.close();
+        syncSinkStatsFromBulkSink();
       } catch (Exception e) {
         LOG.error("Error closing search index sink during exception handling", e);
       }
@@ -374,32 +398,36 @@ public class SearchIndexApp extends AbstractNativeApplication {
     return Optional.empty();
   }
 
-  private void finalizeEntityIndex(String entityType, boolean success) {
-    if (recreateIndexHandler == null
-        || recreateContext == null
-        || !Boolean.TRUE.equals(jobData.getRecreateIndex())) {
-      return;
-    }
-
-    try {
-      recreateIndexHandler.finalizeEntityReindex(recreateContext, entityType, success);
-      LOG.info("Finalized index for entity '{}' with success={}", entityType, success);
-    } catch (Exception ex) {
-      LOG.error("Failed to finalize index for entity '{}'", entityType, ex);
-    }
-  }
-
-  private void finalizeRecreateIndexes(boolean success) {
+  private void finalizeEntityReindex(String entityType, boolean success) {
     if (recreateIndexHandler == null || recreateContext == null) {
       return;
     }
 
+    String originalIndex = recreateContext.getOriginalIndex(entityType).orElse(null);
+    String canonicalIndex = recreateContext.getCanonicalIndex(entityType).orElse(null);
+    String activeIndex = recreateContext.getOriginalIndex(entityType).orElse(null);
+    String stagedIndex = recreateContext.getStagedIndex(entityType).orElse(null);
+    String canonicalAlias = recreateContext.getCanonicalAlias(entityType).orElse(null);
+    Set<String> existingAliases = recreateContext.getExistingAliases(entityType);
+    Set<String> parentAliases =
+        new HashSet<>(listOrEmpty(recreateContext.getParentAliases(entityType)));
+
+    EntityReindexContext entityReindexContext =
+        EntityReindexContext.builder()
+            .entityType(entityType)
+            .originalIndex(originalIndex)
+            .canonicalIndex(canonicalIndex)
+            .activeIndex(activeIndex)
+            .stagedIndex(stagedIndex)
+            .canonicalAliases(canonicalAlias)
+            .existingAliases(existingAliases)
+            .parentAliases(parentAliases)
+            .build();
+
     try {
-      recreateIndexHandler.finalizeReindex(recreateContext, success);
+      recreateIndexHandler.finalizeReindex(entityReindexContext, success);
     } catch (Exception ex) {
       LOG.error("Failed to finalize index recreation flow", ex);
-    } finally {
-      recreateContext = null;
     }
   }
 
@@ -819,7 +847,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
       throws InterruptedException {
     LOG.info("Waiting for all consumers to complete their work...");
     consumerLatch.await(); // Wait indefinitely for consumers to finish all work
-    LOG.info("All consumers have completed their work");
+    LOG.info("All consumers have finished processing tasks");
   }
 
   private void handleInterruption(InterruptedException e) throws InterruptedException {
@@ -890,55 +918,31 @@ public class SearchIndexApp extends AbstractNativeApplication {
       }
 
       int totalEntityRecords = getTotalEntityRecords(entityType);
-      int loadPerThread = calculateNumberOfThreads(totalEntityRecords);
+      int currentBatchSize = batchSize.get();
+      int loadPerThread = calculateNumberOfThreads(totalEntityRecords, currentBatchSize);
 
       if (totalEntityRecords > 0) {
-        // Create entity-specific latch to wait for all batches of this entity
-        CountDownLatch entityLatch = new CountDownLatch(loadPerThread);
-        submitBatchTasks(entityType, loadPerThread, producerLatch, entityLatch);
-
-        // Wait for all batches of this entity to complete
-        try {
-          entityLatch.await();
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          LOG.warn("Interrupted while waiting for entity '{}' batches to complete", entityType);
-          finalizeEntityIndex(entityType, false);
-          return;
-        }
+        submitBatchTasks(entityType, loadPerThread, currentBatchSize, producerLatch);
       }
 
       if (jobLogger != null) {
         jobLogger.markEntityCompleted(entityType);
       }
-
-      // Finalize index for this entity immediately after all its batches complete
-      finalizeEntityIndex(entityType, true);
     } catch (Exception e) {
       LOG.error("Error processing entity type {}", entityType, e);
-      // Cleanup staged index on failure
-      finalizeEntityIndex(entityType, false);
     }
   }
 
   private void submitBatchTasks(
-      String entityType,
-      int loadPerThread,
-      CountDownLatch producerLatch,
-      CountDownLatch entityLatch) {
+      String entityType, int loadPerThread, int fixedBatchSize, CountDownLatch producerLatch) {
     for (int i = 0; i < loadPerThread; i++) {
       LOG.debug("Submitting virtual thread producer task for batch {}/{}", i + 1, loadPerThread);
-      int currentOffset = i * batchSize.get();
-      producerExecutor.submit(
-          () -> processBatch(entityType, currentOffset, producerLatch, entityLatch));
+      int currentOffset = i * fixedBatchSize;
+      producerExecutor.submit(() -> processBatch(entityType, currentOffset, producerLatch));
     }
   }
 
-  private void processBatch(
-      String entityType,
-      int currentOffset,
-      CountDownLatch producerLatch,
-      CountDownLatch entityLatch) {
+  private void processBatch(String entityType, int currentOffset, CountDownLatch producerLatch) {
     try {
       if (shouldSkipBatch()) {
         return;
@@ -957,9 +961,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
     } finally {
       LOG.debug("Virtual thread completed batch, remaining: {}", producerLatch.getCount() - 1);
       producerLatch.countDown();
-      if (entityLatch != null) {
-        entityLatch.countDown();
-      }
     }
   }
 
@@ -1317,6 +1318,26 @@ public class SearchIndexApp extends AbstractNativeApplication {
     jobStats.setTotalRecords(total);
     LOG.debug("Set job-level Total Records: {}", jobStats.getTotalRecords());
 
+    StepStats readerStats = jobDataStats.getReaderStats();
+    if (readerStats == null) {
+      readerStats = new StepStats();
+      jobDataStats.setReaderStats(readerStats);
+      LOG.debug("Initialized readerStats.");
+    }
+    readerStats.setTotalRecords(total);
+    readerStats.setSuccessRecords(0);
+    readerStats.setFailedRecords(0);
+
+    StepStats sinkStats = jobDataStats.getSinkStats();
+    if (sinkStats == null) {
+      sinkStats = new StepStats();
+      jobDataStats.setSinkStats(sinkStats);
+      LOG.debug("Initialized sinkStats.");
+    }
+    sinkStats.setTotalRecords(0);
+    sinkStats.setSuccessRecords(0);
+    sinkStats.setFailedRecords(0);
+
     jobData.setStats(jobDataStats);
     return jobDataStats;
   }
@@ -1382,6 +1403,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
       LOG.debug(
           "Sending WebSocket update - forced: {}, status: {}", forceUpdate, jobData.getStatus());
 
+      // Sync sink stats from BulkSink before sending updates
+      syncSinkStatsFromBulkSink();
+
       // Check and log throughput periodically
       logThroughputIfNeeded();
 
@@ -1422,20 +1446,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private List<String> getSearchIndexFields(String entityType) {
     if (TIME_SERIES_ENTITIES.contains(entityType)) {
-      return List.of();
+      return List.of(); // Empty list for time series
     }
-
-    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-    Set<String> searchDerivedFields = repository.getSearchDerivedFields();
-
-    // Excludes search-derived fields during reindexing to avoid circular dependencies.
-    if (!searchDerivedFields.isEmpty()) {
-      Fields fieldsWithExclusions =
-          EntityUtil.Fields.createWithExcludedFields(
-              repository.getAllowedFieldsCopy(), searchDerivedFields);
-      return new ArrayList<>(fieldsWithExclusions.getFieldList());
-    }
-
     return List.of("*");
   }
 
@@ -1570,6 +1582,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     try {
       LOG.info("Closing search index sink");
       searchIndexSink.close();
+      syncSinkStatsFromBulkSink();
     } catch (Exception e) {
       LOG.error("Error closing search index sink", e);
     }
@@ -1592,8 +1605,15 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     long startTime = System.currentTimeMillis();
 
+    int readerSuccessCount = listOrEmpty(entities.getData()).size();
+    int readerFailedCount = listOrEmpty(entities.getErrors()).size();
+
+    updateReaderStats(readerSuccessCount, readerFailedCount);
+
     try {
       writeEntitiesToSink(entityType, entities, contextData);
+      updateSinkTotalSubmitted(readerSuccessCount);
+
       StepStats currentEntityStats = createEntityStats(entities);
       handleTaskSuccess(entityType, entities, currentEntityStats, jobExecutionContext);
 
@@ -1732,6 +1752,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
         handleBackpressure(e.getMessage());
       }
 
+      syncSinkStatsFromBulkSink();
+
       StepStats failedStats = createFailedStats(indexingError, entities.getData().size());
       updateStats(entityType, failedStats);
       try {
@@ -1751,6 +1773,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (!stopped) {
       updateJobStatus(EventPublisherJob.Status.ACTIVE_ERROR);
       jobData.setFailure(createSinkError(ExceptionUtils.getStackTrace(e)));
+
+      syncSinkStatsFromBulkSink();
 
       int failedCount =
           entities != null && entities.getData() != null ? entities.getData().size() : 0;
@@ -1779,8 +1803,15 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   @NotNull
   private Set<String> getAll() {
-    Set<String> entities = new HashSet<>(Entity.getEntityList());
-    entities.addAll(TIME_SERIES_ENTITIES);
+    Set<String> entityAvailableForIndex =
+        Entity.getEntityList().stream()
+            .filter(t -> searchRepository.getEntityIndexMap().containsKey(t))
+            .collect(Collectors.toSet());
+    Set<String> entities = new HashSet<>(entityAvailableForIndex);
+    entities.addAll(
+        TIME_SERIES_ENTITIES.stream()
+            .filter(t -> searchRepository.getEntityIndexMap().containsKey(t))
+            .collect(Collectors.toSet()));
     return entities;
   }
 
@@ -1790,11 +1821,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
       return entities.size();
     }
 
+    int currentBatchSize = batchSize.get();
     return entities.stream()
         .mapToInt(
             entityType -> {
               int totalRecords = getTotalEntityRecords(entityType);
-              return calculateNumberOfThreads(totalRecords);
+              return calculateNumberOfThreads(totalRecords, currentBatchSize);
             })
         .sum();
   }
@@ -1817,13 +1849,99 @@ public class SearchIndexApp extends AbstractNativeApplication {
   synchronized void updateStats(String entityType, StepStats currentEntityStats) {
     Stats jobDataStats = searchIndexStats.get();
     if (jobDataStats == null) {
-      return; // Safety check
+      return;
     }
 
     updateEntityStats(jobDataStats, entityType, currentEntityStats);
     updateJobStats(jobDataStats);
     searchIndexStats.set(jobDataStats);
     jobData.setStats(jobDataStats);
+  }
+
+  synchronized void updateReaderStats(int successCount, int failedCount) {
+    Stats jobDataStats = searchIndexStats.get();
+    if (jobDataStats == null) {
+      return;
+    }
+
+    StepStats readerStats = jobDataStats.getReaderStats();
+    if (readerStats == null) {
+      readerStats = new StepStats();
+      jobDataStats.setReaderStats(readerStats);
+    }
+
+    int currentSuccess =
+        readerStats.getSuccessRecords() != null ? readerStats.getSuccessRecords() : 0;
+    int currentFailed = readerStats.getFailedRecords() != null ? readerStats.getFailedRecords() : 0;
+
+    readerStats.setSuccessRecords(currentSuccess + successCount);
+    readerStats.setFailedRecords(currentFailed + failedCount);
+
+    searchIndexStats.set(jobDataStats);
+    jobData.setStats(jobDataStats);
+
+    LOG.debug(
+        "Updated readerStats: success={}, failed={}",
+        readerStats.getSuccessRecords(),
+        readerStats.getFailedRecords());
+  }
+
+  synchronized void updateSinkTotalSubmitted(int submittedCount) {
+    Stats jobDataStats = searchIndexStats.get();
+    if (jobDataStats == null) {
+      return;
+    }
+
+    StepStats sinkStats = jobDataStats.getSinkStats();
+    if (sinkStats == null) {
+      sinkStats = new StepStats();
+      sinkStats.setTotalRecords(0);
+      jobDataStats.setSinkStats(sinkStats);
+    }
+
+    int currentTotal = sinkStats.getTotalRecords() != null ? sinkStats.getTotalRecords() : 0;
+    sinkStats.setTotalRecords(currentTotal + submittedCount);
+
+    searchIndexStats.set(jobDataStats);
+    jobData.setStats(jobDataStats);
+
+    LOG.debug("Updated sink total submitted: {}", sinkStats.getTotalRecords());
+  }
+
+  synchronized void syncSinkStatsFromBulkSink() {
+    if (searchIndexSink == null) {
+      return;
+    }
+
+    Stats jobDataStats = searchIndexStats.get();
+    if (jobDataStats == null) {
+      return;
+    }
+
+    StepStats bulkSinkStats = searchIndexSink.getStats();
+    if (bulkSinkStats == null) {
+      return;
+    }
+
+    StepStats sinkStats = jobDataStats.getSinkStats();
+    if (sinkStats == null) {
+      sinkStats = new StepStats();
+      jobDataStats.setSinkStats(sinkStats);
+    }
+
+    sinkStats.setSuccessRecords(
+        bulkSinkStats.getSuccessRecords() != null ? bulkSinkStats.getSuccessRecords() : 0);
+    sinkStats.setFailedRecords(
+        bulkSinkStats.getFailedRecords() != null ? bulkSinkStats.getFailedRecords() : 0);
+
+    searchIndexStats.set(jobDataStats);
+    jobData.setStats(jobDataStats);
+
+    LOG.debug(
+        "Synced sinkStats from BulkSink: total={}, success={}, failed={}",
+        sinkStats.getTotalRecords(),
+        sinkStats.getSuccessRecords(),
+        sinkStats.getFailedRecords());
   }
 
   private void updateEntityStats(Stats stats, String entityType, StepStats currentEntityStats) {
@@ -1934,12 +2052,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
     updateStats(entityType, new StepStats().withSuccessRecords(0).withFailedRecords(failedCount));
   }
 
-  private int calculateNumberOfThreads(int totalEntityRecords) {
-    int mod = totalEntityRecords % batchSize.get();
+  private int calculateNumberOfThreads(int totalEntityRecords, int fixedBatchSize) {
+    int mod = totalEntityRecords % fixedBatchSize;
     if (mod == 0) {
-      return totalEntityRecords / batchSize.get();
+      return totalEntityRecords / fixedBatchSize;
     } else {
-      return (totalEntityRecords / batchSize.get()) + 1;
+      return (totalEntityRecords / fixedBatchSize) + 1;
     }
   }
 

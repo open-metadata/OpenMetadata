@@ -127,33 +127,31 @@ class TestAirflowLineageRuner(TestCase):
         Clean up
         """
 
-        service_id = str(
-            cls.metadata.get_by_name(
-                entity=DatabaseService, fqn=DB_SERVICE_NAME
-            ).id.root
+        db_service = cls.metadata.get_by_name(
+            entity=DatabaseService, fqn=DB_SERVICE_NAME
         )
-
-        cls.metadata.delete(
-            entity=DatabaseService,
-            entity_id=service_id,
-            recursive=True,
-            hard_delete=True,
-        )
+        if db_service:
+            service_id = str(db_service.id.root)
+            cls.metadata.delete(
+                entity=DatabaseService,
+                entity_id=service_id,
+                recursive=True,
+                hard_delete=True,
+            )
 
         # Service ID created from the Airflow Lineage Operator in the
         # example DAG
-        pipeline_service_id = str(
-            cls.metadata.get_by_name(
-                entity=PipelineService, fqn=PIPELINE_SERVICE_NAME
-            ).id.root
+        pipeline_service = cls.metadata.get_by_name(
+            entity=PipelineService, fqn=PIPELINE_SERVICE_NAME
         )
-
-        cls.metadata.delete(
-            entity=PipelineService,
-            entity_id=pipeline_service_id,
-            recursive=True,
-            hard_delete=True,
-        )
+        if pipeline_service:
+            pipeline_service_id = str(pipeline_service.id.root)
+            cls.metadata.delete(
+                entity=PipelineService,
+                entity_id=pipeline_service_id,
+                recursive=True,
+                hard_delete=True,
+            )
 
     def test_lineage_runner(self):
         with DAG("test_runner", start_date=datetime(2021, 1, 1)) as dag:

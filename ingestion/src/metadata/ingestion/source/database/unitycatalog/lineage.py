@@ -137,8 +137,15 @@ class UnitycatalogLineageSource(Source):
                 )
                 from_columns = []
                 for col in column_streams.upstream_cols:
-                    col_fqn = get_column_fqn(from_table, col.name)
-                    if col_fqn:
+                    col_fqn = get_column_fqn(
+                        from_table,
+                        col.name,
+                        col.table_name,
+                        col.schema_name,
+                        col.catalog_name,
+                    )
+                    # Check to avoid self column loop
+                    if col_fqn and column.fullyQualifiedName.root != col_fqn:
                         from_columns.append(col_fqn)
 
                 if from_columns:
@@ -168,8 +175,9 @@ class UnitycatalogLineageSource(Source):
                 logger.debug("No storage location found in fileInfo")
                 return
 
+            storage_location = file_info.storage_location.rstrip("/")
             location_entity = self.metadata.es_search_container_by_path(
-                full_path=file_info.storage_location, fields="dataModel"
+                full_path=storage_location, fields="dataModel"
             )
 
             if location_entity and location_entity[0]:
@@ -215,7 +223,7 @@ class UnitycatalogLineageSource(Source):
                     )
             else:
                 logger.debug(
-                    f"Unable to find container for external location: {file_info.storage_location}"
+                    f"Unable to find container for external location: {storage_location}"
                 )
         except Exception as exc:
             logger.debug(
@@ -398,10 +406,11 @@ class UnitycatalogLineageSource(Source):
                         table_streams, table, databricks_table_fqn
                     )
 
+                    # Disabling downstream lineage for now as it causes slowness
                     # Process downstream lineage
-                    yield from self._handle_downstream_table(
-                        table_streams, table, databricks_table_fqn
-                    )
+                    # yield from self._handle_downstream_table(
+                    #     table_streams, table, databricks_table_fqn
+                    # )
 
     def test_connection(self) -> None:
         test_connection_common(

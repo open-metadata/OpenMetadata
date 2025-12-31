@@ -36,6 +36,7 @@ import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import TagSuggestion from '../../pages/TasksPage/shared/TagSuggestion';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
+import { getCustomPropertyEntityType } from './CSV.utils';
 
 class CSVUtilsClassBase {
   public hideImportsColumnList() {
@@ -55,12 +56,18 @@ class CSVUtilsClassBase {
       'column.tags',
       'column.glossaryTerms',
       'storedProcedure.code',
+      'column.name*',
+      'name*',
     ];
   }
 
   public getEditor(
     column: string,
-    entityType: EntityType
+    entityType: EntityType,
+    multipleOwner: {
+      user: boolean;
+      team: boolean;
+    }
   ): ((props: RenderEditCellProps<any, any>) => ReactNode) | undefined {
     switch (column) {
       case 'owner':
@@ -97,7 +104,7 @@ class CSVUtilsClassBase {
           return (
             <UserTeamSelectableList
               hasPermission
-              multiple={{ user: true, team: false }}
+              multiple={multipleOwner}
               owner={ownerEntityRef}
               popoverProps={{
                 open: true,
@@ -428,7 +435,7 @@ class CSVUtilsClassBase {
               <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
               <ModalWithCustomPropertyEditor
                 visible
-                entityType={entityType}
+                entityType={getCustomPropertyEntityType(entityType)}
                 header="Edit CustomProperty"
                 value={value}
                 onCancel={() => onClose(false)}
@@ -448,6 +455,11 @@ class CSVUtilsClassBase {
           const handleChange = (typeValue: string) => {
             onRowChange({ ...row, [column.key]: typeValue });
           };
+          const translatedEntityTypeOptions = () =>
+            ENTITY_TYPE_OPTIONS.map((opt) => ({
+              ...opt,
+              label: t(opt.label),
+            }));
 
           return (
             <KeyDownStopPropagationWrapper>
@@ -458,7 +470,7 @@ class CSVUtilsClassBase {
                   autoFocus
                   open
                   data-testid="entity-type-select"
-                  options={ENTITY_TYPE_OPTIONS}
+                  options={translatedEntityTypeOptions()}
                   size="small"
                   style={{ width: '155px' }}
                   value={value}

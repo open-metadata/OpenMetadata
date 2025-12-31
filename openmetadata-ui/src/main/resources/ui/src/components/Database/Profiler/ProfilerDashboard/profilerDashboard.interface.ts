@@ -27,7 +27,9 @@ export type MetricChartType = {
     dataKey: string;
     stackId?: string;
     color: string;
+    fill?: string;
     latestValue?: string | number;
+    extra?: string;
   }[];
   data: Record<string, string | number | undefined>[];
 };
@@ -42,14 +44,16 @@ export interface ProfilerDetailsCardProps {
   isLoading?: boolean;
   noDataPlaceholderText?: ReactNode;
   children?: ReactNode;
+  chartType?: 'line' | 'area';
 }
 
-export enum TableProfilerTab {
-  COLUMN_PROFILE = 'Column Profile',
-  TABLE_PROFILE = 'Table Profile',
-  DATA_QUALITY = 'Data Quality',
-  OVERVIEW = 'Overview',
-  INCIDENTS = 'Incidents',
+// URL path segments for profiler navigation
+export enum ProfilerTabPath {
+  TABLE_PROFILE = 'table-profile',
+  COLUMN_PROFILE = 'column-profile',
+  DATA_QUALITY = 'data-quality',
+  INCIDENTS = 'incidents',
+  OVERVIEW = 'overview',
 }
 
 export interface DataQualityTabProps {
@@ -69,6 +73,7 @@ export interface DataQualityTabProps {
   fetchTestCases?: (params?: ListTestCaseParamsBySearch) => Promise<void>;
   isEditAllowed?: boolean;
   tableHeader?: ReactNode;
+  removeTableBorder?: boolean;
 }
 
 export interface TestSummaryProps {
@@ -79,6 +84,7 @@ export interface ProfilerLatestValueProps {
   information: MetricChartType['information'];
   tickFormatter?: string;
   stringValue?: boolean;
+  extra?: ReactNode;
 }
 
 export type TestCaseAction = {

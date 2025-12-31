@@ -18,6 +18,8 @@ public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex 
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.SEARCH_INDEX, searchIndex));
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
+    doc.put("classificationTags", parseTags.getClassificationTags());
+    doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("service", getEntityWithDisplayName(searchIndex.getService()));
     doc.put("indexType", searchIndex.getIndexType());
     doc.put("upstreamLineage", SearchIndex.getLineageData(searchIndex.getEntityReference()));

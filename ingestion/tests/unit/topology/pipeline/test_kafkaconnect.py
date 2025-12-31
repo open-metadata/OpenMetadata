@@ -952,6 +952,36 @@ class TestCDCTopicParsing(TestCase):
         result = parse_cdc_topic_name("MongoCDC.mydb.users", "MongoCDC")
         self.assertEqual(result, {"database": "mydb", "table": "users"})
 
+    def test_parse_cdc_topic_server_name_with_dots(self):
+        """Test parsing CDC topics when server name contains dots"""
+        from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+            parse_cdc_topic_name,
+        )
+
+        # Server name with dots: myapp.payments.prod
+        # Full topic: myapp.payments.prod.transactions.orders
+        # Expected: database=transactions, table=orders
+        result = parse_cdc_topic_name(
+            "myapp.payments.prod.transactions.orders", "myapp.payments.prod"
+        )
+        self.assertEqual(result, {"database": "transactions", "table": "orders"})
+
+        # Server name with dots and only table (no schema)
+        # Full topic: myapp.payments.prod.users
+        # Expected: database=myapp.payments.prod, table=users
+        result = parse_cdc_topic_name(
+            "myapp.payments.prod.users", "myapp.payments.prod"
+        )
+        self.assertEqual(result, {"database": "myapp.payments.prod", "table": "users"})
+
+        # Multiple level server name
+        # Server: app.service.env.region
+        # Topic: app.service.env.region.schema1.table1
+        result = parse_cdc_topic_name(
+            "app.service.env.region.schema1.table1", "app.service.env.region"
+        )
+        self.assertEqual(result, {"database": "schema1", "table": "table1"})
+
 
 class TestKafkaConnectCDCColumnExtraction(TestCase):
     """Test CDC column extraction from Debezium schema"""

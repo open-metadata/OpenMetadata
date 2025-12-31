@@ -52,6 +52,9 @@ public class JWTTokenGenerator {
   private static final String EMAIL_CLAIM = "email";
   private static final String IS_BOT_CLAIM = "isBot";
   public static final String TOKEN_TYPE = "tokenType";
+  public static final String PREFERRED_USERNAME = "preferred_username";
+  public static final String USERNAME = "username";
+  public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
   private static final JWTTokenGenerator INSTANCE = new JWTTokenGenerator();
   private RSAPrivateKey privateKey;
   @Getter private RSAPublicKey publicKey;
@@ -156,6 +159,8 @@ public class JWTTokenGenerator {
               .withClaim(EMAIL_CLAIM, email)
               .withClaim(IS_BOT_CLAIM, isBot)
               .withClaim(TOKEN_TYPE, tokenType.value())
+              .withClaim(USERNAME, userName)
+              .withClaim(PREFERRED_USERNAME, userName)
               .withIssuedAt(new Date(System.currentTimeMillis()))
               .withExpiresAt(expires)
               .sign(algorithm);
@@ -187,6 +192,38 @@ public class JWTTokenGenerator {
   public Date getCustomExpiryDate(long seconds) {
     LocalDateTime expiryDate = LocalDateTime.now().plusSeconds(seconds);
     return Date.from(expiryDate.atZone(ZoneId.systemDefault()).toInstant());
+  }
+
+  public JWTAuthMechanism generateImpersonationToken(
+      String botName,
+      String targetUser,
+      Set<String> botRoles,
+      boolean isBotAdmin,
+      String botEmail,
+      long expiryInSeconds) {
+    try {
+      Algorithm algorithm = getAlgorithm(tokenValidationAlgorithm, null, privateKey);
+      Date expiryDate = getCustomExpiryDate(expiryInSeconds);
+
+      String token =
+          JWT.create()
+              .withIssuer(issuer)
+              .withKeyId(kid)
+              .withClaim(SUBJECT_CLAIM, targetUser)
+              .withClaim(IS_BOT_CLAIM, false)
+              .withClaim(TOKEN_TYPE, ServiceTokenType.BOT.value())
+              .withClaim(IMPERSONATED_USER_CLAIM, botName)
+              .withIssuedAt(new Date(System.currentTimeMillis()))
+              .withExpiresAt(expiryDate)
+              .sign(algorithm);
+
+      JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism();
+      jwtAuthMechanism.setJWTToken(token);
+      jwtAuthMechanism.setJWTTokenExpiresAt(expiryDate.getTime());
+      return jwtAuthMechanism;
+    } catch (Exception e) {
+      throw new JWTCreationException("Failed to generate impersonation token", e);
+    }
   }
 
   public JWKSResponse getJWKSResponse() {

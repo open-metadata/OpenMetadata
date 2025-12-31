@@ -48,6 +48,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../../type/basic.json#/definitions/href"
@@ -121,6 +125,11 @@
       "description": "Allow users to configure the app from the UI. If `false`, the `configure` step will be hidden.",
       "type": "boolean",
       "default": true
+    },
+    "allowConcurrentExecution": {
+      "description": "If true, multiple instances of this app can run concurrently. This is useful for apps like QueryRunner that support parallel executions with different configurations.",
+      "type": "boolean",
+      "default": false
     },
     "appConfiguration": {
       "description": "Application Configuration object.",

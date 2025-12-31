@@ -183,7 +183,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               description = "Filter Disabled Classifications",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("disabled")
-          @DefaultValue("false")
           Boolean disabled,
       @Parameter(description = "Limit the number tags returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
@@ -207,10 +206,10 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter =
-        new ListFilter(include)
-            .addQueryParam("parent", parent)
-            .addQueryParam("classification.disabled", disabled);
+    ListFilter filter = new ListFilter(include).addQueryParam("parent", parent);
+    if (disabled != null) {
+      filter.addQueryParam("classification.disabled", disabled);
+    }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -588,6 +587,85 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     return bulkRemoveFromAssetsAsync(securityContext, id, request);
   }
 
+  @GET
+  @Path("/{id}/assets")
+  @Operation(
+      operationId = "listTagAssets",
+      summary = "List assets tagged with this tag",
+      description =
+          "Get a paginated list of assets that have this tag applied. "
+              + "Use limit and offset query params for pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation = org.openmetadata.schema.type.EntityReference.class))),
+        @ApiResponse(responseCode = "404", description = "Tag for instance {id} is not found")
+      })
+  public Response listTagAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset) {
+    return Response.ok(repository.getTagAssets(id, limit, offset)).build();
+  }
+
+  @GET
+  @Path("/name/{fqn}/assets")
+  @Operation(
+      operationId = "listTagAssetsByName",
+      summary = "List assets tagged with this tag by fully qualified name",
+      description =
+          "Get a paginated list of assets that have this tag applied. "
+              + "Use limit and offset query params for pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation = org.openmetadata.schema.type.EntityReference.class))),
+        @ApiResponse(responseCode = "404", description = "Tag for instance {fqn} is not found")
+      })
+  public Response listTagAssetsByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fully qualified name of the tag", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset) {
+    return Response.ok(repository.getTagAssetsByName(fqn, limit, offset)).build();
+  }
+
   @Override
   public Tag addHref(UriInfo uriInfo, Tag tag) {
     super.addHref(uriInfo, tag);
@@ -686,5 +764,24 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
 
     return feedbackRepository.getPendingFeedback();
+  }
+
+  @GET
+  @Path("/assets/counts")
+  @Operation(
+      operationId = "getAllTagsWithAssetsCount",
+      summary = "Get all tags with their asset counts",
+      description =
+          "Get a map of tag fully qualified names to their asset counts using search aggregation.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Map of tag FQN to asset count",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getAllTagsWithAssetsCount(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    java.util.Map<String, Integer> result = repository.getAllTagsWithAssetsCount();
+    return Response.ok(result).build();
   }
 }

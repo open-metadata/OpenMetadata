@@ -12,10 +12,10 @@
 Airflow source to extract metadata from OM UI
 """
 import traceback
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Iterable, List, Optional, cast
+from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
 
 from airflow.models import BaseOperator, DagRun, DagTag, TaskInstance
 from airflow.models.dag import DagModel
@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
     TaskStatus,
 )
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
     AirflowConnection,
 )
@@ -55,6 +56,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.pipelineObservability import PipelineObservability
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_session
@@ -125,6 +127,8 @@ class AirflowSource(PipelineServiceSource):
         super().__init__(config, metadata)
         self.today = datetime.now().strftime("%Y-%m-%d")
         self._session = None
+        # Cache for observability data: {(dag_id, run_id): {pipeline_entity, table_fqns, dag_run}}
+        self.observability_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}
 
     @classmethod
     def create(
@@ -188,17 +192,24 @@ class AirflowSource(PipelineServiceSource):
         Return the DagRuns of given dag
         """
         try:
+            # In Airflow 3.x, execution_date was renamed to logical_date
+            execution_date_column = (
+                DagRun.logical_date
+                if hasattr(DagRun, "logical_date")
+                else DagRun.execution_date
+            )
+
             dag_run_list = (
                 self.session.query(
                     DagRun.dag_id,
                     DagRun.run_id,
                     DagRun.queued_at,
-                    DagRun.execution_date,
+                    execution_date_column,
                     DagRun.start_date,
                     DagRun.state,
                 )
                 .filter(DagRun.dag_id == dag_id)
-                .order_by(DagRun.execution_date.desc())
+                .order_by(execution_date_column.desc())
                 .limit(self.config.serviceConnection.root.config.numberOfStatus)
                 .all()
             )
@@ -207,17 +218,33 @@ class AirflowSource(PipelineServiceSource):
 
             # Build DagRun manually to not fall into new/old columns from
             # different Airflow versions
-            return [
-                DagRun(
-                    dag_id=elem.get("dag_id"),
-                    run_id=elem.get("run_id"),
-                    queued_at=elem.get("queued_at"),
-                    execution_date=elem.get("execution_date"),
-                    start_date=elem.get("start_date"),
-                    state=elem.get("state"),
+            dag_runs = []
+            for elem in dag_run_dict:
+                # Get the execution/logical date value
+                date_value = (
+                    elem.get("logical_date")
+                    if "logical_date" in elem
+                    else elem.get("execution_date")
                 )
-                for elem in dag_run_dict
-            ]
+
+                # Build kwargs based on Airflow version
+                kwargs = {
+                    "dag_id": elem.get("dag_id"),
+                    "run_id": elem.get("run_id"),
+                    "queued_at": elem.get("queued_at"),
+                    "start_date": elem.get("start_date"),
+                    "state": elem.get("state"),
+                }
+
+                # Use logical_date for Airflow 3.x, execution_date for Airflow 2.x
+                if hasattr(DagRun, "logical_date"):
+                    kwargs["logical_date"] = date_value
+                else:
+                    kwargs["execution_date"] = date_value
+
+                dag_runs.append(DagRun(**kwargs))
+
+            return dag_runs
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -309,8 +336,16 @@ class AirflowSource(PipelineServiceSource):
                         if task.task_id in self.context.get().task_names
                     ]
 
-                    timestamp = datetime_to_ts(dag_run.execution_date)
+                    # In Airflow 3.x, execution_date was renamed to logical_date
+                    execution_date = (
+                        dag_run.logical_date
+                        if hasattr(dag_run, "logical_date")
+                        and dag_run.logical_date is not None
+                        else dag_run.execution_date
+                    )
+                    timestamp = datetime_to_ts(execution_date)
                     pipeline_status = PipelineStatus(
+                        executionId=dag_run.run_id,
                         taskStatus=task_statuses,
                         executionStatus=STATUS_MAP.get(
                             dag_run.state, StatusType.Pending.value
@@ -352,19 +387,41 @@ class AirflowSource(PipelineServiceSource):
             else SerializedDagModel.data  # For 2.2.5 and 2.1.4
         )
 
-        session_query = self.session.query(
-            SerializedDagModel.dag_id,
-            json_data_column,
-            SerializedDagModel.fileloc,
-        )
-        if not self.source_config.includeUnDeployedPipelines:
-            session_query = session_query.select_from(
+        # In Airflow 3.x, fileloc is not available on SerializedDagModel
+        # We need to get it from DagModel instead
+        if hasattr(SerializedDagModel, "fileloc"):
+            # Airflow 2.x: fileloc is on SerializedDagModel
+            session_query = self.session.query(
+                SerializedDagModel.dag_id,
+                json_data_column,
+                SerializedDagModel.fileloc,
+            )
+        else:
+            # Airflow 3.x: fileloc is only on DagModel, we need to join
+            session_query = self.session.query(
+                SerializedDagModel.dag_id,
+                json_data_column,
+                DagModel.fileloc,
+            ).select_from(
                 join(
                     SerializedDagModel,
                     DagModel,
                     SerializedDagModel.dag_id == DagModel.dag_id,
                 )
-            ).filter(
+            )
+
+        if not self.source_config.includeUnDeployedPipelines:
+            # If we haven't already joined with DagModel (Airflow 2.x case)
+            if hasattr(SerializedDagModel, "fileloc"):
+                session_query = session_query.select_from(
+                    join(
+                        SerializedDagModel,
+                        DagModel,
+                        SerializedDagModel.dag_id == DagModel.dag_id,
+                    )
+                )
+            # Add the is_paused filter
+            session_query = session_query.filter(
                 DagModel.is_paused == False  # pylint: disable=singleton-comparison
             )
         limit = 100  # Number of records per batch
@@ -644,20 +701,44 @@ class AirflowSource(PipelineServiceSource):
             source=LineageSource.PipelineLineage,
         )
 
+        # Initialize context for observability tracking
+        self.context.get().current_pipeline_entity = pipeline_entity
+        self.context.get().current_table_fqns = []
+
+        # Get dag runs for caching observability data
+        dag_runs = self.get_pipeline_status(pipeline_details.dag_id)
+
+        # Cache dag runs in context
+        self.context.get().current_dag_runs = dag_runs
+        self.context.get().latest_dag_run = dag_runs[0] if dag_runs else None
+
         xlets: List[XLets] = (
             get_xlets_from_dag(dag=pipeline_details) if pipeline_details else []
         )
+
+        table_fqns = []
         for xlet in xlets:
             for from_xlet in xlet.inlets or []:
                 from_entity = self.metadata.get_by_name(
                     entity=from_xlet.entity, fqn=from_xlet.fqn
                 )
                 if from_entity:
+                    # Track table FQNs for observability
+                    if from_xlet.entity == Table and from_xlet.fqn not in table_fqns:
+                        table_fqns.append(from_xlet.fqn)
+
                     for to_xlet in xlet.outlets or []:
                         to_entity = self.metadata.get_by_name(
                             entity=to_xlet.entity, fqn=to_xlet.fqn
                         )
                         if to_entity:
+                            # Track table FQNs for observability
+                            if (
+                                to_xlet.entity == Table
+                                and to_xlet.fqn not in table_fqns
+                            ):
+                                table_fqns.append(to_xlet.fqn)
+
                             lineage = AddLineageRequest(
                                 edge=EntitiesEdge(
                                     fromEntity=EntityReference(
@@ -686,6 +767,177 @@ class AirflowSource(PipelineServiceSource):
                         f"Could not find [{from_xlet.entity.__name__}] [{from_xlet.fqn}] from "
                         f"[{pipeline_entity.fullyQualifiedName.root}] inlets"
                     )
+
+        # Cache observability data for later use
+        self.context.get().current_table_fqns = table_fqns
+
+        # Cache for historical dag runs
+        for dag_run in dag_runs:
+            if dag_run.run_id:
+                cache_key = (pipeline_details.dag_id, dag_run.run_id)
+                self.observability_cache[cache_key] = {
+                    "pipeline_entity": pipeline_entity,
+                    "pipeline_details": pipeline_details,
+                    "table_fqns": table_fqns,
+                    "dag_run": dag_run,
+                }
+
+    def _build_observability_from_dag_run(
+        self,
+        dag_run: DagRun,
+        pipeline_entity: Pipeline,
+        schedule_interval: Optional[str] = None,
+    ) -> PipelineObservability:
+        """Build PipelineObservability object from DagRun data."""
+        # In Airflow 3.x, execution_date was renamed to logical_date
+        execution_date = (
+            dag_run.logical_date
+            if hasattr(dag_run, "logical_date") and dag_run.logical_date is not None
+            else dag_run.execution_date
+        )
+
+        return PipelineObservability(
+            pipeline=EntityReference(
+                id=pipeline_entity.id.root
+                if hasattr(pipeline_entity.id, "root")
+                else pipeline_entity.id,
+                type="pipeline",
+                fullyQualifiedName=pipeline_entity.fullyQualifiedName.root
+                if hasattr(pipeline_entity.fullyQualifiedName, "root")
+                else str(pipeline_entity.fullyQualifiedName),
+            ),
+            scheduleInterval=schedule_interval,
+            startTime=Timestamp(datetime_to_ts(dag_run.start_date))
+            if dag_run.start_date
+            else None,
+            endTime=Timestamp(datetime_to_ts(execution_date))
+            if execution_date
+            else None,
+            lastRunTime=Timestamp(datetime_to_ts(execution_date))
+            if execution_date
+            else None,
+            lastRunStatus=STATUS_MAP.get(dag_run.state, StatusType.Pending.value),
+        )
+
+    def get_table_pipeline_observability(
+        self, pipeline_details: AirflowDagDetails
+    ) -> Iterable[Dict[str, List[PipelineObservability]]]:
+        """
+        Extract pipeline observability data from cached lineage artifacts.
+        Uses context data first (current dag), falls back to cache for historical data.
+        """
+        try:
+            table_pipeline_map: Dict[str, List[PipelineObservability]] = defaultdict(
+                list
+            )
+
+            ctx = self.context.get()
+
+            # Process current context data (current dag being processed)
+            if (
+                hasattr(ctx, "current_table_fqns")
+                and hasattr(ctx, "current_dag_runs")
+                and hasattr(ctx, "current_pipeline_entity")
+                and ctx.current_dag_runs
+                and ctx.current_pipeline_entity
+                and ctx.current_table_fqns
+            ):
+                logger.debug(
+                    f"Processing observability for current dag {pipeline_details.dag_id} with "
+                    f"{len(ctx.current_table_fqns)} tables and {len(ctx.current_dag_runs)} runs"
+                )
+
+                # Process ALL dag runs (not just latest)
+                for dag_run in ctx.current_dag_runs:
+                    try:
+                        observability = self._build_observability_from_dag_run(
+                            dag_run=dag_run,
+                            pipeline_entity=ctx.current_pipeline_entity,
+                            schedule_interval=pipeline_details.schedule_interval,
+                        )
+
+                        # Add observability to all tables involved in this pipeline
+                        for table_fqn in ctx.current_table_fqns:
+                            table_pipeline_map[table_fqn].append(observability)
+
+                    except Exception as exc:
+                        logger.warning(
+                            f"Failed to build observability for dag run {dag_run.run_id}: {exc}"
+                        )
+                        logger.debug(traceback.format_exc())
+                        continue
+
+            # Process cached observability data (historical dags)
+            processed_cache_entries = 0
+            failed_cache_entries = 0
+
+            for cache_key, cached_data in self.observability_cache.items():
+                try:
+                    dag_id, run_id = cache_key
+
+                    # Skip current dag to avoid duplicates
+                    if dag_id == pipeline_details.dag_id:
+                        continue
+
+                    # Validate cache structure
+                    if not isinstance(cached_data, dict):
+                        logger.warning(
+                            f"Invalid cache structure for {cache_key}, skipping"
+                        )
+                        failed_cache_entries += 1
+                        continue
+
+                    pipeline_entity = cached_data.get("pipeline_entity")
+                    table_fqns = cached_data.get("table_fqns", [])
+                    dag_run = cached_data.get("dag_run")
+                    cached_pipeline_details = cached_data.get("pipeline_details")
+
+                    # Validate cache entry has required data
+                    if not pipeline_entity or not table_fqns or not dag_run:
+                        logger.debug(
+                            f"Incomplete cache entry for {cache_key}, skipping"
+                        )
+                        continue
+
+                    # Build observability for this cached run
+                    schedule_interval = (
+                        cached_pipeline_details.schedule_interval
+                        if cached_pipeline_details
+                        else None
+                    )
+
+                    observability = self._build_observability_from_dag_run(
+                        dag_run=dag_run,
+                        pipeline_entity=pipeline_entity,
+                        schedule_interval=schedule_interval,
+                    )
+
+                    # Add to all tables produced by this pipeline
+                    for table_fqn in table_fqns:
+                        table_pipeline_map[table_fqn].append(observability)
+
+                    processed_cache_entries += 1
+
+                except Exception as exc:
+                    logger.warning(f"Error processing cache entry {cache_key}: {exc}")
+                    logger.debug(traceback.format_exc())
+                    failed_cache_entries += 1
+                    continue
+
+            # Summary logging
+            logger.info(
+                f"Pipeline observability extraction complete for {pipeline_details.dag_id}: "
+                f"{len(table_pipeline_map)} tables, {processed_cache_entries} cache entries processed, "
+                f"{failed_cache_entries} cache entries failed"
+            )
+
+            yield table_pipeline_map
+
+        except Exception as exc:
+            logger.error(
+                f"Failed to extract pipeline observability data for {pipeline_details.dag_id}: {exc}"
+            )
+            logger.debug(traceback.format_exc())
 
     def close(self):
         self.metadata.compute_percentile(Pipeline, self.today)

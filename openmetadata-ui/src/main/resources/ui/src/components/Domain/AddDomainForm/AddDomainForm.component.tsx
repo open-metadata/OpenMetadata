@@ -15,6 +15,7 @@ import { Button, Col, Form, FormProps, Row, Space } from 'antd';
 import { omit } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import imageClassBase from '../../../components/BlockEditor/Extensions/image/ImageClassBase';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -65,7 +66,34 @@ const AddDomainForm = ({
 
   const selectedColor = Form.useWatch('color', form);
 
+  // Check if upload functionality is available (for showing/hiding cover image field)
+  const { onImageUpload } =
+    imageClassBase.getBlockEditorAttachmentProps() ?? {};
+  const isCoverImageUploadAvailable = !!onImageUpload;
+
   // Separate fields for custom layout
+  const coverImageField: FieldProp | null = isCoverImageUploadAvailable
+    ? {
+        name: 'coverImage',
+        id: 'root/coverImage',
+        label: t('label.cover-image'),
+        muiLabel: t('label.cover-image'),
+        required: false,
+        type: FieldTypes.COVER_IMAGE_UPLOAD_MUI,
+        props: {
+          'data-testid': 'cover-image',
+          maxSizeMB: 5,
+          maxDimensions: { width: 800, height: 400 },
+          // NO onUpload prop - this makes MUICoverImageUpload store file locally
+          // Parent component will handle upload after domain is created
+        },
+        formItemProps: {
+          valuePropName: 'value',
+          trigger: 'onChange',
+        },
+      }
+    : null;
+
   const iconField: FieldProp = {
     name: 'iconURL',
     id: 'root/iconURL',
@@ -298,11 +326,14 @@ const AddDomainForm = ({
       'color',
       'iconURL',
       'glossaryTerms'
+      // Keep 'coverImage' - parent will extract and remove it before API call
       // Don't exclude 'domains' - we need it for DataProducts
     );
     const style = {
       color: formData.color,
       iconURL: formData.iconURL,
+      // Don't include coverImage here - it's not uploaded yet
+      // Parent will add it to style after upload
     };
 
     // Build the data object
@@ -344,6 +375,9 @@ const AddDomainForm = ({
       form={form}
       layout="vertical"
       onFinish={handleFormSubmit}>
+      {/* Cover Image */}
+      {coverImageField && <Box sx={{ mb: 2 }}>{getField(coverImageField)}</Box>}
+
       {/* Icon and Color row */}
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
         <Box>{getField(iconField)}</Box>

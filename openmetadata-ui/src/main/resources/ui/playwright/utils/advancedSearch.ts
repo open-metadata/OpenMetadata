@@ -187,10 +187,17 @@ export const selectOption = async (
       .locator('.ant-select-selector')
       .click({ force: true });
 
+    await page.waitForSelector('.ant-select-item-empty', {
+      state: 'detached',
+    });
+
     // Clear any existing input and type the new value
     const combobox = dropdownLocator.getByRole('combobox');
     await combobox.clear();
     await combobox.fill(optionTitle);
+    await page.waitForSelector('.ant-select-item-empty', {
+      state: 'detached',
+    });
   } else {
     await dropdownLocator.click();
   }
@@ -206,6 +213,24 @@ export const selectOption = async (
     .first();
   await optionLocator.waitFor({ state: 'visible' });
   await optionLocator.click();
+};
+
+export const selectRange = async (
+  page: Page,
+  ruleLocator: Locator,
+  startDate: string,
+  endDate: string
+) => {
+  await ruleLocator.locator('.rule--value .ant-picker-range').click();
+
+  await page.waitForSelector('.ant-picker-dropdown-range', {
+    state: 'visible',
+  });
+
+  await page.locator('.ant-picker-input-active input').fill(startDate);
+  await page.press('.ant-picker-input-active input', 'Enter');
+  await page.locator('.ant-picker-input-active input').fill(endDate);
+  await page.press('.ant-picker-input-active input', 'Enter');
 };
 
 export const fillRule = async (
@@ -388,7 +413,7 @@ export const checkNullPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=15*"exists"*'
+    '/api/v1/search/query?*index=dataAsset&from=0&size=15*%22exists%22*'
   );
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;
@@ -530,24 +555,33 @@ export const checkAddRuleOrGroupWithOperator = async (
       .click();
   }
 
-  const searchRes = page.waitForResponse(
-    `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
-      searchCriteria1.toLowerCase(),
-      true
-    )}*${getEncodedFqn(searchCriteria2.toLowerCase(), true)}*`
-  );
-  await page.getByTestId('apply-btn').click();
-
   // Since the OR operator with must not conditions will result in huge API response
   // with huge data, checking the required criteria might not be present on first page
   // Hence, checking the criteria only for AND operator
-  if (field.id !== 'Column' && operator === 'AND') {
+  if (field.id === 'Column') {
+    await page.getByTestId('apply-btn').click();
+  } else {
+    const searchRes = page.waitForResponse(
+      `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
+        searchCriteria1.toLowerCase(),
+        true
+      )}*${getEncodedFqn(searchCriteria2.toLowerCase(), true)}*`
+    );
+    await page.getByTestId('apply-btn').click();
     const res = await searchRes;
     const json = await res.json();
     const hits = json.hits.hits;
 
-    expect(JSON.stringify(hits)).toContain(searchCriteria1);
-    expect(JSON.stringify(hits)).not.toContain(searchCriteria2);
+    if (operator === 'AND') {
+      expect(JSON.stringify(hits)).toContain(searchCriteria1);
+      expect(JSON.stringify(hits)).not.toContain(searchCriteria2);
+    } else {
+      const hitsString = JSON.stringify(hits);
+      const containsCriteria1 = hitsString.includes(searchCriteria1);
+      const containsCriteria2 = hitsString.includes(searchCriteria2);
+
+      expect(containsCriteria1 || !containsCriteria2).toBe(true);
+    }
   }
 };
 

@@ -17,10 +17,10 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignDomain,
+  assignSingleSelectDomain,
   descriptionBox,
   redirectToHomePage,
-  removeDomain,
+  removeSingleSelectDomain,
   toastNotification,
   uuid,
 } from '../../utils/common';
@@ -42,16 +42,6 @@ test.beforeAll(async ({ browser }) => {
   await table.createTestCase(apiContext);
   await domain1.create(apiContext);
   await domain2.create(apiContext);
-  await afterAction();
-});
-
-test.afterAll(async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await table.delete(apiContext);
-  await user1.delete(apiContext);
-  await user2.delete(apiContext);
-  await domain1.delete(apiContext);
-  await domain2.delete(apiContext);
   await afterAction();
 });
 
@@ -84,13 +74,18 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
     await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
 
     const getTestCase = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/search/list?*${testCaseName1}*`
+      `/api/v1/dataQuality/testCases/search/list?*`
     );
     await page.fill(
       '[data-testid="test-case-selection-card"] [data-testid="searchbar"]',
       testCaseName1
     );
     await getTestCase;
+
+    await page.waitForSelector(
+      "[data-testid='test-case-selection-card'] [data-testid='loader']",
+      { state: 'detached' }
+    );
 
     await page.click(
       `[data-testid="test-case-selection-card"] [data-testid="${testCaseName1}"]`
@@ -109,10 +104,9 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
   });
 
   await test.step('Domain Add, Update and Remove', async () => {
-    await assignDomain(page, domain1.responseData);
-    // TODO: Add domain update
-    // await updateDomain(page, domain2.responseData);
-    await removeDomain(page, domain1.responseData, false);
+    await assignSingleSelectDomain(page, domain1.responseData);
+    await assignSingleSelectDomain(page, domain2.responseData);
+    await removeSingleSelectDomain(page, domain2.responseData, false);
   });
 
   await test.step(
@@ -120,14 +114,14 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
     async () => {
       await addMultiOwner({
         page,
-        ownerNames: [user1.getUserName()],
+        ownerNames: [user1.getUserDisplayName()],
         activatorBtnDataTestId: 'edit-owner',
         endpoint: EntityTypeEndpoint.TestSuites,
         type: 'Users',
       });
       await removeOwnersFromList({
         page,
-        ownerNames: [user1.getUserName()],
+        ownerNames: [user1.getUserDisplayName()],
         endpoint: EntityTypeEndpoint.TestSuites,
       });
       await addMultiOwner({
@@ -153,7 +147,7 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
     await testCaseResponse;
 
     const getTestCase = ownerPage.waitForResponse(
-      `/api/v1/dataQuality/testCases/search/list?*${testCaseName2}*`
+      `/api/v1/dataQuality/testCases/search/list?*`
     );
     await ownerPage.fill('[data-testid="searchbar"]', testCaseName2);
     await getTestCase;
@@ -201,12 +195,14 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
   await test.step(
     'Remove test case from logical test suite by owner',
     async () => {
+      await ownerPage.getByTestId(`action-dropdown-${testCaseName1}`).click();
       await ownerPage.click(`[data-testid="remove-${testCaseName1}"]`);
       const removeTestCase1 = ownerPage.waitForResponse(
         '/api/v1/dataQuality/testCases/logicalTestCases/*/*'
       );
       await ownerPage.click('[data-testid="save-button"]');
       await removeTestCase1;
+      await ownerPage.getByTestId(`action-dropdown-${testCaseName2}`).click();
       await ownerPage.click(`[data-testid="remove-${testCaseName2}"]`);
       const removeTestCase2 = ownerPage.waitForResponse(
         '/api/v1/dataQuality/testCases/logicalTestCases/*/*'
@@ -232,7 +228,7 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
       state: 'detached',
     });
     const getOwnerList = page.waitForResponse(
-      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+      '/api/v1/search/query?q=&index=user_search_index&*'
     );
     await page.click('.ant-tabs [id*=tab-users]');
     await getOwnerList;
