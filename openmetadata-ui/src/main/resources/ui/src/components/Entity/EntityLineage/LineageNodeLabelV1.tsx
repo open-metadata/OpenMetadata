@@ -77,7 +77,7 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
         'items-center entity-label-container',
         childrenCount > 0 ? 'with-footer' : ''
       )}>
-      <Col className="d-flex items-center m-b-sm" flex="auto">
+      <Col className="d-flex items-center" flex="auto">
         <div className="d-flex entity-service-icon m-r-xs">
           {getServiceIcon(node)}
         </div>
