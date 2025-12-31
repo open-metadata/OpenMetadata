@@ -6,6 +6,7 @@ import io.modelcontextprotocol.spec.McpSchema;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.server.auth.ScopeInterceptor;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.AuthorizationException;
@@ -39,24 +40,37 @@ public class DefaultToolContext {
     Map<String, Object> params = request.arguments();
     Object result;
     try {
+      McpTool tool;
       switch (toolName) {
         case "search_metadata":
-          result = new SearchMetadataTool().execute(authorizer, securityContext, params);
+          tool = new SearchMetadataTool();
+          ScopeInterceptor.validateToolScopes(tool);
+          result = tool.execute(authorizer, securityContext, params);
           break;
         case "get_entity_details":
-          result = new GetEntityTool().execute(authorizer, securityContext, params);
+          tool = new GetEntityTool();
+          ScopeInterceptor.validateToolScopes(tool);
+          result = tool.execute(authorizer, securityContext, params);
           break;
         case "create_glossary":
-          result = new GlossaryTool().execute(authorizer, limits, securityContext, params);
+          tool = new GlossaryTool();
+          ScopeInterceptor.validateToolScopes(tool);
+          result = tool.execute(authorizer, limits, securityContext, params);
           break;
         case "create_glossary_term":
-          result = new GlossaryTermTool().execute(authorizer, limits, securityContext, params);
+          tool = new GlossaryTermTool();
+          ScopeInterceptor.validateToolScopes(tool);
+          result = tool.execute(authorizer, limits, securityContext, params);
           break;
         case "patch_entity":
-          result = new PatchEntityTool().execute(authorizer, securityContext, params);
+          tool = new PatchEntityTool();
+          ScopeInterceptor.validateToolScopes(tool);
+          result = tool.execute(authorizer, securityContext, params);
           break;
         case "get_entity_lineage":
-          result = new GetLineageTool().execute(authorizer, securityContext, params);
+          tool = new GetLineageTool();
+          ScopeInterceptor.validateToolScopes(tool);
+          result = tool.execute(authorizer, securityContext, params);
           break;
         default:
           return McpSchema.CallToolResult.builder()
@@ -72,7 +86,27 @@ public class DefaultToolContext {
           .content(List.of(new McpSchema.TextContent(JsonUtils.pojoToJson(result))))
           .isError(false)
           .build();
+    } catch (org.openmetadata.mcp.server.auth.AuthorizationException ex) {
+      // OAuth scope authorization error
+      LOG.error("Scope authorization error: {}", ex.getMessage());
+      return McpSchema.CallToolResult.builder()
+          .content(
+              List.of(
+                  new McpSchema.TextContent(
+                      JsonUtils.pojoToJson(
+                          Map.of(
+                              "error",
+                              String.format("Insufficient scope: %s", ex.getMessage()),
+                              "statusCode",
+                              403,
+                              "requiredScopes",
+                              ex.getRequiredScopes() != null ? ex.getRequiredScopes() : List.of(),
+                              "grantedScopes",
+                              ex.getGrantedScopes() != null ? ex.getGrantedScopes() : List.of())))))
+          .isError(true)
+          .build();
     } catch (AuthorizationException ex) {
+      // OpenMetadata authorization error
       LOG.error("Authorization error: {}", ex.getMessage());
       return McpSchema.CallToolResult.builder()
           .content(

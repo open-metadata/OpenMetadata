@@ -357,6 +357,35 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         McpServerProvider mcpServer =
             (McpServerProvider) mcpServerClass.getDeclaredConstructor().newInstance();
         mcpServer.initializeMcpServer(environment, authorizer, limits, catalogConfig);
+
+        // Register OAuth JAX-RS resources (they take precedence over servlets in Jersey)
+        try {
+          Object oauthTransport = mcpServerClass.getMethod("getOAuthTransport").invoke(mcpServer);
+          if (oauthTransport != null) {
+            Class<?> mcpResourceClass =
+                Class.forName("org.openmetadata.mcp.resources.OAuthEndpointsResource");
+            Object mcpResource =
+                mcpResourceClass
+                    .getConstructor(oauthTransport.getClass())
+                    .newInstance(oauthTransport);
+            environment.jersey().register(mcpResource);
+            LOG.info("Registered JAX-RS OAuth endpoints at /mcp/*");
+
+            Class<?> rootResourceClass =
+                Class.forName("org.openmetadata.mcp.resources.RootOAuthEndpointsResource");
+            Object rootResource =
+                rootResourceClass
+                    .getConstructor(oauthTransport.getClass())
+                    .newInstance(oauthTransport);
+            environment.jersey().register(rootResource);
+            LOG.info("Registered JAX-RS OAuth endpoints at root level for RFC 8414 discovery");
+          }
+        } catch (Exception ex) {
+          LOG.warn(
+              "Could not register OAuth JAX-RS resources, OAuth endpoints may not work: "
+                  + ex.getMessage());
+        }
+
         LOG.info("MCP Server registered successfully");
       }
     } catch (ClassNotFoundException ex) {
@@ -833,6 +862,24 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Jetty metrics for monitoring
     JettyMetricsIntegration.registerJettyMetrics(environment);
+
+    // Register MCP OAuth callback resource if MCP is enabled
+    try {
+      Class<?> mcpServerClass = Class.forName("org.openmetadata.mcp.McpServer");
+      Object authProvider = mcpServerClass.getMethod("getAuthProvider").invoke(null);
+      if (authProvider != null) {
+        Class<?> resourceClass =
+            Class.forName("org.openmetadata.service.resources.mcp.McpAuthCallbackResource");
+        Object resource =
+            resourceClass.getConstructor(authProvider.getClass()).newInstance(authProvider);
+        environment.jersey().register(resource);
+        LOG.info("Registered MCP OAuth callback resource");
+      }
+    } catch (ClassNotFoundException ignored) {
+      // MCP module not available, skip
+    } catch (Exception e) {
+      LOG.error("Error registering MCP OAuth callback resource", e);
+    }
 
     // RDF resources are now automatically registered via @Collection annotation
     if (config.getRdfConfiguration() != null

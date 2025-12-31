@@ -12,10 +12,17 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.security.JwtFilter;
 
+/**
+ * Authentication filter for MCP endpoints.
+ *
+ * <p>This filter validates JWT tokens for all MCP requests to ensure only authenticated users can
+ * access MCP features. It uses the same JWT validation as the rest of OpenMetadata.
+ */
+@Slf4j
 public class McpAuthFilter implements Filter {
   private final JwtFilter jwtFilter;
 
@@ -29,25 +36,75 @@ public class McpAuthFilter implements Filter {
       throws IOException, ServletException {
     HttpServletRequest httpServletRequest = (HttpServletRequest) servletRequest;
     HttpServletResponse httpServletResponse = (HttpServletResponse) servletResponse;
-    if (ApplicationContext.getInstance().getAppIfExists("McpApplication") == null) {
-      sendError(
-          httpServletResponse,
-          "McpApplication is not installed please install it to use MCP features.");
+
+    String requestPath = httpServletRequest.getRequestURI();
+    String method = httpServletRequest.getMethod();
+
+    // Allow CORS preflight OPTIONS requests without authentication
+    if ("OPTIONS".equalsIgnoreCase(method)) {
+      LOG.debug("Allowing OPTIONS preflight request without authentication: {}", requestPath);
+      filterChain.doFilter(servletRequest, servletResponse);
+      return;
     }
 
-    String tokenWithType = httpServletRequest.getHeader("Authorization");
-    validatePrefixedTokenRequest(jwtFilter, tokenWithType);
+    // Allow OAuth endpoints without authentication
+    if (isOAuthEndpoint(requestPath)) {
+      LOG.debug("Allowing OAuth endpoint without authentication: {}", requestPath);
+      filterChain.doFilter(servletRequest, servletResponse);
+      return;
+    }
 
-    // Continue with the filter chain
-    filterChain.doFilter(servletRequest, servletResponse);
+    try {
+      // Extract Authorization header
+      String tokenWithType = httpServletRequest.getHeader("Authorization");
+
+      if (tokenWithType == null || tokenWithType.isEmpty()) {
+        sendError(
+            httpServletResponse,
+            "Authentication required. Please provide a valid JWT token in the Authorization header.",
+            HttpServletResponse.SC_UNAUTHORIZED);
+        return;
+      }
+
+      // Validate JWT token using OpenMetadata's standard validation
+      validatePrefixedTokenRequest(jwtFilter, tokenWithType);
+
+      LOG.debug("MCP request authenticated successfully");
+
+      // Continue with the filter chain
+      filterChain.doFilter(servletRequest, servletResponse);
+
+    } catch (Exception e) {
+      LOG.error("MCP authentication failed", e);
+      String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+      sendError(
+          httpServletResponse,
+          "Authentication failed: " + message,
+          HttpServletResponse.SC_UNAUTHORIZED);
+    }
   }
 
-  private void sendError(HttpServletResponse response, String errorMessage) throws IOException {
+  /**
+   * Check if the request path is an OAuth endpoint that should be publicly accessible.
+   * OAuth discovery and flow endpoints must be accessible without authentication.
+   */
+  private boolean isOAuthEndpoint(String path) {
+    return path.endsWith("/.well-known/oauth-authorization-server")
+        || path.endsWith("/.well-known/oauth-protected-resource")
+        || path.endsWith("/.well-known/openid-configuration")
+        || path.endsWith("/register")
+        || path.endsWith("/authorize")
+        || path.endsWith("/token")
+        || path.endsWith("/revoke");
+  }
+
+  private void sendError(HttpServletResponse response, String errorMessage, int statusCode)
+      throws IOException {
     Map<String, Object> error = new HashMap<>();
     error.put("error", errorMessage);
     String errorJson = JsonUtils.pojoToJson(error);
     response.setContentType("application/json");
-    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    response.setStatus(statusCode);
     response.getWriter().write(errorJson);
   }
 }

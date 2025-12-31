@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.server.auth.annotations.RequireScope;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -24,6 +25,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
+@RequireScope({"metadata:read"})
 public class SearchMetadataTool implements McpTool {
 
   private static final List<String> ESSENTIAL_FIELDS_ONLY =

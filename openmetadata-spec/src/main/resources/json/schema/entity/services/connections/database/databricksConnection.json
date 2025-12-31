@@ -56,6 +56,10 @@
         {
           "title": "Azure AD Setup",
           "$ref": "./databricks/azureAdSetup.json"
+        },
+        {
+          "title": "OAuth 2.0",
+          "$ref": "../common/oauthCredentials.json"
         }
       ]
     },
