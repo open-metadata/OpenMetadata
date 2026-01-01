@@ -799,6 +799,52 @@ test('Verify there is no traced nodes and columns on exiting edit mode', async (
   }
 });
 
+test('Verify node full path is present as breadcrumb in lineage node', async ({
+  page,
+}) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table = new TableClass();
+
+  await table.create(apiContext);
+
+  try {
+    await table.visitEntityPage(page);
+    await visitLineageTab(page);
+
+    const tableFqn = get(table, 'entityResponseData.fullyQualifiedName');
+    const tableNode = page.locator(`[data-testid="lineage-node-${tableFqn}"]`);
+
+    await expect(tableNode).toBeVisible();
+
+    const breadcrumbContainer = tableNode.locator(
+      '[data-testid="lineage-breadcrumbs"]'
+    );
+
+    await expect(breadcrumbContainer).toBeVisible();
+
+    const breadcrumbItems = breadcrumbContainer.locator(
+      '.lineage-breadcrumb-item'
+    );
+    const breadcrumbCount = await breadcrumbItems.count();
+
+    expect(breadcrumbCount).toBeGreaterThan(0);
+
+    const fqnParts: Array<string> = tableFqn.split('.');
+    fqnParts.pop();
+
+    expect(breadcrumbCount).toBe(fqnParts.length);
+
+    for (let i = 0; i < breadcrumbCount; i++) {
+      const breadcrumbText = await breadcrumbItems.nth(i).textContent();
+
+      expect(breadcrumbText).toBe(fqnParts[i]);
+    }
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
 test.describe.serial('Test pagination in column level lineage', () => {
   const generateColumnsWithNames = (count: number) => {
     const columns = [];
@@ -1466,6 +1512,7 @@ test('Verify custom properties tab visibility in lineage sidebar', async ({
 
       // Wait for the lineage entity panel (sidebar drawer) to open
       const lineagePanel = page.getByTestId('lineage-entity-panel');
+
       await expect(lineagePanel).toBeVisible();
 
       // Wait for the panel content to load
@@ -1530,17 +1577,21 @@ test.describe(
         await clickLineageNode(page, nodeFqn);
 
         const lineagePanel = page.getByTestId('lineage-entity-panel');
+
         await expect(lineagePanel).toBeVisible();
+
         await waitForAllLoadersToDisappear(page);
 
         const customPropertiesTab = lineagePanel.getByTestId(
           'custom-properties-tab'
         );
+
         await expect(customPropertiesTab).toBeVisible();
 
         const closeButton = lineagePanel.getByTestId('drawer-close-icon');
         if (await closeButton.isVisible()) {
           await closeButton.click();
+
           await expect(lineagePanel).not.toBeVisible();
         }
       });
@@ -1587,24 +1638,28 @@ test.describe(
         await sidebarClick(page, SidebarItem.LINEAGE);
 
         const searchEntitySelect = page.getByTestId('search-entity-select');
+
         await expect(searchEntitySelect).toBeVisible();
+
         await searchEntitySelect.click();
 
         const searchInput = page
           .getByTestId('search-entity-select')
           .locator('.ant-select-selection-search-input');
-          
+
         const searchResponse = page.waitForResponse((response) =>
           response.url().includes('/api/v1/search/query')
         );
         await searchInput.fill(service.entity.name);
 
         const searchResponseResult = await searchResponse;
+
         expect(searchResponseResult.status()).toBe(200);
 
         const nodeSuggestion = page.getByTestId(
           `node-suggestion-${serviceFqn}`
         );
+
         await expect(nodeSuggestion).toBeVisible();
 
         const lineageResponse = page.waitForResponse((response) =>
@@ -1614,6 +1669,7 @@ test.describe(
         await nodeSuggestion.click();
 
         const lineageResponseResult = await lineageResponse;
+
         expect(lineageResponseResult.status()).toBe(200);
 
         await expect(
@@ -1623,7 +1679,9 @@ test.describe(
         await clickLineageNode(page, serviceFqn);
 
         const lineagePanel = page.getByTestId('lineage-entity-panel');
+
         await expect(lineagePanel).toBeVisible();
+
         await waitForAllLoadersToDisappear(page);
 
         const customPropertiesTab = lineagePanel.getByTestId(
@@ -1639,6 +1697,7 @@ test.describe(
         const closeButton = lineagePanel.getByTestId('drawer-close-icon');
         if (await closeButton.isVisible()) {
           await closeButton.click();
+
           await expect(lineagePanel).not.toBeVisible();
         }
       });
