@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@mui/material';
-import classNames from 'classnames';
+import { Box, Typography } from '@mui/material';
 import { isNil } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,7 +22,6 @@ import {
   CommonEntitySummaryInfoV1Props,
   EntityInfoItemV1,
 } from './CommonEntitySummaryInfoV1.interface';
-import './OverviewSection.less';
 
 const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
   entityInfo,
@@ -63,55 +61,106 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
 
     if (info.isExternal && info.value !== '-') {
       return (
-        <a className="summary-item-link" href={info.url} target="_blank">
+        <Box
+          component="a"
+          href={info.url}
+          sx={{
+            color: 'primary.main',
+            textDecoration: 'none',
+            '&:hover': {
+              textDecoration: 'underline',
+            },
+          }}
+          target="_blank">
           {info.value}
           <Icon
-            className="m-l-xs"
             component={IconExternalLink}
             data-testid="external-link-icon"
-            style={ICON_DIMENSION}
+            style={{ ...ICON_DIMENSION, marginLeft: '4px' }}
           />
-        </a>
+        </Box>
       );
     }
 
     return (
-      <Link
-        className="summary-item-link"
+      <Box
+        component={Link}
+        sx={{
+          color: 'primary.main',
+          textDecoration: 'none',
+          '&:hover': {
+            textDecoration: 'underline',
+          },
+        }}
         to={info.linkProps ?? info.url ?? ''}
         onClick={onLinkClick}>
         {info.value}
-      </Link>
+      </Box>
     );
   };
 
   return (
-    <div className="overview-section">
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+      }}>
       {visibleEntityInfo.length === 0 ? (
-        <div className="overview-row">
-          <Typography
-            className="no-data-placeholder"
-            data-testid="no-data-placeholder">
+        <Box
+          sx={{
+            gap: '16px',
+            wordBreak: 'break-word',
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'flex-start',
+            minHeight: '20px',
+          }}>
+          <Typography data-testid="no-data-placeholder">
             {t('label.no-overview-available')}
           </Typography>
-        </div>
+        </Box>
       ) : (
         visibleEntityInfo.map((info) => (
-          <div className="overview-row" key={info.name}>
-            <span
-              className={classNames('overview-label')}
-              data-testid={`${info.name}-label`}>
+          <Box
+            key={info.name}
+            sx={{
+              gap: '16px',
+              wordBreak: 'break-word',
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              minHeight: '20px',
+            }}>
+            <Box
+              component="span"
+              data-testid={`${info.name}-label`}
+              sx={{
+                fontWeight: 400,
+                color: (theme) => theme.palette.allShades.gray[700],
+                fontSize: '13px',
+                textAlign: 'left',
+                flexShrink: 0,
+                width: '120px',
+              }}>
               {info.name}
-            </span>
-            <span
-              className={classNames('overview-value text-grey-body')}
-              data-testid={`${info.name}-value`}>
+            </Box>
+            <Box
+              component="span"
+              data-testid={`${info.name}-value`}
+              sx={{
+                color: (theme) => theme.palette.allShades.gray[900],
+                fontWeight: 500,
+                fontSize: '13px',
+                textAlign: 'left',
+                flex: 1,
+              }}>
               {renderInfoValue(info)}
-            </span>
-          </div>
+            </Box>
+          </Box>
         ))
       )}
-    </div>
+    </Box>
   );
 };
 

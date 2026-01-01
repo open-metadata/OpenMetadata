@@ -29,7 +29,7 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { EntityReference } from '../../../generated/entity/type';
+import { EntityReference, Type } from '../../../generated/entity/type';
 import { PipelineViewMode } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/tagLabel';
@@ -73,7 +73,6 @@ import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetail
 import { EntityTitleSection } from '../../common/EntityTitleSection/EntityTitleSection';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
-import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
 import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
@@ -83,6 +82,11 @@ import DataQualityTab from './DataQualityTab/DataQualityTab';
 import './entity-summary-panel.less';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
 import { LineageTabContent } from './LineageTab';
+
+type MergedEntityData = EntityData &
+  SearchedDataProps['data'][number]['_source'] & {
+    dataProducts?: DataProduct[];
+  };
 
 export default function EntitySummaryPanel({
   entityDetails,
@@ -111,8 +115,8 @@ export default function EntitySummaryPanel({
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
     EntityRightPanelTab.OVERVIEW
   );
-  const [entityData, setEntityData] = useState<any>(null);
-  const [entityTypeDetail, setEntityTypeDetail] = useState<any>(null);
+  const [entityData, setEntityData] = useState<MergedEntityData | null>(null);
+  const [entityTypeDetail, setEntityTypeDetail] = useState<Type | null>(null);
   const [isEntityDataLoading, setIsEntityDataLoading] = useState(false);
   const [lineageData, setLineageData] = useState<LineageData | null>(null);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
@@ -202,40 +206,42 @@ export default function EntitySummaryPanel({
     setIsEntityDataLoading(true);
     try {
       const fqn = entityDetails.details.fullyQualifiedName;
-      let entityPromise: Promise<any> | null = null;
+      let entityPromise: Promise<EntityData> | null = null;
 
       const fetchFn = entityFetchMap[entityType];
       if (fetchFn) {
-        entityPromise = fetchFn(fqn);
+        entityPromise = fetchFn(fqn) as Promise<EntityData>;
       }
 
       if (entityPromise) {
         const data = await entityPromise;
+        const searchSource =
+          entityDetails.details as SearchedDataProps['data'][number]['_source'];
+
         // Merge API data with essential fields from entityDetails.details
-        const mergedData = {
+        const mergedData: MergedEntityData = {
           ...data,
+          ...searchSource,
           // Essential fields that are used in DataAssetSummaryPanelV1
-          entityType: entityDetails.details.entityType,
-          fullyQualifiedName: entityDetails.details.fullyQualifiedName,
-          id: entityDetails.details.id,
+          entityType: entityDetails.details.entityType ?? data.entityType,
+          fullyQualifiedName:
+            entityDetails.details.fullyQualifiedName ?? data.fullyQualifiedName,
+          id: entityDetails.details.id ?? data.id,
           description: data.description ?? entityDetails.details.description,
-          displayName: entityDetails.details.displayName,
-          name: entityDetails.details.name,
-          deleted: entityDetails.details.deleted,
-          serviceType: (entityDetails.details as any).serviceType,
+          displayName: entityDetails.details.displayName ?? data.displayName,
+          name: entityDetails.details.name ?? data.name,
+          deleted: entityDetails.details.deleted ?? data.deleted,
           service: data.service ?? entityDetails.details.service,
           // Prefer canonical data; fallback to search result if missing
           owners: data.owners ?? entityDetails.details.owners,
           domains: data.domains ?? entityDetails.details.domains,
           tags: data.tags ?? entityDetails.details.tags,
           dataProducts:
-            data.dataProducts ?? (entityDetails.details as any).dataProducts,
-          tier: (entityDetails.details as any).tier,
-          columnNames: (entityDetails.details as any).columnNames,
-          database: (entityDetails.details as any).database,
-          databaseSchema: (entityDetails.details as any).databaseSchema,
-          tableType: (entityDetails.details as any).tableType,
-        };
+            data.dataProducts ??
+            ('dataProducts' in searchSource
+              ? searchSource.dataProducts
+              : undefined),
+        } as MergedEntityData;
         setEntityData(mergedData);
       }
     } catch (error) {
@@ -307,16 +313,17 @@ export default function EntitySummaryPanel({
   ]);
 
   const updateEntityData = useCallback(
-    (updatedData: Partial<EntityData>) => {
-      setEntityData((prevData: EntityData | null) => {
+    (updatedData: Partial<MergedEntityData>) => {
+      setEntityData((prevData: MergedEntityData | null) => {
         // Use entityDetails.details as a fallback if prevData is null.
         // This handles the initial update before fetchEntityData completes.
-        const baseData = prevData || entityDetails.details;
+        const baseData =
+          prevData || (entityDetails.details as MergedEntityData);
 
         // Safety check: If the base data's ID doesn't match the current entity,
         // abort the update to prevent state corruption.
         if (baseData.id !== entityDetails.details.id) {
-          return prevData; // Return the original state without changes
+          return prevData;
         }
 
         const newState = { ...baseData, ...updatedData };
@@ -448,40 +455,6 @@ export default function EntitySummaryPanel({
     () => entityPermissions.ViewBasic || entityPermissions.ViewAll,
     [entityPermissions]
   );
-
-  const summaryComponent = useMemo(() => {
-    if (isPermissionLoading) {
-      return <Loader />;
-    }
-    if (!viewPermission) {
-      return (
-        <ErrorPlaceHolder
-          className="border-none h-min-80"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.data-asset'),
-          })}
-          size={SIZE.MEDIUM}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
-      );
-    }
-    const type = (get(entityDetails, 'details.entityType') ??
-      EntityType.TABLE) as EntityType;
-    const entity = entityDetails.details;
-
-    return (
-      <DataAssetSummaryPanel
-        componentType={tab === NAV_OPTIONS.lineage ? tab : NAV_OPTIONS.explore}
-        dataAsset={
-          entity as SearchedDataProps['data'][number]['_source'] & {
-            dataProducts: DataProduct[];
-          }
-        }
-        entityType={type}
-        highlights={highlights}
-      />
-    );
-  }, [tab, entityDetails, viewPermission, isPermissionLoading]);
 
   const summaryComponentV1 = useMemo(() => {
     if (isPermissionLoading) {
@@ -653,10 +626,10 @@ export default function EntitySummaryPanel({
               />
             )}
             <CustomPropertiesSection
-              entityData={entityData}
+              entityData={entityData ?? undefined}
               entityDetails={entityDetails}
               entityType={entityType}
-              entityTypeDetail={entityTypeDetail}
+              entityTypeDetail={entityTypeDetail ?? undefined}
               isEntityDataLoading={isEntityDataLoading}
               viewCustomPropertiesPermission={getPrioritizedViewPermission(
                 entityPermissions,
@@ -667,7 +640,7 @@ export default function EntitySummaryPanel({
         );
       }
       default:
-        return summaryComponent;
+        return summaryComponentV1;
     }
   };
 
