@@ -63,10 +63,14 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class TopicRepository extends EntityRepository<Topic> {
 
-  @javax.inject.Inject
-  public TopicRepository(CollectionDAO collectionDAO) {
+  public TopicRepository() {
     super(
-        TopicResource.COLLECTION_PATH, Entity.TOPIC, Topic.class, collectionDAO.topicDAO(), "", "");
+        TopicResource.COLLECTION_PATH,
+        Entity.TOPIC,
+        Topic.class,
+        Entity.getCollectionDAO().topicDAO(),
+        "",
+        "");
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations
@@ -74,11 +78,6 @@ public class TopicRepository extends EntityRepository<Topic> {
     fieldFetchers.put("followers", this::fetchAndSetFollowers);
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
     fieldFetchers.put("service", this::fetchAndSetServices);
-  }
-
-  @Deprecated
-  public TopicRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   @Override

@@ -55,22 +55,15 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
-
-  @javax.inject.Inject
-  public SpreadsheetRepository(CollectionDAO collectionDAO) {
+  public SpreadsheetRepository() {
     super(
         SpreadsheetResource.COLLECTION_PATH,
         Entity.SPREADSHEET,
         Spreadsheet.class,
-        collectionDAO.spreadsheetDAO(),
+        Entity.getCollectionDAO().spreadsheetDAO(),
         "",
         "");
     supportsSearch = true;
-  }
-
-  @Deprecated
-  public SpreadsheetRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   @Override

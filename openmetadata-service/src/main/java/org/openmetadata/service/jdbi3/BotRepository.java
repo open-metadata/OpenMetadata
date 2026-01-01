@@ -29,21 +29,15 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class BotRepository extends EntityRepository<Bot> {
   static final String BOT_UPDATE_FIELDS = "botUser";
 
-  @javax.inject.Inject
-  public BotRepository(CollectionDAO collectionDAO) {
+  public BotRepository() {
     super(
         BotResource.COLLECTION_PATH,
         Entity.BOT,
         Bot.class,
-        collectionDAO.botDAO(),
+        Entity.getCollectionDAO().botDAO(),
         "",
         BOT_UPDATE_FIELDS);
     quoteFqn = true;
-  }
-
-  @Deprecated
-  public BotRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   @Override

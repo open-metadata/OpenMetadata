@@ -132,13 +132,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   final FeedRepository feedRepository = Entity.getFeedRepository();
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
-  @javax.inject.Inject
-  public GlossaryTermRepository(CollectionDAO collectionDAO) {
+  public GlossaryTermRepository() {
     super(
         GlossaryTermResource.COLLECTION_PATH,
         GLOSSARY_TERM,
         GlossaryTerm.class,
-        collectionDAO.glossaryTermDAO(),
+        Entity.getCollectionDAO().glossaryTermDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
@@ -152,11 +151,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (searchRepository != null) {
       inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepository);
     }
-  }
-
-  @Deprecated
-  public GlossaryTermRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   public ResultList<EntityReference> getGlossaryTermAssets(

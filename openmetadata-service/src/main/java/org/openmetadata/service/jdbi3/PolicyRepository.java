@@ -54,14 +54,14 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class PolicyRepository extends EntityRepository<Policy> {
   public static final String ENABLED = "enabled";
 
-  @javax.inject.Inject
-  public PolicyRepository(CollectionDAO collectionDAO) {
-    super(PolicyResource.COLLECTION_PATH, POLICY, Policy.class, collectionDAO.policyDAO(), "", "");
-  }
-
-  @Deprecated
   public PolicyRepository() {
-    this(Entity.getCollectionDAO());
+    super(
+        PolicyResource.COLLECTION_PATH,
+        POLICY,
+        Policy.class,
+        Entity.getCollectionDAO().policyDAO(),
+        "",
+        "");
   }
 
   @Override

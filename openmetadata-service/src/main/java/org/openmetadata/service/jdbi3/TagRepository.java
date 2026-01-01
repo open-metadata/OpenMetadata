@@ -91,9 +91,14 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 public class TagRepository extends EntityRepository<Tag> {
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
-  @javax.inject.Inject
-  public TagRepository(CollectionDAO collectionDAO) {
-    super(TagResource.TAG_COLLECTION_PATH, Entity.TAG, Tag.class, collectionDAO.tagDAO(), "", "");
+  public TagRepository() {
+    super(
+        TagResource.TAG_COLLECTION_PATH,
+        Entity.TAG,
+        Tag.class,
+        Entity.getCollectionDAO().tagDAO(),
+        "",
+        "");
     supportsSearch = true;
     renameAllowed = true;
 
@@ -101,11 +106,6 @@ public class TagRepository extends EntityRepository<Tag> {
     if (searchRepository != null) {
       inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepository);
     }
-  }
-
-  @Deprecated
-  public TagRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   public ResultList<EntityReference> getTagAssets(UUID tagId, int limit, int offset) {

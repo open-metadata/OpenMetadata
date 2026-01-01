@@ -36,7 +36,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -76,21 +75,15 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   public static final String DATABASE_SCHEMA_PROFILER_CONFIG = "databaseSchemaProfilerConfig";
 
-  @Inject
-  public DatabaseSchemaRepository(CollectionDAO collectionDAO) {
+  public DatabaseSchemaRepository() {
     super(
         DatabaseSchemaResource.COLLECTION_PATH,
         Entity.DATABASE_SCHEMA,
         DatabaseSchema.class,
-        collectionDAO.databaseSchemaDAO(),
+        Entity.getCollectionDAO().databaseSchemaDAO(),
         "",
         "");
     supportsSearch = true;
-  }
-
-  @Deprecated
-  public DatabaseSchemaRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   @Override

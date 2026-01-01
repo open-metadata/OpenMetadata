@@ -54,16 +54,15 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class FileRepository extends EntityRepository<File> {
-
-  @javax.inject.Inject
-  public FileRepository(CollectionDAO collectionDAO) {
-    super(FileResource.COLLECTION_PATH, Entity.FILE, File.class, collectionDAO.fileDAO(), "", "");
-    supportsSearch = true;
-  }
-
-  @Deprecated
   public FileRepository() {
-    this(Entity.getCollectionDAO());
+    super(
+        FileResource.COLLECTION_PATH,
+        Entity.FILE,
+        File.class,
+        Entity.getCollectionDAO().fileDAO(),
+        "",
+        "");
+    supportsSearch = true;
   }
 
   @Override

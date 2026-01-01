@@ -113,13 +113,12 @@ public class TeamRepository extends EntityRepository<Team> {
   private Team organization = null;
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
-  @javax.inject.Inject
-  public TeamRepository(CollectionDAO collectionDAO) {
+  public TeamRepository() {
     super(
         TeamResource.COLLECTION_PATH,
         TEAM,
         Team.class,
-        collectionDAO.teamDAO(),
+        Entity.getCollectionDAO().teamDAO(),
         TEAM_PATCH_FIELDS,
         TEAM_UPDATE_FIELDS);
     this.quoteFqn = true;
@@ -136,11 +135,6 @@ public class TeamRepository extends EntityRepository<Team> {
     if (searchRepository != null) {
       inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepository);
     }
-  }
-
-  @Deprecated
-  public TeamRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   @Override

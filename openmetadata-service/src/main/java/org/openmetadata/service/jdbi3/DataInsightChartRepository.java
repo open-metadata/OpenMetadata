@@ -69,20 +69,14 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   public static final List<String> SUPPORTS_NULL_DATE_RANGE =
       listOf(DataInsightChartResult.DataInsightChartType.UNUSED_ASSETS.toString());
 
-  @javax.inject.Inject
-  public DataInsightChartRepository(CollectionDAO collectionDAO) {
+  public DataInsightChartRepository() {
     super(
         COLLECTION_PATH,
         DATA_INSIGHT_CHART,
         DataInsightChart.class,
-        collectionDAO.dataInsightChartDAO(),
+        Entity.getCollectionDAO().dataInsightChartDAO(),
         "",
         "");
-  }
-
-  @Deprecated
-  public DataInsightChartRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   @Override

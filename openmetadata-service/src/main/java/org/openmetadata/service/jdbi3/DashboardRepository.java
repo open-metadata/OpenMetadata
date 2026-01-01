@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -57,13 +56,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final String DASHBOARD_PATCH_FIELDS = "charts,dataModels";
   private static final String DASHBOARD_URL = "sourceUrl";
 
-  @Inject
-  public DashboardRepository(CollectionDAO collectionDAO) {
+  public DashboardRepository() {
     super(
         DashboardResource.COLLECTION_PATH,
         Entity.DASHBOARD,
         Dashboard.class,
-        collectionDAO.dashboardDAO(),
+        Entity.getCollectionDAO().dashboardDAO(),
         DASHBOARD_PATCH_FIELDS,
         DASHBOARD_UPDATE_FIELDS);
     supportsSearch = true;
@@ -71,11 +69,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     fieldFetchers.put("charts", this::fetchAndSetCharts);
     fieldFetchers.put("dataModels", this::fetchAndSetDataModels);
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
-  }
-
-  @Deprecated
-  public DashboardRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   @Override

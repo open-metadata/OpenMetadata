@@ -50,20 +50,14 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   static final String ALERT_UPDATE_FIELDS =
       "trigger,enabled,batchSize,input,filteringRules,notificationTemplate";
 
-  @javax.inject.Inject
-  public EventSubscriptionRepository(CollectionDAO collectionDAO) {
+  public EventSubscriptionRepository() {
     super(
         EventSubscriptionResource.COLLECTION_PATH,
         Entity.EVENT_SUBSCRIPTION,
         EventSubscription.class,
-        collectionDAO.eventSubscriptionDAO(),
+        Entity.getCollectionDAO().eventSubscriptionDAO(),
         ALERT_PATCH_FIELDS,
         ALERT_UPDATE_FIELDS);
-  }
-
-  @Deprecated
-  public EventSubscriptionRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   @Override

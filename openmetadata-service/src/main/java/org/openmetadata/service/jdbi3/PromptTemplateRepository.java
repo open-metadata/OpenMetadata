@@ -26,21 +26,15 @@ public class PromptTemplateRepository extends EntityRepository<PromptTemplate> {
   private static final String TEMPLATE_UPDATE_FIELDS = "variables,examples";
   private static final String TEMPLATE_PATCH_FIELDS = "variables,examples";
 
-  @javax.inject.Inject
-  public PromptTemplateRepository(CollectionDAO collectionDAO) {
+  public PromptTemplateRepository() {
     super(
         PromptTemplateResource.COLLECTION_PATH,
         Entity.PROMPT_TEMPLATE,
         PromptTemplate.class,
-        collectionDAO.promptTemplateDAO(),
+        Entity.getCollectionDAO().promptTemplateDAO(),
         TEMPLATE_PATCH_FIELDS,
         TEMPLATE_UPDATE_FIELDS);
     supportsSearch = true;
-  }
-
-  @Deprecated
-  public PromptTemplateRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   @Override

@@ -50,23 +50,17 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class ClassificationRepository extends EntityRepository<Classification> {
-  @javax.inject.Inject
-  public ClassificationRepository(CollectionDAO collectionDAO) {
+  public ClassificationRepository() {
     super(
         ClassificationResource.TAG_COLLECTION_PATH,
         Entity.CLASSIFICATION,
         Classification.class,
-        collectionDAO.classificationDAO(),
+        Entity.getCollectionDAO().classificationDAO(),
         "",
         "");
     quoteFqn = true;
     supportsSearch = true;
     renameAllowed = true;
-  }
-
-  @Deprecated
-  public ClassificationRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   @Override

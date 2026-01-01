@@ -19,20 +19,14 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
   private static final String UPDATE_FIELDS = "steps";
   private static final String PATCH_FIELDS = "";
 
-  @javax.inject.Inject
-  public TestConnectionDefinitionRepository(CollectionDAO collectionDAO) {
+  public TestConnectionDefinitionRepository() {
     super(
         TestConnectionDefinitionResource.COLLECTION_PATH,
         TEST_CONNECTION_DEFINITION,
         TestConnectionDefinition.class,
-        collectionDAO.testConnectionDefinitionDAO(),
+        Entity.getCollectionDAO().testConnectionDefinitionDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
-  }
-
-  @Deprecated
-  public TestConnectionDefinitionRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   /**

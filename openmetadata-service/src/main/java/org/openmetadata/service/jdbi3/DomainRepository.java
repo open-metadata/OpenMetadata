@@ -61,13 +61,12 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
-  @javax.inject.Inject
-  public DomainRepository(CollectionDAO collectionDAO) {
+  public DomainRepository() {
     super(
         DomainResource.COLLECTION_PATH,
         DOMAIN,
         Domain.class,
-        collectionDAO.domainDAO(),
+        Entity.getCollectionDAO().domainDAO(),
         UPDATE_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
@@ -81,11 +80,6 @@ public class DomainRepository extends EntityRepository<Domain> {
     fieldFetchers.put("parent", this::fetchAndSetParents);
     fieldFetchers.put("experts", this::fetchAndSetExperts);
     fieldFetchers.put("childrenCount", this::fetchAndSetChildrenCount);
-  }
-
-  @Deprecated
-  public DomainRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   @Override

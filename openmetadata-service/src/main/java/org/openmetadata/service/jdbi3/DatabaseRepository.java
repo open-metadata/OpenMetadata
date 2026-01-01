@@ -34,7 +34,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -75,21 +74,12 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public static final String DATABASE_PROFILER_CONFIG = "databaseProfilerConfig";
 
-  /**
-   * Constructor for DatabaseRepository with dependency injection.
-   *
-   * <p>This constructor is used by Dagger for dependency injection. Dependencies are automatically
-   * provided by Dagger at runtime.
-   *
-   * @param collectionDAO CollectionDAO for accessing entity data
-   */
-  @Inject
-  public DatabaseRepository(CollectionDAO collectionDAO) {
+  public DatabaseRepository() {
     super(
         DatabaseResource.COLLECTION_PATH,
         Entity.DATABASE,
         Database.class,
-        collectionDAO.databaseDAO(),
+        Entity.getCollectionDAO().databaseDAO(),
         "",
         "");
     supportsSearch = true;
@@ -98,18 +88,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     fieldFetchers.put("databaseSchemas", this::fetchAndSetDatabaseSchemas);
     fieldFetchers.put(DATABASE_PROFILER_CONFIG, this::fetchAndSetDatabaseProfilerConfigs);
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
-  }
-
-  /**
-   * No-argument constructor for backward compatibility.
-   *
-   * <p>This constructor delegates to the @Inject constructor using Entity.getCollectionDAO().
-   *
-   * @deprecated Use {@link #DatabaseRepository(CollectionDAO)} with dependency injection instead.
-   */
-  @Deprecated
-  public DatabaseRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   @Override

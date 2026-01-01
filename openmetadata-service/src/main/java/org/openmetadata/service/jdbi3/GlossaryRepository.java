@@ -81,23 +81,17 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   private static final String UPDATE_FIELDS = "";
   private static final String PATCH_FIELDS = "";
 
-  @javax.inject.Inject
-  public GlossaryRepository(CollectionDAO collectionDAO) {
+  public GlossaryRepository() {
     super(
         GlossaryResource.COLLECTION_PATH,
         Entity.GLOSSARY,
         Glossary.class,
-        collectionDAO.glossaryDAO(),
+        Entity.getCollectionDAO().glossaryDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
     quoteFqn = true;
     supportsSearch = true;
     renameAllowed = true;
-  }
-
-  @Deprecated
-  public GlossaryRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   @Override

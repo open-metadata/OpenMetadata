@@ -15,21 +15,15 @@ import org.openmetadata.service.util.EntityUtil;
 public class WorkflowRepository extends EntityRepository<Workflow> {
   private static final String PATCH_FIELDS = "status,response";
 
-  @javax.inject.Inject
-  public WorkflowRepository(CollectionDAO collectionDAO) {
+  public WorkflowRepository() {
     super(
         WorkflowResource.COLLECTION_PATH,
         WORKFLOW,
         Workflow.class,
-        collectionDAO.workflowDAO(),
+        Entity.getCollectionDAO().workflowDAO(),
         PATCH_FIELDS,
         "");
     quoteFqn = true;
-  }
-
-  @Deprecated
-  public WorkflowRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   @Override

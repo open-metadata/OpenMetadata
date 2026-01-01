@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.inject.Inject;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -45,13 +44,12 @@ public class ChartRepository extends EntityRepository<Chart> {
   private static final String CHART_UPDATE_FIELDS = "dashboards";
   private static final String CHART_PATCH_FIELDS = "dashboards";
 
-  @Inject
-  public ChartRepository(CollectionDAO collectionDAO) {
+  public ChartRepository() {
     super(
         ChartResource.COLLECTION_PATH,
         Entity.CHART,
         Chart.class,
-        collectionDAO.chartDAO(),
+        Entity.getCollectionDAO().chartDAO(),
         CHART_PATCH_FIELDS,
         CHART_UPDATE_FIELDS);
     supportsSearch = true;
@@ -59,11 +57,6 @@ public class ChartRepository extends EntityRepository<Chart> {
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("dashboards", this::fetchAndSetDashboards);
     fieldFetchers.put("service", this::fetchAndSetServices);
-  }
-
-  @Deprecated
-  public ChartRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   @Override

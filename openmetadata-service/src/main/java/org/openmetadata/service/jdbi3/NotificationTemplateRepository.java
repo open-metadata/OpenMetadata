@@ -71,13 +71,12 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
   private final MockChangeEventFactory mockChangeEventFactory;
   private final HandlebarsNotificationMessageEngine messageEngine;
 
-  @javax.inject.Inject
-  public NotificationTemplateRepository(CollectionDAO collectionDAO) {
+  public NotificationTemplateRepository() {
     super(
         NotificationTemplateResource.COLLECTION_PATH,
         Entity.NOTIFICATION_TEMPLATE,
         NotificationTemplate.class,
-        collectionDAO.notificationTemplateDAO(),
+        Entity.getCollectionDAO().notificationTemplateDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
 
@@ -91,11 +90,6 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
 
     // Initialize message engine for template rendering
     this.messageEngine = new HandlebarsNotificationMessageEngine(this);
-  }
-
-  @Deprecated
-  public NotificationTemplateRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   @Override

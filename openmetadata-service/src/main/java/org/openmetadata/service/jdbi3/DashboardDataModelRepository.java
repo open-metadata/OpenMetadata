@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import javax.inject.Inject;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -53,24 +52,18 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
-  @Inject
-  public DashboardDataModelRepository(CollectionDAO collectionDAO) {
+  public DashboardDataModelRepository() {
     super(
         DashboardDataModelResource.COLLECTION_PATH,
         Entity.DASHBOARD_DATA_MODEL,
         DashboardDataModel.class,
-        collectionDAO.dashboardDataModelDAO(),
+        Entity.getCollectionDAO().dashboardDataModelDAO(),
         "",
         "");
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
-  }
-
-  @Deprecated
-  public DashboardDataModelRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   @Override

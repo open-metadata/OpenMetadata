@@ -26,21 +26,15 @@ public class AIGovernancePolicyRepository extends EntityRepository<AIGovernanceP
   private static final String POLICY_UPDATE_FIELDS = "rules,appliesTo";
   private static final String POLICY_PATCH_FIELDS = "rules,appliesTo";
 
-  @javax.inject.Inject
-  public AIGovernancePolicyRepository(CollectionDAO collectionDAO) {
+  public AIGovernancePolicyRepository() {
     super(
         AIGovernancePolicyResource.COLLECTION_PATH,
         Entity.AI_GOVERNANCE_POLICY,
         AIGovernancePolicy.class,
-        collectionDAO.aiGovernancePolicyDAO(),
+        Entity.getCollectionDAO().aiGovernancePolicyDAO(),
         POLICY_PATCH_FIELDS,
         POLICY_UPDATE_FIELDS);
     supportsSearch = true;
-  }
-
-  @Deprecated
-  public AIGovernancePolicyRepository() {
-    this(Entity.getCollectionDAO());
   }
 
   @Override
