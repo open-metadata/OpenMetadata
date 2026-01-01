@@ -146,6 +146,7 @@ import org.openmetadata.service.security.saml.SamlLogoutServlet;
 import org.openmetadata.service.security.saml.SamlMetadataServlet;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.security.saml.SamlTokenRefreshServlet;
+import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
@@ -183,6 +184,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   protected Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
   protected Limits limits;
+  protected ServiceRegistry serviceRegistry;
 
   protected Jdbi jdbi;
   private Environment environment;
@@ -283,6 +285,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register Limits
     registerLimits(catalogConfig);
 
+    // Initialize Services after authorizer is created
+    serviceRegistry = Entity.initializeServices(authorizer);
+
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory())
         .setRegisterDefaultExceptionMappers(false);
@@ -299,7 +304,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     EventPubSub.start();
 
     ApplicationHandler.initialize(catalogConfig);
-    registerResources(catalogConfig, environment, jdbi);
+    registerResources(catalogConfig, environment, jdbi, serviceRegistry);
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment);
@@ -818,7 +823,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerResources(
-      OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
+      OpenMetadataApplicationConfig config,
+      Environment environment,
+      Jdbi jdbi,
+      ServiceRegistry serviceRegistry) {
     CollectionRegistry.initialize();
     CollectionRegistry.getInstance()
         .registerResources(
@@ -827,7 +835,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             config,
             authorizer,
             SecurityConfigurationManager.getInstance().getAuthenticatorHandler(),
-            limits);
+            limits,
+            serviceRegistry);
     environment.jersey().register(new JsonPatchProvider());
     environment.jersey().register(new JsonPatchMessageBodyReader());
 

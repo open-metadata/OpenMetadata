@@ -77,6 +77,10 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.EntityService;
+import org.openmetadata.service.services.Service;
+import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -378,6 +382,65 @@ public final class Entity {
         }
       }
       initializedRepositories = true;
+    }
+  }
+
+  public static ServiceRegistry initializeServices(Authorizer authorizer) {
+    ServiceRegistry serviceRegistry = new ServiceRegistry();
+    List<Class<?>> serviceClasses = getServiceClasses();
+
+    for (Class<?> clz : serviceClasses) {
+      if (Modifier.isAbstract(clz.getModifiers())) {
+        continue;
+      }
+
+      Service annotation = clz.getAnnotation(Service.class);
+      if (annotation == null) {
+        continue;
+      }
+
+      String entityType = annotation.entityType();
+
+      try {
+        EntityRepository<?> repository = ENTITY_REPOSITORY_MAP.get(entityType);
+        if (repository == null) {
+          LOG.warn(
+              "No repository found for entity type: {}, skipping service: {}",
+              entityType,
+              clz.getSimpleName());
+          continue;
+        }
+
+        Object service =
+            clz.getDeclaredConstructor(
+                    repository.getClass(), SearchRepository.class, Authorizer.class)
+                .newInstance(repository, searchRepository, authorizer);
+
+        if (service instanceof EntityService<?> entityService) {
+          serviceRegistry.register(entityType, entityService);
+          LOG.info("Registered service: {} for entity type: {}", clz.getSimpleName(), entityType);
+        }
+      } catch (NoSuchMethodException e) {
+        LOG.debug(
+            "Service {} does not have standard constructor, skipping auto-registration",
+            clz.getSimpleName());
+      } catch (Exception e) {
+        LOG.warn("Failed to instantiate service: {} - {}", clz.getSimpleName(), e.getMessage());
+      }
+    }
+
+    LOG.info("Initialized {} services in ServiceRegistry", serviceRegistry.size());
+    return serviceRegistry;
+  }
+
+  private static List<Class<?>> getServiceClasses() {
+    try (ScanResult scanResult =
+        new ClassGraph()
+            .enableAnnotationInfo()
+            .acceptPackages(PACKAGES.toArray(new String[0]))
+            .scan()) {
+      ClassInfoList classList = scanResult.getClassesWithAnnotation(Service.class);
+      return classList.loadClasses();
     }
   }
 
