@@ -20,7 +20,6 @@ public class DataProductService
     return org.openmetadata.schema.entity.domains.DataProduct.class;
   }
 
-  // Create using CreateDataProduct request
   public org.openmetadata.schema.entity.domains.DataProduct create(CreateDataProduct request)
       throws OpenMetadataException {
     return httpClient.execute(
@@ -30,7 +29,14 @@ public class DataProductService
         org.openmetadata.schema.entity.domains.DataProduct.class);
   }
 
-  // Bulk Assets operations
+  public org.openmetadata.schema.entity.domains.DataProduct upsert(CreateDataProduct request)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.PUT,
+        basePath,
+        request,
+        org.openmetadata.schema.entity.domains.DataProduct.class);
+  }
 
   public BulkOperationResult bulkAddAssets(String name, BulkAssets request)
       throws OpenMetadataException {
@@ -50,8 +56,6 @@ public class DataProductService
         BulkOperationResult.class);
   }
 
-  // Input Ports operations
-
   public BulkOperationResult bulkAddInputPorts(String name, BulkAssets request)
       throws OpenMetadataException {
     return httpClient.execute(
@@ -69,8 +73,6 @@ public class DataProductService
         request,
         BulkOperationResult.class);
   }
-
-  // Output Ports operations
 
   public BulkOperationResult bulkAddOutputPorts(String name, BulkAssets request)
       throws OpenMetadataException {
