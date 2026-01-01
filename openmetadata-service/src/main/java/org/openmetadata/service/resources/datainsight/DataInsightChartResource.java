@@ -31,7 +31,6 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -89,12 +88,7 @@ public class DataInsightChartResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    // Find the existing webAnalyticEventTypes and add them from json files
-    List<DataInsightChart> dataInsightCharts =
-        repository.getEntitiesFromSeedData(".*json/data/dataInsight/.*\\.json$");
-    for (DataInsightChart dataInsightChart : dataInsightCharts) {
-      repository.initializeEntity(dataInsightChart);
-    }
+    service.initialize();
   }
 
   @GET

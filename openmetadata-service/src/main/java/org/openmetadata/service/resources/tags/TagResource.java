@@ -13,9 +13,6 @@
 
 package org.openmetadata.service.resources.tags;
 
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.CLASSIFICATION;
-
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -45,15 +42,12 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.AddTagToAssetsRequest;
 import org.openmetadata.schema.api.classification.CreateTag;
-import org.openmetadata.schema.api.classification.LoadTags;
 import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
@@ -64,8 +58,6 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.ClassificationRepository;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 import org.openmetadata.service.jdbi3.TagRepository;
@@ -76,7 +68,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.tags.ClassificationService;
 import org.openmetadata.service.services.tags.TagService;
-import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 @Path("/v1/tags")
@@ -122,35 +113,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     super.initialize(config);
-    // Find tag definitions and load classifications from the json file, if necessary
-    ClassificationRepository classificationRepository =
-        (ClassificationRepository) Entity.getEntityRepository(CLASSIFICATION);
-    List<LoadTags> loadTagsList =
-        EntityRepository.getEntitiesFromSeedData(
-            CLASSIFICATION, ".*json/data/tags/.*\\.json$", LoadTags.class);
-    for (LoadTags loadTags : loadTagsList) {
-      Classification classification =
-          classificationService
-              .getMapper()
-              .createToEntity(loadTags.getCreateClassification(), ADMIN_USER_NAME);
-      classificationRepository.initializeEntity(classification);
-
-      List<Tag> tagsToCreate = new ArrayList<>();
-      for (CreateTag createTag : loadTags.getCreateTags()) {
-        createTag.withClassification(classification.getName());
-        createTag.withProvider(classification.getProvider());
-        Tag tag = service.getMapper().createToEntity(createTag, ADMIN_USER_NAME);
-        repository.setFullyQualifiedName(tag); // FQN required for ordering tags based on hierarchy
-        tagsToCreate.add(tag);
-      }
-
-      // Sort tags based on tag hierarchy
-      EntityUtil.sortByFQN(tagsToCreate);
-
-      for (Tag tag : tagsToCreate) {
-        repository.initializeEntity(tag);
-      }
-    }
+    service.initialize();
   }
 
   @GET

@@ -13,11 +13,17 @@
 
 package org.openmetadata.service.services.types;
 
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+
+import java.util.List;
+import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.Type;
+import org.openmetadata.schema.entity.type.Category;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.resources.types.TypeMapper;
@@ -25,6 +31,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 @Singleton
@@ -32,6 +39,8 @@ import org.openmetadata.service.services.Service;
 public class TypeService extends AbstractEntityService<Type> {
 
   @Getter private final TypeMapper mapper;
+  private final TypeRepository typeRepository;
+  private static final String PROPERTIES_FIELD = "customProperties";
 
   @Inject
   public TypeService(
@@ -40,6 +49,35 @@ public class TypeService extends AbstractEntityService<Type> {
       Authorizer authorizer,
       TypeMapper mapper) {
     super(repository, searchRepository, authorizer, Entity.TYPE);
+    this.typeRepository = repository;
     this.mapper = mapper;
+  }
+
+  public void initialize() {
+    long now = System.currentTimeMillis();
+    List<Type> types = JsonUtils.getTypes();
+    Fields fields = typeRepository.getFields(PROPERTIES_FIELD);
+    types.forEach(
+        type -> {
+          type.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
+          LOG.debug("Loading type {}", type.getName());
+          try {
+            try {
+              Type storedType = typeRepository.getByName(null, type.getName(), fields);
+              type.setId(storedType.getId());
+              if (storedType.getCategory().equals(Category.Entity)) {
+                type.setCustomProperties(storedType.getCustomProperties());
+              }
+            } catch (Exception e) {
+              LOG.debug(
+                  "Type '{}' not found. Proceeding to add new type entity in database.",
+                  type.getName());
+            }
+            typeRepository.createOrUpdate(null, type, ADMIN_USER_NAME);
+            typeRepository.addToRegistry(type);
+          } catch (Exception e) {
+            LOG.error("Error loading type {}", type.getName(), e);
+          }
+        });
   }
 }

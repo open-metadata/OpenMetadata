@@ -30,7 +30,6 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -77,12 +76,7 @@ public class TestDefinitionResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    // Find tag definitions and load classification from the json file, if necessary
-    List<TestDefinition> testDefinitions =
-        repository.getEntitiesFromSeedData(".*json/data/tests/.*\\.json$");
-    for (TestDefinition testDefinition : testDefinitions) {
-      repository.initializeEntity(testDefinition);
-    }
+    service.initialize();
   }
 
   public static class TestDefinitionList extends ResultList<TestDefinition> {

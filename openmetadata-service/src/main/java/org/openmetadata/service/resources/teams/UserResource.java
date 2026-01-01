@@ -229,7 +229,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     super.initialize(config);
     this.authenticationConfiguration = SecurityConfigurationManager.getCurrentAuthConfig();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
-    this.repository.initializeUsers(config);
+    this.service.initialize(config);
     this.isSelfSignUpEnabled = authenticationConfiguration.getEnableSelfSignup();
   }
 

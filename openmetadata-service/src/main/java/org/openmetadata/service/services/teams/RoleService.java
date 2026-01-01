@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.services.policies;
+package org.openmetadata.service.services.teams;
 
 import java.util.List;
 import javax.inject.Inject;
@@ -36,21 +36,7 @@ import org.openmetadata.service.services.Service;
 public class RoleService extends AbstractEntityService<Role> {
 
   @Getter private final RoleMapper mapper;
-
-  @SneakyThrows
-  public void initialize() {
-    List<Role> roles = repository.getEntitiesFromSeedData();
-    for (Role role : roles) {
-      role.setFullyQualifiedName(role.getName());
-      List<EntityReference> policies = role.getPolicies();
-      for (EntityReference policy : policies) {
-        EntityReference ref =
-            Entity.getEntityReferenceByName(Entity.POLICY, policy.getName(), Include.NON_DELETED);
-        policy.setId(ref.getId());
-      }
-      repository.initializeEntity(role);
-    }
-  }
+  private final RoleRepository roleRepository;
 
   @Inject
   public RoleService(
@@ -59,6 +45,22 @@ public class RoleService extends AbstractEntityService<Role> {
       Authorizer authorizer,
       RoleMapper mapper) {
     super(repository, searchRepository, authorizer, Entity.ROLE);
+    this.roleRepository = repository;
     this.mapper = mapper;
+  }
+
+  @SneakyThrows
+  public void initialize() {
+    List<Role> roles = roleRepository.getEntitiesFromSeedData();
+    for (Role role : roles) {
+      role.setFullyQualifiedName(role.getName());
+      List<EntityReference> policies = role.getPolicies();
+      for (EntityReference policy : policies) {
+        EntityReference ref =
+            Entity.getEntityReferenceByName(Entity.POLICY, policy.getName(), Include.NON_DELETED);
+        policy.setId(ref.getId());
+      }
+      roleRepository.initializeEntity(role);
+    }
   }
 }

@@ -13,18 +13,29 @@
 
 package org.openmetadata.service.services.tags;
 
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.CLASSIFICATION;
+
+import java.util.ArrayList;
+import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.classification.LoadTags;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ClassificationRepository;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TagRepository;
 import org.openmetadata.service.resources.tags.TagMapper;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
+import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 @Singleton
@@ -32,14 +43,49 @@ import org.openmetadata.service.services.Service;
 public class TagService extends AbstractEntityService<Tag> {
 
   @Getter private final TagMapper mapper;
+  private final TagRepository tagRepository;
+  private final ClassificationService classificationService;
 
   @Inject
   public TagService(
       TagRepository repository,
       SearchRepository searchRepository,
       Authorizer authorizer,
-      TagMapper mapper) {
+      TagMapper mapper,
+      ClassificationService classificationService) {
     super(repository, searchRepository, authorizer, Entity.TAG);
+    this.tagRepository = repository;
     this.mapper = mapper;
+    this.classificationService = classificationService;
+  }
+
+  public void initialize() {
+    ClassificationRepository classificationRepository =
+        (ClassificationRepository) Entity.getEntityRepository(CLASSIFICATION);
+    List<LoadTags> loadTagsList =
+        EntityRepository.getEntitiesFromSeedData(
+            CLASSIFICATION, ".*json/data/tags/.*\\.json$", LoadTags.class);
+    for (LoadTags loadTags : loadTagsList) {
+      Classification classification =
+          classificationService
+              .getMapper()
+              .createToEntity(loadTags.getCreateClassification(), ADMIN_USER_NAME);
+      classificationRepository.initializeEntity(classification);
+
+      List<Tag> tagsToCreate = new ArrayList<>();
+      for (CreateTag createTag : loadTags.getCreateTags()) {
+        createTag.withClassification(classification.getName());
+        createTag.withProvider(classification.getProvider());
+        Tag tag = mapper.createToEntity(createTag, ADMIN_USER_NAME);
+        tagRepository.setFullyQualifiedName(tag);
+        tagsToCreate.add(tag);
+      }
+
+      EntityUtil.sortByFQN(tagsToCreate);
+
+      for (Tag tag : tagsToCreate) {
+        tagRepository.initializeEntity(tag);
+      }
+    }
   }
 }

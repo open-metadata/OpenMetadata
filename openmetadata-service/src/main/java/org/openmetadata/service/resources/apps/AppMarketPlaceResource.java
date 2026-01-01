@@ -49,7 +49,6 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.apps.AppMarketPlaceService;
-import org.openmetadata.service.util.AppMarketPlaceUtil;
 
 @Path("/v1/apps/marketplace")
 @Tag(
@@ -68,8 +67,7 @@ public class AppMarketPlaceResource
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
-      AppMarketPlaceUtil.createAppMarketPlaceDefinitions(
-          repository, appMarketPlaceService.getMapper());
+      appMarketPlaceService.initialize();
     } catch (Exception ex) {
       LOG.error("Failed in initializing App MarketPlace Resource", ex);
     }

@@ -19,6 +19,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.teams.UserMapper;
 import org.openmetadata.service.search.SearchRepository;
@@ -32,6 +33,7 @@ import org.openmetadata.service.services.Service;
 public class UserService extends AbstractEntityService<User> {
 
   @Getter private final UserMapper mapper;
+  private final UserRepository userRepository;
 
   @Inject
   public UserService(
@@ -40,6 +42,11 @@ public class UserService extends AbstractEntityService<User> {
       Authorizer authorizer,
       UserMapper mapper) {
     super(repository, searchRepository, authorizer, Entity.USER);
+    this.userRepository = repository;
     this.mapper = mapper;
+  }
+
+  public void initialize(OpenMetadataApplicationConfig config) {
+    userRepository.initializeUsers(config);
   }
 }

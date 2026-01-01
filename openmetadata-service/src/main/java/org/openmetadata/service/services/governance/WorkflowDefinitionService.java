@@ -32,6 +32,7 @@ import org.openmetadata.service.services.Service;
 public class WorkflowDefinitionService extends AbstractEntityService<WorkflowDefinition> {
 
   @Getter private final WorkflowDefinitionMapper mapper;
+  private final WorkflowDefinitionRepository workflowDefinitionRepository;
 
   @Inject
   public WorkflowDefinitionService(
@@ -40,6 +41,11 @@ public class WorkflowDefinitionService extends AbstractEntityService<WorkflowDef
       Authorizer authorizer,
       WorkflowDefinitionMapper mapper) {
     super(repository, searchRepository, authorizer, Entity.WORKFLOW_DEFINITION);
+    this.workflowDefinitionRepository = repository;
     this.mapper = mapper;
+  }
+
+  public void initialize() {
+    workflowDefinitionRepository.initSeedDataFromResources();
   }
 }

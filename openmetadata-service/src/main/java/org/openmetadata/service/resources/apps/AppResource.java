@@ -2,10 +2,8 @@ package org.openmetadata.service.resources.apps;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.APPLICATION;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
-import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -66,15 +64,11 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.apps.AppException;
-import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppRepository;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -121,64 +115,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
-    try {
-      this.openMetadataApplicationConfig = config;
-      this.pipelineServiceClient =
-          PipelineServiceClientFactory.createPipelineServiceClient(
-              config.getPipelineServiceClientConfiguration());
-
-      // Create an On Demand DAO
-      CollectionDAO dao = Entity.getCollectionDAO();
-      searchRepository = Entity.getSearchRepository();
-      AppScheduler.initialize(config, dao, searchRepository);
-
-      // Initialize Default Apps
-      List<CreateApp> createAppsReq =
-          getEntitiesFromSeedData(
-              APPLICATION, String.format(".*json/data/%s/.*\\.json$", entityType), CreateApp.class);
-      loadDefaultApplications(createAppsReq);
-      ApplicationContext.initialize();
-    } catch (Exception ex) {
-      LOG.error("Failed in Create App Requests", ex);
-    }
-  }
-
-  private void loadDefaultApplications(List<CreateApp> defaultAppCreateRequests) {
-    // Get Create App Requests
-    for (CreateApp createApp : defaultAppCreateRequests) {
-      try {
-        App app = getAppForInit(createApp.getName());
-        if (app == null) {
-          app = appService.getMapper().createToEntity(createApp, ADMIN_USER_NAME);
-          scheduleAppIfNeeded(app);
-          repository.initializeEntity(app);
-        } else {
-          scheduleAppIfNeeded(app);
-        }
-      } catch (AppException ex) {
-        LOG.warn(
-            "We could not install the application {}. Error: {}",
-            createApp.getName(),
-            ex.getMessage());
-      } catch (Exception ex) {
-        LOG.error("Failed in Creation/Initialization of Application : {}", createApp.getName(), ex);
-      }
-    }
-  }
-
-  private void scheduleAppIfNeeded(App app) {
-    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
-      ApplicationHandler.getInstance()
-          .installApplication(app, Entity.getCollectionDAO(), searchRepository, ADMIN_USER_NAME);
-    }
-  }
-
-  private App getAppForInit(String appName) {
-    try {
-      return repository.getByName(null, appName, repository.getFields("bot,pipelines"), ALL, false);
-    } catch (EntityNotFoundException ex) {
-      return null;
-    }
+    this.openMetadataApplicationConfig = config;
+    this.pipelineServiceClient =
+        PipelineServiceClientFactory.createPipelineServiceClient(
+            config.getPipelineServiceClientConfiguration());
+    searchRepository = Entity.getSearchRepository();
+    appService.initialize(config);
   }
 
   public AppResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
@@ -283,7 +225,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       })
   public List<EntityReference> list(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    return repository.listAllAppsReference();
+    return appService.listAllAppsReference();
   }
 
   @GET
@@ -332,10 +274,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(type = "number"))
           @QueryParam("endTs")
           Long endTs) {
-    App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
+    App installation = appService.getByName(uriInfo, name, appService.getFields("id,pipelines"));
     ResultList<AppRunRecord> appRuns;
     if (installation.getAppType().equals(AppType.Internal)) {
-      appRuns = repository.listAppRuns(installation, limitParam, offset);
+      appRuns = appService.listAppRuns(installation, limitParam, offset);
     } else if (!installation.getPipelines().isEmpty()) {
       EntityReference pipelineRef = installation.getPipelines().get(0);
       IngestionPipelineRepository ingestionPipelineRepository =
@@ -435,22 +377,22 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("byName")
           @DefaultValue("false")
           boolean byName) {
-    App installation = repository.getByName(uriInfo, name, repository.getFields("id"));
+    App installation = appService.getByName(uriInfo, name, appService.getFields("id"));
     if (startTs != null) {
       ResultList<AppExtension> appExtensionList =
           byName
-              ? repository.listAppExtensionAfterTimeByName(
+              ? appService.listAppExtensionAfterTimeByName(
                   installation, startTs, limitParam, offset, AppExtension.class, extensionType)
-              : repository.listAppExtensionAfterTimeById(
+              : appService.listAppExtensionAfterTimeById(
                   installation, startTs, limitParam, offset, AppExtension.class, extensionType);
       return Response.status(Response.Status.OK).entity(appExtensionList).build();
     }
 
     ResultList<AppExtension> appExtensionList =
         byName
-            ? repository.listAppExtensionByName(
+            ? appService.listAppExtensionByName(
                 installation, limitParam, offset, AppExtension.class, extensionType)
-            : repository.listAppExtensionById(
+            : appService.listAppExtensionById(
                 installation, limitParam, offset, AppExtension.class, extensionType);
 
     return Response.status(Response.Status.OK).entity(appExtensionList).build();
@@ -481,10 +423,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("after")
           @DefaultValue("")
           String after) {
-    App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
+    App installation = appService.getByName(uriInfo, name, appService.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
       return Response.status(Response.Status.OK)
-          .entity(repository.getLatestAppRuns(installation))
+          .entity(appService.getLatestAppRuns(installation))
           .build();
     } else {
       if (!installation.getPipelines().isEmpty()) {
@@ -530,10 +472,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("after")
           @DefaultValue("")
           String after) {
-    App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
+    App installation = appService.getByName(uriInfo, name, appService.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
       return Response.status(Response.Status.OK)
-          .entity(repository.getLatestAppRuns(installation))
+          .entity(appService.getLatestAppRuns(installation))
           .build();
     } else {
       if (!installation.getPipelines().isEmpty()) {
@@ -754,7 +696,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
                       }))
           JsonPatch patch)
       throws SchedulerException {
-    App app = repository.get(null, id, repository.getFields("bot,pipelines"));
+    App app =
+        appService.get(null, id, appService.getFields("bot,pipelines"), Include.NON_DELETED, false);
     if (app.getSystem()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
@@ -802,7 +745,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
                       }))
           JsonPatch patch)
       throws SchedulerException {
-    App app = repository.getByName(null, fqn, repository.getFields("bot,pipelines"));
+    App app =
+        appService.getByName(
+            null, fqn, appService.getFields("bot,pipelines"), Include.NON_DELETED, false);
     if (app.getSystem()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
@@ -880,7 +825,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @PathParam("name")
           String name) {
     App app =
-        repository.getByName(uriInfo, name, repository.getFields("bot,pipelines"), ALL, false);
+        appService.getByName(uriInfo, name, appService.getFields("bot,pipelines"), ALL, false);
     if (app.getSystem()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
@@ -921,7 +866,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    App app = repository.get(uriInfo, id, repository.getFields("bot,pipelines"), ALL, false);
+    App app = appService.get(uriInfo, id, appService.getFields("bot,pipelines"), ALL, false);
     if (app.getSystem()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
@@ -962,7 +907,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    App app = repository.get(uriInfo, id, repository.getFields("bot,pipelines"), ALL, false);
+    App app = appService.get(uriInfo, id, appService.getFields("bot,pipelines"), ALL, false);
     if (app.getSystem()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
@@ -1031,12 +976,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String name,
       @Context SecurityContext securityContext) {
     App app =
-        repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
+        appService.getByName(uriInfo, name, new EntityUtil.Fields(appService.getAllowedFields()));
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
           .installApplication(
               app,
-              repository.getDaoCollection(),
+              appService.getDaoCollection(),
               searchRepository,
               securityContext.getUserPrincipal().getName());
 
@@ -1070,11 +1015,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String name,
       @Context SecurityContext securityContext) {
     App app =
-        repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
+        appService.getByName(uriInfo, name, new EntityUtil.Fields(appService.getAllowedFields()));
     // The application will have the updated appConfiguration we can use to run the `configure`
     // logic
     ApplicationHandler.getInstance()
-        .configureApplication(app, repository.getDaoCollection(), searchRepository);
+        .configureApplication(app, appService.getDaoCollection(), searchRepository);
     return Response.status(Response.Status.OK).entity("App has been configured.").build();
   }
 
@@ -1106,7 +1051,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
               content = @Content(mediaType = MediaType.APPLICATION_JSON))
           Map<String, Object> configPayload) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
-    App app = repository.getByName(uriInfo, name, fields);
+    App app = appService.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
           .triggerApplicationOnDemand(
@@ -1152,7 +1097,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @PathParam("name")
           String name) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
-    App app = repository.getByName(uriInfo, name, fields);
+    App app = appService.getByName(uriInfo, name, fields);
     if (Boolean.TRUE.equals(app.getSupportsInterrupt())) {
       if (app.getAppType().equals(AppType.Internal)) {
         new Thread(() -> AppScheduler.getInstance().stopApplicationRun(app)).start();
@@ -1193,7 +1138,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @PathParam("name")
           String name) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
-    App app = repository.getByName(uriInfo, name, fields);
+    App app = appService.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
           .installApplication(
@@ -1304,7 +1249,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    app = repository.get(uriInfo, id, repository.getFields("bot,pipelines"), Include.ALL, false);
+    app = appService.get(uriInfo, id, appService.getFields("bot,pipelines"), Include.ALL, false);
     String userName = securityContext.getUserPrincipal().getName();
 
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
@@ -1319,7 +1264,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
             // Remove from repository
             RestUtil.DeleteResponse<App> deleteResponse =
-                repository.delete(userName, id, recursive, hardDelete);
+                appService.delete(userName, id, recursive, hardDelete);
 
             if (hardDelete) {
               limits.invalidateCache(entityType);

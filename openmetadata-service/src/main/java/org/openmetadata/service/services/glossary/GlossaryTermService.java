@@ -13,18 +13,29 @@
 
 package org.openmetadata.service.services.glossary;
 
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.GLOSSARY;
+
+import java.util.ArrayList;
+import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.LoadGlossary;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.resources.glossary.GlossaryTermMapper;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
+import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 @Singleton
@@ -32,14 +43,50 @@ import org.openmetadata.service.services.Service;
 public class GlossaryTermService extends AbstractEntityService<GlossaryTerm> {
 
   @Getter private final GlossaryTermMapper mapper;
+  private final GlossaryTermRepository glossaryTermRepository;
+  private final GlossaryService glossaryService;
 
   @Inject
   public GlossaryTermService(
       GlossaryTermRepository repository,
       SearchRepository searchRepository,
       Authorizer authorizer,
-      GlossaryTermMapper mapper) {
+      GlossaryTermMapper mapper,
+      GlossaryService glossaryService) {
     super(repository, searchRepository, authorizer, Entity.GLOSSARY_TERM);
+    this.glossaryTermRepository = repository;
     this.mapper = mapper;
+    this.glossaryService = glossaryService;
+  }
+
+  public void initialize() {
+    GlossaryRepository glossaryRepository =
+        (GlossaryRepository) Entity.getEntityRepository(GLOSSARY);
+    List<LoadGlossary> loadGlossaries =
+        EntityRepository.getEntitiesFromSeedData(
+            GLOSSARY, ".*json/data/glossary/.*Glossary\\.json$", LoadGlossary.class);
+    for (LoadGlossary loadGlossary : loadGlossaries) {
+      Glossary glossary =
+          glossaryService
+              .getMapper()
+              .createToEntity(loadGlossary.getCreateGlossary(), ADMIN_USER_NAME);
+      glossary.setFullyQualifiedName(glossary.getName());
+      glossaryRepository.initializeEntity(glossary);
+
+      List<GlossaryTerm> termsToCreate = new ArrayList<>();
+      for (CreateGlossaryTerm createTerm : loadGlossary.getCreateTerms()) {
+        createTerm.withGlossary(glossary.getName());
+        createTerm.withProvider(glossary.getProvider());
+        GlossaryTerm term = mapper.createToEntity(createTerm, ADMIN_USER_NAME);
+        glossaryTermRepository.setFullyQualifiedName(term);
+        termsToCreate.add(term);
+      }
+
+      EntityUtil.sortByFQN(termsToCreate);
+
+      for (GlossaryTerm term : termsToCreate) {
+        glossaryTermRepository.initializeEntity(term);
+      }
+    }
   }
 }

@@ -23,17 +23,11 @@ import java.util.UUID;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.AgentExecution;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.AgentExecutionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityTimeSeriesResource;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.AgentExecutionContext;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.ai.AgentExecutionService;
 
 @Slf4j
 @Path("/v1/agentExecutions")
@@ -44,12 +38,12 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "agentExecutions")
-public class AgentExecutionResource
-    extends EntityTimeSeriesResource<AgentExecution, AgentExecutionRepository> {
+public class AgentExecutionResource {
   public static final String COLLECTION_PATH = "v1/agentExecutions/";
+  private final AgentExecutionService agentExecutionService;
 
-  public AgentExecutionResource(Authorizer authorizer) {
-    super(Entity.AGENT_EXECUTION, authorizer);
+  public AgentExecutionResource(ServiceRegistry serviceRegistry) {
+    this.agentExecutionService = serviceRegistry.getService(AgentExecutionService.class);
   }
 
   public static class AgentExecutionList extends ResultList<AgentExecution> {
@@ -88,21 +82,11 @@ public class AgentExecutionResource
           Long endTs,
       @Parameter(description = "Limit the number of executions returned") @QueryParam("limit")
           int limitParam) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-    ResourceContextInterface resourceContext = AgentExecutionContext.builder().build();
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-
     ListFilter filter = new ListFilter(org.openmetadata.schema.type.Include.ALL);
     if (agentId != null) {
       filter.addQueryParam("agentId", agentId.toString());
     }
-
-    if (startTs != null && endTs != null) {
-      return repository.listWithOffset(null, filter, limitParam, startTs, endTs, false, false);
-    } else {
-      return repository.listWithOffset(null, filter, limitParam, false);
-    }
+    return agentExecutionService.list(securityContext, filter, limitParam, startTs, endTs);
   }
 
   @GET
@@ -126,11 +110,7 @@ public class AgentExecutionResource
       @Parameter(description = "Id of the Agent Execution", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    ResourceContextInterface resourceContext = AgentExecutionContext.builder().build();
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.getById(id);
+    return agentExecutionService.getById(securityContext, id);
   }
 
   @POST
@@ -150,10 +130,8 @@ public class AgentExecutionResource
       })
   public Response create(
       @Context SecurityContext securityContext, @Valid AgentExecution agentExecution) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    ResourceContextInterface resourceContext = AgentExecutionContext.builder().build();
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    return create(agentExecution, agentExecution.getAgentId().toString());
+    AgentExecution created = agentExecutionService.create(securityContext, agentExecution);
+    return Response.ok(created).build();
   }
 
   @DELETE
@@ -179,10 +157,7 @@ public class AgentExecutionResource
           @PathParam("timestamp")
           @NonNull
           Long timestamp) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
-    ResourceContextInterface resourceContext = AgentExecutionContext.builder().build();
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    repository.deleteExecutionData(agentId, timestamp);
+    agentExecutionService.deleteExecutionData(securityContext, agentId, timestamp);
     return Response.ok().build();
   }
 
@@ -204,10 +179,7 @@ public class AgentExecutionResource
       @Parameter(description = "Hard delete the entity. (Default = `false`)")
           @QueryParam("hardDelete")
           boolean hardDelete) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
-    ResourceContextInterface resourceContext = AgentExecutionContext.builder().build();
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    repository.deleteById(id, hardDelete);
+    agentExecutionService.deleteById(securityContext, id, hardDelete);
     return Response.ok().build();
   }
 }

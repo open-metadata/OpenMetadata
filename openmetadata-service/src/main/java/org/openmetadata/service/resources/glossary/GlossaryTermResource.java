@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.resources.glossary;
 
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -47,7 +45,6 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -56,10 +53,8 @@ import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
-import org.openmetadata.schema.api.data.LoadGlossary;
 import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
 import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
@@ -72,8 +67,6 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -89,7 +82,6 @@ import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.glossary.GlossaryService;
 import org.openmetadata.service.services.glossary.GlossaryTermService;
 import org.openmetadata.service.util.AsyncService;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.MoveGlossaryTermResponse;
 import org.openmetadata.service.util.RestUtil;
@@ -140,36 +132,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     super.initialize(config);
-    // Load glossaries provided by OpenMetadata
-    GlossaryRepository glossaryRepository =
-        (GlossaryRepository) Entity.getEntityRepository(GLOSSARY);
-    List<LoadGlossary> loadGlossaries =
-        EntityRepository.getEntitiesFromSeedData(
-            GLOSSARY, ".*json/data/glossary/.*Glossary\\.json$", LoadGlossary.class);
-    for (LoadGlossary loadGlossary : loadGlossaries) {
-      Glossary glossary =
-          glossaryService
-              .getMapper()
-              .createToEntity(loadGlossary.getCreateGlossary(), ADMIN_USER_NAME);
-      glossary.setFullyQualifiedName(glossary.getName());
-      glossaryRepository.initializeEntity(glossary);
-
-      List<GlossaryTerm> termsToCreate = new ArrayList<>();
-      for (CreateGlossaryTerm createTerm : loadGlossary.getCreateTerms()) {
-        createTerm.withGlossary(glossary.getName());
-        createTerm.withProvider(glossary.getProvider());
-        GlossaryTerm term = service.getMapper().createToEntity(createTerm, ADMIN_USER_NAME);
-        repository.setFullyQualifiedName(term); // FQN required for ordering tags based on hierarchy
-        termsToCreate.add(term);
-      }
-
-      // Sort tags based on tag hierarchy
-      EntityUtil.sortByFQN(termsToCreate);
-
-      for (GlossaryTerm term : termsToCreate) {
-        repository.initializeEntity(term);
-      }
-    }
+    service.initialize();
   }
 
   @GET

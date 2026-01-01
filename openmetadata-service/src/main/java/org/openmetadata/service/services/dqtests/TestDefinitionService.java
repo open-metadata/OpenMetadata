@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.services.dqtests;
 
+import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
@@ -38,6 +39,7 @@ import org.openmetadata.service.services.Service;
 public class TestDefinitionService extends AbstractEntityService<TestDefinition> {
 
   @Getter private final TestDefinitionMapper mapper;
+  private final TestDefinitionRepository testDefinitionRepository;
 
   @Inject
   public TestDefinitionService(
@@ -46,6 +48,15 @@ public class TestDefinitionService extends AbstractEntityService<TestDefinition>
       Authorizer authorizer,
       TestDefinitionMapper mapper) {
     super(repository, searchRepository, authorizer, Entity.TEST_DEFINITION);
+    this.testDefinitionRepository = repository;
     this.mapper = mapper;
+  }
+
+  public void initialize() {
+    List<TestDefinition> testDefinitions =
+        testDefinitionRepository.getEntitiesFromSeedData(".*json/data/tests/.*\\.json$");
+    for (TestDefinition testDefinition : testDefinitions) {
+      testDefinitionRepository.initializeEntity(testDefinition);
+    }
   }
 }

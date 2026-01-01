@@ -38,6 +38,7 @@ import org.openmetadata.service.services.Service;
 public class NotificationTemplateService extends AbstractEntityService<NotificationTemplate> {
 
   @Getter private final NotificationTemplateMapper mapper;
+  private final NotificationTemplateRepository notificationTemplateRepository;
 
   @Inject
   public NotificationTemplateService(
@@ -46,6 +47,12 @@ public class NotificationTemplateService extends AbstractEntityService<Notificat
       Authorizer authorizer,
       NotificationTemplateMapper mapper) {
     super(repository, searchRepository, authorizer, Entity.NOTIFICATION_TEMPLATE);
+    this.notificationTemplateRepository = repository;
     this.mapper = mapper;
+  }
+
+  public void initialize() {
+    notificationTemplateRepository.initOrUpdateSeedDataFromResources();
+    LOG.info("Notification template seed data initialized with versioning support");
   }
 }

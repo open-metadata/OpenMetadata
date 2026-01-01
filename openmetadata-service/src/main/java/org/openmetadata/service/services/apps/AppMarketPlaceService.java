@@ -25,6 +25,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
+import org.openmetadata.service.util.AppMarketPlaceUtil;
 
 /**
  * Service layer for AppMarketPlaceDefinition entity operations.
@@ -38,6 +39,7 @@ import org.openmetadata.service.services.Service;
 public class AppMarketPlaceService extends AbstractEntityService<AppMarketPlaceDefinition> {
 
   @Getter private final AppMarketPlaceMapper mapper;
+  private final AppMarketPlaceRepository appMarketPlaceRepository;
 
   @Inject
   public AppMarketPlaceService(
@@ -46,6 +48,11 @@ public class AppMarketPlaceService extends AbstractEntityService<AppMarketPlaceD
       Authorizer authorizer,
       AppMarketPlaceMapper mapper) {
     super(repository, searchRepository, authorizer, Entity.APP_MARKET_PLACE_DEF);
+    this.appMarketPlaceRepository = repository;
     this.mapper = mapper;
+  }
+
+  public void initialize() {
+    AppMarketPlaceUtil.createAppMarketPlaceDefinitions(appMarketPlaceRepository, mapper);
   }
 }

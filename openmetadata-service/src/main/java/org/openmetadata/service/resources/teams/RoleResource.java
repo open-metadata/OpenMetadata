@@ -50,7 +50,6 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
@@ -107,17 +106,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    List<Role> roles = repository.getEntitiesFromSeedData();
-    for (Role role : roles) {
-      role.setFullyQualifiedName(role.getName());
-      List<EntityReference> policies = role.getPolicies();
-      for (EntityReference policy : policies) {
-        EntityReference ref =
-            Entity.getEntityReferenceByName(Entity.POLICY, policy.getName(), Include.NON_DELETED);
-        policy.setId(ref.getId());
-      }
-      repository.initializeEntity(role);
-    }
+    service.initialize();
   }
 
   public static class RoleList extends ResultList<Role> {

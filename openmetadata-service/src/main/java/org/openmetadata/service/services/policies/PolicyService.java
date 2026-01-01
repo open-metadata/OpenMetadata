@@ -36,6 +36,7 @@ import org.openmetadata.service.services.Service;
 public class PolicyService extends AbstractEntityService<Policy> {
 
   @Getter private final PolicyMapper mapper;
+  private final PolicyRepository policyRepository;
 
   @Inject
   public PolicyService(
@@ -44,7 +45,12 @@ public class PolicyService extends AbstractEntityService<Policy> {
       Authorizer authorizer,
       PolicyMapper mapper) {
     super(repository, searchRepository, authorizer, Entity.POLICY);
+    this.policyRepository = repository;
     this.mapper = mapper;
+  }
+
+  public void initialize() {
+    policyRepository.initSeedDataFromResources();
   }
 
   public void validateCondition(SecurityContext securityContext, String expression) {

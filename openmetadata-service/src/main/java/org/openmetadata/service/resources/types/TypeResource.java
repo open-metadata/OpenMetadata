@@ -14,7 +14,6 @@
 package org.openmetadata.service.resources.types;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -52,12 +51,10 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.CreateType;
 import org.openmetadata.schema.entity.Type;
-import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -113,33 +110,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
-    // Load types defined in OpenMetadata schemas
-    long now = System.currentTimeMillis();
-    List<Type> types = JsonUtils.getTypes();
-    types.forEach(
-        type -> {
-          type.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
-          LOG.debug("Loading type {}", type.getName());
-          try {
-            Fields fields = getFields(PROPERTIES_FIELD);
-            try {
-              Type storedType = repository.getByName(null, type.getName(), fields);
-              type.setId(storedType.getId());
-              // If entity type already exists, then carry forward custom properties
-              if (storedType.getCategory().equals(Category.Entity)) {
-                type.setCustomProperties(storedType.getCustomProperties());
-              }
-            } catch (Exception e) {
-              LOG.debug(
-                  "Type '{}' not found. Proceeding to add new type entity in database.",
-                  type.getName());
-            }
-            this.repository.createOrUpdate(null, type, ADMIN_USER_NAME);
-            this.repository.addToRegistry(type);
-          } catch (Exception e) {
-            LOG.error("Error loading type {}", type.getName(), e);
-          }
-        });
+    typeService.initialize();
   }
 
   public static class TypeList extends ResultList<Type> {

@@ -22,7 +22,6 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -35,6 +34,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.datainsight.DataInsightSystemChartService;
 import org.openmetadata.service.util.EntityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,18 +52,22 @@ public class DataInsightSystemChartResource
     extends EntityResource<DataInsightCustomChart, DataInsightSystemChartRepository> {
   public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/system/charts";
   private static final Logger LOG = LoggerFactory.getLogger(DataInsightSystemChartResource.class);
+  private DataInsightSystemChartService dataInsightSystemChartService;
 
   public DataInsightSystemChartResource(Authorizer authorizer, Limits limit) {
     super(Entity.DATA_INSIGHT_CUSTOM_CHART, authorizer, limit);
   }
 
+  public DataInsightSystemChartResource(
+      ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limit) {
+    super(Entity.DATA_INSIGHT_CUSTOM_CHART, authorizer, limit);
+    this.dataInsightSystemChartService =
+        serviceRegistry.getService(DataInsightSystemChartService.class);
+  }
+
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    List<DataInsightCustomChart> diCharts =
-        repository.getEntitiesFromSeedData(".*json/data/dataInsight/custom/.*\\.json$");
-    for (DataInsightCustomChart diChart : diCharts) {
-      repository.initializeEntity(diChart);
-    }
+    dataInsightSystemChartService.initialize();
   }
 
   @GET

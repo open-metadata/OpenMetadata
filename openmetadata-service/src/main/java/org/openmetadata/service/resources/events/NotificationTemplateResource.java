@@ -112,9 +112,7 @@ public class NotificationTemplateResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    // Load notification template seed data on startup with versioning support
-    repository.initOrUpdateSeedDataFromResources();
-    LOG.info("Notification template seed data initialized with versioning support");
+    service.initialize();
   }
 
   public static class NotificationTemplateList extends ResultList<NotificationTemplate> {

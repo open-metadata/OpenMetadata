@@ -121,7 +121,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     super.initialize(config);
-    repository.initOrganization();
+    service.initOrganization();
   }
 
   public static class TeamList extends ResultList<Team> {

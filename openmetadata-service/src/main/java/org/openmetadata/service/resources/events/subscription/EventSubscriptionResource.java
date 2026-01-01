@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.events.subscription;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.NOTIFICATION;
 
@@ -72,7 +71,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.NotificationResourceDescriptor;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -80,9 +78,7 @@ import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -140,31 +136,10 @@ public class EventSubscriptionResource
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
-      EventSubscriptionScheduler.initialize(config);
-      EventsSubscriptionRegistry.initialize(
-          listOrEmpty(EventSubscriptionResource.getNotificationsFilterDescriptors()),
-          listOrEmpty(EventSubscriptionResource.getObservabilityFilterDescriptors()));
-      repository.initSeedDataFromResources();
-      initializeEventSubscriptions();
+      eventSubscriptionService.initialize(config);
     } catch (Exception ex) {
-      // Starting application should not fail
       LOG.warn("Exception during initialization", ex);
     }
-  }
-
-  private void initializeEventSubscriptions() {
-    CollectionDAO daoCollection = repository.getDaoCollection();
-    daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions().stream()
-        .map(obj -> JsonUtils.readValue(obj, EventSubscription.class))
-        .forEach(
-            subscription -> {
-              try {
-                EventSubscriptionScheduler.getInstance()
-                    .addSubscriptionPublisher(subscription, true);
-              } catch (Exception ex) {
-                LOG.error("Failed to initialize subscription: {}", subscription.getId(), ex);
-              }
-            });
   }
 
   @GET

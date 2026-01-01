@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.services.datainsight;
 
+import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -29,11 +30,23 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.DATA_INSIGHT_CUSTOM_CHART)
 public class DataInsightSystemChartService extends AbstractEntityService<DataInsightCustomChart> {
 
+  private final DataInsightSystemChartRepository dataInsightSystemChartRepository;
+
   @Inject
   public DataInsightSystemChartService(
       DataInsightSystemChartRepository repository,
       SearchRepository searchRepository,
       Authorizer authorizer) {
     super(repository, searchRepository, authorizer, Entity.DATA_INSIGHT_CUSTOM_CHART);
+    this.dataInsightSystemChartRepository = repository;
+  }
+
+  public void initialize() {
+    List<DataInsightCustomChart> diCharts =
+        dataInsightSystemChartRepository.getEntitiesFromSeedData(
+            ".*json/data/dataInsight/custom/.*\\.json$");
+    for (DataInsightCustomChart diChart : diCharts) {
+      dataInsightSystemChartRepository.initializeEntity(diChart);
+    }
   }
 }

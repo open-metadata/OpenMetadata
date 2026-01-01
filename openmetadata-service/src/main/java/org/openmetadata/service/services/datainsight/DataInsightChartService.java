@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.services.datainsight;
 
+import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
@@ -38,6 +39,7 @@ import org.openmetadata.service.services.Service;
 public class DataInsightChartService extends AbstractEntityService<DataInsightChart> {
 
   @Getter private final DataInsightChartMapper mapper;
+  private final DataInsightChartRepository dataInsightChartRepository;
 
   @Inject
   public DataInsightChartService(
@@ -46,6 +48,15 @@ public class DataInsightChartService extends AbstractEntityService<DataInsightCh
       Authorizer authorizer,
       DataInsightChartMapper mapper) {
     super(repository, searchRepository, authorizer, Entity.DATA_INSIGHT_CHART);
+    this.dataInsightChartRepository = repository;
     this.mapper = mapper;
+  }
+
+  public void initialize() {
+    List<DataInsightChart> dataInsightCharts =
+        dataInsightChartRepository.getEntitiesFromSeedData(".*json/data/dataInsight/.*\\.json$");
+    for (DataInsightChart dataInsightChart : dataInsightCharts) {
+      dataInsightChartRepository.initializeEntity(dataInsightChart);
+    }
   }
 }

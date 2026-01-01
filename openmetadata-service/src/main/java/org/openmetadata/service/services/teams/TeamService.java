@@ -107,4 +107,8 @@ public class TeamService extends AbstractEntityService<Team> {
   public Map<String, Integer> getAllTeamsWithAssetsCount() {
     return teamRepository.getAllTeamsWithAssetsCount();
   }
+
+  public void initOrganization() {
+    teamRepository.initOrganization();
+  }
 }

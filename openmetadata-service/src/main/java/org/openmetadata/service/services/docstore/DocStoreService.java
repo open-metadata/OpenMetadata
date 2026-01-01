@@ -35,4 +35,8 @@ public class DocStoreService {
     this.authorizer = authorizer;
     this.mapper = new DocStoreMapper(authorizer);
   }
+
+  public void initialize() {
+    repository.initSeedDataFromResources();
+  }
 }
