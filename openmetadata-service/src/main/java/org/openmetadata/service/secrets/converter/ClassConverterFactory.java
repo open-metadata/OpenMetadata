@@ -54,6 +54,7 @@ import org.openmetadata.schema.services.connections.mlmodel.VertexAIConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirbyteConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
+import org.openmetadata.schema.services.connections.pipeline.MulesoftConnection;
 import org.openmetadata.schema.services.connections.pipeline.NifiConnection;
 import org.openmetadata.schema.services.connections.pipeline.SSISConnection;
 import org.openmetadata.schema.services.connections.pipeline.WherescapeConnection;
@@ -101,6 +102,7 @@ public final class ClassConverterFactory {
             Map.entry(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter()),
             Map.entry(TableauConnection.class, new TableauConnectionClassConverter()),
             Map.entry(ThoughtSpotConnection.class, new ThoughtSpotConnectionClassConverter()),
+            Map.entry(MulesoftConnection.class, new MulesoftConnectionClassConverter()),
             Map.entry(SalesforceConnection.class, new SalesforceConnectorClassConverter()),
             Map.entry(
                 TestServiceConnectionRequest.class,

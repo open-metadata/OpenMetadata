@@ -190,6 +190,7 @@ class ServiceUtilClassBase {
     DatabaseServiceType.ServiceNow,
     DatabaseServiceType.Dremio,
     MetadataServiceType.Collibra,
+    PipelineServiceType.Mulesoft,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
