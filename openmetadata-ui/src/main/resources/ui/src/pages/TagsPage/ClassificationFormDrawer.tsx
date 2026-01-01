@@ -98,7 +98,6 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
         <Button
           color="primary"
           data-testid="cancel-button"
-          disabled={isLoading}
           sx={{
             px: theme.spacing(4),
             py: theme.spacing(2.5),
