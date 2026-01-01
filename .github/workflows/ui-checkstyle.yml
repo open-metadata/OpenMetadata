@@ -9,12 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: ESLint and Prettier
+name: UI Checkstyle
 
 on:
   # Trigger analysis when creating or updating a pull request.
-  pull_request:
-    types: [opened, synchronize, reopened]
+  pull_request_target:
+    types: [ opened, synchronize, reopened, labeled ]
     paths:
       - 'openmetadata-ui/src/main/resources/ui/**'
 
@@ -22,10 +22,10 @@ permissions:
   contents: read
 
 concurrency: 
-  group: eslint-prettier-${{ github.head_ref || github.run_id }}
+  group: ui-checkstyle-${{ github.head_ref }}
   cancel-in-progress: true
 jobs:
-  eslint-prettier:
+  ui-checkstyle:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -41,8 +41,28 @@ jobs:
           swap-storage: true
           docker-images: false
 
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.3.4
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'safe to test'
+          pull-request-number: '${{ github.event.pull_request.number }}'
+          disable-reviews: true  # To not auto approve changes
+
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -55,38 +75,14 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui
         run: yarn install --frozen-lockfile
 
-      - name: Run ESLint
-        id: eslint
+      - name: Run UI checkstyle
+        id: checkstyle
         continue-on-error: true
         working-directory: openmetadata-ui/src/main/resources/ui
-        run: yarn run lint
-
-      - name: Run Prettier check
-        id: prettier
-        continue-on-error: true
-        working-directory: openmetadata-ui/src/main/resources/ui
-        run: npx prettier . --config './.prettierrc.yaml' --ignore-path './.prettierignore' --check
-
-      - name: Run License Header check
-        id: license
-        continue-on-error: true
-        working-directory: openmetadata-ui/src/main/resources/ui
-        run: yarn run license-header-check
-
-      - name: Check import organization
-        id: imports
-        continue-on-error: true
-        working-directory: openmetadata-ui/src/main/resources/ui
-        run: npx organize-imports-cli --check 'src/**/*.{ts,tsx,js,jsx}'
-
-      - name: Save check outcome
-        id: git
-        continue-on-error: true
-        run: |
-          git diff-files --quiet
+        run: yarn run checkstyle
 
       - name: Create a comment in the PR with the instructions
-        if: steps.eslint.outcome != 'success' || steps.prettier.outcome != 'success' || steps.license.outcome != 'success' || steps.imports.outcome != 'success' || steps.git.outcome != 'success'
+        if: steps.checkstyle.outcome != 'success'
         uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -107,7 +103,6 @@ jobs:
             You can also use [pre-commit](https://pre-commit.com/) to automate the code formatting.
             You can install the pre-commit hooks with `make install_test precommit_install`.
 
-      - name: ESLint/Prettier checks failed, check the comment in the PR
-        if: steps.eslint.outcome != 'success' || steps.prettier.outcome != 'success' || steps.license.outcome != 'success' || steps.imports.outcome != 'success' || steps.git.outcome != 'success'
-        run: |
-          exit 1
+      - name: UI checkstyle failed, check the comment in the PR
+        if: steps.checkstyle.outcome != 'success'
+        run: exit 1
