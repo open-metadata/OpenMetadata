@@ -104,7 +104,9 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
             {getEntityName(node)}
           </Typography.Text>
 
-          <Space className="d-flex items-center m-b-xs lineage-breadcrumb">
+          <Space
+            className="d-flex items-center m-b-xs lineage-breadcrumbs"
+            data-testid="lineage-breadcrumbs">
             <Breadcrumbs
               separator={<span className="lineage-breadcrumb-item-separator" />}
               sx={{

@@ -270,7 +270,11 @@ describe('CustomNodeV1', () => {
       </ReactFlowProvider>
     );
 
-    const breadcrumbItems = screen.getAllByText(
+    const breadcrumbContainer = screen.getByTestId('lineage-breadcrumbs');
+
+    expect(breadcrumbContainer).toBeInTheDocument();
+
+    const breadcrumbItems = within(breadcrumbContainer).getAllByText(
       (_content, element) =>
         element?.classList.contains('lineage-breadcrumb-item') ?? false
     );
@@ -280,7 +284,11 @@ describe('CustomNodeV1', () => {
     expect(breadcrumbItems[1]).toHaveTextContent('ecommerce_db');
     expect(breadcrumbItems[2]).toHaveTextContent('shopify');
 
-    screen.debug(undefined, Infinity);
+    const separators = breadcrumbContainer.querySelectorAll(
+      '.lineage-breadcrumb-item-separator'
+    );
+
+    expect(separators).toHaveLength(2);
   });
 
   it('should render footer only when there are children', () => {
