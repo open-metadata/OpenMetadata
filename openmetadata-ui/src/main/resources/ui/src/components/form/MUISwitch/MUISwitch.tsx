@@ -10,9 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, FormLabel, Switch as MuiSwitch } from '@mui/material';
+import { Box, Switch as MuiSwitch, SxProps, Theme } from '@mui/material';
 import { FC, memo, useCallback } from 'react';
+import MUIFormItemLabel from '../../common/MUIFormItemLabel/MUIFormItemLabel';
 import { MUISwitchProps } from './MUISwitch.interface';
+
+const LABEL_STYLES: SxProps<Theme> = {
+  color: (theme) => theme.palette.grey[700],
+  fontWeight: (theme) => theme.typography.subtitle2.fontWeight,
+};
 
 const MUISwitch: FC<MUISwitchProps> = ({
   checked = false,
@@ -38,17 +44,7 @@ const MUISwitch: FC<MUISwitchProps> = ({
         onChange={handleChange}
         {...props}
       />
-      {label && (
-        <FormLabel
-          component="span"
-          sx={{
-            color: (theme) => theme.palette.grey[700],
-            fontSize: (theme) => theme.typography.body2.fontSize,
-            fontWeight: (theme) => theme.typography.subtitle2.fontWeight,
-          }}>
-          {label}
-        </FormLabel>
-      )}
+      {label && <MUIFormItemLabel label={label} labelSx={LABEL_STYLES} />}
     </Box>
   );
 };
