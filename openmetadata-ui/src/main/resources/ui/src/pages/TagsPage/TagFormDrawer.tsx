@@ -72,7 +72,7 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
           size="medium"
           sx={{ color: (theme) => theme.palette.grey[700] }}
           onClick={onClose}>
-          <XClose />
+          <XClose style={{ width: '20px', height: '20px' }} />
         </IconButton>
       </Box>
 

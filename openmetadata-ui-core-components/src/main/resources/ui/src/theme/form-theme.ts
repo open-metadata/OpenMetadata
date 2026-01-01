@@ -112,7 +112,7 @@ export const formTheme = (colors: any) => ({
       input: {
         color: colors.gray[900],
         '&::placeholder': {
-          color: colors.gray[500],
+          color: colors.gray[400],
           opacity: 1,
         },
         '&:disabled': {
