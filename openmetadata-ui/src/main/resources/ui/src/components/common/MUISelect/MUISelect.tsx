@@ -21,7 +21,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { FC, memo, ReactNode } from 'react';
+import { FC, memo, ReactNode, useMemo } from 'react';
 
 interface SelectOption {
   label: string;
@@ -51,6 +51,11 @@ const MUISelect: FC<MUISelectProps> = ({
   const labelId = id ? `${id}-label` : 'mui-select-label';
   const theme = useTheme();
 
+  const optionsMap = useMemo(
+    () => new Map(options.map((opt) => [opt.value, opt.label])),
+    [options]
+  );
+
   return (
     <FormControl fullWidth error={error} required={required} size={size}>
       {label && <InputLabel id={labelId}>{label}</InputLabel>}
@@ -70,16 +75,22 @@ const MUISelect: FC<MUISelectProps> = ({
         }}
         label={label}
         labelId={labelId}
+        renderValue={(selected) => {
+          if (!selected || selected === '') {
+            return placeholder ? (
+              <Typography sx={{ color: theme.palette.grey[400] }}>
+                {placeholder}
+              </Typography>
+            ) : null;
+          }
+
+          const selectedValue = selected as string | number;
+
+          return optionsMap.get(selectedValue) ?? selectedValue;
+        }}
         value={value}
         onChange={onChange}
         {...props}>
-        {placeholder && (
-          <MenuItem disabled value="">
-            <Typography sx={{ color: theme.palette.grey[500] }}>
-              {placeholder}
-            </Typography>
-          </MenuItem>
-        )}
         {options.map((option) => (
           <MenuItem
             disabled={option.disabled}
