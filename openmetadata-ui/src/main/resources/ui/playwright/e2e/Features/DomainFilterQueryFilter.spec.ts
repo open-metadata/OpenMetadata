@@ -29,7 +29,7 @@ import {
   selectDomain,
   verifyActiveDomainIsDefault,
 } from '../../utils/domain';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { assignTier, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 const test = base.extend<{ page: Page }>({
@@ -993,6 +993,246 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       }
       await engineeringDomain.delete(apiContext);
       await engineering123Domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Quick filters should persist when domain filter is applied and cleared', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const domainTable1 = new TableClass();
+    const domainTable2 = new TableClass();
+    const nonDomainTable = new TableClass();
+
+    try {
+      // Setup: Create 1 domain and 3 tables
+      await domain.create(apiContext);
+      await domainTable1.create(apiContext);
+      await domainTable2.create(apiContext);
+      await nonDomainTable.create(apiContext);
+
+      // Assign 2 tables to the domain
+      await domainTable1.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains/0',
+            value: {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          },
+        ],
+      });
+
+      await domainTable2.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains/0',
+            value: {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          },
+        ],
+      });
+
+      // Assign Tier1 to all 3 tables
+      await domainTable1.visitEntityPage(page);
+      await page.waitForLoadState('networkidle');
+      await assignTier(page, 'Tier1', domainTable1.endpoint);
+
+      await domainTable2.visitEntityPage(page);
+      await page.waitForLoadState('networkidle');
+      await assignTier(page, 'Tier1', domainTable2.endpoint);
+
+      await nonDomainTable.visitEntityPage(page);
+      await page.waitForLoadState('networkidle');
+      await assignTier(page, 'Tier1', nonDomainTable.endpoint);
+
+      // Navigate to explore page
+      await redirectToExplorePage(page);
+      await waitForAllLoadersToDisappear(page);
+
+      // Step 1: Apply Tier1 quick filter
+      await page.getByTestId('search-dropdown-Tier').click();
+      await waitForAllLoadersToDisappear(page);
+      const tier1Option = page.getByTestId('Tier.Tier1');
+      await tier1Option.waitFor({ state: 'visible'});
+      await tier1Option.click();
+
+      const quickFilterApplyRes = page.waitForResponse(
+        '/api/v1/search/query?*index=dataAsset*'
+      );
+      await page.getByTestId('update-btn').click();
+      await quickFilterApplyRes;
+      await waitForAllLoadersToDisappear(page);
+      await page.waitForLoadState('networkidle');
+
+      // Verify all 3 tables are visible with tier filter applied
+      const domainTable1Name = get(
+        domainTable1,
+        'entityResponseData.displayName',
+        domainTable1.entityResponseData.name
+      );
+      await page.getByTestId('searchBox').fill(domainTable1Name);
+      await page.getByTestId('searchBox').press('Enter');
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.locator(
+          `[data-testid="table-data-card_${domainTable1.entityResponseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+
+      const domainTable2Name = get(
+        domainTable2,
+        'entityResponseData.displayName',
+        domainTable2.entityResponseData.name
+      );
+      await page.getByTestId('searchBox').fill(domainTable2Name);
+      await page.getByTestId('searchBox').press('Enter');
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.locator(
+          `[data-testid="table-data-card_${domainTable2.entityResponseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+
+      const nonDomainTableName = get(
+        nonDomainTable,
+        'entityResponseData.displayName',
+        nonDomainTable.entityResponseData.name
+      );
+      await page.getByTestId('searchBox').fill(nonDomainTableName);
+      await page.getByTestId('searchBox').press('Enter');
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.locator(
+          `[data-testid="table-data-card_${nonDomainTable.entityResponseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+
+      // Step 2: Apply domain filter from navbar
+      await page.getByTestId('domain-dropdown').click();
+      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+        state: 'visible',
+      });
+
+      const searchDomainRes = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('domain_search_index')
+      );
+      await page
+        .getByTestId('domain-selectable-tree')
+        .getByTestId('searchbar')
+        .fill(domain.responseData.displayName);
+      await searchDomainRes;
+
+      const tagSelector = page.getByTestId(
+        `tag-${domain.responseData.fullyQualifiedName}`
+      );
+      await tagSelector.waitFor({ state: 'visible' });
+      await tagSelector.click();
+      await waitForAllLoadersToDisappear(page);
+      await page.waitForLoadState('networkidle');
+
+      // Verify only 2 domain tables are visible (tier filter + domain filter)
+      await page.getByTestId('searchBox').fill(domainTable1Name);
+      await page.getByTestId('searchBox').press('Enter');
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.locator(
+          `[data-testid="table-data-card_${domainTable1.entityResponseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+
+      await page.getByTestId('searchBox').fill(domainTable2Name);
+      await page.getByTestId('searchBox').press('Enter');
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.locator(
+          `[data-testid="table-data-card_${domainTable2.entityResponseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+
+      // Non-domain table should NOT be visible
+      await page.getByTestId('searchBox').fill(nonDomainTableName);
+      await page.getByTestId('searchBox').press('Enter');
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.locator(
+          `[data-testid="table-data-card_${nonDomainTable.entityResponseData.fullyQualifiedName}"]`
+        )
+      ).not.toBeVisible();
+
+      // Step 3: Clear domain filter by selecting "All Domains"
+      await page.getByTestId('domain-dropdown').click();
+      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+        state: 'visible',
+      });
+      await page.getByTestId('all-domains-selector').click();
+      await waitForAllLoadersToDisappear(page);
+      await page.waitForLoadState('networkidle');
+
+      // Verify domain is cleared
+      await verifyActiveDomainIsDefault(page);
+
+      // Verify all 3 tables are visible again (tier filter persists)
+      await page.getByTestId('searchBox').fill(domainTable1Name);
+      await page.getByTestId('searchBox').press('Enter');
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.locator(
+          `[data-testid="table-data-card_${domainTable1.entityResponseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+
+      await page.getByTestId('searchBox').fill(domainTable2Name);
+      await page.getByTestId('searchBox').press('Enter');
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.locator(
+          `[data-testid="table-data-card_${domainTable2.entityResponseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+
+      await page.getByTestId('searchBox').fill(nonDomainTableName);
+      await page.getByTestId('searchBox').press('Enter');
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.locator(
+          `[data-testid="table-data-card_${nonDomainTable.entityResponseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+    } finally {
+      await domainTable1.delete(apiContext);
+      await domainTable2.delete(apiContext);
+      await nonDomainTable.delete(apiContext);
+      await domain.delete(apiContext);
       await afterAction();
     }
   });
