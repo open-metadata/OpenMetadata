@@ -335,7 +335,9 @@ const editGlossaryCustomProperty = async (
     await page.locator('[data-testid="update-table-type-property"]').click();
 
     await expect(
-      page.getByTestId(propertyName).getByRole('cell', { name: columns[0] })
+      page
+        .getByTestId(propertyName)
+        .getByRole('columnheader', { name: columns[0] })
     ).toBeVisible();
 
     await expect(

@@ -7,35 +7,35 @@
 | Metric | Count |
 |--------|-------|
 | **Components** | 30 |
-| **Test Files** | 153 |
-| **Test Cases** | 2361 |
-| **Total Scenarios** | 3266 🚀 |
+| **Test Files** | 154 |
+| **Test Cases** | 2364 |
+| **Total Scenarios** | 3277 🚀 |
 
 ---
 
 ## Governance
 
-> **6 Components** | **669 Tests** | **1104 Scenarios**
+> **6 Components** | **671 Tests** | **1111 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
 | [Custom Properties](./Governance.md#custom-properties) | 5 | 293 | 304 | 0 |
 | [Glossary](./Governance.md#glossary) | 20 | 212 | 249 | 0 |
 | [Data Contracts](./Governance.md#data-contracts) | 2 | 86 | 429 | 0 |
-| [Domains & Data Products](./Governance.md#domains-data-products) | 4 | 35 | 57 | 0 |
+| [Domains & Data Products](./Governance.md#domains-data-products) | 5 | 37 | 64 | 0 |
 | [Tags](./Governance.md#tags) | 7 | 34 | 49 | 0 |
 | [Metrics](./Governance.md#metrics) | 3 | 9 | 16 | 0 |
 
 ## Platform
 
-> **12 Components** | **1246 Tests** | **1626 Scenarios**
+> **12 Components** | **1246 Tests** | **1628 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
 | [Entities](./Platform.md#entities) | 15 | 927 | 1098 | 0 |
 | [Users & Teams](./Platform.md#users-teams) | 9 | 80 | 100 | 0 |
-| [Other](./Platform.md#other) | 18 | 66 | 77 | 0 |
-| [Personas & Customizations](./Platform.md#personas-customizations) | 5 | 44 | 142 | 0 |
+| [Other](./Platform.md#other) | 17 | 65 | 75 | 0 |
+| [Personas & Customizations](./Platform.md#personas-customizations) | 5 | 45 | 146 | 0 |
 | [Navigation](./Platform.md#navigation) | 4 | 38 | 38 | 0 |
 | [Lineage (UI)](./Platform.md#lineage-ui-) | 3 | 32 | 87 | 0 |
 | [RBAC](./Platform.md#rbac) | 4 | 19 | 34 | 0 |
@@ -72,11 +72,11 @@
 
 ## Integration
 
-> **1 Components** | **52 Tests** | **55 Scenarios**
+> **1 Components** | **53 Tests** | **57 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
-| [Connectors](./Integration.md#connectors) | 5 | 52 | 55 | 0 |
+| [Connectors](./Integration.md#connectors) | 6 | 53 | 57 | 0 |
 
 
-*Last updated: 2025-12-23*
+*Last updated: 2025-12-26*
