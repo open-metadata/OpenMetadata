@@ -124,7 +124,6 @@ export const performZoomOut = async (page: Page) => {
   const zoomOutBtn = page.getByTestId('zoom-out');
   const enabled = await zoomOutBtn.isEnabled();
   if (enabled) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     for (const _index of Array.from({ length: 10 })) {
       await zoomOutBtn.dispatchEvent('click');
     }

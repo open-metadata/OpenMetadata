@@ -26,8 +26,10 @@ services:
 
   # MySQL Database
   mysql:
-    image: mysql:8.0
-    container_name: openmetadata-mysql
+    container_name: openmetadata_mysql
+    image: docker.getcollate.io/openmetadata/db:1.12.0-SNAPSHOT
+    command: "--sort_buffer_size=10M"
+    restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
       MYSQL_DATABASE: openmetadata_db
@@ -36,7 +38,7 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      - mysql-data:/var/lib/mysql
+     - ./docker-volume/db-data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -47,7 +49,7 @@ services:
 
   # Elasticsearch
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.15
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.4
     container_name: openmetadata-elasticsearch
     environment:
       - discovery.type=single-node
