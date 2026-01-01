@@ -59,6 +59,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.apis.APIEndpointService;
 
 @Path("/v1/apiEndpoints")
 @Tag(
@@ -70,7 +72,7 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "apiEndpoints")
 public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpointRepository> {
   public static final String COLLECTION_PATH = "v1/apiEndpoints/";
-  private final APIEndpointMapper mapper = new APIEndpointMapper();
+  private final APIEndpointService service;
 
   static final String FIELDS = "owners,followers,tags,extension,domains,dataProducts,sourceHash";
 
@@ -82,8 +84,10 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
     return apiEndpoint;
   }
 
-  public APIEndpointResource(Authorizer authorizer, Limits limits) {
+  public APIEndpointResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.API_ENDPOINT, authorizer, limits);
+    this.service = serviceRegistry.getService(APIEndpointService.class);
   }
 
   public static class APIEndpointList extends ResultList<APIEndpoint> {
@@ -308,7 +312,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
       @Context SecurityContext securityContext,
       @Valid CreateAPIEndpoint create) {
     APIEndpoint apiEndpoint =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, apiEndpoint);
   }
 
@@ -429,7 +433,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
       @Context SecurityContext securityContext,
       @Valid CreateAPIEndpoint create) {
     APIEndpoint apiEndpoint =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, apiEndpoint);
   }
 

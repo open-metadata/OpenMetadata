@@ -63,8 +63,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.searchindex.SearchIndexService;
 
 @Path("/v1/searchIndexes")
 @Tag(
@@ -75,7 +75,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "searchIndexes")
 public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndexRepository> {
-  private final SearchIndexMapper mapper = new SearchIndexMapper();
+  private SearchIndexService searchIndexService;
   public static final String COLLECTION_PATH = "v1/searchIndexes/";
   static final String FIELDS = "owners,followers,tags,extension,domains,dataProducts,sourceHash";
 
@@ -88,6 +88,12 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
 
   public SearchIndexResource(Authorizer authorizer, Limits limits) {
     super(Entity.SEARCH_INDEX, authorizer, limits);
+  }
+
+  public SearchIndexResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
+    super(Entity.SEARCH_INDEX, authorizer, limits);
+    this.searchIndexService = serviceRegistry.getService(SearchIndexService.class);
   }
 
   @Override
@@ -311,7 +317,9 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
       @Context SecurityContext securityContext,
       @Valid CreateSearchIndex create) {
     SearchIndex searchIndex =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        searchIndexService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, searchIndex);
   }
 
@@ -431,7 +439,9 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
       @Context SecurityContext securityContext,
       @Valid CreateSearchIndex create) {
     SearchIndex searchIndex =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        searchIndexService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, searchIndex);
   }
 
@@ -457,11 +467,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
           @PathParam("id")
           UUID id,
       @Valid SearchIndexSampleData sampleData) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    SearchIndex searchIndex = repository.addSampleData(id, sampleData);
-    return addHref(uriInfo, searchIndex);
+    return service.addSampleData(uriInfo, securityContext, id, sampleData);
   }
 
   @GET
@@ -485,14 +491,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
       @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
-    ResourceContext<?> resourceContext = getResourceContextById(id);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
-
-    SearchIndex searchIndex = repository.getSampleData(id, authorizePII);
-    return addHref(uriInfo, searchIndex);
+    return service.getSampleData(uriInfo, securityContext, id);
   }
 
   @PUT
@@ -523,9 +522,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return service.addFollower(securityContext, id, userId).toResponse();
   }
 
   @DELETE
@@ -553,9 +550,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+    return service.deleteFollower(securityContext, id, UUID.fromString(userId)).toResponse();
   }
 
   @PUT
@@ -580,9 +575,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return service.updateVote(securityContext, id, request).toResponse();
   }
 
   @DELETE

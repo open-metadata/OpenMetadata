@@ -52,6 +52,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.serviceentities.LLMServiceEntityService;
 
 @Slf4j
 @Path("/v1/services/llmServices")
@@ -65,15 +67,15 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 @Collection(name = "llmServices")
 public class LLMServiceResource
     extends ServiceEntityResource<LLMService, LLMServiceRepository, LLMConnection> {
-  private final LLMServiceMapper mapper = new LLMServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/llmServices/";
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
+  private final LLMServiceEntityService service;
 
   @Override
-  public LLMService addHref(UriInfo uriInfo, LLMService service) {
-    super.addHref(uriInfo, service);
-    Entity.withHref(uriInfo, service.getPipelines());
-    return service;
+  public LLMService addHref(UriInfo uriInfo, LLMService llmService) {
+    super.addHref(uriInfo, llmService);
+    Entity.withHref(uriInfo, llmService.getPipelines());
+    return llmService;
   }
 
   @Override
@@ -82,8 +84,9 @@ public class LLMServiceResource
     return null;
   }
 
-  public LLMServiceResource(Authorizer authorizer, Limits limits) {
+  public LLMServiceResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.LLM_SERVICE, authorizer, limits, ServiceType.LLM);
+    this.service = serviceRegistry.getService(LLMServiceEntityService.class);
   }
 
   public static class LLMServiceList extends ResultList<LLMService> {
@@ -339,9 +342,9 @@ public class LLMServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateLLMService create) {
-    LLMService service =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service);
+    LLMService llmService =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    Response response = create(uriInfo, securityContext, llmService);
     decryptOrNullify(securityContext, (LLMService) response.getEntity());
     return response;
   }
@@ -365,9 +368,9 @@ public class LLMServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateLLMService update) {
-    LLMService service =
-        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    LLMService llmService =
+        service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(llmService));
     decryptOrNullify(securityContext, (LLMService) response.getEntity());
     return response;
   }

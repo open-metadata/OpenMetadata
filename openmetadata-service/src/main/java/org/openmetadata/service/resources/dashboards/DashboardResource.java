@@ -62,6 +62,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.dashboards.DashboardService;
 
 @Path("/v1/dashboards")
 @Tag(
@@ -76,7 +78,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   public static final String COLLECTION_PATH = "v1/dashboards/";
   protected static final String FIELDS =
       "owners,charts,followers,tags,usageSummary,extension,dataModels,domains,dataProducts,sourceHash";
-  private final DashboardMapper mapper = new DashboardMapper();
+  private final DashboardService dashboardService;
 
   @Override
   public Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
@@ -89,6 +91,12 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
 
   public DashboardResource(Authorizer authorizer, Limits limits) {
     super(Entity.DASHBOARD, authorizer, limits);
+    this.dashboardService = null;
+  }
+
+  public DashboardResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
+    super(Entity.DASHBOARD, authorizer, limits);
+    this.dashboardService = serviceRegistry.getService(DashboardService.class);
   }
 
   @Override
@@ -312,7 +320,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context SecurityContext securityContext,
       @Valid CreateDashboard create) {
     Dashboard dashboard =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        dashboardService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dashboard);
   }
 
@@ -433,7 +443,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context SecurityContext securityContext,
       @Valid CreateDashboard create) {
     Dashboard dashboard =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        dashboardService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dashboard);
   }
 
@@ -457,9 +469,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return dashboardService.addFollower(securityContext, id, userId).toResponse();
   }
 
   @DELETE
@@ -479,9 +489,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return dashboardService.deleteFollower(securityContext, id, userId).toResponse();
   }
 
   @PUT
@@ -506,9 +514,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return dashboardService.updateVote(securityContext, id, request).toResponse();
   }
 
   @DELETE

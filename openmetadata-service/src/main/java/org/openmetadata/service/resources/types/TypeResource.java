@@ -70,6 +70,8 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.types.TypeService;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.SchemaFieldExtractor;
@@ -88,8 +90,8 @@ import org.openmetadata.service.util.SchemaFieldExtractor;
 @Slf4j
 public class TypeResource extends EntityResource<Type, TypeRepository> {
   public static final String COLLECTION_PATH = "v1/metadata/types/";
-  private final TypeMapper mapper = new TypeMapper();
   public SchemaFieldExtractor extractor;
+  private TypeService typeService;
 
   @Override
   public Type addHref(UriInfo uriInfo, Type type) {
@@ -101,6 +103,12 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public TypeResource(Authorizer authorizer, Limits limits) {
     super(Entity.TYPE, authorizer, limits);
     extractor = new SchemaFieldExtractor();
+  }
+
+  public TypeResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
+    super(Entity.TYPE, authorizer, limits);
+    extractor = new SchemaFieldExtractor();
+    this.typeService = serviceRegistry.getService(TypeService.class);
   }
 
   @Override
@@ -353,7 +361,10 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateType create) {
-    Type type = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Type type =
+        typeService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, type);
   }
 
@@ -432,7 +443,10 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateType create) {
-    Type type = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Type type =
+        typeService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, type);
   }
 

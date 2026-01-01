@@ -64,6 +64,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.dashboards.DashboardDataModelService;
 
 @Path("/v1/dashboard/datamodels")
 @Tag(
@@ -75,7 +77,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 @Collection(name = "datamodels")
 public class DashboardDataModelResource
     extends EntityResource<DashboardDataModel, DashboardDataModelRepository> {
-  private final DashboardDataModelMapper mapper = new DashboardDataModelMapper();
+  private final DashboardDataModelService dashboardDataModelService;
   public static final String COLLECTION_PATH = "/v1/dashboard/datamodels";
   protected static final String FIELDS = "owners,tags,followers,domains,sourceHash,extension";
 
@@ -88,6 +90,13 @@ public class DashboardDataModelResource
 
   public DashboardDataModelResource(Authorizer authorizer, Limits limits) {
     super(Entity.DASHBOARD_DATA_MODEL, authorizer, limits);
+    this.dashboardDataModelService = null;
+  }
+
+  public DashboardDataModelResource(
+      ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
+    super(Entity.DASHBOARD_DATA_MODEL, authorizer, limits);
+    this.dashboardDataModelService = serviceRegistry.getService(DashboardDataModelService.class);
   }
 
   @Override
@@ -315,7 +324,9 @@ public class DashboardDataModelResource
       @Context SecurityContext securityContext,
       @Valid CreateDashboardDataModel create) {
     DashboardDataModel dashboardDataModel =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        dashboardDataModelService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dashboardDataModel);
   }
 
@@ -355,7 +366,8 @@ public class DashboardDataModelResource
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateDashboardDataModel> createRequests) {
-    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+    return processBulkRequest(
+        uriInfo, securityContext, createRequests, dashboardDataModelService.getMapper(), async);
   }
 
   @PATCH
@@ -436,7 +448,9 @@ public class DashboardDataModelResource
       @Context SecurityContext securityContext,
       @Valid CreateDashboardDataModel create) {
     DashboardDataModel dashboardDataModel =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        dashboardDataModelService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dashboardDataModel);
   }
 

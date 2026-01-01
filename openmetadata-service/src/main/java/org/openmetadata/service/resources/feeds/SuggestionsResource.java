@@ -62,6 +62,8 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PostResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.feeds.SuggestionsService;
 import org.openmetadata.service.util.RestUtil;
 
 @Path("/v1/suggestions")
@@ -74,9 +76,9 @@ import org.openmetadata.service.util.RestUtil;
 @Collection(name = "suggestions")
 public class SuggestionsResource {
   public static final String COLLECTION_PATH = "/v1/suggestions/";
-  private final SuggestionMapper mapper = new SuggestionMapper();
   private final SuggestionRepository dao;
   private final Authorizer authorizer;
+  private SuggestionsService suggestionsService;
 
   public static void addHref(UriInfo uriInfo, List<Suggestion> suggestions) {
     if (uriInfo != null) {
@@ -94,6 +96,12 @@ public class SuggestionsResource {
   public SuggestionsResource(Authorizer authorizer) {
     this.dao = Entity.getSuggestionRepository();
     this.authorizer = authorizer;
+  }
+
+  public SuggestionsResource(ServiceRegistry serviceRegistry, Authorizer authorizer) {
+    this.dao = Entity.getSuggestionRepository();
+    this.authorizer = authorizer;
+    this.suggestionsService = serviceRegistry.getService(SuggestionsService.class);
   }
 
   public static class SuggestionList extends ResultList<Suggestion> {
@@ -405,7 +413,9 @@ public class SuggestionsResource {
       @Context SecurityContext securityContext,
       @Valid CreateSuggestion create) {
     Suggestion suggestion =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        suggestionsService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, dao.create(suggestion));
     return Response.created(suggestion.getHref())
         .entity(suggestion)

@@ -15,6 +15,7 @@ package org.openmetadata.service.services.ai;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.PromptTemplate;
 import org.openmetadata.service.Entity;
@@ -36,8 +37,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.PROMPT_TEMPLATE)
 public class PromptTemplateService extends AbstractEntityService<PromptTemplate> {
 
-  @SuppressWarnings("unused")
-  private final PromptTemplateMapper mapper;
+  @Getter private final PromptTemplateMapper mapper;
 
   @Inject
   public PromptTemplateService(

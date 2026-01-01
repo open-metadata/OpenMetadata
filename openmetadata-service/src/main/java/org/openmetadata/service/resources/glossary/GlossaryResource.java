@@ -65,6 +65,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.glossary.GlossaryService;
 import org.openmetadata.service.util.CSVExportResponse;
 
 @Path("/v1/glossaries")
@@ -79,10 +81,11 @@ import org.openmetadata.service.util.CSVExportResponse;
 public class GlossaryResource extends EntityResource<Glossary, GlossaryRepository> {
   public static final String COLLECTION_PATH = "v1/glossaries/";
   static final String FIELDS = "owners,tags,reviewers,usageCount,termCount,domains,extension";
-  private final GlossaryMapper mapper = new GlossaryMapper();
+  private final GlossaryService service;
 
-  public GlossaryResource(Authorizer authorizer, Limits limits) {
+  public GlossaryResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.GLOSSARY, authorizer, limits);
+    this.service = serviceRegistry.getService(GlossaryService.class);
   }
 
   @Override
@@ -297,7 +300,8 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateGlossary create) {
-    Glossary glossary = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Glossary glossary =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, glossary);
   }
 
@@ -378,7 +382,8 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateGlossary create) {
-    Glossary glossary = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Glossary glossary =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, glossary);
   }
 

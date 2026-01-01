@@ -32,6 +32,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.databases.StoredProcedureService;
 
 @Path("/v1/storedProcedures")
 @Tag(
@@ -43,7 +45,7 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "storedProcedures")
 public class StoredProcedureResource
     extends EntityResource<StoredProcedure, StoredProcedureRepository> {
-  private final StoredProcedureMapper mapper = new StoredProcedureMapper();
+  private StoredProcedureService storedProcedureService;
   public static final String COLLECTION_PATH = "v1/storedProcedures/";
   static final String FIELDS = "owners,tags,followers,votes,extension,domains,sourceHash";
 
@@ -58,6 +60,12 @@ public class StoredProcedureResource
 
   public StoredProcedureResource(Authorizer authorizer, Limits limits) {
     super(Entity.STORED_PROCEDURE, authorizer, limits);
+  }
+
+  public StoredProcedureResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
+    super(Entity.STORED_PROCEDURE, authorizer, limits);
+    this.storedProcedureService = serviceRegistry.getService(StoredProcedureService.class);
   }
 
   public static class StoredProcedureList extends ResultList<StoredProcedure> {
@@ -273,7 +281,9 @@ public class StoredProcedureResource
       @Context SecurityContext securityContext,
       @Valid CreateStoredProcedure create) {
     StoredProcedure storedProcedure =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        storedProcedureService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, storedProcedure);
   }
 
@@ -394,7 +404,9 @@ public class StoredProcedureResource
       @Context SecurityContext securityContext,
       @Valid CreateStoredProcedure create) {
     StoredProcedure storedProcedure =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        storedProcedureService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, storedProcedure);
   }
 
@@ -426,9 +438,7 @@ public class StoredProcedureResource
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return service.addFollower(securityContext, id, userId).toResponse();
   }
 
   @DELETE
@@ -456,9 +466,7 @@ public class StoredProcedureResource
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+    return service.deleteFollower(securityContext, id, UUID.fromString(userId)).toResponse();
   }
 
   @PUT
@@ -483,9 +491,7 @@ public class StoredProcedureResource
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return service.updateVote(securityContext, id, request).toResponse();
   }
 
   @DELETE

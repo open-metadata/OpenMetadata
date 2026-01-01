@@ -74,6 +74,8 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.dqtests.TestCaseService;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
@@ -93,12 +95,12 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 @Collection(name = "TestCases")
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
-  private final TestCaseMapper mapper = new TestCaseMapper();
   private final TestCaseResultMapper testCaseResultMapper = new TestCaseResultMapper();
   static final String FIELDS =
       "owners,reviewers,entityStatus,testSuite,testDefinition,testSuites,incidentId,domains,tags,followers";
   static final String SEARCH_FIELDS_EXCLUDE =
       "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,testCaseType,originEntityFQN,followers";
+  private final TestCaseService service;
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
@@ -108,8 +110,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return test;
   }
 
-  public TestCaseResource(Authorizer authorizer, Limits limits) {
+  public TestCaseResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.TEST_CASE, authorizer, limits);
+    this.service = serviceRegistry.getService(TestCaseService.class);
   }
 
   @Override
@@ -652,7 +655,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Valid CreateTestCase create) {
 
     EntityLink entityLink = EntityLink.parse(create.getEntityLink());
-    TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    TestCase test =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     limits.enforceLimits(
         securityContext,
         new CreateResourceContext<>(entityType, test),
@@ -728,7 +732,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     createTestCases.forEach(
         create -> {
           TestCase test =
-              mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+              service
+                  .getMapper()
+                  .createToEntity(create, securityContext.getUserPrincipal().getName());
           limits.enforceLimits(
               securityContext,
               new CreateResourceContext<>(entityType, test),
@@ -826,7 +832,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             new AuthRequest(testCaseOpCreate, testCaseRC),
             new AuthRequest(testCaseOpUpdate, testCaseRC));
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
-    TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    TestCase test =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     repository.prepareInternal(test, true);
     PutResponse<TestCase> response =
         repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());

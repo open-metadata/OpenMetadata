@@ -57,6 +57,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.analytics.WebAnalyticEventService;
 
 @Slf4j
 @Path("/v1/analytics/web/events")
@@ -70,10 +72,12 @@ public class WebAnalyticEventResource
   public static final String COLLECTION_PATH = WebAnalyticEventRepository.COLLECTION_PATH;
   static final String FIELDS = "owners";
   private static final Pattern HTML_PATTERN = Pattern.compile(".*\\<[^>]+>.*", Pattern.DOTALL);
-  private final WebAnalyticEventMapper mapper = new WebAnalyticEventMapper();
+  private final WebAnalyticEventService service;
 
-  public WebAnalyticEventResource(Authorizer authorizer, Limits limits) {
+  public WebAnalyticEventResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.WEB_ANALYTIC_EVENT, authorizer, limits);
+    this.service = serviceRegistry.getService(WebAnalyticEventService.class);
   }
 
   public static class WebAnalyticEventList extends ResultList<WebAnalyticEvent> {
@@ -170,7 +174,7 @@ public class WebAnalyticEventResource
       @Context SecurityContext securityContext,
       @Valid CreateWebAnalyticEvent create) {
     WebAnalyticEvent webAnalyticEvent =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, webAnalyticEvent);
   }
 
@@ -193,7 +197,7 @@ public class WebAnalyticEventResource
       @Context SecurityContext securityContext,
       @Valid CreateWebAnalyticEvent create) {
     WebAnalyticEvent webAnalyticEvent =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, webAnalyticEvent);
   }
 

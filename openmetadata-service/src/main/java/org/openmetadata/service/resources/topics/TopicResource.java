@@ -63,8 +63,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.messaging.TopicService;
 
 @Path("/v1/topics")
 @Tag(
@@ -77,8 +77,9 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 @Collection(name = "topics")
 public class TopicResource extends EntityResource<Topic, TopicRepository> {
   public static final String COLLECTION_PATH = "v1/topics/";
-  private final TopicMapper mapper = new TopicMapper();
   static final String FIELDS = "owners,followers,tags,extension,domains,dataProducts,sourceHash";
+
+  private final TopicService topicService;
 
   @Override
   public Topic addHref(UriInfo uriInfo, Topic topic) {
@@ -89,6 +90,12 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
 
   public TopicResource(Authorizer authorizer, Limits limits) {
     super(Entity.TOPIC, authorizer, limits);
+    this.topicService = null;
+  }
+
+  public TopicResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
+    super(Entity.TOPIC, authorizer, limits);
+    this.topicService = serviceRegistry.getService(TopicService.class);
   }
 
   @Override
@@ -303,7 +310,10 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTopic create) {
-    Topic topic = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Topic topic =
+        topicService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, topic);
   }
 
@@ -421,7 +431,10 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTopic create) {
-    Topic topic = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Topic topic =
+        topicService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, topic);
   }
 
@@ -446,11 +459,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid TopicSampleData sampleData) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Topic topic = repository.addSampleData(id, sampleData);
-    return addHref(uriInfo, topic);
+    return topicService.addSampleData(uriInfo, securityContext, id, sampleData);
   }
 
   @GET
@@ -473,14 +482,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
-    ResourceContext<?> resourceContext = getResourceContextById(id);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
-
-    Topic topic = repository.getSampleData(id, authorizePII);
-    return addHref(uriInfo, topic);
+    return topicService.getSampleData(uriInfo, securityContext, id);
   }
 
   @PUT
@@ -508,9 +510,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return topicService.addFollower(securityContext, id, userId).toResponse();
   }
 
   @DELETE
@@ -537,9 +537,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+    return topicService.deleteFollower(securityContext, id, UUID.fromString(userId)).toResponse();
   }
 
   @PUT
@@ -564,9 +562,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return topicService.updateVote(securityContext, id, request).toResponse();
   }
 
   @DELETE

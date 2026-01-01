@@ -15,6 +15,7 @@ package org.openmetadata.service.services.ml;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.LLMModel;
 import org.openmetadata.service.Entity;
@@ -36,8 +37,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.LLM_MODEL)
 public class LLMModelService extends AbstractEntityService<LLMModel> {
 
-  @SuppressWarnings("unused")
-  private final LLMModelMapper mapper;
+  @Getter private final LLMModelMapper mapper;
 
   @Inject
   public LLMModelService(

@@ -62,6 +62,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.dashboards.ChartService;
 
 @Path("/v1/charts")
 @Tag(
@@ -73,9 +75,10 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "charts")
 public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public static final String COLLECTION_PATH = "v1/charts/";
-  private final ChartMapper mapper = new ChartMapper();
   static final String FIELDS =
       "owners,followers,tags,domains,dataProducts,sourceHash,dashboards,extension";
+
+  private final ChartService chartService;
 
   @Override
   public Chart addHref(UriInfo uriInfo, Chart chart) {
@@ -86,6 +89,12 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
 
   public ChartResource(Authorizer authorizer, Limits limits) {
     super(Entity.CHART, authorizer, limits);
+    this.chartService = null;
+  }
+
+  public ChartResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
+    super(Entity.CHART, authorizer, limits);
+    this.chartService = serviceRegistry.getService(ChartService.class);
   }
 
   @Override
@@ -301,7 +310,10 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateChart create) {
-    Chart chart = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Chart chart =
+        chartService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, chart);
   }
 
@@ -419,7 +431,10 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateChart create) {
-    Chart chart = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Chart chart =
+        chartService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, chart);
   }
 
@@ -442,9 +457,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return chartService.addFollower(securityContext, id, userId).toResponse();
   }
 
   @DELETE
@@ -463,9 +476,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return chartService.deleteFollower(securityContext, id, userId).toResponse();
   }
 
   @DELETE
@@ -559,9 +570,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return chartService.updateVote(securityContext, id, request).toResponse();
   }
 
   @PUT

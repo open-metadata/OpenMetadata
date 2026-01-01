@@ -62,6 +62,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.drives.WorksheetService;
 
 @Path("/v1/drives/worksheets")
 @Tag(
@@ -74,7 +76,7 @@ public class WorksheetResource extends EntityResource<Worksheet, WorksheetReposi
   public static final String COLLECTION_PATH = "v1/drives/worksheets/";
   static final String FIELDS =
       "owners,spreadsheet,columns,sampleData,usageSummary,tags,extension,domains,sourceHash,lifeCycle,votes,followers,rowCount";
-  private final WorksheetMapper mapper = new WorksheetMapper();
+  private WorksheetService worksheetService;
 
   @Override
   public Worksheet addHref(UriInfo uriInfo, Worksheet worksheet) {
@@ -97,6 +99,11 @@ public class WorksheetResource extends EntityResource<Worksheet, WorksheetReposi
 
   public WorksheetResource(Authorizer authorizer, Limits limits) {
     super(Entity.WORKSHEET, authorizer, limits);
+  }
+
+  public WorksheetResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
+    super(Entity.WORKSHEET, authorizer, limits);
+    this.worksheetService = serviceRegistry.getService(WorksheetService.class);
   }
 
   public static class WorksheetList extends ResultList<Worksheet> {
@@ -264,7 +271,9 @@ public class WorksheetResource extends EntityResource<Worksheet, WorksheetReposi
       @Context SecurityContext securityContext,
       @Valid CreateWorksheet create) {
     Worksheet worksheet =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        worksheetService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, worksheet);
   }
 
@@ -367,7 +376,9 @@ public class WorksheetResource extends EntityResource<Worksheet, WorksheetReposi
       @Context SecurityContext securityContext,
       @Valid CreateWorksheet create) {
     Worksheet worksheet =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        worksheetService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, worksheet);
   }
 

@@ -15,6 +15,7 @@ package org.openmetadata.service.services.apps;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.service.Entity;
@@ -36,8 +37,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.APPLICATION)
 public class AppService extends AbstractEntityService<App> {
 
-  @SuppressWarnings("unused")
-  private final AppMapper mapper;
+  @Getter private final AppMapper mapper;
 
   @Inject
   public AppService(

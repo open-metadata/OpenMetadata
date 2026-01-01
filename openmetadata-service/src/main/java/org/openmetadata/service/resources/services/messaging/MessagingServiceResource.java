@@ -64,6 +64,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.serviceentities.MessagingServiceEntityService;
 
 @Path("/v1/services/messagingServices")
 @Tag(name = "Messaging Services")
@@ -73,12 +75,14 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 public class MessagingServiceResource
     extends ServiceEntityResource<
         MessagingService, MessagingServiceRepository, MessagingConnection> {
-  private final MessagingServiceMapper mapper = new MessagingServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/messagingServices/";
   public static final String FIELDS = "owners,domains,followers";
+  private final MessagingServiceEntityService service;
 
-  public MessagingServiceResource(Authorizer authorizer, Limits limits) {
+  public MessagingServiceResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.MESSAGING_SERVICE, authorizer, limits, ServiceType.MESSAGING);
+    this.service = serviceRegistry.getService(MessagingServiceEntityService.class);
   }
 
   public static class MessagingServiceList extends ResultList<MessagingService> {
@@ -404,9 +408,9 @@ public class MessagingServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMessagingService create) {
-    MessagingService service =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service);
+    MessagingService messagingService =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    Response response = create(uriInfo, securityContext, messagingService);
     decryptOrNullify(securityContext, (MessagingService) response.getEntity());
     return response;
   }
@@ -431,9 +435,9 @@ public class MessagingServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMessagingService update) {
-    MessagingService service =
-        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    MessagingService messagingService =
+        service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(messagingService));
     decryptOrNullify(securityContext, (MessagingService) response.getEntity());
     return response;
   }

@@ -15,12 +15,14 @@ package org.openmetadata.service.services.serviceentities;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.SearchConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.SearchServiceRepository;
+import org.openmetadata.service.resources.services.searchIndexes.SearchServiceMapper;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.Service;
@@ -30,6 +32,8 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.SEARCH_SERVICE)
 public class SearchServiceEntityService
     extends AbstractServiceEntityService<SearchService, SearchServiceRepository, SearchConnection> {
+
+  @Getter private final SearchServiceMapper mapper = new SearchServiceMapper();
 
   @Inject
   public SearchServiceEntityService(

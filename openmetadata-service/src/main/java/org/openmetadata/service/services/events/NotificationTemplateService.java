@@ -15,6 +15,7 @@ package org.openmetadata.service.services.events;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.service.Entity;
@@ -36,8 +37,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.NOTIFICATION_TEMPLATE)
 public class NotificationTemplateService extends AbstractEntityService<NotificationTemplate> {
 
-  @SuppressWarnings("unused")
-  private final NotificationTemplateMapper mapper;
+  @Getter private final NotificationTemplateMapper mapper;
 
   @Inject
   public NotificationTemplateService(

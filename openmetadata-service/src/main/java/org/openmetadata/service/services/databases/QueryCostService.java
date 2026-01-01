@@ -18,6 +18,7 @@ import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.jdbi3.QueryCostRepository;
+import org.openmetadata.service.resources.query.QueryCostRecordMapper;
 import org.openmetadata.service.security.Authorizer;
 
 @Slf4j
@@ -25,6 +26,7 @@ import org.openmetadata.service.security.Authorizer;
 public class QueryCostService {
 
   @Getter private final QueryCostRepository repository;
+  @Getter private final QueryCostRecordMapper mapper = new QueryCostRecordMapper();
   private final Authorizer authorizer;
 
   @Inject

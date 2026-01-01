@@ -15,12 +15,14 @@ package org.openmetadata.service.services.serviceentities;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
+import org.openmetadata.service.resources.services.database.DatabaseServiceMapper;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.Service;
@@ -31,6 +33,8 @@ import org.openmetadata.service.services.Service;
 public class DatabaseServiceEntityService
     extends AbstractServiceEntityService<
         DatabaseService, DatabaseServiceRepository, DatabaseConnection> {
+
+  @Getter private final DatabaseServiceMapper mapper = new DatabaseServiceMapper();
 
   @Inject
   public DatabaseServiceEntityService(

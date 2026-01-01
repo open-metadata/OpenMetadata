@@ -61,6 +61,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.serviceentities.MetadataServiceEntityService;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
 @Slf4j
@@ -75,10 +77,10 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 @Collection(name = "metadataServices", order = 8) // init before IngestionPipelineService
 public class MetadataServiceResource
     extends ServiceEntityResource<MetadataService, MetadataServiceRepository, MetadataConnection> {
-  private final MetadataServiceMapper mapper = new MetadataServiceMapper();
   public static final String OPENMETADATA_SERVICE = "OpenMetadata";
   public static final String COLLECTION_PATH = "v1/services/metadataServices/";
   public static final String FIELDS = "pipelines,owners,tags,followers";
+  private final MetadataServiceEntityService service;
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
@@ -113,14 +115,16 @@ public class MetadataServiceResource
   }
 
   @Override
-  public MetadataService addHref(UriInfo uriInfo, MetadataService service) {
-    super.addHref(uriInfo, service);
-    Entity.withHref(uriInfo, service.getOwners());
-    return service;
+  public MetadataService addHref(UriInfo uriInfo, MetadataService metadataService) {
+    super.addHref(uriInfo, metadataService);
+    Entity.withHref(uriInfo, metadataService.getOwners());
+    return metadataService;
   }
 
-  public MetadataServiceResource(Authorizer authorizer, Limits limits) {
+  public MetadataServiceResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.METADATA_SERVICE, authorizer, limits, ServiceType.METADATA);
+    this.service = serviceRegistry.getService(MetadataServiceEntityService.class);
   }
 
   @Override
@@ -445,9 +449,9 @@ public class MetadataServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMetadataService create) {
-    MetadataService service =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service);
+    MetadataService metadataService =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    Response response = create(uriInfo, securityContext, metadataService);
     decryptOrNullify(securityContext, (MetadataService) response.getEntity());
     return response;
   }
@@ -471,9 +475,9 @@ public class MetadataServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMetadataService update) {
-    MetadataService service =
-        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    MetadataService metadataService =
+        service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(metadataService));
     decryptOrNullify(securityContext, (MetadataService) response.getEntity());
     return response;
   }

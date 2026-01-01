@@ -15,6 +15,7 @@ package org.openmetadata.service.services.apis;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.service.Entity;
@@ -36,8 +37,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.API_ENDPOINT)
 public class APIEndpointService extends AbstractEntityService<APIEndpoint> {
 
-  @SuppressWarnings("unused")
-  private final APIEndpointMapper mapper;
+  @Getter private final APIEndpointMapper mapper;
 
   @Inject
   public APIEndpointService(

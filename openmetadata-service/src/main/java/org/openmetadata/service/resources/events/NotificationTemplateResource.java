@@ -73,6 +73,8 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.events.NotificationTemplateService;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -89,10 +91,17 @@ public class NotificationTemplateResource
   public static final String COLLECTION_PATH = "/v1/notificationTemplates";
   public static final String FIELDS = "";
 
-  private final NotificationTemplateMapper mapper = new NotificationTemplateMapper();
+  private final NotificationTemplateService service;
 
   public NotificationTemplateResource(Authorizer authorizer, Limits limits) {
     super(Entity.NOTIFICATION_TEMPLATE, authorizer, limits);
+    this.service = null;
+  }
+
+  public NotificationTemplateResource(
+      ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
+    super(Entity.NOTIFICATION_TEMPLATE, authorizer, limits);
+    this.service = serviceRegistry.getService(NotificationTemplateService.class);
   }
 
   @Override
@@ -355,7 +364,7 @@ public class NotificationTemplateResource
       @Context SecurityContext securityContext,
       @Valid CreateNotificationTemplate create) {
     NotificationTemplate template =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, template);
   }
 
@@ -550,7 +559,7 @@ public class NotificationTemplateResource
                   ctx));
     }
 
-    final NotificationTemplate updated = mapper.createToEntity(create, principal);
+    final NotificationTemplate updated = service.getMapper().createToEntity(create, principal);
     return createOrUpdate(uriInfo, securityContext, authRequests, authorizationLogic, updated);
   }
 

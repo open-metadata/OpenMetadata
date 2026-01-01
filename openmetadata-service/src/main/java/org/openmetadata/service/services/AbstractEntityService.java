@@ -305,4 +305,8 @@ public abstract class AbstractEntityService<T extends EntityInterface> implement
   protected ResourceContext getResourceContextByName(String name) {
     return new ResourceContext(entityType, null, name);
   }
+
+  protected ResourceContext getResourceContext() {
+    return new ResourceContext(entityType);
+  }
 }

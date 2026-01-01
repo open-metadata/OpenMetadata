@@ -59,6 +59,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.tags.ClassificationService;
 
 @Slf4j
 @Path("/v1/classifications")
@@ -77,16 +79,18 @@ import org.openmetadata.service.security.Authorizer;
     order = 4) // Initialize before TagResource, Glossary, and GlossaryTerms
 public class ClassificationResource
     extends EntityResource<Classification, ClassificationRepository> {
-  private final ClassificationMapper mapper = new ClassificationMapper();
   public static final String TAG_COLLECTION_PATH = "/v1/classifications/";
   static final String FIELDS = "owners,reviewers,usageCount,termCount,autoClassificationConfig";
+  private final ClassificationService service;
 
   static class ClassificationList extends ResultList<Classification> {
     /* Required for serde */
   }
 
-  public ClassificationResource(Authorizer authorizer, Limits limits) {
+  public ClassificationResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.CLASSIFICATION, authorizer, limits);
+    this.service = serviceRegistry.getService(ClassificationService.class);
   }
 
   @Override
@@ -304,7 +308,7 @@ public class ClassificationResource
       @Context SecurityContext securityContext,
       @Valid CreateClassification create) {
     Classification category =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, category);
   }
 
@@ -318,7 +322,7 @@ public class ClassificationResource
       @Context SecurityContext securityContext,
       @Valid CreateClassification create) {
     Classification category =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, category);
   }
 

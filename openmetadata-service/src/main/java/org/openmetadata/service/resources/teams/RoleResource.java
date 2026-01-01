@@ -62,6 +62,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.policies.RoleService;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
 
@@ -79,9 +81,9 @@ import org.openmetadata.service.util.RestUtil;
     requiredForOps = true) // Load roles after PolicyResource are loaded at Order 0
 @Slf4j
 public class RoleResource extends EntityResource<Role, RoleRepository> {
-  private final RoleMapper mapper = new RoleMapper();
   public static final String COLLECTION_PATH = "/v1/roles/";
   public static final String FIELDS = "policies,teams,users";
+  private final RoleService service;
 
   @Override
   public Role addHref(UriInfo uriInfo, Role role) {
@@ -92,8 +94,9 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     return role;
   }
 
-  public RoleResource(Authorizer authorizer, Limits limits) {
+  public RoleResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.ROLE, authorizer, limits);
+    this.service = serviceRegistry.getService(RoleService.class);
   }
 
   @Override
@@ -334,7 +337,10 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateRole createRole) {
-    Role role = mapper.createToEntity(createRole, securityContext.getUserPrincipal().getName());
+    Role role =
+        service
+            .getMapper()
+            .createToEntity(createRole, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, role);
   }
 
@@ -357,7 +363,10 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateRole createRole) {
-    Role role = mapper.createToEntity(createRole, securityContext.getUserPrincipal().getName());
+    Role role =
+        service
+            .getMapper()
+            .createToEntity(createRole, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, role);
   }
 

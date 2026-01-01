@@ -13,9 +13,13 @@
 
 package org.openmetadata.service.services.storages;
 
+import jakarta.ws.rs.core.SecurityContext;
+import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContainerRepository;
@@ -24,20 +28,15 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
+import org.openmetadata.service.util.RestUtil;
 
-/**
- * Service layer for Container entity operations.
- *
- * <p>Extends AbstractEntityService to inherit all standard CRUD operations with proper
- * authorization and repository delegation.
- */
 @Slf4j
 @Singleton
 @Service(entityType = Entity.CONTAINER)
 public class ContainerService extends AbstractEntityService<Container> {
 
-  @SuppressWarnings("unused")
-  private final ContainerMapper mapper;
+  @Getter private final ContainerMapper mapper;
+  private final ContainerRepository containerRepository;
 
   @Inject
   public ContainerService(
@@ -46,6 +45,25 @@ public class ContainerService extends AbstractEntityService<Container> {
       Authorizer authorizer,
       ContainerMapper mapper) {
     super(repository, searchRepository, authorizer, Entity.CONTAINER);
+    this.containerRepository = repository;
     this.mapper = mapper;
+  }
+
+  public RestUtil.PutResponse<Container> addFollower(
+      SecurityContext securityContext, UUID id, UUID userId) {
+    return containerRepository.addFollower(
+        securityContext.getUserPrincipal().getName(), id, userId);
+  }
+
+  public RestUtil.PutResponse<Container> deleteFollower(
+      SecurityContext securityContext, UUID id, UUID userId) {
+    return containerRepository.deleteFollower(
+        securityContext.getUserPrincipal().getName(), id, userId);
+  }
+
+  public RestUtil.PutResponse<Container> updateVote(
+      SecurityContext securityContext, UUID id, VoteRequest request) {
+    return containerRepository.updateVote(
+        securityContext.getUserPrincipal().getName(), id, request);
   }
 }

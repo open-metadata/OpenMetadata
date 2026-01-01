@@ -154,6 +154,8 @@ import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.teams.UserService;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -184,6 +186,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private AuthenticationConfiguration authenticationConfiguration;
   private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
+  private final UserService service;
   private boolean isSelfSignUpEnabled = false;
   static final String FIELDS =
       "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences";
@@ -201,7 +204,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   public UserResource(
-      Authorizer authorizer, Limits limits, AuthenticatorHandler authenticatorHandler) {
+      Authorizer authorizer,
+      Limits limits,
+      AuthenticatorHandler authenticatorHandler,
+      ServiceRegistry serviceRegistry) {
     super(Entity.USER, authorizer, limits);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
     allowedFields.remove(USER_PROTECTED_FIELDS);
@@ -209,6 +215,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     roleRepository = Entity.getRoleRepository();
     UserTokenCache.initialize();
     authHandler = authenticatorHandler;
+    this.service = serviceRegistry.getService(UserService.class);
   }
 
   @Override

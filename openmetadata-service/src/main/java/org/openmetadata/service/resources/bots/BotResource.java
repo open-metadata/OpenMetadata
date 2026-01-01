@@ -67,6 +67,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.bots.BotService;
 import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
@@ -81,10 +83,11 @@ import org.openmetadata.service.util.UserUtil;
 @Collection(name = "bots", order = 4, requiredForOps = true) // initialize after user resource
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
-  private final BotMapper mapper = new BotMapper();
+  private final BotService service;
 
-  public BotResource(Authorizer authorizer, Limits limits) {
+  public BotResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.BOT, authorizer, limits);
+    this.service = serviceRegistry.getService(BotService.class);
   }
 
   @Override
@@ -309,7 +312,8 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) {
-    Bot bot = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Bot bot =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, bot);
   }
 
@@ -330,7 +334,8 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) {
-    Bot bot = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Bot bot =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, bot);
   }
 

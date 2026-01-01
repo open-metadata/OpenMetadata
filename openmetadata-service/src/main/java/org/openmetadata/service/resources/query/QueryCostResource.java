@@ -33,6 +33,8 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.databases.QueryCostService;
 
 @Path("/v1/queryCostRecord")
 @Tag(
@@ -45,11 +47,15 @@ public class QueryCostResource
     extends EntityTimeSeriesResource<QueryCostRecord, QueryCostRepository> {
 
   public static final String COLLECTION_PATH = "v1/queryCostRecord";
-
-  private final QueryCostRecordMapper mapper = new QueryCostRecordMapper();
+  private QueryCostService queryCostService;
 
   public QueryCostResource(Authorizer authorizer) {
     super(Entity.QUERY_COST_RECORD, authorizer);
+  }
+
+  public QueryCostResource(ServiceRegistry serviceRegistry, Authorizer authorizer) {
+    super(Entity.QUERY_COST_RECORD, authorizer);
+    this.queryCostService = serviceRegistry.getService(QueryCostService.class);
   }
 
   @GET
@@ -106,7 +112,9 @@ public class QueryCostResource
             Entity.QUERY, createQueryCostRecord.getQueryReference().getId(), null);
     authorizer.authorize(securityContext, operationContext, queryResourceContext);
     QueryCostRecord queryCostRecord =
-        mapper.createToEntity(createQueryCostRecord, securityContext.getUserPrincipal().getName());
+        queryCostService
+            .getMapper()
+            .createToEntity(createQueryCostRecord, securityContext.getUserPrincipal().getName());
     return create(queryCostRecord, queryCostRecord.getQueryReference().getFullyQualifiedName());
   }
 

@@ -50,6 +50,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.dqtests.TestDefinitionService;
 
 @Slf4j
 @Path("/v1/dataQuality/testDefinitions")
@@ -63,12 +65,14 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "TestDefinitions")
 public class TestDefinitionResource
     extends EntityResource<TestDefinition, TestDefinitionRepository> {
-  private final TestDefinitionMapper mapper = new TestDefinitionMapper();
   public static final String COLLECTION_PATH = "/v1/dataQuality/testDefinitions";
   static final String FIELDS = "owners";
+  private final TestDefinitionService service;
 
-  public TestDefinitionResource(Authorizer authorizer, Limits limits) {
+  public TestDefinitionResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.TEST_DEFINITION, authorizer, limits);
+    this.service = serviceRegistry.getService(TestDefinitionService.class);
   }
 
   @Override
@@ -324,7 +328,7 @@ public class TestDefinitionResource
       @Context SecurityContext securityContext,
       @Valid CreateTestDefinition create) {
     TestDefinition testDefinition =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, testDefinition);
   }
 
@@ -377,7 +381,7 @@ public class TestDefinitionResource
       @Context SecurityContext securityContext,
       @Valid CreateTestDefinition create) {
     TestDefinition testDefinition =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, testDefinition);
   }
 

@@ -90,6 +90,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.events.EventSubscriptionService;
 import org.openmetadata.service.util.EntityUtil;
 import org.quartz.SchedulerException;
 
@@ -106,10 +108,17 @@ public class EventSubscriptionResource
     extends EntityResource<EventSubscription, EventSubscriptionRepository> {
   public static final String COLLECTION_PATH = "/v1/events/subscriptions";
   public static final String FIELDS = "owners,filteringRules";
-  private final EventSubscriptionMapper mapper = new EventSubscriptionMapper();
+  private final EventSubscriptionService eventSubscriptionService;
 
   public EventSubscriptionResource(Authorizer authorizer, Limits limits) {
     super(Entity.EVENT_SUBSCRIPTION, authorizer, limits);
+    this.eventSubscriptionService = null;
+  }
+
+  public EventSubscriptionResource(
+      ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
+    super(Entity.EVENT_SUBSCRIPTION, authorizer, limits);
+    this.eventSubscriptionService = serviceRegistry.getService(EventSubscriptionService.class);
   }
 
   @Override
@@ -310,7 +319,9 @@ public class EventSubscriptionResource
           InstantiationException,
           IllegalAccessException {
     EventSubscription eventSub =
-        mapper.createToEntity(request, securityContext.getUserPrincipal().getName());
+        eventSubscriptionService
+            .getMapper()
+            .createToEntity(request, securityContext.getUserPrincipal().getName());
     // Only one Creation is allowed
     Response response = create(uriInfo, securityContext, eventSub);
     EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub, false);
@@ -337,7 +348,9 @@ public class EventSubscriptionResource
       @Context SecurityContext securityContext,
       @Valid CreateEventSubscription create) {
     EventSubscription eventSub =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        eventSubscriptionService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, eventSub);
     EventSubscriptionScheduler.getInstance()
         .updateEventSubscription((EventSubscription) response.getEntity());

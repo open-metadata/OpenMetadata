@@ -44,6 +44,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.ai.AIGovernancePolicyService;
 
 @Path("/v1/aiGovernancePolicies")
 @Tag(
@@ -56,7 +58,7 @@ import org.openmetadata.service.security.Authorizer;
 public class AIGovernancePolicyResource
     extends EntityResource<AIGovernancePolicy, AIGovernancePolicyRepository> {
   public static final String COLLECTION_PATH = "v1/aiGovernancePolicies/";
-  private final AIGovernancePolicyMapper mapper = new AIGovernancePolicyMapper();
+  private final AIGovernancePolicyService service;
   static final String FIELDS = "owners,followers,tags,extension,domains";
 
   @Override
@@ -65,8 +67,10 @@ public class AIGovernancePolicyResource
     return policy;
   }
 
-  public AIGovernancePolicyResource(Authorizer authorizer, Limits limits) {
+  public AIGovernancePolicyResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.AI_GOVERNANCE_POLICY, authorizer, limits);
+    this.service = serviceRegistry.getService(AIGovernancePolicyService.class);
   }
 
   public static class AIGovernancePolicyList extends ResultList<AIGovernancePolicy> {
@@ -220,7 +224,7 @@ public class AIGovernancePolicyResource
       @Context SecurityContext securityContext,
       @Valid CreateAIGovernancePolicy create) {
     AIGovernancePolicy policy =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, policy);
   }
 
@@ -305,7 +309,7 @@ public class AIGovernancePolicyResource
       @Context SecurityContext securityContext,
       @Valid CreateAIGovernancePolicy create) {
     AIGovernancePolicy policy =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, policy);
   }
 

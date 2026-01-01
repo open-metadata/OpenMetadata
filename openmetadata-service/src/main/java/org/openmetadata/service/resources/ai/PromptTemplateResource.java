@@ -44,6 +44,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.ai.PromptTemplateService;
 
 @Path("/v1/promptTemplates")
 @Tag(
@@ -56,7 +58,7 @@ import org.openmetadata.service.security.Authorizer;
 public class PromptTemplateResource
     extends EntityResource<PromptTemplate, PromptTemplateRepository> {
   public static final String COLLECTION_PATH = "v1/promptTemplates/";
-  private final PromptTemplateMapper mapper = new PromptTemplateMapper();
+  private final PromptTemplateService service;
   static final String FIELDS = "owners,followers,tags,extension,domains";
 
   @Override
@@ -65,8 +67,10 @@ public class PromptTemplateResource
     return promptTemplate;
   }
 
-  public PromptTemplateResource(Authorizer authorizer, Limits limits) {
+  public PromptTemplateResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.PROMPT_TEMPLATE, authorizer, limits);
+    this.service = serviceRegistry.getService(PromptTemplateService.class);
   }
 
   public static class PromptTemplateList extends ResultList<PromptTemplate> {
@@ -220,7 +224,7 @@ public class PromptTemplateResource
       @Context SecurityContext securityContext,
       @Valid CreatePromptTemplate create) {
     PromptTemplate promptTemplate =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, promptTemplate);
   }
 
@@ -303,7 +307,7 @@ public class PromptTemplateResource
       @Context SecurityContext securityContext,
       @Valid CreatePromptTemplate create) {
     PromptTemplate promptTemplate =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, promptTemplate);
   }
 

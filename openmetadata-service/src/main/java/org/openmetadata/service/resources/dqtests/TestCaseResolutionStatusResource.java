@@ -56,6 +56,8 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.dqtests.TestCaseResolutionStatusService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -72,10 +74,16 @@ import org.openmetadata.service.util.RestUtil;
 public class TestCaseResolutionStatusResource
     extends EntityTimeSeriesResource<TestCaseResolutionStatus, TestCaseResolutionStatusRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseIncidentStatus";
-  private TestCaseResolutionStatusMapper mapper = new TestCaseResolutionStatusMapper();
+  private TestCaseResolutionStatusService testCaseResolutionStatusService;
 
   public TestCaseResolutionStatusResource(Authorizer authorizer) {
     super(Entity.TEST_CASE_RESOLUTION_STATUS, authorizer);
+  }
+
+  public TestCaseResolutionStatusResource(ServiceRegistry serviceRegistry, Authorizer authorizer) {
+    super(Entity.TEST_CASE_RESOLUTION_STATUS, authorizer);
+    this.testCaseResolutionStatusService =
+        serviceRegistry.getService(TestCaseResolutionStatusService.class);
   }
 
   public static class TestCaseResolutionStatusResultList
@@ -285,8 +293,10 @@ public class TestCaseResolutionStatusResource
 
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     TestCaseResolutionStatus testCaseResolutionStatus =
-        mapper.createToEntity(
-            createTestCaseResolutionStatus, securityContext.getUserPrincipal().getName());
+        testCaseResolutionStatusService
+            .getMapper()
+            .createToEntity(
+                createTestCaseResolutionStatus, securityContext.getUserPrincipal().getName());
     return create(
         testCaseResolutionStatus,
         testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName());

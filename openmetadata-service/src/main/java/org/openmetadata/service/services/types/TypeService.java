@@ -15,10 +15,12 @@ package org.openmetadata.service.services.types;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TypeRepository;
+import org.openmetadata.service.resources.types.TypeMapper;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.AbstractEntityService;
@@ -29,9 +31,15 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.TYPE)
 public class TypeService extends AbstractEntityService<Type> {
 
+  @Getter private final TypeMapper mapper;
+
   @Inject
   public TypeService(
-      TypeRepository repository, SearchRepository searchRepository, Authorizer authorizer) {
+      TypeRepository repository,
+      SearchRepository searchRepository,
+      Authorizer authorizer,
+      TypeMapper mapper) {
     super(repository, searchRepository, authorizer, Entity.TYPE);
+    this.mapper = mapper;
   }
 }

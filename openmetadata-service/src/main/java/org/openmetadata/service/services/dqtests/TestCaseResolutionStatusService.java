@@ -18,6 +18,7 @@ import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
+import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusMapper;
 import org.openmetadata.service.security.Authorizer;
 
 @Slf4j
@@ -25,6 +26,10 @@ import org.openmetadata.service.security.Authorizer;
 public class TestCaseResolutionStatusService {
 
   @Getter private final TestCaseResolutionStatusRepository repository;
+
+  @Getter
+  private final TestCaseResolutionStatusMapper mapper = new TestCaseResolutionStatusMapper();
+
   private final Authorizer authorizer;
 
   @Inject

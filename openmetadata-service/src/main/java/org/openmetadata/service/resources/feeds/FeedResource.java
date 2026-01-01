@@ -74,6 +74,8 @@ import org.openmetadata.service.security.policyevaluator.PostResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.ThreadResourceContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.feeds.FeedService;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 
@@ -86,10 +88,9 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
 @Collection(name = "feeds")
 public class FeedResource {
   public static final String COLLECTION_PATH = "/v1/feed/";
-  private final FeedMapper mapper = new FeedMapper();
-  private final PostMapper postMapper = new PostMapper();
   private final FeedRepository dao;
   private final Authorizer authorizer;
+  private FeedService feedService;
 
   public static void addHref(UriInfo uriInfo, List<Thread> threads) {
     if (uriInfo != null) {
@@ -107,6 +108,12 @@ public class FeedResource {
   public FeedResource(Authorizer authorizer) {
     this.dao = Entity.getFeedRepository();
     this.authorizer = authorizer;
+  }
+
+  public FeedResource(ServiceRegistry serviceRegistry, Authorizer authorizer) {
+    this.dao = Entity.getFeedRepository();
+    this.authorizer = authorizer;
+    this.feedService = serviceRegistry.getService(FeedService.class);
   }
 
   public static class ThreadList extends ResultList<Thread> {
@@ -419,7 +426,10 @@ public class FeedResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateThread create) {
-    Thread thread = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Thread thread =
+        feedService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, dao.create(thread));
     return Response.created(thread.getHref())
         .entity(thread)

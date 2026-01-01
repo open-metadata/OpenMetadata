@@ -15,6 +15,7 @@ package org.openmetadata.service.services.dashboards;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.service.Entity;
@@ -30,8 +31,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.DASHBOARD_DATA_MODEL)
 public class DashboardDataModelService extends AbstractEntityService<DashboardDataModel> {
 
-  @SuppressWarnings("unused")
-  private final DashboardDataModelMapper mapper;
+  @Getter private final DashboardDataModelMapper mapper;
 
   @Inject
   public DashboardDataModelService(

@@ -66,6 +66,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.serviceentities.MlModelServiceEntityService;
 
 @Path("/v1/services/mlmodelServices")
 @Tag(name = "ML Model Services")
@@ -74,19 +76,21 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 @Collection(name = "mlmodelServices")
 public class MlModelServiceResource
     extends ServiceEntityResource<MlModelService, MlModelServiceRepository, MlModelConnection> {
-  private final MlModelServiceMapper mapper = new MlModelServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/mlmodelServices/";
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
+  private final MlModelServiceEntityService service;
 
   @Override
-  public MlModelService addHref(UriInfo uriInfo, MlModelService service) {
-    super.addHref(uriInfo, service);
-    Entity.withHref(uriInfo, service.getPipelines());
-    return service;
+  public MlModelService addHref(UriInfo uriInfo, MlModelService mlModelService) {
+    super.addHref(uriInfo, mlModelService);
+    Entity.withHref(uriInfo, mlModelService.getPipelines());
+    return mlModelService;
   }
 
-  public MlModelServiceResource(Authorizer authorizer, Limits limits) {
+  public MlModelServiceResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.MLMODEL_SERVICE, authorizer, limits, ServiceType.ML_MODEL);
+    this.service = serviceRegistry.getService(MlModelServiceEntityService.class);
   }
 
   @Override
@@ -416,9 +420,9 @@ public class MlModelServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMlModelService create) {
-    MlModelService service =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service);
+    MlModelService mlModelService =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    Response response = create(uriInfo, securityContext, mlModelService);
     decryptOrNullify(securityContext, (MlModelService) response.getEntity());
     return response;
   }
@@ -443,9 +447,9 @@ public class MlModelServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMlModelService update) {
-    MlModelService service =
-        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    MlModelService mlModelService =
+        service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(mlModelService));
     decryptOrNullify(securityContext, (MlModelService) response.getEntity());
     return response;
   }

@@ -85,6 +85,9 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.glossary.GlossaryService;
+import org.openmetadata.service.services.glossary.GlossaryTermService;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -102,11 +105,11 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
     name = "glossaryTerms",
     order = 7) // Initialized after Glossary, Classification, and Tags
 public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryTermRepository> {
-  private final GlossaryTermMapper mapper = new GlossaryTermMapper();
-  private final GlossaryMapper glossaryMapper = new GlossaryMapper();
   public static final String COLLECTION_PATH = "v1/glossaryTerms/";
   static final String FIELDS =
       "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount";
+  private final GlossaryTermService service;
+  private final GlossaryService glossaryService;
 
   @Override
   public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {
@@ -117,8 +120,11 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return term;
   }
 
-  public GlossaryTermResource(Authorizer authorizer, Limits limits) {
+  public GlossaryTermResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.GLOSSARY_TERM, authorizer, limits);
+    this.service = serviceRegistry.getService(GlossaryTermService.class);
+    this.glossaryService = serviceRegistry.getService(GlossaryService.class);
   }
 
   @Override
@@ -142,7 +148,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             GLOSSARY, ".*json/data/glossary/.*Glossary\\.json$", LoadGlossary.class);
     for (LoadGlossary loadGlossary : loadGlossaries) {
       Glossary glossary =
-          glossaryMapper.createToEntity(loadGlossary.getCreateGlossary(), ADMIN_USER_NAME);
+          glossaryService
+              .getMapper()
+              .createToEntity(loadGlossary.getCreateGlossary(), ADMIN_USER_NAME);
       glossary.setFullyQualifiedName(glossary.getName());
       glossaryRepository.initializeEntity(glossary);
 
@@ -150,7 +158,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       for (CreateGlossaryTerm createTerm : loadGlossary.getCreateTerms()) {
         createTerm.withGlossary(glossary.getName());
         createTerm.withProvider(glossary.getProvider());
-        GlossaryTerm term = mapper.createToEntity(createTerm, ADMIN_USER_NAME);
+        GlossaryTerm term = service.getMapper().createToEntity(createTerm, ADMIN_USER_NAME);
         repository.setFullyQualifiedName(term); // FQN required for ordering tags based on hierarchy
         termsToCreate.add(term);
       }
@@ -567,7 +575,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateGlossaryTerm create) {
-    GlossaryTerm term = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    GlossaryTerm term =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, term);
   }
 
@@ -595,7 +604,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         creates.stream()
             .map(
                 create ->
-                    mapper.createToEntity(create, securityContext.getUserPrincipal().getName()))
+                    service
+                        .getMapper()
+                        .createToEntity(create, securityContext.getUserPrincipal().getName()))
             .toList();
     List<GlossaryTerm> result = repository.createMany(uriInfo, terms);
     return Response.ok(result).build();
@@ -679,7 +690,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateGlossaryTerm create) {
-    GlossaryTerm term = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    GlossaryTerm term =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, term);
   }
 

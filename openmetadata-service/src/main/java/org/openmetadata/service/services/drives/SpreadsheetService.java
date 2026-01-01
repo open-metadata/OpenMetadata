@@ -15,6 +15,7 @@ package org.openmetadata.service.services.drives;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.service.Entity;
@@ -36,8 +37,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.SPREADSHEET)
 public class SpreadsheetService extends AbstractEntityService<Spreadsheet> {
 
-  @SuppressWarnings("unused")
-  private final SpreadsheetMapper mapper;
+  @Getter private final SpreadsheetMapper mapper;
 
   @Inject
   public SpreadsheetService(

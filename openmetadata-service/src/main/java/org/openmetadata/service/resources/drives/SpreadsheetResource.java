@@ -62,6 +62,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.drives.SpreadsheetService;
 
 @Path("/v1/drives/spreadsheets")
 @Tag(
@@ -75,7 +77,7 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
   public static final String COLLECTION_PATH = "v1/drives/spreadsheets/";
   static final String FIELDS =
       "owners,directory,worksheets,usageSummary,tags,extension,domains,sourceHash,lifeCycle,votes,followers,mimeType,createdTime,modifiedTime";
-  private final SpreadsheetMapper mapper = new SpreadsheetMapper();
+  private final SpreadsheetService service;
 
   @Override
   public Spreadsheet addHref(UriInfo uriInfo, Spreadsheet spreadsheet) {
@@ -96,6 +98,13 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
 
   public SpreadsheetResource(Authorizer authorizer, Limits limits) {
     super(Entity.SPREADSHEET, authorizer, limits);
+    this.service = null;
+  }
+
+  public SpreadsheetResource(
+      ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
+    super(Entity.SPREADSHEET, authorizer, limits);
+    this.service = serviceRegistry.getService(SpreadsheetService.class);
   }
 
   public static class SpreadsheetList extends ResultList<Spreadsheet> {
@@ -273,7 +282,7 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
       @Context SecurityContext securityContext,
       @Valid CreateSpreadsheet create) {
     Spreadsheet spreadsheet =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, spreadsheet);
   }
 
@@ -295,7 +304,7 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateSpreadsheet> createRequests) {
-    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+    return processBulkRequest(uriInfo, securityContext, createRequests, service.getMapper(), async);
   }
 
   @PATCH
@@ -377,7 +386,7 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
       @Context SecurityContext securityContext,
       @Valid CreateSpreadsheet create) {
     Spreadsheet spreadsheet =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, spreadsheet);
   }
 

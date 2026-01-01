@@ -15,12 +15,14 @@ package org.openmetadata.service.services.serviceentities;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DashboardServiceRepository;
+import org.openmetadata.service.resources.services.dashboard.DashboardServiceMapper;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.Service;
@@ -31,6 +33,8 @@ import org.openmetadata.service.services.Service;
 public class DashboardServiceEntityService
     extends AbstractServiceEntityService<
         DashboardService, DashboardServiceRepository, DashboardConnection> {
+
+  @Getter private final DashboardServiceMapper mapper = new DashboardServiceMapper();
 
   @Inject
   public DashboardServiceEntityService(

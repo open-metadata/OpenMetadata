@@ -15,6 +15,7 @@ package org.openmetadata.service.services.tags;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.service.Entity;
@@ -25,19 +26,12 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 
-/**
- * Service layer for Classification entity operations.
- *
- * <p>Extends AbstractEntityService to inherit all standard CRUD operations with proper
- * authorization and repository delegation.
- */
 @Slf4j
 @Singleton
 @Service(entityType = Entity.CLASSIFICATION)
 public class ClassificationService extends AbstractEntityService<Classification> {
 
-  @SuppressWarnings("unused")
-  private final ClassificationMapper mapper;
+  @Getter private final ClassificationMapper mapper;
 
   @Inject
   public ClassificationService(

@@ -18,6 +18,7 @@ import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.jdbi3.SuggestionRepository;
+import org.openmetadata.service.resources.feeds.SuggestionMapper;
 import org.openmetadata.service.security.Authorizer;
 
 @Slf4j
@@ -25,6 +26,7 @@ import org.openmetadata.service.security.Authorizer;
 public class SuggestionsService {
 
   @Getter private final SuggestionRepository repository;
+  @Getter private final SuggestionMapper mapper = new SuggestionMapper();
   private final Authorizer authorizer;
 
   @Inject

@@ -15,6 +15,7 @@ package org.openmetadata.service.services.events;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.service.Entity;
@@ -36,8 +37,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.EVENT_SUBSCRIPTION)
 public class EventSubscriptionService extends AbstractEntityService<EventSubscription> {
 
-  @SuppressWarnings("unused")
-  private final EventSubscriptionMapper mapper;
+  @Getter private final EventSubscriptionMapper mapper;
 
   @Inject
   public EventSubscriptionService(

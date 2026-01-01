@@ -64,6 +64,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.drives.DirectoryService;
 
 @Path("/v1/drives/directories")
 @Tag(
@@ -77,7 +79,7 @@ public class DirectoryResource extends EntityResource<Directory, DirectoryReposi
   public static final String COLLECTION_PATH = "v1/drives/directories/";
   static final String FIELDS =
       "owners,children,parent,usageSummary,tags,extension,domains,sourceHash,lifeCycle,votes,followers,numberOfFiles,numberOfSubDirectories,totalSize,directoryType";
-  private final DirectoryMapper mapper = new DirectoryMapper();
+  private final DirectoryService service;
 
   @Override
   public Directory addHref(UriInfo uriInfo, Directory directory) {
@@ -97,6 +99,12 @@ public class DirectoryResource extends EntityResource<Directory, DirectoryReposi
 
   public DirectoryResource(Authorizer authorizer, Limits limits) {
     super(Entity.DIRECTORY, authorizer, limits);
+    this.service = null;
+  }
+
+  public DirectoryResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
+    super(Entity.DIRECTORY, authorizer, limits);
+    this.service = serviceRegistry.getService(DirectoryService.class);
   }
 
   public static class DirectoryList extends ResultList<Directory> {
@@ -272,7 +280,7 @@ public class DirectoryResource extends EntityResource<Directory, DirectoryReposi
       @Context SecurityContext securityContext,
       @Valid CreateDirectory create) {
     Directory directory =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, directory);
   }
 
@@ -294,7 +302,7 @@ public class DirectoryResource extends EntityResource<Directory, DirectoryReposi
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateDirectory> createRequests) {
-    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+    return processBulkRequest(uriInfo, securityContext, createRequests, service.getMapper(), async);
   }
 
   @PATCH
@@ -375,7 +383,7 @@ public class DirectoryResource extends EntityResource<Directory, DirectoryReposi
       @Context SecurityContext securityContext,
       @Valid CreateDirectory create) {
     Directory directory =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, directory);
   }
 

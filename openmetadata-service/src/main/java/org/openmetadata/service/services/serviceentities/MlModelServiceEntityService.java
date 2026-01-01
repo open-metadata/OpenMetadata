@@ -15,12 +15,14 @@ package org.openmetadata.service.services.serviceentities;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.MlModelServiceRepository;
+import org.openmetadata.service.resources.services.mlmodel.MlModelServiceMapper;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.Service;
@@ -31,6 +33,8 @@ import org.openmetadata.service.services.Service;
 public class MlModelServiceEntityService
     extends AbstractServiceEntityService<
         MlModelService, MlModelServiceRepository, MlModelConnection> {
+
+  @Getter private final MlModelServiceMapper mapper = new MlModelServiceMapper();
 
   @Inject
   public MlModelServiceEntityService(

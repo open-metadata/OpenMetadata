@@ -38,17 +38,17 @@ import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
-import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.apps.AppMarketPlaceService;
 import org.openmetadata.service.util.AppMarketPlaceUtil;
 
 @Path("/v1/apps/marketplace")
@@ -62,24 +62,23 @@ import org.openmetadata.service.util.AppMarketPlaceUtil;
 public class AppMarketPlaceResource
     extends EntityResource<AppMarketPlaceDefinition, AppMarketPlaceRepository> {
   public static final String COLLECTION_PATH = "/v1/apps/marketplace/";
-  private AppMarketPlaceMapper mapper;
+  private final AppMarketPlaceService appMarketPlaceService;
   static final String FIELDS = "owners,tags";
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
-      PipelineServiceClientInterface pipelineServiceClient =
-          PipelineServiceClientFactory.createPipelineServiceClient(
-              config.getPipelineServiceClientConfiguration());
-      mapper = new AppMarketPlaceMapper(pipelineServiceClient);
-      AppMarketPlaceUtil.createAppMarketPlaceDefinitions(repository, mapper);
+      AppMarketPlaceUtil.createAppMarketPlaceDefinitions(
+          repository, appMarketPlaceService.getMapper());
     } catch (Exception ex) {
       LOG.error("Failed in initializing App MarketPlace Resource", ex);
     }
   }
 
-  public AppMarketPlaceResource(Authorizer authorizer, Limits limits) {
+  public AppMarketPlaceResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.APP_MARKET_PLACE_DEF, authorizer, limits);
+    this.appMarketPlaceService = serviceRegistry.getService(AppMarketPlaceService.class);
   }
 
   public static class AppMarketPlaceDefinitionList extends ResultList<AppMarketPlaceDefinition> {
@@ -290,7 +289,9 @@ public class AppMarketPlaceResource
       @Context SecurityContext securityContext,
       @Valid CreateAppMarketPlaceDefinitionReq create) {
     AppMarketPlaceDefinition app =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        appMarketPlaceService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, app);
   }
 
@@ -370,7 +371,9 @@ public class AppMarketPlaceResource
       @Context SecurityContext securityContext,
       @Valid CreateAppMarketPlaceDefinitionReq create) {
     AppMarketPlaceDefinition app =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        appMarketPlaceService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, app);
   }
 

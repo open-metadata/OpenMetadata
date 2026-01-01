@@ -15,6 +15,7 @@ package org.openmetadata.service.services.apps;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.service.Entity;
@@ -36,8 +37,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.APP_MARKET_PLACE_DEF)
 public class AppMarketPlaceService extends AbstractEntityService<AppMarketPlaceDefinition> {
 
-  @SuppressWarnings("unused")
-  private final AppMarketPlaceMapper mapper;
+  @Getter private final AppMarketPlaceMapper mapper;
 
   @Inject
   public AppMarketPlaceService(

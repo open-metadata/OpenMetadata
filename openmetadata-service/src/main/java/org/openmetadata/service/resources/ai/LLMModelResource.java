@@ -48,6 +48,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.ml.LLMModelService;
 
 @Path("/v1/llmModels")
 @Tag(
@@ -59,7 +61,7 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "llmModels")
 public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepository> {
   public static final String COLLECTION_PATH = "v1/llmModels/";
-  private final LLMModelMapper mapper = new LLMModelMapper();
+  private final LLMModelService service;
   static final String FIELDS = "owners,followers,tags,extension,domains";
 
   @Override
@@ -69,8 +71,9 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
     return llmModel;
   }
 
-  public LLMModelResource(Authorizer authorizer, Limits limits) {
+  public LLMModelResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.LLM_MODEL, authorizer, limits);
+    this.service = serviceRegistry.getService(LLMModelService.class);
   }
 
   @Override
@@ -233,7 +236,8 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateLLMModel create) {
-    LLMModel llmModel = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    LLMModel llmModel =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, llmModel);
   }
 
@@ -314,7 +318,8 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateLLMModel create) {
-    LLMModel llmModel = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    LLMModel llmModel =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, llmModel);
   }
 

@@ -47,6 +47,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.teams.PersonaService;
 
 @Slf4j
 @Path("/v1/personas")
@@ -59,9 +61,9 @@ import org.openmetadata.service.security.Authorizer;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "personas", order = 2)
 public class PersonaResource extends EntityResource<Persona, PersonaRepository> {
-  private final PersonaMapper mapper = new PersonaMapper();
   public static final String COLLECTION_PATH = "/v1/personas";
   static final String FIELDS = "users";
+  private final PersonaService service;
 
   @Override
   public Persona addHref(UriInfo uriInfo, Persona persona) {
@@ -70,8 +72,9 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
     return persona;
   }
 
-  public PersonaResource(Authorizer authorizer, Limits limits) {
+  public PersonaResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.PERSONA, authorizer, limits);
+    this.service = serviceRegistry.getService(PersonaService.class);
   }
 
   @Override
@@ -279,7 +282,8 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePersona cp) {
     authorizer.authorizeAdmin(securityContext);
-    Persona persona = mapper.createToEntity(cp, securityContext.getUserPrincipal().getName());
+    Persona persona =
+        service.getMapper().createToEntity(cp, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, persona);
   }
 
@@ -301,7 +305,8 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePersona cp) {
     authorizer.authorizeAdmin(securityContext);
-    Persona persona = mapper.createToEntity(cp, securityContext.getUserPrincipal().getName());
+    Persona persona =
+        service.getMapper().createToEntity(cp, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, persona);
   }
 

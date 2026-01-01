@@ -15,6 +15,7 @@ package org.openmetadata.service.services.drives;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.service.Entity;
@@ -36,8 +37,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.DIRECTORY)
 public class DirectoryService extends AbstractEntityService<Directory> {
 
-  @SuppressWarnings("unused")
-  private final DirectoryMapper mapper;
+  @Getter private final DirectoryMapper mapper;
 
   @Inject
   public DirectoryService(

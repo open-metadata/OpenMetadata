@@ -15,12 +15,14 @@ package org.openmetadata.service.services.serviceentities;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.PipelineServiceRepository;
+import org.openmetadata.service.resources.services.pipeline.PipelineServiceMapper;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.Service;
@@ -31,6 +33,8 @@ import org.openmetadata.service.services.Service;
 public class PipelineServiceEntityService
     extends AbstractServiceEntityService<
         PipelineService, PipelineServiceRepository, PipelineConnection> {
+
+  @Getter private final PipelineServiceMapper mapper = new PipelineServiceMapper();
 
   @Inject
   public PipelineServiceEntityService(

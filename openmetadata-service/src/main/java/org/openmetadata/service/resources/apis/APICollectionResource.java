@@ -62,6 +62,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.apis.APICollectionService;
 
 @Path("/v1/apiCollections")
 @Tag(
@@ -73,7 +75,7 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "apiCollections")
 public class APICollectionResource extends EntityResource<APICollection, APICollectionRepository> {
   public static final String COLLECTION_PATH = "v1/apiCollections/";
-  private final APICollectionMapper mapper = new APICollectionMapper();
+  private final APICollectionService service;
   static final String FIELDS = "owners,apiEndpoints,tags,extension,domains,sourceHash";
 
   @Override
@@ -89,8 +91,10 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
   }
 
-  public APICollectionResource(Authorizer authorizer, Limits limits) {
+  public APICollectionResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.API_COLLECTION, authorizer, limits);
+    this.service = serviceRegistry.getService(APICollectionService.class);
   }
 
   public static class APICollectionList extends ResultList<APICollection> {
@@ -311,7 +315,7 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
       @Context SecurityContext securityContext,
       @Valid CreateAPICollection create) {
     APICollection apiCollection =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, apiCollection);
   }
 
@@ -432,7 +436,7 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
       @Context SecurityContext securityContext,
       @Valid CreateAPICollection create) {
     APICollection apiCollection =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, apiCollection);
   }
 

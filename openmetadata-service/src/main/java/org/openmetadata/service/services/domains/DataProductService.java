@@ -15,6 +15,7 @@ package org.openmetadata.service.services.domains;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.service.Entity;
@@ -25,19 +26,12 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 
-/**
- * Service layer for DataProduct entity operations.
- *
- * <p>Extends AbstractEntityService to inherit all standard CRUD operations with proper
- * authorization and repository delegation.
- */
 @Slf4j
 @Singleton
 @Service(entityType = Entity.DATA_PRODUCT)
 public class DataProductService extends AbstractEntityService<DataProduct> {
 
-  @SuppressWarnings("unused")
-  private final DataProductMapper mapper;
+  @Getter private final DataProductMapper mapper;
 
   @Inject
   public DataProductService(

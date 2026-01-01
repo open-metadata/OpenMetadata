@@ -54,6 +54,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.serviceentities.SecurityServiceEntityService;
 import org.openmetadata.service.util.CSVExportResponse;
 
 @Slf4j
@@ -66,19 +68,21 @@ import org.openmetadata.service.util.CSVExportResponse;
 @Collection(name = "securityServices")
 public class SecurityServiceResource
     extends ServiceEntityResource<SecurityService, SecurityServiceRepository, SecurityConnection> {
-  private final SecurityServiceMapper mapper = new SecurityServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/securityServices/";
   public static final String FIELDS = "owners,tags,domains,followers";
+  private final SecurityServiceEntityService service;
 
   @Override
-  public SecurityService addHref(UriInfo uriInfo, SecurityService service) {
-    super.addHref(uriInfo, service);
-    Entity.withHref(uriInfo, service.getOwners());
-    return service;
+  public SecurityService addHref(UriInfo uriInfo, SecurityService securityService) {
+    super.addHref(uriInfo, securityService);
+    Entity.withHref(uriInfo, securityService.getOwners());
+    return securityService;
   }
 
-  public SecurityServiceResource(Authorizer authorizer, Limits limits) {
+  public SecurityServiceResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.SECURITY_SERVICE, authorizer, limits, ServiceType.SECURITY);
+    this.service = serviceRegistry.getService(SecurityServiceEntityService.class);
   }
 
   @Override
@@ -353,9 +357,9 @@ public class SecurityServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateSecurityService create) {
-    SecurityService service =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service);
+    SecurityService securityServiceEntity =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    Response response = create(uriInfo, securityContext, securityServiceEntity);
     decryptOrNullify(securityContext, (SecurityService) response.getEntity());
     return response;
   }
@@ -379,9 +383,9 @@ public class SecurityServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateSecurityService update) {
-    SecurityService service =
-        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    SecurityService securityServiceEntity =
+        service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(securityServiceEntity));
     decryptOrNullify(securityContext, (SecurityService) response.getEntity());
     return response;
   }

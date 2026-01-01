@@ -67,7 +67,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.databases.DatabaseSchemaService;
 import org.openmetadata.service.util.CSVExportResponse;
 
 @Path("/v1/databaseSchemas")
@@ -80,10 +81,11 @@ import org.openmetadata.service.util.CSVExportResponse;
 @Collection(name = "databaseSchemas")
 public class DatabaseSchemaResource
     extends EntityResource<DatabaseSchema, DatabaseSchemaRepository> {
-  private final DatabaseSchemaMapper mapper = new DatabaseSchemaMapper();
   public static final String COLLECTION_PATH = "v1/databaseSchemas/";
   static final String FIELDS =
       "owners,tables,usageSummary,tags,certification,extension,domains,sourceHash,followers";
+
+  private final DatabaseSchemaService databaseSchemaService;
 
   @Override
   public DatabaseSchema addHref(UriInfo uriInfo, DatabaseSchema schema) {
@@ -96,6 +98,13 @@ public class DatabaseSchemaResource
 
   public DatabaseSchemaResource(Authorizer authorizer, Limits limits) {
     super(Entity.DATABASE_SCHEMA, authorizer, limits);
+    this.databaseSchemaService = null;
+  }
+
+  public DatabaseSchemaResource(
+      ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
+    super(Entity.DATABASE_SCHEMA, authorizer, limits);
+    this.databaseSchemaService = serviceRegistry.getService(DatabaseSchemaService.class);
   }
 
   @Override
@@ -317,7 +326,9 @@ public class DatabaseSchemaResource
       @Context SecurityContext securityContext,
       @Valid CreateDatabaseSchema create) {
     DatabaseSchema schema =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        databaseSchemaService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, schema);
   }
 
@@ -349,9 +360,7 @@ public class DatabaseSchemaResource
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return databaseSchemaService.addFollower(securityContext, id, userId).toResponse();
   }
 
   @DELETE
@@ -379,8 +388,8 @@ public class DatabaseSchemaResource
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
+    return databaseSchemaService
+        .deleteFollower(securityContext, id, UUID.fromString(userId))
         .toResponse();
   }
 
@@ -462,7 +471,9 @@ public class DatabaseSchemaResource
       @Context SecurityContext securityContext,
       @Valid CreateDatabaseSchema create) {
     DatabaseSchema schema =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        databaseSchemaService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, schema);
   }
 
@@ -665,9 +676,7 @@ public class DatabaseSchemaResource
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return databaseSchemaService.updateVote(securityContext, id, request).toResponse();
   }
 
   @DELETE
@@ -800,12 +809,8 @@ public class DatabaseSchemaResource
           @PathParam("id")
           UUID id,
       @Valid DatabaseSchemaProfilerConfig databaseSchemaProfilerConfig) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    DatabaseSchema databaseSchema =
-        repository.addDatabaseSchemaProfilerConfig(id, databaseSchemaProfilerConfig);
-    return addHref(uriInfo, databaseSchema);
+    return databaseSchemaService.addDatabaseSchemaProfilerConfig(
+        uriInfo, securityContext, id, databaseSchemaProfilerConfig);
   }
 
   @GET
@@ -829,14 +834,7 @@ public class DatabaseSchemaResource
       @Parameter(description = "Id of the databaseSchema", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    DatabaseSchema databaseSchema = repository.find(id, Include.NON_DELETED);
-    return addHref(
-        uriInfo,
-        databaseSchema.withDatabaseSchemaProfilerConfig(
-            repository.getDatabaseSchemaProfilerConfig(databaseSchema)));
+    return databaseSchemaService.getDatabaseSchemaProfilerConfig(uriInfo, securityContext, id);
   }
 
   @DELETE
@@ -859,11 +857,7 @@ public class DatabaseSchemaResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    DatabaseSchema databaseSchema = repository.deleteDatabaseSchemaProfilerConfig(id);
-    return addHref(uriInfo, databaseSchema);
+    return databaseSchemaService.deleteDatabaseSchemaProfilerConfig(uriInfo, securityContext, id);
   }
 
   @GET

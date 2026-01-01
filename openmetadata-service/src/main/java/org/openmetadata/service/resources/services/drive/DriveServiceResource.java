@@ -67,6 +67,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.serviceentities.DriveServiceEntityService;
 
 @Slf4j
 @Path("/v1/services/driveServices")
@@ -82,13 +84,13 @@ public class DriveServiceResource
     extends ServiceEntityResource<DriveService, DriveServiceRepository, DriveConnection> {
   public static final String COLLECTION_PATH = "v1/services/driveServices/";
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
-  private final DriveServiceMapper driveServiceMapper = new DriveServiceMapper();
+  private final DriveServiceEntityService service;
 
   @Override
-  public DriveService addHref(UriInfo uriInfo, DriveService service) {
-    super.addHref(uriInfo, service);
-    Entity.withHref(uriInfo, service.getPipelines());
-    return service;
+  public DriveService addHref(UriInfo uriInfo, DriveService driveService) {
+    super.addHref(uriInfo, driveService);
+    Entity.withHref(uriInfo, driveService.getPipelines());
+    return driveService;
   }
 
   @Override
@@ -97,8 +99,10 @@ public class DriveServiceResource
     return null;
   }
 
-  public DriveServiceResource(Authorizer authorizer, Limits limits) {
+  public DriveServiceResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.DRIVE_SERVICE, authorizer, limits, ServiceType.DRIVE);
+    this.service = serviceRegistry.getService(DriveServiceEntityService.class);
   }
 
   public static class DriveServiceList extends ResultList<DriveService> {
@@ -257,8 +261,9 @@ public class DriveServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDriveService create) {
-    DriveService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service);
+    DriveService driveService =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    Response response = create(uriInfo, securityContext, driveService);
     decryptOrNullify(securityContext, (DriveService) response.getEntity());
     return response;
   }
@@ -282,8 +287,9 @@ public class DriveServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDriveService create) {
-    DriveService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service);
+    DriveService driveService =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    Response response = createOrUpdate(uriInfo, securityContext, driveService);
     decryptOrNullify(securityContext, (DriveService) response.getEntity());
     return response;
   }
@@ -659,10 +665,6 @@ public class DriveServiceResource
           @PathParam("name")
           String name) {
     return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
-  }
-
-  private DriveService getService(CreateDriveService create, String user) {
-    return driveServiceMapper.createToEntity(create, user);
   }
 
   @Override

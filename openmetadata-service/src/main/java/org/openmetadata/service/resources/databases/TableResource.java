@@ -58,7 +58,6 @@ import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRe
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnProfile;
@@ -84,8 +83,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.databases.TableService;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Path("/v1/tables")
@@ -97,7 +96,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tables")
 public class TableResource extends EntityResource<Table, TableRepository> {
-  private final TableMapper mapper = new TableMapper();
+  private final TableService tableService;
   public static final String COLLECTION_PATH = "v1/tables/";
   public static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,sampleData,"
@@ -114,6 +113,12 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   public TableResource(Authorizer authorizer, Limits limits) {
     super(Entity.TABLE, authorizer, limits);
+    this.tableService = null;
+  }
+
+  public TableResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
+    super(Entity.TABLE, authorizer, limits);
+    this.tableService = serviceRegistry.getService(TableService.class);
   }
 
   @Override
@@ -387,7 +392,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTable create) {
-    Table table = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Table table =
+        tableService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, table);
   }
 
@@ -411,7 +419,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTable create) {
-    Table table = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Table table =
+        tableService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, table);
   }
 
@@ -791,12 +802,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid TableJoins joins) {
-    // TODO add EDIT_JOINS operation
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.addJoins(id, joins);
-    return addHref(uriInfo, table);
+    return tableService.addJoins(uriInfo, securityContext, id, joins);
   }
 
   @PUT
@@ -820,11 +826,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid TableData tableData) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.addSampleData(id, tableData);
-    return addHref(uriInfo, table);
+    return tableService.addSampleData(uriInfo, securityContext, id, tableData);
   }
 
   @GET
@@ -847,14 +849,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
-    ResourceContext<?> resourceContext = getResourceContextById(id);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
-
-    Table table = repository.getSampleData(id, authorizePII);
-    return addHref(uriInfo, table);
+    return tableService.getSampleData(uriInfo, securityContext, id);
   }
 
   @DELETE
@@ -877,11 +872,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.deleteSampleData(id);
-    return addHref(uriInfo, table);
+    return tableService.deleteSampleData(uriInfo, securityContext, id);
   }
 
   @PUT
@@ -913,11 +904,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                       schema =
                           @Schema(type = "array", implementation = PipelineObservability.class)))
           List<PipelineObservability> pipelineObservability) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.addPipelineObservability(id, pipelineObservability);
-    return addHref(uriInfo, table);
+    return tableService.addPipelineObservability(
+        uriInfo, securityContext, id, pipelineObservability);
   }
 
   @GET
@@ -940,10 +928,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return repository.getPipelineObservability(id);
+    return tableService.getPipelineObservability(securityContext, id);
   }
 
   @GET
@@ -969,10 +954,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return repository.getPipelineObservabilityByName(fqn);
+    return tableService.getPipelineObservabilityByName(securityContext, fqn);
   }
 
   @DELETE
@@ -995,11 +977,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.deletePipelineObservability(id);
-    return addHref(uriInfo, table);
+    return tableService.deletePipelineObservability(uriInfo, securityContext, id);
   }
 
   @PUT
@@ -1033,11 +1011,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                       mediaType = "application/json",
                       schema = @Schema(implementation = PipelineObservability.class)))
           PipelineObservability pipelineObservability) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.addSinglePipelineObservability(id, pipelineObservability);
-    return addHref(uriInfo, table);
+    return tableService.addSinglePipelineObservability(
+        uriInfo, securityContext, id, pipelineObservability);
   }
 
   @DELETE
@@ -1062,11 +1037,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           UUID id,
       @Parameter(description = "Fully qualified name of the pipeline") @PathParam("pipelineFqn")
           String pipelineFqn) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.deleteSinglePipelineObservability(id, pipelineFqn);
-    return addHref(uriInfo, table);
+    return tableService.deleteSinglePipelineObservability(
+        uriInfo, securityContext, id, pipelineFqn);
   }
 
   @PUT
@@ -1090,11 +1062,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid TableProfilerConfig tableProfilerConfig) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.addTableProfilerConfig(id, tableProfilerConfig);
-    return addHref(uriInfo, table);
+    return tableService.addTableProfilerConfig(uriInfo, securityContext, id, tableProfilerConfig);
   }
 
   @GET
@@ -1117,12 +1085,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.find(id, Include.NON_DELETED);
-    return addHref(
-        uriInfo, table.withTableProfilerConfig(repository.getTableProfilerConfig(table)));
+    return tableService.getTableProfilerConfig(uriInfo, securityContext, id);
   }
 
   @DELETE
@@ -1145,11 +1108,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.deleteTableProfilerConfig(id);
-    return addHref(uriInfo, table);
+    return tableService.deleteTableProfilerConfig(uriInfo, securityContext, id);
   }
 
   @GET
@@ -1177,16 +1136,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("includeColumnProfile")
           @DefaultValue("true")
           boolean includeColumnProfile) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
-    ResourceContext<?> resourceContext = getResourceContextByName(fqn);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-
     return Response.status(Response.Status.OK)
         .entity(
             JsonUtils.pojoToJson(
-                repository.getLatestTableProfile(
-                    fqn, includeColumnProfile, authorizer, securityContext)))
+                tableService.getLatestTableProfile(fqn, includeColumnProfile, securityContext)))
         .build();
   }
 
@@ -1224,11 +1177,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(type = "number"))
           @QueryParam("endTs")
           Long endTs) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return Response.status(Response.Status.OK)
-        .entity(JsonUtils.pojoToJson(repository.getTableProfiles(fqn, startTs, endTs)))
+        .entity(
+            JsonUtils.pojoToJson(
+                tableService.getTableProfiles(securityContext, fqn, startTs, endTs)))
         .build();
   }
 
@@ -1267,14 +1219,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @NotNull
           @QueryParam("endTs")
           Long endTs) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
-    String tableFqn =
-        FullyQualifiedName.getTableFQN(
-            fqn); // get table fqn for the resource context (vs column fqn)
-    ResourceContext<?> resourceContext = getResourceContextByName(tableFqn);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.getColumnProfiles(fqn, startTs, endTs, authorizer, securityContext);
+    String tableFqn = FullyQualifiedName.getTableFQN(fqn);
+    return tableService.getColumnProfiles(securityContext, fqn, tableFqn, startTs, endTs);
   }
 
   @GET
@@ -1312,7 +1258,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @NotNull
           @QueryParam("endTs")
           Long endTs) {
-    return repository.getSystemProfiles(fqn, startTs, endTs);
+    return tableService.getSystemProfiles(fqn, startTs, endTs);
   }
 
   @PUT
@@ -1336,11 +1282,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid CreateTableProfile createTableProfile) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.addTableProfileData(id, createTableProfile);
-    return addHref(uriInfo, table);
+    return tableService.addTableProfileData(uriInfo, securityContext, id, createTableProfile);
   }
 
   @DELETE
@@ -1368,14 +1310,11 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               description = "type of the entity table or column",
               schema = @Schema(type = "String"))
           @PathParam("entityType")
-          String entityType,
+          String profileEntityType,
       @Parameter(description = "Timestamp of the table profile", schema = @Schema(type = "long"))
           @PathParam("timestamp")
           Long timestamp) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    repository.deleteTableProfile(fqn, entityType, timestamp);
+    tableService.deleteTableProfile(securityContext, fqn, profileEntityType, timestamp);
     return Response.ok().build();
   }
 
@@ -1402,11 +1341,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @PathParam("id")
           UUID id,
       @Valid DataModel dataModel) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.addDataModel(id, dataModel);
-    return addHref(uriInfo, table);
+    return tableService.addDataModel(uriInfo, securityContext, id, dataModel);
   }
 
   @PUT
@@ -1430,14 +1365,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid CreateCustomMetric createCustomMetric) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    CustomMetric customMetric =
-        mapper.createCustomMetricToEntity(
-            createCustomMetric, securityContext.getUserPrincipal().getName());
-    Table table = repository.addCustomMetric(id, customMetric);
-    return addHref(uriInfo, table);
+    return tableService.createCustomMetric(uriInfo, securityContext, id, createCustomMetric);
   }
 
   @PUT
@@ -1462,9 +1390,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return tableService.updateVote(securityContext, id, request).toResponse();
   }
 
   @DELETE
@@ -1490,11 +1416,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "column Test Type", schema = @Schema(type = "string"))
           @PathParam("customMetricName")
           String customMetricName) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.deleteCustomMetric(id, null, customMetricName);
-    return addHref(uriInfo, table);
+    return tableService.deleteCustomMetric(uriInfo, securityContext, id, null, customMetricName);
   }
 
   @DELETE
@@ -1523,11 +1445,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "column Test Type", schema = @Schema(type = "string"))
           @PathParam("customMetricName")
           String customMetricName) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.deleteCustomMetric(id, columnName, customMetricName);
-    return addHref(uriInfo, table);
+    return tableService.deleteCustomMetric(
+        uriInfo, securityContext, id, columnName, customMetricName);
   }
 
   @DELETE
@@ -1555,9 +1474,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+    return tableService.deleteFollower(securityContext, id, UUID.fromString(userId)).toResponse();
   }
 
   @GET
@@ -1603,13 +1520,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-
-    ResultList<org.openmetadata.schema.type.Column> result =
-        repository.getTableColumns(
-            id, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
+    ResultList<Column> result =
+        tableService.getTableColumns(
+            securityContext, id, limitParam, offsetParam, fieldsParam, include);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
@@ -1662,14 +1575,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    // JAX-RS automatically URL-decodes path parameters, so fqn is already decoded
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-
-    ResultList<org.openmetadata.schema.type.Column> result =
-        repository.getTableColumnsByFQN(
-            fqn, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
+    ResultList<Column> result =
+        tableService.getTableColumnsByFQN(
+            securityContext, fqn, limitParam, offsetParam, fieldsParam, include);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
@@ -1849,12 +1757,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     ResultList<Column> result =
-        repository.searchTableColumnsById(
-            id, query, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
+        tableService.searchTableColumnsById(
+            securityContext, id, query, limitParam, offsetParam, fieldsParam, include);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
@@ -1910,12 +1815,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    ResultList<org.openmetadata.schema.type.Column> result =
-        repository.searchTableColumnsByFQN(
-            fqn, query, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
+    ResultList<Column> result =
+        tableService.searchTableColumnsByFQN(
+            securityContext, fqn, query, limitParam, offsetParam, fieldsParam, include);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());

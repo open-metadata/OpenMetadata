@@ -15,6 +15,7 @@ package org.openmetadata.service.services.metrics;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.service.Entity;
@@ -36,8 +37,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.METRIC)
 public class MetricService extends AbstractEntityService<Metric> {
 
-  @SuppressWarnings("unused")
-  private final MetricMapper mapper;
+  @Getter private final MetricMapper mapper;
 
   @Inject
   public MetricService(

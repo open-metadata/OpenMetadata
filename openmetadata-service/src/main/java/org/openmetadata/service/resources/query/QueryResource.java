@@ -51,6 +51,8 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.databases.QueryService;
 
 @Path("/v1/queries")
 @Tag(
@@ -61,12 +63,17 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "queries")
 public class QueryResource extends EntityResource<Query, QueryRepository> {
-  private final QueryMapper mapper = new QueryMapper();
+  private QueryService queryService;
   public static final String COLLECTION_PATH = "v1/queries/";
   static final String FIELDS = "owners,followers,users,votes,tags,queryUsedIn";
 
   public QueryResource(Authorizer authorizer, Limits limits) {
     super(Entity.QUERY, authorizer, limits);
+  }
+
+  public QueryResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
+    super(Entity.QUERY, authorizer, limits);
+    this.queryService = serviceRegistry.getService(QueryService.class);
   }
 
   @Override
@@ -283,7 +290,10 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateQuery create) {
-    Query query = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Query query =
+        queryService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, query);
   }
 
@@ -307,7 +317,10 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateQuery create) {
-    Query query = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Query query =
+        queryService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, query);
   }
 
@@ -426,9 +439,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return service.addFollower(securityContext, id, userId).toResponse();
   }
 
   @PUT
@@ -453,9 +464,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return service.updateVote(securityContext, id, request).toResponse();
   }
 
   @DELETE
@@ -483,9 +492,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return service.deleteFollower(securityContext, id, userId).toResponse();
   }
 
   @PUT

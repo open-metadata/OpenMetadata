@@ -48,6 +48,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.ai.AIApplicationService;
 
 @Path("/v1/aiApplications")
 @Tag(
@@ -59,7 +61,7 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "aiApplications")
 public class AIApplicationResource extends EntityResource<AIApplication, AIApplicationRepository> {
   public static final String COLLECTION_PATH = "v1/aiApplications/";
-  private final AIApplicationMapper mapper = new AIApplicationMapper();
+  private final AIApplicationService service;
   static final String FIELDS = "owners,followers,tags,extension,domains";
 
   @Override
@@ -70,8 +72,10 @@ public class AIApplicationResource extends EntityResource<AIApplication, AIAppli
     return aiApplication;
   }
 
-  public AIApplicationResource(Authorizer authorizer, Limits limits) {
+  public AIApplicationResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.AI_APPLICATION, authorizer, limits);
+    this.service = serviceRegistry.getService(AIApplicationService.class);
   }
 
   @Override
@@ -235,7 +239,7 @@ public class AIApplicationResource extends EntityResource<AIApplication, AIAppli
       @Context SecurityContext securityContext,
       @Valid CreateAIApplication create) {
     AIApplication aiApplication =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, aiApplication);
   }
 
@@ -318,7 +322,7 @@ public class AIApplicationResource extends EntityResource<AIApplication, AIAppli
       @Context SecurityContext securityContext,
       @Valid CreateAIApplication create) {
     AIApplication aiApplication =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, aiApplication);
   }
 

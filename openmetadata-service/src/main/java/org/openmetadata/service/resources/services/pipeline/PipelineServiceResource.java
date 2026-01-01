@@ -64,6 +64,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.serviceentities.PipelineServiceEntityService;
 
 @Path("/v1/services/pipelineServices")
 @Tag(name = "Pipeline Services")
@@ -72,19 +74,21 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 @Collection(name = "pipelineServices")
 public class PipelineServiceResource
     extends ServiceEntityResource<PipelineService, PipelineServiceRepository, PipelineConnection> {
-  private final PipelineServiceMapper mapper = new PipelineServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
   public static final String FIELDS = "pipelines,owners,domains,followers";
+  private final PipelineServiceEntityService service;
 
   @Override
-  public PipelineService addHref(UriInfo uriInfo, PipelineService service) {
-    super.addHref(uriInfo, service);
-    Entity.withHref(uriInfo, service.getPipelines());
-    return service;
+  public PipelineService addHref(UriInfo uriInfo, PipelineService pipelineService) {
+    super.addHref(uriInfo, pipelineService);
+    Entity.withHref(uriInfo, pipelineService.getPipelines());
+    return pipelineService;
   }
 
-  public PipelineServiceResource(Authorizer authorizer, Limits limits) {
+  public PipelineServiceResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.PIPELINE_SERVICE, authorizer, limits, ServiceType.PIPELINE);
+    this.service = serviceRegistry.getService(PipelineServiceEntityService.class);
   }
 
   @Override
@@ -417,9 +421,9 @@ public class PipelineServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePipelineService create) {
-    PipelineService service =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service);
+    PipelineService pipelineService =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    Response response = create(uriInfo, securityContext, pipelineService);
     decryptOrNullify(securityContext, (PipelineService) response.getEntity());
     return response;
   }
@@ -444,9 +448,9 @@ public class PipelineServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePipelineService update) {
-    PipelineService service =
-        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    PipelineService pipelineService =
+        service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(pipelineService));
     decryptOrNullify(securityContext, (PipelineService) response.getEntity());
     return response;
   }

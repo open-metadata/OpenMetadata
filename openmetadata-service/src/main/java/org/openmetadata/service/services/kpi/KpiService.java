@@ -15,6 +15,7 @@ package org.openmetadata.service.services.kpi;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.service.Entity;
@@ -36,8 +37,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.KPI)
 public class KpiService extends AbstractEntityService<Kpi> {
 
-  @SuppressWarnings("unused")
-  private final KpiMapper mapper;
+  @Getter private final KpiMapper mapper;
 
   @Inject
   public KpiService(

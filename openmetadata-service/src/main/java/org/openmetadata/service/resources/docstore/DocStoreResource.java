@@ -64,6 +64,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.docstore.DocStoreService;
 
 @Slf4j
 @Path("/v1/docStore")
@@ -73,7 +75,7 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "knowledgePanel", order = 2)
 public class DocStoreResource extends EntityResource<Document, DocumentRepository> {
   public static final String COLLECTION_PATH = "/v1/docStore";
-  private DocStoreMapper mapper;
+  private DocStoreService docStoreService;
 
   @Override
   public Document addHref(UriInfo uriInfo, Document doc) {
@@ -89,7 +91,11 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
 
   public DocStoreResource(Authorizer authorizer, Limits limits) {
     super(Entity.DOCUMENT, authorizer, limits);
-    this.mapper = new DocStoreMapper(authorizer);
+  }
+
+  public DocStoreResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
+    super(Entity.DOCUMENT, authorizer, limits);
+    this.docStoreService = serviceRegistry.getService(DocStoreService.class);
   }
 
   public static class DocumentList extends ResultList<Document> {
@@ -300,7 +306,10 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDocument cd) {
-    Document doc = mapper.createToEntity(cd, securityContext.getUserPrincipal().getName());
+    Document doc =
+        docStoreService
+            .getMapper()
+            .createToEntity(cd, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, doc);
   }
 
@@ -323,7 +332,10 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDocument cd) {
-    Document doc = mapper.createToEntity(cd, securityContext.getUserPrincipal().getName());
+    Document doc =
+        docStoreService
+            .getMapper()
+            .createToEntity(cd, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, doc);
   }
 

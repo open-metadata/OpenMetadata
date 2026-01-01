@@ -67,6 +67,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.serviceentities.DatabaseServiceEntityService;
 import org.openmetadata.service.util.CSVExportResponse;
 
 @Slf4j
@@ -81,15 +83,15 @@ import org.openmetadata.service.util.CSVExportResponse;
 @Collection(name = "databaseServices")
 public class DatabaseServiceResource
     extends ServiceEntityResource<DatabaseService, DatabaseServiceRepository, DatabaseConnection> {
-  private final DatabaseServiceMapper mapper = new DatabaseServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
+  private final DatabaseServiceEntityService service;
 
   @Override
-  public DatabaseService addHref(UriInfo uriInfo, DatabaseService service) {
-    super.addHref(uriInfo, service);
-    Entity.withHref(uriInfo, service.getPipelines());
-    return service;
+  public DatabaseService addHref(UriInfo uriInfo, DatabaseService dbService) {
+    super.addHref(uriInfo, dbService);
+    Entity.withHref(uriInfo, dbService.getPipelines());
+    return dbService;
   }
 
   @Override
@@ -98,8 +100,10 @@ public class DatabaseServiceResource
     return null;
   }
 
-  public DatabaseServiceResource(Authorizer authorizer, Limits limits) {
+  public DatabaseServiceResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.DATABASE_SERVICE, authorizer, limits, ServiceType.DATABASE);
+    this.service = serviceRegistry.getService(DatabaseServiceEntityService.class);
   }
 
   public static class DatabaseServiceList extends ResultList<DatabaseService> {
@@ -358,9 +362,9 @@ public class DatabaseServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDatabaseService create) {
-    DatabaseService service =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service);
+    DatabaseService databaseService =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    Response response = create(uriInfo, securityContext, databaseService);
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
   }
@@ -384,9 +388,9 @@ public class DatabaseServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDatabaseService update) {
-    DatabaseService service =
-        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    DatabaseService databaseService =
+        service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(databaseService));
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
   }

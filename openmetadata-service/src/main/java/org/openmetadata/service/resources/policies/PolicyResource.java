@@ -68,9 +68,9 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.CompiledRule;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.policies.PolicyService;
 
 @Slf4j
 @Path("/v1/policies")
@@ -82,9 +82,9 @@ import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "policies", order = 0, requiredForOps = true)
 public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
-  private final PolicyMapper mapper = new PolicyMapper();
   public static final String COLLECTION_PATH = "v1/policies/";
   public static final String FIELDS = "owners,location,teams,roles";
+  private final PolicyService service;
 
   @Override
   public Policy addHref(UriInfo uriInfo, Policy policy) {
@@ -94,8 +94,9 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     return policy;
   }
 
-  public PolicyResource(Authorizer authorizer, Limits limits) {
+  public PolicyResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.POLICY, authorizer, limits);
+    this.service = serviceRegistry.getService(PolicyService.class);
   }
 
   @Override
@@ -360,7 +361,8 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePolicy create) {
-    Policy policy = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Policy policy =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, policy);
   }
 
@@ -440,7 +442,8 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePolicy create) {
-    Policy policy = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Policy policy =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, policy);
   }
 
@@ -551,9 +554,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       @Parameter(description = "Expression of validating rule", schema = @Schema(type = "string"))
           @PathParam("expression")
           String expression) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContext());
-    CompiledRule.validateExpression(expression, Boolean.class);
+    service.validateCondition(securityContext, expression);
   }
 }

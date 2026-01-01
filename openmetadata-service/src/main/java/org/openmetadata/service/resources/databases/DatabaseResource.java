@@ -65,7 +65,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.databases.DatabaseService;
 import org.openmetadata.service.util.CSVExportResponse;
 
 @Path("/v1/databases")
@@ -77,9 +78,10 @@ import org.openmetadata.service.util.CSVExportResponse;
 @Collection(name = "databases")
 public class DatabaseResource extends EntityResource<Database, DatabaseRepository> {
   public static final String COLLECTION_PATH = "v1/databases/";
-  private final DatabaseMapper mapper = new DatabaseMapper();
   static final String FIELDS =
       "owners,databaseSchemas,usageSummary,location,tags,certification,extension,domains,sourceHash,followers";
+
+  private final DatabaseService databaseService;
 
   @Override
   public Database addHref(UriInfo uriInfo, Database db) {
@@ -99,6 +101,12 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
 
   public DatabaseResource(Authorizer authorizer, Limits limits) {
     super(Entity.DATABASE, authorizer, limits);
+    this.databaseService = null;
+  }
+
+  public DatabaseResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
+    super(Entity.DATABASE, authorizer, limits);
+    this.databaseService = serviceRegistry.getService(DatabaseService.class);
   }
 
   public static class DatabaseList extends ResultList<Database> {
@@ -314,7 +322,10 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDatabase create) {
-    Database database = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Database database =
+        databaseService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, database);
   }
 
@@ -433,7 +444,10 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDatabase create) {
-    Database database = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Database database =
+        databaseService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, database);
   }
 
@@ -656,9 +670,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return databaseService.updateVote(securityContext, id, request).toResponse();
   }
 
   @DELETE
@@ -736,11 +748,8 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @PathParam("id")
           UUID id,
       @Valid DatabaseProfilerConfig databaseProfilerConfig) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Database database = repository.addDatabaseProfilerConfig(id, databaseProfilerConfig);
-    return addHref(uriInfo, database);
+    return databaseService.addDatabaseProfilerConfig(
+        uriInfo, securityContext, id, databaseProfilerConfig);
   }
 
   @GET
@@ -764,13 +773,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Parameter(description = "Id of the database", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Database database = repository.find(id, Include.NON_DELETED);
-    return addHref(
-        uriInfo,
-        database.withDatabaseProfilerConfig(repository.getDatabaseProfilerConfig(database)));
+    return databaseService.getDatabaseProfilerConfig(uriInfo, securityContext, id);
   }
 
   @DELETE
@@ -793,11 +796,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Database database = repository.deleteDatabaseProfilerConfig(id);
-    return addHref(uriInfo, database);
+    return databaseService.deleteDatabaseProfilerConfig(uriInfo, securityContext, id);
   }
 
   @PUT
@@ -826,9 +825,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return databaseService.addFollower(securityContext, id, userId).toResponse();
   }
 
   @DELETE
@@ -856,8 +853,8 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
+    return databaseService
+        .deleteFollower(securityContext, id, UUID.fromString(userId))
         .toResponse();
   }
 }

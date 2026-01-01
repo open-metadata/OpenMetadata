@@ -87,6 +87,8 @@ import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.apps.AppService;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
@@ -115,7 +117,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           ScheduleType.ScheduledOrManual,
           ScheduleType.NoSchedule,
           ScheduleType.OnlyManual);
-  private final AppMapper mapper = new AppMapper();
+  private final AppService appService;
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
@@ -147,7 +149,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       try {
         App app = getAppForInit(createApp.getName());
         if (app == null) {
-          app = mapper.createToEntity(createApp, ADMIN_USER_NAME);
+          app = appService.getMapper().createToEntity(createApp, ADMIN_USER_NAME);
           scheduleAppIfNeeded(app);
           repository.initializeEntity(app);
         } else {
@@ -179,8 +181,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
   }
 
-  public AppResource(Authorizer authorizer, Limits limits) {
+  public AppResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.APPLICATION, authorizer, limits);
+    this.appService = serviceRegistry.getService(AppService.class);
   }
 
   public static class AppList extends ResultList<App> {
@@ -706,7 +709,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create) {
-    App app = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    App app =
+        appService.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     limits.enforceLimits(
         securityContext,
         getResourceContext(),
@@ -836,7 +840,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create)
       throws SchedulerException {
-    App app = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    App app =
+        appService.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     AppScheduler.getInstance().deleteScheduledApplication(app);
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()

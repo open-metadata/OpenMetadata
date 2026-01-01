@@ -47,6 +47,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.storages.ContainerService;
 
 @Path("/v1/containers")
 @Tag(
@@ -59,7 +61,7 @@ import org.openmetadata.service.security.Authorizer;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "containers")
 public class ContainerResource extends EntityResource<Container, ContainerRepository> {
-  private final ContainerMapper mapper = new ContainerMapper();
+  private ContainerService containerService;
   public static final String COLLECTION_PATH = "v1/containers/";
   static final String FIELDS =
       "parent,children,dataModel,owners,tags,followers,extension,domains,sourceHash";
@@ -74,6 +76,11 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
 
   public ContainerResource(Authorizer authorizer, Limits limits) {
     super(Entity.CONTAINER, authorizer, limits);
+  }
+
+  public ContainerResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
+    super(Entity.CONTAINER, authorizer, limits);
+    this.containerService = serviceRegistry.getService(ContainerService.class);
   }
 
   @Override
@@ -241,7 +248,9 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Context SecurityContext securityContext,
       @Valid CreateContainer create) {
     Container container =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        containerService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, container);
   }
 
@@ -362,7 +371,9 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Context SecurityContext securityContext,
       @Valid CreateContainer create) {
     Container container =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        containerService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, container);
   }
 
@@ -392,9 +403,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return service.addFollower(securityContext, id, userId).toResponse();
   }
 
   @DELETE
@@ -423,11 +432,8 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
-        .deleteFollower(
-            securityContext.getUserPrincipal().getName(),
-            UUID.fromString(id),
-            UUID.fromString(userId))
+    return service
+        .deleteFollower(securityContext, UUID.fromString(id), UUID.fromString(userId))
         .toResponse();
   }
 
@@ -561,9 +567,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return service.updateVote(securityContext, id, request).toResponse();
   }
 
   @DELETE

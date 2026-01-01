@@ -15,6 +15,7 @@ package org.openmetadata.service.services.automations;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.service.Entity;
@@ -36,8 +37,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.WORKFLOW)
 public class WorkflowService extends AbstractEntityService<Workflow> {
 
-  @SuppressWarnings("unused")
-  private final WorkflowMapper mapper;
+  @Getter private final WorkflowMapper mapper;
 
   @Inject
   public WorkflowService(

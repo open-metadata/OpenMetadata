@@ -64,6 +64,8 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.dqtests.TestSuiteService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
@@ -78,7 +80,6 @@ import org.openmetadata.service.util.RestUtil;
 @Collection(name = "TestSuites")
 public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testSuites";
-  private final TestSuiteMapper mapper = new TestSuiteMapper();
   public static final String BASIC_TEST_SUITE_DELETION_ERROR =
       "Cannot delete logical test suite. To delete logical test suite, use DELETE /v1/dataQuality/testSuites/<...>";
   public static final String NON_BASIC_TEST_SUITE_DELETION_ERROR =
@@ -88,9 +89,11 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
 
   static final String FIELDS = "owners,reviewers,tests,summary";
   static final String SEARCH_FIELDS_EXCLUDE = "table,database,databaseSchema,service";
+  private final TestSuiteService service;
 
-  public TestSuiteResource(Authorizer authorizer, Limits limits) {
+  public TestSuiteResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.TEST_SUITE, authorizer, limits);
+    this.service = serviceRegistry.getService(TestSuiteService.class);
   }
 
   @Override
@@ -555,7 +558,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
         create.withBasicEntityReference(
             null); // entity reference is not applicable for logical test suites
     TestSuite testSuite =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     testSuite.setBasic(false);
     List<AuthRequest> authRequests = getAuthRequestsForPost(testSuite);
     return create(uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
@@ -583,7 +586,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context HttpServletResponse response,
       @Valid CreateTestSuite create) {
     TestSuite testSuite =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     if (testSuite.getBasicEntityReference() == null) {
       throw new IllegalArgumentException(BASIC_TEST_SUITE_WITHOUT_REF_ERROR);
     }
@@ -647,7 +650,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
         create.withBasicEntityReference(
             null); // entity reference is not applicable for logical test suites
     TestSuite testSuite =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     testSuite.setBasic(false);
     List<AuthRequest> authRequests =
         new java.util.ArrayList<>(
@@ -679,7 +682,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context HttpServletResponse response,
       @Valid CreateTestSuite create) {
     TestSuite testSuite =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     testSuite.setBasic(true);
     // Set the deprecation header based on draft specification from IETF
     // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
@@ -713,7 +716,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context SecurityContext securityContext,
       @Valid CreateTestSuite create) {
     TestSuite testSuite =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     testSuite.setBasic(true);
     List<AuthRequest> authRequests =
         new java.util.ArrayList<>(

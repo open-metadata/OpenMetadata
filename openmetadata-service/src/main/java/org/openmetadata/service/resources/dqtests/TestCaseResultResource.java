@@ -60,6 +60,8 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.dqtests.TestCaseResultService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
@@ -75,11 +77,16 @@ import org.openmetadata.service.util.RestUtil;
 @Collection(name = "TestCaseResults")
 public class TestCaseResultResource
     extends EntityTimeSeriesResource<TestCaseResult, TestCaseResultRepository> {
-  private final TestCaseResultMapper mapper = new TestCaseResultMapper();
   static final String FIELDS = "testCase,testDefinition";
+  private TestCaseResultService testCaseResultService;
 
   public TestCaseResultResource(Authorizer authorizer) {
     super(Entity.TEST_CASE_RESULT, authorizer);
+  }
+
+  public TestCaseResultResource(ServiceRegistry serviceRegistry, Authorizer authorizer) {
+    super(Entity.TEST_CASE_RESULT, authorizer);
+    this.testCaseResultService = serviceRegistry.getService(TestCaseResultService.class);
   }
 
   public static class TestCaseResultList extends ResultList<TestCaseResult> {
@@ -131,7 +138,9 @@ public class TestCaseResultResource
         securityContext.getUserPrincipal().getName(),
         uriInfo,
         fqn,
-        mapper.createToEntity(createTestCaseResults, securityContext.getUserPrincipal().getName()));
+        testCaseResultService
+            .getMapper()
+            .createToEntity(createTestCaseResults, securityContext.getUserPrincipal().getName()));
   }
 
   @GET

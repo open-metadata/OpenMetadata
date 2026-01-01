@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
+import org.openmetadata.service.resources.dqtests.TestCaseResultMapper;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.RestUtil;
 
@@ -31,6 +32,7 @@ import org.openmetadata.service.util.RestUtil;
 public class TestCaseResultService {
 
   @Getter private final TestCaseResultRepository repository;
+  @Getter private final TestCaseResultMapper mapper = new TestCaseResultMapper();
   private final Authorizer authorizer;
 
   @Inject

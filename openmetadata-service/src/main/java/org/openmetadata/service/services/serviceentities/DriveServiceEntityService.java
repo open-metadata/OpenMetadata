@@ -15,12 +15,14 @@ package org.openmetadata.service.services.serviceentities;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.DriveConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DriveServiceRepository;
+import org.openmetadata.service.resources.services.drive.DriveServiceMapper;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.Service;
@@ -30,6 +32,8 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.DRIVE_SERVICE)
 public class DriveServiceEntityService
     extends AbstractServiceEntityService<DriveService, DriveServiceRepository, DriveConnection> {
+
+  @Getter private final DriveServiceMapper mapper = new DriveServiceMapper();
 
   @Inject
   public DriveServiceEntityService(

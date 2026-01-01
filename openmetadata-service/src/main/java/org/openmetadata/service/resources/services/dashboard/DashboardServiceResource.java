@@ -64,6 +64,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.serviceentities.DashboardServiceEntityService;
 
 @Path("/v1/services/dashboardServices")
 @Tag(name = "Dashboard Services")
@@ -73,12 +75,14 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 public class DashboardServiceResource
     extends ServiceEntityResource<
         DashboardService, DashboardServiceRepository, DashboardConnection> {
-  private final DashboardServiceMapper mapper = new DashboardServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
   public static final String FIELDS = "owners,domains,followers";
+  private final DashboardServiceEntityService service;
 
-  public DashboardServiceResource(Authorizer authorizer, Limits limits) {
+  public DashboardServiceResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.DASHBOARD_SERVICE, authorizer, limits, ServiceType.DASHBOARD);
+    this.service = serviceRegistry.getService(DashboardServiceEntityService.class);
   }
 
   public static class DashboardServiceList extends ResultList<DashboardService> {
@@ -402,9 +406,9 @@ public class DashboardServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDashboardService create) {
-    DashboardService service =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service);
+    DashboardService dashboardService =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    Response response = create(uriInfo, securityContext, dashboardService);
     decryptOrNullify(securityContext, (DashboardService) response.getEntity());
     return response;
   }
@@ -428,9 +432,9 @@ public class DashboardServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDashboardService update) {
-    DashboardService service =
-        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    DashboardService dashboardService =
+        service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(dashboardService));
     decryptOrNullify(securityContext, (DashboardService) response.getEntity());
     return response;
   }

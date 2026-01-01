@@ -13,9 +13,13 @@
 
 package org.openmetadata.service.services.dashboards;
 
+import jakarta.ws.rs.core.SecurityContext;
+import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ChartRepository;
@@ -24,14 +28,15 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Singleton
 @Service(entityType = Entity.CHART)
 public class ChartService extends AbstractEntityService<Chart> {
 
-  @SuppressWarnings("unused")
-  private final ChartMapper mapper;
+  @Getter private final ChartMapper mapper;
+  private final ChartRepository chartRepository;
 
   @Inject
   public ChartService(
@@ -40,6 +45,22 @@ public class ChartService extends AbstractEntityService<Chart> {
       Authorizer authorizer,
       ChartMapper mapper) {
     super(repository, searchRepository, authorizer, Entity.CHART);
+    this.chartRepository = repository;
     this.mapper = mapper;
+  }
+
+  public RestUtil.PutResponse<Chart> addFollower(
+      SecurityContext securityContext, UUID id, UUID userId) {
+    return chartRepository.addFollower(securityContext.getUserPrincipal().getName(), id, userId);
+  }
+
+  public RestUtil.PutResponse<Chart> deleteFollower(
+      SecurityContext securityContext, UUID id, UUID userId) {
+    return chartRepository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId);
+  }
+
+  public RestUtil.PutResponse<Chart> updateVote(
+      SecurityContext securityContext, UUID id, VoteRequest request) {
+    return chartRepository.updateVote(securityContext.getUserPrincipal().getName(), id, request);
   }
 }

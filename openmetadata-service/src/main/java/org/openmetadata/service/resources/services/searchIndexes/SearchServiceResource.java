@@ -53,6 +53,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.serviceentities.SearchServiceEntityService;
 
 @Slf4j
 @Path("/v1/services/searchServices")
@@ -64,19 +66,21 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 @Collection(name = "searchServices")
 public class SearchServiceResource
     extends ServiceEntityResource<SearchService, SearchServiceRepository, SearchConnection> {
-  private final SearchServiceMapper mapper = new SearchServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/searchServices/";
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
+  private final SearchServiceEntityService service;
 
   @Override
-  public SearchService addHref(UriInfo uriInfo, SearchService service) {
-    super.addHref(uriInfo, service);
-    Entity.withHref(uriInfo, service.getPipelines());
-    return service;
+  public SearchService addHref(UriInfo uriInfo, SearchService searchService) {
+    super.addHref(uriInfo, searchService);
+    Entity.withHref(uriInfo, searchService.getPipelines());
+    return searchService;
   }
 
-  public SearchServiceResource(Authorizer authorizer, Limits limits) {
+  public SearchServiceResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.SEARCH_SERVICE, authorizer, limits, ServiceType.SEARCH);
+    this.service = serviceRegistry.getService(SearchServiceEntityService.class);
   }
 
   @Override
@@ -402,9 +406,9 @@ public class SearchServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateSearchService create) {
-    SearchService service =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service);
+    SearchService searchService =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    Response response = create(uriInfo, securityContext, searchService);
     decryptOrNullify(securityContext, (SearchService) response.getEntity());
     return response;
   }
@@ -428,9 +432,9 @@ public class SearchServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateSearchService update) {
-    SearchService service =
-        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    SearchService searchService =
+        service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(searchService));
     decryptOrNullify(securityContext, (SearchService) response.getEntity());
     return response;
   }

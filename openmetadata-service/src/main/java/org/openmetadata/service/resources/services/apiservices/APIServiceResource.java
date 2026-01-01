@@ -66,6 +66,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.serviceentities.APIServiceEntityService;
 
 @Slf4j
 @Path("/v1/services/apiServices")
@@ -77,19 +79,20 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 @Collection(name = "apiServices")
 public class APIServiceResource
     extends ServiceEntityResource<ApiService, APIServiceRepository, ApiConnection> {
-  private final APIServiceMapper mapper = new APIServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/apiServices/";
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
+  private final APIServiceEntityService service;
 
   @Override
-  public ApiService addHref(UriInfo uriInfo, ApiService service) {
-    super.addHref(uriInfo, service);
-    Entity.withHref(uriInfo, service.getPipelines());
-    return service;
+  public ApiService addHref(UriInfo uriInfo, ApiService apiService) {
+    super.addHref(uriInfo, apiService);
+    Entity.withHref(uriInfo, apiService.getPipelines());
+    return apiService;
   }
 
-  public APIServiceResource(Authorizer authorizer, Limits limits) {
+  public APIServiceResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.API_SERVICE, authorizer, limits, ServiceType.API);
+    this.service = serviceRegistry.getService(APIServiceEntityService.class);
   }
 
   @Override
@@ -351,9 +354,9 @@ public class APIServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateApiService create) {
-    ApiService service =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service);
+    ApiService apiService =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    Response response = create(uriInfo, securityContext, apiService);
     decryptOrNullify(securityContext, (ApiService) response.getEntity());
     return response;
   }
@@ -377,9 +380,9 @@ public class APIServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateApiService update) {
-    ApiService service =
-        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    ApiService apiService =
+        service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(apiService));
     decryptOrNullify(securityContext, (ApiService) response.getEntity());
     return response;
   }

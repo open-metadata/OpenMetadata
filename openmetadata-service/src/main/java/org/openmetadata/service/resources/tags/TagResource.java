@@ -73,6 +73,9 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.tags.ClassificationService;
+import org.openmetadata.service.services.tags.TagService;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
@@ -92,19 +95,21 @@ import org.openmetadata.service.util.EntityUtil;
     name = "tags",
     order = 5) // initialize after Classification, and before Glossary and GlossaryTerm
 public class TagResource extends EntityResource<Tag, TagRepository> {
-  private final ClassificationMapper classificationMapper = new ClassificationMapper();
-  private final TagMapper mapper = new TagMapper();
-  private final RecognizerFeedbackRepository feedbackRepository;
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
   static final String FIELDS =
       "owners,reviewers,domains,children,usageCount,recognizers,autoClassificationEnabled,autoClassificationPriority";
+  private final TagService service;
+  private final ClassificationService classificationService;
+  private final RecognizerFeedbackRepository feedbackRepository;
 
   static class TagList extends ResultList<Tag> {
     /* Required for serde */
   }
 
-  public TagResource(Authorizer authorizer, Limits limits) {
+  public TagResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.TAG, authorizer, limits);
+    this.service = serviceRegistry.getService(TagService.class);
+    this.classificationService = serviceRegistry.getService(ClassificationService.class);
     this.feedbackRepository = new RecognizerFeedbackRepository(Entity.getCollectionDAO());
   }
 
@@ -125,14 +130,16 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
             CLASSIFICATION, ".*json/data/tags/.*\\.json$", LoadTags.class);
     for (LoadTags loadTags : loadTagsList) {
       Classification classification =
-          classificationMapper.createToEntity(loadTags.getCreateClassification(), ADMIN_USER_NAME);
+          classificationService
+              .getMapper()
+              .createToEntity(loadTags.getCreateClassification(), ADMIN_USER_NAME);
       classificationRepository.initializeEntity(classification);
 
       List<Tag> tagsToCreate = new ArrayList<>();
       for (CreateTag createTag : loadTags.getCreateTags()) {
         createTag.withClassification(classification.getName());
         createTag.withProvider(classification.getProvider());
-        Tag tag = mapper.createToEntity(createTag, ADMIN_USER_NAME);
+        Tag tag = service.getMapper().createToEntity(createTag, ADMIN_USER_NAME);
         repository.setFullyQualifiedName(tag); // FQN required for ordering tags based on hierarchy
         tagsToCreate.add(tag);
       }
@@ -356,7 +363,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTag create) {
-    Tag tag = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Tag tag =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, tag);
   }
 
@@ -434,7 +442,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTag create) {
-    Tag tag = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Tag tag =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, tag);
   }
 

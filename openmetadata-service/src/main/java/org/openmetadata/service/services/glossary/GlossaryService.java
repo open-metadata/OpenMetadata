@@ -15,6 +15,7 @@ package org.openmetadata.service.services.glossary;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.service.Entity;
@@ -25,19 +26,12 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 
-/**
- * Service layer for Glossary entity operations.
- *
- * <p>Extends AbstractEntityService to inherit all standard CRUD operations with proper
- * authorization and repository delegation.
- */
 @Slf4j
 @Singleton
 @Service(entityType = Entity.GLOSSARY)
 public class GlossaryService extends AbstractEntityService<Glossary> {
 
-  @SuppressWarnings("unused")
-  private final GlossaryMapper mapper;
+  @Getter private final GlossaryMapper mapper;
 
   @Inject
   public GlossaryService(

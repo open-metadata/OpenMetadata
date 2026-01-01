@@ -13,9 +13,13 @@
 
 package org.openmetadata.service.services.databases;
 
+import jakarta.ws.rs.core.SecurityContext;
+import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.QueryRepository;
@@ -24,14 +28,15 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Singleton
 @Service(entityType = Entity.QUERY)
 public class QueryService extends AbstractEntityService<Query> {
 
-  @SuppressWarnings("unused")
-  private final QueryMapper mapper;
+  @Getter private final QueryMapper mapper;
+  private final QueryRepository queryRepository;
 
   @Inject
   public QueryService(
@@ -40,6 +45,22 @@ public class QueryService extends AbstractEntityService<Query> {
       Authorizer authorizer,
       QueryMapper mapper) {
     super(repository, searchRepository, authorizer, Entity.QUERY);
+    this.queryRepository = repository;
     this.mapper = mapper;
+  }
+
+  public RestUtil.PutResponse<Query> addFollower(
+      SecurityContext securityContext, UUID id, UUID userId) {
+    return queryRepository.addFollower(securityContext.getUserPrincipal().getName(), id, userId);
+  }
+
+  public RestUtil.PutResponse<Query> deleteFollower(
+      SecurityContext securityContext, UUID id, UUID userId) {
+    return queryRepository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId);
+  }
+
+  public RestUtil.PutResponse<Query> updateVote(
+      SecurityContext securityContext, UUID id, VoteRequest request) {
+    return queryRepository.updateVote(securityContext.getUserPrincipal().getName(), id, request);
   }
 }

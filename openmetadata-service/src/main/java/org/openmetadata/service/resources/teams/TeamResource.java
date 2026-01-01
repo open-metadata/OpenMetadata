@@ -71,7 +71,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.teams.TeamService;
 import org.openmetadata.service.util.CSVExportResponse;
 
 @Slf4j
@@ -89,7 +90,7 @@ import org.openmetadata.service.util.CSVExportResponse;
     requiredForOps = true) // Load after roles, and policy resources
 public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static final String COLLECTION_PATH = "/v1/teams/";
-  private final TeamMapper mapper = new TeamMapper();
+  private final TeamService service;
   static final String FIELDS =
       "owners,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount,domains";
 
@@ -104,8 +105,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return team;
   }
 
-  public TeamResource(Authorizer authorizer, Limits limits) {
+  public TeamResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.TEAM, authorizer, limits);
+    this.service = serviceRegistry.getService(TeamService.class);
   }
 
   @Override
@@ -162,7 +164,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("isJoinable")
           Boolean isJoinable) {
     ListFilter filter = new ListFilter(Include.NON_DELETED);
-    return new ResultList<>(repository.listHierarchy(filter, limitParam, isJoinable));
+    return new ResultList<>(service.listHierarchy(filter, limitParam, isJoinable));
   }
 
   @GET
@@ -376,7 +378,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) {
-    Team team = mapper.createToEntity(ct, securityContext.getUserPrincipal().getName());
+    Team team =
+        service.getMapper().createToEntity(ct, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, team);
   }
 
@@ -397,7 +400,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) {
-    Team team = mapper.createToEntity(ct, securityContext.getUserPrincipal().getName());
+    Team team =
+        service.getMapper().createToEntity(ct, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, team);
   }
 
@@ -424,10 +428,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
+    return Response.ok().entity(service.bulkAddAssets(securityContext, name, request)).build();
   }
 
   @PUT
@@ -453,10 +454,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
+    return Response.ok().entity(service.bulkRemoveAssets(securityContext, name, request)).build();
   }
 
   @GET
@@ -493,7 +491,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getTeamAssets(id, limit, offset)).build();
+    return Response.ok(service.getTeamAssets(id, limit, offset)).build();
   }
 
   @GET
@@ -533,7 +531,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getTeamAssetsByName(fqn, limit, offset)).build();
+    return Response.ok(service.getTeamAssetsByName(fqn, limit, offset)).build();
   }
 
   @PATCH
@@ -793,12 +791,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Context SecurityContext securityContext,
       @PathParam("teamId") UUID teamId,
       List<EntityReference> users) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_USERS);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
-    return repository
-        .updateTeamUsers(securityContext.getUserPrincipal().getName(), teamId, users)
-        .toResponse();
+    return service.updateTeamUsers(securityContext, teamId, users).toResponse();
   }
 
   @DELETE
@@ -826,13 +819,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Parameter(description = "Id of the user being removed", schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_USERS);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
-    return repository
-        .deleteTeamUser(
-            securityContext.getUserPrincipal().getName(), teamId, UUID.fromString(userId))
-        .toResponse();
+    return service.deleteTeamUser(securityContext, teamId, UUID.fromString(userId)).toResponse();
   }
 
   @PUT
@@ -881,7 +868,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public Response getAllTeamsWithAssetsCount(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    java.util.Map<String, Integer> result = repository.getAllTeamsWithAssetsCount();
-    return Response.ok(result).build();
+    return Response.ok(service.getAllTeamsWithAssetsCount()).build();
   }
 }

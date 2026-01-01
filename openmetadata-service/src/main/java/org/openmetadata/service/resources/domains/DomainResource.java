@@ -61,6 +61,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.domains.DomainService;
 import org.openmetadata.service.util.EntityHierarchyList;
 
 @Slf4j
@@ -74,11 +76,12 @@ import org.openmetadata.service.util.EntityHierarchyList;
 @Collection(name = "domains", order = 4) // initialize after user resource
 public class DomainResource extends EntityResource<Domain, DomainRepository> {
   public static final String COLLECTION_PATH = "/v1/domains/";
-  private final DomainMapper mapper = new DomainMapper();
   static final String FIELDS = "tags,children,childrenCount,owners,experts,extension,followers";
+  private final DomainService service;
 
-  public DomainResource(Authorizer authorizer, Limits limits) {
+  public DomainResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.DOMAIN, authorizer, limits);
+    this.service = serviceRegistry.getService(DomainService.class);
   }
 
   @Override
@@ -275,7 +278,8 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
                       schema = @Schema(implementation = CreateDomain.class)))
           @Valid
           CreateDomain create) {
-    Domain domain = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Domain domain =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, domain);
   }
 
@@ -306,7 +310,8 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
                       schema = @Schema(implementation = CreateDomain.class)))
           @Valid
           CreateDomain create) {
-    Domain domain = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Domain domain =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, domain);
   }
 

@@ -53,6 +53,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.serviceentities.StorageServiceEntityService;
 
 @Slf4j
 @Path("/v1/services/storageServices")
@@ -64,19 +66,21 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 @Collection(name = "storageServices")
 public class StorageServiceResource
     extends ServiceEntityResource<StorageService, StorageServiceRepository, StorageConnection> {
-  private final StorageServiceMapper mapper = new StorageServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/storageServices/";
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
+  private final StorageServiceEntityService service;
 
   @Override
-  public StorageService addHref(UriInfo uriInfo, StorageService service) {
-    super.addHref(uriInfo, service);
-    Entity.withHref(uriInfo, service.getOwners());
-    return service;
+  public StorageService addHref(UriInfo uriInfo, StorageService storageService) {
+    super.addHref(uriInfo, storageService);
+    Entity.withHref(uriInfo, storageService.getOwners());
+    return storageService;
   }
 
-  public StorageServiceResource(Authorizer authorizer, Limits limits) {
+  public StorageServiceResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.STORAGE_SERVICE, authorizer, limits, ServiceType.STORAGE);
+    this.service = serviceRegistry.getService(StorageServiceEntityService.class);
   }
 
   @Override
@@ -401,9 +405,9 @@ public class StorageServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateStorageService create) {
-    StorageService service =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service);
+    StorageService storageService =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    Response response = create(uriInfo, securityContext, storageService);
     decryptOrNullify(securityContext, (StorageService) response.getEntity());
     return response;
   }
@@ -427,9 +431,9 @@ public class StorageServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateStorageService update) {
-    StorageService service =
-        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    StorageService storageService =
+        service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(storageService));
     decryptOrNullify(securityContext, (StorageService) response.getEntity());
     return response;
   }

@@ -54,6 +54,8 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.datainsight.DataInsightChartService;
 
 @Slf4j
 @Path("/v1/analytics/dataInsights/charts")
@@ -65,14 +67,16 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 public class DataInsightChartResource
     extends EntityResource<DataInsightChart, DataInsightChartRepository> {
 
-  private final DataInsightChartMapper mapper = new DataInsightChartMapper();
+  private final DataInsightChartService service;
   public static final String COLLECTION_PATH = DataInsightChartRepository.COLLECTION_PATH;
   public static final String FIELDS = "owners";
   private final SearchRepository searchRepository;
 
-  public DataInsightChartResource(Authorizer authorizer, Limits limits) {
+  public DataInsightChartResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.DATA_INSIGHT_CHART, authorizer, limits);
     searchRepository = Entity.getSearchRepository();
+    this.service = serviceRegistry.getService(DataInsightChartService.class);
   }
 
   public static class DataInsightChartList extends ResultList<DataInsightChart> {
@@ -300,7 +304,7 @@ public class DataInsightChartResource
       @Context SecurityContext securityContext,
       @Valid CreateDataInsightChart create) {
     DataInsightChart dataInsightChart =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dataInsightChart);
   }
 
@@ -382,7 +386,7 @@ public class DataInsightChartResource
       @Context SecurityContext securityContext,
       @Valid CreateDataInsightChart create) {
     DataInsightChart dataInsightChart =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dataInsightChart);
   }
 

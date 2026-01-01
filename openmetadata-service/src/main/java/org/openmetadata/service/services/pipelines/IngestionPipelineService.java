@@ -15,6 +15,7 @@ package org.openmetadata.service.services.pipelines;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.service.Entity;
@@ -39,8 +40,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.INGESTION_PIPELINE)
 public class IngestionPipelineService extends AbstractEntityService<IngestionPipeline> {
 
-  @SuppressWarnings("unused")
-  private final IngestionPipelineMapper mapper;
+  @Getter private final IngestionPipelineMapper mapper;
 
   /**
    * Constructor with dependency injection.

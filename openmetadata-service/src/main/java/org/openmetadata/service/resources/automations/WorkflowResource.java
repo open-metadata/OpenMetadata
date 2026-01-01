@@ -68,6 +68,8 @@ import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.automations.WorkflowService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
@@ -83,18 +85,22 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 public class WorkflowResource extends EntityResource<Workflow, WorkflowRepository> {
   public static final String COLLECTION_PATH = "/v1/automations/workflows";
   static final String FIELDS = "owners";
-  private WorkflowMapper mapper;
   private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
+  private WorkflowService workflowService;
 
   public WorkflowResource(Authorizer authorizer, Limits limits) {
     super(Entity.WORKFLOW, authorizer, limits);
   }
 
+  public WorkflowResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
+    super(Entity.WORKFLOW, authorizer, limits);
+    this.workflowService = serviceRegistry.getService(WorkflowService.class);
+  }
+
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     this.openMetadataApplicationConfig = config;
-    this.mapper = new WorkflowMapper();
     this.pipelineServiceClient =
         PipelineServiceClientFactory.createPipelineServiceClient(
             config.getPipelineServiceClientConfiguration());
@@ -331,7 +337,10 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
-    Workflow workflow = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Workflow workflow =
+        workflowService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, unmask(workflow));
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -452,7 +461,10 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
-    Workflow workflow = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Workflow workflow =
+        workflowService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     workflow = unmask(workflow);
     Response response = createOrUpdate(uriInfo, securityContext, workflow);
     return Response.fromResponse(response)

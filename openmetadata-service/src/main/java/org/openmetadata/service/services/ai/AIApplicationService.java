@@ -15,6 +15,7 @@ package org.openmetadata.service.services.ai;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.service.Entity;
@@ -36,8 +37,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.AI_APPLICATION)
 public class AIApplicationService extends AbstractEntityService<AIApplication> {
 
-  @SuppressWarnings("unused")
-  private final AIApplicationMapper mapper;
+  @Getter private final AIApplicationMapper mapper;
 
   @Inject
   public AIApplicationService(

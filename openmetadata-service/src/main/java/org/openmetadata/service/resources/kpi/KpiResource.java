@@ -52,6 +52,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.kpi.KpiService;
 
 @Slf4j
 @Path("/v1/kpi")
@@ -62,7 +64,7 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "kpi")
 public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   public static final String COLLECTION_PATH = "/v1/kpi";
-  private final KpiMapper mapper = new KpiMapper();
+  private final KpiService service;
   static final String FIELDS = "owners,dataInsightChart,kpiResult";
 
   @Override
@@ -72,8 +74,9 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     return kpi;
   }
 
-  public KpiResource(Authorizer authorizer, Limits limits) {
+  public KpiResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.KPI, authorizer, limits);
+    this.service = serviceRegistry.getService(KpiService.class);
   }
 
   @Override
@@ -285,7 +288,8 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateKpiRequest create) {
-    Kpi kpi = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Kpi kpi =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     // TODO fix this
     //    dao.validateDataInsightChartOneToOneMapping(kpi.getDataInsightChart().getId());
     return create(uriInfo, securityContext, kpi);
@@ -366,7 +370,8 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateKpiRequest create) {
-    Kpi kpi = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Kpi kpi =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, kpi);
   }
 

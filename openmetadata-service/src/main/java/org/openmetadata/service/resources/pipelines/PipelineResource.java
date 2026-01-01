@@ -71,6 +71,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.pipelines.PipelineService;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Path("/v1/pipelines")
@@ -83,9 +85,10 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Collection(name = "pipelines")
 public class PipelineResource extends EntityResource<Pipeline, PipelineRepository> {
   public static final String COLLECTION_PATH = "v1/pipelines/";
-  private final PipelineMapper mapper = new PipelineMapper();
   static final String FIELDS =
       "owners,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domains,sourceHash";
+
+  private final PipelineService pipelineService;
 
   @Override
   public Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {
@@ -96,6 +99,12 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
   public PipelineResource(Authorizer authorizer, Limits limits) {
     super(Entity.PIPELINE, authorizer, limits);
+    this.pipelineService = null;
+  }
+
+  public PipelineResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
+    super(Entity.PIPELINE, authorizer, limits);
+    this.pipelineService = serviceRegistry.getService(PipelineService.class);
   }
 
   @Override
@@ -323,7 +332,10 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePipeline create) {
-    Pipeline pipeline = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Pipeline pipeline =
+        pipelineService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, pipeline);
   }
 
@@ -443,7 +455,10 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePipeline create) {
-    Pipeline pipeline = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Pipeline pipeline =
+        pipelineService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, pipeline);
   }
 
@@ -472,10 +487,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @PathParam("fqn")
           String fqn,
       @Valid PipelineStatus pipelineStatus) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return repository.addPipelineStatus(fqn, pipelineStatus).toResponse();
+    return pipelineService.addPipelineStatus(securityContext, fqn, pipelineStatus).toResponse();
   }
 
   @GET
@@ -585,11 +597,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(description = "Timestamp of the pipeline status", schema = @Schema(type = "long"))
           @PathParam("timestamp")
           Long timestamp) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    Pipeline pipeline = repository.deletePipelineStatus(fqn, timestamp);
-    return addHref(uriInfo, pipeline);
+    return pipelineService.deletePipelineStatus(uriInfo, securityContext, fqn, timestamp);
   }
 
   @PUT
@@ -618,9 +626,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return pipelineService.addFollower(securityContext, id, userId).toResponse();
   }
 
   @DELETE
@@ -649,9 +655,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return pipelineService.deleteFollower(securityContext, id, userId).toResponse();
   }
 
   @PUT
@@ -676,9 +680,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return pipelineService.updateVote(securityContext, id, request).toResponse();
   }
 
   @GET

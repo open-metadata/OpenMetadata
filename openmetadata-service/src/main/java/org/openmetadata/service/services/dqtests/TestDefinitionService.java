@@ -15,6 +15,7 @@ package org.openmetadata.service.services.dqtests;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.service.Entity;
@@ -36,8 +37,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.TEST_DEFINITION)
 public class TestDefinitionService extends AbstractEntityService<TestDefinition> {
 
-  @SuppressWarnings("unused")
-  private final TestDefinitionMapper mapper;
+  @Getter private final TestDefinitionMapper mapper;
 
   @Inject
   public TestDefinitionService(

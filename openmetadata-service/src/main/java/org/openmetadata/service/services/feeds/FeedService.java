@@ -18,6 +18,8 @@ import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.jdbi3.FeedRepository;
+import org.openmetadata.service.resources.feeds.FeedMapper;
+import org.openmetadata.service.resources.feeds.PostMapper;
 import org.openmetadata.service.security.Authorizer;
 
 @Slf4j
@@ -25,6 +27,8 @@ import org.openmetadata.service.security.Authorizer;
 public class FeedService {
 
   @Getter private final FeedRepository repository;
+  @Getter private final FeedMapper mapper = new FeedMapper();
+  @Getter private final PostMapper postMapper = new PostMapper();
   private final Authorizer authorizer;
 
   @Inject

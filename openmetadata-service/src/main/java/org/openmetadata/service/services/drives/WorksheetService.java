@@ -15,10 +15,12 @@ package org.openmetadata.service.services.drives;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.WorksheetRepository;
+import org.openmetadata.service.resources.drives.WorksheetMapper;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.AbstractEntityService;
@@ -29,9 +31,15 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.WORKSHEET)
 public class WorksheetService extends AbstractEntityService<Worksheet> {
 
+  @Getter private final WorksheetMapper mapper;
+
   @Inject
   public WorksheetService(
-      WorksheetRepository repository, SearchRepository searchRepository, Authorizer authorizer) {
+      WorksheetRepository repository,
+      SearchRepository searchRepository,
+      Authorizer authorizer,
+      WorksheetMapper mapper) {
     super(repository, searchRepository, authorizer, Entity.WORKSHEET);
+    this.mapper = mapper;
   }
 }

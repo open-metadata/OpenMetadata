@@ -15,6 +15,7 @@ package org.openmetadata.service.services.apis;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.service.Entity;
@@ -36,8 +37,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.API_COLLECTION)
 public class APICollectionService extends AbstractEntityService<APICollection> {
 
-  @SuppressWarnings("unused")
-  private final APICollectionMapper mapper;
+  @Getter private final APICollectionMapper mapper;
 
   @Inject
   public APICollectionService(

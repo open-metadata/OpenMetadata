@@ -54,6 +54,8 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.governance.WorkflowDefinitionService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -71,10 +73,16 @@ public class WorkflowDefinitionResource
     extends EntityResource<WorkflowDefinition, WorkflowDefinitionRepository> {
   public static final String COLLECTION_PATH = "v1/governance/workflowDefinitions/";
   static final String FIELDS = "owners";
-  private final WorkflowDefinitionMapper mapper = new WorkflowDefinitionMapper();
+  private WorkflowDefinitionService workflowDefinitionService;
 
   public WorkflowDefinitionResource(Authorizer authorizer, Limits limits) {
     super(Entity.WORKFLOW_DEFINITION, authorizer, limits);
+  }
+
+  public WorkflowDefinitionResource(
+      ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
+    super(Entity.WORKFLOW_DEFINITION, authorizer, limits);
+    this.workflowDefinitionService = serviceRegistry.getService(WorkflowDefinitionService.class);
   }
 
   public static class WorkflowDefinitionList extends ResultList<WorkflowDefinition> {
@@ -323,7 +331,9 @@ public class WorkflowDefinitionResource
       @Context SecurityContext securityContext,
       @Valid CreateWorkflowDefinition create) {
     WorkflowDefinition workflowDefinition =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        workflowDefinitionService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
 
     // Use WorkflowTransactionManager for atomic operation across both databases
     // It handles both authorization and transaction coordination
@@ -425,7 +435,9 @@ public class WorkflowDefinitionResource
       @Context SecurityContext securityContext,
       @Valid CreateWorkflowDefinition create) {
     WorkflowDefinition workflowDefinition =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        workflowDefinitionService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
 
     // Let the TransactionManager handle authorization and transaction coordination
     // This ensures atomic operations across both databases
@@ -593,7 +605,9 @@ public class WorkflowDefinitionResource
       @Valid CreateWorkflowDefinition create) {
     // Convert to entity for validation
     WorkflowDefinition workflowDefinition =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        workflowDefinitionService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
 
     // Authorization check - user must have at least VIEW permission for workflows
     OperationContext operationContext =

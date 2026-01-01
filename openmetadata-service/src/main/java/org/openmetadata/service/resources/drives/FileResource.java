@@ -62,6 +62,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.drives.FileService;
 
 @Path("/v1/drives/files")
 @Tag(name = "Files", description = "A `File` is a document or resource stored in a Drive Service.")
@@ -72,7 +74,7 @@ public class FileResource extends EntityResource<File, FileRepository> {
   public static final String COLLECTION_PATH = "v1/drives/files/";
   static final String FIELDS =
       "owners,directory,usageSummary,tags,fileExtension,extension,domains,sourceHash,lifeCycle,votes,followers";
-  private final FileMapper mapper = new FileMapper();
+  private final FileService service;
 
   @Override
   public File addHref(UriInfo uriInfo, File file) {
@@ -91,6 +93,12 @@ public class FileResource extends EntityResource<File, FileRepository> {
 
   public FileResource(Authorizer authorizer, Limits limits) {
     super(Entity.FILE, authorizer, limits);
+    this.service = null;
+  }
+
+  public FileResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
+    super(Entity.FILE, authorizer, limits);
+    this.service = serviceRegistry.getService(FileService.class);
   }
 
   public static class FileList extends ResultList<File> {
@@ -265,7 +273,8 @@ public class FileResource extends EntityResource<File, FileRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateFile create) {
-    File file = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    File file =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, file);
   }
 
@@ -287,7 +296,7 @@ public class FileResource extends EntityResource<File, FileRepository> {
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateFile> createRequests) {
-    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+    return processBulkRequest(uriInfo, securityContext, createRequests, service.getMapper(), async);
   }
 
   @PATCH
@@ -366,7 +375,8 @@ public class FileResource extends EntityResource<File, FileRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateFile create) {
-    File file = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    File file =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, file);
   }
 

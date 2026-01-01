@@ -15,6 +15,7 @@ package org.openmetadata.service.services.drives;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.File;
 import org.openmetadata.service.Entity;
@@ -36,8 +37,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.FILE)
 public class FileService extends AbstractEntityService<File> {
 
-  @SuppressWarnings("unused")
-  private final FileMapper mapper;
+  @Getter private final FileMapper mapper;
 
   @Inject
   public FileService(

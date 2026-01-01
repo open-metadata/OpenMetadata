@@ -15,10 +15,12 @@ package org.openmetadata.service.services.governance;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
+import org.openmetadata.service.resources.governance.WorkflowDefinitionMapper;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.AbstractEntityService;
@@ -29,11 +31,15 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.WORKFLOW_DEFINITION)
 public class WorkflowDefinitionService extends AbstractEntityService<WorkflowDefinition> {
 
+  @Getter private final WorkflowDefinitionMapper mapper;
+
   @Inject
   public WorkflowDefinitionService(
       WorkflowDefinitionRepository repository,
       SearchRepository searchRepository,
-      Authorizer authorizer) {
+      Authorizer authorizer,
+      WorkflowDefinitionMapper mapper) {
     super(repository, searchRepository, authorizer, Entity.WORKFLOW_DEFINITION);
+    this.mapper = mapper;
   }
 }

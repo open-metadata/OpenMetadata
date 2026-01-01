@@ -15,6 +15,7 @@ package org.openmetadata.service.services.data;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.service.Entity;
@@ -36,8 +37,7 @@ import org.openmetadata.service.services.Service;
 @Service(entityType = Entity.DATA_CONTRACT)
 public class DataContractService extends AbstractEntityService<DataContract> {
 
-  @SuppressWarnings("unused")
-  private final DataContractMapper mapper;
+  @Getter private final DataContractMapper mapper;
 
   @Inject
   public DataContractService(

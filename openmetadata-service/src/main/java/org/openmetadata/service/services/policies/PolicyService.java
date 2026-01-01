@@ -13,31 +13,29 @@
 
 package org.openmetadata.service.services.policies;
 
+import jakarta.ws.rs.core.SecurityContext;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.resources.policies.PolicyMapper;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.CompiledRule;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 
-/**
- * Service layer for Policy entity operations.
- *
- * <p>Extends AbstractEntityService to inherit all standard CRUD operations with proper
- * authorization and repository delegation.
- */
 @Slf4j
 @Singleton
 @Service(entityType = Entity.POLICY)
 public class PolicyService extends AbstractEntityService<Policy> {
 
-  @SuppressWarnings("unused")
-  private final PolicyMapper mapper;
+  @Getter private final PolicyMapper mapper;
 
   @Inject
   public PolicyService(
@@ -47,5 +45,12 @@ public class PolicyService extends AbstractEntityService<Policy> {
       PolicyMapper mapper) {
     super(repository, searchRepository, authorizer, Entity.POLICY);
     this.mapper = mapper;
+  }
+
+  public void validateCondition(SecurityContext securityContext, String expression) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
+    CompiledRule.validateExpression(expression, Boolean.class);
   }
 }

@@ -62,6 +62,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.metrics.MetricService;
 
 @Path("/v1/metrics")
 @Tag(
@@ -74,12 +76,13 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "metrics")
 public class MetricResource extends EntityResource<Metric, MetricRepository> {
   public static final String COLLECTION_PATH = "v1/metrics/";
-  private final MetricMapper mapper = new MetricMapper();
+  private final MetricService service;
   static final String FIELDS =
       "owners,reviewers,relatedMetrics,followers,tags,extension,domains,dataProducts";
 
-  public MetricResource(Authorizer authorizer, Limits limits) {
+  public MetricResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.METRIC, authorizer, limits);
+    this.service = serviceRegistry.getService(MetricService.class);
   }
 
   @Override
@@ -286,7 +289,8 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMetric create) {
-    Metric metric = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Metric metric =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, metric);
   }
 
@@ -309,7 +313,8 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMetric create) {
-    Metric metric = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    Metric metric =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, metric);
   }
 
@@ -331,7 +336,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateMetric> createRequests) {
-    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+    return processBulkRequest(uriInfo, securityContext, createRequests, service.getMapper(), async);
   }
 
   @PATCH

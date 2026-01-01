@@ -64,6 +64,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.domains.DataProductService;
 
 @Slf4j
 @Path("/v1/dataProducts")
@@ -77,12 +79,14 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 @Collection(name = "dataProducts", order = 4) // initialize after user resource
 public class DataProductResource extends EntityResource<DataProduct, DataProductRepository> {
   public static final String COLLECTION_PATH = "/v1/dataProducts/";
-  private final DataProductMapper mapper = new DataProductMapper();
   static final String FIELDS =
       "domains,owners,reviewers,experts,extension,tags,followers,inputPorts,outputPorts";
+  private final DataProductService service;
 
-  public DataProductResource(Authorizer authorizer, Limits limits) {
+  public DataProductResource(
+      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.DATA_PRODUCT, authorizer, limits);
+    this.service = serviceRegistry.getService(DataProductService.class);
   }
 
   @Override
@@ -296,7 +300,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @Valid
           CreateDataProduct create) {
     DataProduct dataProduct =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dataProduct);
   }
 
@@ -328,7 +332,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @Valid
           CreateDataProduct create) {
     DataProduct dataProduct =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dataProduct);
   }
 

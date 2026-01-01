@@ -62,6 +62,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.ServiceRegistry;
+import org.openmetadata.service.services.ml.MlModelService;
 
 @Path("/v1/mlmodels")
 @Tag(
@@ -73,7 +75,7 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "mlmodels")
 public class MlModelResource extends EntityResource<MlModel, MlModelRepository> {
   public static final String COLLECTION_PATH = "v1/mlmodels/";
-  private final MlModelMapper mapper = new MlModelMapper();
+  private MlModelService mlModelService;
   static final String FIELDS =
       "owners,dashboard,followers,tags,usageSummary,extension,domains,sourceHash";
 
@@ -87,6 +89,11 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
 
   public MlModelResource(Authorizer authorizer, Limits limits) {
     super(Entity.MLMODEL, authorizer, limits);
+  }
+
+  public MlModelResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
+    super(Entity.MLMODEL, authorizer, limits);
+    this.mlModelService = serviceRegistry.getService(MlModelService.class);
   }
 
   @Override
@@ -251,7 +258,10 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMlModel create) {
-    MlModel mlModel = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    MlModel mlModel =
+        mlModelService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, mlModel);
   }
 
@@ -371,7 +381,10 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMlModel create) {
-    MlModel mlModel = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    MlModel mlModel =
+        mlModelService
+            .getMapper()
+            .createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, mlModel);
   }
 
@@ -401,9 +414,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return service.addFollower(securityContext, id, userId).toResponse();
   }
 
   @DELETE
@@ -432,9 +443,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return service.deleteFollower(securityContext, id, userId).toResponse();
   }
 
   @GET
@@ -515,9 +524,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return service.updateVote(securityContext, id, request).toResponse();
   }
 
   @DELETE
