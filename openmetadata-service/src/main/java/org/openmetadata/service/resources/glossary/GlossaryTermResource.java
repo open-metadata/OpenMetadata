@@ -13,7 +13,9 @@
 
 package org.openmetadata.service.resources.glossary;
 
+import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
+import static org.openmetadata.service.services.glossary.GlossaryTermService.FIELDS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -64,27 +66,18 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.AuthRequest;
-import org.openmetadata.service.security.AuthorizationLogic;
-import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.services.ServiceRegistry;
-import org.openmetadata.service.services.glossary.GlossaryService;
 import org.openmetadata.service.services.glossary.GlossaryTermService;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.MoveGlossaryTermResponse;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Path("/v1/glossaryTerms")
@@ -96,43 +89,12 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 @Collection(
     name = "glossaryTerms",
     order = 7) // Initialized after Glossary, Classification, and Tags
-public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, GlossaryTermRepository> {
+public class GlossaryTermResource {
   public static final String COLLECTION_PATH = "v1/glossaryTerms/";
-  static final String FIELDS =
-      "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount";
-  private final GlossaryTermService glossaryTermService;
-  private final GlossaryService glossaryService;
+  private final GlossaryTermService service;
 
-  @Override
-  public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {
-    super.addHref(uriInfo, term);
-    Entity.withHref(uriInfo, term.getGlossary());
-    Entity.withHref(uriInfo, term.getParent());
-    Entity.withHref(uriInfo, term.getRelatedTerms());
-    return term;
-  }
-
-  public GlossaryTermResource(
-      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.GLOSSARY_TERM, authorizer, limits);
-    this.glossaryTermService = serviceRegistry.getService(GlossaryTermService.class);
-    this.glossaryService = serviceRegistry.getService(GlossaryService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("children,relatedTerms,reviewers,usageCount", MetadataOperation.VIEW_BASIC);
-    return null;
-  }
-
-  public static class GlossaryTermList extends ResultList<GlossaryTerm> {
-    /* Required for serde */
-  }
-
-  @Override
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    super.initialize(config);
-    glossaryTermService.initialize();
+  public GlossaryTermResource(GlossaryTermService service) {
+    this.service = service;
   }
 
   @GET
@@ -151,7 +113,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = GlossaryTermList.class)))
+                    schema = @Schema(implementation = GlossaryTermService.GlossaryTermList.class)))
       })
   public ResultList<GlossaryTerm> list(
       @Context UriInfo uriInfo,
@@ -205,23 +167,21 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
               schema = @Schema(type = "string"))
           @QueryParam("directChildrenOf")
           String parentTermFQNParam) {
-    RestUtil.validateCursors(before, after);
-    Fields fields = getFields(fieldsParam);
+    Fields fields = service.getFields(fieldsParam);
+    GlossaryTermRepository repository = service.getRepository();
 
     ResourceContextInterface glossaryResourceContext = new ResourceContext<>(GLOSSARY);
     OperationContext glossaryOperationContext =
-        new OperationContext(GLOSSARY, getViewOperations(fields));
+        new OperationContext(GLOSSARY, MetadataOperation.VIEW_BASIC);
     OperationContext glossaryTermOperationContext =
-        new OperationContext(entityType, getViewOperations(fields));
+        new OperationContext(GLOSSARY_TERM, MetadataOperation.VIEW_BASIC);
     ResourceContextInterface glossaryTermResourceContext = new ResourceContext<>(GLOSSARY_TERM);
 
     List<AuthRequest> authRequests =
         List.of(
             new AuthRequest(glossaryOperationContext, glossaryResourceContext),
             new AuthRequest(glossaryTermOperationContext, glossaryTermResourceContext));
-    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
 
-    // Filter by glossary
     String fqn = null;
     EntityReference glossary = null;
     if (glossaryIdParam != null) {
@@ -229,13 +189,11 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
       fqn = glossary.getFullyQualifiedName();
     }
 
-    // Filter by glossary parent term
     if (parentTermParam != null) {
       GlossaryTerm parentTerm =
           repository.get(null, parentTermParam, repository.getFields("parent"));
       fqn = parentTerm.getFullyQualifiedName();
 
-      // Ensure parent glossary term belongs to the glossary
       if ((glossary != null) && (!parentTerm.getGlossary().getId().equals(glossary.getId()))) {
         throw new IllegalArgumentException(
             CatalogExceptionMessage.glossaryTermMismatch(
@@ -247,15 +205,8 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
             .addQueryParam("parent", fqn)
             .addQueryParam("directChildrenOf", parentTermFQNParam);
 
-    ResultList<GlossaryTerm> terms;
-    if (before != null) { // Reverse paging
-      terms =
-          repository.listBefore(
-              uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
-    } else { // Forward paging or first page
-      terms = repository.listAfter(uriInfo, fields, filter, limitParam, after);
-    }
-    return addHref(uriInfo, terms);
+    return service.listInternal(
+        uriInfo, securityContext, fields, filter, limitParam, before, after, authRequests);
   }
 
   @GET
@@ -273,7 +224,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = GlossaryTermList.class)))
+                    schema = @Schema(implementation = GlossaryTermService.GlossaryTermList.class)))
       })
   public ResultList<GlossaryTerm> searchGlossaryTerms(
       @Context UriInfo uriInfo,
@@ -310,19 +261,20 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
           @DefaultValue("non-deleted")
           Include include) {
 
-    Fields fields = getFields(fieldsParam);
+    Fields fields = service.getFields(fieldsParam);
+    GlossaryTermRepository repository = service.getRepository();
+
     ResourceContextInterface glossaryResourceContext = new ResourceContext<>(GLOSSARY);
     OperationContext glossaryOperationContext =
-        new OperationContext(GLOSSARY, getViewOperations(fields));
+        new OperationContext(GLOSSARY, MetadataOperation.VIEW_BASIC);
     OperationContext glossaryTermOperationContext =
-        new OperationContext(entityType, getViewOperations(fields));
+        new OperationContext(GLOSSARY_TERM, MetadataOperation.VIEW_BASIC);
     ResourceContextInterface glossaryTermResourceContext = new ResourceContext<>(GLOSSARY_TERM);
 
     List<AuthRequest> authRequests =
         List.of(
             new AuthRequest(glossaryOperationContext, glossaryResourceContext),
             new AuthRequest(glossaryTermOperationContext, glossaryTermResourceContext));
-    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
 
     ResultList<GlossaryTerm> result;
     if (glossaryId != null) {
@@ -342,7 +294,6 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
           repository.searchGlossaryTermsByParentFQN(
               parentFqn, query, limitParam, offsetParam, fieldsParam, include);
     } else {
-      // Search across all glossary terms without parent filter
       ListFilter filter = new ListFilter(include);
       ResultList<GlossaryTerm> allTerms =
           repository.listAfter(uriInfo, fields, filter, Integer.MAX_VALUE, null);
@@ -382,7 +333,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
       result = new ResultList<>(paginatedResults, before, after, total);
     }
 
-    return addHref(uriInfo, result);
+    return service.addHref(uriInfo, result);
   }
 
   @GET
@@ -420,7 +371,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -460,7 +411,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -484,7 +435,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
       @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -516,7 +467,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -540,7 +491,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
       @Valid CreateGlossaryTerm create) {
     GlossaryTerm term =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, term);
+    return service.create(uriInfo, securityContext, term);
   }
 
   @POST
@@ -571,7 +522,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
                         .getMapper()
                         .createToEntity(create, securityContext.getUserPrincipal().getName()))
             .toList();
-    List<GlossaryTerm> result = repository.createMany(uriInfo, terms);
+    List<GlossaryTerm> result = service.getRepository().createMany(uriInfo, terms);
     return Response.ok(result).build();
   }
 
@@ -601,7 +552,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -630,7 +581,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -655,7 +606,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
       @Valid CreateGlossaryTerm create) {
     GlossaryTerm term =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, term);
+    return service.createOrUpdate(uriInfo, securityContext, term);
   }
 
   @PUT
@@ -680,7 +631,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
+    return service
         .updateVote(securityContext.getUserPrincipal().getName(), id, request)
         .toResponse();
   }
@@ -707,7 +658,9 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
-    return Response.ok().entity(repository.bulkAddAndValidateGlossaryToAssets(id, request)).build();
+    return Response.ok()
+        .entity(service.getRepository().bulkAddAndValidateGlossaryToAssets(id, request))
+        .build();
   }
 
   @PUT
@@ -732,7 +685,9 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid ValidateGlossaryTagsRequest request) {
-    return Response.ok().entity(repository.validateGlossaryTagsAddition(id, request)).build();
+    return Response.ok()
+        .entity(service.getRepository().validateGlossaryTagsAddition(id, request))
+        .build();
   }
 
   @PUT
@@ -757,7 +712,9 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
-    return Response.ok().entity(repository.bulkRemoveGlossaryToAssets(id, request)).build();
+    return Response.ok()
+        .entity(service.getRepository().bulkRemoveGlossaryToAssets(id, request))
+        .build();
   }
 
   @GET
@@ -797,7 +754,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getGlossaryTermAssets(id, limit, offset)).build();
+    return Response.ok(service.getRepository().getGlossaryTermAssets(id, limit, offset)).build();
   }
 
   @GET
@@ -839,7 +796,8 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getGlossaryTermAssetsByName(fqn, limit, offset)).build();
+    return Response.ok(service.getRepository().getGlossaryTermAssetsByName(fqn, limit, offset))
+        .build();
   }
 
   @PUT
@@ -873,15 +831,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
                       mediaType = MediaType.APPLICATION_JSON,
                       schema = @Schema(implementation = MoveGlossaryTermRequest.class)))
           MoveGlossaryTermRequest moveRequest) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_GLOSSARY_TERMS);
-    authorizer.authorize(
-        securityContext,
-        operationContext,
-        getResourceContextById(id, ResourceContextInterface.Operation.PUT));
-
-    // Validate the move operation synchronously before submitting to async executor
-    // This will throw IllegalArgumentException if circular reference detected
+    GlossaryTermRepository repository = service.getRepository();
     repository.validateMoveOperation(id, moveRequest);
 
     String jobId = UUID.randomUUID().toString();
@@ -937,7 +887,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
       @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -966,7 +916,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
       @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -998,7 +948,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -1020,7 +970,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET
@@ -1038,7 +988,8 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
       })
   public Response getAllGlossaryTermsWithAssetsCount(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    java.util.Map<String, Integer> result = repository.getAllGlossaryTermsWithAssetsCount();
+    java.util.Map<String, Integer> result =
+        service.getRepository().getAllGlossaryTermsWithAssetsCount();
     return Response.ok(result).build();
   }
 
@@ -1064,7 +1015,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
           @PathParam("fqn")
           String fqn)
       throws IOException {
-    return exportCsvInternal(securityContext, fqn, false);
+    return service.exportCsvInternal(securityContext, fqn, false);
   }
 
   @GET
@@ -1094,7 +1045,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return exportCsvInternalAsync(securityContext, fqn, false);
+    return service.exportCsvInternalAsync(securityContext, fqn, false);
   }
 
   @PUT
@@ -1131,7 +1082,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
           @QueryParam("dryRun")
           boolean dryRun)
       throws IOException {
-    return importCsvInternal(securityContext, fqn, csv, dryRun, false);
+    return service.importCsvInternal(securityContext, fqn, csv, dryRun, false);
   }
 
   @PUT
@@ -1171,6 +1122,6 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
           @QueryParam("dryRun")
           @DefaultValue("true")
           boolean dryRun) {
-    return importCsvInternalAsync(securityContext, fqn, csv, dryRun, false);
+    return service.importCsvInternalAsync(securityContext, fqn, csv, dryRun, false);
   }
 }

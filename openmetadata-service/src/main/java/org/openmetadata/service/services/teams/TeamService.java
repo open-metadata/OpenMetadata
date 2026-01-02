@@ -32,43 +32,39 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TeamRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.teams.TeamMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Singleton
 @Service(entityType = Entity.TEAM)
-public class TeamService extends AbstractEntityService<Team> {
+public class TeamService extends EntityBaseService<Team, TeamRepository> {
 
   public static final String FIELDS =
       "owners,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount,domains";
 
   @Getter private final TeamMapper mapper;
-  private final TeamRepository teamRepository;
 
   @Inject
   public TeamService(
-      TeamRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer,
-      TeamMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.TEAM);
-    this.teamRepository = repository;
+      TeamRepository repository, Authorizer authorizer, TeamMapper mapper, Limits limits) {
+    super(new ResourceEntityInfo<>(Entity.TEAM, Team.class), repository, authorizer, limits);
     this.mapper = mapper;
   }
 
+  @Override
   public Team addHref(UriInfo uriInfo, Team team) {
-    Entity.withHref(uriInfo, team.getOwners());
+    super.addHref(uriInfo, team);
     Entity.withHref(uriInfo, team.getFollowers());
     Entity.withHref(uriInfo, team.getExperts());
     Entity.withHref(uriInfo, team.getReviewers());
     Entity.withHref(uriInfo, team.getChildren());
-    Entity.withHref(uriInfo, team.getDomains());
     Entity.withHref(uriInfo, team.getDataProducts());
     Entity.withHref(uriInfo, team.getUsers());
     Entity.withHref(uriInfo, team.getDefaultRoles());
@@ -83,56 +79,87 @@ public class TeamService extends AbstractEntityService<Team> {
   public static class TeamHierarchyList extends ResultList<TeamHierarchy> {}
 
   public List<TeamHierarchy> listHierarchy(ListFilter filter, int limit, Boolean isJoinable) {
-    return teamRepository.listHierarchy(filter, limit, isJoinable);
+    return repository.listHierarchy(filter, limit, isJoinable);
   }
 
   public BulkOperationResult bulkAddAssets(
       SecurityContext securityContext, String name, BulkAssets request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return teamRepository.bulkAddAssets(name, request);
+    authorizeEditAll(securityContext, name);
+    return repository.bulkAddAssets(name, request);
   }
 
   public BulkOperationResult bulkRemoveAssets(
       SecurityContext securityContext, String name, BulkAssets request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return teamRepository.bulkRemoveAssets(name, request);
+    authorizeEditAll(securityContext, name);
+    return repository.bulkRemoveAssets(name, request);
   }
 
   public ResultList<EntityReference> getTeamAssets(UUID id, int limit, int offset) {
-    return teamRepository.getTeamAssets(id, limit, offset);
+    return repository.getTeamAssets(id, limit, offset);
   }
 
   public ResultList<EntityReference> getTeamAssetsByName(String fqn, int limit, int offset) {
-    return teamRepository.getTeamAssetsByName(fqn, limit, offset);
+    return repository.getTeamAssetsByName(fqn, limit, offset);
   }
 
   public RestUtil.PutResponse<Team> updateTeamUsers(
       SecurityContext securityContext, UUID teamId, List<EntityReference> users) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_USERS);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
-    return teamRepository.updateTeamUsers(
-        securityContext.getUserPrincipal().getName(), teamId, users);
+    authorizeEditUsers(securityContext, teamId);
+    return repository.updateTeamUsers(securityContext.getUserPrincipal().getName(), teamId, users);
   }
 
   public RestUtil.PutResponse<Team> deleteTeamUser(
       SecurityContext securityContext, UUID teamId, UUID userId) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_USERS);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
-    return teamRepository.deleteTeamUser(
-        securityContext.getUserPrincipal().getName(), teamId, userId);
+    authorizeEditUsers(securityContext, teamId);
+    return repository.deleteTeamUser(securityContext.getUserPrincipal().getName(), teamId, userId);
   }
 
   public Map<String, Integer> getAllTeamsWithAssetsCount() {
-    return teamRepository.getAllTeamsWithAssetsCount();
+    return repository.getAllTeamsWithAssetsCount();
   }
 
   public void initOrganization() {
-    teamRepository.initOrganization();
+    repository.initOrganization();
+  }
+
+  public ResultList<Team> listTeams(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fieldsParam,
+      ListFilter filter,
+      int limitParam,
+      String before,
+      String after) {
+    authorizeViewBasic(securityContext, filter);
+    org.openmetadata.service.util.EntityUtil.addDomainQueryParam(
+        securityContext, filter, Entity.TEAM);
+    org.openmetadata.service.util.EntityUtil.Fields fields = getFields(fieldsParam);
+    ResultList<Team> resultList;
+    if (before != null) {
+      resultList = repository.listBefore(uriInfo, fields, filter, limitParam, before);
+    } else {
+      resultList = repository.listAfter(uriInfo, fields, filter, limitParam, after);
+    }
+    return resultList;
+  }
+
+  private void authorizeEditAll(SecurityContext securityContext, String name) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+  }
+
+  private void authorizeEditUsers(SecurityContext securityContext, UUID teamId) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_USERS);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
+  }
+
+  private void authorizeViewBasic(SecurityContext securityContext, ListFilter filter) {
+    OperationContext operationContext =
+        new OperationContext(Entity.TEAM, MetadataOperation.VIEW_BASIC);
+    org.openmetadata.service.security.policyevaluator.ResourceContext resourceContext =
+        filter.getResourceContext(Entity.TEAM);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
   }
 }

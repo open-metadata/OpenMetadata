@@ -118,6 +118,7 @@ import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.services.data.DataContractService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -152,9 +153,9 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     super(
         DATA_CONTRACT,
         DataContract.class,
-        DataContractResource.DataContractList.class,
+        DataContractService.DataContractList.class,
         "dataContracts",
-        DataContractResource.FIELDS);
+        DataContractService.FIELDS);
     supportedNameCharacters = "_'+#- ()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
     supportsSearchIndex = false;
     supportsOwners = false;

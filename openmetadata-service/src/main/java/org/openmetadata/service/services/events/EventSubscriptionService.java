@@ -15,61 +15,81 @@ package org.openmetadata.service.services.events;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionMapper;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 
 /**
  * Service layer for EventSubscription entity operations.
  *
- * <p>Extends AbstractEntityService to inherit all standard CRUD operations with proper
- * authorization and repository delegation.
+ * <p>Extends EntityBaseService to inherit all standard CRUD operations with proper authorization
+ * and repository delegation.
  */
 @Slf4j
 @Singleton
 @Service(entityType = Entity.EVENT_SUBSCRIPTION)
-public class EventSubscriptionService extends AbstractEntityService<EventSubscription> {
+public class EventSubscriptionService
+    extends EntityBaseService<EventSubscription, EventSubscriptionRepository> {
+  public static final String FIELDS = "owners,filteringRules";
 
   @Getter private final EventSubscriptionMapper mapper;
-  private final EventSubscriptionRepository eventSubscriptionRepository;
 
   @Inject
   public EventSubscriptionService(
       EventSubscriptionRepository repository,
-      SearchRepository searchRepository,
       Authorizer authorizer,
-      EventSubscriptionMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.EVENT_SUBSCRIPTION);
-    this.eventSubscriptionRepository = repository;
+      EventSubscriptionMapper mapper,
+      Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.EVENT_SUBSCRIPTION, EventSubscription.class),
+        repository,
+        authorizer,
+        limits);
     this.mapper = mapper;
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    allowedFields.add("statusDetails");
+    addViewOperation("filteringRules", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
+  public static class EventSubscriptionList extends ResultList<EventSubscription> {
+    /* Required for serde */
+  }
+
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     EventSubscriptionScheduler.initialize(config);
     EventsSubscriptionRegistry.initialize(
         listOrEmpty(EventSubscriptionResource.getNotificationsFilterDescriptors()),
         listOrEmpty(EventSubscriptionResource.getObservabilityFilterDescriptors()));
-    eventSubscriptionRepository.initSeedDataFromResources();
+    repository.initSeedDataFromResources();
     initializeEventSubscriptions();
   }
 
   private void initializeEventSubscriptions() {
-    CollectionDAO daoCollection = eventSubscriptionRepository.getDaoCollection();
+    CollectionDAO daoCollection = repository.getDaoCollection();
     daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions().stream()
         .map(obj -> JsonUtils.readValue(obj, EventSubscription.class))
         .forEach(
@@ -81,5 +101,9 @@ public class EventSubscriptionService extends AbstractEntityService<EventSubscri
                 LOG.error("Failed to initialize subscription: {}", subscription.getId(), ex);
               }
             });
+  }
+
+  public EventSubscription syncEventSubscriptionOffset(String name) {
+    return repository.syncEventSubscriptionOffset(name);
   }
 }

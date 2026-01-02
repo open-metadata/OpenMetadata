@@ -36,7 +36,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SI
 import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SIGNUP_NOT_ENABLED;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_EXPIRED;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_EXPIRY_ERROR;
-import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
+import static org.openmetadata.service.services.teams.UserService.USER_PROTECTED_FIELDS;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.openmetadata.service.util.UserUtil.getUser;
 import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;

@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.glossary;
 
+import static org.openmetadata.service.services.glossary.GlossaryService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -43,8 +45,6 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossary;
@@ -53,19 +53,12 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.glossary.GlossaryService;
 import org.openmetadata.service.util.CSVExportResponse;
 
@@ -78,24 +71,12 @@ import org.openmetadata.service.util.CSVExportResponse;
 @Collection(
     name = "glossaries",
     order = 6) // Initialize before GlossaryTerm and after Classification and Tags
-public class GlossaryResource extends EntityBaseService<Glossary, GlossaryRepository> {
+public class GlossaryResource {
   public static final String COLLECTION_PATH = "v1/glossaries/";
-  static final String FIELDS = "owners,tags,reviewers,usageCount,termCount,domains,extension";
   private final GlossaryService service;
 
-  public GlossaryResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.GLOSSARY, authorizer, limits);
-    this.service = serviceRegistry.getService(GlossaryService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("reviewers,usageCount,termCount", MetadataOperation.VIEW_BASIC);
-    return Collections.emptyList();
-  }
-
-  public static class GlossaryList extends ResultList<Glossary> {
-    /* Required for serde */
+  public GlossaryResource(GlossaryService service) {
+    this.service = service;
   }
 
   @GET
@@ -114,7 +95,7 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = GlossaryList.class)))
+                    schema = @Schema(implementation = GlossaryService.GlossaryList.class)))
       })
   public ResultList<Glossary> list(
       @Context UriInfo uriInfo,
@@ -147,7 +128,7 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -184,7 +165,7 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -222,7 +203,7 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET
@@ -246,7 +227,7 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
       @Parameter(description = "Id of the glossary", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -278,7 +259,7 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -302,7 +283,7 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
       @Valid CreateGlossary create) {
     Glossary glossary =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, glossary);
+    return service.create(uriInfo, securityContext, glossary);
   }
 
   @PATCH
@@ -331,7 +312,7 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -360,7 +341,7 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -384,7 +365,7 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
       @Valid CreateGlossary create) {
     Glossary glossary =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, glossary);
+    return service.createOrUpdate(uriInfo, securityContext, glossary);
   }
 
   @PUT
@@ -439,7 +420,7 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
       @Parameter(description = "Id of the glossary", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -467,7 +448,7 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
       @Parameter(description = "Id of the glossary", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -497,7 +478,7 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
       @Parameter(description = "Name of the glossary", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
   }
 
   @PUT
@@ -519,7 +500,7 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET
@@ -551,7 +532,7 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
       @Parameter(description = "Name of the glossary", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return exportCsvInternalAsync(securityContext, name, false);
+    return service.exportCsvInternalAsync(securityContext, name, false);
   }
 
   @GET
@@ -576,7 +557,7 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
           @PathParam("name")
           String name)
       throws IOException {
-    return exportCsvInternal(securityContext, name, false);
+    return service.exportCsvInternal(securityContext, name, false);
   }
 
   @PUT
@@ -609,7 +590,7 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, false);
+    return service.importCsvInternal(securityContext, name, csv, dryRun, false);
   }
 
   @PUT
@@ -639,6 +620,6 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
           @QueryParam("dryRun")
           @DefaultValue("true")
           boolean dryRun) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
+    return service.importCsvInternalAsync(securityContext, name, csv, dryRun, false);
   }
 }

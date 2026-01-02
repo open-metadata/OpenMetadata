@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.query;
 
+import static org.openmetadata.service.services.databases.QueryService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -39,19 +41,12 @@ import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.QueryRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.databases.QueryService;
 
 @Path("/v1/queries")
@@ -62,36 +57,12 @@ import org.openmetadata.service.services.databases.QueryService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "queries")
-public class QueryResource extends EntityBaseService<Query, QueryRepository> {
-  private QueryService queryService;
+public class QueryResource {
   public static final String COLLECTION_PATH = "v1/queries/";
-  static final String FIELDS = "owners,followers,users,votes,tags,queryUsedIn";
+  private final QueryService service;
 
-  public QueryResource(Authorizer authorizer, Limits limits) {
-    super(Entity.QUERY, authorizer, limits);
-  }
-
-  public QueryResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.QUERY, authorizer, limits);
-    this.queryService = serviceRegistry.getService(QueryService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("users,queryUsedIn", MetadataOperation.VIEW_BASIC);
-    return null;
-  }
-
-  @Override
-  public Query addHref(UriInfo uriInfo, Query entity) {
-    super.addHref(uriInfo, entity);
-    Entity.withHref(uriInfo, entity.getUsers());
-    Entity.withHref(uriInfo, entity.getQueryUsedIn());
-    return entity;
-  }
-
-  public static class QueryList extends ResultList<Query> {
-    /* Required for serde */
+  public QueryResource(QueryService service) {
+    this.service = service;
   }
 
   @GET
@@ -109,7 +80,7 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = QueryResource.QueryList.class)))
+                    schema = @Schema(implementation = QueryService.QueryList.class)))
       })
   public ResultList<Query> listQueries(
       @Context UriInfo uriInfo,
@@ -128,7 +99,7 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
               description = "Filter Queries by service Fully Qualified Name",
               schema = @Schema(type = "string"))
           @QueryParam("service")
-          String service,
+          String serviceParam,
       @Parameter(description = "Limit the number queries returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(value = 0, message = "must be greater than or equal to 0")
@@ -144,16 +115,22 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
               description = "Returns list of queries after this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after) {
-    ListFilter filter = new ListFilter(null);
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    ListFilter filter = new ListFilter(include);
     if (!CommonUtil.nullOrEmpty(entityId)) {
       filter.addQueryParam("entityId", entityId.toString());
     }
-    filter.addQueryParam("service", service);
+    filter.addQueryParam("service", serviceParam);
     ResultList<Query> queries =
-        super.listInternal(
+        service.listInternal(
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
-    return PIIMasker.getQueries(queries, authorizer, securityContext);
+    return PIIMasker.getQueries(queries, service.getAuthorizer(), securityContext);
   }
 
   @GET
@@ -181,8 +158,14 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, null);
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -213,8 +196,14 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, null);
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -237,7 +226,7 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Query Id", schema = @Schema(type = "string")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -268,7 +257,7 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -283,7 +272,7 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = QueryResource.QueryList.class))),
+                    schema = @Schema(implementation = QueryService.QueryList.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
@@ -291,10 +280,8 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
       @Context SecurityContext securityContext,
       @Valid CreateQuery create) {
     Query query =
-        queryService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, query);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.create(uriInfo, securityContext, query);
   }
 
   @PUT
@@ -318,10 +305,8 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
       @Context SecurityContext securityContext,
       @Valid CreateQuery create) {
     Query query =
-        queryService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, query);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.createOrUpdate(uriInfo, securityContext, query);
   }
 
   @PUT
@@ -354,7 +339,8 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateQuery> createRequests) {
-    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+    return service.processBulkRequest(
+        uriInfo, securityContext, createRequests, service.getMapper(), async);
   }
 
   @PATCH
@@ -382,7 +368,7 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -411,7 +397,7 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -516,12 +502,7 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
       @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid List<EntityReference> entityIds) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return repository
-        .addQueryUsage(uriInfo, securityContext.getUserPrincipal().getName(), id, entityIds)
-        .toResponse();
+    return service.addQueryUsage(uriInfo, securityContext, id, entityIds).toResponse();
   }
 
   @PUT
@@ -545,12 +526,7 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
       @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid List<String> userFqnList) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return repository
-        .addQueryUser(uriInfo, securityContext.getUserPrincipal().getName(), id, userFqnList)
-        .toResponse();
+    return service.addQueryUsers(uriInfo, securityContext, id, userFqnList).toResponse();
   }
 
   @PUT
@@ -574,12 +550,7 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
       @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid List<String> usedByList) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return repository
-        .addQueryUsedBy(uriInfo, securityContext.getUserPrincipal().getName(), id, usedByList)
-        .toResponse();
+    return service.addQueryUsedBy(uriInfo, securityContext, id, usedByList).toResponse();
   }
 
   @DELETE
@@ -603,12 +574,7 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
       @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid List<EntityReference> entityIds) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return repository
-        .removeQueryUsedIn(uriInfo, securityContext.getUserPrincipal().getName(), id, entityIds)
-        .toResponse();
+    return service.removeQueryUsedIn(uriInfo, securityContext, id, entityIds).toResponse();
   }
 
   @PUT
@@ -630,7 +596,7 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @DELETE
@@ -646,9 +612,13 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
       @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, true);
+    return service.delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -664,9 +634,13 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
   public Response deleteByIdAsync(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
       @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, false, true);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -682,11 +656,15 @@ public class QueryResource extends EntityBaseService<Query, QueryRepository> {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
       @Parameter(
               description = "Fully qualified name of the location",
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, true);
+    return service.deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 }

@@ -30,7 +30,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.analytics.WebAnalyticEventResource.WebAnalyticEventDataList;
+import org.openmetadata.service.services.analytics.WebAnalyticEventService;
 import org.openmetadata.service.util.TestUtils;
 
 public class WebAnalyticEventResourceTest
@@ -39,9 +39,9 @@ public class WebAnalyticEventResourceTest
     super(
         Entity.WEB_ANALYTIC_EVENT,
         WebAnalyticEvent.class,
-        WebAnalyticEventResource.WebAnalyticEventList.class,
+        WebAnalyticEventService.WebAnalyticEventList.class,
         "analytics/web/events",
-        WebAnalyticEventResource.FIELDS);
+        WebAnalyticEventService.FIELDS);
     supportsSearchIndex = false;
   }
 
@@ -202,7 +202,8 @@ public class WebAnalyticEventResourceTest
     target = target.queryParam("startTs", start);
     target = target.queryParam("endTs", end);
     target = target.queryParam("eventType", eventType);
-    return TestUtils.get(target, WebAnalyticEventDataList.class, authHeaders);
+    return TestUtils.get(
+        target, WebAnalyticEventService.WebAnalyticEventDataList.class, authHeaders);
   }
 
   private void verifyWebAnalyticEventData(

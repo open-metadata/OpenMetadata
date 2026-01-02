@@ -26,7 +26,6 @@ import org.openmetadata.schema.entity.ai.AgentExecution;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.ai.AgentExecutionService;
 
 @Slf4j
@@ -42,8 +41,8 @@ public class AgentExecutionResource {
   public static final String COLLECTION_PATH = "v1/agentExecutions/";
   private final AgentExecutionService agentExecutionService;
 
-  public AgentExecutionResource(ServiceRegistry serviceRegistry) {
-    this.agentExecutionService = serviceRegistry.getService(AgentExecutionService.class);
+  public AgentExecutionResource(AgentExecutionService agentExecutionService) {
+    this.agentExecutionService = agentExecutionService;
   }
 
   public static class AgentExecutionList extends ResultList<AgentExecution> {

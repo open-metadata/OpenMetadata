@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.services.teams;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
@@ -23,15 +25,17 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.teams.UserMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
@@ -39,24 +43,42 @@ import org.openmetadata.service.util.RestUtil;
 @Slf4j
 @Singleton
 @Service(entityType = Entity.USER)
-public class UserService extends AbstractEntityService<User> {
+public class UserService extends EntityBaseService<User, UserRepository> {
+
+  public static final String FIELDS =
+      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences";
+  public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
 
   @Getter private final UserMapper mapper;
-  private final UserRepository userRepository;
 
   @Inject
   public UserService(
-      UserRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer,
-      UserMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.USER);
-    this.userRepository = repository;
+      UserRepository repository, Authorizer authorizer, UserMapper mapper, Limits limits) {
+    super(new ResourceEntityInfo<>(Entity.USER, User.class), repository, authorizer, limits);
     this.mapper = mapper;
+    allowedFields.remove(USER_PROTECTED_FIELDS);
+  }
+
+  @Override
+  public User addHref(UriInfo uriInfo, User user) {
+    super.addHref(uriInfo, user);
+    Entity.withHref(uriInfo, user.getTeams());
+    Entity.withHref(uriInfo, user.getRoles());
+    Entity.withHref(uriInfo, user.getPersonas());
+    Entity.withHref(uriInfo, user.getInheritedRoles());
+    Entity.withHref(uriInfo, user.getOwns());
+    Entity.withHref(uriInfo, user.getFollows());
+    return user;
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("profile,roles,teams,follows,owns", MetadataOperation.VIEW_BASIC);
+    return listOf(MetadataOperation.EDIT_TEAMS);
   }
 
   public void initialize(OpenMetadataApplicationConfig config) {
-    userRepository.initializeUsers(config);
+    repository.initializeUsers(config);
   }
 
   public User getLoggedInUser(
@@ -65,36 +87,40 @@ public class UserService extends AbstractEntityService<User> {
       String name,
       String email,
       Fields fields) {
-    return userRepository.getLoggedInUserByNameAndEmail(uriInfo, name, email, fields);
+    return repository.getLoggedInUserByNameAndEmail(uriInfo, name, email, fields);
   }
 
   public List<EntityReference> getGroupTeams(
       UriInfo uriInfo, CatalogSecurityContext securityContext, String email) {
-    return userRepository.getGroupTeams(uriInfo, securityContext, email);
+    return repository.getGroupTeams(uriInfo, securityContext, email);
   }
 
   public ResultList<EntityReference> getUserAssets(UUID id, int limit, int offset) {
-    return userRepository.getUserAssets(id, limit, offset);
+    return repository.getUserAssets(id, limit, offset);
   }
 
   public ResultList<EntityReference> getUserAssetsByName(String name, int limit, int offset) {
-    return userRepository.getUserAssetsByName(name, limit, offset);
+    return repository.getUserAssetsByName(name, limit, offset);
   }
 
   public boolean checkEmailAlreadyExists(String email) {
-    return userRepository.checkEmailAlreadyExists(email);
+    return repository.checkEmailAlreadyExists(email);
   }
 
   public RestUtil.PutResponse<User> updateVote(
       SecurityContext securityContext, UUID id, org.openmetadata.schema.api.VoteRequest request) {
-    return userRepository.updateVote(securityContext.getUserPrincipal().getName(), id, request);
+    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request);
   }
 
   public void validateTeamAddition(UUID userId, UUID teamId) {
-    userRepository.validateTeamAddition(userId, teamId);
+    repository.validateTeamAddition(userId, teamId);
   }
 
   public boolean isTeamJoinable(String teamId) {
-    return userRepository.isTeamJoinable(teamId);
+    return repository.isTeamJoinable(teamId);
+  }
+
+  public static class UserList extends ResultList<User> {
+    /* Required for serde */
   }
 }

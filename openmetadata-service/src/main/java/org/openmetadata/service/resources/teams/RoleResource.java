@@ -13,7 +13,8 @@
 
 package org.openmetadata.service.resources.teams;
 
-import io.dropwizard.jersey.PATCH;
+import static org.openmetadata.service.services.policies.RoleService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -31,6 +32,7 @@ import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -52,10 +54,9 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.policies.RoleService;
+import org.openmetadata.service.services.policies.RoleService.RoleList;
 import org.openmetadata.service.util.RestUtil;
 
 @Path("/v1/roles")
@@ -75,8 +76,8 @@ public class RoleResource {
   public static final String COLLECTION_PATH = "/v1/roles/";
   private final RoleService service;
 
-  public RoleResource(ServiceRegistry serviceRegistry) {
-    this.service = serviceRegistry.getService(RoleService.class);
+  public RoleResource(RoleService service) {
+    this.service = service;
   }
 
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
@@ -136,18 +137,7 @@ public class RoleResource {
           @DefaultValue("non-deleted")
           Include include) {
     RestUtil.validateCursors(before, after);
-    Fields fields = getFields(fieldsParam);
-    ListFilter filter = new ListFilter(include);
-
-    ResultList<Role> roles;
-    if (before != null) { // Reverse paging
-      roles =
-          repository.listBefore(
-              uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
-    } else { // Forward paging or first page
-      roles = repository.listAfter(uriInfo, fields, filter, limitParam, after);
-    }
-    return addHref(uriInfo, roles);
+    return service.listRoles(uriInfo, fieldsParam, limitParam, before, after, include);
   }
 
   @GET
@@ -170,7 +160,7 @@ public class RoleResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -206,7 +196,7 @@ public class RoleResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -243,7 +233,7 @@ public class RoleResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET
@@ -274,7 +264,7 @@ public class RoleResource {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -300,7 +290,7 @@ public class RoleResource {
         service
             .getMapper()
             .createToEntity(createRole, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, role);
+    return service.create(uriInfo, securityContext, role);
   }
 
   @PUT
@@ -326,7 +316,7 @@ public class RoleResource {
         service
             .getMapper()
             .createToEntity(createRole, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, role);
+    return service.createOrUpdate(uriInfo, securityContext, role);
   }
 
   @PATCH
@@ -354,7 +344,7 @@ public class RoleResource {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -383,7 +373,7 @@ public class RoleResource {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
@@ -407,7 +397,7 @@ public class RoleResource {
           UUID id) {
     // A role has a strong relationship with a policy. Recursively delete the policy that the role
     // contains, to avoid leaving a dangling policy without a role.
-    return delete(uriInfo, securityContext, id, true, hardDelete);
+    return service.delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
   @DELETE
@@ -431,7 +421,7 @@ public class RoleResource {
           UUID id) {
     // A role has a strong relationship with a policy. Recursively delete the policy that the role
     // contains, to avoid leaving a dangling policy without a role.
-    return deleteByIdAsync(uriInfo, securityContext, id, true, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, true, hardDelete);
   }
 
   @DELETE
@@ -444,7 +434,7 @@ public class RoleResource {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Role for instance {name} is not found")
       })
-  public Response delete(
+  public Response deleteByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Hard delete the entity. (Default = `false`)")
@@ -454,7 +444,7 @@ public class RoleResource {
       @Parameter(description = "Name of the role", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT
@@ -476,6 +466,6 @@ public class RoleResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

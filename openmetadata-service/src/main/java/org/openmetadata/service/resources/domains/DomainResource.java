@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.domains;
 
+import static org.openmetadata.service.services.domains.DomainService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -52,14 +54,8 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.DomainRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.domains.DomainService;
 import org.openmetadata.service.util.EntityHierarchyList;
 
@@ -71,29 +67,13 @@ import org.openmetadata.service.util.EntityHierarchyList;
         "A `Domain` is a bounded context that is aligned with a Business Unit or a function within an organization.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "domains", order = 4) // initialize after user resource
-public class DomainResource extends EntityBaseService<Domain, DomainRepository> {
+@Collection(name = "domains", order = 4)
+public class DomainResource {
   public static final String COLLECTION_PATH = "/v1/domains/";
-  static final String FIELDS = "tags,children,childrenCount,owners,experts,extension,followers";
   private final DomainService service;
 
-  public DomainResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.DOMAIN, authorizer, limits);
-    this.service = serviceRegistry.getService(DomainService.class);
-  }
-
-  @Override
-  public Domain addHref(UriInfo uriInfo, Domain domain) {
-    super.addHref(uriInfo, domain);
-    Entity.withHref(uriInfo, domain.getParent());
-    return domain;
-  }
-
-  public static class DomainList extends ResultList<Domain> {
-    @SuppressWarnings("unused")
-    public DomainList() {
-      /* Required for serde */
-    }
+  public DomainResource(DomainService service) {
+    this.service = service;
   }
 
   @GET
@@ -108,7 +88,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DomainList.class)))
+                    schema = @Schema(implementation = DomainService.DomainList.class)))
       })
   public ResultList<Domain> list(
       @Context UriInfo uriInfo,
@@ -133,7 +113,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-    return listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, new ListFilter(null), limitParam, before, after);
   }
 
@@ -163,7 +143,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
           String fieldsParam,
       @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, null);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, null);
   }
 
   @GET
@@ -193,7 +173,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, null);
+    return service.getByNameInternal(uriInfo, securityContext, name, fieldsParam, null);
   }
 
   @GET
@@ -216,7 +196,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -247,7 +227,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -278,7 +258,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
           CreateDomain create) {
     Domain domain =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, domain);
+    return service.create(uriInfo, securityContext, domain);
   }
 
   @PUT
@@ -310,7 +290,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
           CreateDomain create) {
     Domain domain =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, domain);
+    return service.createOrUpdate(uriInfo, securityContext, domain);
   }
 
   @PUT
@@ -336,10 +316,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
+    return Response.ok().entity(service.bulkAddAssets(securityContext, name, request)).build();
   }
 
   @PUT
@@ -365,10 +342,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
+    return Response.ok().entity(service.bulkRemoveAssets(securityContext, name, request)).build();
   }
 
   @PATCH
@@ -396,7 +370,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -425,7 +399,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
@@ -443,7 +417,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, true, true);
+    return service.delete(uriInfo, securityContext, id, true, true);
   }
 
   @DELETE
@@ -461,7 +435,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, true, true);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, true, true);
   }
 
   @DELETE
@@ -480,7 +454,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
       @Parameter(description = "Name of the domain", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, true, true);
+    return service.deleteByName(uriInfo, securityContext, name, true, true);
   }
 
   @GET
@@ -526,8 +500,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
           @Min(value = 0, message = "must be greater than or equal to 0")
           @QueryParam("offset")
           int offset) {
-
-    return repository.buildHierarchy(fieldsParam, limitParam, directChildrenOf, offset);
+    return service.buildHierarchy(fieldsParam, limitParam, directChildrenOf, offset);
   }
 
   @PUT
@@ -554,9 +527,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return service.addDomainFollower(securityContext, id, userId).toResponse();
   }
 
   @DELETE
@@ -583,9 +554,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+    return service.deleteDomainFollower(securityContext, id, UUID.fromString(userId)).toResponse();
   }
 
   @GET
@@ -625,7 +594,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
           @DefaultValue("0")
           @Min(0)
           int offset) {
-    return Response.ok(repository.getDomainAssets(id, limit, offset)).build();
+    return Response.ok(service.getDomainAssets(id, limit, offset)).build();
   }
 
   @GET
@@ -666,7 +635,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
           @DefaultValue("0")
           @Min(0)
           int offset) {
-    return Response.ok(repository.getDomainAssetsByName(fqn, limit, offset)).build();
+    return Response.ok(service.getDomainAssetsByName(fqn, limit, offset)).build();
   }
 
   @GET
@@ -684,7 +653,7 @@ public class DomainResource extends EntityBaseService<Domain, DomainRepository> 
       })
   public Response getAllDomainsWithAssetsCount(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    java.util.Map<String, Integer> result = repository.getAllDomainsWithAssetsCount();
+    java.util.Map<String, Integer> result = service.getAllDomainsWithAssetsCount();
     return Response.ok(result).build();
   }
 }

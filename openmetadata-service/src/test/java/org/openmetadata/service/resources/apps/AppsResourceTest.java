@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.services.apps.AppService.FIELDS;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertEventually;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
@@ -88,6 +89,7 @@ import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.services.apps.AppService;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RetryableAssertionError;
 import org.openmetadata.service.util.TestUtils;
@@ -97,7 +99,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   private static final String SYSTEM_APP_NAME = "systemApp";
 
   public AppsResourceTest() {
-    super(Entity.APPLICATION, App.class, AppResource.AppList.class, "apps", AppResource.FIELDS);
+    super(Entity.APPLICATION, App.class, AppService.AppList.class, "apps", FIELDS);
     supportsFieldsQueryParam = false;
     supportedNameCharacters = "_-.";
     supportsEtag = false;
@@ -733,7 +735,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   private ResultList<AppRunRecord> listAppRuns(String appName, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(String.format("apps/name/%s/status", appName));
-    return TestUtils.get(target, AppResource.AppRunList.class, authHeaders);
+    return TestUtils.get(target, AppService.AppRunList.class, authHeaders);
   }
 
   private AppRunRecord getLatestAppRun(String appName, Map<String, String> authHeaders)

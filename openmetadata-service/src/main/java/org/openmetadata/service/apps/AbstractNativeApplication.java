@@ -4,7 +4,7 @@ import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFIG;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.JOB_LISTENER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NO_MANUAL_TRIGGER_ERR;
-import static org.openmetadata.service.resources.apps.AppResource.SCHEDULED_TYPES;
+import static org.openmetadata.service.services.apps.AppService.SCHEDULED_TYPES;
 
 import java.util.List;
 import java.util.Map;

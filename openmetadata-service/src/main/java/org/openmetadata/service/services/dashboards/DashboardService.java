@@ -13,57 +13,97 @@
 
 package org.openmetadata.service.services.dashboards;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.entity.data.Dashboard;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DashboardRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.dashboards.DashboardMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Singleton
 @Service(entityType = Entity.DASHBOARD)
-public class DashboardService extends AbstractEntityService<Dashboard> {
+public class DashboardService extends EntityBaseService<Dashboard, DashboardRepository> {
 
   @Getter private final DashboardMapper mapper;
-  private final DashboardRepository dashboardRepository;
+  public static final String FIELDS =
+      "owners,charts,followers,tags,usageSummary,extension,dataModels,domains,dataProducts,sourceHash";
 
   @Inject
   public DashboardService(
       DashboardRepository repository,
-      SearchRepository searchRepository,
       Authorizer authorizer,
-      DashboardMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.DASHBOARD);
-    this.dashboardRepository = repository;
+      DashboardMapper mapper,
+      Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.DASHBOARD, Dashboard.class),
+        repository,
+        authorizer,
+        limits);
     this.mapper = mapper;
+  }
+
+  @Override
+  public Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
+    super.addHref(uriInfo, dashboard);
+    Entity.withHref(uriInfo, dashboard.getService());
+    Entity.withHref(uriInfo, dashboard.getCharts());
+    Entity.withHref(uriInfo, dashboard.getDataModels());
+    return dashboard;
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("charts,dataModels", MetadataOperation.VIEW_BASIC);
+    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
+    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_LINEAGE);
   }
 
   public RestUtil.PutResponse<Dashboard> addFollower(
       SecurityContext securityContext, UUID id, UUID userId) {
-    return dashboardRepository.addFollower(
-        securityContext.getUserPrincipal().getName(), id, userId);
+    return addFollower(securityContext.getUserPrincipal().getName(), id, userId);
   }
 
   public RestUtil.PutResponse<Dashboard> deleteFollower(
       SecurityContext securityContext, UUID id, UUID userId) {
-    return dashboardRepository.deleteFollower(
-        securityContext.getUserPrincipal().getName(), id, userId);
+    return deleteFollower(securityContext.getUserPrincipal().getName(), id, userId);
   }
 
   public RestUtil.PutResponse<Dashboard> updateVote(
       SecurityContext securityContext, UUID id, VoteRequest request) {
-    return dashboardRepository.updateVote(
-        securityContext.getUserPrincipal().getName(), id, request);
+    return getRepository().updateVote(securityContext.getUserPrincipal().getName(), id, request);
+  }
+
+  public <C extends CreateEntity> Response processBulkRequest(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      List<C> createRequests,
+      EntityMapper<Dashboard, C> mapper,
+      boolean async) {
+    return super.processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+  }
+
+  public static class DashboardList extends ResultList<Dashboard> {
+    /* Required for serde */
   }
 }

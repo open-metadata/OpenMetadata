@@ -18,28 +18,31 @@ import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.Persona;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.PersonaRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.teams.PersonaMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 
 @Slf4j
 @Singleton
 @Service(entityType = Entity.PERSONA)
-public class PersonaService extends AbstractEntityService<Persona> {
+public class PersonaService extends EntityBaseService<Persona, PersonaRepository> {
+
+  public static final String FIELDS = "users";
 
   @Getter private final PersonaMapper mapper;
 
   @Inject
   public PersonaService(
-      PersonaRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer,
-      PersonaMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.PERSONA);
+      PersonaRepository repository, Authorizer authorizer, PersonaMapper mapper, Limits limits) {
+    super(new ResourceEntityInfo<>(Entity.PERSONA, Persona.class), repository, authorizer, limits);
     this.mapper = mapper;
   }
+
+  public static class PersonaList extends ResultList<Persona> {}
 }

@@ -13,39 +13,72 @@
 
 package org.openmetadata.service.services.drives;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
+import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Spreadsheet;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.SpreadsheetRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.drives.SpreadsheetMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 
 /**
  * Service layer for Spreadsheet entity operations.
  *
- * <p>Extends AbstractEntityService to inherit all standard CRUD operations with proper
- * authorization and repository delegation.
+ * <p>Extends EntityBaseService to inherit all standard CRUD operations with proper authorization
+ * and repository delegation.
  */
 @Slf4j
 @Singleton
 @Service(entityType = Entity.SPREADSHEET)
-public class SpreadsheetService extends AbstractEntityService<Spreadsheet> {
-
+public class SpreadsheetService extends EntityBaseService<Spreadsheet, SpreadsheetRepository> {
   @Getter private final SpreadsheetMapper mapper;
+  public static final String FIELDS =
+      "owners,directory,worksheets,usageSummary,tags,extension,domains,sourceHash,lifeCycle,votes,followers,mimeType,createdTime,modifiedTime";
 
   @Inject
   public SpreadsheetService(
       SpreadsheetRepository repository,
-      SearchRepository searchRepository,
       Authorizer authorizer,
-      SpreadsheetMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.SPREADSHEET);
+      SpreadsheetMapper mapper,
+      Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.SPREADSHEET, Spreadsheet.class),
+        repository,
+        authorizer,
+        limits);
     this.mapper = mapper;
+  }
+
+  @Override
+  public Spreadsheet addHref(UriInfo uriInfo, Spreadsheet spreadsheet) {
+    super.addHref(uriInfo, spreadsheet);
+    Entity.withHref(uriInfo, spreadsheet.getDirectory());
+    Entity.withHref(uriInfo, spreadsheet.getService());
+    Entity.withHref(uriInfo, spreadsheet.getWorksheets());
+    return spreadsheet;
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("directory", MetadataOperation.VIEW_BASIC);
+    addViewOperation("worksheets", MetadataOperation.VIEW_BASIC);
+    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
+    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
+  }
+
+  public static class SpreadsheetList extends ResultList<Spreadsheet> {
+    /* Required for serde */
   }
 }

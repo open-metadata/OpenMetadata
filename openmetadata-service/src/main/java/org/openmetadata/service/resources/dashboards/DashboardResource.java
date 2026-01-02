@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.dashboards;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.services.dashboards.DashboardService.FIELDS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,16 +53,9 @@ import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.DashboardRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.dashboards.DashboardService;
 
 @Path("/v1/dashboards")
@@ -74,40 +67,12 @@ import org.openmetadata.service.services.dashboards.DashboardService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "dashboards")
-public class DashboardResource extends EntityBaseService<Dashboard, DashboardRepository> {
+public class DashboardResource {
   public static final String COLLECTION_PATH = "v1/dashboards/";
-  protected static final String FIELDS =
-      "owners,charts,followers,tags,usageSummary,extension,dataModels,domains,dataProducts,sourceHash";
-  private final DashboardService dashboardService;
+  private final DashboardService service;
 
-  @Override
-  public Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
-    super.addHref(uriInfo, dashboard);
-    Entity.withHref(uriInfo, dashboard.getService());
-    Entity.withHref(uriInfo, dashboard.getCharts());
-    Entity.withHref(uriInfo, dashboard.getDataModels());
-    return dashboard;
-  }
-
-  public DashboardResource(Authorizer authorizer, Limits limits) {
-    super(Entity.DASHBOARD, authorizer, limits);
-    this.dashboardService = null;
-  }
-
-  public DashboardResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
-    super(Entity.DASHBOARD, authorizer, limits);
-    this.dashboardService = serviceRegistry.getService(DashboardService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("charts,dataModels", MetadataOperation.VIEW_BASIC);
-    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
-    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_LINEAGE);
-  }
-
-  public static class DashboardList extends ResultList<Dashboard> {
-    /* Required for serde */
+  public DashboardResource(DashboardService service) {
+    this.service = service;
   }
 
   @GET
@@ -126,7 +91,7 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DashboardList.class)))
+                    schema = @Schema(implementation = DashboardService.DashboardList.class)))
       })
   public ResultList<Dashboard> list(
       @Context UriInfo uriInfo,
@@ -164,7 +129,7 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -189,7 +154,7 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
       @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -225,7 +190,7 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -265,7 +230,7 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -297,7 +262,7 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -320,10 +285,8 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
       @Context SecurityContext securityContext,
       @Valid CreateDashboard create) {
     Dashboard dashboard =
-        dashboardService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, dashboard);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.create(uriInfo, securityContext, dashboard);
   }
 
   @PUT
@@ -362,8 +325,8 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateDashboard> createRequests) {
-    return processBulkRequest(
-        uriInfo, securityContext, createRequests, dashboardService.getMapper(), async);
+    return service.processBulkRequest(
+        uriInfo, securityContext, createRequests, service.getMapper(), async);
   }
 
   @PATCH
@@ -392,7 +355,7 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -421,7 +384,7 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -444,10 +407,8 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
       @Context SecurityContext securityContext,
       @Valid CreateDashboard create) {
     Dashboard dashboard =
-        dashboardService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, dashboard);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.createOrUpdate(uriInfo, securityContext, dashboard);
   }
 
   @PUT
@@ -470,7 +431,7 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return dashboardService.addFollower(securityContext, id, userId).toResponse();
+    return service.addFollower(securityContext, id, userId).toResponse();
   }
 
   @DELETE
@@ -490,7 +451,7 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return dashboardService.deleteFollower(securityContext, id, userId).toResponse();
+    return service.deleteFollower(securityContext, id, userId).toResponse();
   }
 
   @PUT
@@ -515,7 +476,7 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return dashboardService.updateVote(securityContext, id, request).toResponse();
+    return service.updateVote(securityContext, id, request).toResponse();
   }
 
   @DELETE
@@ -538,7 +499,7 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
       @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return service.delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -561,7 +522,7 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
       @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -593,7 +554,7 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -615,6 +576,6 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

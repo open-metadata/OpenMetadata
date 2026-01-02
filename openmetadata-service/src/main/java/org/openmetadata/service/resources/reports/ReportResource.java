@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.reports;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.services.reports.ReportService.FIELDS;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -36,22 +36,17 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.ReportRepository;
-import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.services.reports.ReportService;
+import org.openmetadata.service.services.reports.ReportService.ReportList;
 
 @Path("/v1/reports")
 @Tag(
@@ -62,22 +57,16 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "reports")
-public class ReportResource extends EntityBaseService<Report, ReportRepository> {
+public class ReportResource {
   public static final String COLLECTION_PATH = "/v1/reports/";
-  static final String FIELDS = "owners,usageSummary";
+  private final ReportService service;
 
-  public ReportResource(Authorizer authorizer, Limits limits) {
-    super(Entity.REPORT, authorizer, limits);
+  public ReportResource(ReportService service) {
+    this.service = service;
   }
 
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
-    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
-  }
-
-  public static class ReportList extends ResultList<Report> {
-    /* Required for serde */
+  public void initialize(OpenMetadataApplicationConfig config) {
+    Entity.registerResourcePermissions(Entity.REPORT, service.getEntitySpecificOperations());
   }
 
   @GET
@@ -101,9 +90,7 @@ public class ReportResource extends EntityBaseService<Report, ReportRepository> 
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
-    Fields fields = getFields(fieldsParam);
-    ListFilter filter = new ListFilter();
-    return repository.listAfter(uriInfo, fields, filter, 10000, null);
+    return service.listReports(uriInfo, fieldsParam);
   }
 
   @GET
@@ -138,10 +125,9 @@ public class ReportResource extends EntityBaseService<Report, ReportRepository> 
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
-  @Override
   @POST
   @Operation(
       operationId = "getReportByFQN",
@@ -159,11 +145,10 @@ public class ReportResource extends EntityBaseService<Report, ReportRepository> 
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) {
-    addToReport(securityContext, report);
-    return super.create(uriInfo, securityContext, report);
+    Report preparedReport = service.prepareReport(securityContext, report);
+    return service.create(uriInfo, securityContext, preparedReport);
   }
 
-  @Override
   @PUT
   @Operation(
       operationId = "createOrUpdateReport",
@@ -181,8 +166,8 @@ public class ReportResource extends EntityBaseService<Report, ReportRepository> 
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) {
-    addToReport(securityContext, report);
-    return super.createOrUpdate(uriInfo, securityContext, report);
+    Report preparedReport = service.prepareReport(securityContext, report);
+    return service.createOrUpdate(uriInfo, securityContext, preparedReport);
   }
 
   @PUT
@@ -207,15 +192,6 @@ public class ReportResource extends EntityBaseService<Report, ReportRepository> 
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
-  }
-
-  private void addToReport(SecurityContext securityContext, Report report) {
-    report
-        .withId(UUID.randomUUID())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+    return service.updateVote(securityContext, id, request).toResponse();
   }
 }

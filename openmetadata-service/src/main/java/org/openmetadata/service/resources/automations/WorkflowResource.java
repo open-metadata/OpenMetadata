@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.automations;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.services.automations.WorkflowService.FIELDS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -36,42 +36,18 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.ServiceConnectionEntityInterface;
-import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.automations.CreateWorkflow;
-import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowStatus;
 import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.sdk.PipelineServiceClientInterface;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.WorkflowRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.secrets.SecretsManager;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
-import org.openmetadata.service.secrets.converter.ClassConverterFactory;
-import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
-import org.openmetadata.service.security.AuthorizationException;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.automations.WorkflowService;
-import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
 @Slf4j
 @Path("/v1/automations/workflows")
@@ -82,32 +58,12 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "Workflow")
-public class WorkflowResource extends EntityBaseService<Workflow, WorkflowRepository> {
+public class WorkflowResource {
   public static final String COLLECTION_PATH = "/v1/automations/workflows";
-  static final String FIELDS = "owners";
-  private PipelineServiceClientInterface pipelineServiceClient;
-  private OpenMetadataApplicationConfig openMetadataApplicationConfig;
-  private WorkflowService workflowService;
+  private final WorkflowService service;
 
-  public WorkflowResource(Authorizer authorizer, Limits limits) {
-    super(Entity.WORKFLOW, authorizer, limits);
-  }
-
-  public WorkflowResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
-    super(Entity.WORKFLOW, authorizer, limits);
-    this.workflowService = serviceRegistry.getService(WorkflowService.class);
-  }
-
-  @Override
-  public void initialize(OpenMetadataApplicationConfig config) {
-    this.openMetadataApplicationConfig = config;
-    this.pipelineServiceClient =
-        PipelineServiceClientFactory.createPipelineServiceClient(
-            config.getPipelineServiceClientConfiguration());
-  }
-
-  public static class WorkflowList extends ResultList<Workflow> {
-    /* Required for serde */
+  public WorkflowResource(WorkflowService service) {
+    this.service = service;
   }
 
   @GET
@@ -125,7 +81,7 @@ public class WorkflowResource extends EntityBaseService<Workflow, WorkflowReposi
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = WorkflowList.class)))
+                    schema = @Schema(implementation = WorkflowService.WorkflowList.class)))
       })
   public ResultList<Workflow> list(
       @Context UriInfo uriInfo,
@@ -177,11 +133,11 @@ public class WorkflowResource extends EntityBaseService<Workflow, WorkflowReposi
       filter.addQueryParam("workflowStatus", status);
     }
     ResultList<Workflow> workflows =
-        super.listInternal(
+        service.listInternal(
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     workflows.setData(
         listOrEmpty(workflows.getData()).stream()
-            .map(service -> decryptOrNullify(securityContext, service))
+            .map(workflow -> service.decryptOrNullify(securityContext, workflow))
             .collect(Collectors.toList()));
     return workflows;
   }
@@ -207,7 +163,7 @@ public class WorkflowResource extends EntityBaseService<Workflow, WorkflowReposi
       @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -242,8 +198,8 @@ public class WorkflowResource extends EntityBaseService<Workflow, WorkflowReposi
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return decryptOrNullify(
-        securityContext, getInternal(uriInfo, securityContext, id, fieldsParam, include));
+    return service.decryptOrNullify(
+        securityContext, service.getInternal(uriInfo, securityContext, id, fieldsParam, include));
   }
 
   @GET
@@ -281,8 +237,9 @@ public class WorkflowResource extends EntityBaseService<Workflow, WorkflowReposi
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return decryptOrNullify(
-        securityContext, getByNameInternal(uriInfo, securityContext, name, fieldsParam, include));
+    return service.decryptOrNullify(
+        securityContext,
+        service.getByNameInternal(uriInfo, securityContext, name, fieldsParam, include));
   }
 
   @GET
@@ -314,8 +271,8 @@ public class WorkflowResource extends EntityBaseService<Workflow, WorkflowReposi
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return decryptOrNullify(
-        securityContext, super.getVersionInternal(securityContext, id, version));
+    return service.decryptOrNullify(
+        securityContext, service.getVersionInternal(securityContext, id, version));
   }
 
   @POST
@@ -338,12 +295,10 @@ public class WorkflowResource extends EntityBaseService<Workflow, WorkflowReposi
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
     Workflow workflow =
-        workflowService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, unmask(workflow));
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    Response response = service.create(uriInfo, securityContext, service.unmask(workflow));
     return Response.fromResponse(response)
-        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+        .entity(service.decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
   }
 
@@ -366,17 +321,7 @@ public class WorkflowResource extends EntityBaseService<Workflow, WorkflowReposi
           @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
-    EntityUtil.Fields fields = getFields(FIELD_OWNERS);
-    Workflow workflow = repository.get(uriInfo, id, fields);
-    workflow.setOpenMetadataServerConnection(
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
-    /*
-     We will send the encrypted Workflow to the Pipeline Service Client
-     It will be fetched from the API from there, since we are
-     decrypting on GET based on user auth. The ingestion-bot will then
-     be able to pick up the right data.
-    */
-    return pipelineServiceClient.runAutomationsWorkflow(workflow);
+    return service.runAutomationsWorkflow(uriInfo, id);
   }
 
   @PATCH
@@ -405,9 +350,9 @@ public class WorkflowResource extends EntityBaseService<Workflow, WorkflowReposi
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    Response response = patchInternal(uriInfo, securityContext, id, patch);
+    Response response = service.patchInternal(uriInfo, securityContext, id, patch);
     return Response.fromResponse(response)
-        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+        .entity(service.decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
   }
 
@@ -437,9 +382,9 @@ public class WorkflowResource extends EntityBaseService<Workflow, WorkflowReposi
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    Response response = patchInternal(uriInfo, securityContext, fqn, patch);
+    Response response = service.patchInternal(uriInfo, securityContext, fqn, patch);
     return Response.fromResponse(response)
-        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+        .entity(service.decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
   }
 
@@ -462,13 +407,11 @@ public class WorkflowResource extends EntityBaseService<Workflow, WorkflowReposi
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
     Workflow workflow =
-        workflowService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    workflow = unmask(workflow);
-    Response response = createOrUpdate(uriInfo, securityContext, workflow);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    workflow = service.unmask(workflow);
+    Response response = service.createOrUpdate(uriInfo, securityContext, workflow);
     return Response.fromResponse(response)
-        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+        .entity(service.decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
   }
 
@@ -492,9 +435,9 @@ public class WorkflowResource extends EntityBaseService<Workflow, WorkflowReposi
       @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    Response response = delete(uriInfo, securityContext, id, false, hardDelete);
+    Response response = service.delete(uriInfo, securityContext, id, false, hardDelete);
     return Response.fromResponse(response)
-        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+        .entity(service.decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
   }
 
@@ -518,8 +461,7 @@ public class WorkflowResource extends EntityBaseService<Workflow, WorkflowReposi
       @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-
-    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -544,9 +486,9 @@ public class WorkflowResource extends EntityBaseService<Workflow, WorkflowReposi
       @Parameter(description = "Name of the Workflow", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    Response response = deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    Response response = service.deleteByName(uriInfo, securityContext, name, false, hardDelete);
     return Response.fromResponse(response)
-        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+        .entity(service.decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
   }
 
@@ -569,74 +511,9 @@ public class WorkflowResource extends EntityBaseService<Workflow, WorkflowReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    Response response = restoreEntity(uriInfo, securityContext, restore.getId());
+    Response response = service.restoreEntity(uriInfo, securityContext, restore.getId());
     return Response.fromResponse(response)
-        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+        .entity(service.decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
-  }
-
-  private Workflow unmask(Workflow workflow) {
-    repository.setFullyQualifiedName(workflow);
-    Workflow originalWorkflow;
-    if (WorkflowType.TEST_CONNECTION.equals(workflow.getWorkflowType())) {
-      // in case of test connection type, we get the original connection values from the service
-      // name
-      originalWorkflow = buildFromOriginalServiceConnection(workflow);
-    } else {
-      originalWorkflow =
-          repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
-    }
-    return EntityMaskerFactory.getEntityMasker().unmaskWorkflow(workflow, originalWorkflow);
-  }
-
-  private Workflow decryptOrNullify(SecurityContext securityContext, Workflow workflow) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    try {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-          getResourceContextById(workflow.getId()));
-    } catch (AuthorizationException e) {
-      Workflow workflowConverted =
-          (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
-      if (workflowConverted.getRequest() instanceof TestServiceConnectionRequest) {
-        ((ServiceConnectionEntityInterface)
-                ((TestServiceConnectionRequest) workflowConverted.getRequest()).getConnection())
-            .setConfig(null);
-      }
-      return workflowConverted;
-    }
-    Workflow workflowDecrypted = secretsManager.decryptWorkflow(workflow);
-    OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
-    workflowDecrypted.setOpenMetadataServerConnection(
-        secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
-    if (authorizer.shouldMaskPasswords(securityContext)) {
-      workflowDecrypted = EntityMaskerFactory.getEntityMasker().maskWorkflow(workflowDecrypted);
-    }
-    return workflowDecrypted;
-  }
-
-  private Workflow buildFromOriginalServiceConnection(Workflow workflow) {
-    Workflow originalWorkflow =
-        repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
-    if (originalWorkflow == null) {
-      originalWorkflow =
-          (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
-    }
-    if (originalWorkflow.getRequest()
-        instanceof TestServiceConnectionRequest testServiceConnection) {
-      EntityRepository<? extends EntityInterface> serviceRepository =
-          Entity.getServiceEntityRepository(testServiceConnection.getServiceType());
-      ServiceEntityInterface originalService =
-          (ServiceEntityInterface)
-              serviceRepository.findByNameOrNull(
-                  testServiceConnection.getServiceName(), Include.NON_DELETED);
-      if (originalService != null && originalService.getConnection() != null) {
-        testServiceConnection.setConnection(originalService.getConnection());
-        originalWorkflow.setRequest(testServiceConnection);
-      }
-    }
-    return originalWorkflow;
   }
 }

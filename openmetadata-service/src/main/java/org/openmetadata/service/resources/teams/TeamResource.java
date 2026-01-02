@@ -17,7 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.services.teams.TeamService.FIELDS;
 
-import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -35,6 +34,7 @@ import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -69,14 +69,9 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.teams.TeamService;
 import org.openmetadata.service.services.teams.TeamService.TeamList;
 import org.openmetadata.service.util.CSVExportResponse;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -95,11 +90,9 @@ import org.openmetadata.service.util.RestUtil;
 public class TeamResource {
   public static final String COLLECTION_PATH = "/v1/teams/";
   private final TeamService service;
-  private final Authorizer authorizer;
 
-  public TeamResource(Authorizer authorizer, ServiceRegistry serviceRegistry) {
-    this.authorizer = authorizer;
-    this.service = serviceRegistry.getService(TeamService.class);
+  public TeamResource(TeamService service) {
+    this.service = service;
   }
 
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
@@ -111,12 +104,8 @@ public class TeamResource {
     return listOf(MetadataOperation.EDIT_POLICY, MetadataOperation.EDIT_USERS);
   }
 
-  private Team addHref(UriInfo uriInfo, Team team) {
-    return service.addHref(uriInfo, team);
-  }
-
   private ResultList<Team> addHref(UriInfo uriInfo, ResultList<Team> list) {
-    listOrEmpty(list.getData()).forEach(i -> addHref(uriInfo, i));
+    listOrEmpty(list.getData()).forEach(i -> service.addHref(uriInfo, i));
     return list;
   }
 
@@ -219,18 +208,8 @@ public class TeamResource {
       filter.addQueryParam("isJoinable", String.valueOf(isJoinable));
     }
     RestUtil.validateCursors(before, after);
-    OperationContext operationContext =
-        new OperationContext(Entity.TEAM, MetadataOperation.VIEW_BASIC);
-    ResourceContext resourceContext = filter.getResourceContext(Entity.TEAM);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    EntityUtil.addDomainQueryParam(securityContext, filter, Entity.TEAM);
-    EntityUtil.Fields fields = service.getFields(fieldsParam);
-    ResultList<Team> resultList;
-    if (before != null) {
-      resultList = service.getRepository().listBefore(uriInfo, fields, filter, limitParam, before);
-    } else {
-      resultList = service.getRepository().listAfter(uriInfo, fields, filter, limitParam, after);
-    }
+    ResultList<Team> resultList =
+        service.listTeams(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     return addHref(uriInfo, resultList);
   }
 
@@ -254,7 +233,7 @@ public class TeamResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -290,7 +269,7 @@ public class TeamResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -327,7 +306,7 @@ public class TeamResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET
@@ -358,7 +337,7 @@ public class TeamResource {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -380,7 +359,7 @@ public class TeamResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) {
     Team team =
         service.getMapper().createToEntity(ct, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, team);
+    return service.create(uriInfo, securityContext, team);
   }
 
   @PUT
@@ -402,7 +381,7 @@ public class TeamResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) {
     Team team =
         service.getMapper().createToEntity(ct, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, team);
+    return service.createOrUpdate(uriInfo, securityContext, team);
   }
 
   @PUT
@@ -559,7 +538,7 @@ public class TeamResource {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -588,7 +567,7 @@ public class TeamResource {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
@@ -614,7 +593,7 @@ public class TeamResource {
           boolean hardDelete,
       @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -640,7 +619,7 @@ public class TeamResource {
           boolean hardDelete,
       @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -653,7 +632,7 @@ public class TeamResource {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Team for instance {name} is not found")
       })
-  public Response delete(
+  public Response deleteByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Hard delete the entity. (Default = `false`)")
@@ -663,7 +642,7 @@ public class TeamResource {
       @Parameter(description = "Name of the team", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT
@@ -685,7 +664,7 @@ public class TeamResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET
@@ -717,7 +696,7 @@ public class TeamResource {
       })
   public Response exportCsvAsync(
       @Context SecurityContext securityContext, @PathParam("name") String name) {
-    return exportCsvInternalAsync(securityContext, name, false);
+    return service.exportCsvInternalAsync(securityContext, name, false);
   }
 
   @GET
@@ -738,7 +717,7 @@ public class TeamResource {
       })
   public String exportCsv(@Context SecurityContext securityContext, @PathParam("name") String name)
       throws IOException {
-    return exportCsvInternal(securityContext, name, false);
+    return service.exportCsvInternal(securityContext, name, false);
   }
 
   @PUT
@@ -769,7 +748,7 @@ public class TeamResource {
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, false);
+    return service.importCsvInternal(securityContext, name, csv, dryRun, false);
   }
 
   @PUT
@@ -850,7 +829,7 @@ public class TeamResource {
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
+    return service.importCsvInternalAsync(securityContext, name, csv, dryRun, false);
   }
 
   @GET

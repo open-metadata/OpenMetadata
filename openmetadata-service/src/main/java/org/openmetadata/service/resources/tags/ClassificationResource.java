@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.tags;
 
+import static org.openmetadata.service.services.tags.ClassificationService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -42,27 +44,16 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.util.List;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.tags.ClassificationService;
 
-@Slf4j
 @Path("/v1/classifications")
 @Tag(
     name = "Classifications",
@@ -77,26 +68,12 @@ import org.openmetadata.service.services.tags.ClassificationService;
 @Collection(
     name = "classifications",
     order = 4) // Initialize before TagResource, Glossary, and GlossaryTerms
-public class ClassificationResource
-    extends EntityBaseService<Classification, ClassificationRepository> {
+public class ClassificationResource {
   public static final String TAG_COLLECTION_PATH = "/v1/classifications/";
-  static final String FIELDS = "owners,reviewers,usageCount,termCount,autoClassificationConfig";
   private final ClassificationService service;
 
-  static class ClassificationList extends ResultList<Classification> {
-    /* Required for serde */
-  }
-
-  public ClassificationResource(
-      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.CLASSIFICATION, authorizer, limits);
-    this.service = serviceRegistry.getService(ClassificationService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("reviewers,usageCount,termCount", MetadataOperation.VIEW_BASIC);
-    return null;
+  public ClassificationResource(ClassificationService service) {
+    this.service = service;
   }
 
   @GET
@@ -111,9 +88,10 @@ public class ClassificationResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = ClassificationList.class)))
+                    schema =
+                        @Schema(implementation = ClassificationService.ClassificationList.class)))
       })
-  public ResultList<Classification> list(
+  public ClassificationService.ClassificationList list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -148,8 +126,9 @@ public class ClassificationResource
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return (ClassificationService.ClassificationList)
+        service.listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -187,7 +166,7 @@ public class ClassificationResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -227,7 +206,7 @@ public class ClassificationResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET
@@ -251,7 +230,7 @@ public class ClassificationResource
       @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -283,7 +262,7 @@ public class ClassificationResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -309,7 +288,7 @@ public class ClassificationResource
       @Valid CreateClassification create) {
     Classification category =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, category);
+    return service.create(uriInfo, securityContext, category);
   }
 
   @PUT
@@ -323,7 +302,7 @@ public class ClassificationResource
       @Valid CreateClassification create) {
     Classification category =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, category);
+    return service.createOrUpdate(uriInfo, securityContext, category);
   }
 
   @PATCH
@@ -352,7 +331,7 @@ public class ClassificationResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -381,7 +360,7 @@ public class ClassificationResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
@@ -405,7 +384,7 @@ public class ClassificationResource
       @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -429,7 +408,7 @@ public class ClassificationResource
       @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -454,7 +433,7 @@ public class ClassificationResource
       @Parameter(description = "Name of the classification", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT
@@ -476,6 +455,6 @@ public class ClassificationResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

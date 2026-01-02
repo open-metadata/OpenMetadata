@@ -29,14 +29,17 @@ import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.LoadGlossary;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.glossary.GlossaryTermMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
@@ -44,23 +47,42 @@ import org.openmetadata.service.util.RestUtil;
 @Slf4j
 @Singleton
 @Service(entityType = Entity.GLOSSARY_TERM)
-public class GlossaryTermService extends AbstractEntityService<GlossaryTerm> {
+public class GlossaryTermService extends EntityBaseService<GlossaryTerm, GlossaryTermRepository> {
 
   @Getter private final GlossaryTermMapper mapper;
-  private final GlossaryTermRepository glossaryTermRepository;
   private final GlossaryService glossaryService;
+  public static final String FIELDS =
+      "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount";
 
   @Inject
   public GlossaryTermService(
       GlossaryTermRepository repository,
-      SearchRepository searchRepository,
       Authorizer authorizer,
       GlossaryTermMapper mapper,
-      GlossaryService glossaryService) {
-    super(repository, searchRepository, authorizer, Entity.GLOSSARY_TERM);
-    this.glossaryTermRepository = repository;
+      GlossaryService glossaryService,
+      Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.GLOSSARY_TERM, GlossaryTerm.class),
+        repository,
+        authorizer,
+        limits);
     this.mapper = mapper;
     this.glossaryService = glossaryService;
+  }
+
+  @Override
+  public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {
+    super.addHref(uriInfo, term);
+    Entity.withHref(uriInfo, term.getGlossary());
+    Entity.withHref(uriInfo, term.getParent());
+    Entity.withHref(uriInfo, term.getRelatedTerms());
+    return term;
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("children,relatedTerms,reviewers,usageCount", MetadataOperation.VIEW_BASIC);
+    return null;
   }
 
   public void initialize() {
@@ -82,34 +104,24 @@ public class GlossaryTermService extends AbstractEntityService<GlossaryTerm> {
         createTerm.withGlossary(glossary.getName());
         createTerm.withProvider(glossary.getProvider());
         GlossaryTerm term = mapper.createToEntity(createTerm, ADMIN_USER_NAME);
-        glossaryTermRepository.setFullyQualifiedName(term);
+        repository.setFullyQualifiedName(term);
         termsToCreate.add(term);
       }
 
       EntityUtil.sortByFQN(termsToCreate);
 
       for (GlossaryTerm term : termsToCreate) {
-        glossaryTermRepository.initializeEntity(term);
+        repository.initializeEntity(term);
       }
     }
   }
 
-  public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {
-    Entity.withHref(uriInfo, term.getOwners());
-    Entity.withHref(uriInfo, term.getFollowers());
-    Entity.withHref(uriInfo, term.getExperts());
-    Entity.withHref(uriInfo, term.getReviewers());
-    Entity.withHref(uriInfo, term.getChildren());
-    Entity.withHref(uriInfo, term.getDomains());
-    Entity.withHref(uriInfo, term.getDataProducts());
-    Entity.withHref(uriInfo, term.getGlossary());
-    Entity.withHref(uriInfo, term.getParent());
-    Entity.withHref(uriInfo, term.getRelatedTerms());
-    return term;
-  }
-
   public RestUtil.PutResponse<GlossaryTerm> updateVote(
       String updatedBy, UUID id, VoteRequest request) {
-    return glossaryTermRepository.updateVote(updatedBy, id, request);
+    return repository.updateVote(updatedBy, id, request);
+  }
+
+  public static class GlossaryTermList extends ResultList<GlossaryTerm> {
+    /* Required for serde */
   }
 }

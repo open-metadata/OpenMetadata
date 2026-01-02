@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.services.databases;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
@@ -39,32 +41,65 @@ import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.databases.TableMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Singleton
 @Service(entityType = Entity.TABLE)
-public class TableService extends AbstractEntityService<Table> {
+public class TableService extends EntityBaseService<Table, TableRepository> {
+  public static final String FIELDS =
+      "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,sampleData,"
+          + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domains,dataProducts,lifeCycle,sourceHash";
 
   @Getter private final TableMapper mapper;
-  private final TableRepository tableRepository;
 
   @Inject
   public TableService(
-      TableRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer,
-      TableMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.TABLE);
-    this.tableRepository = repository;
+      TableRepository repository, Authorizer authorizer, TableMapper mapper, Limits limits) {
+    super(new ResourceEntityInfo<>(Entity.TABLE, Table.class), repository, authorizer, limits);
     this.mapper = mapper;
+  }
+
+  @Override
+  public Table addHref(UriInfo uriInfo, Table table) {
+    super.addHref(uriInfo, table);
+    Entity.withHref(uriInfo, table.getDatabaseSchema());
+    Entity.withHref(uriInfo, table.getDatabase());
+    Entity.withHref(uriInfo, table.getService());
+    return table;
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    allowedFields.add("customMetrics");
+    addViewOperation(
+        "columns,tableConstraints,tablePartition,joins,schemaDefinition,dataModel",
+        MetadataOperation.VIEW_BASIC);
+    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
+    addViewOperation("customMetrics", MetadataOperation.VIEW_TESTS);
+    addViewOperation("testSuite", MetadataOperation.VIEW_TESTS);
+    addViewOperation("sampleData", MetadataOperation.VIEW_SAMPLE_DATA);
+    return listOf(
+        MetadataOperation.VIEW_TESTS,
+        MetadataOperation.VIEW_QUERIES,
+        MetadataOperation.VIEW_DATA_PROFILE,
+        MetadataOperation.VIEW_SAMPLE_DATA,
+        MetadataOperation.VIEW_USAGE,
+        MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION,
+        MetadataOperation.EDIT_TESTS,
+        MetadataOperation.EDIT_QUERIES,
+        MetadataOperation.EDIT_DATA_PROFILE,
+        MetadataOperation.EDIT_SAMPLE_DATA,
+        MetadataOperation.EDIT_LINEAGE,
+        MetadataOperation.EDIT_ENTITY_RELATIONSHIP,
+        MetadataOperation.CREATE_TESTS);
   }
 
   public Table addJoins(
@@ -72,7 +107,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = tableRepository.addJoins(id, joins);
+    Table table = repository.addJoins(id, joins);
     return addHref(uriInfo, table);
   }
 
@@ -81,7 +116,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = tableRepository.addSampleData(id, tableData);
+    Table table = repository.addSampleData(id, tableData);
     return addHref(uriInfo, table);
   }
 
@@ -91,7 +126,7 @@ public class TableService extends AbstractEntityService<Table> {
     ResourceContext<?> resourceContext = getResourceContextById(id);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
-    Table table = tableRepository.getSampleData(id, authorizePII);
+    Table table = repository.getSampleData(id, authorizePII);
     return addHref(uriInfo, table);
   }
 
@@ -99,7 +134,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = tableRepository.deleteSampleData(id);
+    Table table = repository.deleteSampleData(id);
     return addHref(uriInfo, table);
   }
 
@@ -111,7 +146,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = tableRepository.addPipelineObservability(id, pipelineObservability);
+    Table table = repository.addPipelineObservability(id, pipelineObservability);
     return addHref(uriInfo, table);
   }
 
@@ -120,7 +155,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return tableRepository.getPipelineObservability(id);
+    return repository.getPipelineObservability(id);
   }
 
   public List<PipelineObservability> getPipelineObservabilityByName(
@@ -128,7 +163,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return tableRepository.getPipelineObservabilityByName(fqn);
+    return repository.getPipelineObservabilityByName(fqn);
   }
 
   public Table deletePipelineObservability(
@@ -136,7 +171,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = tableRepository.deletePipelineObservability(id);
+    Table table = repository.deletePipelineObservability(id);
     return addHref(uriInfo, table);
   }
 
@@ -148,7 +183,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = tableRepository.addSinglePipelineObservability(id, pipelineObservability);
+    Table table = repository.addSinglePipelineObservability(id, pipelineObservability);
     return addHref(uriInfo, table);
   }
 
@@ -157,7 +192,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = tableRepository.deleteSinglePipelineObservability(id, pipelineFqn);
+    Table table = repository.deleteSinglePipelineObservability(id, pipelineFqn);
     return addHref(uriInfo, table);
   }
 
@@ -169,7 +204,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = tableRepository.addTableProfilerConfig(id, tableProfilerConfig);
+    Table table = repository.addTableProfilerConfig(id, tableProfilerConfig);
     return addHref(uriInfo, table);
   }
 
@@ -177,9 +212,9 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = tableRepository.find(id, Include.NON_DELETED);
+    Table table = repository.find(id, Include.NON_DELETED);
     return addHref(
-        uriInfo, table.withTableProfilerConfig(tableRepository.getTableProfilerConfig(table)));
+        uriInfo, table.withTableProfilerConfig(repository.getTableProfilerConfig(table)));
   }
 
   public Table deleteTableProfilerConfig(
@@ -187,7 +222,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = tableRepository.deleteTableProfilerConfig(id);
+    Table table = repository.deleteTableProfilerConfig(id);
     return addHref(uriInfo, table);
   }
 
@@ -196,8 +231,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return tableRepository.getLatestTableProfile(
-        fqn, includeColumnProfile, authorizer, securityContext);
+    return repository.getLatestTableProfile(fqn, includeColumnProfile, authorizer, securityContext);
   }
 
   public ResultList<TableProfile> getTableProfiles(
@@ -205,7 +239,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return tableRepository.getTableProfiles(fqn, startTs, endTs);
+    return repository.getTableProfiles(fqn, startTs, endTs);
   }
 
   public ResultList<ColumnProfile> getColumnProfiles(
@@ -213,11 +247,11 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(tableFqn));
-    return tableRepository.getColumnProfiles(fqn, startTs, endTs, authorizer, securityContext);
+    return repository.getColumnProfiles(fqn, startTs, endTs, authorizer, securityContext);
   }
 
   public ResultList<SystemProfile> getSystemProfiles(String fqn, Long startTs, Long endTs) {
-    return tableRepository.getSystemProfiles(fqn, startTs, endTs);
+    return repository.getSystemProfiles(fqn, startTs, endTs);
   }
 
   public Table addTableProfileData(
@@ -228,7 +262,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = tableRepository.addTableProfileData(id, createTableProfile);
+    Table table = repository.addTableProfileData(id, createTableProfile);
     return addHref(uriInfo, table);
   }
 
@@ -237,7 +271,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    tableRepository.deleteTableProfile(fqn, profileEntityType, timestamp);
+    repository.deleteTableProfile(fqn, profileEntityType, timestamp);
   }
 
   public Table addDataModel(
@@ -245,7 +279,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = tableRepository.addDataModel(id, dataModel);
+    Table table = repository.addDataModel(id, dataModel);
     return addHref(uriInfo, table);
   }
 
@@ -254,7 +288,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = tableRepository.addCustomMetric(id, customMetric);
+    Table table = repository.addCustomMetric(id, customMetric);
     return addHref(uriInfo, table);
   }
 
@@ -269,7 +303,7 @@ public class TableService extends AbstractEntityService<Table> {
     CustomMetric customMetric =
         mapper.createCustomMetricToEntity(
             createCustomMetric, securityContext.getUserPrincipal().getName());
-    Table table = tableRepository.addCustomMetric(id, customMetric);
+    Table table = repository.addCustomMetric(id, customMetric);
     return addHref(uriInfo, table);
   }
 
@@ -282,23 +316,8 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = tableRepository.deleteCustomMetric(id, columnName, customMetricName);
+    Table table = repository.deleteCustomMetric(id, columnName, customMetricName);
     return addHref(uriInfo, table);
-  }
-
-  public RestUtil.PutResponse<Table> addFollower(
-      SecurityContext securityContext, UUID id, UUID userId) {
-    return tableRepository.addFollower(securityContext.getUserPrincipal().getName(), id, userId);
-  }
-
-  public RestUtil.PutResponse<Table> deleteFollower(
-      SecurityContext securityContext, UUID id, UUID userId) {
-    return tableRepository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId);
-  }
-
-  public RestUtil.PutResponse<Table> updateVote(
-      SecurityContext securityContext, UUID id, org.openmetadata.schema.api.VoteRequest request) {
-    return tableRepository.updateVote(securityContext.getUserPrincipal().getName(), id, request);
   }
 
   public ResultList<Column> getTableColumns(
@@ -311,7 +330,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return tableRepository.getTableColumns(
+    return repository.getTableColumns(
         id, limit, offset, fieldsParam, include, authorizer, securityContext);
   }
 
@@ -325,7 +344,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return tableRepository.getTableColumnsByFQN(
+    return repository.getTableColumnsByFQN(
         fqn, limit, offset, fieldsParam, include, authorizer, securityContext);
   }
 
@@ -340,7 +359,7 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return tableRepository.searchTableColumnsById(
+    return repository.searchTableColumnsById(
         id, query, limit, offset, fieldsParam, include, authorizer, securityContext);
   }
 
@@ -355,16 +374,27 @@ public class TableService extends AbstractEntityService<Table> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return tableRepository.searchTableColumnsByFQN(
+    return repository.searchTableColumnsByFQN(
         fqn, query, limit, offset, fieldsParam, include, authorizer, securityContext);
   }
 
-  private Table addHref(UriInfo uriInfo, Table table) {
-    Entity.withHref(uriInfo, table.getOwners());
-    Entity.withHref(uriInfo, table.getFollowers());
-    Entity.withHref(uriInfo, table.getDatabaseSchema());
-    Entity.withHref(uriInfo, table.getDatabase());
-    Entity.withHref(uriInfo, table.getService());
-    return table;
+  public static class TableList extends ResultList<Table> {
+    /* Required for serde */
+  }
+
+  public static class TableProfileList extends ResultList<TableProfile> {
+    /* Required for serde */
+  }
+
+  public static class ColumnProfileList extends ResultList<ColumnProfile> {
+    /* Required for serde */
+  }
+
+  public static class SystemProfileList extends ResultList<SystemProfile> {
+    /* Required for serde */
+  }
+
+  public static class TableColumnList extends ResultList<Column> {
+    /* Required for serde */
   }
 }

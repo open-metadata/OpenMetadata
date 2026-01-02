@@ -13,44 +13,29 @@
 
 package org.openmetadata.service.resources.data;
 
-import java.util.UUID;
 import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.entity.data.DataContract;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.mapper.EntityMapper;
 import org.openmetadata.service.util.EntityUtil;
 
-public class DataContractMapper {
-  public static DataContract createEntity(CreateDataContract create, String user) {
-    // Create a reference for the entity specified in the contract
-    EntityReference entity = create.getEntity();
+public class DataContractMapper implements EntityMapper<DataContract, CreateDataContract> {
 
-    // Build basic fields
-    DataContract dataContract =
-        new DataContract()
-            .withId(UUID.randomUUID())
-            .withName(create.getName())
-            .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription())
-            .withEntity(entity)
-            .withEntityStatus(create.getEntityStatus())
-            .withSchema(create.getSchema())
-            .withSemantics(create.getSemantics())
-            .withQualityExpectations(create.getQualityExpectations())
-            .withOwners(create.getOwners())
-            .withReviewers(create.getReviewers())
-            .withEffectiveFrom(create.getEffectiveFrom())
-            .withEffectiveUntil(create.getEffectiveUntil())
-            .withSourceUrl(create.getSourceUrl())
-            .withTermsOfUse(create.getTermsOfUse())
-            .withSecurity(create.getSecurity())
-            .withSla(create.getSla())
-            .withExtension(create.getExtension())
-            .withUpdatedBy(user)
-            .withUpdatedAt(System.currentTimeMillis());
-
-    return dataContract;
+  @Override
+  public DataContract createToEntity(CreateDataContract create, String user) {
+    return copy(new DataContract(), create, user)
+        .withEntity(create.getEntity())
+        .withEntityStatus(create.getEntityStatus())
+        .withSchema(create.getSchema())
+        .withSemantics(create.getSemantics())
+        .withQualityExpectations(create.getQualityExpectations())
+        .withEffectiveFrom(create.getEffectiveFrom())
+        .withEffectiveUntil(create.getEffectiveUntil())
+        .withSourceUrl(create.getSourceUrl())
+        .withTermsOfUse(create.getTermsOfUse())
+        .withSecurity(create.getSecurity())
+        .withSla(create.getSla());
   }
 
   public static DataContract trimFields(DataContract dataContract, Include include) {

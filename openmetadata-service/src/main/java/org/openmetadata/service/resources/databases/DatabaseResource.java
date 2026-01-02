@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.databases;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.services.databases.DatabaseService.FIELDS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -55,17 +55,10 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.DatabaseProfilerConfig;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.databases.DatabaseService;
 import org.openmetadata.service.util.CSVExportResponse;
 
@@ -76,41 +69,13 @@ import org.openmetadata.service.util.CSVExportResponse;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "databases")
-public class DatabaseResource extends EntityBaseService<Database, DatabaseRepository> {
+public class DatabaseResource {
   public static final String COLLECTION_PATH = "v1/databases/";
-  static final String FIELDS =
-      "owners,databaseSchemas,usageSummary,location,tags,certification,extension,domains,sourceHash,followers";
 
-  private final DatabaseService databaseService;
+  private final DatabaseService service;
 
-  @Override
-  public Database addHref(UriInfo uriInfo, Database db) {
-    super.addHref(uriInfo, db);
-    Entity.withHref(uriInfo, db.getDatabaseSchemas());
-    Entity.withHref(uriInfo, db.getLocation());
-    Entity.withHref(uriInfo, db.getService());
-    return db;
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("databaseSchemas,location", MetadataOperation.VIEW_BASIC);
-    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
-    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
-  }
-
-  public DatabaseResource(Authorizer authorizer, Limits limits) {
-    super(Entity.DATABASE, authorizer, limits);
-    this.databaseService = null;
-  }
-
-  public DatabaseResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
-    super(Entity.DATABASE, authorizer, limits);
-    this.databaseService = serviceRegistry.getService(DatabaseService.class);
-  }
-
-  public static class DatabaseList extends ResultList<Database> {
-    /* Required for serde */
+  public DatabaseResource(DatabaseService service) {
+    this.service = service;
   }
 
   @GET
@@ -128,7 +93,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DatabaseList.class)))
+                    schema = @Schema(implementation = DatabaseService.DatabaseList.class)))
       })
   public ResultList<Database> list(
       @Context UriInfo uriInfo,
@@ -169,7 +134,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
     if (serviceParam != null) {
       filter.addQueryParam("service", serviceParam);
     }
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -194,7 +159,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
       @Parameter(description = "Id of the database", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -230,7 +195,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -268,7 +233,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -300,7 +265,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -323,10 +288,8 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
       @Context SecurityContext securityContext,
       @Valid CreateDatabase create) {
     Database database =
-        databaseService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, database);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.create(uriInfo, securityContext, database);
   }
 
   @PUT
@@ -365,7 +328,8 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateDatabase> createRequests) {
-    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+    return service.processBulkRequest(
+        uriInfo, securityContext, createRequests, service.getMapper(), async);
   }
 
   @PATCH
@@ -394,7 +358,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -423,7 +387,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -445,10 +409,8 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
       @Context SecurityContext securityContext,
       @Valid CreateDatabase create) {
     Database database =
-        databaseService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, database);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.createOrUpdate(uriInfo, securityContext, database);
   }
 
   @DELETE
@@ -476,7 +438,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
       @Parameter(description = "Id of the database", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -505,7 +467,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
       @Parameter(description = "Id of the database", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @GET
@@ -533,10 +495,10 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
               description =
                   "If true, export will include child entities (schemas, tables, columns)",
               schema = @Schema(type = "boolean"))
-          @DefaultValue("false") // Default: Export only database
+          @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive) {
-    return exportCsvInternalAsync(securityContext, name, recursive);
+    return service.exportCsvInternalAsync(securityContext, name, recursive);
   }
 
   @GET
@@ -564,11 +526,11 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
               description =
                   "If true, export will include child entities (schemas, tables, columns)",
               schema = @Schema(type = "boolean"))
-          @DefaultValue("false") // Default: Export only database
+          @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive)
       throws IOException {
-    return exportCsvInternal(securityContext, name, recursive);
+    return service.exportCsvInternal(securityContext, name, recursive);
   }
 
   @PUT
@@ -606,7 +568,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
           boolean recursive,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, recursive);
+    return service.importCsvInternal(securityContext, name, csv, dryRun, recursive);
   }
 
   @PUT
@@ -645,7 +607,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
           @QueryParam("recursive")
           boolean recursive,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, recursive);
+    return service.importCsvInternalAsync(securityContext, name, csv, dryRun, recursive);
   }
 
   @PUT
@@ -670,7 +632,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return databaseService.updateVote(securityContext, id, request).toResponse();
+    return service.updateVote(securityContext, id, request).toResponse();
   }
 
   @DELETE
@@ -701,7 +663,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -723,7 +685,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @PUT
@@ -748,8 +710,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
           @PathParam("id")
           UUID id,
       @Valid DatabaseProfilerConfig databaseProfilerConfig) {
-    return databaseService.addDatabaseProfilerConfig(
-        uriInfo, securityContext, id, databaseProfilerConfig);
+    return service.addDatabaseProfilerConfig(uriInfo, securityContext, id, databaseProfilerConfig);
   }
 
   @GET
@@ -773,7 +734,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
       @Parameter(description = "Id of the database", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return databaseService.getDatabaseProfilerConfig(uriInfo, securityContext, id);
+    return service.getDatabaseProfilerConfig(uriInfo, securityContext, id);
   }
 
   @DELETE
@@ -796,7 +757,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return databaseService.deleteDatabaseProfilerConfig(uriInfo, securityContext, id);
+    return service.deleteDatabaseProfilerConfig(uriInfo, securityContext, id);
   }
 
   @PUT
@@ -825,7 +786,7 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return databaseService.addFollower(securityContext, id, userId).toResponse();
+    return service.addFollower(securityContext, id, userId).toResponse();
   }
 
   @DELETE
@@ -853,8 +814,6 @@ public class DatabaseResource extends EntityBaseService<Database, DatabaseReposi
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return databaseService
-        .deleteFollower(securityContext, id, UUID.fromString(userId))
-        .toResponse();
+    return service.deleteFollower(securityContext, id, UUID.fromString(userId)).toResponse();
   }
 }

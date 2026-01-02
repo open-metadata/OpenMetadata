@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.dqtests;
 
+import static org.openmetadata.service.services.dqtests.TestDefinitionService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -31,7 +33,6 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.tests.TestDefinition;
@@ -41,18 +42,11 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.TestDefinitionRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.dqtests.TestDefinitionService;
 
-@Slf4j
 @Path("/v1/dataQuality/testDefinitions")
 @Tag(
     name = "Test Definitions",
@@ -62,25 +56,16 @@ import org.openmetadata.service.services.dqtests.TestDefinitionService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestDefinitions")
-public class TestDefinitionResource
-    extends EntityBaseService<TestDefinition, TestDefinitionRepository> {
+public class TestDefinitionResource {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testDefinitions";
-  static final String FIELDS = "owners";
   private final TestDefinitionService service;
 
-  public TestDefinitionResource(
-      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.TEST_DEFINITION, authorizer, limits);
-    this.service = serviceRegistry.getService(TestDefinitionService.class);
+  public TestDefinitionResource(TestDefinitionService service) {
+    this.service = service;
   }
 
-  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     service.initialize();
-  }
-
-  public static class TestDefinitionList extends ResultList<TestDefinition> {
-    /* Required for serde */
   }
 
   @GET
@@ -99,7 +84,7 @@ public class TestDefinitionResource
                 @Content(
                     mediaType = "application/json",
                     schema =
-                        @Schema(implementation = TestDefinitionResource.TestDefinitionList.class)))
+                        @Schema(implementation = TestDefinitionService.TestDefinitionList.class)))
       })
   public ResultList<TestDefinition> list(
       @Context UriInfo uriInfo,
@@ -167,7 +152,7 @@ public class TestDefinitionResource
     if (supportedServiceParam != null) {
       filter.addQueryParam("supportedService", supportedServiceParam);
     }
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -192,7 +177,7 @@ public class TestDefinitionResource
       @Parameter(description = "Id of the test definition", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -229,7 +214,7 @@ public class TestDefinitionResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -267,7 +252,7 @@ public class TestDefinitionResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET
@@ -299,7 +284,7 @@ public class TestDefinitionResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -323,7 +308,7 @@ public class TestDefinitionResource
       @Valid CreateTestDefinition create) {
     TestDefinition testDefinition =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, testDefinition);
+    return service.create(uriInfo, securityContext, testDefinition);
   }
 
   @PATCH
@@ -352,7 +337,7 @@ public class TestDefinitionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
@@ -376,7 +361,7 @@ public class TestDefinitionResource
       @Valid CreateTestDefinition create) {
     TestDefinition testDefinition =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, testDefinition);
+    return service.createOrUpdate(uriInfo, securityContext, testDefinition);
   }
 
   @DELETE
@@ -406,7 +391,7 @@ public class TestDefinitionResource
       @Parameter(description = "Id of the test definition", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -436,7 +421,7 @@ public class TestDefinitionResource
       @Parameter(description = "Id of the test definition", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -466,7 +451,7 @@ public class TestDefinitionResource
       @Parameter(description = "Name of the test definition", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
   }
 
   @PUT
@@ -488,6 +473,6 @@ public class TestDefinitionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

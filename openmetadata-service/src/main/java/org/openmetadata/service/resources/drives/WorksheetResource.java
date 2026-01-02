@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.drives;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.services.drives.WorksheetService.FIELDS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,16 +53,9 @@ import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.WorksheetRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.drives.WorksheetService;
 
 @Path("/v1/drives/worksheets")
@@ -72,42 +65,12 @@ import org.openmetadata.service.services.drives.WorksheetService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "worksheets")
-public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRepository> {
+public class WorksheetResource {
   public static final String COLLECTION_PATH = "v1/drives/worksheets/";
-  static final String FIELDS =
-      "owners,spreadsheet,columns,sampleData,usageSummary,tags,extension,domains,sourceHash,lifeCycle,votes,followers,rowCount";
-  private WorksheetService worksheetService;
+  private final WorksheetService service;
 
-  @Override
-  public Worksheet addHref(UriInfo uriInfo, Worksheet worksheet) {
-    super.addHref(uriInfo, worksheet);
-    Entity.withHref(uriInfo, worksheet.getSpreadsheet());
-    Entity.withHref(uriInfo, worksheet.getService());
-    return worksheet;
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("spreadsheet", MetadataOperation.VIEW_BASIC);
-    addViewOperation("columns", MetadataOperation.VIEW_BASIC);
-    addViewOperation("sampleData", MetadataOperation.VIEW_SAMPLE_DATA);
-    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
-    return listOf(
-        MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE,
-        MetadataOperation.VIEW_SAMPLE_DATA, MetadataOperation.EDIT_SAMPLE_DATA);
-  }
-
-  public WorksheetResource(Authorizer authorizer, Limits limits) {
-    super(Entity.WORKSHEET, authorizer, limits);
-  }
-
-  public WorksheetResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
-    super(Entity.WORKSHEET, authorizer, limits);
-    this.worksheetService = serviceRegistry.getService(WorksheetService.class);
-  }
-
-  public static class WorksheetList extends ResultList<Worksheet> {
-    /* Required for serde */
+  public WorksheetResource(WorksheetService service) {
+    this.service = service;
   }
 
   @GET
@@ -125,7 +88,7 @@ public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRep
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = WorksheetList.class)))
+                    schema = @Schema(implementation = WorksheetService.WorksheetList.class)))
       })
   public ResultList<Worksheet> list(
       @Context UriInfo uriInfo,
@@ -171,7 +134,7 @@ public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRep
         new ListFilter(include)
             .addQueryParam("service", serviceParam)
             .addQueryParam("spreadsheet", spreadsheetParam);
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -208,7 +171,7 @@ public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRep
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -248,7 +211,7 @@ public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRep
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @POST
@@ -271,10 +234,8 @@ public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRep
       @Context SecurityContext securityContext,
       @Valid CreateWorksheet create) {
     Worksheet worksheet =
-        worksheetService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, worksheet);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.create(uriInfo, securityContext, worksheet);
   }
 
   @PUT
@@ -295,7 +256,8 @@ public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRep
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateWorksheet> createRequests) {
-    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+    return service.processBulkRequest(
+        uriInfo, securityContext, createRequests, service.getMapper(), async);
   }
 
   @PATCH
@@ -324,7 +286,7 @@ public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRep
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -353,7 +315,7 @@ public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRep
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -376,10 +338,8 @@ public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRep
       @Context SecurityContext securityContext,
       @Valid CreateWorksheet create) {
     Worksheet worksheet =
-        worksheetService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, worksheet);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.createOrUpdate(uriInfo, securityContext, worksheet);
   }
 
   @DELETE
@@ -402,7 +362,7 @@ public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRep
       @Parameter(description = "Id of the worksheet", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return service.delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -429,7 +389,7 @@ public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRep
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
@@ -451,7 +411,7 @@ public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRep
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET
@@ -475,7 +435,7 @@ public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRep
       @Parameter(description = "Id of the worksheet", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -507,7 +467,7 @@ public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRep
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @PUT
@@ -536,7 +496,7 @@ public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRep
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
+    return service
         .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
         .toResponse();
   }
@@ -567,7 +527,7 @@ public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRep
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
+    return service
         .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
         .toResponse();
   }
@@ -595,7 +555,7 @@ public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRep
           @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
+    return service
         .updateVote(securityContext.getUserPrincipal().getName(), id, request)
         .toResponse();
   }
@@ -624,6 +584,6 @@ public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRep
       @Parameter(description = "Id of the worksheet", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 }

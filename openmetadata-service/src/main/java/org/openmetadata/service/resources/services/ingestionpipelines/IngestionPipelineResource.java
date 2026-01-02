@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.services.ingestionpipelines;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
@@ -21,6 +20,7 @@ import static org.openmetadata.sdk.PipelineServiceClientInterface.TYPE_TO_TASK;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_PIPELINE_STATUS;
 import static org.openmetadata.service.jdbi3.IngestionPipelineRepository.validateProfileSample;
+import static org.openmetadata.service.services.pipelines.IngestionPipelineService.FIELDS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,7 +31,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.inject.Inject;
 import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -63,7 +62,6 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
-import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -80,27 +78,19 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.logstorage.LogStorageFactory;
-import org.openmetadata.service.logstorage.LogStorageInterface;
-import org.openmetadata.service.monitoring.StreamableLogsMetrics;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
-import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.services.pipelines.IngestionPipelineService;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
-// TODO merge with workflows
 @Slf4j
 @Path("/v1/services/ingestionPipelines")
 @Tag(
@@ -109,98 +99,18 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "IngestionPipelines")
-public class IngestionPipelineResource
-    extends EntityBaseService<IngestionPipeline, IngestionPipelineRepository> {
-  private IngestionPipelineMapper mapper;
+public class IngestionPipelineResource {
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
-  private PipelineServiceClientInterface pipelineServiceClient;
-  private OpenMetadataApplicationConfig openMetadataApplicationConfig;
-  static final String FIELDS = "owners,followers";
+  private final IngestionPipelineService service;
 
-  @Inject public StreamableLogsMetrics streamableLogsMetrics;
-
-  @Override
-  public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
-    super.addHref(uriInfo, ingestionPipeline);
-    Entity.withHref(uriInfo, ingestionPipeline.getService());
-    return ingestionPipeline;
+  public IngestionPipelineResource(IngestionPipelineService service) {
+    this.service = service;
   }
 
-  public IngestionPipelineResource(Authorizer authorizer, Limits limits) {
-    super(Entity.INGESTION_PIPELINE, authorizer, limits);
+  private IngestionPipelineRepository getRepository() {
+    return service.getRepository();
   }
 
-  @Override
-  public void initialize(OpenMetadataApplicationConfig config) {
-    this.openMetadataApplicationConfig = config;
-    this.mapper = new IngestionPipelineMapper(config);
-    this.pipelineServiceClient =
-        PipelineServiceClientFactory.createPipelineServiceClient(
-            config.getPipelineServiceClientConfiguration());
-    repository.setPipelineServiceClient(pipelineServiceClient);
-
-    // Initialize log storage - always initialize with at least DefaultLogStorage
-    LogStorageConfiguration logStorageConfig =
-        config.getPipelineServiceClientConfiguration() != null
-            ? config.getPipelineServiceClientConfiguration().getLogStorageConfiguration()
-            : null;
-
-    // Set the configuration in repository so it knows what's enabled
-    repository.setLogStorageConfiguration(logStorageConfig);
-
-    try {
-      LogStorageInterface logStorage =
-          LogStorageFactory.create(logStorageConfig, pipelineServiceClient, streamableLogsMetrics);
-      repository.setLogStorage(logStorage);
-      LOG.info(
-          "Log storage initialized successfully: type={}",
-          logStorageConfig != null ? logStorageConfig.getType() : "default");
-    } catch (Exception e) {
-      LOG.warn("Failed to initialize configured log storage, using default implementation", e);
-      try {
-        // Fallback to default log storage that delegates to pipeline service client
-        LogStorageInterface defaultLogStorage =
-            LogStorageFactory.create(null, pipelineServiceClient, streamableLogsMetrics);
-        repository.setLogStorage(defaultLogStorage);
-        // Set a default configuration so isLogStorageEnabled() returns true
-        repository.setLogStorageConfiguration(new LogStorageConfiguration());
-      } catch (Exception ex) {
-        LOG.error("Failed to initialize default log storage", ex);
-      }
-    }
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    return listOf(
-        MetadataOperation.CREATE_INGESTION_PIPELINE_AUTOMATOR,
-        MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
-  }
-
-  public static class IngestionPipelineList extends ResultList<IngestionPipeline> {
-    /* Required for serde */
-  }
-
-  /**
-   * Handle permissions based on the pipeline type
-   */
-  @Override
-  public Response create(
-      UriInfo uriInfo, SecurityContext securityContext, IngestionPipeline entity) {
-    OperationContext operationContext =
-        new OperationContext(entityType, getOperationForPipelineType(entity));
-    CreateResourceContext<IngestionPipeline> createResourceContext =
-        new CreateResourceContext<>(entityType, entity);
-    limits.enforceLimits(securityContext, createResourceContext, operationContext);
-    authorizer.authorize(securityContext, operationContext, createResourceContext);
-    entity = addHref(uriInfo, repository.create(uriInfo, entity));
-    return Response.created(entity.getHref()).entity(entity).build();
-  }
-
-  /**
-   * Dynamically get the MetadataOperation based on the pipelineType (or application Type).
-   * E.g., for the Automator, the Operation will be `CREATE_INGESTION_PIPELINE_AUTOMATOR`.
-   */
   private MetadataOperation getOperationForPipelineType(IngestionPipeline ingestionPipeline) {
     String pipelineType = IngestionPipelineRepository.getPipelineWorkflowType(ingestionPipeline);
     try {
@@ -298,13 +208,13 @@ public class IngestionPipelineResource
             .addQueryParam("applicationType", applicationType)
             .addQueryParam("provider", provider == null ? null : provider.value());
     ResultList<IngestionPipeline> ingestionPipelines =
-        super.listInternal(
+        service.listInternal(
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
 
     for (IngestionPipeline ingestionPipeline : listOrEmpty(ingestionPipelines.getData())) {
       if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
         ingestionPipeline.setPipelineStatuses(
-            repository.getLatestPipelineStatus(ingestionPipeline));
+            getRepository().getLatestPipelineStatus(ingestionPipeline));
       }
       decryptOrNullify(securityContext, ingestionPipeline, false);
     }
@@ -339,7 +249,7 @@ public class IngestionPipelineResource
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
+    return service
         .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
         .toResponse();
   }
@@ -369,7 +279,7 @@ public class IngestionPipelineResource
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
+    return service
         .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
         .toResponse();
   }
@@ -395,7 +305,7 @@ public class IngestionPipelineResource
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -434,9 +344,10 @@ public class IngestionPipelineResource
           @DefaultValue("non-deleted")
           Include include) {
     IngestionPipeline ingestionPipeline =
-        getInternal(uriInfo, securityContext, id, fieldsParam, include);
+        service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
     if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
-      ingestionPipeline.setPipelineStatuses(repository.getLatestPipelineStatus(ingestionPipeline));
+      ingestionPipeline.setPipelineStatuses(
+          getRepository().getLatestPipelineStatus(ingestionPipeline));
     }
     decryptOrNullify(securityContext, ingestionPipeline, false);
     return ingestionPipeline;
@@ -471,7 +382,7 @@ public class IngestionPipelineResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    IngestionPipeline ingestionPipeline = super.getVersionInternal(securityContext, id, version);
+    IngestionPipeline ingestionPipeline = service.getVersionInternal(securityContext, id, version);
     decryptOrNullify(securityContext, ingestionPipeline, false);
     return ingestionPipeline;
   }
@@ -514,9 +425,10 @@ public class IngestionPipelineResource
           @DefaultValue("non-deleted")
           Include include) {
     IngestionPipeline ingestionPipeline =
-        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+        service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
     if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
-      ingestionPipeline.setPipelineStatuses(repository.getLatestPipelineStatus(ingestionPipeline));
+      ingestionPipeline.setPipelineStatuses(
+          getRepository().getLatestPipelineStatus(ingestionPipeline));
     }
     decryptOrNullify(securityContext, ingestionPipeline, false);
     return ingestionPipeline;
@@ -542,11 +454,23 @@ public class IngestionPipelineResource
       @Context SecurityContext securityContext,
       @Valid CreateIngestionPipeline create) {
     IngestionPipeline ingestionPipeline =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, ingestionPipeline);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    Response response = createWithCustomOperation(uriInfo, securityContext, ingestionPipeline);
     validateProfileSample(ingestionPipeline);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
     return response;
+  }
+
+  private Response createWithCustomOperation(
+      UriInfo uriInfo, SecurityContext securityContext, IngestionPipeline entity) {
+    OperationContext operationContext =
+        new OperationContext(Entity.INGESTION_PIPELINE, getOperationForPipelineType(entity));
+    CreateResourceContext<IngestionPipeline> createResourceContext =
+        new CreateResourceContext<>(Entity.INGESTION_PIPELINE, entity);
+    service.getLimits().enforceLimits(securityContext, createResourceContext, operationContext);
+    service.getAuthorizer().authorize(securityContext, operationContext, createResourceContext);
+    entity = service.addHref(uriInfo, getRepository().create(uriInfo, entity));
+    return Response.created(entity.getHref()).entity(entity).build();
   }
 
   @PATCH
@@ -575,7 +499,7 @@ public class IngestionPipelineResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    Response response = patchInternal(uriInfo, securityContext, id, patch);
+    Response response = service.patchInternal(uriInfo, securityContext, id, patch);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
     return response;
   }
@@ -606,7 +530,7 @@ public class IngestionPipelineResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    Response response = patchInternal(uriInfo, securityContext, fqn, patch);
+    Response response = service.patchInternal(uriInfo, securityContext, fqn, patch);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
     return response;
   }
@@ -632,9 +556,9 @@ public class IngestionPipelineResource
       @Context SecurityContext securityContext,
       @Valid CreateIngestionPipeline update) {
     IngestionPipeline ingestionPipeline =
-        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
+        service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
     unmask(ingestionPipeline);
-    Response response = createOrUpdate(uriInfo, securityContext, ingestionPipeline);
+    Response response = service.createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     validateProfileSample(ingestionPipeline);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
     return response;
@@ -683,6 +607,8 @@ public class IngestionPipelineResource
       @Context SecurityContext securityContext,
       @Valid List<UUID> pipelineIdList) {
 
+    PipelineServiceClientInterface pipelineServiceClient =
+        getRepository().getPipelineServiceClient();
     return pipelineIdList.stream()
         .map(
             id -> {
@@ -746,16 +672,16 @@ public class IngestionPipelineResource
           @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
-    Fields fields = getFields(FIELD_OWNERS);
-    IngestionPipeline pipeline = repository.get(uriInfo, id, fields);
-    // This call updates the state in Airflow as well as the `enabled` field on the
-    // IngestionPipeline
+    Fields fields = service.getFields(FIELD_OWNERS);
+    IngestionPipeline pipeline = getRepository().get(uriInfo, id, fields);
+    PipelineServiceClientInterface pipelineServiceClient =
+        getRepository().getPipelineServiceClient();
     if (pipelineServiceClient == null) {
       return Response.status(200).entity("Pipeline Client Disabled").build();
     }
     decryptOrNullify(securityContext, pipeline, true);
     pipelineServiceClient.toggleIngestion(pipeline);
-    Response response = createOrUpdate(uriInfo, securityContext, pipeline);
+    Response response = service.createOrUpdate(uriInfo, securityContext, pipeline);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
     return response;
   }
@@ -784,8 +710,10 @@ public class IngestionPipelineResource
           UUID id,
       @Context SecurityContext securityContext) {
     IngestionPipeline ingestionPipeline =
-        getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
+        service.getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
     decryptOrNullify(securityContext, ingestionPipeline, true);
+    PipelineServiceClientInterface pipelineServiceClient =
+        getRepository().getPipelineServiceClient();
     if (pipelineServiceClient == null) {
       return new PipelineServiceClientResponse()
           .withCode(200)
@@ -807,6 +735,8 @@ public class IngestionPipelineResource
             content = @Content(mediaType = "application/json"))
       })
   public Response getHostIp(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    PipelineServiceClientInterface pipelineServiceClient =
+        getRepository().getPipelineServiceClient();
     if (pipelineServiceClient == null) {
       return Response.status(200).entity("Pipeline Client Disabled").build();
     }
@@ -827,6 +757,8 @@ public class IngestionPipelineResource
       })
   public PipelineServiceClientResponse getRESTStatus(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    PipelineServiceClientInterface pipelineServiceClient =
+        getRepository().getPipelineServiceClient();
     if (pipelineServiceClient == null) {
       return new PipelineServiceClientResponse()
           .withCode(200)
@@ -855,7 +787,7 @@ public class IngestionPipelineResource
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return service.delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -878,7 +810,7 @@ public class IngestionPipelineResource
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -905,7 +837,7 @@ public class IngestionPipelineResource
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
@@ -927,7 +859,7 @@ public class IngestionPipelineResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET
@@ -960,25 +892,31 @@ public class IngestionPipelineResource
           @QueryParam("limit")
           @DefaultValue("1000")
           int limit) {
+    PipelineServiceClientInterface pipelineServiceClient =
+        getRepository().getPipelineServiceClient();
     if (pipelineServiceClient == null) {
       return Response.status(200).entity("Pipeline Client Disabled").build();
     }
     IngestionPipeline ingestionPipeline =
-        getInternal(
+        service.getInternal(
             uriInfo, securityContext, id, "pipelineStatuses,ingestionRunner", Include.NON_DELETED);
     Map<String, String> lastIngestionLogs;
     boolean useStreamableLogs =
         ingestionPipeline.getEnableStreamableLogs()
             || (ingestionPipeline.getIngestionRunner() != null
-                && repository.isIngestionRunnerStreamableLogsEnabled(
-                    ingestionPipeline.getIngestionRunner()));
+                && getRepository()
+                    .isIngestionRunnerStreamableLogsEnabled(
+                        ingestionPipeline.getIngestionRunner()));
     if (useStreamableLogs) {
-      // Get logs using the repository's log storage picking up the last runId
       String runId = ingestionPipeline.getPipelineStatuses().getRunId();
       if (!CommonUtil.nullOrEmpty(runId)) {
         Map<String, Object> lastIngestionLogsMap =
-            repository.getLogs(
-                ingestionPipeline.getFullyQualifiedName(), UUID.fromString(runId), after, limit);
+            getRepository()
+                .getLogs(
+                    ingestionPipeline.getFullyQualifiedName(),
+                    UUID.fromString(runId),
+                    after,
+                    limit);
         lastIngestionLogs =
             lastIngestionLogsMap.entrySet().stream()
                 .filter(entry -> entry.getValue() != null)
@@ -993,7 +931,6 @@ public class IngestionPipelineResource
             "No runId found for the last ingestion pipeline run");
       }
     } else {
-      // Get the logs from the service client
       lastIngestionLogs = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after);
     }
 
@@ -1021,11 +958,13 @@ public class IngestionPipelineResource
           @PathParam("id")
           UUID id) {
     try {
+      PipelineServiceClientInterface pipelineServiceClient =
+          getRepository().getPipelineServiceClient();
       if (pipelineServiceClient == null) {
         return Response.status(200).entity("Pipeline Client Disabled").build();
       }
       IngestionPipeline ingestionPipeline =
-          getInternal(
+          service.getInternal(
               uriInfo,
               securityContext,
               id,
@@ -1039,8 +978,9 @@ public class IngestionPipelineResource
       boolean useStreamableLogs =
           ingestionPipeline.getEnableStreamableLogs()
               || (ingestionPipeline.getIngestionRunner() != null
-                  && repository.isIngestionRunnerStreamableLogsEnabled(
-                      ingestionPipeline.getIngestionRunner()));
+                  && getRepository()
+                      .isIngestionRunnerStreamableLogsEnabled(
+                          ingestionPipeline.getIngestionRunner()));
 
       StreamingOutput streamingOutput =
           output -> {
@@ -1051,7 +991,6 @@ public class IngestionPipelineResource
               Map<String, String> logChunk;
 
               if (useStreamableLogs) {
-                // Get logs using the repository's log storage picking up the last runId
                 String runId = ingestionPipeline.getPipelineStatuses().getRunId();
                 if (CommonUtil.nullOrEmpty(runId)) {
                   throw new PipelineServiceClientException(
@@ -1059,11 +998,12 @@ public class IngestionPipelineResource
                 }
 
                 Map<String, Object> lastIngestionLogsMap =
-                    repository.getLogs(
-                        ingestionPipeline.getFullyQualifiedName(),
-                        UUID.fromString(runId),
-                        cursor,
-                        1000);
+                    getRepository()
+                        .getLogs(
+                            ingestionPipeline.getFullyQualifiedName(),
+                            UUID.fromString(runId),
+                            cursor,
+                            1000);
                 logChunk =
                     lastIngestionLogsMap.entrySet().stream()
                         .filter(entry -> entry.getValue() != null)
@@ -1077,7 +1017,6 @@ public class IngestionPipelineResource
                       logs.toString());
                 }
               } else {
-                // Get the logs from the service client
                 logChunk = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, cursor);
               }
 
@@ -1137,9 +1076,12 @@ public class IngestionPipelineResource
           String fqn,
       @Valid PipelineStatus pipelineStatus) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return repository.addPipelineStatus(uriInfo, fqn, pipelineStatus).toResponse();
+        new OperationContext(
+            Entity.INGESTION_PIPELINE, MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
+    service
+        .getAuthorizer()
+        .authorize(securityContext, operationContext, service.getResourceContextByName(fqn));
+    return getRepository().addPipelineStatus(uriInfo, fqn, pipelineStatus).toResponse();
   }
 
   @GET
@@ -1179,7 +1121,7 @@ public class IngestionPipelineResource
           @NonNull
           @QueryParam("endTs")
           Long endTs) {
-    return repository.listPipelineStatus(fqn, startTs, endTs);
+    return getRepository().listPipelineStatus(fqn, startTs, endTs);
   }
 
   @GET
@@ -1209,9 +1151,11 @@ public class IngestionPipelineResource
           @PathParam("id")
           UUID runId) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return repository.getPipelineStatus(fqn, runId);
+        new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.VIEW_ALL);
+    service
+        .getAuthorizer()
+        .authorize(securityContext, operationContext, service.getResourceContextByName(fqn));
+    return getRepository().getPipelineStatus(fqn, runId);
   }
 
   @DELETE
@@ -1236,9 +1180,12 @@ public class IngestionPipelineResource
       @Parameter(description = "Run ID of the pipeline status", schema = @Schema(type = "UUID"))
           @PathParam("runId")
           UUID runId) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    repository.deletePipelineStatusByRunId(id, runId);
+    OperationContext operationContext =
+        new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.DELETE);
+    service
+        .getAuthorizer()
+        .authorize(securityContext, operationContext, service.getResourceContextById(id));
+    getRepository().deletePipelineStatusByRunId(id, runId);
     return Response.noContent().build();
   }
 
@@ -1264,83 +1211,96 @@ public class IngestionPipelineResource
       @Parameter(description = "Id of the Ingestion Pipeline", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    IngestionPipeline ingestionPipeline = repository.deletePipelineStatus(id);
-    return addHref(uriInfo, ingestionPipeline);
+    OperationContext operationContext =
+        new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.DELETE);
+    service
+        .getAuthorizer()
+        .authorize(securityContext, operationContext, service.getResourceContextById(id));
+    IngestionPipeline ingestionPipeline = getRepository().deletePipelineStatus(id);
+    return service.addHref(uriInfo, ingestionPipeline);
   }
 
   private void unmask(IngestionPipeline ingestionPipeline) {
-    repository.setFullyQualifiedName(ingestionPipeline);
+    getRepository().setFullyQualifiedName(ingestionPipeline);
     IngestionPipeline originalIngestionPipeline =
-        repository.findByNameOrNull(ingestionPipeline.getFullyQualifiedName(), Include.NON_DELETED);
+        getRepository()
+            .findByNameOrNull(ingestionPipeline.getFullyQualifiedName(), Include.NON_DELETED);
     EntityMaskerFactory.getEntityMasker()
         .unmaskIngestionPipeline(ingestionPipeline, originalIngestionPipeline);
   }
 
   private PipelineServiceClientResponse deployPipelineInternal(
       UUID id, UriInfo uriInfo, SecurityContext securityContext) {
-    Fields fields = getFields(FIELD_OWNERS);
-    IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
+    Fields fields = service.getFields(FIELD_OWNERS);
+    IngestionPipeline ingestionPipeline = getRepository().get(uriInfo, id, fields);
     CreateResourceContext<IngestionPipeline> createResourceContext =
-        new CreateResourceContext<>(entityType, ingestionPipeline);
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DEPLOY);
-    limits.enforceLimits(securityContext, createResourceContext, operationContext);
+        new CreateResourceContext<>(Entity.INGESTION_PIPELINE, ingestionPipeline);
+    OperationContext operationContext =
+        new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.DEPLOY);
+    service.getLimits().enforceLimits(securityContext, createResourceContext, operationContext);
     decryptOrNullify(securityContext, ingestionPipeline, true);
-    ServiceEntityInterface service =
+    ServiceEntityInterface serviceEntity =
         Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
-    // Flag the ingestion pipeline with streamable logs only if configured and enabled for use
-    if (repository.isS3LogStorageEnabled()
-        && repository.getLogStorageConfiguration().getEnabled()) {
+    if (getRepository().isS3LogStorageEnabled()
+        && getRepository().getLogStorageConfiguration().getEnabled()) {
       ingestionPipeline.setEnableStreamableLogs(true);
     }
+    PipelineServiceClientInterface pipelineServiceClient =
+        getRepository().getPipelineServiceClient();
     PipelineServiceClientResponse status =
-        pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+        pipelineServiceClient.deployPipeline(ingestionPipeline, serviceEntity);
     if (status.getCode() == 200) {
-      createOrUpdate(uriInfo, securityContext, ingestionPipeline);
+      service.createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     }
     return status;
   }
 
   public PipelineServiceClientResponse triggerPipelineInternal(
       UUID id, UriInfo uriInfo, SecurityContext securityContext, String botName) {
-    Fields fields = getFields(FIELD_OWNERS);
-    IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
+    Fields fields = service.getFields(FIELD_OWNERS);
+    IngestionPipeline ingestionPipeline = getRepository().get(uriInfo, id, fields);
     CreateResourceContext<IngestionPipeline> createResourceContext =
-        new CreateResourceContext<>(entityType, ingestionPipeline);
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.TRIGGER);
-    limits.enforceLimits(securityContext, createResourceContext, operationContext);
+        new CreateResourceContext<>(Entity.INGESTION_PIPELINE, ingestionPipeline);
+    OperationContext operationContext =
+        new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.TRIGGER);
+    service.getLimits().enforceLimits(securityContext, createResourceContext, operationContext);
     if (CommonUtil.nullOrEmpty(botName)) {
-      // Use Default Ingestion Bot
       ingestionPipeline.setOpenMetadataServerConnection(
-          new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
+          new OpenMetadataConnectionBuilder(getRepository().getOpenMetadataApplicationConfig())
+              .build());
     } else {
       ingestionPipeline.setOpenMetadataServerConnection(
-          new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, botName).build());
+          new OpenMetadataConnectionBuilder(
+                  getRepository().getOpenMetadataApplicationConfig(), botName)
+              .build());
     }
     decryptOrNullify(securityContext, ingestionPipeline, true);
-    ServiceEntityInterface service =
+    ServiceEntityInterface serviceEntity =
         Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
-    return pipelineServiceClient.runPipeline(ingestionPipeline, service);
+    return getRepository().getPipelineServiceClient().runPipeline(ingestionPipeline, serviceEntity);
   }
 
   private void decryptOrNullify(
       SecurityContext securityContext, IngestionPipeline ingestionPipeline, boolean forceNotMask) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     try {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-          getResourceContextById(ingestionPipeline.getId()));
+      service
+          .getAuthorizer()
+          .authorize(
+              securityContext,
+              new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.VIEW_ALL),
+              service.getResourceContextById(ingestionPipeline.getId()));
     } catch (AuthorizationException e) {
       ingestionPipeline.getSourceConfig().setConfig(null);
     }
     secretsManager.decryptIngestionPipeline(ingestionPipeline);
     OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, ingestionPipeline).build();
+        new OpenMetadataConnectionBuilder(
+                getRepository().getOpenMetadataApplicationConfig(), ingestionPipeline)
+            .build();
     ingestionPipeline.setOpenMetadataServerConnection(
         secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
-    if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {
+    if (service.getAuthorizer().shouldMaskPasswords(securityContext) && !forceNotMask) {
       EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(ingestionPipeline);
     }
   }
@@ -1376,12 +1336,12 @@ public class IngestionPipelineResource
       @Parameter(description = "Log content - either raw string or LogBatch object")
           Object logData) {
     try {
-      // Authorize the request
       OperationContext operationContext =
-          new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-      authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+          new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.EDIT_ALL);
+      service
+          .getAuthorizer()
+          .authorize(securityContext, operationContext, service.getResourceContextByName(fqn));
 
-      // Parse log data
       String logContent;
       if (logData instanceof String) {
         logContent = (String) logData;
@@ -1397,15 +1357,13 @@ public class IngestionPipelineResource
             .build();
       }
 
-      // Set session cookie for ALB stickiness
       String sessionCookie =
           String.format(
               "PIPELINE_SESSION=%s_%s; Path=/; Max-Age=86400",
               fqn.replaceAll("[^a-zA-Z0-9]", "_"), runId);
 
-      // Write logs using the repository's log storage - only if we have content
       if (!nullOrEmpty(logContent)) {
-        repository.appendLogs(fqn, runId, logContent);
+        getRepository().appendLogs(fqn, runId, logContent);
       }
 
       return Response.ok().header("Set-Cookie", sessionCookie).build();
@@ -1445,13 +1403,13 @@ public class IngestionPipelineResource
       @Parameter(description = "Run ID", schema = @Schema(type = "string")) @PathParam("runId")
           UUID runId) {
     try {
-      // Authorize the request
       OperationContext operationContext =
-          new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-      authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+          new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.EDIT_ALL);
+      service
+          .getAuthorizer()
+          .authorize(securityContext, operationContext, service.getResourceContextByName(fqn));
 
-      // Close the log stream
-      repository.closeStream(fqn, runId);
+      getRepository().closeStream(fqn, runId);
 
       return Response.ok()
           .entity(Map.of("message", "Log stream closed successfully"))
@@ -1502,16 +1460,15 @@ public class IngestionPipelineResource
           @DefaultValue("1000")
           int limit) {
     try {
-      // Validate that the pipeline exists first
-      getByNameInternal(uriInfo, securityContext, fqn, "", Include.NON_DELETED);
+      service.getByNameInternal(uriInfo, securityContext, fqn, "", Include.NON_DELETED);
 
-      // Authorize the request
       OperationContext operationContext =
-          new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-      authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+          new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.VIEW_ALL);
+      service
+          .getAuthorizer()
+          .authorize(securityContext, operationContext, service.getResourceContextByName(fqn));
 
-      // Get logs using the repository's log storage
-      Map<String, Object> logs = repository.getLogs(fqn, runId, after, limit);
+      Map<String, Object> logs = getRepository().getLogs(fqn, runId, after, limit);
 
       return Response.ok(logs, MediaType.APPLICATION_JSON_TYPE).build();
     } catch (Exception e) {
@@ -1551,17 +1508,15 @@ public class IngestionPipelineResource
           @DefaultValue("10")
           int limit) {
     try {
-      // Validate that the pipeline exists first
-      IngestionPipeline pipeline =
-          getByNameInternal(uriInfo, securityContext, fqn, "", Include.NON_DELETED);
+      service.getByNameInternal(uriInfo, securityContext, fqn, "", Include.NON_DELETED);
 
-      // Authorize the request
       OperationContext operationContext =
-          new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-      authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+          new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.VIEW_ALL);
+      service
+          .getAuthorizer()
+          .authorize(securityContext, operationContext, service.getResourceContextByName(fqn));
 
-      // List runs using the repository's log storage
-      List<UUID> runIds = repository.listRuns(fqn, limit);
+      List<UUID> runIds = getRepository().listRuns(fqn, limit);
 
       return Response.ok(Map.of("runs", runIds), MediaType.APPLICATION_JSON_TYPE).build();
     } catch (Exception e) {
@@ -1598,17 +1553,15 @@ public class IngestionPipelineResource
       @Parameter(description = "Run ID", schema = @Schema(type = "string")) @PathParam("runId")
           UUID runId) {
     try {
-      // Validate that the pipeline exists first
-      IngestionPipeline pipeline =
-          getByNameInternal(uriInfo, securityContext, fqn, "", Include.NON_DELETED);
+      service.getByNameInternal(uriInfo, securityContext, fqn, "", Include.NON_DELETED);
 
-      // Authorize the request
       OperationContext operationContext =
-          new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-      authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+          new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.VIEW_ALL);
+      service
+          .getAuthorizer()
+          .authorize(securityContext, operationContext, service.getResourceContextByName(fqn));
 
-      // Stream logs using the repository's log storage
-      return repository.streamLogs(fqn, runId);
+      return getRepository().streamLogs(fqn, runId);
     } catch (Exception e) {
       LOG.error("Failed to stream logs for pipeline: {}, runId: {}", fqn, runId, e);
       return Response.status(Response.Status.NOT_FOUND)

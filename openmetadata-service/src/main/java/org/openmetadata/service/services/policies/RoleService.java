@@ -26,6 +26,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.EntityBaseService;
@@ -33,6 +34,7 @@ import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.teams.RoleMapper;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.Service;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 @Singleton
@@ -81,4 +83,23 @@ public class RoleService extends EntityBaseService<Role, RoleRepository> {
   }
 
   public static class RoleList extends ResultList<Role> {}
+
+  public ResultList<Role> listRoles(
+      UriInfo uriInfo,
+      String fieldsParam,
+      int limitParam,
+      String before,
+      String after,
+      Include include) {
+    Fields fields = getFields(fieldsParam);
+    ListFilter filter = new ListFilter(include);
+
+    ResultList<Role> roles;
+    if (before != null) {
+      roles = repository.listBefore(uriInfo, fields, filter, limitParam, before);
+    } else {
+      roles = repository.listAfter(uriInfo, fields, filter, limitParam, after);
+    }
+    return addHref(uriInfo, roles);
+  }
 }

@@ -18,6 +18,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.resources.EntityBaseService;
 
 /**
  * Registry for managing entity services.
@@ -36,8 +38,9 @@ import org.openmetadata.service.exception.EntityNotFoundException;
  */
 @Slf4j
 public class ServiceRegistry {
-  private final Map<String, EntityService<?>> servicesByEntityType = new ConcurrentHashMap<>();
-  private final Map<Class<?>, EntityService<?>> servicesByClass = new ConcurrentHashMap<>();
+  private final Map<String, EntityBaseService<?, ?>> servicesByEntityType =
+      new ConcurrentHashMap<>();
+  private final Map<Class<?>, EntityBaseService<?, ?>> servicesByClass = new ConcurrentHashMap<>();
 
   /**
    * Register a service for an entity type.
@@ -46,7 +49,8 @@ public class ServiceRegistry {
    * @param service The service instance
    * @param <T> The entity type
    */
-  public <T extends EntityInterface> void register(String entityType, EntityService<T> service) {
+  public <T extends EntityInterface, K extends EntityRepository<T>> void register(
+      String entityType, EntityBaseService<T, K> service) {
     if (servicesByEntityType.containsKey(entityType)) {
       LOG.warn("Service for entity type '{}' is being re-registered", entityType);
     }
@@ -64,8 +68,10 @@ public class ServiceRegistry {
    * @throws EntityNotFoundException if no service is registered for the entity type
    */
   @SuppressWarnings("unchecked")
-  public <T extends EntityInterface> EntityService<T> getService(String entityType) {
-    EntityService<T> service = (EntityService<T>) servicesByEntityType.get(entityType);
+  public <T extends EntityInterface, K extends EntityRepository<T>>
+      EntityBaseService<T, K> getService(String entityType) {
+    EntityBaseService<T, K> service =
+        (EntityBaseService<T, K>) servicesByEntityType.get(entityType);
     if (service == null) {
       throw EntityNotFoundException.byMessage(
           String.format("No service registered for entity type: %s", entityType));
@@ -82,7 +88,7 @@ public class ServiceRegistry {
    * @throws EntityNotFoundException if no service of the specified class is registered
    */
   @SuppressWarnings("unchecked")
-  public <S extends EntityService<?>> S getService(Class<S> serviceClass) {
+  public <S extends EntityBaseService<?, ?>> S getService(Class<S> serviceClass) {
     S service = (S) servicesByClass.get(serviceClass);
     if (service == null) {
       throw EntityNotFoundException.byMessage(
@@ -146,10 +152,11 @@ public class ServiceRegistry {
    *
    * @param services Array of service instances to register
    */
-  public void initializeServices(EntityService<?>... services) {
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  public void initializeServices(EntityBaseService<?, ?>... services) {
     LOG.info("Initializing ServiceRegistry with {} services", services.length);
 
-    for (EntityService<?> service : services) {
+    for (EntityBaseService service : services) {
       Service annotation = service.getClass().getAnnotation(Service.class);
       if (annotation != null) {
         register(annotation.entityType(), service);

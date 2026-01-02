@@ -17,10 +17,10 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.entity.app.ScheduleTimeline.HOURLY;
 import static org.openmetadata.schema.entity.app.ScheduleTimeline.MONTHLY;
 import static org.openmetadata.schema.entity.app.ScheduleTimeline.WEEKLY;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.APPLICATION;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
-import static org.openmetadata.service.resources.EntityBaseService.getEntitiesFromSeedData;
-import static org.openmetadata.service.security.mask.PIIMasker.ADMIN_USER_NAME;
+import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
 
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.InternalServerErrorException;

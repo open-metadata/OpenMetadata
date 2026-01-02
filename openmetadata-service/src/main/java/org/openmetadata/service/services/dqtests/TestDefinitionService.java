@@ -19,44 +19,49 @@ import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.tests.TestDefinition;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TestDefinitionRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.dqtests.TestDefinitionMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 
-/**
- * Service layer for TestDefinition entity operations.
- *
- * <p>Extends AbstractEntityService to inherit all standard CRUD operations with proper
- * authorization and repository delegation.
- */
 @Slf4j
 @Singleton
 @Service(entityType = Entity.TEST_DEFINITION)
-public class TestDefinitionService extends AbstractEntityService<TestDefinition> {
+public class TestDefinitionService
+    extends EntityBaseService<TestDefinition, TestDefinitionRepository> {
+
+  public static final String FIELDS = "owners";
 
   @Getter private final TestDefinitionMapper mapper;
-  private final TestDefinitionRepository testDefinitionRepository;
 
   @Inject
   public TestDefinitionService(
       TestDefinitionRepository repository,
-      SearchRepository searchRepository,
       Authorizer authorizer,
-      TestDefinitionMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.TEST_DEFINITION);
-    this.testDefinitionRepository = repository;
+      TestDefinitionMapper mapper,
+      Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.TEST_DEFINITION, TestDefinition.class),
+        repository,
+        authorizer,
+        limits);
     this.mapper = mapper;
   }
 
   public void initialize() {
     List<TestDefinition> testDefinitions =
-        testDefinitionRepository.getEntitiesFromSeedData(".*json/data/tests/.*\\.json$");
+        repository.getEntitiesFromSeedData(".*json/data/tests/.*\\.json$");
     for (TestDefinition testDefinition : testDefinitions) {
-      testDefinitionRepository.initializeEntity(testDefinition);
+      repository.initializeEntity(testDefinition);
     }
+  }
+
+  public static class TestDefinitionList extends ResultList<TestDefinition> {
+    /* Required for serde */
   }
 }

@@ -24,7 +24,7 @@ import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.automations.WorkflowResource.WorkflowList;
+import org.openmetadata.service.services.automations.WorkflowService;
 
 public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWorkflow> {
 
@@ -32,9 +32,9 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
     super(
         Entity.WORKFLOW,
         Workflow.class,
-        WorkflowList.class,
+        WorkflowService.WorkflowList.class,
         "automations/workflows",
-        WorkflowResource.FIELDS);
+        WorkflowService.FIELDS);
   }
 
   @Override

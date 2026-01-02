@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.kpi;
 
+import static org.openmetadata.service.services.kpi.KpiService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,7 +33,6 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -42,17 +43,9 @@ import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.dataInsight.type.KpiResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
-import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.kpi.KpiService;
 
 @Slf4j
@@ -62,35 +55,12 @@ import org.openmetadata.service.services.kpi.KpiService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "kpi")
-public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
+public class KpiResource {
   public static final String COLLECTION_PATH = "/v1/kpi";
   private final KpiService service;
-  static final String FIELDS = "owners,dataInsightChart,kpiResult";
 
-  @Override
-  public Kpi addHref(UriInfo uriInfo, Kpi kpi) {
-    super.addHref(uriInfo, kpi);
-    Entity.withHref(uriInfo, kpi.getDataInsightChart());
-    return kpi;
-  }
-
-  public KpiResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.KPI, authorizer, limits);
-    this.service = serviceRegistry.getService(KpiService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("dataInsightChart,kpiResult", MetadataOperation.VIEW_BASIC);
-    return null;
-  }
-
-  public static class KpiList extends ResultList<Kpi> {
-    /* Required for serde */
-  }
-
-  public static class KpiResultList extends ResultList<KpiResult> {
-    /* Required for serde */
+  public KpiResource(KpiService service) {
+    this.service = service;
   }
 
   @GET
@@ -108,9 +78,9 @@ public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = KpiList.class)))
+                    schema = @Schema(implementation = KpiService.KpiList.class)))
       })
-  public ResultList<Kpi> list(
+  public Kpi list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -141,7 +111,7 @@ public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -165,7 +135,7 @@ public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -199,7 +169,7 @@ public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -235,7 +205,7 @@ public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET
@@ -266,7 +236,7 @@ public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -290,9 +260,7 @@ public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
       @Valid CreateKpiRequest create) {
     Kpi kpi =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    // TODO fix this
-    //    dao.validateDataInsightChartOneToOneMapping(kpi.getDataInsightChart().getId());
-    return create(uriInfo, securityContext, kpi);
+    return service.create(uriInfo, securityContext, kpi);
   }
 
   @PATCH
@@ -320,7 +288,7 @@ public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -349,7 +317,7 @@ public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -372,7 +340,7 @@ public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
       @Valid CreateKpiRequest create) {
     Kpi kpi =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, kpi);
+    return service.createOrUpdate(uriInfo, securityContext, kpi);
   }
 
   @DELETE
@@ -395,7 +363,7 @@ public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
       @Parameter(description = "Name of the KPI", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @DELETE
@@ -422,7 +390,7 @@ public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -449,7 +417,7 @@ public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @PUT
@@ -471,7 +439,7 @@ public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET
@@ -490,7 +458,7 @@ public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = KpiResource.KpiResultList.class)))
+                    schema = @Schema(implementation = KpiService.KpiResultList.class)))
       })
   public DataInsightCustomChartResultList listKpiResults(
       @Context SecurityContext securityContext,
@@ -515,7 +483,7 @@ public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
           @DefaultValue("DESC")
           OrderBy orderBy)
       throws IOException {
-    return repository.getKpiResults(name, startTs, endTs, orderBy);
+    return service.getKpiResults(name, startTs, endTs, orderBy);
   }
 
   @GET
@@ -531,13 +499,13 @@ public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = KpiResource.KpiResultList.class)))
+                    schema = @Schema(implementation = KpiService.KpiResultList.class)))
       })
   public KpiResult listKpiResults(
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the KPI", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return repository.getKpiResult(name);
+    return service.getKpiResult(name);
   }
 }

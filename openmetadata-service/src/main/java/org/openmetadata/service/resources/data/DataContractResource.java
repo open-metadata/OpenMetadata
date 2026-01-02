@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.data;
 
-import static org.openmetadata.service.jdbi3.DataContractRepository.RESULT_EXTENSION;
+import static org.openmetadata.service.services.data.DataContractService.FIELDS;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -46,7 +46,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.CreateDataContract;
@@ -55,28 +54,12 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
-import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.DataContractRepository;
-import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.ODCSConverter;
-import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.services.data.DataContractService;
 
 @Slf4j
 @Path("/v1/dataContracts")
@@ -86,31 +69,12 @@ import org.openmetadata.service.util.RestUtil;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes({MediaType.APPLICATION_JSON, "application/yaml", "text/yaml"})
 @Collection(name = "dataContracts")
-public class DataContractResource extends EntityBaseService<DataContract, DataContractRepository> {
+public class DataContractResource {
   public static final String COLLECTION_PATH = "v1/dataContracts/";
-  static final String FIELDS = "owners,reviewers,extension";
+  private final DataContractService service;
 
-  @Override
-  public DataContract addHref(UriInfo uriInfo, DataContract dataContract) {
-    super.addHref(uriInfo, dataContract);
-    Entity.withHref(uriInfo, dataContract.getOwners());
-    Entity.withHref(uriInfo, dataContract.getReviewers());
-    Entity.withHref(uriInfo, dataContract.getEntity());
-    return dataContract;
-  }
-
-  public DataContractResource(Authorizer authorizer, Limits limits) {
-    super(Entity.DATA_CONTRACT, authorizer, limits);
-  }
-
-  // Set the PipelineServiceClient so the repository can manage the Ingestion Pipelines for Test
-  // Suites
-  @Override
-  public void initialize(OpenMetadataApplicationConfig config) {
-    PipelineServiceClientInterface pipelineServiceClient =
-        PipelineServiceClientFactory.createPipelineServiceClient(
-            config.getPipelineServiceClientConfiguration());
-    repository.setPipelineServiceClient(pipelineServiceClient);
+  public DataContractResource(DataContractService service) {
+    this.service = service;
   }
 
   @GET
@@ -126,7 +90,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DataContractList.class)))
+                    schema = @Schema(implementation = DataContractService.DataContractList.class)))
       })
   public ResultList<DataContract> list(
       @Context UriInfo uriInfo,
@@ -174,7 +138,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
     if (entityId != null) {
       filter.addQueryParam("entity", entityId.toString());
     }
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -212,7 +176,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -252,7 +216,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -289,18 +253,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-        getResourceContextById(entityId));
-    DataContract dataContract =
-        repository.loadEntityDataContract(
-            new EntityReference().withId(entityId).withType(entityType));
-    if (dataContract == null) {
-      throw EntityNotFoundException.byMessage(
-          String.format("Data contract for entity %s is not found", entityId));
-    }
-    return addHref(uriInfo, repository.setFieldsInternal(dataContract, getFields(fieldsParam)));
+    return service.getByEntityId(uriInfo, securityContext, entityId, entityType, fieldsParam);
   }
 
   @GET
@@ -323,7 +276,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
       @Context SecurityContext securityContext,
       @Parameter(description = "Data contract Id", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -354,7 +307,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -378,8 +331,8 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
       @Context SecurityContext securityContext,
       @Valid CreateDataContract create) {
     DataContract dataContract =
-        getDataContract(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, dataContract);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.create(uriInfo, securityContext, dataContract);
   }
 
   @POST
@@ -404,8 +357,8 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
       CreateDataContract create = yamlMapper.readValue(yamlContent, CreateDataContract.class);
       DataContract dataContract =
-          getDataContract(create, securityContext.getUserPrincipal().getName());
-      return create(uriInfo, securityContext, dataContract);
+          service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+      return service.create(uriInfo, securityContext, dataContract);
     } catch (Exception e) {
       throw new IllegalArgumentException("Invalid YAML content: " + e.getMessage(), e);
     }
@@ -436,7 +389,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
@@ -460,8 +413,8 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
       @Context SecurityContext securityContext,
       @Valid CreateDataContract create) {
     DataContract dataContract =
-        getDataContract(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, dataContract);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.createOrUpdate(uriInfo, securityContext, dataContract);
   }
 
   @PUT
@@ -486,8 +439,8 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
       CreateDataContract create = yamlMapper.readValue(yamlContent, CreateDataContract.class);
       DataContract dataContract =
-          getDataContract(create, securityContext.getUserPrincipal().getName());
-      return createOrUpdate(uriInfo, securityContext, dataContract);
+          service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+      return service.createOrUpdate(uriInfo, securityContext, dataContract);
     } catch (Exception e) {
       throw new IllegalArgumentException("Invalid YAML content: " + e.getMessage(), e);
     }
@@ -519,7 +472,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
           boolean recursive,
       @Parameter(description = "Data contract Id", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -551,7 +504,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return super.deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @DELETE
@@ -580,7 +533,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
           boolean recursive,
       @Parameter(description = "Data contract Id", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @PUT
@@ -602,14 +555,8 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
-
-  private DataContract getDataContract(CreateDataContract create, String user) {
-    return DataContractMapper.createEntity(create, user);
-  }
-
-  // Data Contract Results APIs
 
   @GET
   @Path("/{id}/results")
@@ -648,31 +595,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
               schema = @Schema(type = "number"))
           @QueryParam("endTs")
           Long endTs) {
-    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    OperationContext operationContext =
-        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.VIEW_BASIC);
-    ResourceContext<DataContract> resourceContext =
-        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
-    List<String> jsonResults =
-        timeSeriesDAO.listBetweenTimestampsByOrder(
-            dataContract.getFullyQualifiedName(),
-            "dataContract.dataContractResult",
-            startTs != null ? startTs : 0L,
-            endTs != null ? endTs : System.currentTimeMillis(),
-            EntityTimeSeriesDAO.OrderBy.DESC);
-
-    List<DataContractResult> results = JsonUtils.readObjects(jsonResults, DataContractResult.class);
-
-    // Apply limit
-    if (limitParam > 0 && results.size() > limitParam) {
-      results = results.subList(0, limitParam);
-    }
-
-    return new ResultList<>(
-        results, String.valueOf(startTs), String.valueOf(endTs), results.size());
+    return service.listResults(uriInfo, securityContext, id, limitParam, startTs, endTs);
   }
 
   @GET
@@ -697,18 +620,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
       @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    OperationContext operationContext =
-        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.VIEW_BASIC);
-    ResourceContext<DataContract> resourceContext =
-        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
-    String jsonRecord =
-        timeSeriesDAO.getLatestExtension(dataContract.getFullyQualifiedName(), RESULT_EXTENSION);
-
-    return jsonRecord != null ? JsonUtils.readValue(jsonRecord, DataContractResult.class) : null;
+    return service.getLatestResult(uriInfo, securityContext, id);
   }
 
   @GET
@@ -736,14 +648,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
       @Parameter(description = "Id of the data contract result", schema = @Schema(type = "UUID"))
           @PathParam("resultId")
           UUID resultId) {
-    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    OperationContext operationContext =
-        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.VIEW_BASIC);
-    ResourceContext<DataContract> resourceContext =
-        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    return repository.getLatestResult(dataContract);
+    return service.getResult(uriInfo, securityContext, id, resultId);
   }
 
   @PUT
@@ -768,15 +673,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
           @PathParam("id")
           UUID id,
       @Valid DataContractResult newResult) {
-    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    OperationContext operationContext =
-        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.EDIT_ALL);
-    ResourceContext<DataContract> resourceContext =
-        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    DataContractResult result = getContractResult(dataContract, newResult);
-    return repository.addContractResult(dataContract, result).toResponse();
+    return service.createResult(uriInfo, securityContext, id, newResult);
   }
 
   @DELETE
@@ -799,17 +696,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
               schema = @Schema(type = "number"))
           @PathParam("timestamp")
           Long timestamp) {
-    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    OperationContext operationContext =
-        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.DELETE);
-    ResourceContext<DataContract> resourceContext =
-        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
-    timeSeriesDAO.deleteAtTimestamp(
-        dataContract.getFullyQualifiedName(), "dataContract.dataContractResult", timestamp);
-    return Response.ok().build();
+    return service.deleteResult(uriInfo, securityContext, id, timestamp);
   }
 
   @DELETE
@@ -832,17 +719,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
               schema = @Schema(type = "number"))
           @PathParam("timestamp")
           Long timestamp) {
-    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    OperationContext operationContext =
-        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.DELETE);
-    ResourceContext<DataContract> resourceContext =
-        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
-    timeSeriesDAO.deleteBeforeTimestamp(
-        dataContract.getFullyQualifiedName(), "dataContract.dataContractResult", timestamp);
-    return Response.ok().build();
+    return service.deleteResultsBefore(uriInfo, securityContext, id, timestamp);
   }
 
   @POST
@@ -868,26 +745,8 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
       @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    OperationContext operationContext =
-        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.EDIT_ALL);
-    ResourceContext<DataContract> resourceContext =
-        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    RestUtil.PutResponse<DataContractResult> result = repository.validateContract(dataContract);
-    return result.toResponse();
+    return service.validateContract(uriInfo, securityContext, id);
   }
-
-  // Add runId and dataContractFQN to the result if not incoming
-  private DataContractResult getContractResult(
-      DataContract dataContract, DataContractResult newResult) {
-    return newResult
-        .withId(newResult.getId() == null ? UUID.randomUUID() : newResult.getId())
-        .withDataContractFQN(dataContract.getFullyQualifiedName());
-  }
-
-  // ODCS (Open Data Contract Standard) Import/Export APIs
 
   @GET
   @Path("/{id}/odcs")
@@ -916,9 +775,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
-    DataContract dataContract =
-        getInternal(uriInfo, securityContext, id, fieldsParam, Include.NON_DELETED);
-    return ODCSConverter.toODCS(dataContract);
+    return service.exportToODCS(uriInfo, securityContext, id, fieldsParam);
   }
 
   @GET
@@ -947,18 +804,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
-    DataContract dataContract =
-        getInternal(uriInfo, securityContext, id, fieldsParam, Include.NON_DELETED);
-    ODCSDataContract odcs = ODCSConverter.toODCS(dataContract);
-    try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
-      yamlMapper.setSerializationInclusion(
-          com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
-      String yamlContent = yamlMapper.writeValueAsString(odcs);
-      return Response.ok(yamlContent, "application/yaml").build();
-    } catch (Exception e) {
-      throw new IllegalArgumentException("Failed to convert to YAML: " + e.getMessage(), e);
-    }
+    return service.exportToODCSYaml(uriInfo, securityContext, id, fieldsParam);
   }
 
   @GET
@@ -991,9 +837,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
-    DataContract dataContract =
-        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, Include.NON_DELETED);
-    return ODCSConverter.toODCS(dataContract);
+    return service.exportToODCSByFqn(uriInfo, securityContext, fqn, fieldsParam);
   }
 
   @POST
@@ -1028,11 +872,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
           @QueryParam("entityType")
           String entityType,
       @Valid ODCSDataContract odcs) {
-    EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-    DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef);
-    dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
-    dataContract.setUpdatedAt(System.currentTimeMillis());
-    return create(uriInfo, securityContext, dataContract);
+    return service.importFromODCS(uriInfo, securityContext, entityId, entityType, odcs);
   }
 
   @POST
@@ -1067,17 +907,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
           @QueryParam("entityType")
           String entityType,
       String yamlContent) {
-    try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
-      ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
-      EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-      DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef);
-      dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
-      dataContract.setUpdatedAt(System.currentTimeMillis());
-      return create(uriInfo, securityContext, dataContract);
-    } catch (Exception e) {
-      throw new IllegalArgumentException("Invalid ODCS YAML content: " + e.getMessage(), e);
-    }
+    return service.importFromODCSYaml(uriInfo, securityContext, entityId, entityType, yamlContent);
   }
 
   @PUT
@@ -1112,11 +942,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
           @QueryParam("entityType")
           String entityType,
       @Valid ODCSDataContract odcs) {
-    EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-    DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef);
-    dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
-    dataContract.setUpdatedAt(System.currentTimeMillis());
-    return createOrUpdate(uriInfo, securityContext, dataContract);
+    return service.createOrUpdateFromODCS(uriInfo, securityContext, entityId, entityType, odcs);
   }
 
   @PUT
@@ -1151,23 +977,7 @@ public class DataContractResource extends EntityBaseService<DataContract, DataCo
           @QueryParam("entityType")
           String entityType,
       String yamlContent) {
-    try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
-      ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
-      EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-      DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef);
-      dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
-      dataContract.setUpdatedAt(System.currentTimeMillis());
-      return createOrUpdate(uriInfo, securityContext, dataContract);
-    } catch (Exception e) {
-      throw new IllegalArgumentException("Invalid ODCS YAML content: " + e.getMessage(), e);
-    }
-  }
-
-  public static class DataContractList extends ResultList<DataContract> {
-    @SuppressWarnings("unused")
-    public DataContractList() {
-      /* Required for serde */
-    }
+    return service.createOrUpdateFromODCSYaml(
+        uriInfo, securityContext, entityId, entityType, yamlContent);
   }
 }

@@ -13,9 +13,8 @@
 
 package org.openmetadata.service.resources.teams;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.services.teams.PersonaService.FIELDS;
 
-import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -29,25 +28,31 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.*;
-import java.util.List;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.PersonaRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.teams.PersonaService;
 
 @Slf4j
@@ -60,31 +65,12 @@ import org.openmetadata.service.services.teams.PersonaService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "personas", order = 2)
-public class PersonaResource extends EntityBaseService<Persona, PersonaRepository> {
+public class PersonaResource {
   public static final String COLLECTION_PATH = "/v1/personas";
-  static final String FIELDS = "users";
   private final PersonaService service;
 
-  @Override
-  public Persona addHref(UriInfo uriInfo, Persona persona) {
-    super.addHref(uriInfo, persona);
-    Entity.withHref(uriInfo, persona.getUsers());
-    return persona;
-  }
-
-  public PersonaResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.PERSONA, authorizer, limits);
-    this.service = serviceRegistry.getService(PersonaService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation(FIELDS, MetadataOperation.VIEW_BASIC);
-    return listOf(MetadataOperation.EDIT_ALL);
-  }
-
-  public static class PersonaList extends ResultList<Persona> {
-    /* Required for serde */
+  public PersonaResource(PersonaService service) {
+    this.service = service;
   }
 
   @GET
@@ -103,7 +89,7 @@ public class PersonaResource extends EntityBaseService<Persona, PersonaRepositor
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = PersonaList.class)))
+                    schema = @Schema(implementation = PersonaService.PersonaList.class)))
       })
   public ResultList<Persona> list(
       @Context UriInfo uriInfo,
@@ -130,7 +116,7 @@ public class PersonaResource extends EntityBaseService<Persona, PersonaRepositor
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, new ListFilter(null), limitParam, before, after);
   }
 
@@ -155,7 +141,7 @@ public class PersonaResource extends EntityBaseService<Persona, PersonaRepositor
       @Parameter(description = "Id of the Persona", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -192,7 +178,7 @@ public class PersonaResource extends EntityBaseService<Persona, PersonaRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -229,7 +215,7 @@ public class PersonaResource extends EntityBaseService<Persona, PersonaRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET
@@ -261,7 +247,7 @@ public class PersonaResource extends EntityBaseService<Persona, PersonaRepositor
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -281,10 +267,9 @@ public class PersonaResource extends EntityBaseService<Persona, PersonaRepositor
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePersona cp) {
-    authorizer.authorizeAdmin(securityContext);
     Persona persona =
         service.getMapper().createToEntity(cp, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, persona);
+    return service.create(uriInfo, securityContext, persona);
   }
 
   @PUT
@@ -304,10 +289,9 @@ public class PersonaResource extends EntityBaseService<Persona, PersonaRepositor
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePersona cp) {
-    authorizer.authorizeAdmin(securityContext);
     Persona persona =
         service.getMapper().createToEntity(cp, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, persona);
+    return service.createOrUpdate(uriInfo, securityContext, persona);
   }
 
   @PATCH
@@ -336,8 +320,7 @@ public class PersonaResource extends EntityBaseService<Persona, PersonaRepositor
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    authorizer.authorizeAdmin(securityContext);
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -366,8 +349,7 @@ public class PersonaResource extends EntityBaseService<Persona, PersonaRepositor
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    authorizer.authorizeAdmin(securityContext);
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
@@ -386,8 +368,7 @@ public class PersonaResource extends EntityBaseService<Persona, PersonaRepositor
       @Parameter(description = "Id of the Persona", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    authorizer.authorizeAdmin(securityContext);
-    return delete(uriInfo, securityContext, id, false, true);
+    return service.delete(uriInfo, securityContext, id, false, true);
   }
 
   @DELETE
@@ -406,8 +387,7 @@ public class PersonaResource extends EntityBaseService<Persona, PersonaRepositor
       @Parameter(description = "Id of the Persona", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    authorizer.authorizeAdmin(securityContext);
-    return deleteByIdAsync(uriInfo, securityContext, id, false, true);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, false, true);
   }
 
   @DELETE
@@ -426,7 +406,6 @@ public class PersonaResource extends EntityBaseService<Persona, PersonaRepositor
       @Parameter(description = "Name of the Persona", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    authorizer.authorizeAdmin(securityContext);
-    return deleteByName(uriInfo, securityContext, name, false, true);
+    return service.deleteByName(uriInfo, securityContext, name, false, true);
   }
 }

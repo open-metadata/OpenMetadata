@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.storages;
 
+import static org.openmetadata.service.services.storages.ContainerService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -38,16 +40,9 @@ import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.ContainerRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.storages.ContainerService;
 
 @Path("/v1/containers")
@@ -60,37 +55,12 @@ import org.openmetadata.service.services.storages.ContainerService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "containers")
-public class ContainerResource extends EntityBaseService<Container, ContainerRepository> {
-  private ContainerService containerService;
+public class ContainerResource {
   public static final String COLLECTION_PATH = "v1/containers/";
-  static final String FIELDS =
-      "parent,children,dataModel,owners,tags,followers,extension,domains,sourceHash";
+  private final ContainerService service;
 
-  @Override
-  public Container addHref(UriInfo uriInfo, Container container) {
-    super.addHref(uriInfo, container);
-    Entity.withHref(uriInfo, container.getService());
-    Entity.withHref(uriInfo, container.getParent());
-    return container;
-  }
-
-  public ContainerResource(Authorizer authorizer, Limits limits) {
-    super(Entity.CONTAINER, authorizer, limits);
-  }
-
-  public ContainerResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.CONTAINER, authorizer, limits);
-    this.containerService = serviceRegistry.getService(ContainerService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("parent,children,dataModel", MetadataOperation.VIEW_BASIC);
-    return null;
-  }
-
-  public static class ContainerList extends ResultList<Container> {
-    /* Required for serde */
+  public ContainerResource(ContainerService service) {
+    this.service = service;
   }
 
   @GET
@@ -109,7 +79,7 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = ContainerResource.ContainerList.class)))
+                    schema = @Schema(implementation = ContainerService.ContainerList.class)))
       })
   public ResultList<Container> list(
       @Context UriInfo uriInfo,
@@ -123,7 +93,7 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
               description = "Filter Containers by Object Store Service name",
               schema = @Schema(type = "string", example = "s3West"))
           @QueryParam("service")
-          String service,
+          String serviceParam,
       @Parameter(
               description = "Filter by Containers at the root level. E.g., without parent",
               schema = @Schema(type = "boolean", example = "true"))
@@ -152,11 +122,11 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter = new ListFilter(include).addQueryParam("service", service);
+    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     if (root != null) {
       filter.addQueryParam("root", root.toString());
     }
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -191,7 +161,7 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -225,7 +195,7 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @POST
@@ -248,10 +218,8 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
       @Context SecurityContext securityContext,
       @Valid CreateContainer create) {
     Container container =
-        containerService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, container);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.create(uriInfo, securityContext, container);
   }
 
   @PUT
@@ -290,7 +258,8 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateContainer> createRequests) {
-    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+    return service.processBulkRequest(
+        uriInfo, securityContext, createRequests, service.getMapper(), async);
   }
 
   @PATCH
@@ -319,7 +288,7 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -348,7 +317,7 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -371,10 +340,8 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
       @Context SecurityContext securityContext,
       @Valid CreateContainer create) {
     Container container =
-        containerService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, container);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.createOrUpdate(uriInfo, securityContext, container);
   }
 
   @PUT
@@ -424,17 +391,15 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the container", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the container", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          String id,
+          UUID id,
       @Parameter(
               description = "Id of the user being removed as follower",
-              schema = @Schema(type = "string"))
+              schema = @Schema(type = "UUID"))
           @PathParam("userId")
-          String userId) {
-    return service
-        .deleteFollower(securityContext, UUID.fromString(id), UUID.fromString(userId))
-        .toResponse();
+          UUID userId) {
+    return service.deleteFollower(securityContext, id, userId).toResponse();
   }
 
   @GET
@@ -457,7 +422,7 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
       @Context SecurityContext securityContext,
       @Parameter(description = "Container Id", schema = @Schema(type = "string")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -488,7 +453,7 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @DELETE
@@ -515,7 +480,7 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
           boolean recursive,
       @Parameter(description = "Container Id", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -542,7 +507,7 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
           boolean recursive,
       @Parameter(description = "Container Id", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @PUT
@@ -592,7 +557,7 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
       @Parameter(description = "Name of the Container", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
@@ -614,7 +579,7 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET
@@ -630,7 +595,7 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = ContainerList.class)))
+                    schema = @Schema(implementation = ContainerService.ContainerList.class)))
       })
   public ResultList<Container> listChildren(
       @Context UriInfo uriInfo,
@@ -649,6 +614,6 @@ public class ContainerResource extends EntityBaseService<Container, ContainerRep
           @QueryParam("offset")
           @Min(value = 0, message = "must be greater than or equal to 0")
           Integer offset) {
-    return repository.listChildren(fqn, limit, offset);
+    return service.listChildren(fqn, limit, offset);
   }
 }

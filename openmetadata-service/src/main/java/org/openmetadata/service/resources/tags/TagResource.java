@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.tags;
 
+import static org.openmetadata.service.services.tags.TagService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -41,7 +43,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -52,21 +53,13 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
-import org.openmetadata.service.jdbi3.TagRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
-import org.openmetadata.service.services.tags.ClassificationService;
 import org.openmetadata.service.services.tags.TagService;
 
 @Slf4j
@@ -85,35 +78,14 @@ import org.openmetadata.service.services.tags.TagService;
 @Collection(
     name = "tags",
     order = 5) // initialize after Classification, and before Glossary and GlossaryTerm
-public class TagResource extends EntityBaseService<Tag, TagRepository> {
+public class TagResource {
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
-  static final String FIELDS =
-      "owners,reviewers,domains,children,usageCount,recognizers,autoClassificationEnabled,autoClassificationPriority";
   private final TagService service;
-  private final ClassificationService classificationService;
   private final RecognizerFeedbackRepository feedbackRepository;
 
-  static class TagList extends ResultList<Tag> {
-    /* Required for serde */
-  }
-
-  public TagResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.TAG, authorizer, limits);
-    this.service = serviceRegistry.getService(TagService.class);
-    this.classificationService = serviceRegistry.getService(ClassificationService.class);
+  public TagResource(TagService service) {
+    this.service = service;
     this.feedbackRepository = new RecognizerFeedbackRepository(Entity.getCollectionDAO());
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("owners,domains,children,usageCount", MetadataOperation.VIEW_BASIC);
-    return null;
-  }
-
-  @Override
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    super.initialize(config);
-    service.initialize();
   }
 
   @GET
@@ -132,7 +104,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = TagList.class)))
+                    schema = @Schema(implementation = TagService.TagList.class)))
       })
   public ResultList<Tag> list(
       @Context UriInfo uriInfo,
@@ -180,7 +152,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
     if (disabled != null) {
       filter.addQueryParam("classification.disabled", disabled);
     }
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -216,7 +188,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -252,7 +224,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -275,7 +247,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -306,7 +278,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -328,7 +300,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTag create) {
     Tag tag =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, tag);
+    return service.create(uriInfo, securityContext, tag);
   }
 
   @PATCH
@@ -356,7 +328,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -385,7 +357,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -407,7 +379,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTag create) {
     Tag tag =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, tag);
+    return service.createOrUpdate(uriInfo, securityContext, tag);
   }
 
   @DELETE
@@ -434,7 +406,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -461,7 +433,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -484,7 +456,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
       @Parameter(description = "Fully qualified name of the tag", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
@@ -506,7 +478,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @PUT
@@ -531,7 +503,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddTagToAssetsRequest request) {
-    return bulkAddToAssetsAsync(securityContext, id, request);
+    return service.bulkAddToAssetsAsync(securityContext, id, request);
   }
 
   @PUT
@@ -556,7 +528,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddTagToAssetsRequest request) {
-    return bulkRemoveFromAssetsAsync(securityContext, id, request);
+    return service.bulkRemoveFromAssetsAsync(securityContext, id, request);
   }
 
   @GET
@@ -595,7 +567,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getTagAssets(id, limit, offset)).build();
+    return Response.ok(service.getRepository().getTagAssets(id, limit, offset)).build();
   }
 
   @GET
@@ -635,15 +607,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getTagAssetsByName(fqn, limit, offset)).build();
-  }
-
-  @Override
-  public Tag addHref(UriInfo uriInfo, Tag tag) {
-    super.addHref(uriInfo, tag);
-    Entity.withHref(uriInfo, tag.getClassification());
-    Entity.withHref(uriInfo, tag.getParent());
-    return tag;
+    return Response.ok(service.getRepository().getTagAssetsByName(fqn, limit, offset)).build();
   }
 
   @POST
@@ -667,7 +631,10 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
           @PathParam("fqn")
           String fqn,
       @Valid RecognizerFeedback feedback) {
-    Tag tag = repository.getByName(uriInfo, fqn, repository.getFields("recognizers"));
+    Tag tag =
+        service
+            .getRepository()
+            .getByName(uriInfo, fqn, service.getRepository().getFields("recognizers"));
     feedback.setTagFQN(tag.getFullyQualifiedName());
     String userName = securityContext.getUserPrincipal().getName();
     feedback.setCreatedBy(Entity.getEntityReferenceByName(Entity.USER, userName, null));
@@ -714,10 +681,9 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
           @PathParam("fqn")
           String fqn) {
 
-    // Verify the tag exists
-    Tag tag = repository.getByName(uriInfo, fqn, repository.getFields("id"));
+    Tag tag =
+        service.getRepository().getByName(uriInfo, fqn, service.getRepository().getFields("id"));
 
-    // Get feedback for this tag
     return feedbackRepository.getFeedbackByTagFQN(tag.getFullyQualifiedName());
   }
 
@@ -753,7 +719,7 @@ public class TagResource extends EntityBaseService<Tag, TagRepository> {
       })
   public Response getAllTagsWithAssetsCount(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    java.util.Map<String, Integer> result = repository.getAllTagsWithAssetsCount();
+    java.util.Map<String, Integer> result = service.getRepository().getAllTagsWithAssetsCount();
     return Response.ok(result).build();
   }
 }

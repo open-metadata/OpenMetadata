@@ -74,11 +74,11 @@ import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.EntityService;
 import org.openmetadata.service.services.Service;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -412,7 +412,7 @@ public final class Entity {
         }
 
         Object service = tryInstantiateService(clz, repository, authorizer);
-        if (service instanceof EntityService<?> entityService) {
+        if (service instanceof EntityBaseService<?, ?> entityService) {
           serviceRegistry.register(entityType, entityService);
           LOG.info("Registered service: {} for entity type: {}", clz.getSimpleName(), entityType);
         }

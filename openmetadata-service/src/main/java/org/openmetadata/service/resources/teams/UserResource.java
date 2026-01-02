@@ -17,7 +17,6 @@ import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.CONFLICT;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static jakarta.ws.rs.core.Response.Status.OK;
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
@@ -30,6 +29,8 @@ import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_R
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.secrets.ExternalSecretsManager.NULL_SECRET_STRING;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
+import static org.openmetadata.service.services.teams.UserService.FIELDS;
+import static org.openmetadata.service.services.teams.UserService.USER_PROTECTED_FIELDS;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.openmetadata.service.util.UserUtil.getRolesFromAuthorizationToken;
 import static org.openmetadata.service.util.UserUtil.getUser;
@@ -79,7 +80,6 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -133,18 +133,13 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
-import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
-import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.CatalogPrincipal;
-import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -154,7 +149,6 @@ import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.teams.UserService;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
@@ -173,68 +167,30 @@ import org.openmetadata.service.util.email.TemplateConstants;
         "A `User` represents a user of OpenMetadata. A user can be part of 0 or more teams. A special type of user called Bot is used for automation. A user can be an owner of zero or more data assets. A user can also follow zero or more data assets.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(
-    name = "users",
-    order = 3,
-    requiredForOps = true) // Initialize user resource before bot resource (at default order 9)
-public class UserResource extends EntityBaseService<User, UserRepository> {
+@Collection(name = "users", order = 3, requiredForOps = true)
+public class UserResource {
   public static final String COLLECTION_PATH = "v1/users/";
-  public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
+  private final UserService service;
   private final JWTTokenGenerator jwtTokenGenerator;
   private final TokenRepository tokenRepository;
   private final RoleRepository roleRepository;
   private AuthenticationConfiguration authenticationConfiguration;
   private AuthorizerConfiguration authorizerConfiguration;
-  private final AuthenticatorHandler authHandler;
-  private final UserService service;
   private boolean isSelfSignUpEnabled = false;
-  static final String FIELDS =
-      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences";
 
-  @Override
-  public User addHref(UriInfo uriInfo, User user) {
-    super.addHref(uriInfo, user);
-    Entity.withHref(uriInfo, user.getTeams());
-    Entity.withHref(uriInfo, user.getRoles());
-    Entity.withHref(uriInfo, user.getPersonas());
-    Entity.withHref(uriInfo, user.getInheritedRoles());
-    Entity.withHref(uriInfo, user.getOwns());
-    Entity.withHref(uriInfo, user.getFollows());
-    return user;
-  }
-
-  public UserResource(
-      Authorizer authorizer,
-      Limits limits,
-      AuthenticatorHandler authenticatorHandler,
-      ServiceRegistry serviceRegistry) {
-    super(Entity.USER, authorizer, limits);
-    jwtTokenGenerator = JWTTokenGenerator.getInstance();
-    allowedFields.remove(USER_PROTECTED_FIELDS);
-    tokenRepository = Entity.getTokenRepository();
-    roleRepository = Entity.getRoleRepository();
+  public UserResource(UserService service) {
+    this.service = service;
+    this.jwtTokenGenerator = JWTTokenGenerator.getInstance();
+    this.tokenRepository = Entity.getTokenRepository();
+    this.roleRepository = Entity.getRoleRepository();
     UserTokenCache.initialize();
-    authHandler = authenticatorHandler;
-    this.service = serviceRegistry.getService(UserService.class);
   }
 
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("profile,roles,teams,follows,owns", MetadataOperation.VIEW_BASIC);
-    return listOf(MetadataOperation.EDIT_TEAMS);
-  }
-
-  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    super.initialize(config);
     this.authenticationConfiguration = SecurityConfigurationManager.getCurrentAuthConfig();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
     this.service.initialize(config);
     this.isSelfSignUpEnabled = authenticationConfiguration.getEnableSelfSignup();
-  }
-
-  public static class UserList extends ResultList<User> {
-    /* Required for serde */
   }
 
   public static class PersonalAccessTokenList extends ResultList<PersonalAccessToken> {
@@ -257,7 +213,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = UserList.class)))
+                    schema = @Schema(implementation = UserService.UserList.class)))
       })
   public ResultList<User> list(
       @Context UriInfo uriInfo,
@@ -312,7 +268,8 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
       filter.addQueryParam("isBot", String.valueOf(isBot));
     }
     ResultList<User> users =
-        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+        service.listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     users.getData().forEach(user -> decryptOrNullify(securityContext, user));
     return users;
   }
@@ -331,7 +288,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = UserList.class))),
+                    schema = @Schema(implementation = UserService.UserList.class))),
         @ApiResponse(responseCode = "403", description = "Forbidden - Admin access required")
       })
   public ResultList<User> listOnlineUsers(
@@ -365,21 +322,19 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-    // Admin access check
-    authorizer.authorizeAdmin(securityContext);
+    service.getAuthorizer().authorizeAdmin(securityContext);
 
-    // Calculate the timestamp threshold
     long currentTimeMillis = System.currentTimeMillis();
-    long timeWindowMillis = timeWindow * 60 * 1000L; // Convert minutes to milliseconds
+    long timeWindowMillis = timeWindow * 60 * 1000L;
     long thresholdTimestamp = currentTimeMillis - timeWindowMillis;
 
-    // Create filter for online users - uses both lastLoginTime and lastActivityTime
     ListFilter filter = new ListFilter(Include.NON_DELETED);
     filter.addQueryParam("lastActivityTimeGreaterThan", String.valueOf(thresholdTimestamp));
-    filter.addQueryParam("isBot", "false"); // Exclude bots from online users
+    filter.addQueryParam("isBot", "false");
 
     ResultList<User> users =
-        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+        service.listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     users.getData().forEach(user -> decryptOrNullify(securityContext, user));
     return users;
   }
@@ -404,7 +359,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -416,7 +371,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
       responses = {@ApiResponse(responseCode = "200", description = "Random pwd")})
   public Response generateRandomPassword(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    authorizer.authorizeAdmin(securityContext);
+    service.getAuthorizer().authorizeAdmin(securityContext);
     return Response.status(OK).entity(PasswordUtil.generateRandomPassword()).build();
   }
 
@@ -453,7 +408,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    User user = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    User user = service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
     decryptOrNullify(securityContext, user);
     return user;
   }
@@ -492,7 +447,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    User user = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    User user = service.getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     decryptOrNullify(securityContext, user);
     return user;
   }
@@ -525,7 +480,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
           String fieldsParam) {
     CatalogSecurityContext catalogSecurityContext =
         (CatalogSecurityContext) containerRequestContext.getSecurityContext();
-    Fields fields = getFields(fieldsParam);
+    Fields fields = service.getFields(fieldsParam);
     String currentEmail = ((CatalogPrincipal) catalogSecurityContext.getUserPrincipal()).getEmail();
     User user =
         service.getLoggedInUser(
@@ -535,13 +490,12 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
             currentEmail,
             fields);
 
-    // Sync the Roles from token to User
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
         && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
       reSyncUserRolesFromToken(
           uriInfo, user, getRolesFromAuthorizationToken(catalogSecurityContext));
     }
-    return addHref(uriInfo, user);
+    return service.addHref(uriInfo, user);
   }
 
   @GET
@@ -570,7 +524,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
     CatalogSecurityContext catalogSecurityContext =
         (CatalogSecurityContext) containerRequestContext.getSecurityContext();
     String currentEmail = ((CatalogPrincipal) catalogSecurityContext.getUserPrincipal()).getEmail();
-    return repository.getGroupTeams(uriInfo, catalogSecurityContext, currentEmail);
+    return service.getGroupTeams(uriInfo, catalogSecurityContext, currentEmail);
   }
 
   @POST
@@ -595,7 +549,6 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
                 .withToken(request.getToken())
                 .withLogoutTime(logoutTime));
     if (isBasicAuth() && request.getRefreshToken() != null) {
-      // need to clear the refresh token as well
       tokenRepository.deleteToken(request.getRefreshToken());
     }
     return Response.status(200).entity("Logout Successful").build();
@@ -629,7 +582,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -658,9 +611,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
       addRolesToBot(user, uriInfo);
     }
 
-    //
     try {
-      // Email Validation
       validateEmailAlreadyExists(user.getEmail());
       addUserAuthForBasic(user, create);
     } catch (RuntimeException ex) {
@@ -672,19 +623,20 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
           .build();
     }
 
-    // Add the roles on user creation
     updateUserRolesIfRequired(user, containerRequestContext);
 
     Response createdUserRes;
     try {
-      createdUserRes = create(uriInfo, securityContext, user);
+      createdUserRes = service.create(uriInfo, securityContext, user);
     } catch (EntityNotFoundException ex) {
       if (isSelfSignUpEnabled) {
         if (securityContext.getUserPrincipal().getName().equals(user.getName())) {
           User created =
-              addHref(
+              service.addHref(
                   uriInfo,
-                  repository.create(uriInfo, user.withLastLoginTime(System.currentTimeMillis())));
+                  service
+                      .getRepository()
+                      .create(uriInfo, user.withLastLoginTime(System.currentTimeMillis())));
           createdUserRes = Response.created(created.getHref()).entity(created).build();
         } else {
           throw new CustomExceptionMessage(
@@ -701,10 +653,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
     }
 
     if (createdUserRes != null) {
-      // Send Invite mail to user
       sendInviteMailToUserForBasicAuth(uriInfo, user, create);
-
-      // Update response to remove auth fields
       decryptOrNullify(securityContext, (User) createdUserRes.getEntity());
       return createdUserRes;
     }
@@ -771,31 +720,32 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
       @Context SecurityContext securityContext,
       @Valid CreateUser create) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
-    repository.prepareInternal(user, true);
-    User existingUser = repository.findByNameOrNull(user.getFullyQualifiedName(), ALL);
+    service.getRepository().prepareInternal(user, true);
+    User existingUser = service.getRepository().findByNameOrNull(user.getFullyQualifiedName(), ALL);
     if (existingUser == null) {
-      limits.enforceLimits(
-          securityContext,
-          getResourceContextByName(user.getFullyQualifiedName()),
-          new OperationContext(entityType, MetadataOperation.CREATE));
+      service
+          .getLimits()
+          .enforceLimits(
+              securityContext,
+              getResourceContextByName(user.getFullyQualifiedName()),
+              new OperationContext(Entity.USER, MetadataOperation.CREATE));
     }
     ResourceContext<?> resourceContext = getResourceContextByName(user.getFullyQualifiedName());
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
-      authorizer.authorizeAdmin(securityContext);
+      service.getAuthorizer().authorizeAdmin(securityContext);
     } else if (!securityContext.getUserPrincipal().getName().equals(user.getName())) {
-      // doing authorization check outside of authorizer here. We are checking if the logged-in user
-      // is same as the user. We are trying to update. One option is to set users.owner as user,
-      // however that is not supported for User.
       OperationContext createOperationContext =
-          new OperationContext(entityType, EntityUtil.createOrUpdateOperation(resourceContext));
-      authorizer.authorize(securityContext, createOperationContext, resourceContext);
+          new OperationContext(Entity.USER, EntityUtil.createOrUpdateOperation(resourceContext));
+      service.getAuthorizer().authorize(securityContext, createOperationContext, resourceContext);
     }
     if (Boolean.TRUE.equals(create.getIsBot())) {
       return createOrUpdateBotUser(user, create, uriInfo, securityContext);
     }
     PutResponse<User> response =
-        repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
-    addHref(uriInfo, response.getEntity());
+        service
+            .getRepository()
+            .createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
+    service.addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
 
@@ -821,8 +771,11 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid GenerateTokenRequest generateTokenRequest) {
-    authorizer.authorizeAdmin(securityContext);
-    User user = repository.get(uriInfo, id, repository.getFieldsWithUserAuth("*"));
+    service.getAuthorizer().authorizeAdmin(securityContext);
+    User user =
+        service
+            .getRepository()
+            .get(uriInfo, id, service.getRepository().getFieldsWithUserAuth("*"));
     JWTAuthMechanism jwtAuthMechanism =
         jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
     AuthenticationMechanism authenticationMechanism =
@@ -831,7 +784,8 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
             .withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
     User updatedUser =
-        repository
+        service
+            .getRepository()
             .createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName())
             .getEntity();
     jwtAuthMechanism =
@@ -860,9 +814,14 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RevokeTokenRequest revokeTokenRequest) {
-    authorizer.authorizeAdmin(securityContext);
+    service.getAuthorizer().authorizeAdmin(securityContext);
     User user =
-        repository.get(uriInfo, revokeTokenRequest.getId(), repository.getFieldsWithUserAuth("*"));
+        service
+            .getRepository()
+            .get(
+                uriInfo,
+                revokeTokenRequest.getId(),
+                service.getRepository().getFieldsWithUserAuth("*"));
     if (Boolean.FALSE.equals(user.getIsBot())) {
       throw new IllegalStateException(CatalogExceptionMessage.INVALID_BOT_USER);
     }
@@ -871,9 +830,10 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
         new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
     PutResponse<User> response =
-        repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
-    addHref(uriInfo, response.getEntity());
-    // Invalidate Bot Token in Cache
+        service
+            .getRepository()
+            .createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
+    service.addHref(uriInfo, response.getEntity());
     BotTokenCache.invalidateToken(user.getName());
     return response.toResponse();
   }
@@ -900,12 +860,12 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
 
-    User user = repository.get(uriInfo, id, new Fields(Set.of(AUTH_MECHANISM_FIELD)));
+    User user = service.getRepository().get(uriInfo, id, new Fields(Set.of(AUTH_MECHANISM_FIELD)));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
     decryptOrNullify(securityContext, user);
-    authorizer.authorizeAdmin(securityContext);
+    service.getAuthorizer().authorizeAdmin(securityContext);
     AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
     if (authenticationMechanism != null
         && authenticationMechanism.getConfig() != null
@@ -936,16 +896,18 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    User user = repository.get(uriInfo, id, new Fields(Set.of(AUTH_MECHANISM_FIELD)));
+    User user = service.getRepository().get(uriInfo, id, new Fields(Set.of(AUTH_MECHANISM_FIELD)));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
-    limits.enforceLimits(
-        securityContext,
-        getResourceContext(),
-        new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
+    service
+        .getLimits()
+        .enforceLimits(
+            securityContext,
+            getResourceContext(),
+            new OperationContext(Entity.USER, MetadataOperation.GENERATE_TOKEN));
     decryptOrNullify(securityContext, user);
-    authorizer.authorizeAdmin(securityContext);
+    service.getAuthorizer().authorizeAdmin(securityContext);
     return user.getAuthenticationMechanism();
   }
 
@@ -979,19 +941,19 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
       if (patchOpObject.containsKey("path") && patchOpObject.containsKey("value")) {
         String path = patchOpObject.getString("path");
         if (path.equals("/isAdmin") || path.equals("/isBot") || path.contains("/roles")) {
-          authorizer.authorizeAdmin(securityContext);
+          service.getAuthorizer().authorizeAdmin(securityContext);
           continue;
         }
-        // Check if updating personaPreferences - users can only update their own
         if (path.startsWith("/personaPreferences")) {
           String authenticatedUserName = securityContext.getUserPrincipal().getName();
           User authenticatedUser =
-              repository.getByName(uriInfo, authenticatedUserName, new Fields(Set.of("id")));
+              service
+                  .getRepository()
+                  .getByName(uriInfo, authenticatedUserName, new Fields(Set.of("id")));
           if (!authenticatedUser.getId().equals(id)) {
             throw new AuthorizationException("Users can only update their own persona preferences");
           }
         }
-        // if path contains team, check if team is join able by any user
         if (patchOpObject.containsKey("op")
             && patchOpObject.getString("op").equals("add")
             && path.startsWith("/teams/")) {
@@ -1003,15 +965,15 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
           }
           if (value != null) {
             String teamId = value.getString("id");
-            repository.validateTeamAddition(id, UUID.fromString(teamId));
-            if (!repository.isTeamJoinable(teamId)) {
-              authorizer.authorizeAdmin(securityContext); // Only admin can join closed teams
+            service.validateTeamAddition(id, UUID.fromString(teamId));
+            if (!service.isTeamJoinable(teamId)) {
+              service.getAuthorizer().authorizeAdmin(securityContext);
             }
           }
         }
       }
     }
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @DELETE
@@ -1033,7 +995,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    Response response = delete(uriInfo, securityContext, id, false, hardDelete);
+    Response response = service.delete(uriInfo, securityContext, id, false, hardDelete);
     decryptOrNullify(securityContext, (User) response.getEntity());
     return response;
   }
@@ -1057,7 +1019,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -1080,7 +1042,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
       @Parameter(description = "Name of the user", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT
@@ -1102,7 +1064,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET
@@ -1243,7 +1205,8 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
           @QueryParam("user")
           String user)
       throws IOException {
-    User registeredUser = repository.getByName(uriInfo, user, getFields("isEmailVerified"));
+    User registeredUser =
+        service.getRepository().getByName(uriInfo, user, service.getFields("isEmailVerified"));
     if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
       return Response.status(Response.Status.OK).entity("Email Already Verified.").build();
     }
@@ -1270,8 +1233,12 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
     User registeredUser;
     try {
       registeredUser =
-          repository.getByName(
-              uriInfo, userName, new Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+          service
+              .getRepository()
+              .getByName(
+                  uriInfo,
+                  userName,
+                  new Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
     } catch (EntityNotFoundException ex) {
       LOG.error(
           "[GeneratePasswordReset] Got Error while fetching user : {},  error message {}",
@@ -1282,7 +1249,6 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
           .build();
     }
     try {
-      // send a mail to the User with the Update
       SecurityConfigurationManager.getInstance()
           .getAuthenticatorHandler()
           .sendPasswordResetLink(
@@ -1349,7 +1315,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
           .getAuthenticatorHandler()
           .changeUserPwdWithOldPwd(uriInfo, securityContext.getUserPrincipal().getName(), request);
     } else {
-      authorizer.authorizeAdmin(securityContext);
+      service.getAuthorizer().authorizeAdmin(securityContext);
       SecurityConfigurationManager.getInstance()
           .getAuthenticatorHandler()
           .changeUserPwdWithOldPwd(uriInfo, request.getUsername(), request);
@@ -1375,8 +1341,10 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
       })
   public Response checkEmailVerified(@Context UriInfo uriInfo, @Valid EmailRequest request) {
     User user =
-        repository.getByName(
-            uriInfo, request.getEmail().split("@")[0], getFields("isEmailVerified"));
+        service
+            .getRepository()
+            .getByName(
+                uriInfo, request.getEmail().split("@")[0], service.getFields("isEmailVerified"));
     return Response.status(Response.Status.OK).entity(user.getIsEmailVerified()).build();
   }
 
@@ -1466,16 +1434,21 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
       @Parameter(description = "User Name of the User for which to get. (Default = `false`)")
           @QueryParam("username")
           String userName) {
-    limits.enforceLimits(
-        securityContext,
-        getResourceContext(),
-        new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
+    service
+        .getLimits()
+        .enforceLimits(
+            securityContext,
+            getResourceContext(),
+            new OperationContext(Entity.USER, MetadataOperation.GENERATE_TOKEN));
     if (userName != null) {
-      authorizer.authorizeAdmin(securityContext);
+      service.getAuthorizer().authorizeAdmin(securityContext);
     } else {
       userName = securityContext.getUserPrincipal().getName();
     }
-    User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, true);
+    User user =
+        service
+            .getRepository()
+            .getByName(null, userName, service.getFields("id"), Include.NON_DELETED, true);
     List<TokenInterface> tokens =
         tokenRepository.findByUserIdAndType(user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
@@ -1509,11 +1482,14 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
           boolean removeAll,
       @Valid RevokePersonalTokenRequest request) {
     if (!CommonUtil.nullOrEmpty(userName)) {
-      authorizer.authorizeAdmin(securityContext);
+      service.getAuthorizer().authorizeAdmin(securityContext);
     } else {
       userName = securityContext.getUserPrincipal().getName();
     }
-    User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, false);
+    User user =
+        service
+            .getRepository()
+            .getByName(null, userName, service.getFields("id"), Include.NON_DELETED, false);
     if (removeAll) {
       tokenRepository.deleteTokenByUserAndType(
           user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
@@ -1548,16 +1524,19 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePersonalToken tokenRequest) {
-    limits.enforceLimits(
-        securityContext,
-        getResourceContext(),
-        new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
+    service
+        .getLimits()
+        .enforceLimits(
+            securityContext,
+            getResourceContext(),
+            new OperationContext(Entity.USER, MetadataOperation.GENERATE_TOKEN));
     String userName = securityContext.getUserPrincipal().getName();
     User user =
-        repository.getByName(
-            null, userName, getFields("roles,email,isBot"), Include.NON_DELETED, false);
+        service
+            .getRepository()
+            .getByName(
+                null, userName, service.getFields("roles,email,isBot"), Include.NON_DELETED, false);
     if (user.getIsBot() == null || Boolean.FALSE.equals(user.getIsBot())) {
-      // Create Personal Access Token
       JWTAuthMechanism authMechanism =
           JWTTokenGenerator.getInstance()
               .getJwtAuthMechanism(
@@ -1613,7 +1592,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("team")
           String team) {
-    return exportCsvInternalAsync(securityContext, team, false);
+    return service.exportCsvInternalAsync(securityContext, team, false);
   }
 
   @GET
@@ -1641,7 +1620,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
           @QueryParam("team")
           String team)
       throws IOException {
-    return exportCsvInternal(securityContext, team, false);
+    return service.exportCsvInternal(securityContext, team, false);
   }
 
   @PUT
@@ -1677,7 +1656,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, team, csv, dryRun, false);
+    return service.importCsvInternal(securityContext, team, csv, dryRun, false);
   }
 
   @PUT
@@ -1712,7 +1691,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
-    return importCsvInternalAsync(securityContext, team, csv, dryRun, false);
+    return service.importCsvInternalAsync(securityContext, team, csv, dryRun, false);
   }
 
   public void validateEmailAlreadyExists(String email) {
@@ -1727,7 +1706,6 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
     User original = retrieveBotUser(user, uriInfo);
     String botName = create.getBotName();
     EntityInterface bot = retrieveBot(botName);
-    // check if the bot user exists
     if (original != null
         && (original.getIsBot() == null || Boolean.FALSE.equals(original.getIsBot()))) {
       throw new IllegalArgumentException(
@@ -1735,7 +1713,6 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
     } else if (!botHasRelationshipWithUser(bot, original)
         && original != null
         && userHasRelationshipWithAnyBot(original, bot)) {
-      // throw an exception if user already has a relationship with a bot
       List<CollectionDAO.EntityRelationshipRecord> userBotRelationship =
           retrieveBotRelationshipsFor(original);
       bot =
@@ -1747,7 +1724,6 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.userAlreadyBot(user.getName(), bot.getName()));
     }
-    // TODO: review this flow on https://github.com/open-metadata/OpenMetadata/issues/8321
     if (original != null) {
       EntityMaskerFactory.getEntityMasker()
           .unmaskAuthenticationMechanism(
@@ -1756,11 +1732,12 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
               original.getAuthenticationMechanism());
       user.setRoles(original.getRoles());
     }
-    // TODO remove this -> Still valid TODO?
     addAuthMechanismToBot(user, create, uriInfo);
     addRolesToBot(user, uriInfo);
     PutResponse<User> response =
-        repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
+        service
+            .getRepository()
+            .createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
     decryptOrNullify(securityContext, response.getEntity());
     return response.toResponse();
   }
@@ -1783,7 +1760,9 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
   }
 
   private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(User user) {
-    return repository.findFromRecords(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
+    return service
+        .getRepository()
+        .findFromRecords(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
   }
 
   private boolean botHasRelationshipWithUser(EntityInterface bot, User user) {
@@ -1798,10 +1777,11 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
 
   private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(
       EntityInterface bot) {
-    return repository.findToRecords(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
+    return service
+        .getRepository()
+        .findToRecords(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
   }
 
-  // TODO remove this -> still valid TODO?
   private void addAuthMechanismToBot(User user, @Valid CreateUser create, UriInfo uriInfo) {
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException(
@@ -1826,11 +1806,9 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
     }
     User original = retrieveBotUser(user, uriInfo);
     ArrayList<EntityReference> defaultBotRoles = getDefaultBotRoles(user);
-    // Keep the incoming roles of the created user
     if (!nullOrEmpty(user.getRoles())) {
       defaultBotRoles.addAll(user.getRoles());
     }
-    // If user existed, merge roles
     if (original != null && !nullOrEmpty(original.getRoles())) {
       defaultBotRoles.addAll(original.getRoles());
     }
@@ -1856,8 +1834,12 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
     User original;
     try {
       original =
-          repository.getByName(
-              uriInfo, user.getFullyQualifiedName(), repository.getFieldsWithUserAuth("*"));
+          service
+              .getRepository()
+              .getByName(
+                  uriInfo,
+                  user.getFullyQualifiedName(),
+                  service.getRepository().getFieldsWithUserAuth("*"));
     } catch (EntityNotFoundException exc) {
       LOG.debug(
           String.format("User not found when adding auth mechanism for: [%s]", user.getName()));
@@ -1892,45 +1874,39 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
     return false;
   }
 
-  private boolean isValidAuthenticationMechanism(CreateUser create) {
-    if (create.getAuthenticationMechanism() == null) {
-      return false;
-    }
-    if (create.getAuthenticationMechanism().getConfig() != null
-        && create.getAuthenticationMechanism().getAuthType() != null) {
-      return true;
-    }
-    throw new IllegalArgumentException(
-        String.format(
-            "Incomplete authentication mechanism parameters for bot user: [%s]", create.getName()));
-  }
-
   private void decryptOrNullify(SecurityContext securityContext, User user) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       try {
-        authorizer.authorize(
-            securityContext,
-            new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-            getResourceContextById(user.getId()));
+        service
+            .getAuthorizer()
+            .authorize(
+                securityContext,
+                new OperationContext(Entity.USER, MetadataOperation.VIEW_ALL),
+                getResourceContextById(user.getId()));
       } catch (AuthorizationException e) {
         user.getAuthenticationMechanism().setConfig(null);
       }
       secretsManager.decryptAuthenticationMechanism(
           user.getName(), user.getAuthenticationMechanism());
-      if (authorizer.shouldMaskPasswords(securityContext)) {
+      if (service.getAuthorizer().shouldMaskPasswords(securityContext)) {
         EntityMaskerFactory.getEntityMasker()
             .maskAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism());
       }
     }
 
-    // Remove mails for non-admin users
-    PIIMasker.maskUser(authorizer, securityContext, user);
+    PIIMasker.maskUser(service.getAuthorizer(), securityContext, user);
   }
 
-  private CatalogSecurityContext createSecurityContext(String userName, String email) {
-    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
-    return new CatalogSecurityContext(
-        catalogPrincipal, "https", SecurityContext.BASIC_AUTH, new HashSet<>());
+  private ResourceContext<User> getResourceContext() {
+    return new ResourceContext<>(Entity.USER);
+  }
+
+  private ResourceContext<User> getResourceContextById(UUID id) {
+    return new ResourceContext<>(Entity.USER, id, null);
+  }
+
+  private ResourceContext<User> getResourceContextByName(String name) {
+    return new ResourceContext<>(Entity.USER, null, name);
   }
 }

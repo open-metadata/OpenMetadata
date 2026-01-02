@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.domains;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.services.domains.DataProductService.FIELDS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -52,19 +53,12 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.domains.DataProductService;
 
 @Slf4j
@@ -76,30 +70,13 @@ import org.openmetadata.service.services.domains.DataProductService;
             + "domain data for analytical or data-intensive use cases made available to data consumers.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "dataProducts", order = 4) // initialize after user resource
-public class DataProductResource extends EntityBaseService<DataProduct, DataProductRepository> {
+@Collection(name = "dataProducts", order = 4)
+public class DataProductResource {
   public static final String COLLECTION_PATH = "/v1/dataProducts/";
-  static final String FIELDS =
-      "domains,owners,reviewers,experts,extension,tags,followers,inputPorts,outputPorts";
   private final DataProductService service;
 
-  public DataProductResource(
-      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.DATA_PRODUCT, authorizer, limits);
-    this.service = serviceRegistry.getService(DataProductService.class);
-  }
-
-  @Override
-  public DataProduct addHref(UriInfo uriInfo, DataProduct dataProduct) {
-    super.addHref(uriInfo, dataProduct);
-    return dataProduct;
-  }
-
-  public static class DataProductList extends ResultList<DataProduct> {
-    @SuppressWarnings("unused")
-    public DataProductList() {
-      /* Required for serde */
-    }
+  public DataProductResource(DataProductService service) {
+    this.service = service;
   }
 
   @GET
@@ -114,7 +91,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DataProductList.class)))
+                    schema = @Schema(implementation = DataProductService.DataProductList.class)))
       })
   public ResultList<DataProduct> list(
       @Context UriInfo uriInfo,
@@ -150,7 +127,8 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
           Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
       filter.addQueryParam("domainId", String.format("'%s'", domainReference.getId()));
     }
-    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return service.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -182,7 +160,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
       @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, null);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, null);
   }
 
   @GET
@@ -214,7 +192,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, null);
+    return service.getByNameInternal(uriInfo, securityContext, name, fieldsParam, null);
   }
 
   @GET
@@ -238,7 +216,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
       @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -270,7 +248,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -301,7 +279,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
           CreateDataProduct create) {
     DataProduct dataProduct =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, dataProduct);
+    return service.create(uriInfo, securityContext, dataProduct);
   }
 
   @PUT
@@ -333,7 +311,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
           CreateDataProduct create) {
     DataProduct dataProduct =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, dataProduct);
+    return service.createOrUpdate(uriInfo, securityContext, dataProduct);
   }
 
   @PUT
@@ -359,10 +337,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
+    return Response.ok().entity(service.bulkAddAssets(securityContext, name, request)).build();
   }
 
   @PUT
@@ -388,10 +363,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
+    return Response.ok().entity(service.bulkRemoveAssets(securityContext, name, request)).build();
   }
 
   @PUT
@@ -419,10 +391,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkAddInputPorts(name, request)).build();
+    return Response.ok().entity(service.bulkAddInputPorts(securityContext, name, request)).build();
   }
 
   @PUT
@@ -450,10 +419,9 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkRemoveInputPorts(name, request)).build();
+    return Response.ok()
+        .entity(service.bulkRemoveInputPorts(securityContext, name, request))
+        .build();
   }
 
   @PUT
@@ -481,10 +449,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkAddOutputPorts(name, request)).build();
+    return Response.ok().entity(service.bulkAddOutputPorts(securityContext, name, request)).build();
   }
 
   @PUT
@@ -512,10 +477,9 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkRemoveOutputPorts(name, request)).build();
+    return Response.ok()
+        .entity(service.bulkRemoveOutputPorts(securityContext, name, request))
+        .build();
   }
 
   @PATCH
@@ -544,7 +508,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -573,7 +537,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
@@ -594,7 +558,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
       @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, true, true);
+    return service.delete(uriInfo, securityContext, id, true, true);
   }
 
   @DELETE
@@ -615,7 +579,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
       @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, true, true);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, true, true);
   }
 
   @DELETE
@@ -636,7 +600,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
       @Parameter(description = "Name of the dataProduct", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, true, true);
+    return service.deleteByName(uriInfo, securityContext, name, true, true);
   }
 
   @PUT
@@ -658,17 +622,16 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
             description = "DataProduct for instance {id} is not found")
       })
   public Response addFollower(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the DataProduct", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id,
       @Parameter(
               description = "Id of the user to be added as follower",
-              schema = @Schema(type = "string"))
+              schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return service.addDataProductFollower(securityContext, id, userId).toResponse();
   }
 
   @DELETE
@@ -687,17 +650,16 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
                     schema = @Schema(implementation = ChangeEvent.class)))
       })
   public Response deleteFollower(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Parameter(
               description = "Id of the user being removed as follower",
-              schema = @Schema(type = "string"))
+              schema = @Schema(type = "UUID"))
           @PathParam("userId")
-          String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+          UUID userId) {
+    return service.deleteDataProductFollower(securityContext, id, userId).toResponse();
   }
 
   @GET
@@ -740,7 +702,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
           @DefaultValue("0")
           @Min(0)
           int offset) {
-    return Response.ok(repository.getDataProductAssets(id, limit, offset)).build();
+    return Response.ok(service.getDataProductAssets(id, limit, offset)).build();
   }
 
   @GET
@@ -784,7 +746,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
           @DefaultValue("0")
           @Min(0)
           int offset) {
-    return Response.ok(repository.getDataProductAssetsByName(fqn, limit, offset)).build();
+    return Response.ok(service.getDataProductAssetsByName(fqn, limit, offset)).build();
   }
 
   @GET
@@ -802,7 +764,7 @@ public class DataProductResource extends EntityBaseService<DataProduct, DataProd
       })
   public Response getAllDataProductsWithAssetsCount(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    java.util.Map<String, Integer> result = repository.getAllDataProductsWithAssetsCount();
+    java.util.Map<String, Integer> result = service.getAllDataProductsWithAssetsCount();
     return Response.ok(result).build();
   }
 }

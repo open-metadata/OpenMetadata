@@ -13,7 +13,11 @@
 
 package org.openmetadata.service.services.storages;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -21,49 +25,74 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContainerRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.storages.ContainerMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Singleton
 @Service(entityType = Entity.CONTAINER)
-public class ContainerService extends AbstractEntityService<Container> {
+public class ContainerService extends EntityBaseService<Container, ContainerRepository> {
+
+  public static final String FIELDS =
+      "parent,children,dataModel,owners,tags,followers,extension,domains,sourceHash";
 
   @Getter private final ContainerMapper mapper;
-  private final ContainerRepository containerRepository;
 
   @Inject
   public ContainerService(
       ContainerRepository repository,
-      SearchRepository searchRepository,
       Authorizer authorizer,
-      ContainerMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.CONTAINER);
-    this.containerRepository = repository;
+      ContainerMapper mapper,
+      Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.CONTAINER, Container.class),
+        repository,
+        authorizer,
+        limits);
     this.mapper = mapper;
+  }
+
+  @Override
+  public Container addHref(UriInfo uriInfo, Container container) {
+    super.addHref(uriInfo, container);
+    Entity.withHref(uriInfo, container.getService());
+    Entity.withHref(uriInfo, container.getParent());
+    return container;
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("parent,children,dataModel", MetadataOperation.VIEW_BASIC);
+    return listOf();
   }
 
   public RestUtil.PutResponse<Container> addFollower(
       SecurityContext securityContext, UUID id, UUID userId) {
-    return containerRepository.addFollower(
-        securityContext.getUserPrincipal().getName(), id, userId);
+    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId);
   }
 
   public RestUtil.PutResponse<Container> deleteFollower(
       SecurityContext securityContext, UUID id, UUID userId) {
-    return containerRepository.deleteFollower(
-        securityContext.getUserPrincipal().getName(), id, userId);
+    return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId);
   }
 
   public RestUtil.PutResponse<Container> updateVote(
       SecurityContext securityContext, UUID id, VoteRequest request) {
-    return containerRepository.updateVote(
-        securityContext.getUserPrincipal().getName(), id, request);
+    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request);
   }
+
+  public ResultList<Container> listChildren(String fqn, Integer limit, Integer offset) {
+    return repository.listChildren(fqn, limit, offset);
+  }
+
+  public static class ContainerList extends ResultList<Container> {}
 }
