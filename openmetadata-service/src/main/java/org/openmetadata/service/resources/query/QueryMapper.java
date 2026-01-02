@@ -22,7 +22,7 @@ public class QueryMapper implements EntityMapper<Query, CreateQuery> {
         .withDuration(create.getDuration())
         .withVotes(new Votes().withUpVotes(0).withDownVotes(0))
         .withUsers(getEntityReferences(USER, create.getUsers()))
-        .withQueryUsedIn(EntityUtil.populateEntityReferences(create.getQueryUsedIn()))
+        .withQueryUsedIn(EntityUtil.validateAndPopulateEntityReferences(create.getQueryUsedIn()))
         .withQueryDate(create.getQueryDate())
         .withUsedBy(create.getUsedBy())
         .withTriggeredBy(create.getTriggeredBy())
