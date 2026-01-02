@@ -21,6 +21,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
+import { isEmpty } from 'lodash';
 import { FC, memo, ReactNode, useMemo } from 'react';
 
 interface SelectOption {
@@ -76,9 +77,9 @@ const MUISelect: FC<MUISelectProps> = ({
         label={label}
         labelId={labelId}
         renderValue={(selected) => {
-          if (!selected || selected === '') {
+          if (isEmpty(selected)) {
             return placeholder ? (
-              <Typography sx={{ color: theme.palette.grey[400] }}>
+              <Typography color={theme.palette.grey[400]}>
                 {placeholder}
               </Typography>
             ) : null;
