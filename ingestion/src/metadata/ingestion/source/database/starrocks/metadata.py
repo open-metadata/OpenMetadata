@@ -58,22 +58,31 @@ RELKIND_MAP = {
 
 logger = ingestion_logger()
 
+# Patch StarRocks dialect at module level if available
+try:
+    from starrocks.sqlalchemy.dialect import StarRocksDialect
 
-def extract_number(data):
+    StarRocksDialect.get_table_names_and_type = get_table_names_and_type
+    StarRocksDialect.get_table_comment = get_table_comment
+    StarRocksDialect.get_view_definition = get_view_definition
+except ImportError:
+    logger.debug("starrocks package not found. Dialect patching skipped.")
+
+
+def extract_number(data: str) -> List[int]:
     """
-    Extract data type length for CHAR, VARCHAR, DECIMAL, such as CHAR(1), return ['1'],
-    DECIMAL(9,0) return ['9', '0']
+    Extract data type length for CHAR, VARCHAR, DECIMAL.
+    For example, CHAR(1) -> [1], DECIMAL(9,0) -> [9, 0].
+    Only purely numeric substrings are returned; non-numeric parts are ignored.
     """
     result = re.findall(r"\((.*?)\)", data)
     if result:
-        result = [
-            int(i.strip()) if i.strip().isdigit() else 1 for i in result[0].split(",")
-        ]
-        return result
+        numbers = [int(i.strip()) for i in result[0].split(",") if i.strip().isdigit()]
+        return numbers
     return []
 
 
-def extract_child(data):
+def extract_child(data: str) -> str:
     """
     Extract child type for ARRAY and Struct, such as ARRAY<INT(11)>, return INT(11)
     """
@@ -83,16 +92,26 @@ def extract_child(data):
     return ""
 
 
-def _parse_type(_type):
+def _parse_type(_type: str) -> str:
     """
     Parse raw type to system_data_type like CHAR(1) -> CHAR, STRUCT<s_id:int(11),s_name:text> -> STRUCT,
-    DECIMALV3(9, 0) -> DECIMAL, DATEV2 -> DATE
+    DECIMALV3(9, 0) -> DECIMAL, DATEV2 -> DATE.
+
+    Handles version suffixes like V2/V3 by stripping them from the type name.
     """
     parse_type = _type.split("(")[0].split("<")[0]
-    if len(parse_type) > 2 and parse_type[-2].lower() == "v":
-        system_data_type = parse_type.rsplit("v", 1)[0].upper()
-    else:
-        system_data_type = parse_type.upper()
+    system_data_type = parse_type.upper()
+
+    # Strip trailing version suffix patterns such as V2/V3 (e.g., DECIMALV3 -> DECIMAL, DATEV2 -> DATE)
+    if (
+        len(parse_type) >= 2
+        and parse_type[-2].lower() == "v"
+        and parse_type[-1].isdigit()
+    ):
+        base_type = parse_type[:-2]
+        if base_type:
+            system_data_type = base_type.upper()
+
     return system_data_type
 
 
@@ -164,23 +183,14 @@ class StarRocksSource(CommonDbSourceService):
     """
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
-        self.ssl_manager = None
-        service_connection = config.serviceConnection.root.config
-        self.ssl_manager: SSLManager = check_ssl_and_init(service_connection)
+        self.ssl_manager: Optional[SSLManager] = check_ssl_and_init(
+            config.serviceConnection.root.config
+        )
         if self.ssl_manager:
-            service_connection = self.ssl_manager.setup_ssl(service_connection)
-        super().__init__(config, metadata)
-
-        try:
-            from starrocks.sqlalchemy.dialect import (
-                StarRocksDialect,  # pylint: disable=import-outside-toplevel
+            config.serviceConnection.root.config = self.ssl_manager.setup_ssl(
+                config.serviceConnection.root.config
             )
-
-            StarRocksDialect.get_table_names_and_type = get_table_names_and_type
-            StarRocksDialect.get_table_comment = get_table_comment
-            StarRocksDialect.get_view_definition = get_view_definition
-        except ImportError:
-            logger.warning("starrocks package not found. Some features may not work.")
+        super().__init__(config, metadata)
 
     @classmethod
     def create(
@@ -270,7 +280,7 @@ class StarRocksSource(CommonDbSourceService):
         table_name: str,
         db_name: str,
         inspector: Inspector,
-        table_type: str = None,
+        table_type: TableType = None,
     ) -> Tuple[
         Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]
     ]:

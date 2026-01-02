@@ -39,7 +39,8 @@ def wait_for_starrocks(host: str, port: int, timeout: int = 120) -> bool:
             if result == 0:
                 time.sleep(5)
                 return True
-        except Exception:
+        except OSError:
+            # StarRocks may not be ready yet; ignore connection errors and retry until timeout
             pass
         time.sleep(2)
     return False
@@ -74,6 +75,7 @@ def starrocks_container(tmp_path_factory):
     try:
         wait_for_logs(container, ".*Started.*", timeout=120)
     except Exception:
+        # Log pattern may not appear; continue and rely on socket check below
         pass
 
     host = container.get_container_host_ip()

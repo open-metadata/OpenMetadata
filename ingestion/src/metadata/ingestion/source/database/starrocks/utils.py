@@ -44,10 +44,10 @@ def get_view_definition(self, connection, table_name, schema=None, **kw):
 
 def get_table_names_and_type(_, connection, schema=None, **kw):
     if schema:
-        query_sql = query + f" WHERE TABLE_SCHEMA = '{schema}'"
+        query_sql = sql.text(query + " WHERE TABLE_SCHEMA = :schema")
+        rows = connection.execute(query_sql, {"schema": schema}, **kw)
     else:
-        query_sql = query
-    rows = connection.execute(sql.text(query_sql), **kw)
+        rows = connection.execute(sql.text(query), **kw)
     return list(rows)
 
 

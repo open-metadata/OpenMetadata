@@ -10,6 +10,10 @@
 #  limitations under the License.
 """
 SQL Queries used during ingestion for StarRocks
+
+Note: SHOW commands (SHOW FULL COLUMNS, SHOW PARTITIONS) use string formatting
+with backtick-quoted identifiers because MySQL-style SHOW commands don't support
+parameterized queries. The identifiers come from database metadata, not user input.
 """
 
 import textwrap
@@ -24,7 +28,7 @@ STARROCKS_GET_TABLE_NAMES = textwrap.dedent(
 
 STARROCKS_SHOW_FULL_COLUMNS = textwrap.dedent(
     """
-SHOW FULL COLUMNS FROM {}.{}
+SHOW FULL COLUMNS FROM `{}`.`{}`
     """
 )
 
@@ -50,7 +54,7 @@ WHERE TABLE_SCHEMA = :schema
 
 STARROCKS_PARTITION_DETAILS = textwrap.dedent(
     """
-SHOW PARTITIONS FROM {}.{}
+SHOW PARTITIONS FROM `{}`.`{}`
     """
 )
 

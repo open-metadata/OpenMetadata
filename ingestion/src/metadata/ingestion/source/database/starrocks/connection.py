@@ -33,9 +33,6 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.starrocks.queries import (
-    STARROCKS_TEST_GET_QUERIES,
-)
 from metadata.utils.constants import THREE_MIN
 
 
@@ -61,15 +58,10 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
-
-    def custom_executor_for_queries():
-        engine.execute(STARROCKS_TEST_GET_QUERIES)
-
     return test_connection_db_schema_sources(
         metadata=metadata,
         engine=engine,
         service_connection=service_connection,
         automation_workflow=automation_workflow,
         timeout_seconds=timeout_seconds,
-        queries={"GetQueries": custom_executor_for_queries},
     )
