@@ -25,6 +25,15 @@ const AntDConfigProvider: FC<{ children: ReactNode }> = ({ children }) => {
     const palette = generatePalette(
       applicationConfig?.customTheme?.primaryColor ?? DEFAULT_THEME.primaryColor
     );
+    // Use custom hover color if provided, otherwise use generated palette[1]
+    const hoverColor =
+      applicationConfig?.customTheme?.hoverColor ||
+      palette[2] ||
+      DEFAULT_THEME.hoverColor;
+    const selectedColor =
+      applicationConfig?.customTheme?.selectedColor ||
+      palette[8] ||
+      DEFAULT_THEME.hoverColor;
     palette.forEach((color, index) => {
       switch (index) {
         case 0:
@@ -35,6 +44,20 @@ const AntDConfigProvider: FC<{ children: ReactNode }> = ({ children }) => {
           document.documentElement.style.setProperty(`--ant-primary-50`, color);
 
           break;
+        case 2:
+          document.documentElement.style.setProperty(
+            `--ant-primary-1`,
+            hoverColor
+          );
+
+          break;
+        case 8:
+          document.documentElement.style.setProperty(
+            `--ant-primary-7`,
+            selectedColor
+          );
+
+          break;
         default:
           document.documentElement.style.setProperty(
             `--ant-primary-${index - 1}`,
@@ -42,15 +65,20 @@ const AntDConfigProvider: FC<{ children: ReactNode }> = ({ children }) => {
           );
       }
     });
+
     document.documentElement.style.setProperty(
       `--ant-primary-color-hover`,
       palette[6]
     );
     document.documentElement.style.setProperty(
       `--ant-primary-color-active`,
-      palette[8]
+      selectedColor
     );
-  }, [applicationConfig?.customTheme?.primaryColor]);
+  }, [
+    applicationConfig?.customTheme?.primaryColor,
+    applicationConfig?.customTheme?.hoverColor,
+    applicationConfig?.customTheme?.selectedColor,
+  ]);
 
   ConfigProvider.config({
     theme: {

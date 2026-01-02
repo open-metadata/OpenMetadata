@@ -93,6 +93,9 @@ describe('Test appearance config page', () => {
     const primaryColorColorInput = screen.getByTestId(
       'primaryColor-color-input'
     );
+    const selectedColorInput = screen.getByTestId('selectedColor-color-input');
+    const hoverColorInput = screen.getByTestId('hoverColor-color-input');
+
     const errorColorColorInput = screen.getByTestId('errorColor-color-input');
     const successColorColorInput = screen.getByTestId(
       'successColor-color-input'
@@ -113,6 +116,12 @@ describe('Test appearance config page', () => {
       target: { value: 'https://www.google.com' },
     });
     fireEvent.change(primaryColorColorInput, {
+      target: { value: '#ffffff' },
+    });
+    fireEvent.change(selectedColorInput, {
+      target: { value: '#ffffff' },
+    });
+    fireEvent.change(hoverColorInput, {
       target: { value: '#ffffff' },
     });
     fireEvent.change(errorColorColorInput, {
@@ -143,6 +152,8 @@ describe('Test appearance config page', () => {
             errorColor: '#ffffff',
             infoColor: '#ffffff',
             primaryColor: '#ffffff',
+            hoverColor: '#ffffff',
+            selectedColor: '#ffffff',
             successColor: '#ffffff',
             warningColor: '#ffffff',
           },
