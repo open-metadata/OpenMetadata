@@ -14,14 +14,14 @@ name: UI Checkstyle
 on:
   # Trigger analysis when creating or updating a pull request.
   pull_request_target:
-    types: [ opened, synchronize, reopened, labeled ]
+    types: [opened, synchronize, reopened, labeled]
     paths:
-      - 'openmetadata-ui/src/main/resources/ui/**'
+      - "openmetadata-ui/src/main/resources/ui/**"
 
 permissions:
   contents: read
 
-concurrency: 
+concurrency:
   group: ui-checkstyle-${{ github.head_ref }}
   cancel-in-progress: true
 jobs:
@@ -54,22 +54,23 @@ jobs:
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true  # To not auto approve changes
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
+          disable-reviews: true # To not auto approve changes
 
       - name: Checkout
         uses: actions/checkout@v4
+        if: success()
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
-          cache: 'yarn'
-          cache-dependency-path: 'openmetadata-ui/src/main/resources/ui/yarn.lock'
+          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
+          cache: "yarn"
+          cache-dependency-path: "openmetadata-ui/src/main/resources/ui/yarn.lock"
 
       - name: Install dependencies
         working-directory: openmetadata-ui/src/main/resources/ui
