@@ -11,29 +11,52 @@
  *  limitations under the License.
  */
 /**
- * Storage Metadata Manifest file GCS path config.
+ * Google Cloud Pub/Sub Connection Config
  */
-export interface StorageMetadataGCSConfig {
-    prefixConfig:    StorageMetadataBucketDetails;
-    securityConfig?: GCPCredentials;
+export interface PubSubConnection {
+    /**
+     * GCP credentials configuration for authenticating with Pub/Sub.
+     */
+    gcpConfig: GCPCredentials;
+    /**
+     * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
+     */
+    hostPort?: string;
+    /**
+     * Include dead letter topics in metadata extraction.
+     */
+    includeDeadLetterTopics?: boolean;
+    /**
+     * Include subscription metadata for each topic.
+     */
+    includeSubscriptions?: boolean;
+    /**
+     * GCP Project ID where Pub/Sub topics are located. If not specified, will be read from
+     * credentials.
+     */
+    projectId?: string;
+    /**
+     * Enable fetching schemas from Pub/Sub Schema Registry.
+     */
+    schemaRegistryEnabled?:      boolean;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Regex to only fetch topics that matches the pattern.
+     */
+    topicFilterPattern?: FilterPattern;
+    /**
+     * Service Type
+     */
+    type?: PubSubType;
+    /**
+     * Connect to a Pub/Sub emulator rather than the production service.
+     */
+    useEmulator?: boolean;
 }
 
 /**
- * Details of the bucket where the storage metadata manifest file is stored
- */
-export interface StorageMetadataBucketDetails {
-    /**
-     * Name of the top level container where the storage metadata file is stored
-     */
-    containerName: string;
-    /**
-     * Path of the folder where the storage metadata file is stored. If the file is at the root,
-     * you can keep it empty.
-     */
-    objectPrefix?: string;
-}
-
-/**
+ * GCP credentials configuration for authenticating with Pub/Sub.
+ *
  * GCP credentials configs.
  */
 export interface GCPCredentials {
@@ -148,4 +171,29 @@ export interface GCPImpersonateServiceAccountValues {
      */
     lifetime?: number;
     [property: string]: any;
+}
+
+/**
+ * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+}
+
+/**
+ * Service Type
+ *
+ * Service type.
+ */
+export enum PubSubType {
+    PubSub = "PubSub",
 }
