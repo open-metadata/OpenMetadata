@@ -69,6 +69,12 @@
       "type": "boolean",
       "default": true
     },
+    "overrideLineage":{
+      "title": "Override Lineage",
+      "description": "Set the 'Override Lineage' toggle to control whether to override the existing lineage.",
+      "type": "boolean",
+      "default": false
+    },
     "dbtClassificationName": {
       "title": "DBT Classification Name",
       "description": "Custom OpenMetadata Classification name for dbt tags.",

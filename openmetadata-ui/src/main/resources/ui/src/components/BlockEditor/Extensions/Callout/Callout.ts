@@ -32,7 +32,6 @@ export interface CalloutOptions {
    * Custom HTML attributes that should be added to the rendered HTML tag.
    */
   HTMLAttributes: {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any;
   };
 }
