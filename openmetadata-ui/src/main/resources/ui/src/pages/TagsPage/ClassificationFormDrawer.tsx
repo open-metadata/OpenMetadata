@@ -53,11 +53,10 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
         sx={{
           px: 6,
           py: 5,
-          borderBottom: 1,
-          borderColor: 'divider',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          boxShadow: (theme) => theme.shadows[1],
         }}>
         <Typography data-testid="form-heading" variant="h6">
           {t('label.adding-new-classification')}
@@ -89,11 +88,10 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
         sx={{
           px: 6,
           py: 3,
-          borderTop: 1,
-          borderColor: 'divider',
           display: 'flex',
           justifyContent: 'flex-end',
           gap: 2,
+          boxShadow: (theme) => `0px -4px 6px -2px ${theme.palette.grey[200]}`,
         }}>
         <Button
           data-testid="cancel-button"
