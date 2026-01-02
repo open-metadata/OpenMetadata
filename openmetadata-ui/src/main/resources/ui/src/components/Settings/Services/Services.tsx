@@ -528,7 +528,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       gutter={[16, 16]}>
       <Col span={24}>
         <Space className="w-full justify-between m-b-lg" data-testid="header">
-          <PageHeader data={getServicePageHeader()} />
+          <PageHeader data={getServicePageHeader()} learningPageId="services" />
           {isFetchingStatus ? (
             <ButtonSkeleton size="default" />
           ) : (

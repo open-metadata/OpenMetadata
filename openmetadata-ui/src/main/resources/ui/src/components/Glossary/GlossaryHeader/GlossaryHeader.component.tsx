@@ -73,6 +73,7 @@ import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcru
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
+import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
@@ -543,6 +544,11 @@ const GlossaryHeader = ({
             {!isVersionView && createButtons}
 
             <ButtonGroup className="spaced" size="small">
+              <LearningIcon
+                pageId={isGlossary ? 'glossary' : 'glossaryTerm'}
+                size="small"
+              />
+
               {updateVote && (
                 <Voting
                   voteStatus={voteStatus}

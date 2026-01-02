@@ -97,6 +97,7 @@ import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBa
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
@@ -648,6 +649,8 @@ const DataProductsDetailsPage = ({
               )}
 
               <ButtonGroup className="spaced" size="small">
+                <LearningIcon pageId="dataProduct" size="small" />
+
                 {dataProduct?.version && (
                   <Tooltip
                     title={t(

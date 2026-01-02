@@ -1,0 +1,15 @@
+{
+  "name": "CollateClues_GettingStarted",
+  "displayName": "Collate Clues: Getting Started",
+  "description": "Quick introduction to getting started with Collate - your first steps to unified metadata management.",
+  "resourceType": "Video",
+  "categories": ["Discovery", "Administration"],
+  "source": {
+    "url": "https://www.youtube.com/watch?v=DqIT4vWALGk",
+    "provider": "YouTube"
+  },
+  "contexts": [
+    {"pageId": "home"}
+  ],
+  "status": "Active"
+}

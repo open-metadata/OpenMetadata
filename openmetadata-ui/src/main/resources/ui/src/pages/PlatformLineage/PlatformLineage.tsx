@@ -343,6 +343,7 @@ const PlatformLineage = () => {
                     }),
                     subHeader: t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader),
                   }}
+                  learningPageId="lineage"
                 />
               </Card>
             </Grid>

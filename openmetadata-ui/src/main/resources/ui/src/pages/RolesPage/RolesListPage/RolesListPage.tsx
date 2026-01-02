@@ -283,6 +283,7 @@ const RolesListPage = () => {
                 header: t(PAGE_HEADERS.ROLES.header),
                 subHeader: t(PAGE_HEADERS.ROLES.subHeader),
               }}
+              learningPageId="roles"
             />
 
             {addRolePermission && (

@@ -295,7 +295,10 @@ const ObservabilityAlertsPage = () => {
       <Row gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between">
-            <PageHeader data={pageHeaderData} />
+            <PageHeader
+              data={pageHeaderData}
+              learningPageId="dataObservability"
+            />
             {(alertResourcePermission?.Create ||
               alertResourcePermission?.All) && (
               <LimitWrapper resource="eventsubscription">

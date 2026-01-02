@@ -1,0 +1,194 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/learning/learningResource.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LearningResource",
+  "description": "A learning resource such as an in-product tutorial, Storylane walkthrough, or expert video contextualized for product surfaces.",
+  "$comment": "@om-entity-type",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.learning.LearningResource",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "resourceType": {
+      "description": "Kind of learning asset represented.",
+      "type": "string",
+      "enum": [
+        "Storylane",
+        "Video",
+        "Article"
+      ]
+    },
+    "resourceCategory": {
+      "description": "Primary topic grouping for the resource.",
+      "type": "string",
+      "enum": [
+        "Discovery",
+        "Administration",
+        "DataGovernance",
+        "DataQuality",
+        "Observability"
+      ]
+    },
+    "resourceDifficulty": {
+      "description": "Suggested proficiency tier for the resource.",
+      "type": "string",
+      "enum": [
+        "Intro",
+        "Intermediate",
+        "Advanced"
+      ]
+    },
+    "resourceSource": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.learning.LearningResourceSource",
+      "description": "Embedding configuration for rendering the resource inline.",
+      "properties": {
+        "provider": {
+          "description": "Origin system that hosts the resource (Storylane, YouTube, etc.).",
+          "type": "string"
+        },
+        "url": {
+          "description": "Canonical URL.",
+          "type": "string",
+          "format": "uri"
+        },
+        "embedConfig": {
+          "description": "Provider-specific configuration passed to the UI.",
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": ["url"],
+      "additionalProperties": false
+    },
+    "resourceContext": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.learning.LearningResourceContext",
+      "description": "UI placement hints for scoping the resource.",
+      "properties": {
+        "pageId": {
+          "description": "Stable identifier for the product page (e.g., glossary, domains).",
+          "type": "string"
+        },
+        "componentId": {
+          "description": "Optional component-level anchor within the page.",
+          "type": "string"
+        },
+        "priority": {
+          "description": "Relative ordering weight when multiple resources match a context.",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["pageId"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display label presented to users.",
+      "type": "string",
+      "maxLength": 120
+    },
+    "description": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "resourceType": {
+      "$ref": "#/definitions/resourceType"
+    },
+    "categories": {
+      "description": "Topic categories the resource belongs to.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/resourceCategory"
+      },
+      "minItems": 1
+    },
+    "difficulty": {
+      "$ref": "#/definitions/resourceDifficulty"
+    },
+    "source": {
+      "$ref": "#/definitions/resourceSource"
+    },
+    "estimatedDuration": {
+      "description": "Approximate viewing time in seconds.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "contexts": {
+      "description": "List of contexts where this resource should surface.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/resourceContext"
+      },
+      "minItems": 1
+    },
+    "status": {
+      "description": "Lifecycle state for controllable publishing.",
+      "type": "string",
+      "enum": [
+        "Draft",
+        "Active",
+        "Deprecated"
+      ],
+      "default": "Active"
+    },
+    "tags": {
+      "description": "Tags attached to the learning resource.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": []
+    },
+    "owners": {
+      "description": "Owners accountable for maintaining this resource.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "reviewers": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "followers": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "changeDescription": {
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "Soft delete marker.",
+      "type": "boolean",
+      "default": false
+    },
+    "version": {
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "type": "string"
+    },
+    "impersonatedBy": {
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
+    "href": {
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "extension": {
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    }
+  },
+  "required": ["id", "name", "resourceType", "source", "contexts", "categories"],
+  "additionalProperties": false
+}

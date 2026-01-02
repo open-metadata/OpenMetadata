@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Badge, Typography } from 'antd';
+import { Badge, Space, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { LearningIcon } from '../Learning/LearningIcon/LearningIcon.component';
 import './page-header.less';
 import { HeaderProps } from './PageHeader.interface';
 
@@ -21,27 +22,33 @@ const PageHeader = ({
   titleProps,
   subHeaderProps,
   isBeta,
+  learningPageId,
 }: HeaderProps) => {
   const { t } = useTranslation();
 
   return (
     <div className="page-header-container" data-testid="page-header-container">
-      <Typography.Title
-        className="heading"
-        data-testid="heading"
-        level={5}
-        {...titleProps}>
-        {header}
+      <Space align="center" size="middle">
+        <Typography.Title
+          className="heading m-b-0"
+          data-testid="heading"
+          level={5}
+          {...titleProps}>
+          {header}
 
-        {isBeta && (
-          <Badge
-            className="service-beta-page-header m-l-sm"
-            count={t('label.beta')}
-            data-testid="beta-badge"
-            size="small"
-          />
+          {isBeta && (
+            <Badge
+              className="service-beta-page-header m-l-sm"
+              count={t('label.beta')}
+              data-testid="beta-badge"
+              size="small"
+            />
+          )}
+        </Typography.Title>
+        {learningPageId && (
+          <LearningIcon pageId={learningPageId} size="small" />
         )}
-      </Typography.Title>
+      </Space>
       <Typography.Paragraph
         className="sub-heading"
         data-testid="sub-heading"

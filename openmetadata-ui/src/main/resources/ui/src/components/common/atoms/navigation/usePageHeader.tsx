@@ -16,6 +16,7 @@ import { useTheme } from '@mui/material/styles';
 import { Plus } from '@untitledui/icons';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { LearningIcon } from '../../../Learning/LearningIcon/LearningIcon.component';
 
 interface PageHeaderConfig {
   titleKey: string;
@@ -25,6 +26,7 @@ interface PageHeaderConfig {
   addButtonLabelKey?: string;
   addButtonTestId?: string;
   onAddClick?: () => void;
+  learningPageId?: string;
 }
 
 export const usePageHeader = (config: PageHeaderConfig) => {
@@ -55,16 +57,21 @@ export const usePageHeader = (config: PageHeaderConfig) => {
             alignItems: 'center',
           }}>
           <Box>
-            <Typography
-              sx={{
-                fontWeight: 600,
-                fontSize: '1.5rem',
-                color: 'text.primary',
-                mb: 0.5,
-              }}
-              variant="h4">
-              {displayTitle}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography
+                sx={{
+                  fontWeight: 600,
+                  fontSize: '1.5rem',
+                  color: 'text.primary',
+                  mb: 0.5,
+                }}
+                variant="h4">
+                {displayTitle}
+              </Typography>
+              {config.learningPageId && (
+                <LearningIcon pageId={config.learningPageId} size="small" />
+              )}
+            </Box>
             {displayDescription && (
               <Typography
                 sx={{ color: 'text.secondary', fontSize: '0.875rem' }}

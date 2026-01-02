@@ -144,6 +144,7 @@ const MarketPlacePage = () => {
                     ),
                     subHeader: t(PAGE_HEADERS.APPLICATION.subHeader),
                   }}
+                  learningPageId="automations"
                 />
                 <HeadingIcon />
               </div>

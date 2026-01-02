@@ -1,0 +1,15 @@
+{
+  "name": "CollateClues_Automations",
+  "displayName": "Collate Clues: Automations",
+  "description": "Discover how to automate data governance workflows and tasks in Collate.",
+  "resourceType": "Video",
+  "categories": ["DataGovernance", "Administration"],
+  "source": {
+    "url": "https://www.youtube.com/watch?v=dJZ8wGAM-ek",
+    "provider": "YouTube"
+  },
+  "contexts": [
+    {"pageId": "automations"}
+  ],
+  "status": "Active"
+}

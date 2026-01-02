@@ -42,6 +42,7 @@ export enum GlobalSettingOptions {
   PERSONA = 'persona',
   ROLES = 'roles',
   POLICIES = 'policies',
+  LEARNING_RESOURCES = 'learning-resources',
   DATABASES = 'databases',
   DATABASE = 'database',
   DATABASE_SCHEMA = 'databaseSchemas',
@@ -244,6 +245,12 @@ export const SETTINGS_OPTIONS_PATH = {
     `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.DATA_ASSET_RULES}`,
   ],
   [GlobalSettingOptions.SSO]: [GlobalSettingsMenuCategory.SSO],
+
+  // Learning Resources
+  [GlobalSettingOptions.LEARNING_RESOURCES]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LEARNING_RESOURCES}`,
+  ],
 };
 
 export const SETTING_CUSTOM_PROPERTIES_PATH = {

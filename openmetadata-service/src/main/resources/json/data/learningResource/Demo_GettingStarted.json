@@ -1,0 +1,17 @@
+{
+  "name": "Demo_GettingStarted",
+  "displayName": "Getting Started with Collate",
+  "description": "Learn how to get your Collate instance set up in just a couple minutes. This demo covers setting up a Snowflake connector, using AI agents for automatic documentation, and viewing entity relationship diagrams.",
+  "resourceType": "Storylane",
+  "categories": ["Discovery", "Administration"],
+  "difficulty": "Intro",
+  "source": {
+    "url": "https://collate.storylane.io/demo/dlumjorwxy9m",
+    "provider": "Collate"
+  },
+  "estimatedDuration": 300,
+  "contexts": [
+    {"pageId": "explore"}
+  ],
+  "status": "Active"
+}
