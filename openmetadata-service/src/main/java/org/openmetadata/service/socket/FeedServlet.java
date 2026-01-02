@@ -28,6 +28,11 @@ public class FeedServlet extends HttpServlet {
   @Override
   protected void service(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
+    LOG.info(
+        "[FeedServlet] Received request: method={}, uri={}, queryString={}",
+        request.getMethod(),
+        request.getRequestURI(),
+        request.getQueryString());
     try {
       // EngineIO server expects javax servlet types, so we need to use wrappers
       HttpServletRequestWrapper wrappedRequest = new HttpServletRequestWrapper(request);
@@ -36,8 +41,10 @@ public class FeedServlet extends HttpServlet {
       WebSocketManager.getInstance()
           .getEngineIoServer()
           .handleRequest(wrappedRequest, wrappedResponse);
+      LOG.info(
+          "[FeedServlet] Request handled successfully, response status: {}", response.getStatus());
     } catch (Exception ex) {
-      LOG.error("[FeedServlet] Error Encountered : {}", ex.getMessage());
+      LOG.error("[FeedServlet] Error Encountered : {}", ex.getMessage(), ex);
       response
           .getWriter()
           .println(String.format("[FeedServlet] Error Encountered : %s", ex.getMessage()));
