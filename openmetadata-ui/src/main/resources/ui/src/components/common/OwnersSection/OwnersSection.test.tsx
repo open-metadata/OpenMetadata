@@ -233,7 +233,7 @@ describe('OwnersSection', () => {
         newValue: EntityReference[];
         entityLabel: string;
         onSuccess?: (data: EntityReference[]) => void;
-        t: (key: string) => string;
+        t: (key: string, options?: Record<string, unknown>) => string;
       }) => {
         // Check if entityId is missing
         if (!options.entityId) {
@@ -267,13 +267,10 @@ describe('OwnersSection', () => {
 
           return { success: true, data: options.newValue };
         } catch (error) {
-          // Simulate error handling like the real updateEntityField
-          mockShowErrorToast(
-            error as AxiosError,
-            options.t('server.entity-updating-error', {
-              entity: options.entityLabel.toLowerCase(),
-            })
-          );
+          const fallbackMessage = options.t('server.entity-updating-error', {
+            entity: options.entityLabel.toLowerCase(),
+          });
+          mockShowErrorToast(error as AxiosError, fallbackMessage);
 
           return { success: false };
         }
