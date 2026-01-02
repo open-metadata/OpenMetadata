@@ -13,7 +13,7 @@ name: UI Checkstyle
 
 on:
   # Trigger analysis when creating or updating a pull request.
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened, labeled]
     paths:
       - "openmetadata-ui/src/main/resources/ui/**"
