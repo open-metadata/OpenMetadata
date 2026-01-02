@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 /**
- * MongoDB Connection Config
+ * StarRocks Database Connection Config
  */
-export interface MongoDBConnection {
-    connectionOptions?: { [key: string]: string };
+export interface StarrocksConnection {
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
@@ -25,12 +26,17 @@ export interface MongoDBConnection {
      */
     databaseName?: string;
     /**
-     * Host and port of the MongoDB service when using the `mongodb` connection scheme. Only
-     * host when using the `mongodb+srv` scheme.
+     * Database Schema of the data source. This is an optional parameter, if you would like to
+     * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
+     * attempts to scan all the schemas.
+     */
+    databaseSchema?: string;
+    /**
+     * Host and port of the StarRocks service. Use the FE (Frontend) query port, typically 9030.
      */
     hostPort: string;
     /**
-     * Password to connect to MongoDB.
+     * Password to connect to StarRocks.
      */
     password?: string;
     /**
@@ -38,13 +44,20 @@ export interface MongoDBConnection {
      */
     schemaFilterPattern?: FilterPattern;
     /**
-     * Mongo connection scheme options.
+     * SQLAlchemy driver scheme options.
      */
-    scheme?:                     MongoDBScheme;
-    sslConfig?:                  Config;
-    sslMode?:                    SSLMode;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
+    scheme?: StarrocksScheme;
+    /**
+     * SSL Configuration details.
+     */
+    sslConfig?:                     Config;
+    supportsDBTExtraction?:         boolean;
+    supportsLineageExtraction?:     boolean;
+    supportsMetadataExtraction?:    boolean;
+    supportsProfiler?:              boolean;
+    supportsQueryComment?:          boolean;
+    supportsUsageExtraction?:       boolean;
+    supportsViewLineageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -52,12 +65,12 @@ export interface MongoDBConnection {
     /**
      * Service Type
      */
-    type?: MongoDBType;
+    type?: StarrocksType;
     /**
-     * Username to connect to MongoDB. This user should have privileges to read all the metadata
-     * in MongoDB.
+     * Username to connect to StarRocks. This user should have privileges to read all the
+     * metadata in StarRocks.
      */
-    username?: string;
+    username: string;
 }
 
 /**
@@ -81,14 +94,15 @@ export interface FilterPattern {
 }
 
 /**
- * Mongo connection scheme options.
+ * SQLAlchemy driver scheme options.
  */
-export enum MongoDBScheme {
-    Mongodb = "mongodb",
-    MongodbSrv = "mongodb+srv",
+export enum StarrocksScheme {
+    Starrocks = "starrocks",
 }
 
 /**
+ * SSL Configuration details.
+ *
  * Client SSL configuration
  *
  * OpenMetadata Client configured to validate SSL certificates.
@@ -109,22 +123,10 @@ export interface Config {
 }
 
 /**
- * SSL Mode to connect to database.
- */
-export enum SSLMode {
-    Allow = "allow",
-    Disable = "disable",
-    Prefer = "prefer",
-    Require = "require",
-    VerifyCA = "verify-ca",
-    VerifyFull = "verify-full",
-}
-
-/**
  * Service Type
  *
  * Service type.
  */
-export enum MongoDBType {
-    MongoDB = "MongoDB",
+export enum StarrocksType {
+    StarRocks = "StarRocks",
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -2513,6 +2513,8 @@ export interface ServiceConnection {
  *
  * Doris Database Connection Config
  *
+ * StarRocks Database Connection Config
+ *
  * UnityCatalog Connection Config
  *
  * SAS Connection Config
@@ -2821,6 +2823,9 @@ export interface ConfigObject {
      *
      * Host and port of the Doris service.
      *
+     * Host and port of the StarRocks service. Use the FE (Frontend) query port, typically
+     * 9030.
+     *
      * Host and port of the Teradata service.
      *
      * Host and Port of the SAP ERP instance.
@@ -2933,6 +2938,8 @@ export interface ConfigObject {
      *
      * Password to connect to Doris.
      *
+     * Password to connect to StarRocks.
+     *
      * Password to connect to SAS Viya
      *
      * Password to connect to Teradata.
@@ -3037,6 +3044,9 @@ export interface ConfigObject {
      *
      * Username to connect to Doris. This user should have privileges to read all the metadata
      * in Doris.
+     *
+     * Username to connect to StarRocks. This user should have privileges to read all the
+     * metadata in StarRocks.
      *
      * Username to connect to SAS Viya.
      *
@@ -3468,6 +3478,10 @@ export interface ConfigObject {
      * databaseSchema of the data source. This is optional parameter, if you would like to
      * restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata
      * Ingestion attempts to scan all the databaseSchema.
+     *
+     * Database Schema of the data source. This is an optional parameter, if you would like to
+     * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
+     * attempts to scan all the schemas.
      *
      * Optional name to give to the schema in OpenMetadata. If left blank, we will use default
      * as the schema name
@@ -6044,6 +6058,7 @@ export enum ConfigScheme {
     RedshiftPsycopg2 = "redshift+psycopg2",
     Snowflake = "snowflake",
     SqlitePysqlite = "sqlite+pysqlite",
+    Starrocks = "starrocks",
     Teradatasql = "teradatasql",
     Trino = "trino",
     VerticaVerticaPython = "vertica+vertica_python",
@@ -6415,6 +6430,7 @@ export enum PurpleType {
     Spline = "Spline",
     Ssas = "SSAS",
     Ssis = "SSIS",
+    StarRocks = "StarRocks",
     Stitch = "Stitch",
     Superset = "Superset",
     Synapse = "Synapse",
