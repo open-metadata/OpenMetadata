@@ -72,6 +72,7 @@ SNOWFLAKE_FETCH_TABLE_TAGS = textwrap.dedent(
     from {account_usage}.tag_references
     where OBJECT_DATABASE = '{database_name}'
       and OBJECT_SCHEMA = '{schema_name}'
+      and OBJECT_DELETED IS NULL
 """
 )
 
