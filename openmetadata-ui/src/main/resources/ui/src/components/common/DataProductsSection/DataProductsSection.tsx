@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Box, Typography, useTheme } from '@mui/material';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -26,7 +26,6 @@ import { DataProductsSelectListV1 } from '../../DataProducts/DataProductsSelectL
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { DataProductsSectionProps } from './DataProductsSection.interface';
-import './DataProductsSection.less';
 
 const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   dataProducts = [],
@@ -39,6 +38,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   maxVisibleDataProducts = 3,
 }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const [editingDataProducts, setEditingDataProducts] = useState<DataProduct[]>(
     []
   );
@@ -149,16 +149,19 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   const handlePopoverOpenChange = (open: boolean) => {
     setPopoverOpen(open);
 
-    const dpList: DataProduct[] = displayDataProducts.map((dp) => ({
-      id: dp.id,
-      name: dp.name || '',
-      displayName: dp.displayName || dp.name,
-      fullyQualifiedName: dp.fullyQualifiedName || '',
-      description: dp.description,
-      type: 'dataProduct',
-    })) as DataProduct[];
+    if (!open) {
+      const dpList: DataProduct[] = displayDataProducts.map((dp) => ({
+        id: dp.id,
+        name: dp.name || '',
+        displayName: dp.displayName || dp.name,
+        fullyQualifiedName: dp.fullyQualifiedName || '',
+        description: dp.description,
+        type: 'dataProduct',
+      })) as DataProduct[];
 
-    setEditingDataProducts(dpList);
+      setEditingDataProducts(dpList);
+      cancelEditing();
+    }
   };
 
   const editingState = useMemo(
@@ -175,7 +178,14 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
           cancelEditing();
         }}
         onUpdate={handleSaveWithDataProducts}>
-        <div className="data-product-selector-trigger" />
+        <Box
+          sx={{
+            width: '1px',
+            height: '1px',
+            opacity: 0,
+            pointerEvents: 'none',
+          }}
+        />
       </DataProductsSelectListV1>
     ),
     [
@@ -192,52 +202,132 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     if (isLoading) {
       return <Loader size="small" />;
     }
-    if (isEditing) {
-      return editingState;
-    }
 
     if (!displayActiveDomains || displayActiveDomains.length === 0) {
       return (
-        <Typography.Text className="no-data-placeholder">
-          {t('message.select-domain-to-add-data-product')}
-        </Typography.Text>
+        <Box>
+          <Typography
+            sx={{
+              color: theme.palette.allShades.gray[500],
+              fontSize: '12px',
+            }}>
+            {t('message.select-domain-to-add-data-product')}
+          </Typography>
+          {isEditing && editingState}
+        </Box>
       );
     }
 
     return (
-      <span className="no-data-placeholder">
-        {t('label.no-entity-assigned', {
-          entity: t('label.data-product-plural'),
-        })}
-      </span>
+      <Box>
+        <Box
+          component="span"
+          sx={{
+            color: theme.palette.allShades.gray[500],
+            fontSize: '12px',
+          }}>
+          {t('label.no-entity-assigned', {
+            entity: t('label.data-product-plural'),
+          })}
+        </Box>
+        {isEditing && editingState}
+      </Box>
     );
   }, [isLoading, isEditing, editingState, displayActiveDomains, t]);
 
   const dataProductsDisplay = useMemo(
     () => (
-      <div className="data-products-display">
-        <div className="data-products-list" data-testid="data-products-list">
+      <Box>
+        <Box
+          data-testid="data-products-list"
+          sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
           {(showAllDataProducts
             ? displayDataProducts
             : displayDataProducts.slice(0, maxVisibleDataProducts)
           ).map((dataProduct) => (
-            <div
-              className="data-product-item"
+            <Box
               data-testid="data-product-item"
-              key={dataProduct.id || dataProduct.fullyQualifiedName}>
-              <div className="data-product-card-bar">
-                <div className="data-product-card-content">
+              key={dataProduct.id || dataProduct.fullyQualifiedName}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                height: '26px',
+                border: `1px solid #dbe0e7`,
+                borderRadius: '6px',
+                backgroundColor: theme.palette.common.white,
+                minWidth: 0,
+                transition: 'all 0.2s ease',
+                overflow: 'hidden',
+              }}>
+              <Box
+                sx={{
+                  height: '100%',
+                  borderLeft: `6px solid ${theme.palette.primary.main}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  width: '100%',
+                  minWidth: 0,
+                  paddding: '3px 0',
+                }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    width: '100%',
+                    minWidth: 0,
+                    gap: '4px',
+                    padding: '0px 8px',
+                    '& .data-product-icon': {
+                      width: '14px',
+                      height: '14px',
+                      flexShrink: 0,
+                      '& svg': {
+                        width: '14px',
+                        height: '14px',
+                      },
+                    },
+                  }}>
                   <DataProductIcon className="data-product-icon" />
-                  <span className="data-product-name">
+                  <Box
+                    component="span"
+                    sx={{
+                      fontSize: '12px',
+                      color: theme.palette.allShades.gray[700],
+                      fontWeight: 400,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}>
                     {getEntityName(dataProduct)}
-                  </span>
-                </div>
-              </div>
-            </div>
+                  </Box>
+                </Box>
+              </Box>
+            </Box>
           ))}
           {displayDataProducts.length > maxVisibleDataProducts && (
-            <button
-              className="show-more-data-products-button"
+            <Box
+              component="button"
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                padding: 0,
+                height: 'auto',
+                width: '100%',
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: theme.palette.primary.main,
+                fontSize: '12px',
+                fontWeight: 400,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  textDecoration: 'underline',
+                },
+                '&:focus': {
+                  outline: 'none',
+                },
+              }}
               type="button"
               onClick={() => setShowAllDataProducts(!showAllDataProducts)}>
               {showAllDataProducts
@@ -245,10 +335,10 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
                 : `+${displayDataProducts.length - maxVisibleDataProducts} ${t(
                     'label.more-lowercase'
                   )}`}
-            </button>
+            </Box>
           )}
-        </div>
-      </div>
+        </Box>
+      </Box>
     ),
     [showAllDataProducts, displayDataProducts, maxVisibleDataProducts, t]
   );
@@ -257,11 +347,13 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     if (isLoading) {
       return <Loader size="small" />;
     }
-    if (isEditing) {
-      return <div className="data-product-edit-wrapper">{editingState}</div>;
-    }
 
-    return dataProductsDisplay;
+    return (
+      <Box>
+        {dataProductsDisplay}
+        {isEditing && editingState}
+      </Box>
+    );
   }, [isLoading, isEditing, editingState, dataProductsDisplay]);
 
   const canShowEditButton =
@@ -272,11 +364,24 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
 
   if (!displayDataProducts?.length) {
     return (
-      <div className="data-products-section">
-        <div className="data-products-header">
-          <Typography.Text className="data-products-title">
+      <Box>
+        <Box
+          sx={{
+            paddingLeft: '14px',
+            paddingRight: '14px',
+            paddingBottom: '12px',
+            display: 'flex',
+            gap: '8px',
+            alignItems: 'center',
+          }}>
+          <Typography
+            sx={{
+              fontSize: '13px',
+              fontWeight: 600,
+              color: (theme) => theme.palette.allShades.gray[900],
+            }}>
             {t('label.data-product-plural')}
-          </Typography.Text>
+          </Typography>
           {canShowEditButton && (
             <EditIconButton
               newLook
@@ -290,18 +395,36 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
               onClick={handleEditClick}
             />
           )}
-        </div>
-        <div className="data-products-content">{emptyContent}</div>
-      </div>
+        </Box>
+        <Box
+          sx={{
+            paddingX: '14px',
+            paddingBottom: '16px',
+          }}>
+          {emptyContent}
+        </Box>
+      </Box>
     );
   }
 
   return (
-    <div className="data-products-section">
-      <div className="data-products-header">
-        <Typography.Text className="data-products-title">
+    <Box>
+      <Box
+        sx={{
+          paddingX: '14px',
+          paddingBottom: '12px',
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'center',
+        }}>
+        <Typography
+          sx={{
+            fontSize: '13px',
+            fontWeight: 600,
+            color: (theme) => theme.palette.allShades.gray[900],
+          }}>
           {t('label.data-product-plural')}
-        </Typography.Text>
+        </Typography>
         {canShowEditButton && (
           <EditIconButton
             newLook
@@ -315,9 +438,15 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
             onClick={handleEditClick}
           />
         )}
-      </div>
-      <div className="data-products-content">{dataProductsContent}</div>
-    </div>
+      </Box>
+      <Box
+        sx={{
+          paddingX: '14px',
+          paddingBottom: '16px',
+        }}>
+        {dataProductsContent}
+      </Box>
+    </Box>
   );
 };
 
