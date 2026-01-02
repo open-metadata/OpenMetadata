@@ -31,7 +31,7 @@
 // Node default state
 .lineage-node {
   width: 100%;
-  max-width: 320px; //  Max width of Lineage Node, in case of long columns names
+  max-width: 400px; //  Max width of Lineage Node, in case of long columns names
   border: 1px solid @lineage-border;
   border-radius: 10px;
   overflow: hidden;
@@ -77,11 +77,29 @@
     .label-container {
       .custom-node-label-container {
         width: 100%;
-        .lineage-breadcrumb {
+        .lineage-breadcrumbs {
           .lineage-breadcrumb-item {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            font-size: 12px;
+            max-width: 80px;
+          }
+          .lineage-breadcrumb-item-separator {
+            position: relative;
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            margin: 0 6px 0 4px;
+
+            &::after {
+              content: '';
+              position: absolute;
+              inset: 1px;
+              border-top: 1px solid @grey-400;
+              border-right: 1px solid @grey-400;
+              transform: rotate(45deg);
+            }
           }
         }
         .entity-header-name {
@@ -99,8 +117,14 @@
           padding: 8px 16px 0 16px;
 
           .entity-service-icon svg {
-            height: 28px;
-            width: 28px;
+            height: 32px;
+            width: 32px;
+            margin-bottom: 6px;
+          }
+          .entity-service-icon img {
+            height: 32px;
+            width: 32px;
+            margin-bottom: 6px;
           }
 
           &.with-footer::after {
@@ -114,11 +138,26 @@
         }
 
         .entity-footer {
-          padding: 8px 16px 8px 16px;
-          background-color: #ffffff;
           display: flex;
           justify-content: space-between;
           gap: 20px;
+          padding: 8px 16px;
+
+          &__entity-type-and-dropdown {
+            display: flex;
+            gap: 6px;
+
+            .MuiChip-root {
+              background-color: @grey-9;
+              border-color: @grey-15;
+              color: @grey-600;
+            }
+          }
+
+          &__test-summary-and-filter {
+            display: flex;
+            gap: 6px;
+          }
           .test-summary-and-mapping {
             display: flex;
             gap: 5px;
@@ -128,7 +167,7 @@
             min-width: fit-content;
             padding: 2px @size-xs 2px @size-sm;
             border: none;
-            border-radius: 16px;
+            border-radius: 8px;
             box-shadow: none;
 
             background-color: @primary-1;
@@ -188,7 +227,7 @@
       min-height: 48px;
       padding: 12px;
       padding-top: 0;
-      background-color: @grey-1;
+      background-color: @grey-9;
 
       .inside-current-page-item {
         margin-top: 0px;
@@ -282,6 +321,17 @@
     }
   }
 
+  &.columns-expanded {
+    .lineage-node-content {
+      .label-container {
+        .custom-node-label-container {
+          .entity-footer {
+            background-color: @grey-9;
+          }
+        }
+      }
+    }
+  }
   &.custom-node-header-active {
     background-color: #eff8ff;
     .lineage-node-content {
@@ -372,9 +422,6 @@
           &::after {
             content: none;
           }
-        }
-        .entity-footer {
-          background-color: @grey-1;
         }
       }
     }
