@@ -5279,7 +5279,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void storeNewVersion() {
-      LOG.info("storeNewVersion called for entity: {} {}", entityType, updated.getId());
+      LOG.info(
+          "storeNewVersion called for entity: {} {}, changeDescription={}",
+          entityType,
+          updated.getId(),
+          updated.getChangeDescription());
       EntityRepository.this.storeEntity(updated, true);
       // Write-through cache after update
       EntityRepository.this.writeThroughCache(updated, true);
@@ -5313,6 +5317,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return false;
       }
 
+      // Skip consolidation if the name is being changed in this update.
+      // Renaming updates FQN and related entity references (assets, relationships).
+      // Consolidation would revert to a previous version with the old name/FQN,
+      // causing inconsistencies with already-updated references.
+      if (!original.getName().equals(updated.getName())) {
+        LOG.debug("Skipping consolidation for {} - name change detected", original.getId());
+        return false;
+      }
+
+      // Skip consolidation if a previous change in the session was a name change.
+      // The previous version would have the old name/FQN, and reverting to it
+      // would cause the same issues as above.
+      if (wasRenamedInSession(original)) {
+        LOG.debug(
+            "Skipping consolidation for {} - entity was renamed in session", original.getId());
+        return false;
+      }
+
       // If user is the same and the new update is with in the user session timeout
       return original.getVersion() > 0.1 // First update on an entity that
           && operation == Operation.PATCH
@@ -5325,6 +5347,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
               <= sessionTimeoutMillis // With in session timeout
           && diffChangeSource();
       // changes to children
+    }
+
+    /**
+     * Check if the entity was renamed in a previous update within the consolidation window.
+     * This is detected by checking if the changeDescription contains a 'name' field update.
+     */
+    private boolean wasRenamedInSession(T original) {
+      ChangeDescription changeDesc = original.getChangeDescription();
+      ChangeDescription incChangeDesc = original.getIncrementalChangeDescription();
+
+      // Check main changeDescription first
+      if (changeDesc != null && changeDesc.getFieldsUpdated() != null) {
+        if (changeDesc.getFieldsUpdated().stream().anyMatch(fc -> "name".equals(fc.getName()))) {
+          return true;
+        }
+      }
+
+      // Also check incrementalChangeDescription - this captures the name change
+      // even when renameProcessed prevents it from being in the main changeDescription
+      if (incChangeDesc != null && incChangeDesc.getFieldsUpdated() != null) {
+        if (incChangeDesc.getFieldsUpdated().stream().anyMatch(fc -> "name".equals(fc.getName()))) {
+          return true;
+        }
+      }
+
+      return false;
     }
 
     /**

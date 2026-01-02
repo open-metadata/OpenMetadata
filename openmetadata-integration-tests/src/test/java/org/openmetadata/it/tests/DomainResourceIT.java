@@ -427,4 +427,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   protected Domain getVersion(UUID id, Double version) {
     return SdkClients.adminClient().domains().getVersion(id.toString(), version);
   }
+
+  // Note: Domain does not support rename (renameAllowed = false in DomainRepository),
+  // so rename consolidation tests are not applicable for this entity type.
 }

@@ -796,6 +796,252 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
   }
 
   @Test
+  void testRenameDomain(TestInfo test) throws IOException {
+    // Create a domain
+    Domain domain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    String oldName = domain.getName();
+    String oldFqn = domain.getFullyQualifiedName();
+    String newName = "renamed-" + oldName;
+
+    // Rename the domain using PATCH
+    String json = JsonUtils.pojoToJson(domain);
+    ChangeDescription change = getChangeDescription(domain, MINOR_UPDATE);
+    fieldUpdated(change, "name", oldName, newName);
+    domain.setName(newName);
+    domain.setFullyQualifiedName(newName);
+
+    domain = patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify the domain was renamed
+    assertEquals(newName, domain.getName());
+    assertNotEquals(oldFqn, domain.getFullyQualifiedName());
+
+    // Verify we can get by new FQN
+    Domain getByFqn = getEntityByName(domain.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertEquals(newName, getByFqn.getName());
+  }
+
+  @Test
+  void testRenameDomainWithDataProducts(TestInfo test) throws IOException {
+    // Create a domain with a data product
+    Domain domain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    DataProductResourceTest dataProductTest = new DataProductResourceTest();
+    DataProduct dataProduct =
+        dataProductTest.createEntity(
+            dataProductTest
+                .createRequest(getEntityName(test, 1))
+                .withDomains(List.of(domain.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
+
+    String oldName = domain.getName();
+    String oldFqn = domain.getFullyQualifiedName();
+    String newName = "renamed-dp-" + oldName;
+
+    // Rename the domain using PATCH
+    String json = JsonUtils.pojoToJson(domain);
+    ChangeDescription change = getChangeDescription(domain, MINOR_UPDATE);
+    fieldUpdated(change, "name", oldName, newName);
+    domain.setName(newName);
+    domain.setFullyQualifiedName(newName);
+
+    domain = patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify the domain was renamed
+    assertEquals(newName, domain.getName());
+    assertNotEquals(oldFqn, domain.getFullyQualifiedName());
+
+    // Verify the data product's domain reference is updated
+    DataProduct updatedDataProduct =
+        dataProductTest.getEntity(dataProduct.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertNotNull(updatedDataProduct.getDomains());
+    assertEquals(1, updatedDataProduct.getDomains().size());
+    assertEquals(
+        domain.getFullyQualifiedName(),
+        updatedDataProduct.getDomains().get(0).getFullyQualifiedName());
+  }
+
+  @Test
+  void testRenameThenUpdateDescriptionConsolidation(TestInfo test) throws IOException {
+    // Create a domain
+    Domain domain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    String oldName = domain.getName();
+    String newName = "renamed-consol-" + oldName;
+
+    // Step 1: Rename the domain
+    String json = JsonUtils.pojoToJson(domain);
+    ChangeDescription change = getChangeDescription(domain, MINOR_UPDATE);
+    fieldUpdated(change, "name", oldName, newName);
+    domain.setName(newName);
+    domain.setFullyQualifiedName(newName);
+
+    domain = patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Step 2: Update description (this triggers consolidation logic)
+    json = JsonUtils.pojoToJson(domain);
+    String oldDescription = domain.getDescription();
+    String newDescription = "Updated description after rename";
+    domain.setDescription(newDescription);
+    change = getChangeDescription(domain, MINOR_UPDATE);
+    fieldUpdated(change, "description", oldDescription, newDescription);
+
+    domain = patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify the domain still has the new name
+    assertEquals(newName, domain.getName());
+    assertEquals(newDescription, domain.getDescription());
+  }
+
+  @Test
+  void testMultipleRenameUpdateCycles(TestInfo test) throws IOException {
+    // Create a domain
+    Domain domain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // Perform multiple rename + update cycles
+    for (int i = 1; i <= 3; i++) {
+      String oldName = domain.getName();
+      String newName = "renamed-cycle-" + i + "-" + UUID.randomUUID().toString().substring(0, 8);
+
+      // Step 1: Rename the domain
+      String json = JsonUtils.pojoToJson(domain);
+      ChangeDescription change = getChangeDescription(domain, MINOR_UPDATE);
+      fieldUpdated(change, "name", oldName, newName);
+      domain.setName(newName);
+      domain.setFullyQualifiedName(newName);
+
+      domain = patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+      // Step 2: Update description (triggers consolidation logic)
+      json = JsonUtils.pojoToJson(domain);
+      String oldDescription = domain.getDescription();
+      String newDescription = "Description after cycle " + i;
+      domain.setDescription(newDescription);
+      change = getChangeDescription(domain, MINOR_UPDATE);
+      fieldUpdated(change, "description", oldDescription, newDescription);
+
+      domain = patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+      // Verify the domain still has the new name and description
+      assertEquals(newName, domain.getName());
+      assertEquals(newDescription, domain.getDescription());
+    }
+  }
+
+  @Test
+  void testRenameDomainWithSubdomains(TestInfo test) throws IOException {
+    // Create a parent domain with child subdomains
+    // Use simple names without regex metacharacters to avoid REGEXP_REPLACE issues
+    String parentName = "parent_domain_" + test.getDisplayName().hashCode();
+    Domain parentDomain = createEntity(createRequest(parentName), ADMIN_AUTH_HEADERS);
+
+    Domain childDomain1 =
+        createEntity(
+            createRequest("child1_" + parentName).withParent(parentDomain.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    Domain childDomain2 =
+        createEntity(
+            createRequest("child2_" + parentName).withParent(parentDomain.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    String oldParentName = parentDomain.getName();
+    String oldChild1Fqn = childDomain1.getFullyQualifiedName();
+    String oldChild2Fqn = childDomain2.getFullyQualifiedName();
+    String newParentName = "renamed_parent_" + oldParentName;
+
+    // Rename the parent domain using PATCH
+    String json = JsonUtils.pojoToJson(parentDomain);
+    ChangeDescription change = getChangeDescription(parentDomain, MINOR_UPDATE);
+    fieldUpdated(change, "name", oldParentName, newParentName);
+    parentDomain.setName(newParentName);
+    parentDomain.setFullyQualifiedName(newParentName);
+
+    parentDomain =
+        patchEntityAndCheck(parentDomain, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify the parent domain was renamed
+    assertEquals(newParentName, parentDomain.getName());
+    assertEquals(newParentName, parentDomain.getFullyQualifiedName());
+    assertNotEquals(oldParentName, parentDomain.getFullyQualifiedName());
+
+    // Verify child domains' FQNs are updated
+    Domain updatedChild1 = getEntity(childDomain1.getId(), ADMIN_AUTH_HEADERS);
+    Domain updatedChild2 = getEntity(childDomain2.getId(), ADMIN_AUTH_HEADERS);
+
+    // Child FQNs should now start with the new parent FQN
+    assertTrue(updatedChild1.getFullyQualifiedName().startsWith(newParentName + "."));
+    assertTrue(updatedChild2.getFullyQualifiedName().startsWith(newParentName + "."));
+    assertNotEquals(oldChild1Fqn, updatedChild1.getFullyQualifiedName());
+    assertNotEquals(oldChild2Fqn, updatedChild2.getFullyQualifiedName());
+
+    // Verify we can still access children by their new FQNs
+    Domain fetchedChild1 =
+        getEntityByName(updatedChild1.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertEquals(childDomain1.getId(), fetchedChild1.getId());
+
+    Domain fetchedChild2 =
+        getEntityByName(updatedChild2.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertEquals(childDomain2.getId(), fetchedChild2.getId());
+
+    // Verify old FQNs no longer work
+    assertThatThrownBy(() -> getEntityByName(oldChild1Fqn, ADMIN_AUTH_HEADERS))
+        .isInstanceOf(HttpResponseException.class);
+    assertThatThrownBy(() -> getEntityByName(oldChild2Fqn, ADMIN_AUTH_HEADERS))
+        .isInstanceOf(HttpResponseException.class);
+  }
+
+  @Test
+  void testRenameDomainWithNestedSubdomains(TestInfo test) throws IOException {
+    // Create a 3-level hierarchy: grandparent -> parent -> child
+    // Use simple names without regex metacharacters to avoid REGEXP_REPLACE issues
+    String gpName = "grandparent_domain_" + test.getDisplayName().hashCode();
+    Domain grandparent = createEntity(createRequest(gpName), ADMIN_AUTH_HEADERS);
+
+    Domain parent =
+        createEntity(
+            createRequest("parent_" + gpName).withParent(grandparent.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    Domain child =
+        createEntity(
+            createRequest("child_" + gpName).withParent(parent.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    String oldGrandparentName = grandparent.getName();
+    String oldGrandparentFqn = grandparent.getFullyQualifiedName();
+    String oldParentFqn = parent.getFullyQualifiedName();
+    String oldChildFqn = child.getFullyQualifiedName();
+    String newGrandparentName = "renamed_gp_" + oldGrandparentName;
+
+    // Rename the grandparent domain
+    String json = JsonUtils.pojoToJson(grandparent);
+    ChangeDescription change = getChangeDescription(grandparent, MINOR_UPDATE);
+    fieldUpdated(change, "name", oldGrandparentName, newGrandparentName);
+    grandparent.setName(newGrandparentName);
+    grandparent.setFullyQualifiedName(newGrandparentName);
+
+    grandparent = patchEntityAndCheck(grandparent, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify all levels' FQNs are updated
+    Domain updatedParent = getEntity(parent.getId(), ADMIN_AUTH_HEADERS);
+    Domain updatedChild = getEntity(child.getId(), ADMIN_AUTH_HEADERS);
+
+    assertEquals(newGrandparentName, grandparent.getFullyQualifiedName());
+    assertTrue(updatedParent.getFullyQualifiedName().startsWith(newGrandparentName + "."));
+    assertTrue(updatedChild.getFullyQualifiedName().startsWith(newGrandparentName + "."));
+
+    // Old FQNs should no longer work
+    assertThatThrownBy(() -> getEntityByName(oldGrandparentFqn, ADMIN_AUTH_HEADERS))
+        .isInstanceOf(HttpResponseException.class);
+    assertThatThrownBy(() -> getEntityByName(oldParentFqn, ADMIN_AUTH_HEADERS))
+        .isInstanceOf(HttpResponseException.class);
+    assertThatThrownBy(() -> getEntityByName(oldChildFqn, ADMIN_AUTH_HEADERS))
+        .isInstanceOf(HttpResponseException.class);
+  }
+
+  @Test
   void test_getAllDomainsWithAssetsCount(TestInfo test) throws IOException {
     Domain rootDomain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     Domain subDomain =
