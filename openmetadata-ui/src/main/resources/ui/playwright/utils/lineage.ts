@@ -124,7 +124,7 @@ export const performZoomOut = async (page: Page) => {
   const zoomOutBtn = page.getByTestId('zoom-out');
   const enabled = await zoomOutBtn.isEnabled();
   if (enabled) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     for (const _index of Array.from({ length: 10 })) {
       await zoomOutBtn.dispatchEvent('click');
     }
@@ -400,13 +400,13 @@ const verifyPipelineDataInDrawer = async (
       'Edge Information'
     );
     await expect(
-      page.locator('.overview-section').getByTestId('Source-value')
+      page.getByTestId('overview-section').getByTestId('Source-value')
     ).toHaveText(fromNode.entity.displayName);
     await expect(
-      page.locator('.overview-section').getByTestId('Target-value')
+      page.getByTestId('overview-section').getByTestId('Target-value')
     ).toHaveText(toNode.entity.displayName);
     await expect(
-      page.locator('.overview-section').getByTestId('Edge-value')
+      page.getByTestId('overview-section').getByTestId('Edge-value')
     ).toHaveText(pipelineName);
 
     await fromNode.visitEntityPage(page);

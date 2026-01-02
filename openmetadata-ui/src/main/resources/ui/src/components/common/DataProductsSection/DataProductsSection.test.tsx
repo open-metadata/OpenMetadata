@@ -10,17 +10,56 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
+import { ThemeColors } from '@openmetadata/ui-core-components';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
+import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import DataProductsSection from './DataProductsSection';
+
+const mockThemeColors: ThemeColors = {
+  white: '#FFFFFF',
+  blue: {
+    50: '#E6F4FF',
+    100: '#BAE0FF',
+    200: '#91D5FF',
+    300: '#69C0FF',
+    600: '#1677FF',
+    700: '#0958D9',
+  },
+  blueGray: {
+    50: '#F8FAFC',
+    75: '#F1F5F9',
+    150: '#E2E8F0',
+  },
+  gray: {
+    200: '#E5E7EB',
+    300: '#D1D5DB',
+    500: '#6B7280',
+    700: '#374151',
+    800: '#1F2937',
+    900: '#111827',
+  },
+} as ThemeColors;
+
+const theme: Theme = createTheme({
+  palette: {
+    allShades: mockThemeColors,
+    primary: {
+      main: '#1677FF',
+      dark: '#0958D9',
+    },
+    background: {
+      paper: '#FFFFFF',
+    },
+  },
+});
+
+const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  <ThemeProvider theme={theme}>{children}</ThemeProvider>
+);
 
 // Mock react-router-dom
 jest.mock('react-router-dom', () => ({
@@ -234,23 +273,19 @@ describe('DataProductsSection', () => {
 
   describe('Rendering', () => {
     it('renders with data products', () => {
-      const { container } = render(<DataProductsSection {...defaultProps} />);
+      render(<DataProductsSection {...defaultProps} />, { wrapper: Wrapper });
 
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
       expect(screen.getByText('label.data-product-plural')).toBeInTheDocument();
 
       // display list
       expect(screen.getByText('DP 1')).toBeInTheDocument();
-
-      const list = container.querySelector(
-        '.data-products-list'
-      ) as HTMLElement;
-
-      expect(within(list).getByTestId('data-product-icon')).toBeInTheDocument();
+      expect(screen.getByTestId('data-product-icon')).toBeInTheDocument();
     });
 
     it('renders no-data state when no data products', () => {
-      render(<DataProductsSection {...defaultProps} dataProducts={[]} />);
+      render(<DataProductsSection {...defaultProps} dataProducts={[]} />, {
+        wrapper: Wrapper,
+      });
 
       expect(
         screen.getByText(
@@ -262,7 +297,7 @@ describe('DataProductsSection', () => {
 
   describe('Edit Mode', () => {
     it('enters edit mode and shows select list', () => {
-      render(<DataProductsSection {...defaultProps} />);
+      render(<DataProductsSection {...defaultProps} />, { wrapper: Wrapper });
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
@@ -279,7 +314,7 @@ describe('DataProductsSection', () => {
     });
 
     it('exits edit mode on cancel', () => {
-      render(<DataProductsSection {...defaultProps} />);
+      render(<DataProductsSection {...defaultProps} />, { wrapper: Wrapper });
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
@@ -309,7 +344,8 @@ describe('DataProductsSection', () => {
           {...defaultProps}
           entityType={EntityType.TABLE}
           onDataProductsUpdate={onUpdate}
-        />
+        />,
+        { wrapper: Wrapper }
       );
 
       const editIcon = screen.getByTestId('edit-data-products');
@@ -336,7 +372,8 @@ describe('DataProductsSection', () => {
       patchTableDetails.mockRejectedValue(error);
 
       render(
-        <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
+        <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />,
+        { wrapper: Wrapper }
       );
 
       const editIcon = screen.getByTestId('edit-data-products');
@@ -388,7 +425,8 @@ describe('DataProductsSection', () => {
       );
 
       render(
-        <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
+        <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />,
+        { wrapper: Wrapper }
       );
 
       const editIcon = screen.getByTestId('edit-data-products');
@@ -412,7 +450,8 @@ describe('DataProductsSection', () => {
       patchTableDetails.mockReturnValue(promise);
 
       render(
-        <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
+        <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />,
+        { wrapper: Wrapper }
       );
 
       const editIcon = screen.getByTestId('edit-data-products');
@@ -450,7 +489,8 @@ describe('DataProductsSection', () => {
       patchTableDetails.mockResolvedValue({});
 
       render(
-        <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
+        <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />,
+        { wrapper: Wrapper }
       );
 
       const editIcon = screen.getByTestId('edit-data-products');
@@ -477,7 +517,8 @@ describe('DataProductsSection', () => {
         <DataProductsSection
           {...defaultProps}
           entityType={EntityType.DASHBOARD}
-        />
+        />,
+        { wrapper: Wrapper }
       );
 
       const editIcon = screen.getByTestId('edit-data-products');
@@ -499,7 +540,9 @@ describe('DataProductsSection', () => {
     it('shows error when entityId missing', async () => {
       const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
 
-      render(<DataProductsSection {...defaultProps} entityId={undefined} />);
+      render(<DataProductsSection {...defaultProps} entityId={undefined} />, {
+        wrapper: Wrapper,
+      });
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
@@ -521,7 +564,7 @@ describe('DataProductsSection', () => {
         '../../../rest/dataProductAPI'
       );
 
-      render(<DataProductsSection {...defaultProps} />);
+      render(<DataProductsSection {...defaultProps} />, { wrapper: Wrapper });
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {

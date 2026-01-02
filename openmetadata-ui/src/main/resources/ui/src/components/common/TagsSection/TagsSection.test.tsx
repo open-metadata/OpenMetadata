@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
+import { ThemeColors } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import React from 'react';
@@ -21,6 +23,46 @@ import {
   TagSource,
 } from '../../../generated/type/tagLabel';
 import TagsSection from './TagsSection';
+
+const mockThemeColors: ThemeColors = {
+  white: '#FFFFFF',
+  blue: {
+    50: '#E6F4FF',
+    100: '#BAE0FF',
+    200: '#91D5FF',
+    300: '#69C0FF',
+    600: '#1677FF',
+    700: '#0958D9',
+  },
+  blueGray: {
+    50: '#F8FAFC',
+  },
+  gray: {
+    200: '#E5E7EB',
+    300: '#D1D5DB',
+    500: '#6B7280',
+    700: '#374151',
+    800: '#1F2937',
+    900: '#111827',
+  },
+} as ThemeColors;
+
+const theme: Theme = createTheme({
+  palette: {
+    allShades: mockThemeColors,
+    primary: {
+      main: '#1677FF',
+      dark: '#0958D9',
+    },
+    background: {
+      paper: '#FFFFFF',
+    },
+  },
+});
+
+const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  <ThemeProvider theme={theme}>{children}</ThemeProvider>
+);
 
 // Mock @react-awesome-query-builder/antd
 jest.mock('@react-awesome-query-builder/antd', () => ({
@@ -136,6 +178,10 @@ jest.mock('../TagSelectableList/TagSelectableList.component', () => ({
         const [inputValue, setInputValue] = React.useState(
           selectedTags.map((t) => t.tagFQN).join(', ')
         );
+
+        React.useEffect(() => {
+          setInputValue(selectedTags.map((t) => t.tagFQN).join(', '));
+        }, [selectedTags]);
 
         return (
           <div data-testid="tag-selectable-list">
@@ -368,22 +414,20 @@ describe('TagsSection', () => {
 
   describe('Component Rendering', () => {
     it('should render without crashing', () => {
-      render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />, { wrapper: Wrapper });
 
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
       expect(screen.getByText('label.tag-plural')).toBeInTheDocument();
     });
 
-    it('should render with correct CSS classes', () => {
-      const { container } = render(<TagsSection {...defaultProps} />);
+    it('should render with correct structure', () => {
+      render(<TagsSection {...defaultProps} />, { wrapper: Wrapper });
 
-      expect(container.querySelector('.tags-section')).toBeInTheDocument();
-      expect(container.querySelector('.tags-header')).toBeInTheDocument();
-      expect(container.querySelector('.tags-content')).toBeInTheDocument();
+      expect(screen.getByText('label.tag-plural')).toBeInTheDocument();
+      expect(screen.getByText('Tag 1')).toBeInTheDocument();
     });
 
     it('should render tags title', () => {
-      render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />, { wrapper: Wrapper });
 
       expect(screen.getByText('label.tag-plural')).toBeInTheDocument();
     });
@@ -391,7 +435,7 @@ describe('TagsSection', () => {
 
   describe('Tags Display', () => {
     it('should render all tags when expanded', () => {
-      render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />, { wrapper: Wrapper });
 
       // Click show more button to expand
       const showMoreButton = screen.getByText('+2 label.more-lowercase');
@@ -405,7 +449,7 @@ describe('TagsSection', () => {
     });
 
     it('should render limited tags by default', () => {
-      render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />, { wrapper: Wrapper });
 
       expect(screen.getByText('Tag 1')).toBeInTheDocument();
       expect(screen.getByText('Tag 2')).toBeInTheDocument();
@@ -415,13 +459,13 @@ describe('TagsSection', () => {
     });
 
     it('should show show more button when there are more tags', () => {
-      render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />, { wrapper: Wrapper });
 
       expect(screen.getByText('+2 label.more-lowercase')).toBeInTheDocument();
     });
 
     it('should show show less button when expanded', () => {
-      render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />, { wrapper: Wrapper });
 
       // Click show more button to expand
       const showMoreButton = screen.getByText('+2 label.more-lowercase');
@@ -431,7 +475,9 @@ describe('TagsSection', () => {
     });
 
     it('should use custom maxDisplayCount', () => {
-      render(<TagsSection {...defaultProps} maxVisibleTags={2} />);
+      render(<TagsSection {...defaultProps} maxVisibleTags={2} />, {
+        wrapper: Wrapper,
+      });
 
       expect(screen.getByText('Tag 1')).toBeInTheDocument();
       expect(screen.getByText('Tag 2')).toBeInTheDocument();
@@ -440,22 +486,17 @@ describe('TagsSection', () => {
     });
 
     it('should render tag items with correct structure', () => {
-      const { container } = render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />, { wrapper: Wrapper });
 
-      const tagItems = container.querySelectorAll('.tag-item');
-
-      expect(tagItems).toHaveLength(3); // maxDisplayCount
-
-      tagItems.forEach((item) => {
-        expect(item.querySelector('.tag-icon')).toBeInTheDocument();
-        expect(item.querySelector('.tag-name')).toBeInTheDocument();
-      });
+      expect(screen.getByTestId('tag-tag1')).toBeInTheDocument();
+      expect(screen.getByTestId('tag-tag2')).toBeInTheDocument();
+      expect(screen.getByTestId('tag-tag3')).toBeInTheDocument();
     });
   });
 
   describe('No Tags State', () => {
     it('should render no data found message when no tags', () => {
-      render(<TagsSection {...defaultProps} tags={[]} />);
+      render(<TagsSection {...defaultProps} tags={[]} />, { wrapper: Wrapper });
 
       expect(
         screen.getByText(
@@ -465,17 +506,19 @@ describe('TagsSection', () => {
     });
 
     it('should render with correct CSS classes when no tags', () => {
-      const { container } = render(<TagsSection {...defaultProps} tags={[]} />);
+      render(<TagsSection {...defaultProps} tags={[]} />, { wrapper: Wrapper });
 
-      expect(container.querySelector('.tags-section')).toBeInTheDocument();
-      expect(container.querySelector('.tags-header')).toBeInTheDocument();
-      expect(container.querySelector('.tags-content')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'label.no-entity-assigned - {"entity":"label.tag-plural"}'
+        )
+      ).toBeInTheDocument();
     });
   });
 
   describe('Edit Button', () => {
     it('should show edit button when showEditButton is true and hasPermission is true', async () => {
-      render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />, { wrapper: Wrapper });
 
       // If component is in edit mode, cancel first to get to normal state
       const closeIcon = screen.queryByTestId('close-icon');
@@ -490,19 +533,28 @@ describe('TagsSection', () => {
     });
 
     it('should not show edit button when showEditButton is false', () => {
-      render(<TagsSection {...defaultProps} showEditButton={false} />);
+      render(<TagsSection {...defaultProps} showEditButton={false} />, {
+        wrapper: Wrapper,
+      });
 
       expect(screen.queryByTestId('edit-icon-tags')).not.toBeInTheDocument();
     });
 
     it('should not show edit button when hasPermission is false', () => {
-      render(<TagsSection {...defaultProps} hasPermission={false} />);
+      render(<TagsSection {...defaultProps} hasPermission={false} />, {
+        wrapper: Wrapper,
+      });
 
       expect(screen.queryByTestId('edit-icon-tags')).not.toBeInTheDocument();
     });
 
     it('should not show edit button when no tags and no permission', () => {
-      render(<TagsSection {...defaultProps} hasPermission={false} tags={[]} />);
+      render(
+        <TagsSection {...defaultProps} hasPermission={false} tags={[]} />,
+        {
+          wrapper: Wrapper,
+        }
+      );
 
       expect(screen.queryByTestId('edit-icon-tags')).not.toBeInTheDocument();
     });
@@ -510,7 +562,7 @@ describe('TagsSection', () => {
 
   describe('Edit Mode', () => {
     it('should enter edit mode when edit button is clicked', () => {
-      render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />, { wrapper: Wrapper });
 
       clickEditControl();
 
@@ -518,7 +570,7 @@ describe('TagsSection', () => {
     });
 
     it('should show AsyncSelectList with correct props in edit mode', () => {
-      render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />, { wrapper: Wrapper });
 
       clickEditControl();
 
@@ -531,7 +583,7 @@ describe('TagsSection', () => {
 
   describe('Tag Selection', () => {
     it('should handle tag selection in edit mode', async () => {
-      render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />, { wrapper: Wrapper });
 
       await enterEditMode();
 
@@ -542,7 +594,7 @@ describe('TagsSection', () => {
     });
 
     it('should initialize with current tags in edit mode', async () => {
-      render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />, { wrapper: Wrapper });
 
       await enterEditMode();
 
@@ -562,7 +614,12 @@ describe('TagsSection', () => {
 
       patchTableDetails.mockResolvedValue({});
 
-      render(<TagsSection {...defaultProps} onTagsUpdate={mockOnTagsUpdate} />);
+      render(
+        <TagsSection {...defaultProps} onTagsUpdate={mockOnTagsUpdate} />,
+        {
+          wrapper: Wrapper,
+        }
+      );
 
       await enterEditMode();
 
@@ -586,7 +643,7 @@ describe('TagsSection', () => {
       const mockError = new Error('Save failed') as AxiosError;
       patchTableDetails.mockRejectedValue(mockError);
 
-      render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />, { wrapper: Wrapper });
 
       await enterEditMode();
 
@@ -607,7 +664,7 @@ describe('TagsSection', () => {
     it('should not save when no changes are made', async () => {
       const { patchTableDetails } = jest.requireMock('../../../rest/tableAPI');
 
-      render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />, { wrapper: Wrapper });
 
       await enterEditMode();
 
@@ -626,7 +683,7 @@ describe('TagsSection', () => {
         () => new Promise((resolve) => setTimeout(resolve, 100))
       );
 
-      render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />, { wrapper: Wrapper });
 
       await enterEditMode();
 
@@ -651,7 +708,9 @@ describe('TagsSection', () => {
 
       patchTableDetails.mockResolvedValue({});
 
-      render(<TagsSection {...defaultProps} entityType={EntityType.TABLE} />);
+      render(<TagsSection {...defaultProps} entityType={EntityType.TABLE} />, {
+        wrapper: Wrapper,
+      });
 
       await enterEditMode();
 
@@ -676,7 +735,8 @@ describe('TagsSection', () => {
       patchDashboardDetails.mockResolvedValue({});
 
       render(
-        <TagsSection {...defaultProps} entityType={EntityType.DASHBOARD} />
+        <TagsSection {...defaultProps} entityType={EntityType.DASHBOARD} />,
+        { wrapper: Wrapper }
       );
 
       await enterEditMode();
@@ -701,7 +761,8 @@ describe('TagsSection', () => {
         <TagsSection
           {...defaultProps}
           entityType={'UNSUPPORTED' as EntityType}
-        />
+        />,
+        { wrapper: Wrapper }
       );
 
       await enterEditMode();
@@ -721,7 +782,9 @@ describe('TagsSection', () => {
     it('should show error when entityId is missing', async () => {
       const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
 
-      render(<TagsSection {...defaultProps} entityId={undefined} />);
+      render(<TagsSection {...defaultProps} entityId={undefined} />, {
+        wrapper: Wrapper,
+      });
 
       await enterEditMode();
 
@@ -751,7 +814,9 @@ describe('TagsSection', () => {
         },
       ];
 
-      render(<TagsSection {...defaultProps} tags={tagsWithDisplayName} />);
+      render(<TagsSection {...defaultProps} tags={tagsWithDisplayName} />, {
+        wrapper: Wrapper,
+      });
 
       expect(screen.getByText('Custom Display Name')).toBeInTheDocument();
     });
@@ -767,7 +832,9 @@ describe('TagsSection', () => {
         },
       ];
 
-      render(<TagsSection {...defaultProps} tags={tagsWithoutDisplayName} />);
+      render(<TagsSection {...defaultProps} tags={tagsWithoutDisplayName} />, {
+        wrapper: Wrapper,
+      });
 
       expect(screen.getByText('Tag 1')).toBeInTheDocument();
     });
@@ -783,7 +850,9 @@ describe('TagsSection', () => {
         },
       ];
 
-      render(<TagsSection {...defaultProps} tags={tagsWithOnlyFQN} />);
+      render(<TagsSection {...defaultProps} tags={tagsWithOnlyFQN} />, {
+        wrapper: Wrapper,
+      });
 
       expect(screen.getByText('tag1')).toBeInTheDocument();
     });
@@ -791,7 +860,7 @@ describe('TagsSection', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty tags array', () => {
-      render(<TagsSection {...defaultProps} tags={[]} />);
+      render(<TagsSection {...defaultProps} tags={[]} />, { wrapper: Wrapper });
 
       expect(
         screen.getByText(
@@ -801,7 +870,9 @@ describe('TagsSection', () => {
     });
 
     it('should handle undefined tags', () => {
-      render(<TagsSection {...defaultProps} tags={undefined} />);
+      render(<TagsSection {...defaultProps} tags={undefined} />, {
+        wrapper: Wrapper,
+      });
 
       expect(
         screen.getByText(
@@ -835,7 +906,9 @@ describe('TagsSection', () => {
         },
       ];
 
-      render(<TagsSection {...defaultProps} tags={incompleteTags} />);
+      render(<TagsSection {...defaultProps} tags={incompleteTags} />, {
+        wrapper: Wrapper,
+      });
 
       expect(screen.getByText('tag1')).toBeInTheDocument();
       expect(screen.getByText('tag2')).toBeInTheDocument();
@@ -843,7 +916,9 @@ describe('TagsSection', () => {
     });
 
     it('should handle maxDisplayCount greater than tags length', () => {
-      render(<TagsSection {...defaultProps} maxVisibleTags={10} />);
+      render(<TagsSection {...defaultProps} maxVisibleTags={10} />, {
+        wrapper: Wrapper,
+      });
 
       expect(screen.getByText('Tag 1')).toBeInTheDocument();
       expect(screen.getByText('Tag 2')).toBeInTheDocument();
@@ -856,7 +931,9 @@ describe('TagsSection', () => {
     });
 
     it('should handle maxDisplayCount of 0', () => {
-      render(<TagsSection {...defaultProps} maxVisibleTags={0} />);
+      render(<TagsSection {...defaultProps} maxVisibleTags={0} />, {
+        wrapper: Wrapper,
+      });
 
       expect(screen.queryByText('Tag 1')).not.toBeInTheDocument();
       expect(screen.getByText('+5 label.more-lowercase')).toBeInTheDocument();
@@ -872,7 +949,7 @@ describe('TagsSection', () => {
         () => new Promise((resolve) => setTimeout(resolve, 100))
       );
 
-      render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />, { wrapper: Wrapper });
 
       await enterEditMode();
 

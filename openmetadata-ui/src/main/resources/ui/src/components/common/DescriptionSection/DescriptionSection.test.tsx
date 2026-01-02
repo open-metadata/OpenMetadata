@@ -84,22 +84,13 @@ describe('DescriptionSection', () => {
 
   describe('Rendering - Empty Description', () => {
     it('renders title and no-data placeholder when description is empty', () => {
-      const { container } = render(<DescriptionSection />);
+      render(<DescriptionSection />);
 
       expect(screen.getByText('label.description')).toBeInTheDocument();
       expect(
         screen.getByText(
           'label.no-entity-added - {"entity":"label.description-lowercase"}'
         )
-      ).toBeInTheDocument();
-      expect(
-        container.querySelector('.description-section')
-      ).toBeInTheDocument();
-      expect(
-        container.querySelector('.description-header')
-      ).toBeInTheDocument();
-      expect(
-        container.querySelector('.description-content')
       ).toBeInTheDocument();
     });
 
@@ -125,21 +116,13 @@ describe('DescriptionSection', () => {
         />
       );
 
-      const clickable = document.querySelector(
-        '.description-header .edit-icon'
-      ) as HTMLElement | null;
-
-      expect(clickable).toBeNull();
+      expect(screen.queryByTestId('edit-description')).not.toBeInTheDocument();
     });
 
     it('does not show edit control when onDescriptionUpdate is not provided', () => {
       render(<DescriptionSection showEditButton />);
 
-      const clickable = document.querySelector(
-        '.description-header .edit-icon'
-      ) as HTMLElement | null;
-
-      expect(clickable).toBeNull();
+      expect(screen.queryByTestId('edit-description')).not.toBeInTheDocument();
     });
   });
 
@@ -207,9 +190,7 @@ describe('DescriptionSection', () => {
       expect(screen.getByText('Some markdown text')).toBeInTheDocument();
 
       // No show-more by default (no truncation simulated)
-      expect(
-        document.querySelector('.show-more-button')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText('label.show-more')).not.toBeInTheDocument();
     });
 
     it('opens modal from non-empty view and cancel back', () => {

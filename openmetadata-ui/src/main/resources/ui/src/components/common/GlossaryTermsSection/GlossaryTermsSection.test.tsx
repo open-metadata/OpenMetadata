@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
+import { ThemeColors } from '@openmetadata/ui-core-components';
 import {
   act,
   fireEvent,
@@ -17,6 +19,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   LabelType,
@@ -26,6 +29,48 @@ import {
 } from '../../../generated/type/tagLabel';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import GlossaryTermsSection from './GlossaryTermsSection';
+
+const mockThemeColors: ThemeColors = {
+  white: '#FFFFFF',
+  blue: {
+    50: '#E6F4FF',
+    100: '#BAE0FF',
+    200: '#91D5FF',
+    300: '#69C0FF',
+    600: '#1677FF',
+    700: '#0958D9',
+  },
+  blueGray: {
+    50: '#F8FAFC',
+    75: '#F1F5F9',
+    150: '#E2E8F0',
+  },
+  gray: {
+    200: '#E5E7EB',
+    300: '#D1D5DB',
+    500: '#6B7280',
+    700: '#374151',
+    800: '#1F2937',
+    900: '#111827',
+  },
+} as ThemeColors;
+
+const theme: Theme = createTheme({
+  palette: {
+    allShades: mockThemeColors,
+    primary: {
+      main: '#1677FF',
+      dark: '#0958D9',
+    },
+    background: {
+      paper: '#FFFFFF',
+    },
+  },
+});
+
+const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  <ThemeProvider theme={theme}>{children}</ThemeProvider>
+);
 
 // Mock react-router-dom
 jest.mock('react-router-dom', () => ({
@@ -242,12 +287,7 @@ const nonGlossaryTags = [
 ];
 
 const clickHeaderEdit = () => {
-  const clickable = document.querySelector(
-    '.glossary-terms-header .edit-icon'
-  ) as HTMLElement | null;
-  if (!clickable) {
-    throw new Error('Edit clickable not found');
-  }
+  const clickable = screen.getByTestId('edit-glossary-terms');
   fireEvent.click(clickable);
 };
 
@@ -258,16 +298,11 @@ describe('GlossaryTermsSection', () => {
 
   describe('Rendering - No Terms', () => {
     it('shows header, no data placeholder, and edit control when permitted', () => {
-      const { container } = render(
-        <GlossaryTermsSection hasPermission showEditButton />
-      );
+      render(<GlossaryTermsSection hasPermission showEditButton />, {
+        wrapper: Wrapper,
+      });
 
-      expect(
-        container.querySelector('.glossary-terms-section')
-      ).toBeInTheDocument();
-      expect(
-        container.querySelector('.glossary-terms-header')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('glossary-terms-section')).toBeInTheDocument();
       expect(
         screen.getByText('label.glossary-term-plural')
       ).toBeInTheDocument();
@@ -277,15 +312,13 @@ describe('GlossaryTermsSection', () => {
         )
       ).toBeInTheDocument();
 
-      const editClickable = document.querySelector(
-        '.glossary-terms-header .edit-icon'
-      );
-
-      expect(editClickable).toBeTruthy();
+      expect(screen.getByTestId('edit-glossary-terms')).toBeInTheDocument();
     });
 
     it('enters edit mode and cancels back', () => {
-      render(<GlossaryTermsSection hasPermission showEditButton />);
+      render(<GlossaryTermsSection hasPermission showEditButton />, {
+        wrapper: Wrapper,
+      });
 
       clickHeaderEdit();
 
@@ -303,17 +336,17 @@ describe('GlossaryTermsSection', () => {
 
   describe('Rendering - With Terms', () => {
     it('lists glossary terms using getEntityName and shows icon', () => {
-      const { container } = render(
+      render(
         <GlossaryTermsSection
+          hasPermission
+          showEditButton
           tags={[...nonGlossaryTags, ...baseGlossaryTags]}
-        />
+        />,
+        { wrapper: Wrapper }
       );
 
-      expect(
-        container.querySelector('.glossary-terms-list')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('glossary-container')).toBeInTheDocument();
       expect(getEntityName).toHaveBeenCalled();
-      expect(screen.getAllByTestId('book-icon').length).toBeGreaterThan(0);
 
       expect(screen.getByText('Customer')).toBeInTheDocument();
       expect(screen.getByText('Order')).toBeInTheDocument();
@@ -325,7 +358,8 @@ describe('GlossaryTermsSection', () => {
           hasPermission
           showEditButton
           tags={baseGlossaryTags as TagLabel[]}
-        />
+        />,
+        { wrapper: Wrapper }
       );
 
       // enter edit
@@ -351,7 +385,8 @@ describe('GlossaryTermsSection', () => {
           entityType={EntityType.TABLE}
           tags={[...nonGlossaryTags, ...baseGlossaryTags] as TagLabel[]}
           onGlossaryTermsUpdate={onUpdate}
-        />
+        />,
+        { wrapper: Wrapper }
       );
 
       clickHeaderEdit();
@@ -390,7 +425,8 @@ describe('GlossaryTermsSection', () => {
           entityType={EntityType.TABLE}
           tags={baseGlossaryTags as TagLabel[]}
           onGlossaryTermsUpdate={onUpdate}
-        />
+        />,
+        { wrapper: Wrapper }
       );
 
       clickHeaderEdit();
@@ -416,7 +452,8 @@ describe('GlossaryTermsSection', () => {
           entityType={EntityType.TABLE}
           tags={nonGlossaryTags as TagLabel[]}
           onGlossaryTermsUpdate={onUpdate}
-        />
+        />,
+        { wrapper: Wrapper }
       );
 
       clickHeaderEdit();
@@ -454,7 +491,8 @@ describe('GlossaryTermsSection', () => {
           entityType={EntityType.TABLE}
           tags={nonGlossaryTags as TagLabel[]}
           onGlossaryTermsUpdate={onUpdate}
-        />
+        />,
+        { wrapper: Wrapper }
       );
 
       clickHeaderEdit();

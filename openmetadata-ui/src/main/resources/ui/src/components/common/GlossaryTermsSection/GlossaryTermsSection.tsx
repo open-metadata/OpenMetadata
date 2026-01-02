@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Box, Typography, useTheme } from '@mui/material';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -25,7 +25,6 @@ import { GlossaryTermSelectableList } from '../GlossaryTermSelectableList/Glossa
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { GlossaryTermsSectionProps } from './GlossaryTermsSection.interface';
-import './GlossaryTermsSection.less';
 
 const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   tags = [],
@@ -37,13 +36,13 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   maxVisibleGlossaryTerms = 3,
 }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const [editingGlossaryTerms, setEditingGlossaryTerms] = useState<TagLabel[]>(
     []
   );
   const [showAllTerms, setShowAllTerms] = useState(false);
 
   const {
-    isEditing,
     isLoading,
     popoverOpen,
     displayData: displayTags,
@@ -62,6 +61,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   const handleEditClick = () => {
     setEditingGlossaryTerms(glossaryTerms);
     startEditing();
+    setPopoverOpen(true);
   };
 
   const handleGlossaryTermSelection = useCallback(
@@ -120,6 +120,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
     setPopoverOpen(open);
     if (!open) {
       setEditingGlossaryTerms(glossaryTerms);
+      cancelEditing();
     }
   };
 
@@ -130,11 +131,11 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
 
   const loadingState = useMemo(() => <Loader size="small" />, []);
 
-  const editingState = useMemo(
+  const editButton = useMemo(
     () => (
       <GlossaryTermSelectableList
         popoverProps={{
-          placement: 'bottomLeft',
+          placement: 'topRight',
           open: popoverOpen,
           onOpenChange: handlePopoverOpenChange,
           overlayClassName: 'glossary-term-select-popover',
@@ -142,20 +143,17 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
         selectedTerms={editingGlossaryTerms}
         onCancel={handleCancel}
         onUpdate={handleGlossaryTermSelection}>
-        <div className="d-none glossary-term-selector-display">
-          {editingGlossaryTerms.length > 0 && isEditing && (
-            <div className="selected-glossary-terms-list">
-              {editingGlossaryTerms.map((term) => (
-                <div className="selected-glossary-term-chip" key={term.tagFQN}>
-                  <GlossaryIcon className="glossary-term-icon" />
-                  <span className="glossary-term-name">
-                    {getEntityName(term)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <EditIconButton
+          newLook
+          data-testid="edit-glossary-terms"
+          disabled={false}
+          icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+          size="small"
+          title={t('label.edit-entity', {
+            entity: t('label.glossary-term-plural'),
+          })}
+          onClick={handleEditClick}
+        />
       </GlossaryTermSelectableList>
     ),
     [
@@ -164,7 +162,8 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
       editingGlossaryTerms,
       handleCancel,
       handleGlossaryTermSelection,
-      isEditing,
+      handleEditClick,
+      t,
     ]
   );
 
@@ -172,45 +171,98 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
     if (isLoading) {
       return loadingState;
     }
-    if (isEditing) {
-      return editingState;
-    }
 
     return (
-      <span className="no-data-placeholder">
+      <Box
+        component="span"
+        sx={{
+          color: theme.palette.allShades.gray[500],
+          fontSize: '12px',
+        }}>
         {t('label.no-entity-assigned', {
           entity: t('label.glossary-term-plural'),
         })}
-      </span>
+      </Box>
     );
-  }, [isLoading, isEditing, loadingState, editingState, t]);
+  }, [isLoading, loadingState, t, theme]);
 
   const glossaryTermsDisplay = useMemo(
     () => (
-      <div className="glossary-terms-display">
-        <div className="glossary-terms-list">
+      <Box>
+        <Box
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '8px',
+          }}>
           {(showAllTerms
             ? glossaryTerms
             : glossaryTerms.slice(0, maxVisibleGlossaryTerms)
           ).map((glossaryTerm, index) => (
-            <div
-              className="glossary-term-item"
+            <Box
               data-testid={`tag-${
                 glossaryTerm.tagFQN ||
                 glossaryTerm.name ||
                 glossaryTerm.displayName ||
                 index
               }`}
-              key={glossaryTerm.tagFQN}>
+              key={glossaryTerm.tagFQN}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '5px 6px',
+                height: '26px',
+                borderRadius: '8px',
+                minWidth: 0,
+                backgroundColor: theme.palette.allShades.blueGray[75],
+                border: `1px solid ${theme.palette.allShades.blueGray[150]}`,
+                '& .glossary-term-icon': {
+                  width: '12px',
+                  height: '12px',
+                  color: theme.palette.allShades.gray[800],
+                  flexShrink: 0,
+                },
+              }}>
               <GlossaryIcon className="glossary-term-icon" />
-              <span className="glossary-term-name">
+              <Box
+                component="span"
+                sx={{
+                  color: theme.palette.allShades.gray[800],
+                  fontSize: '12px',
+                  fontWeight: 400,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}>
                 {getEntityName(glossaryTerm)}
-              </span>
-            </div>
+              </Box>
+            </Box>
           ))}
           {glossaryTerms.length > maxVisibleGlossaryTerms && (
-            <button
-              className="show-more-terms-button"
+            <Box
+              component="button"
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                padding: 0,
+                height: 'auto',
+                width: '100%',
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: theme.palette.primary.main,
+                fontSize: '12px',
+                fontWeight: 400,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  textDecoration: 'underline',
+                },
+                '&:focus': {
+                  outline: 'none',
+                },
+              }}
               type="button"
               onClick={() => setShowAllTerms(!showAllTerms)}>
               {showAllTerms
@@ -218,10 +270,10 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
                 : `+${glossaryTerms.length - maxVisibleGlossaryTerms} ${t(
                     'label.more-lowercase'
                   )}`}
-            </button>
+            </Box>
           )}
-        </div>
-      </div>
+        </Box>
+      </Box>
     ),
     [showAllTerms, glossaryTerms, maxVisibleGlossaryTerms, t]
   );
@@ -230,73 +282,86 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
     if (isLoading) {
       return loadingState;
     }
-    if (isEditing) {
-      return editingState;
-    }
 
     return glossaryTermsDisplay;
-  }, [isLoading, isEditing, loadingState, editingState, glossaryTermsDisplay]);
+  }, [isLoading, loadingState, glossaryTermsDisplay]);
 
   const canShowEditButton = showEditButton && hasPermission && !isLoading;
 
   if (!glossaryTerms?.length) {
     return (
-      <div
-        className="glossary-terms-section"
-        data-testid="KnowledgePanel.GlossaryTerms">
-        <div className="glossary-terms-header">
-          <Typography.Text className="glossary-terms-title">
+      <Box
+        data-testid="glossary-terms-section"
+        sx={{
+          borderBottom: `0.6px solid ${theme.palette.allShades.gray[200]}`,
+        }}>
+        <Box
+          sx={{
+            display: 'flex',
+            gap: '8px',
+            alignItems: 'center',
+            marginBottom: '12px',
+            paddingLeft: '14px',
+            paddingRight: '14px',
+          }}>
+          <Typography
+            sx={{
+              fontWeight: 600,
+              color: theme.palette.allShades.gray[900],
+              fontSize: '13px',
+            }}>
             {t('label.glossary-term-plural')}
-          </Typography.Text>
-          {canShowEditButton && (
-            <EditIconButton
-              newLook
-              data-testid="edit-glossary-terms"
-              disabled={false}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-              size="small"
-              title={t('label.edit-entity', {
-                entity: t('label.glossary-term-plural'),
-              })}
-              onClick={handleEditClick}
-            />
-          )}
-        </div>
-        <div
-          className="glossary-terms-content"
-          data-testid="glossary-container">
+          </Typography>
+          {canShowEditButton && editButton}
+        </Box>
+        <Box
+          data-testid="glossary-container"
+          sx={{
+            paddingLeft: '14px',
+            paddingRight: '14px',
+            paddingBottom: '16px',
+          }}>
           {emptyContent}
-        </div>
-      </div>
+        </Box>
+      </Box>
     );
   }
 
   return (
-    <div
-      className="glossary-terms-section"
-      data-testid="KnowledgePanel.GlossaryTerms">
-      <div className="glossary-terms-header">
-        <Typography.Text className="glossary-terms-title">
+    <Box
+      data-testid="glossary-terms-section"
+      sx={{
+        borderBottom: `0.6px solid ${theme.palette.allShades.gray[200]}`,
+      }}>
+      <Box
+        sx={{
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'center',
+          marginBottom: '12px',
+          paddingLeft: '14px',
+          paddingRight: '14px',
+        }}>
+        <Typography
+          sx={{
+            fontWeight: 600,
+            color: theme.palette.allShades.gray[900],
+            fontSize: '13px',
+          }}>
           {t('label.glossary-term-plural')}
-        </Typography.Text>
-        {canShowEditButton && (
-          <EditIconButton
-            newLook
-            data-testid="edit-glossary-terms"
-            disabled={false}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-            size="small"
-            title={t('label.edit-entity', {
-              entity: t('label.glossary-term-plural'),
-            })}
-            onClick={handleEditClick}
-          />
-        )}
-      </div>
-      <div className="glossary-terms-content" data-testid="glossary-container">
+        </Typography>
+        {canShowEditButton && editButton}
+      </Box>
+      <Box
+        data-testid="glossary-container"
+        sx={{
+          paddingLeft: '14px',
+          paddingRight: '14px',
+          paddingBottom: '16px',
+        }}>
         {glossaryTermsContent}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 

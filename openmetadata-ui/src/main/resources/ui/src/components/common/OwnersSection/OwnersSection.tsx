@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Box, Typography, useTheme } from '@mui/material';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -24,7 +24,6 @@ import Loader from '../Loader/Loader';
 import { OwnerLabel } from '../OwnerLabel/OwnerLabel.component';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
 import { OwnersSectionProps } from './OwnersSection.interface';
-import './OwnersSection.less';
 
 const OwnersSection: React.FC<OwnersSectionProps> = ({
   owners = [],
@@ -35,6 +34,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
   onOwnerUpdate,
 }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const [editingOwners, setEditingOwners] = useState<EntityReference[]>([]);
   const { entityRules } = useEntityRules(entityType);
   const {
@@ -104,6 +104,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
     setPopoverOpen(open);
     if (!open) {
       setEditingOwners(displayOwners);
+      cancelEditing();
     }
   };
 
@@ -126,19 +127,31 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
           cancelEditing();
         }}
         onUpdate={handleOwnerSelection}>
-        <div className="owner-selector-display">
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '8px',
+          }}>
           {editingOwners.length > 0 && (
-            <div className="selected-owners-list">
+            <Box sx={{ display: 'none' }}>
               {editingOwners.map((owner) => (
-                <div className="selected-owner-chip" key={owner.id}>
-                  <span className="owner-name">
+                <Box key={owner.id}>
+                  <Box
+                    component="span"
+                    sx={{
+                      fontWeight: 500,
+                      fontSize: '12px',
+                      color: '#21263c',
+                    }}>
                     {owner.displayName || owner.name}
-                  </span>
-                </div>
+                  </Box>
+                </Box>
               ))}
-            </div>
+            </Box>
           )}
-        </div>
+        </Box>
       </UserTeamSelectableList>
     ),
     [
@@ -147,6 +160,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
       popoverOpen,
       handlePopoverOpenChange,
       handleOwnerSelection,
+      entityRules,
     ]
   );
 
@@ -159,17 +173,22 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
     }
 
     return (
-      <span className="no-data-placeholder">
+      <Box
+        component="span"
+        sx={{
+          color: (theme) => theme.palette.allShades.gray[500],
+          fontSize: '12px',
+        }}>
         {t('label.no-entity-assigned', {
           entity: t('label.owner-plural'),
         })}
-      </span>
+      </Box>
     );
   }, [isLoading, isEditing, editingState, t]);
 
   const ownersDisplay = useMemo(
     () => (
-      <div className="owners-display">
+      <Box>
         <OwnerLabel
           className="owner-label-section"
           hasPermission={hasPermission}
@@ -179,7 +198,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
           placement="vertical"
           showLabel={false}
         />
-      </div>
+      </Box>
     ),
     [hasPermission, displayOwners]
   );
@@ -199,11 +218,28 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
 
   if (!displayOwners.length) {
     return (
-      <div className="owners-section">
-        <div className="owners-header">
-          <Typography.Text className="owners-title">
+      <Box
+        sx={{
+          borderBottom: `0.6px solid ${theme.palette.allShades.gray[200]}`,
+          paddingBottom: '16px',
+        }}>
+        <Box
+          sx={{
+            display: 'flex',
+            gap: '8px',
+            alignItems: 'center',
+            marginBottom: '12px',
+            paddingLeft: '14px',
+            paddingRight: '14px',
+          }}>
+          <Typography
+            sx={{
+              fontWeight: 600,
+              fontSize: '13px',
+              color: (theme) => theme.palette.allShades.gray[900],
+            }}>
             {t('label.owner-plural')}
-          </Typography.Text>
+          </Typography>
           {canShowEditButton && (
             <EditIconButton
               newLook
@@ -217,18 +253,41 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
               onClick={handleEditClick}
             />
           )}
-        </div>
-        <div className="owners-content">{emptyContent}</div>
-      </div>
+        </Box>
+        <Box
+          sx={{
+            paddingLeft: '14px',
+            paddingRight: '14px',
+          }}>
+          {emptyContent}
+        </Box>
+      </Box>
     );
   }
 
   return (
-    <div className="owners-section">
-      <div className="owners-header">
-        <Typography.Text className="owners-title">
+    <Box
+      sx={{
+        borderBottom: `0.6px solid ${theme.palette.allShades.gray[200]}`,
+        paddingBottom: '16px',
+      }}>
+      <Box
+        sx={{
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'center',
+          marginBottom: '12px',
+          paddingLeft: '14px',
+          paddingRight: '14px',
+        }}>
+        <Typography
+          sx={{
+            fontWeight: 600,
+            fontSize: '13px',
+            color: (theme) => theme.palette.allShades.gray[900],
+          }}>
           {t('label.owner-plural')}
-        </Typography.Text>
+        </Typography>
         {canShowEditButton && (
           <EditIconButton
             newLook
@@ -242,9 +301,15 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
             onClick={handleEditClick}
           />
         )}
-      </div>
-      <div className="owners-content">{ownersContent}</div>
-    </div>
+      </Box>
+      <Box
+        sx={{
+          paddingLeft: '14px',
+          paddingRight: '14px',
+        }}>
+        {ownersContent}
+      </Box>
+    </Box>
   );
 };
 
