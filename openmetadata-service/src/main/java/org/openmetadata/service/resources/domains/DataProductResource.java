@@ -61,7 +61,7 @@ import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.services.ServiceRegistry;
@@ -77,7 +77,7 @@ import org.openmetadata.service.services.domains.DataProductService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "dataProducts", order = 4) // initialize after user resource
-public class DataProductResource extends EntityResource<DataProduct, DataProductRepository> {
+public class DataProductResource extends EntityBaseService<DataProduct, DataProductRepository> {
   public static final String COLLECTION_PATH = "/v1/dataProducts/";
   static final String FIELDS =
       "domains,owners,reviewers,experts,extension,tags,followers,inputPorts,outputPorts";

@@ -137,7 +137,7 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
@@ -177,7 +177,7 @@ import org.openmetadata.service.util.email.TemplateConstants;
     name = "users",
     order = 3,
     requiredForOps = true) // Initialize user resource before bot resource (at default order 9)
-public class UserResource extends EntityResource<User, UserRepository> {
+public class UserResource extends EntityBaseService<User, UserRepository> {
   public static final String COLLECTION_PATH = "v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
   private final JWTTokenGenerator jwtTokenGenerator;

@@ -1,6 +1,6 @@
 package org.openmetadata.service.resources.ai;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.services.ml.LLMModelService.FIELDS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,7 +31,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.ai.CreateLLMModel;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -39,16 +38,9 @@ import org.openmetadata.schema.entity.ai.LLMModel;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.LLMModelRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.ml.LLMModelService;
 
 @Path("/v1/llmModels")
@@ -59,30 +51,12 @@ import org.openmetadata.service.services.ml.LLMModelService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "llmModels")
-public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepository> {
+public class LLMModelResource {
   public static final String COLLECTION_PATH = "v1/llmModels/";
   private final LLMModelService service;
-  static final String FIELDS = "owners,followers,tags,extension,domains";
 
-  @Override
-  public LLMModel addHref(UriInfo uriInfo, LLMModel llmModel) {
-    super.addHref(uriInfo, llmModel);
-    Entity.withHref(uriInfo, llmModel.getService());
-    return llmModel;
-  }
-
-  public LLMModelResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.LLM_MODEL, authorizer, limits);
-    this.service = serviceRegistry.getService(LLMModelService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
-  }
-
-  public static class LLMModelList extends ResultList<LLMModel> {
-    /* Required for serde */
+  public LLMModelResource(LLMModelService service) {
+    this.service = service;
   }
 
   @GET
@@ -101,7 +75,7 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = LLMModelList.class)))
+                    schema = @Schema(implementation = LLMModelService.LLMModelList.class)))
       })
   public ResultList<LLMModel> list(
       @Context UriInfo uriInfo,
@@ -139,7 +113,7 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -176,7 +150,7 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -214,7 +188,7 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @POST
@@ -238,7 +212,7 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
       @Valid CreateLLMModel create) {
     LLMModel llmModel =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, llmModel);
+    return service.create(uriInfo, securityContext, llmModel);
   }
 
   @PATCH
@@ -267,7 +241,7 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -296,7 +270,7 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -320,7 +294,7 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
       @Valid CreateLLMModel create) {
     LLMModel llmModel =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, llmModel);
+    return service.createOrUpdate(uriInfo, securityContext, llmModel);
   }
 
   @PUT
@@ -349,7 +323,7 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
+    return service
         .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
         .toResponse();
   }
@@ -380,7 +354,7 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
+    return service
         .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
         .toResponse();
   }
@@ -406,7 +380,7 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
       @Parameter(description = "Id of the LLM Model", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -438,7 +412,7 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @DELETE
@@ -461,7 +435,7 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
       @Parameter(description = "Id of the LLM Model", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return service.delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -489,7 +463,7 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
       @Parameter(description = "Name of the LLM Model", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @DELETE
@@ -517,7 +491,7 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
       @Parameter(description = "Id of the LLM Model", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @PUT
@@ -539,6 +513,6 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

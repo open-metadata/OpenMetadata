@@ -57,7 +57,7 @@ import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.tags.ClassificationService;
@@ -78,7 +78,7 @@ import org.openmetadata.service.services.tags.ClassificationService;
     name = "classifications",
     order = 4) // Initialize before TagResource, Glossary, and GlossaryTerms
 public class ClassificationResource
-    extends EntityResource<Classification, ClassificationRepository> {
+    extends EntityBaseService<Classification, ClassificationRepository> {
   public static final String TAG_COLLECTION_PATH = "/v1/classifications/";
   static final String FIELDS = "owners,reviewers,usageCount,termCount,autoClassificationConfig";
   private final ClassificationService service;

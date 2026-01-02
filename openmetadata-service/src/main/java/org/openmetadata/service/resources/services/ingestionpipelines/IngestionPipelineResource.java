@@ -89,7 +89,7 @@ import org.openmetadata.service.logstorage.LogStorageFactory;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.monitoring.StreamableLogsMetrics;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
@@ -110,7 +110,7 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "IngestionPipelines")
 public class IngestionPipelineResource
-    extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
+    extends EntityBaseService<IngestionPipeline, IngestionPipelineRepository> {
   private IngestionPipelineMapper mapper;
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private PipelineServiceClientInterface pipelineServiceClient;

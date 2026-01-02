@@ -63,7 +63,7 @@ import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.glossary.GlossaryService;
@@ -78,7 +78,7 @@ import org.openmetadata.service.util.CSVExportResponse;
 @Collection(
     name = "glossaries",
     order = 6) // Initialize before GlossaryTerm and after Classification and Tags
-public class GlossaryResource extends EntityResource<Glossary, GlossaryRepository> {
+public class GlossaryResource extends EntityBaseService<Glossary, GlossaryRepository> {
   public static final String COLLECTION_PATH = "v1/glossaries/";
   static final String FIELDS = "owners,tags,reviewers,usageCount,termCount,domains,extension";
   private final GlossaryService service;

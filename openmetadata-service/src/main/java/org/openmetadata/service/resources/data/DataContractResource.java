@@ -70,7 +70,7 @@ import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -86,7 +86,7 @@ import org.openmetadata.service.util.RestUtil;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes({MediaType.APPLICATION_JSON, "application/yaml", "text/yaml"})
 @Collection(name = "dataContracts")
-public class DataContractResource extends EntityResource<DataContract, DataContractRepository> {
+public class DataContractResource extends EntityBaseService<DataContract, DataContractRepository> {
   public static final String COLLECTION_PATH = "v1/dataContracts/";
   static final String FIELDS = "owners,reviewers,extension";
 

@@ -66,7 +66,7 @@ import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.CollectionRegistry;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
 import org.openmetadata.service.services.ServiceRegistry;
@@ -81,7 +81,7 @@ import org.openmetadata.service.services.policies.PolicyService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "policies", order = 0, requiredForOps = true)
-public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
+public class PolicyResource extends EntityBaseService<Policy, PolicyRepository> {
   public static final String COLLECTION_PATH = "v1/policies/";
   public static final String FIELDS = "owners,location,teams,roles";
   private final PolicyService service;

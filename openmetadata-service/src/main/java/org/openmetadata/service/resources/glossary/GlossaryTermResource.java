@@ -71,7 +71,7 @@ import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
@@ -96,7 +96,7 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 @Collection(
     name = "glossaryTerms",
     order = 7) // Initialized after Glossary, Classification, and Tags
-public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryTermRepository> {
+public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, GlossaryTermRepository> {
   public static final String COLLECTION_PATH = "v1/glossaryTerms/";
   static final String FIELDS =
       "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount";

@@ -49,7 +49,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.ReportRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -62,7 +62,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "reports")
-public class ReportResource extends EntityResource<Report, ReportRepository> {
+public class ReportResource extends EntityBaseService<Report, ReportRepository> {
   public static final String COLLECTION_PATH = "/v1/reports/";
   static final String FIELDS = "owners,usageSummary";
 

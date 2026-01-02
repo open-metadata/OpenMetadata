@@ -32,7 +32,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.datainsight.DataInsightSystemChartService;
@@ -49,7 +49,7 @@ import org.slf4j.LoggerFactory;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")
 public class DataInsightSystemChartResource
-    extends EntityResource<DataInsightCustomChart, DataInsightSystemChartRepository> {
+    extends EntityBaseService<DataInsightCustomChart, DataInsightSystemChartRepository> {
   public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/system/charts";
   private static final Logger LOG = LoggerFactory.getLogger(DataInsightSystemChartResource.class);
   private DataInsightSystemChartService dataInsightSystemChartService;

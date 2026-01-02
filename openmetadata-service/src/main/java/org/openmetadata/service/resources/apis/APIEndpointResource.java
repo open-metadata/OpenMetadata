@@ -57,7 +57,7 @@ import org.openmetadata.service.jdbi3.APIEndpointRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.apis.APIEndpointService;
@@ -70,7 +70,7 @@ import org.openmetadata.service.services.apis.APIEndpointService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "apiEndpoints")
-public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpointRepository> {
+public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpointRepository> {
   public static final String COLLECTION_PATH = "v1/apiEndpoints/";
   private final APIEndpointService service;
 

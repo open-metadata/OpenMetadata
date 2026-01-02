@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.analytics;
 
+import static org.openmetadata.service.services.analytics.WebAnalyticEventService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,14 +32,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
-import java.util.regex.Pattern;
 import lombok.NonNull;
-import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.analytics.CustomEvent;
-import org.openmetadata.schema.analytics.PageViewData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
 import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
@@ -45,57 +41,24 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateWebAnalyticEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.analytics.WebAnalyticEventService;
 
-@Slf4j
 @Path("/v1/analytics/web/events")
 @Tag(name = "Data Insights", description = "APIs related to Data Insights data and charts.")
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")
-public class WebAnalyticEventResource
-    extends EntityResource<WebAnalyticEvent, WebAnalyticEventRepository> {
+public class WebAnalyticEventResource {
   public static final String COLLECTION_PATH = WebAnalyticEventRepository.COLLECTION_PATH;
-  static final String FIELDS = "owners";
-  private static final Pattern HTML_PATTERN = Pattern.compile(".*\\<[^>]+>.*", Pattern.DOTALL);
   private final WebAnalyticEventService service;
 
-  public WebAnalyticEventResource(
-      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.WEB_ANALYTIC_EVENT, authorizer, limits);
-    this.service = serviceRegistry.getService(WebAnalyticEventService.class);
-  }
-
-  public static class WebAnalyticEventList extends ResultList<WebAnalyticEvent> {
-    /* Required for serde */
-  }
-
-  public static class WebAnalyticEventDataList extends ResultList<WebAnalyticEventData> {
-    /* Required for serde */
-  }
-
-  @Override
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    // Find the existing webAnalyticEventTypes and add them from json files
-    List<WebAnalyticEvent> webAnalyticEvents =
-        repository.getEntitiesFromSeedData(".*json/data/analytics/webAnalyticEvents/.*\\.json$");
-    for (WebAnalyticEvent webAnalyticEvent : webAnalyticEvents) {
-      repository.initializeEntity(webAnalyticEvent);
-    }
+  public WebAnalyticEventResource(WebAnalyticEventService service) {
+    this.service = service;
   }
 
   @GET
@@ -115,7 +78,7 @@ public class WebAnalyticEventResource
                     mediaType = "application/json",
                     schema =
                         @Schema(
-                            implementation = WebAnalyticEventResource.WebAnalyticEventList.class)))
+                            implementation = WebAnalyticEventService.WebAnalyticEventList.class)))
       })
   public ResultList<WebAnalyticEvent> list(
       @Context UriInfo uriInfo,
@@ -150,7 +113,7 @@ public class WebAnalyticEventResource
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -175,7 +138,7 @@ public class WebAnalyticEventResource
       @Valid CreateWebAnalyticEvent create) {
     WebAnalyticEvent webAnalyticEvent =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, webAnalyticEvent);
+    return service.create(uriInfo, securityContext, webAnalyticEvent);
   }
 
   @PUT
@@ -198,7 +161,7 @@ public class WebAnalyticEventResource
       @Valid CreateWebAnalyticEvent create) {
     WebAnalyticEvent webAnalyticEvent =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, webAnalyticEvent);
+    return service.createOrUpdate(uriInfo, securityContext, webAnalyticEvent);
   }
 
   @GET
@@ -236,7 +199,7 @@ public class WebAnalyticEventResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @PATCH
@@ -265,7 +228,7 @@ public class WebAnalyticEventResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -294,7 +257,7 @@ public class WebAnalyticEventResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
@@ -319,7 +282,7 @@ public class WebAnalyticEventResource
       @Parameter(description = "Id of the web analytic event", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return service.delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -344,7 +307,7 @@ public class WebAnalyticEventResource
       @Parameter(description = "Id of the web analytic event", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -371,7 +334,7 @@ public class WebAnalyticEventResource
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
@@ -393,7 +356,7 @@ public class WebAnalyticEventResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET
@@ -433,7 +396,7 @@ public class WebAnalyticEventResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -457,7 +420,7 @@ public class WebAnalyticEventResource
       @Parameter(description = "Id of the web analytic event", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -490,7 +453,7 @@ public class WebAnalyticEventResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @PUT
@@ -512,8 +475,7 @@ public class WebAnalyticEventResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid WebAnalyticEventData webAnalyticEventData) {
-
-    return repository.addWebAnalyticEventData(sanitizeWebAnalyticEventData(webAnalyticEventData));
+    return service.addWebAnalyticEventData(webAnalyticEventData);
   }
 
   @DELETE
@@ -540,9 +502,7 @@ public class WebAnalyticEventResource
               schema = @Schema(type = "long"))
           @PathParam("timestamp")
           Long timestamp) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name.value()));
-    repository.deleteWebAnalyticEventData(name, timestamp);
+    service.deleteWebAnalyticEventData(securityContext, name, timestamp);
     return Response.ok().build();
   }
 
@@ -559,7 +519,10 @@ public class WebAnalyticEventResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = WebAnalyticEventDataList.class)))
+                    schema =
+                        @Schema(
+                            implementation =
+                                WebAnalyticEventService.WebAnalyticEventDataList.class)))
       })
   public ResultList<WebAnalyticEventData> listWebAnalyticEventData(
       @Context SecurityContext securityContext,
@@ -581,38 +544,6 @@ public class WebAnalyticEventResource
           @NonNull
           @QueryParam("endTs")
           Long endTs) {
-    return repository.getWebAnalyticEventData(eventType, startTs, endTs);
-  }
-
-  public static WebAnalyticEventData sanitizeWebAnalyticEventData(
-      WebAnalyticEventData webAnalyticEventDataInput) {
-    Object inputData = webAnalyticEventDataInput.getEventData();
-    if (webAnalyticEventDataInput.getEventType().equals(WebAnalyticEventType.PAGE_VIEW)) {
-      // Validate Json as Page View Data
-      PageViewData pageViewData = JsonUtils.convertValue(inputData, PageViewData.class);
-      webAnalyticEventDataInput.setEventData(pageViewData);
-    } else if (webAnalyticEventDataInput.getEventType().equals(WebAnalyticEventType.CUSTOM_EVENT)) {
-      // Validate Json as type Custom Event
-      CustomEvent customEventData = JsonUtils.convertValue(inputData, CustomEvent.class);
-      if (customEventData.getEventType().equals(CustomEvent.CustomEventTypes.CLICK)) {
-        if (containsHtml(customEventData.getEventValue())) {
-          throw new IllegalArgumentException("Invalid event value for custom event.");
-        }
-        webAnalyticEventDataInput.setEventData(customEventData);
-      } else {
-        throw new IllegalArgumentException("Invalid event type for custom event");
-      }
-    } else {
-      throw new IllegalArgumentException("Invalid event type for Web Analytic Event Data");
-    }
-
-    return webAnalyticEventDataInput;
-  }
-
-  public static boolean containsHtml(String input) {
-    if (input == null || input.isEmpty()) {
-      return false;
-    }
-    return HTML_PATTERN.matcher(input).matches();
+    return service.getWebAnalyticEventData(eventType, startTs, endTs);
   }
 }

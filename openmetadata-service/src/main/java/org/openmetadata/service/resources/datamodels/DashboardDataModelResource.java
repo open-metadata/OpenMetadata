@@ -61,7 +61,7 @@ import org.openmetadata.service.jdbi3.DashboardDataModelRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.services.ServiceRegistry;
@@ -76,7 +76,7 @@ import org.openmetadata.service.services.dashboards.DashboardDataModelService;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "datamodels")
 public class DashboardDataModelResource
-    extends EntityResource<DashboardDataModel, DashboardDataModelRepository> {
+    extends EntityBaseService<DashboardDataModel, DashboardDataModelRepository> {
   private final DashboardDataModelService dashboardDataModelService;
   public static final String COLLECTION_PATH = "/v1/dashboard/datamodels";
   protected static final String FIELDS = "owners,tags,followers,domains,sourceHash,extension";

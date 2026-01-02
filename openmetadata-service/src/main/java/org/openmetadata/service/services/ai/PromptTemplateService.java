@@ -13,39 +13,58 @@
 
 package org.openmetadata.service.services.ai;
 
+import jakarta.ws.rs.core.UriInfo;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.PromptTemplate;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.PromptTemplateRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.ai.PromptTemplateMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 
 /**
  * Service layer for PromptTemplate entity operations.
  *
- * <p>Extends AbstractEntityService to inherit all standard CRUD operations with proper
- * authorization and repository delegation.
+ * <p>Extends EntityBaseService to inherit all standard CRUD operations with proper authorization
+ * and repository delegation.
  */
 @Slf4j
 @Singleton
 @Service(entityType = Entity.PROMPT_TEMPLATE)
-public class PromptTemplateService extends AbstractEntityService<PromptTemplate> {
+public class PromptTemplateService
+    extends EntityBaseService<PromptTemplate, PromptTemplateRepository> {
 
   @Getter private final PromptTemplateMapper mapper;
+  public static final String FIELDS = "owners,followers,tags,extension,domains";
 
   @Inject
   public PromptTemplateService(
       PromptTemplateRepository repository,
-      SearchRepository searchRepository,
       Authorizer authorizer,
-      PromptTemplateMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.PROMPT_TEMPLATE);
+      PromptTemplateMapper mapper,
+      Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.PROMPT_TEMPLATE, PromptTemplate.class),
+        repository,
+        authorizer,
+        limits);
     this.mapper = mapper;
+  }
+
+  @Override
+  protected PromptTemplate addHref(UriInfo uriInfo, PromptTemplate promptTemplate) {
+    super.addHref(uriInfo, promptTemplate);
+    return promptTemplate;
+  }
+
+  public static class PromptTemplateList extends ResultList<PromptTemplate> {
+    /* Required for serde */
   }
 }

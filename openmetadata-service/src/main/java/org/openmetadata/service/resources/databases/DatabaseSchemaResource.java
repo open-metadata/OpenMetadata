@@ -65,7 +65,7 @@ import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.databases.DatabaseSchemaService;
@@ -80,7 +80,7 @@ import org.openmetadata.service.util.CSVExportResponse;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "databaseSchemas")
 public class DatabaseSchemaResource
-    extends EntityResource<DatabaseSchema, DatabaseSchemaRepository> {
+    extends EntityBaseService<DatabaseSchema, DatabaseSchemaRepository> {
   public static final String COLLECTION_PATH = "v1/databaseSchemas/";
   static final String FIELDS =
       "owners,tables,usageSummary,tags,certification,extension,domains,sourceHash,followers";

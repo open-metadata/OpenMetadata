@@ -17,7 +17,7 @@ import static org.openmetadata.schema.entity.app.ScheduleTimeline.HOURLY;
 import static org.openmetadata.schema.entity.app.ScheduleTimeline.MONTHLY;
 import static org.openmetadata.schema.entity.app.ScheduleTimeline.WEEKLY;
 import static org.openmetadata.service.Entity.APPLICATION;
-import static org.openmetadata.service.resources.EntityResource.getEntitiesFromSeedData;
+import static org.openmetadata.service.resources.EntityBaseService.getEntitiesFromSeedData;
 import static org.openmetadata.service.security.mask.PIIMasker.ADMIN_USER_NAME;
 
 import jakarta.ws.rs.core.UriInfo;

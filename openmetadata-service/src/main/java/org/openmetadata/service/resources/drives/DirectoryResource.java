@@ -62,7 +62,7 @@ import org.openmetadata.service.jdbi3.DirectoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.drives.DirectoryService;
@@ -75,7 +75,7 @@ import org.openmetadata.service.services.drives.DirectoryService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "directories")
-public class DirectoryResource extends EntityResource<Directory, DirectoryRepository> {
+public class DirectoryResource extends EntityBaseService<Directory, DirectoryRepository> {
   public static final String COLLECTION_PATH = "v1/drives/directories/";
   static final String FIELDS =
       "owners,children,parent,usageSummary,tags,extension,domains,sourceHash,lifeCycle,votes,followers,numberOfFiles,numberOfSubDirectories,totalSize,directoryType";

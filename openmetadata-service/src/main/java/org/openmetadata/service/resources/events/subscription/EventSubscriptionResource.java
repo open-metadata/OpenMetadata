@@ -83,7 +83,7 @@ import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.services.ServiceRegistry;
@@ -101,7 +101,7 @@ import org.quartz.SchedulerException;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "events/subscriptions", order = 7) // needs to initialize before applications
 public class EventSubscriptionResource
-    extends EntityResource<EventSubscription, EventSubscriptionRepository> {
+    extends EntityBaseService<EventSubscription, EventSubscriptionRepository> {
   public static final String COLLECTION_PATH = "/v1/events/subscriptions";
   public static final String FIELDS = "owners,filteringRules";
   private final EventSubscriptionService eventSubscriptionService;

@@ -69,7 +69,7 @@ import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.teams.TeamService;
@@ -88,7 +88,7 @@ import org.openmetadata.service.util.CSVExportResponse;
     name = "teams",
     order = 2,
     requiredForOps = true) // Load after roles, and policy resources
-public class TeamResource extends EntityResource<Team, TeamRepository> {
+public class TeamResource extends EntityBaseService<Team, TeamRepository> {
   public static final String COLLECTION_PATH = "/v1/teams/";
   private final TeamService service;
   static final String FIELDS =

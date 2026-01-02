@@ -58,7 +58,7 @@ import org.openmetadata.service.jdbi3.DomainRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.services.ServiceRegistry;
@@ -74,7 +74,7 @@ import org.openmetadata.service.util.EntityHierarchyList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "domains", order = 4) // initialize after user resource
-public class DomainResource extends EntityResource<Domain, DomainRepository> {
+public class DomainResource extends EntityBaseService<Domain, DomainRepository> {
   public static final String COLLECTION_PATH = "/v1/domains/";
   static final String FIELDS = "tags,children,childrenCount,owners,experts,extension,followers";
   private final DomainService service;

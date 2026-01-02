@@ -60,7 +60,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.metrics.MetricService;
@@ -74,7 +74,7 @@ import org.openmetadata.service.services.metrics.MetricService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "metrics")
-public class MetricResource extends EntityResource<Metric, MetricRepository> {
+public class MetricResource extends EntityBaseService<Metric, MetricRepository> {
   public static final String COLLECTION_PATH = "v1/metrics/";
   private final MetricService service;
   static final String FIELDS =

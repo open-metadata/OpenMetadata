@@ -45,7 +45,7 @@ import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.apps.AppMarketPlaceService;
@@ -59,7 +59,7 @@ import org.openmetadata.service.services.apps.AppMarketPlaceService;
 @Collection(name = "apps/marketplace", order = 7)
 @Slf4j
 public class AppMarketPlaceResource
-    extends EntityResource<AppMarketPlaceDefinition, AppMarketPlaceRepository> {
+    extends EntityBaseService<AppMarketPlaceDefinition, AppMarketPlaceRepository> {
   public static final String COLLECTION_PATH = "/v1/apps/marketplace/";
   private final AppMarketPlaceService appMarketPlaceService;
   static final String FIELDS = "owners,tags";

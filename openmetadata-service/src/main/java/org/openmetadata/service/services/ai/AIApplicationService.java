@@ -13,17 +13,24 @@
 
 package org.openmetadata.service.services.ai;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
+import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.AIApplication;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AIApplicationRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.ai.AIApplicationMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 
 /**
@@ -35,17 +42,39 @@ import org.openmetadata.service.services.Service;
 @Slf4j
 @Singleton
 @Service(entityType = Entity.AI_APPLICATION)
-public class AIApplicationService extends AbstractEntityService<AIApplication> {
-
+public class AIApplicationService
+    extends EntityBaseService<AIApplication, AIApplicationRepository> {
   @Getter private final AIApplicationMapper mapper;
+  public static final String FIELDS = "owners,followers,tags,extension,domains";
 
   @Inject
   public AIApplicationService(
       AIApplicationRepository repository,
-      SearchRepository searchRepository,
       Authorizer authorizer,
-      AIApplicationMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.AI_APPLICATION);
+      AIApplicationMapper mapper,
+      Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.AI_APPLICATION, AIApplication.class),
+        repository,
+        authorizer,
+        limits);
     this.mapper = mapper;
+  }
+
+  @Override
+  public AIApplication addHref(UriInfo uriInfo, AIApplication aiApplication) {
+    super.addHref(uriInfo, aiApplication);
+    Entity.withHref(uriInfo, aiApplication.getDataSources());
+    Entity.withHref(uriInfo, aiApplication.getPromptTemplates());
+    return aiApplication;
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
+  }
+
+  public static class AIApplicationList extends ResultList<AIApplication> {
+    /* Required for serde */
   }
 }

@@ -63,7 +63,7 @@ import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.databases.DatabaseService;
@@ -76,7 +76,7 @@ import org.openmetadata.service.util.CSVExportResponse;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "databases")
-public class DatabaseResource extends EntityResource<Database, DatabaseRepository> {
+public class DatabaseResource extends EntityBaseService<Database, DatabaseRepository> {
   public static final String COLLECTION_PATH = "v1/databases/";
   static final String FIELDS =
       "owners,databaseSchemas,usageSummary,location,tags,certification,extension,domains,sourceHash,followers";

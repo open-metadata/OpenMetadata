@@ -50,7 +50,7 @@ import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.kpi.KpiService;
@@ -62,7 +62,7 @@ import org.openmetadata.service.services.kpi.KpiService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "kpi")
-public class KpiResource extends EntityResource<Kpi, KpiRepository> {
+public class KpiResource extends EntityBaseService<Kpi, KpiRepository> {
   public static final String COLLECTION_PATH = "/v1/kpi";
   private final KpiService service;
   static final String FIELDS = "owners,dataInsightChart,kpiResult";

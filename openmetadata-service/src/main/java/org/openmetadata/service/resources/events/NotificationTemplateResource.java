@@ -66,7 +66,7 @@ import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
@@ -86,7 +86,7 @@ import org.openmetadata.service.util.RestUtil;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class NotificationTemplateResource
-    extends EntityResource<NotificationTemplate, NotificationTemplateRepository> {
+    extends EntityBaseService<NotificationTemplate, NotificationTemplateRepository> {
 
   public static final String COLLECTION_PATH = "/v1/notificationTemplates";
   public static final String FIELDS = "";

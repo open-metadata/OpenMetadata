@@ -50,7 +50,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -70,7 +70,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 @Collection(name = "governanceWorkflows")
 @Slf4j
 public class WorkflowDefinitionResource
-    extends EntityResource<WorkflowDefinition, WorkflowDefinitionRepository> {
+    extends EntityBaseService<WorkflowDefinition, WorkflowDefinitionRepository> {
   public static final String COLLECTION_PATH = "v1/governance/workflowDefinitions/";
   static final String FIELDS = "owners";
   private WorkflowDefinitionService workflowDefinitionService;

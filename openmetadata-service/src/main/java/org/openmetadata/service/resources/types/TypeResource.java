@@ -63,7 +63,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -85,7 +85,7 @@ import org.openmetadata.service.util.SchemaFieldExtractor;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "types")
 @Slf4j
-public class TypeResource extends EntityResource<Type, TypeRepository> {
+public class TypeResource extends EntityBaseService<Type, TypeRepository> {
   public static final String COLLECTION_PATH = "v1/metadata/types/";
   public SchemaFieldExtractor extractor;
   private TypeService typeService;

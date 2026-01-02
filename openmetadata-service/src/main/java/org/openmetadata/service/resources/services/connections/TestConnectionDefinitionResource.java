@@ -35,7 +35,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestConnectionDefinitionRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 
 @Slf4j
@@ -48,7 +48,7 @@ import org.openmetadata.service.security.Authorizer;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestConnectionDefinitions")
 public class TestConnectionDefinitionResource
-    extends EntityResource<TestConnectionDefinition, TestConnectionDefinitionRepository> {
+    extends EntityBaseService<TestConnectionDefinition, TestConnectionDefinitionRepository> {
   public static final String COLLECTION_PATH = "/v1/services/testConnectionDefinitions";
   static final String FIELDS = "owners";
 

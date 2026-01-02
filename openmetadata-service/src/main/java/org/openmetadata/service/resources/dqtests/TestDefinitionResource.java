@@ -47,7 +47,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestDefinitionRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.dqtests.TestDefinitionService;
@@ -63,7 +63,7 @@ import org.openmetadata.service.services.dqtests.TestDefinitionService;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestDefinitions")
 public class TestDefinitionResource
-    extends EntityResource<TestDefinition, TestDefinitionRepository> {
+    extends EntityBaseService<TestDefinition, TestDefinitionRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testDefinitions";
   static final String FIELDS = "owners";
   private final TestDefinitionService service;

@@ -16,10 +16,17 @@ package org.openmetadata.service.resources;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
+import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
+import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 import static org.openmetadata.service.util.EntityUtil.createOrUpdateOperation;
+import static org.openmetadata.service.util.EntityUtil.fieldAdded;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.MediaType;
@@ -38,15 +45,21 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -86,7 +99,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
-public abstract class EntityResource<T extends EntityInterface, K extends EntityRepository<T>> {
+public abstract class EntityBaseService<T extends EntityInterface, K extends EntityRepository<T>> {
   protected final Class<T> entityClass;
   protected final String entityType;
   protected final Set<String> allowedFields;
@@ -95,11 +108,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected final Limits limits;
   protected final Map<String, MetadataOperation> fieldsToViewOperations = new HashMap<>();
 
-  protected EntityResource(String entityType, Authorizer authorizer, Limits limits) {
-    this.entityType = entityType;
-    this.repository = (K) Entity.getEntityRepository(entityType);
-    this.entityClass = (Class<T>) Entity.getEntityClassFromType(entityType);
-    allowedFields = repository.getAllowedFields();
+  protected EntityBaseService(
+      ResourceEntityInfo<T> entityInfo, K repository, Authorizer authorizer, Limits limits) {
+    this.entityType = entityInfo.getEntityType();
+    this.repository = repository;
+    this.entityClass = entityInfo.getEntityClass();
+    this.allowedFields = entityInfo.getAllowedFields();
     this.authorizer = authorizer;
     this.limits = limits;
     addViewOperation(
@@ -289,7 +303,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return repository.getVersion(id, version);
   }
 
-  protected EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) {
+  public EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) {
     OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
     return listVersionsInternal(securityContext, id, operationContext, getResourceContextById(id));
   }
@@ -599,6 +613,81 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
             .build();
 
     return response;
+  }
+
+  @Transaction
+  public final PutResponse<T> addFollower(String updatedBy, UUID entityId, UUID userId) {
+    T entity = repository.find(entityId, NON_DELETED);
+
+    // Validate follower
+    User user = repository.getDaoCollection().userDAO().findEntityById(userId);
+    if (Boolean.TRUE.equals(user.getDeleted())) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.deletedUser(userId));
+    }
+
+    // Add relationship
+    repository.addRelationship(userId, entityId, USER, entityType, Relationship.FOLLOWS);
+
+    ChangeDescription change = new ChangeDescription().withPreviousVersion(entity.getVersion());
+    fieldAdded(change, FIELD_FOLLOWERS, List.of(user.getEntityReference()));
+
+    ChangeEvent changeEvent =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEntity(entity)
+            .withChangeDescription(change)
+            .withIncrementalChangeDescription(change)
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withEntityType(entityType)
+            .withEntityId(entityId)
+            .withEntityFullyQualifiedName(entity.getFullyQualifiedName())
+            .withUserName(updatedBy)
+            .withTimestamp(System.currentTimeMillis())
+            .withCurrentVersion(entity.getVersion())
+            .withPreviousVersion(change.getPreviousVersion());
+
+    entity.setIncrementalChangeDescription(change);
+    entity.setChangeDescription(change);
+    // Populate followers before postUpdate to ensure propagation to children
+    entity.setFollowers(repository.getFollowers(entity));
+    repository.postUpdate(entity, entity);
+    return new PutResponse<>(Response.Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
+  }
+
+  @Transaction
+  public final PutResponse<T> deleteFollower(String updatedBy, UUID entityId, UUID userId) {
+    T entity = repository.find(entityId, NON_DELETED);
+
+    // Validate follower
+    EntityReference user = getEntityReferenceById(USER, userId, NON_DELETED);
+
+    // Remove follower
+    repository.deleteRelationship(userId, USER, entityId, entityType, Relationship.FOLLOWS);
+
+    ChangeDescription change = new ChangeDescription().withPreviousVersion(entity.getVersion());
+    fieldDeleted(change, FIELD_FOLLOWERS, List.of(user));
+
+    ChangeEvent changeEvent =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEntity(entity)
+            .withChangeDescription(change)
+            .withIncrementalChangeDescription(change)
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withEntityFullyQualifiedName(entity.getFullyQualifiedName())
+            .withEntityType(entityType)
+            .withEntityId(entityId)
+            .withUserName(updatedBy)
+            .withTimestamp(System.currentTimeMillis())
+            .withCurrentVersion(entity.getVersion())
+            .withPreviousVersion(change.getPreviousVersion());
+
+    entity.setChangeDescription(change);
+    entity.setIncrementalChangeDescription(change);
+    // Populate followers before postUpdate to ensure propagation to children
+    entity.setFollowers(repository.getFollowers(entity));
+    repository.postUpdate(entity, entity);
+    return new PutResponse<>(Response.Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
   public Response deleteByName(

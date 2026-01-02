@@ -48,8 +48,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LLMConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.ai.AIApplicationResource.AIApplicationList;
 import org.openmetadata.service.resources.services.llm.LLMServiceResourceTest;
+import org.openmetadata.service.services.ai.AIApplicationService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -62,9 +62,9 @@ public class AIApplicationResourceTest
     super(
         Entity.AI_APPLICATION,
         AIApplication.class,
-        AIApplicationList.class,
+        AIApplicationService.AIApplicationList.class,
         "aiApplications",
-        AIApplicationResource.FIELDS);
+        AIApplicationService.FIELDS);
   }
 
   @BeforeAll

@@ -49,7 +49,7 @@ import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -64,7 +64,7 @@ import org.openmetadata.service.services.datainsight.DataInsightChartService;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")
 public class DataInsightChartResource
-    extends EntityResource<DataInsightChart, DataInsightChartRepository> {
+    extends EntityBaseService<DataInsightChart, DataInsightChartRepository> {
 
   private final DataInsightChartService service;
   public static final String COLLECTION_PATH = DataInsightChartRepository.COLLECTION_PATH;

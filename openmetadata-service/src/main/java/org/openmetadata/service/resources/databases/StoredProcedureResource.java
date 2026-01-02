@@ -30,7 +30,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.StoredProcedureRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.databases.StoredProcedureService;
@@ -44,7 +44,7 @@ import org.openmetadata.service.services.databases.StoredProcedureService;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "storedProcedures")
 public class StoredProcedureResource
-    extends EntityResource<StoredProcedure, StoredProcedureRepository> {
+    extends EntityBaseService<StoredProcedure, StoredProcedureRepository> {
   private StoredProcedureService storedProcedureService;
   public static final String COLLECTION_PATH = "v1/storedProcedures/";
   static final String FIELDS = "owners,tags,followers,votes,extension,domains,sourceHash";

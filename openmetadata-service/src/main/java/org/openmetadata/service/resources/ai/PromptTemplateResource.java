@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.ai;
 
+import static org.openmetadata.service.services.ai.PromptTemplateService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,14 +39,8 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.PromptTemplateRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.ai.PromptTemplateService;
 
 @Path("/v1/promptTemplates")
@@ -55,26 +51,12 @@ import org.openmetadata.service.services.ai.PromptTemplateService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "promptTemplates")
-public class PromptTemplateResource
-    extends EntityResource<PromptTemplate, PromptTemplateRepository> {
+public class PromptTemplateResource {
   public static final String COLLECTION_PATH = "v1/promptTemplates/";
   private final PromptTemplateService service;
-  static final String FIELDS = "owners,followers,tags,extension,domains";
 
-  @Override
-  public PromptTemplate addHref(UriInfo uriInfo, PromptTemplate promptTemplate) {
-    super.addHref(uriInfo, promptTemplate);
-    return promptTemplate;
-  }
-
-  public PromptTemplateResource(
-      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.PROMPT_TEMPLATE, authorizer, limits);
-    this.service = serviceRegistry.getService(PromptTemplateService.class);
-  }
-
-  public static class PromptTemplateList extends ResultList<PromptTemplate> {
-    /* Required for serde */
+  public PromptTemplateResource(PromptTemplateService service) {
+    this.service = service;
   }
 
   @GET
@@ -93,7 +75,8 @@ public class PromptTemplateResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = PromptTemplateList.class)))
+                    schema =
+                        @Schema(implementation = PromptTemplateService.PromptTemplateList.class)))
       })
   public ResultList<PromptTemplate> list(
       @Context UriInfo uriInfo,
@@ -126,7 +109,7 @@ public class PromptTemplateResource
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -163,7 +146,7 @@ public class PromptTemplateResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -201,7 +184,7 @@ public class PromptTemplateResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @POST
@@ -225,7 +208,7 @@ public class PromptTemplateResource
       @Valid CreatePromptTemplate create) {
     PromptTemplate promptTemplate =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, promptTemplate);
+    return service.create(uriInfo, securityContext, promptTemplate);
   }
 
   @PATCH
@@ -254,7 +237,7 @@ public class PromptTemplateResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -283,7 +266,7 @@ public class PromptTemplateResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -308,7 +291,7 @@ public class PromptTemplateResource
       @Valid CreatePromptTemplate create) {
     PromptTemplate promptTemplate =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, promptTemplate);
+    return service.createOrUpdate(uriInfo, securityContext, promptTemplate);
   }
 
   @PUT
@@ -337,7 +320,7 @@ public class PromptTemplateResource
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
+    return service
         .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
         .toResponse();
   }
@@ -368,7 +351,7 @@ public class PromptTemplateResource
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
+    return service
         .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
         .toResponse();
   }
@@ -394,7 +377,7 @@ public class PromptTemplateResource
       @Parameter(description = "Id of the Prompt Template", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -426,7 +409,7 @@ public class PromptTemplateResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @DELETE
@@ -449,7 +432,7 @@ public class PromptTemplateResource
       @Parameter(description = "Id of the Prompt Template", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return service.delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -477,7 +460,7 @@ public class PromptTemplateResource
       @Parameter(description = "Id of the Prompt Template", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -505,7 +488,7 @@ public class PromptTemplateResource
       @Parameter(description = "Name of the Prompt Template", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
@@ -527,6 +510,6 @@ public class PromptTemplateResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

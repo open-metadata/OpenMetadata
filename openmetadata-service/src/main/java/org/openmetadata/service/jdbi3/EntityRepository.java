@@ -1460,7 +1460,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @SuppressWarnings("unused")
-  protected void postUpdate(T original, T updated) {
+  public void postUpdate(T original, T updated) {
     EntityLifecycleEventDispatcher.getInstance()
         .onEntityUpdated(updated, updated.getChangeDescription(), null);
     RdfUpdater.updateEntity(updated);
@@ -2857,7 +2857,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         : daoCollection.tagUsageDAO().getTagsByPrefix(prefix, postfix, true);
   }
 
-  protected List<EntityReference> getFollowers(T entity) {
+  public List<EntityReference> getFollowers(T entity) {
     return !supportsFollower || entity == null
         ? Collections.emptyList()
         : findFrom(entity.getId(), entityType, Relationship.FOLLOWS, USER);

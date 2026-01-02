@@ -45,7 +45,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PersonaRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.teams.PersonaService;
@@ -60,7 +60,7 @@ import org.openmetadata.service.services.teams.PersonaService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "personas", order = 2)
-public class PersonaResource extends EntityResource<Persona, PersonaRepository> {
+public class PersonaResource extends EntityBaseService<Persona, PersonaRepository> {
   public static final String COLLECTION_PATH = "/v1/personas";
   static final String FIELDS = "users";
   private final PersonaService service;

@@ -60,7 +60,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MlModelRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.ml.MlModelService;
@@ -73,7 +73,7 @@ import org.openmetadata.service.services.ml.MlModelService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "mlmodels")
-public class MlModelResource extends EntityResource<MlModel, MlModelRepository> {
+public class MlModelResource extends EntityBaseService<MlModel, MlModelRepository> {
   public static final String COLLECTION_PATH = "v1/mlmodels/";
   private MlModelService mlModelService;
   static final String FIELDS =

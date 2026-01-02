@@ -60,7 +60,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorksheetRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.drives.WorksheetService;
@@ -72,7 +72,7 @@ import org.openmetadata.service.services.drives.WorksheetService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "worksheets")
-public class WorksheetResource extends EntityResource<Worksheet, WorksheetRepository> {
+public class WorksheetResource extends EntityBaseService<Worksheet, WorksheetRepository> {
   public static final String COLLECTION_PATH = "v1/drives/worksheets/";
   static final String FIELDS =
       "owners,spreadsheet,columns,sampleData,usageSummary,tags,extension,domains,sourceHash,lifeCycle,votes,followers,rowCount";

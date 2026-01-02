@@ -62,7 +62,7 @@ import org.openmetadata.service.jdbi3.DocumentRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.docstore.DocStoreService;
@@ -73,7 +73,7 @@ import org.openmetadata.service.services.docstore.DocStoreService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "knowledgePanel", order = 2)
-public class DocStoreResource extends EntityResource<Document, DocumentRepository> {
+public class DocStoreResource extends EntityBaseService<Document, DocumentRepository> {
   public static final String COLLECTION_PATH = "/v1/docStore";
   private DocStoreService docStoreService;
 

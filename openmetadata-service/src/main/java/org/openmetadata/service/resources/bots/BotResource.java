@@ -58,7 +58,7 @@ import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.bots.BotService;
@@ -73,7 +73,7 @@ import org.openmetadata.service.services.bots.BotService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "bots", order = 4, requiredForOps = true) // initialize after user resource
-public class BotResource extends EntityResource<Bot, BotRepository> {
+public class BotResource extends EntityBaseService<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
   private final BotService service;
 

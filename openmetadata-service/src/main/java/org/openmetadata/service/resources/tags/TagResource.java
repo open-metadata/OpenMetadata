@@ -63,7 +63,7 @@ import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 import org.openmetadata.service.jdbi3.TagRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.tags.ClassificationService;
@@ -85,7 +85,7 @@ import org.openmetadata.service.services.tags.TagService;
 @Collection(
     name = "tags",
     order = 5) // initialize after Classification, and before Glossary and GlossaryTerm
-public class TagResource extends EntityResource<Tag, TagRepository> {
+public class TagResource extends EntityBaseService<Tag, TagRepository> {
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
   static final String FIELDS =
       "owners,reviewers,domains,children,usageCount,recognizers,autoClassificationEnabled,autoClassificationPriority";

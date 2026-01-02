@@ -60,7 +60,7 @@ import org.openmetadata.service.jdbi3.ChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.dashboards.ChartService;
@@ -73,7 +73,7 @@ import org.openmetadata.service.services.dashboards.ChartService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "charts")
-public class ChartResource extends EntityResource<Chart, ChartRepository> {
+public class ChartResource extends EntityBaseService<Chart, ChartRepository> {
   public static final String COLLECTION_PATH = "v1/charts/";
   static final String FIELDS =
       "owners,followers,tags,domains,dataProducts,sourceHash,dashboards,extension";

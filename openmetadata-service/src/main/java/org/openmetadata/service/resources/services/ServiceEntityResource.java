@@ -30,7 +30,7 @@ import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsUtil;
@@ -41,7 +41,7 @@ public abstract class ServiceEntityResource<
         T extends ServiceEntityInterface,
         R extends ServiceEntityRepository<T, S>,
         S extends ServiceConnectionEntityInterface>
-    extends EntityResource<T, R> {
+    extends EntityBaseService<T, R> {
 
   @Getter private final ServiceEntityRepository<T, S> serviceEntityRepository;
 

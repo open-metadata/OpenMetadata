@@ -60,7 +60,7 @@ import org.openmetadata.service.jdbi3.APICollectionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.apis.APICollectionService;
@@ -73,7 +73,8 @@ import org.openmetadata.service.services.apis.APICollectionService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "apiCollections")
-public class APICollectionResource extends EntityResource<APICollection, APICollectionRepository> {
+public class APICollectionResource
+    extends EntityBaseService<APICollection, APICollectionRepository> {
   public static final String COLLECTION_PATH = "v1/apiCollections/";
   private final APICollectionService service;
   static final String FIELDS = "owners,apiEndpoints,tags,extension,domains,sourceHash";
