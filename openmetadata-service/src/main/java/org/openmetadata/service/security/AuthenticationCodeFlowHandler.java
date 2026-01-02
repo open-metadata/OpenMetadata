@@ -82,6 +82,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -95,6 +96,7 @@ import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -123,6 +125,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
   public static final String SESSION_REDIRECT_URI = "sessionRedirectUri";
+  public static final String SESSION_USER_ID = "userId";
+  public static final String SESSION_USERNAME = "username";
   public static final String REDIRECT_URI_KEY = "redirectUri";
 
   private static class Holder {
@@ -425,6 +429,18 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       HttpSession session = getHttpSession(httpServletRequest, false);
       LOG.debug("Performing application logout");
       if (session != null) {
+        // Write logout audit event before invalidating session
+        String userId = (String) session.getAttribute(SESSION_USER_ID);
+        String username = (String) session.getAttribute(SESSION_USERNAME);
+        if (userId != null && username != null && Entity.getAuditLogRepository() != null) {
+          try {
+            Entity.getAuditLogRepository()
+                .writeAuthEvent(
+                    AuditLogRepository.AUTH_EVENT_LOGOUT, username, UUID.fromString(userId));
+          } catch (Exception e) {
+            LOG.debug("Could not write logout audit event for user {}", username, e);
+          }
+        }
         LOG.debug("Invalidating the session for logout");
         session.invalidate();
         httpServletResponse.sendRedirect(serverUrl + "/logout");
@@ -734,6 +750,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     String redirectUri = (String) httpSession.getAttribute(SESSION_REDIRECT_URI);
     User user = getOrCreateOidcUser(userName, email);
     Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
+    // Store user info in session for logout audit
+    httpSession.setAttribute(SESSION_USER_ID, user.getId().toString());
+    httpSession.setAttribute(SESSION_USERNAME, user.getName());
+    if (Entity.getAuditLogRepository() != null) {
+      Entity.getAuditLogRepository()
+          .writeAuthEvent(AuditLogRepository.AUTH_EVENT_LOGIN, user.getName(), user.getId());
+    }
 
     String url =
         String.format(

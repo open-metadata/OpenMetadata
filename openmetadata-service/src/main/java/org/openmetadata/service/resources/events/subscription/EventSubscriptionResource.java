@@ -137,6 +137,8 @@ public class EventSubscriptionResource
           listOrEmpty(EventSubscriptionResource.getObservabilityFilterDescriptors()));
       repository.initSeedDataFromResources();
       initializeEventSubscriptions();
+      // Schedule the audit log consumer to read from change_event and write to audit_log
+      EventSubscriptionScheduler.getInstance().scheduleAuditLogConsumer();
     } catch (Exception ex) {
       // Starting application should not fail
       LOG.warn("Exception during initialization", ex);
