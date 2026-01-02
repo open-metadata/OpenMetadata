@@ -134,6 +134,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   if (!description?.trim()) {
     return (
       <Box
+        data-testid="description-section"
         sx={{
           marginTop: '12px',
           paddingLeft: '14px',
@@ -203,6 +204,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
 
   return (
     <Box
+      data-testid="description-section"
       sx={{
         marginTop: '12px',
         paddingLeft: '14px',

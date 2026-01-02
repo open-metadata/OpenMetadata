@@ -101,6 +101,7 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
 
   return (
     <Box
+      data-testid="overview-section"
       sx={{
         display: 'flex',
         flexDirection: 'column',
