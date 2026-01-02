@@ -22,8 +22,9 @@ import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.type.StorageConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.StorageServiceRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.services.storage.StorageServiceMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.Service;
 
@@ -38,10 +39,13 @@ public class StorageServiceEntityService
 
   @Inject
   public StorageServiceEntityService(
-      StorageServiceRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer) {
-    super(repository, searchRepository, authorizer, Entity.STORAGE_SERVICE, ServiceType.STORAGE);
+      StorageServiceRepository repository, Authorizer authorizer, Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.STORAGE_SERVICE, StorageService.class),
+        repository,
+        authorizer,
+        limits,
+        ServiceType.STORAGE);
   }
 
   @Override

@@ -22,8 +22,9 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.MessagingServiceRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.services.messaging.MessagingServiceMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.Service;
 
@@ -38,11 +39,13 @@ public class MessagingServiceEntityService
 
   @Inject
   public MessagingServiceEntityService(
-      MessagingServiceRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer) {
+      MessagingServiceRepository repository, Authorizer authorizer, Limits limits) {
     super(
-        repository, searchRepository, authorizer, Entity.MESSAGING_SERVICE, ServiceType.MESSAGING);
+        new ResourceEntityInfo<>(Entity.MESSAGING_SERVICE, MessagingService.class),
+        repository,
+        authorizer,
+        limits,
+        ServiceType.MESSAGING);
   }
 
   @Override

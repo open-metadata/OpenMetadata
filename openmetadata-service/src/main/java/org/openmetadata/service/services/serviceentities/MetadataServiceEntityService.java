@@ -22,8 +22,9 @@ import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.services.metadata.MetadataServiceMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.Service;
 
@@ -38,10 +39,13 @@ public class MetadataServiceEntityService
 
   @Inject
   public MetadataServiceEntityService(
-      MetadataServiceRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer) {
-    super(repository, searchRepository, authorizer, Entity.METADATA_SERVICE, ServiceType.METADATA);
+      MetadataServiceRepository repository, Authorizer authorizer, Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.METADATA_SERVICE, MetadataService.class),
+        repository,
+        authorizer,
+        limits,
+        ServiceType.METADATA);
   }
 
   @Override

@@ -22,8 +22,9 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.SecurityConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.SecurityServiceRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.services.security.SecurityServiceMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.Service;
 
@@ -38,10 +39,13 @@ public class SecurityServiceEntityService
 
   @Inject
   public SecurityServiceEntityService(
-      SecurityServiceRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer) {
-    super(repository, searchRepository, authorizer, Entity.SECURITY_SERVICE, ServiceType.SECURITY);
+      SecurityServiceRepository repository, Authorizer authorizer, Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.SECURITY_SERVICE, SecurityService.class),
+        repository,
+        authorizer,
+        limits,
+        ServiceType.SECURITY);
   }
 
   @Override

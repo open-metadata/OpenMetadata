@@ -22,8 +22,9 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.LLMConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.LLMServiceRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.services.llm.LLMServiceMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.Service;
 
@@ -37,8 +38,13 @@ public class LLMServiceEntityService
 
   @Inject
   public LLMServiceEntityService(
-      LLMServiceRepository repository, SearchRepository searchRepository, Authorizer authorizer) {
-    super(repository, searchRepository, authorizer, Entity.LLM_SERVICE, ServiceType.LLM);
+      LLMServiceRepository repository, Authorizer authorizer, Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.LLM_SERVICE, LLMService.class),
+        repository,
+        authorizer,
+        limits,
+        ServiceType.LLM);
   }
 
   @Override

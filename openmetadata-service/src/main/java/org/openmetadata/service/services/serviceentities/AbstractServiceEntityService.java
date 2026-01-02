@@ -21,17 +21,18 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
-import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.AbstractEntityService;
 
 /**
  * Abstract base class for service entity services (DatabaseService, DashboardService, etc.).
  *
- * <p>Extends AbstractEntityService to inherit standard CRUD operations and adds service-specific
+ * <p>Extends EntityBaseService to inherit standard CRUD operations and adds service-specific
  * functionality like connection encryption/decryption and test connection handling.
  *
  * @param <T> The service entity type implementing ServiceEntityInterface
@@ -43,19 +44,17 @@ public abstract class AbstractServiceEntityService<
         T extends ServiceEntityInterface,
         R extends ServiceEntityRepository<T, S>,
         S extends ServiceConnectionEntityInterface>
-    extends AbstractEntityService<T> {
+    extends EntityBaseService<T, R> {
 
-  protected final R serviceRepository;
   protected final ServiceType serviceType;
 
   protected AbstractServiceEntityService(
+      ResourceEntityInfo<T> entityInfo,
       R repository,
-      SearchRepository searchRepository,
       Authorizer authorizer,
-      String entityType,
+      Limits limits,
       ServiceType serviceType) {
-    super(repository, searchRepository, authorizer, entityType);
-    this.serviceRepository = repository;
+    super(entityInfo, repository, authorizer, limits);
     this.serviceType = serviceType;
   }
 
@@ -105,7 +104,7 @@ public abstract class AbstractServiceEntityService<
    * @return Updated service entity
    */
   public T addTestConnectionResult(UUID serviceId, TestConnectionResult testConnectionResult) {
-    return serviceRepository.addTestConnectionResult(serviceId, testConnectionResult);
+    return repository.addTestConnectionResult(serviceId, testConnectionResult);
   }
 
   /**

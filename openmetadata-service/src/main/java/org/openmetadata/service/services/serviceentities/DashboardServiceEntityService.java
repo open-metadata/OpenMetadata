@@ -22,8 +22,9 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DashboardServiceRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.Service;
 
@@ -38,11 +39,13 @@ public class DashboardServiceEntityService
 
   @Inject
   public DashboardServiceEntityService(
-      DashboardServiceRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer) {
+      DashboardServiceRepository repository, Authorizer authorizer, Limits limits) {
     super(
-        repository, searchRepository, authorizer, Entity.DASHBOARD_SERVICE, ServiceType.DASHBOARD);
+        new ResourceEntityInfo<>(Entity.DASHBOARD_SERVICE, DashboardService.class),
+        repository,
+        authorizer,
+        limits,
+        ServiceType.DASHBOARD);
   }
 
   @Override

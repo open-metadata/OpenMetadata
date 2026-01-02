@@ -22,8 +22,9 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.DriveConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DriveServiceRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.services.drive.DriveServiceMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.Service;
 
@@ -37,8 +38,13 @@ public class DriveServiceEntityService
 
   @Inject
   public DriveServiceEntityService(
-      DriveServiceRepository repository, SearchRepository searchRepository, Authorizer authorizer) {
-    super(repository, searchRepository, authorizer, Entity.DRIVE_SERVICE, ServiceType.DRIVE);
+      DriveServiceRepository repository, Authorizer authorizer, Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.DRIVE_SERVICE, DriveService.class),
+        repository,
+        authorizer,
+        limits,
+        ServiceType.DRIVE);
   }
 
   @Override

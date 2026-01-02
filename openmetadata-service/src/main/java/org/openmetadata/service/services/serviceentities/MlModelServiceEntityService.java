@@ -22,8 +22,9 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.MlModelServiceRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.services.mlmodel.MlModelServiceMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.Service;
 
@@ -38,10 +39,13 @@ public class MlModelServiceEntityService
 
   @Inject
   public MlModelServiceEntityService(
-      MlModelServiceRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer) {
-    super(repository, searchRepository, authorizer, Entity.MLMODEL_SERVICE, ServiceType.ML_MODEL);
+      MlModelServiceRepository repository, Authorizer authorizer, Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.MLMODEL_SERVICE, MlModelService.class),
+        repository,
+        authorizer,
+        limits,
+        ServiceType.ML_MODEL);
   }
 
   @Override

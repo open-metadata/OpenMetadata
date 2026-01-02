@@ -22,8 +22,9 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.PipelineServiceRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.Service;
 
@@ -38,10 +39,13 @@ public class PipelineServiceEntityService
 
   @Inject
   public PipelineServiceEntityService(
-      PipelineServiceRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer) {
-    super(repository, searchRepository, authorizer, Entity.PIPELINE_SERVICE, ServiceType.PIPELINE);
+      PipelineServiceRepository repository, Authorizer authorizer, Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.PIPELINE_SERVICE, PipelineService.class),
+        repository,
+        authorizer,
+        limits,
+        ServiceType.PIPELINE);
   }
 
   @Override

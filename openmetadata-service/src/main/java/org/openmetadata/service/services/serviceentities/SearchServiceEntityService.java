@@ -22,8 +22,9 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.SearchConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.SearchServiceRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.services.searchIndexes.SearchServiceMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.Service;
 
@@ -37,10 +38,13 @@ public class SearchServiceEntityService
 
   @Inject
   public SearchServiceEntityService(
-      SearchServiceRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer) {
-    super(repository, searchRepository, authorizer, Entity.SEARCH_SERVICE, ServiceType.SEARCH);
+      SearchServiceRepository repository, Authorizer authorizer, Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.SEARCH_SERVICE, SearchService.class),
+        repository,
+        authorizer,
+        limits,
+        ServiceType.SEARCH);
   }
 
   @Override

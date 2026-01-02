@@ -22,8 +22,9 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.services.database.DatabaseServiceMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.Service;
 
@@ -38,10 +39,13 @@ public class DatabaseServiceEntityService
 
   @Inject
   public DatabaseServiceEntityService(
-      DatabaseServiceRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer) {
-    super(repository, searchRepository, authorizer, Entity.DATABASE_SERVICE, ServiceType.DATABASE);
+      DatabaseServiceRepository repository, Authorizer authorizer, Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.DATABASE_SERVICE, DatabaseService.class),
+        repository,
+        authorizer,
+        limits,
+        ServiceType.DATABASE);
   }
 
   @Override
