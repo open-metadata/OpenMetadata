@@ -51,9 +51,9 @@ ui-lint:  ## Run ESLint, Prettier, license header, and import checks on UI code
 .PHONY: ui-lint-fix
 ui-lint-fix:  ## Auto-fix ESLint, Prettier, license header, and import issues on UI code
 	cd openmetadata-ui/src/main/resources/ui && yarn run lint:fix
-	cd openmetadata-ui/src/main/resources/ui && yarn run pretty
+	cd openmetadata-ui/src/main/resources/ui && yarn run organize-imports
 	cd openmetadata-ui/src/main/resources/ui && yarn run license-header-fix
-	cd openmetadata-ui/src/main/resources/ui && npx organize-imports-cli 'src/**/*.{ts,tsx,js,jsx}'
+	cd openmetadata-ui/src/main/resources/ui && yarn run pretty
 
 # Aliases for UI linting (overrides ingestion/Makefile lint target)
 .PHONY: lint

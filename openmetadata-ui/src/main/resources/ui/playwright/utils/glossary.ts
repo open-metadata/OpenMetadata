@@ -24,9 +24,9 @@ import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { Glossary } from '../support/glossary/Glossary';
 import {
-    GlossaryData,
-    GlossaryTermData,
-    UserTeamRef
+  GlossaryData,
+  GlossaryTermData,
+  UserTeamRef,
 } from '../support/glossary/Glossary.interface';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../support/tag/ClassificationClass';
@@ -34,20 +34,20 @@ import { TagClass } from '../support/tag/TagClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-    clickOutside,
-    closeFirstPopupAlert,
-    descriptionBox,
-    getApiContext,
-    INVALID_NAMES,
-    NAME_MAX_LENGTH_VALIDATION_ERROR,
-    NAME_VALIDATION_ERROR,
-    redirectToHomePage,
-    toastNotification,
-    uuid
+  clickOutside,
+  closeFirstPopupAlert,
+  descriptionBox,
+  getApiContext,
+  INVALID_NAMES,
+  NAME_MAX_LENGTH_VALIDATION_ERROR,
+  NAME_VALIDATION_ERROR,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
 } from './common';
 import { addMultiOwner, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
-import { TaskDetails, TASK_OPEN_FETCH_LINK } from './task';
+import { TASK_OPEN_FETCH_LINK, TaskDetails } from './task';
 
 type TaskEntity = {
   entityRef: {

@@ -752,7 +752,8 @@ test.describe('Bulk Edit Entity', () => {
     await parentGlossaryTerm.create(apiContext);
 
     // Set the parent for the nested term
-    nestedGlossaryTerm.data.parent = parentGlossaryTerm.responseData.fullyQualifiedName;
+    nestedGlossaryTerm.data.parent =
+      parentGlossaryTerm.responseData.fullyQualifiedName;
     nestedGlossaryTerm.data.fullyQualifiedName = `${parentGlossaryTerm.responseData.fullyQualifiedName}."${nestedGlossaryTerm.data.name}"`;
     await nestedGlossaryTerm.create(apiContext);
 
@@ -763,114 +764,114 @@ test.describe('Bulk Edit Entity', () => {
       );
     });
 
-    await test.step('Perform bulk edit action on nested glossary term', async () => {
-      // Navigate to the parent glossary term page
-      await parentGlossaryTerm.visitPage(page);
+    await test.step(
+      'Perform bulk edit action on nested glossary term',
+      async () => {
+        // Navigate to the parent glossary term page
+        await parentGlossaryTerm.visitPage(page);
 
-      // Visit the glossary terms tab
-      await page.click('[data-testid="terms"]');
+        // Visit the glossary terms tab
+        await page.click('[data-testid="terms"]');
 
-      // Click on bulk edit button for the glossary term
-      await page.click('[data-testid="bulk-edit-table"]');
+        // Click on bulk edit button for the glossary term
+        await page.click('[data-testid="bulk-edit-table"]');
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
 
-      // Adding some assertion to make sure that CSV loaded correctly
-      await expect(page.locator('.rdg-header-row')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
-      await expect(
-        page.getByRole('button', { name: 'Previous' })
-      ).not.toBeVisible();
+        // Adding some assertion to make sure that CSV loaded correctly
+        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: 'Previous' })
+        ).not.toBeVisible();
 
-      // Click on first cell and edit
-      await page.click('.rdg-cell[role="gridcell"]');
+        // Click on first cell and edit
+        await page.click('.rdg-cell[role="gridcell"]');
 
-      // Click on first cell and edit the nested glossary term
-      await fillGlossaryRowDetails(
-        {
-          ...additionalNestedGlossaryTerm,
-          name: nestedGlossaryTerm.data.name,
-          owners: [user1.responseData?.['displayName']],
-          reviewers: [user2.responseData?.['displayName']],
-          relatedTerm: {
-            parent: glossary.data.name,
-            name: parentGlossaryTerm.data.name,
+        // Click on first cell and edit the nested glossary term
+        await fillGlossaryRowDetails(
+          {
+            ...additionalNestedGlossaryTerm,
+            name: nestedGlossaryTerm.data.name,
+            owners: [user1.responseData?.['displayName']],
+            reviewers: [user2.responseData?.['displayName']],
+            relatedTerm: {
+              parent: glossary.data.name,
+              name: parentGlossaryTerm.data.name,
+            },
           },
-        },
-        page,
-        customPropertyRecord,
-        true
-      );
+          page,
+          customPropertyRecord,
+          true
+        );
 
-      await page.getByRole('button', { name: 'Next' }).click();
-      const loader = page.locator(
-        '.inovua-react-toolkit-load-mask__background-layer'
-      );
+        await page.getByRole('button', { name: 'Next' }).click();
+        const loader = page.locator(
+          '.inovua-react-toolkit-load-mask__background-layer'
+        );
 
-      await loader.waitFor({ state: 'hidden' });
+        await loader.waitFor({ state: 'hidden' });
 
-      await validateImportStatus(page, {
-        passed: '2',
-        processed: '2',
-        failed: '0',
-      });
+        await validateImportStatus(page, {
+          passed: '2',
+          processed: '2',
+          failed: '0',
+        });
 
-      await page.waitForSelector('.rdg-header-row', {
-        state: 'visible',
-      });
+        await page.waitForSelector('.rdg-header-row', {
+          state: 'visible',
+        });
 
-      const rowStatus = ['Entity updated'];
+        const rowStatus = ['Entity updated'];
 
-      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
-      const updateButtonResponse = page.waitForResponse(
-        `/api/v1/glossaryTerms/name/*/importAsync?*dryRun=false*`
-      );
+        const updateButtonResponse = page.waitForResponse(
+          `/api/v1/glossaryTerms/name/*/importAsync?*dryRun=false*`
+        );
 
-      await page.getByRole('button', { name: 'Update' }).click();
-      await page
-        .locator('.inovua-react-toolkit-load-mask__background-layer')
-        .waitFor({ state: 'detached' });
+        await page.getByRole('button', { name: 'Update' }).click();
+        await page
+          .locator('.inovua-react-toolkit-load-mask__background-layer')
+          .waitFor({ state: 'detached' });
 
-      await updateButtonResponse;
+        await updateButtonResponse;
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
 
-      await toastNotification(
-        page,
-        /details updated successfully/
-      );
+        await toastNotification(page, /details updated successfully/);
 
-      // Visit the glossary terms tab
-      await page.click('[data-testid="terms"]');
+        // Visit the glossary terms tab
+        await page.click('[data-testid="terms"]');
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
 
-      // Navigate to the nested glossary term to verify custom properties
-      await page.click(
-        `[data-testid="${additionalNestedGlossaryTerm.displayName}"]`
-      );
+        // Navigate to the nested glossary term to verify custom properties
+        await page.click(
+          `[data-testid="${additionalNestedGlossaryTerm.displayName}"]`
+        );
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
 
-      // Verify Custom Properties
-      await page.click('[data-testid="custom_properties"]');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+        // Verify Custom Properties
+        await page.click('[data-testid="custom_properties"]');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
 
-      for (const propertyName of Object.values(customPropertyRecord)) {
-        await expect(page.getByText(propertyName)).toBeVisible();
+        for (const propertyName of Object.values(customPropertyRecord)) {
+          await expect(page.getByText(propertyName)).toBeVisible();
+        }
       }
-    });
+    );
 
     await glossary.delete(apiContext);
     await afterAction();

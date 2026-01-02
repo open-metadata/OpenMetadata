@@ -483,7 +483,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     );
 
     // Wait for lineage section to be in stable state
-    await lineageSection.waitFor({ state: 'visible'});
+    await lineageSection.waitFor({ state: 'visible' });
 
     // Check if "no lineage connections found" text is present in the overview
     const noLineageText = summaryPanel.locator(

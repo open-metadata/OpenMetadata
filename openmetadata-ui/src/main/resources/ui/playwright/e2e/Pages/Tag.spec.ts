@@ -318,9 +318,9 @@ test.describe('Tag Page with Admin Roles', () => {
     await classification1.visitPage(adminPage);
 
     // Verify toggle is visible and enabled (tag is enabled by default)
-    const tagToggle = adminPage.getByTestId(
-      `tag-disable-toggle-${tag1.data.name}`
-    ).getByRole('switch');
+    const tagToggle = adminPage
+      .getByTestId(`tag-disable-toggle-${tag1.data.name}`)
+      .getByRole('switch');
 
     await expect(tagToggle).toBeVisible();
     await expect(tagToggle).toBeChecked();
@@ -355,9 +355,9 @@ test.describe('Tag Page with Admin Roles', () => {
   }) => {
     await classification.visitPage(adminPage);
 
-    const tagToggle = adminPage.getByTestId(
-      `tag-disable-toggle-${tag.data.name}`
-    ).getByRole('switch');
+    const tagToggle = adminPage
+      .getByTestId(`tag-disable-toggle-${tag.data.name}`)
+      .getByRole('switch');
 
     // Verify toggle is enabled when classification is enabled
     await expect(tagToggle).toBeEnabled();
@@ -450,9 +450,9 @@ test.describe('Tag Page with Data Consumer Roles', () => {
     await classification.visitPage(dataConsumerPage);
 
     // Verify toggle is visible but disabled for data consumer user (no EditAll permission)
-    const tagToggle = dataConsumerPage.getByTestId(
-      `tag-disable-toggle-${tag.data.name}`
-    ).getByRole('switch');
+    const tagToggle = dataConsumerPage
+      .getByTestId(`tag-disable-toggle-${tag.data.name}`)
+      .getByRole('switch');
 
     await expect(tagToggle).toBeVisible();
     await expect(tagToggle).toBeDisabled();

@@ -88,15 +88,15 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            **The ESLint/Prettier checks failed.**
+            **The UI Checkstyle checks failed.**
 
             Please run `make lint-fix` in the root of your repository to automatically fix linting issues, or run the following commands manually:
             ```bash
             cd openmetadata-ui/src/main/resources/ui
             yarn run lint:fix
-            yarn run pretty
+            yarn run organize-imports
             yarn run license-header-fix
-            npx organize-imports-cli 'src/**/*.{ts,tsx,js,jsx}'
+            yarn run pretty
             ```
 
             Then commit the changes to this PR.

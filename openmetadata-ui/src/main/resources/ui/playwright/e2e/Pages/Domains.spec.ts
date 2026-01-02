@@ -1910,20 +1910,18 @@ test.describe('Domain Tree View Functionality', () => {
       await selectActiveGlossaryTerm(page, testGlossaryTerm.data.displayName);
 
       let apiRequestUrl: string | null = null;
-      const responsePromise = page.waitForResponse(
-        (response) => {
-          const url = response.url();
-          if (
-            url.includes('/api/v1/domains/name/') &&
-            url.includes('fields=') &&
-            response.status() === 200
-          ) {
-            apiRequestUrl = url;
-            return true;
-          }
-          return false;
+      const responsePromise = page.waitForResponse((response) => {
+        const url = response.url();
+        if (
+          url.includes('/api/v1/domains/name/') &&
+          url.includes('fields=') &&
+          response.status() === 200
+        ) {
+          apiRequestUrl = url;
+          return true;
         }
-      );
+        return false;
+      });
 
       await page.getByTestId('assets').click();
       await responsePromise;
@@ -1976,7 +1974,9 @@ test.describe('Domain Tree View Functionality', () => {
       await page
         .locator('[data-testid="tags-container"] [data-testid="add-tag"]')
         .click();
-      const input = page.locator('[data-testid="tags-container"] #tagsForm_tags');
+      const input = page.locator(
+        '[data-testid="tags-container"] #tagsForm_tags'
+      );
       await input.click();
       await input.fill(testTag.responseData.fullyQualifiedName);
       await page
@@ -1994,20 +1994,18 @@ test.describe('Domain Tree View Functionality', () => {
       await testTag.visitPage(page);
 
       let apiRequestUrl: string | null = null;
-      const responsePromise = page.waitForResponse(
-        (response) => {
-          const url = response.url();
-          if (
-            url.includes('/api/v1/domains/name/') &&
-            url.includes('fields=') &&
-            response.status() === 200
-          ) {
-            apiRequestUrl = url;
-            return true;
-          }
-          return false;
+      const responsePromise = page.waitForResponse((response) => {
+        const url = response.url();
+        if (
+          url.includes('/api/v1/domains/name/') &&
+          url.includes('fields=') &&
+          response.status() === 200
+        ) {
+          apiRequestUrl = url;
+          return true;
         }
-      );
+        return false;
+      });
 
       await page.getByTestId('assets').click();
       await responsePromise;
