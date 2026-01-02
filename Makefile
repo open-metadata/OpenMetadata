@@ -39,6 +39,28 @@ yarn_start_e2e_ui:  ## Run the e2e tests locally in UI mode with Yarn
 .PHONY: yarn_start_e2e_codegen
 yarn_start_e2e_codegen:  ## generate playwright code
 	cd openmetadata-ui/src/main/resources/ui && yarn playwright:codegen
+
+## UI Linting
+.PHONY: ui-lint
+ui-lint:  ## Run ESLint, Prettier, license header, and import checks on UI code
+	cd openmetadata-ui/src/main/resources/ui && yarn run lint
+	cd openmetadata-ui/src/main/resources/ui && npx prettier . --config './.prettierrc.yaml' --ignore-path './.prettierignore' --check
+	cd openmetadata-ui/src/main/resources/ui && yarn run license-header-check
+	cd openmetadata-ui/src/main/resources/ui && npx organize-imports-cli --check 'src/**/*.{ts,tsx,js,jsx}'
+
+.PHONY: ui-lint-fix
+ui-lint-fix:  ## Auto-fix ESLint, Prettier, license header, and import issues on UI code
+	cd openmetadata-ui/src/main/resources/ui && yarn run lint:fix
+	cd openmetadata-ui/src/main/resources/ui && yarn run organize-imports
+	cd openmetadata-ui/src/main/resources/ui && yarn run license-header-fix
+	cd openmetadata-ui/src/main/resources/ui && yarn run pretty
+
+# Aliases for UI linting (overrides ingestion/Makefile lint target)
+.PHONY: lint
+lint: ui-lint  ## Alias for ui-lint - Run ESLint, Prettier, license header, and import checks on UI code
+
+.PHONY: lint-fix
+lint-fix: ui-lint-fix  ## Alias for ui-lint-fix - Auto-fix ESLint, Prettier, license header, and import issues on UI code
 	
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs

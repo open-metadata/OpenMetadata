@@ -134,7 +134,7 @@ async function main(rootDir, srcDir, destDir, shouldDereference = false) {
 async function parseApplicationSchemas() {
   const appSchemaDir = 'src/utils/ApplicationSchemas';
   const destDir = 'src/jsons/applicationSchemas';
-  
+
   try {
     // Create destination directory if it doesn't exist
     if (!fs.existsSync(destDir)) {
@@ -144,30 +144,32 @@ async function parseApplicationSchemas() {
       fs.rmSync(destDir, { recursive: true });
       fs.mkdirSync(destDir, { recursive: true });
     }
-    
+
     // Get all JSON files in ApplicationSchemas directory
-    const files = fs.readdirSync(appSchemaDir).filter(file => file.endsWith('.json'));
-    
+    const files = fs
+      .readdirSync(appSchemaDir)
+      .filter((file) => file.endsWith('.json'));
+
     for (const file of files) {
       const filePath = path.join(appSchemaDir, file);
       const destPath = path.join(destDir, file);
-      
+
       try {
         // Change to the source directory for relative path resolution
         const fileDir = path.dirname(filePath);
         const originalCwd = process.cwd();
         process.chdir(fileDir);
-        
+
         // Parse and dereference the schema
         let parsedSchema = await parser.parse(file);
         parsedSchema = await parser.dereference(parsedSchema);
-        
+
         // Remove $id fields
         const updatedSchema = removeObjectByKey(parsedSchema, '$id');
-        
+
         // Change back to original directory
         process.chdir(originalCwd);
-        
+
         // Write the processed schema to destination
         fs.writeFileSync(destPath, JSON.stringify(updatedSchema, null, 2));
         console.log(`Processed ApplicationSchema: ${file}`);
@@ -203,7 +205,7 @@ async function runParsers() {
     'schema/governance/workflows/elements/nodes',
     'src/jsons/governanceSchemas'
   );
-  
+
   // Parse Application schemas
   await parseApplicationSchemas();
 

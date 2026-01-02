@@ -71,9 +71,7 @@ export const navigateToEntityPanelTab = async (page: Page, tabName: string) => {
   });
 };
 
-export const editTags = async (
-  page: Page,
-  tagName: string) => {
+export const editTags = async (page: Page, tagName: string) => {
   await page.locator('[data-testid="edit-icon-tags"]').click();
 
   await page
@@ -102,7 +100,7 @@ export const editTags = async (
 
   const tagOption = page.getByTitle(tagName);
   // Wait for tag option to be visible before clicking
-  await tagOption.waitFor({ state: 'visible'});
+  await tagOption.waitFor({ state: 'visible' });
   await tagOption.click();
 
   const updateBtn = page.getByRole('button', { name: 'Update' });
@@ -113,9 +111,7 @@ export const editTags = async (
   await expect(page.getByText(/Tags updated successfully/i)).toBeVisible();
 };
 
-export const editGlossaryTerms = async (
-  page: Page,
-  termName?: string) => {
+export const editGlossaryTerms = async (page: Page, termName?: string) => {
   await page
     .locator('[data-testid="edit-glossary-terms"]')
     .scrollIntoViewIfNeeded();
@@ -124,7 +120,6 @@ export const editGlossaryTerms = async (
   });
 
   await page.locator('[data-testid="edit-glossary-terms"]').click();
-
 
   await page
     .locator('[data-testid="selectable-list"]')
@@ -153,7 +148,6 @@ export const editGlossaryTerms = async (
   await page.getByRole('button', { name: 'Update' }).click();
   await patchResp;
 };
-
 
 export const editDomain = async (page: Page, domainName: string) => {
   const summaryPanel = page.locator('.entity-summary-panel-container');
@@ -200,8 +194,6 @@ export const editDomain = async (page: Page, domainName: string) => {
     state: 'detached',
   });
 };
-
-
 
 export const verifyDeletedEntityNotVisible = async (
   page: Page,
