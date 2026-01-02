@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.audit;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -16,8 +18,6 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.SecurityContext;
-import jakarta.ws.rs.core.UriInfo;
-import java.util.Collections;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.openmetadata.schema.EntityInterface;
@@ -31,6 +31,7 @@ import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 @Path("/v1/audit/logs")
@@ -59,7 +60,6 @@ public class AuditLogResource {
                     schema = @Schema(implementation = ResultList.class)))
       })
   public ResultList<AuditLogEntry> listAuditLogs(
-      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Limit the number of results returned. (1 to 200)",
@@ -107,9 +107,8 @@ public class AuditLogResource {
           @QueryParam("endTs")
           Long endTs) {
 
-    OperationContext operationContext =
-        new OperationContext(Entity.AUDIT_LOG, MetadataOperation.AUDIT_LOGS);
-    authorizer.authorize(securityContext, operationContext, new AuditLogResourceContext());
+    // Authorization: service-level, entity-level, or global based on filters provided
+    authorizeAuditLogAccess(securityContext, serviceName, entityType, entityFqn);
 
     return repository.list(
         userName,
@@ -124,7 +123,44 @@ public class AuditLogResource {
         after);
   }
 
-  static class AuditLogResourceContext implements ResourceContextInterface {
+  /**
+   * Authorize audit log access based on service-level, entity-level, or global permissions.
+   *
+   * <p>Authorization model (checked in order):
+   *
+   * <ul>
+   *   <li>If entityFQN AND entityType are provided: Check VIEW_BASIC on the specific entity
+   *   <li>If serviceName AND entityType are provided: Check VIEW_BASIC on the service
+   *   <li>Otherwise: Require global AUDIT_LOGS permission (admin-only)
+   * </ul>
+   */
+  private void authorizeAuditLogAccess(
+      SecurityContext securityContext, String serviceName, String entityType, String entityFqn) {
+    if (!nullOrEmpty(entityFqn) && !nullOrEmpty(entityType)) {
+      // Entity-level authorization: user needs VIEW_BASIC on the specific entity
+      ResourceContext<?> entityContext = new ResourceContext<>(entityType, null, entityFqn);
+      OperationContext viewOp = new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+      authorizer.authorize(securityContext, viewOp, entityContext);
+    } else if (!nullOrEmpty(serviceName) && !nullOrEmpty(entityType)) {
+      // Service-level authorization: user needs VIEW_BASIC on the service
+      String serviceType = Entity.getServiceType(entityType);
+      ResourceContext<?> serviceContext = new ResourceContext<>(serviceType, null, serviceName);
+      OperationContext viewOp = new OperationContext(serviceType, MetadataOperation.VIEW_BASIC);
+      authorizer.authorize(securityContext, viewOp, serviceContext);
+    } else {
+      // Global audit log access: requires AUDIT_LOGS permission (admin-only)
+      OperationContext operationContext =
+          new OperationContext(Entity.AUDIT_LOG, MetadataOperation.AUDIT_LOGS);
+      authorizer.authorize(securityContext, operationContext, AuditLogResourceContext.INSTANCE);
+    }
+  }
+
+  /**
+   * Resource context for audit log permission checks. Uses singleton pattern since audit logs have
+   * no owners, tags, or domains - just a resource type for policy evaluation.
+   */
+  private enum AuditLogResourceContext implements ResourceContextInterface {
+    INSTANCE;
 
     @Override
     public String getResource() {
@@ -133,12 +169,12 @@ public class AuditLogResource {
 
     @Override
     public List<EntityReference> getOwners() {
-      return Collections.emptyList();
+      return List.of();
     }
 
     @Override
     public List<TagLabel> getTags() {
-      return Collections.emptyList();
+      return List.of();
     }
 
     @Override
@@ -148,7 +184,7 @@ public class AuditLogResource {
 
     @Override
     public List<EntityReference> getDomains() {
-      return Collections.emptyList();
+      return List.of();
     }
   }
 }

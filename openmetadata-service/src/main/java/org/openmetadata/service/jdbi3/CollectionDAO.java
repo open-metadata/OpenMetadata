@@ -6143,6 +6143,30 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT count(*) FROM change_event")
     long listCount();
+
+    /** Record holding change event offset and JSON for cursor-based pagination. */
+    record ChangeEventRecord(long offset, String json) {}
+
+    /** Returns change events with their offset values for accurate cursor tracking. */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT `offset`, json FROM change_event WHERE `offset` > :afterOffset ORDER BY `offset` ASC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT \"offset\", json FROM change_event WHERE \"offset\" > :afterOffset ORDER BY \"offset\" ASC LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ChangeEventRecordMapper.class)
+    List<ChangeEventRecord> listWithOffset(
+        @Bind("limit") int limit, @Bind("afterOffset") long afterOffset);
+  }
+
+  class ChangeEventRecordMapper implements RowMapper<ChangeEventDAO.ChangeEventRecord> {
+    @Override
+    public ChangeEventDAO.ChangeEventRecord map(ResultSet rs, StatementContext ctx)
+        throws SQLException {
+      return new ChangeEventDAO.ChangeEventRecord(rs.getLong("offset"), rs.getString("json"));
+    }
   }
 
   class FailedEventResponseMapper implements RowMapper<FailedEventResponse> {

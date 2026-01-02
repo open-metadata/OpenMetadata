@@ -2,9 +2,9 @@ package org.openmetadata.service.audit;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -46,8 +46,26 @@ public class AuditLogRepository {
 
   public void write(ChangeEvent changeEvent, boolean isBot) {
     if (!SUPPORTED_EVENT_TYPES.contains(changeEvent.getEventType())) {
+      LOG.debug(
+          "Skipping unsupported event type {} for change event {}",
+          changeEvent.getEventType(),
+          changeEvent.getId());
       return;
     }
+    UUID changeEventId = changeEvent.getId();
+    if (changeEventId == null) {
+      LOG.warn(
+          "Skipping change event with null ID: type={}, entityType={}",
+          changeEvent.getEventType(),
+          changeEvent.getEntityType());
+      return;
+    }
+
+    LOG.debug(
+        "Writing audit log for change event {} type {} entity {}",
+        changeEventId,
+        changeEvent.getEventType(),
+        changeEvent.getEntityType());
     try {
       String entityFqn = changeEvent.getEntityFullyQualifiedName();
       String entityFqnHash =
@@ -58,43 +76,95 @@ public class AuditLogRepository {
 
       AuditLogRecord record =
           AuditLogRecord.builder()
-              .changeEventId(changeEvent.getId())
+              .changeEventId(changeEventId.toString())
               .eventTs(
                   changeEvent.getTimestamp() != null
                       ? changeEvent.getTimestamp()
                       : System.currentTimeMillis())
               .eventType(changeEvent.getEventType().value())
               .userName(changeEvent.getUserName())
-              .actorType(actorType)
+              .actorType(actorType.name())
               .impersonatedBy(changeEvent.getImpersonatedBy())
               .serviceName(serviceName)
               .entityType(changeEvent.getEntityType())
-              .entityId(changeEvent.getEntityId())
+              .entityId(
+                  changeEvent.getEntityId() != null ? changeEvent.getEntityId().toString() : null)
               .entityFQN(entityFqn)
               .entityFQNHash(entityFqnHash)
               .eventJson(JsonUtils.pojoToJson(changeEvent))
               .createdAt(System.currentTimeMillis())
               .build();
+      LOG.debug(
+          "Inserting audit log record: changeEventId={}, actorType={}, entityType={}, entityId={}",
+          record.getChangeEventId(),
+          record.getActorType(),
+          record.getEntityType(),
+          record.getEntityId());
       auditLogDAO.insert(record);
+      LOG.debug("Successfully inserted audit log for change event {}", changeEvent.getId());
     } catch (Exception ex) {
       LOG.warn("Failed to persist audit log for change event {}", changeEvent.getId(), ex);
     }
   }
 
+  /** Auth event type constants for login/logout - not part of ChangeEvent types */
+  public static final String AUTH_EVENT_LOGIN = "userLogin";
+
+  public static final String AUTH_EVENT_LOGOUT = "userLogout";
+
+  /**
+   * Write an authentication event (login/logout) directly to the audit log. This method runs
+   * asynchronously using a virtual thread (Java 21) to ensure login/logout operations are never
+   * blocked or impacted by audit log writes. Virtual threads are ideal for I/O-bound operations
+   * like DB writes. Any write failures are logged but do not affect the caller.
+   */
+  public void writeAuthEvent(String eventType, String userName, UUID userId) {
+    // Use virtual thread for async I/O-bound DB write - lightweight and doesn't block platform
+    // threads
+    Thread.startVirtualThread(
+        () -> {
+          try {
+            long now = System.currentTimeMillis();
+            AuditLogRecord record =
+                AuditLogRecord.builder()
+                    .changeEventId(UUID.randomUUID().toString())
+                    .eventTs(now)
+                    .eventType(eventType)
+                    .userName(userName)
+                    .actorType(AuditLogRecord.ActorType.USER.name())
+                    .entityType(Entity.USER)
+                    .entityId(userId != null ? userId.toString() : null)
+                    .createdAt(now)
+                    .build();
+            auditLogDAO.insert(record);
+            LOG.debug("Recorded auth event {} for user {}", eventType, userName);
+          } catch (Exception ex) {
+            LOG.warn("Failed to persist auth audit log for user {}", userName, ex);
+          }
+        });
+  }
+
+  /** Determine actor type from username pattern - agents, bots, or regular users. */
   private AuditLogRecord.ActorType determineActorType(String userName, boolean isBot) {
-    if (!isBot) {
-      return AuditLogRecord.ActorType.USER;
-    }
     if (nullOrEmpty(userName)) {
-      return AuditLogRecord.ActorType.BOT;
+      return isBot ? AuditLogRecord.ActorType.BOT : AuditLogRecord.ActorType.USER;
     }
     String lowerName = userName.toLowerCase();
+    // Check for AI agent patterns first (documentation-agent, auto-classification, etc.)
     for (String indicator : AGENT_INDICATORS) {
       if (lowerName.contains(indicator)) {
         return AuditLogRecord.ActorType.AGENT;
       }
     }
-    return AuditLogRecord.ActorType.BOT;
+    // Check for bot patterns (ingestion-bot, metadata-bot, etc.)
+    if (lowerName.endsWith("-bot") || lowerName.endsWith("_bot") || lowerName.equals("bot")) {
+      return AuditLogRecord.ActorType.BOT;
+    }
+    // Explicit isBot flag from caller (e.g., auth context)
+    if (isBot) {
+      return AuditLogRecord.ActorType.BOT;
+    }
+    return AuditLogRecord.ActorType.USER;
   }
 
   private String extractServiceName(String entityFqn) {
@@ -103,6 +173,18 @@ public class AuditLogRepository {
     }
     String[] parts = FullyQualifiedName.split(entityFqn);
     return parts.length > 0 ? parts[0] : null;
+  }
+
+  private UUID parseUuid(String value) {
+    if (nullOrEmpty(value)) {
+      return null;
+    }
+    try {
+      return UUID.fromString(value);
+    } catch (IllegalArgumentException ex) {
+      LOG.warn("Invalid UUID value: {}", value);
+      return null;
+    }
   }
 
   public ResultList<AuditLogEntry> list(
@@ -143,8 +225,8 @@ public class AuditLogRepository {
             eventType,
             startTs,
             endTs,
-            afterCursor != null ? afterCursor.eventTs : null,
-            afterCursor != null ? afterCursor.id : null,
+            afterCursor != null ? afterCursor.eventTs() : null,
+            afterCursor != null ? afterCursor.id() : null,
             limit + 1);
 
     boolean hasMore = records.size() > limit;
@@ -165,70 +247,7 @@ public class AuditLogRepository {
             startTs,
             endTs);
 
-    List<AuditLogEntry> resultEntries = new ArrayList<>(records.size());
-    for (AuditLogRecord record : records) {
-      ChangeEvent changeEvent = null;
-      try {
-        changeEvent = JsonUtils.readValue(record.getEventJson(), ChangeEvent.class);
-      } catch (Exception ex) {
-        LOG.warn(
-            "Failed to deserialize change event {} stored in audit log",
-            record.getChangeEventId(),
-            ex);
-      }
-
-      EntityReference resolvedReference = null;
-      if (record.getEntityType() != null) {
-        try {
-          if (record.getEntityFQN() != null) {
-            resolvedReference =
-                Entity.getEntityReferenceByName(
-                    record.getEntityType(), record.getEntityFQN(), Include.NON_DELETED);
-          } else if (record.getEntityId() != null) {
-            resolvedReference =
-                Entity.getEntityReferenceById(
-                    record.getEntityType(), record.getEntityId(), Include.NON_DELETED);
-          }
-        } catch (Exception lookupEx) {
-          LOG.debug(
-              "Failed to resolve entity reference for audit log record {} of type {}",
-              record.getId(),
-              record.getEntityType(),
-              lookupEx);
-        }
-      }
-
-      if (resolvedReference != null) {
-        if (record.getEntityFQN() == null) {
-          record.setEntityFQN(resolvedReference.getFullyQualifiedName());
-        }
-        if (changeEvent != null) {
-          if (changeEvent.getEntityFullyQualifiedName() == null) {
-            changeEvent.setEntityFullyQualifiedName(resolvedReference.getFullyQualifiedName());
-          }
-          if (changeEvent.getEntity() == null) {
-            changeEvent.setEntity(resolvedReference);
-          }
-        }
-      }
-
-      resultEntries.add(
-          AuditLogEntry.builder()
-              .id(record.getId())
-              .changeEventId(record.getChangeEventId())
-              .eventTs(record.getEventTs())
-              .eventType(record.getEventType())
-              .userName(record.getUserName())
-              .actorType(record.getActorType() != null ? record.getActorType().name() : "USER")
-              .impersonatedBy(record.getImpersonatedBy())
-              .serviceName(record.getServiceName())
-              .entityType(record.getEntityType())
-              .entityId(record.getEntityId())
-              .entityFQN(record.getEntityFQN())
-              .createdAt(record.getCreatedAt())
-              .changeEvent(changeEvent)
-              .build());
-    }
+    List<AuditLogEntry> resultEntries = records.stream().map(this::toAuditLogEntry).toList();
 
     String afterCursorOut = null;
     if (!resultEntries.isEmpty() && hasMore) {
@@ -237,6 +256,84 @@ public class AuditLogRepository {
     }
 
     return new ResultList<>(resultEntries, null, afterCursorOut, total);
+  }
+
+  private AuditLogEntry toAuditLogEntry(AuditLogRecord record) {
+    ChangeEvent changeEvent = deserializeChangeEvent(record);
+    EntityReference resolvedRef = resolveEntityReference(record);
+
+    enrichWithResolvedReference(record, changeEvent, resolvedRef);
+
+    return AuditLogEntry.builder()
+        .id(record.getId())
+        .changeEventId(parseUuid(record.getChangeEventId()))
+        .eventTs(record.getEventTs())
+        .eventType(record.getEventType())
+        .userName(record.getUserName())
+        .actorType(record.getActorType() != null ? record.getActorType() : "USER")
+        .impersonatedBy(record.getImpersonatedBy())
+        .serviceName(record.getServiceName())
+        .entityType(record.getEntityType())
+        .entityId(parseUuid(record.getEntityId()))
+        .entityFQN(record.getEntityFQN())
+        .createdAt(record.getCreatedAt())
+        .changeEvent(changeEvent)
+        .build();
+  }
+
+  private ChangeEvent deserializeChangeEvent(AuditLogRecord record) {
+    if (nullOrEmpty(record.getEventJson())) {
+      return null;
+    }
+    try {
+      return JsonUtils.readValue(record.getEventJson(), ChangeEvent.class);
+    } catch (Exception ex) {
+      LOG.warn(
+          "Failed to deserialize change event {} stored in audit log",
+          record.getChangeEventId(),
+          ex);
+      return null;
+    }
+  }
+
+  private EntityReference resolveEntityReference(AuditLogRecord record) {
+    if (record.getEntityType() == null) {
+      return null;
+    }
+    try {
+      if (record.getEntityFQN() != null) {
+        return Entity.getEntityReferenceByName(
+            record.getEntityType(), record.getEntityFQN(), Include.NON_DELETED);
+      } else if (record.getEntityId() != null) {
+        return Entity.getEntityReferenceById(
+            record.getEntityType(), UUID.fromString(record.getEntityId()), Include.NON_DELETED);
+      }
+    } catch (Exception ex) {
+      LOG.debug(
+          "Failed to resolve entity reference for audit log record {} of type {}",
+          record.getId(),
+          record.getEntityType(),
+          ex);
+    }
+    return null;
+  }
+
+  private void enrichWithResolvedReference(
+      AuditLogRecord record, ChangeEvent changeEvent, EntityReference resolvedRef) {
+    if (resolvedRef == null) {
+      return;
+    }
+    if (record.getEntityFQN() == null) {
+      record.setEntityFQN(resolvedRef.getFullyQualifiedName());
+    }
+    if (changeEvent != null) {
+      if (changeEvent.getEntityFullyQualifiedName() == null) {
+        changeEvent.setEntityFullyQualifiedName(resolvedRef.getFullyQualifiedName());
+      }
+      if (changeEvent.getEntity() == null) {
+        changeEvent.setEntity(resolvedRef);
+      }
+    }
   }
 
   private String buildBaseCondition() {
@@ -263,36 +360,28 @@ public class AuditLogRepository {
     return Math.min(limit, MAX_PAGE_SIZE);
   }
 
-  private static class AuditLogCursor {
-    private final long eventTs;
-    private final long id;
-
-    private AuditLogCursor(long eventTs, long id) {
-      this.eventTs = eventTs;
-      this.id = id;
-    }
-
-    private static AuditLogCursor fromEncoded(String encoded) {
+  /** Cursor for keyset pagination - uses Java 21 record for immutability and conciseness. */
+  private record AuditLogCursor(long eventTs, long id) {
+    static AuditLogCursor fromEncoded(String encoded) {
       if (nullOrEmpty(encoded)) {
         return null;
       }
       try {
         String decoded = RestUtil.decodeCursor(encoded);
         CursorPayload payload = JsonUtils.readValue(decoded, CursorPayload.class);
-        return new AuditLogCursor(payload.getEventTs(), payload.getId());
+        return new AuditLogCursor(payload.eventTs(), payload.id());
       } catch (Exception ex) {
         LOG.warn("Failed to parse audit log cursor {}", encoded, ex);
         return null;
       }
     }
 
-    private static String encode(Long eventTs, Long id) {
+    static String encode(Long eventTs, Long id) {
       if (eventTs == null || id == null) {
         return null;
       }
-      CursorPayload payload = new CursorPayload(eventTs, id);
       try {
-        return RestUtil.encodeCursor(JsonUtils.pojoToJson(payload));
+        return RestUtil.encodeCursor(JsonUtils.pojoToJson(new CursorPayload(eventTs, id)));
       } catch (Exception ex) {
         LOG.warn("Failed to encode audit log cursor for ts {} id {}", eventTs, id, ex);
         return null;
@@ -300,23 +389,6 @@ public class AuditLogRepository {
     }
   }
 
-  private static class CursorPayload {
-    private Long eventTs;
-    private Long id;
-
-    public CursorPayload() {}
-
-    CursorPayload(Long eventTs, Long id) {
-      this.eventTs = eventTs;
-      this.id = id;
-    }
-
-    public Long getEventTs() {
-      return eventTs;
-    }
-
-    public Long getId() {
-      return id;
-    }
-  }
+  /** JSON payload for cursor serialization - uses Java 21 record. */
+  private record CursorPayload(Long eventTs, Long id) {}
 }

@@ -52,6 +52,7 @@ import {
   getEntityReferenceFromEntity,
   getEntityReferenceListFromEntities,
 } from '../../utils/EntityUtils';
+import Fqn from '../../utils/Fqn';
 import { getUserPath } from '../../utils/RouterUtils';
 import { isValidJSONString } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -120,16 +121,20 @@ const INITIAL_PAGING: Paging = {
   total: 0,
 };
 
+type FilterType = 'user' | 'bot' | 'service' | 'asset';
+
 type FiltersState = {
   userName: string;
   entityFQN: string;
   entityType?: string;
+  activeFilter?: FilterType;
 };
 
 const INITIAL_FILTERS: FiltersState = {
   userName: '',
   entityFQN: '',
   entityType: '',
+  activeFilter: undefined,
 };
 
 const resolveEntityType = (value?: string): EntityType | undefined => {
@@ -154,9 +159,13 @@ const AuditLogsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<FiltersState>({ ...INITIAL_FILTERS });
   const [selectedUser, setSelectedUser] = useState<EntityReference>();
-  const [selectedEntity, setSelectedEntity] = useState<EntityReference>();
+  const [selectedBot, setSelectedBot] = useState<EntityReference>();
+  const [selectedService, setSelectedService] = useState<EntityReference>();
+  const [selectedAsset, setSelectedAsset] = useState<EntityReference>();
   const [isUserFilterOpen, setIsUserFilterOpen] = useState(false);
-  const [isEntityFilterOpen, setIsEntityFilterOpen] = useState(false);
+  const [isBotFilterOpen, setIsBotFilterOpen] = useState(false);
+  const [isServiceFilterOpen, setIsServiceFilterOpen] = useState(false);
+  const [isAssetFilterOpen, setIsAssetFilterOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchAuditLogs = useCallback(
@@ -262,7 +271,66 @@ const AuditLogsPage = () => {
     []
   );
 
-  const fetchEntityOptions = useCallback(async (searchText: string) => {
+  const fetchBotOptions = useCallback(
+    async (searchText: string, after?: string) => {
+      if (searchText) {
+        try {
+          const response = await searchData(
+            searchText,
+            1,
+            PAGE_SIZE_MEDIUM,
+            'isBot:true',
+            '',
+            '',
+            SearchIndex.USER
+          );
+
+          const total = response.data.hits.total?.value ?? 0;
+          const users = getEntityReferenceListFromEntities(
+            formatUsersResponse(response.data.hits.hits),
+            EntityType.USER
+          );
+
+          return {
+            data: users,
+            paging: {
+              total,
+            },
+          };
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+
+          return {
+            data: [],
+            paging: { total: 0 },
+          };
+        }
+      }
+
+      try {
+        const { data, paging: pagingResponse } = await getUsers({
+          limit: PAGE_SIZE_MEDIUM,
+          after: after ?? undefined,
+          isBot: true,
+        });
+
+        return {
+          data: getEntityReferenceListFromEntities(data, EntityType.USER),
+          paging: pagingResponse,
+        };
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+
+        return {
+          data: [],
+          paging: { total: 0 },
+        };
+      }
+    },
+    []
+  );
+
+  const fetchServiceOptions = useCallback(async (searchText: string) => {
     try {
       const response = await searchData(
         searchText || '*',
@@ -271,7 +339,56 @@ const AuditLogsPage = () => {
         '',
         '',
         '',
-        [SearchIndex.ALL]
+        SearchIndex.SERVICE
+      );
+
+      const hits = response.data.hits?.hits ?? [];
+      const total = response.data.hits.total?.value ?? 0;
+
+      const services: EntityReference[] = hits
+        .map(({ _source }) => {
+          const source = _source as EntityReference & {
+            entityType?: string;
+            type?: string;
+          };
+          const entityType = resolveEntityType(
+            source?.entityType ?? source?.type
+          );
+
+          if (!entityType || !source?.fullyQualifiedName) {
+            return undefined;
+          }
+
+          return getEntityReferenceFromEntity(source, entityType);
+        })
+        .filter(Boolean) as EntityReference[];
+
+      return {
+        data: services,
+        paging: {
+          total,
+        },
+      };
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return {
+        data: [],
+        paging: { total: 0 },
+      };
+    }
+  }, []);
+
+  const fetchAssetOptions = useCallback(async (searchText: string) => {
+    try {
+      const response = await searchData(
+        searchText || '*',
+        1,
+        PAGE_SIZE_MEDIUM,
+        '',
+        '',
+        '',
+        SearchIndex.DATA_ASSET
       );
 
       const hits = response.data.hits?.hits ?? [];
@@ -311,38 +428,83 @@ const AuditLogsPage = () => {
     }
   }, []);
 
+  const clearAllSelections = useCallback(() => {
+    setSelectedUser(undefined);
+    setSelectedBot(undefined);
+    setSelectedService(undefined);
+    setSelectedAsset(undefined);
+  }, []);
+
   const handleUserFilterUpdate = useCallback(
     async (items: EntityReference[]) => {
       const user = items[0];
 
+      clearAllSelections();
       setSelectedUser(user);
-      setFilters((prev) => ({
-        ...prev,
+      setFilters({
         userName: user?.name ?? '',
-      }));
+        entityFQN: '',
+        entityType: '',
+        activeFilter: user ? 'user' : undefined,
+      });
       setIsUserFilterOpen(false);
     },
-    []
+    [clearAllSelections]
   );
 
-  const handleEntityFilterUpdate = useCallback(
+  const handleBotFilterUpdate = useCallback(
     async (items: EntityReference[]) => {
-      const entity = items[0];
+      const bot = items[0];
 
-      setSelectedEntity(entity);
-      setFilters((prev) => ({
-        ...prev,
-        entityFQN: entity?.fullyQualifiedName ?? '',
-        entityType: entity?.type ?? '',
-      }));
-      setIsEntityFilterOpen(false);
+      clearAllSelections();
+      setSelectedBot(bot);
+      setFilters({
+        userName: bot?.name ?? '',
+        entityFQN: '',
+        entityType: '',
+        activeFilter: bot ? 'bot' : undefined,
+      });
+      setIsBotFilterOpen(false);
     },
-    []
+    [clearAllSelections]
+  );
+
+  const handleServiceFilterUpdate = useCallback(
+    async (items: EntityReference[]) => {
+      const service = items[0];
+
+      clearAllSelections();
+      setSelectedService(service);
+      setFilters({
+        userName: '',
+        entityFQN: service?.fullyQualifiedName ?? '',
+        entityType: service?.type ?? '',
+        activeFilter: service ? 'service' : undefined,
+      });
+      setIsServiceFilterOpen(false);
+    },
+    [clearAllSelections]
+  );
+
+  const handleAssetFilterUpdate = useCallback(
+    async (items: EntityReference[]) => {
+      const asset = items[0];
+
+      clearAllSelections();
+      setSelectedAsset(asset);
+      setFilters({
+        userName: '',
+        entityFQN: asset?.fullyQualifiedName ?? '',
+        entityType: asset?.type ?? '',
+        activeFilter: asset ? 'asset' : undefined,
+      });
+      setIsAssetFilterOpen(false);
+    },
+    [clearAllSelections]
   );
 
   const handleFilterReset = () => {
-    setSelectedUser(undefined);
-    setSelectedEntity(undefined);
+    clearAllSelections();
     setFilters({ ...INITIAL_FILTERS });
   };
 
@@ -351,9 +513,15 @@ const AuditLogsPage = () => {
   const userFilterLabel = selectedUser
     ? getEntityName(selectedUser)
     : t('label.user');
-  const entityFilterLabel = selectedEntity
-    ? getEntityName(selectedEntity)
-    : t('label.entity');
+  const botFilterLabel = selectedBot
+    ? getEntityName(selectedBot)
+    : t('label.bot');
+  const serviceFilterLabel = selectedService
+    ? getEntityName(selectedService)
+    : t('label.service');
+  const assetFilterLabel = selectedAsset
+    ? getEntityName(selectedAsset)
+    : t('label.asset');
 
   const getChangeDetails = useCallback(
     (changeDescription?: ChangeDescription) => {
@@ -471,7 +639,7 @@ const AuditLogsPage = () => {
           const entityLabel =
             getEntityName(record.changeEvent?.entity) ||
             (record.changeEvent?.entity as { name?: string })?.name ||
-            (entityFQN ? entityFQN.split('.').pop() : undefined) ||
+            (entityFQN ? Fqn.split(entityFQN).pop() : undefined) ||
             record.changeEvent?.entityFullyQualifiedName ||
             record.entityId;
           const normalizedType = resolveEntityType(entityType);
@@ -544,7 +712,12 @@ const AuditLogsPage = () => {
     <PageLayoutV1 pageTitle={t('label.audit-log-plural')}>
       <Row gutter={[0, 16]}>
         <Col span={24}>
-          <PageHeader data={PAGE_HEADERS.AUDIT_LOGS} />
+          <PageHeader
+            data={{
+              header: t(PAGE_HEADERS.AUDIT_LOGS.header),
+              subHeader: t(PAGE_HEADERS.AUDIT_LOGS.subHeader),
+            }}
+          />
         </Col>
 
         <Col span={24}>
@@ -554,16 +727,18 @@ const AuditLogsPage = () => {
                 <Popover
                   destroyTooltipOnHide
                   content={
-                    <SelectableList
-                      fetchOptions={fetchUserOptions}
-                      multiSelect={false}
-                      searchPlaceholder={t('label.search-for-type', {
-                        type: t('label.user'),
-                      })}
-                      selectedItems={selectedUser ? [selectedUser] : []}
-                      onCancel={() => setIsUserFilterOpen(false)}
-                      onUpdate={handleUserFilterUpdate}
-                    />
+                    <div data-testid="user-filter-popover">
+                      <SelectableList
+                        fetchOptions={fetchUserOptions}
+                        multiSelect={false}
+                        searchPlaceholder={t('label.search-for-type', {
+                          type: t('label.user'),
+                        })}
+                        selectedItems={selectedUser ? [selectedUser] : []}
+                        onCancel={() => setIsUserFilterOpen(false)}
+                        onUpdate={handleUserFilterUpdate}
+                      />
+                    </div>
                   }
                   open={isUserFilterOpen}
                   overlayClassName="user-select-popover p-0"
@@ -573,8 +748,9 @@ const AuditLogsPage = () => {
                   onOpenChange={setIsUserFilterOpen}>
                   <Button
                     className={classNames('audit-log-filter-trigger', {
-                      active: Boolean(filters.userName),
+                      active: filters.activeFilter === 'user',
                     })}
+                    data-testid="user-filter"
                     type="default">
                     {userFilterLabel}
                   </Button>
@@ -582,33 +758,101 @@ const AuditLogsPage = () => {
                 <Popover
                   destroyTooltipOnHide
                   content={
-                    <SelectableList
-                      fetchOptions={fetchEntityOptions}
-                      multiSelect={false}
-                      searchPlaceholder={t('label.search-for-type', {
-                        type: t('label.entity').toString().toLowerCase(),
-                      })}
-                      selectedItems={selectedEntity ? [selectedEntity] : []}
-                      onCancel={() => setIsEntityFilterOpen(false)}
-                      onUpdate={handleEntityFilterUpdate}
-                    />
+                    <div data-testid="bot-filter-popover">
+                      <SelectableList
+                        fetchOptions={fetchBotOptions}
+                        multiSelect={false}
+                        searchPlaceholder={t('label.search-for-type', {
+                          type: t('label.bot').toString().toLowerCase(),
+                        })}
+                        selectedItems={selectedBot ? [selectedBot] : []}
+                        onCancel={() => setIsBotFilterOpen(false)}
+                        onUpdate={handleBotFilterUpdate}
+                      />
+                    </div>
                   }
-                  open={isEntityFilterOpen}
+                  open={isBotFilterOpen}
                   overlayClassName="user-select-popover p-0"
                   placement="bottomLeft"
                   showArrow={false}
                   trigger="click"
-                  onOpenChange={setIsEntityFilterOpen}>
+                  onOpenChange={setIsBotFilterOpen}>
                   <Button
                     className={classNames('audit-log-filter-trigger', {
-                      active: Boolean(filters.entityFQN),
+                      active: filters.activeFilter === 'bot',
                     })}
+                    data-testid="bot-filter"
                     type="default">
-                    {entityFilterLabel}
+                    {botFilterLabel}
+                  </Button>
+                </Popover>
+                <Popover
+                  destroyTooltipOnHide
+                  content={
+                    <div data-testid="service-filter-popover">
+                      <SelectableList
+                        fetchOptions={fetchServiceOptions}
+                        multiSelect={false}
+                        searchPlaceholder={t('label.search-for-type', {
+                          type: t('label.service').toString().toLowerCase(),
+                        })}
+                        selectedItems={selectedService ? [selectedService] : []}
+                        onCancel={() => setIsServiceFilterOpen(false)}
+                        onUpdate={handleServiceFilterUpdate}
+                      />
+                    </div>
+                  }
+                  open={isServiceFilterOpen}
+                  overlayClassName="user-select-popover p-0"
+                  placement="bottomLeft"
+                  showArrow={false}
+                  trigger="click"
+                  onOpenChange={setIsServiceFilterOpen}>
+                  <Button
+                    className={classNames('audit-log-filter-trigger', {
+                      active: filters.activeFilter === 'service',
+                    })}
+                    data-testid="service-filter"
+                    type="default">
+                    {serviceFilterLabel}
+                  </Button>
+                </Popover>
+                <Popover
+                  destroyTooltipOnHide
+                  content={
+                    <div data-testid="asset-filter-popover">
+                      <SelectableList
+                        fetchOptions={fetchAssetOptions}
+                        multiSelect={false}
+                        searchPlaceholder={t('label.search-for-type', {
+                          type: t('label.asset').toString().toLowerCase(),
+                        })}
+                        selectedItems={selectedAsset ? [selectedAsset] : []}
+                        onCancel={() => setIsAssetFilterOpen(false)}
+                        onUpdate={handleAssetFilterUpdate}
+                      />
+                    </div>
+                  }
+                  open={isAssetFilterOpen}
+                  overlayClassName="user-select-popover p-0"
+                  placement="bottomLeft"
+                  showArrow={false}
+                  trigger="click"
+                  onOpenChange={setIsAssetFilterOpen}>
+                  <Button
+                    className={classNames('audit-log-filter-trigger', {
+                      active: filters.activeFilter === 'asset',
+                    })}
+                    data-testid="asset-filter"
+                    type="default">
+                    {assetFilterLabel}
                   </Button>
                 </Popover>
                 {hasActiveFilters && (
-                  <Button type="link" onClick={handleFilterReset}>
+                  <Button
+                    data-testid="clear-filters"
+                    type="link"
+                    onClick={handleFilterReset}>
                     {t('label.clear')}
                   </Button>
                 )}
@@ -621,6 +865,7 @@ const AuditLogsPage = () => {
           <Table<AuditLogEntry>
             bordered={false}
             columns={columns}
+            data-testid="audit-logs-table"
             dataSource={logs}
             loading={isLoading}
             locale={{
