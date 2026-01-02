@@ -62,25 +62,43 @@ if [ "$PROVIDER" == "keycloak" ]; then
 
   # Wait for Keycloak
   echo -n "   Waiting for Keycloak..."
-  timeout 180 bash -c 'until curl -sf http://localhost:8080/health/ready > /dev/null 2>&1; do sleep 2; done' && echo -e " ${GREEN}✓${NC}" || {
-    echo -e " ${RED}✗${NC}"
-    echo -e "${RED}Keycloak failed to start. Check logs: docker logs keycloak-saml-sso${NC}"
-    exit 1
-  }
+  SECONDS=0
+  MAX_WAIT=180
+  while ! curl -sf http://localhost:8080/realms/master > /dev/null 2>&1; do
+    if [ $SECONDS -ge $MAX_WAIT ]; then
+      echo -e " ${RED}✗${NC}"
+      echo -e "${RED}Keycloak failed to start. Check logs: docker logs keycloak-saml-sso${NC}"
+      exit 1
+    fi
+    sleep 2
+  done
+  echo -e " ${GREEN}✓${NC}"
 
   # Wait for MySQL
   echo -n "   Waiting for MySQL..."
-  timeout 60 bash -c 'until docker exec openmetadata-mysql mysqladmin ping -h localhost --silent > /dev/null 2>&1; do sleep 2; done' && echo -e " ${GREEN}✓${NC}" || {
-    echo -e " ${RED}✗${NC}"
-    exit 1
-  }
+  SECONDS=0
+  MAX_WAIT=60
+  while ! docker exec openmetadata_mysql mysqladmin ping -h localhost --silent > /dev/null 2>&1; do
+    if [ $SECONDS -ge $MAX_WAIT ]; then
+      echo -e " ${RED}✗${NC}"
+      exit 1
+    fi
+    sleep 2
+  done
+  echo -e " ${GREEN}✓${NC}"
 
   # Wait for Elasticsearch
   echo -n "   Waiting for Elasticsearch..."
-  timeout 60 bash -c 'until curl -sf http://localhost:9200/_cluster/health > /dev/null 2>&1; do sleep 2; done' && echo -e " ${GREEN}✓${NC}" || {
-    echo -e " ${RED}✗${NC}"
-    exit 1
-  }
+  SECONDS=0
+  MAX_WAIT=60
+  while ! curl -sf http://localhost:9200/_cluster/health > /dev/null 2>&1; do
+    if [ $SECONDS -ge $MAX_WAIT ]; then
+      echo -e " ${RED}✗${NC}"
+      exit 1
+    fi
+    sleep 2
+  done
+  echo -e " ${GREEN}✓${NC}"
 
   echo ""
   echo -e "${BLUE}⚙️  Configuring Keycloak realm and test users...${NC}"
@@ -89,11 +107,17 @@ if [ "$PROVIDER" == "keycloak" ]; then
 
   echo ""
   echo -n "   Waiting for OpenMetadata..."
-  timeout 180 bash -c 'until curl -sf http://localhost:8585/api/v1/system/status > /dev/null 2>&1; do sleep 5; done' && echo -e " ${GREEN}✓${NC}" || {
-    echo -e " ${RED}✗${NC}"
-    echo -e "${RED}OpenMetadata failed to start. Check logs: docker logs openmetadata-server${NC}"
-    exit 1
-  }
+  SECONDS=0
+  MAX_WAIT=180
+  while ! curl -sf http://localhost:8585/api/v1/system/health > /dev/null 2>&1; do
+    if [ $SECONDS -ge $MAX_WAIT ]; then
+      echo -e " ${RED}✗${NC}"
+      echo -e "${RED}OpenMetadata failed to start. Check logs: docker logs openmetadata_server${NC}"
+      exit 1
+    fi
+    sleep 5
+  done
+  echo -e " ${GREEN}✓${NC}"
 
   echo ""
   echo -e "${GREEN}╔═══════════════════════════════════════════════════════════╗${NC}"
@@ -136,24 +160,42 @@ elif [ "$PROVIDER" == "ldap" ]; then
 
   # Wait for MySQL
   echo -n "   Waiting for MySQL..."
-  timeout 60 bash -c 'until docker exec openmetadata-mysql mysqladmin ping -h localhost --silent > /dev/null 2>&1; do sleep 2; done' && echo -e " ${GREEN}✓${NC}" || {
-    echo -e " ${RED}✗${NC}"
-    exit 1
-  }
+  SECONDS=0
+  MAX_WAIT=60
+  while ! docker exec openmetadata_mysql mysqladmin ping -h localhost --silent > /dev/null 2>&1; do
+    if [ $SECONDS -ge $MAX_WAIT ]; then
+      echo -e " ${RED}✗${NC}"
+      exit 1
+    fi
+    sleep 2
+  done
+  echo -e " ${GREEN}✓${NC}"
 
   # Wait for Elasticsearch
   echo -n "   Waiting for Elasticsearch..."
-  timeout 60 bash -c 'until curl -sf http://localhost:9200/_cluster/health > /dev/null 2>&1; do sleep 2; done' && echo -e " ${GREEN}✓${NC}" || {
-    echo -e " ${RED}✗${NC}"
-    exit 1
-  }
+  SECONDS=0
+  MAX_WAIT=60
+  while ! curl -sf http://localhost:9200/_cluster/health > /dev/null 2>&1; do
+    if [ $SECONDS -ge $MAX_WAIT ]; then
+      echo -e " ${RED}✗${NC}"
+      exit 1
+    fi
+    sleep 2
+  done
+  echo -e " ${GREEN}✓${NC}"
 
   echo -n "   Waiting for OpenMetadata..."
-  timeout 180 bash -c 'until curl -sf http://localhost:8585/api/v1/system/status > /dev/null 2>&1; do sleep 5; done' && echo -e " ${GREEN}✓${NC}" || {
-    echo -e " ${RED}✗${NC}"
-    echo -e "${RED}OpenMetadata failed to start. Check logs: docker logs openmetadata-server${NC}"
-    exit 1
-  }
+  SECONDS=0
+  MAX_WAIT=180
+  while ! curl -sf http://localhost:8585/api/v1/system/health > /dev/null 2>&1; do
+    if [ $SECONDS -ge $MAX_WAIT ]; then
+      echo -e " ${RED}✗${NC}"
+      echo -e "${RED}OpenMetadata failed to start. Check logs: docker logs openmetadata_server${NC}"
+      exit 1
+    fi
+    sleep 5
+  done
+  echo -e " ${GREEN}✓${NC}"
 
   echo ""
   echo -e "${GREEN}╔═══════════════════════════════════════════════════════════╗${NC}"

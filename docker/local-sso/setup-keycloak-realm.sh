@@ -24,12 +24,17 @@ CLIENT_ID="http://localhost:8585"
 echo "🔧 Configuring Keycloak for OpenMetadata SAML SSO..."
 echo "Keycloak URL: $KEYCLOAK_URL"
 
-# Wait for Keycloak to be ready
+# Wait for Keycloak to be ready (macOS compatible)
 echo "⏳ Waiting for Keycloak to be ready..."
-timeout 120 bash -c "until curl -f $KEYCLOAK_URL/health/ready > /dev/null 2>&1; do sleep 2; done" || {
-  echo "❌ Keycloak did not become ready in time"
-  exit 1
-}
+SECONDS=0
+MAX_WAIT=180
+while ! curl -sf $KEYCLOAK_URL/realms/master > /dev/null 2>&1; do
+  if [ $SECONDS -ge $MAX_WAIT ]; then
+    echo "❌ Keycloak did not become ready in time"
+    exit 1
+  fi
+  sleep 2
+done
 echo "✅ Keycloak is ready"
 
 # Get admin access token

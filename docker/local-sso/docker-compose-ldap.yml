@@ -1,7 +1,28 @@
-version: "3.9"
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 
 # Docker Compose for OpenMetadata with LDAP SSO
 # Complete local SSO testing environment - no external dependencies
+
+version: "3.9"
+
+volumes:
+  ldap-data:
+  ldap-config:
+  mysql-data:
+  es-data:
+
+networks:
+  openmetadata-sso:
+    driver: bridge
 
 services:
   # OpenLDAP Directory Server
@@ -31,6 +52,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 20s
     networks:
       - openmetadata-sso
 
@@ -50,95 +72,289 @@ services:
 
   # MySQL Database
   mysql:
-    image: mysql:8.0
-    container_name: openmetadata-mysql
+    container_name: openmetadata_mysql
+    image: docker.getcollate.io/openmetadata/db:1.10.4
+    command: "--sort_buffer_size=10M"
+    restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: openmetadata_db
-      MYSQL_USER: openmetadata_user
-      MYSQL_PASSWORD: openmetadata_password
+    expose:
+      - 3306
     ports:
       - "3306:3306"
     volumes:
-      - mysql-data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+     - mysql-data:/var/lib/mysql
     networks:
       - openmetadata-sso
+    healthcheck:
+      test: mysql --user=root --password=$$MYSQL_ROOT_PASSWORD --silent --execute "use openmetadata_db"
+      interval: 15s
+      timeout: 10s
+      retries: 10
 
   # Elasticsearch
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.15
-    container_name: openmetadata-elasticsearch
+    container_name: openmetadata_elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.4
     environment:
       - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
       - xpack.security.enabled=false
+    networks:
+      - openmetadata-sso
     ports:
       - "9200:9200"
       - "9300:9300"
+    healthcheck:
+      test: "curl -s http://localhost:9200/_cluster/health?pretty | grep status | grep -qE 'green|yellow' || exit 1"
+      interval: 15s
+      timeout: 10s
+      retries: 10
     volumes:
       - es-data:/usr/share/elasticsearch/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+
+  # Execute database migrations
+  execute-migrate-all:
+    container_name: execute_migrate_all
+    image: docker.getcollate.io/openmetadata/server:1.10.4
+    command: "./bootstrap/openmetadata-ops.sh migrate"
+    environment:
+      OPENMETADATA_CLUSTER_NAME: openmetadata
+      SERVER_PORT: 8585
+      SERVER_ADMIN_PORT: 8586
+      LOG_LEVEL: INFO
+
+      # Migration
+      MIGRATION_LIMIT_PARAM: 1200
+
+      # OpenMetadata Server Authentication Configuration
+      AUTHORIZER_CLASS_NAME: org.openmetadata.service.security.DefaultAuthorizer
+      AUTHORIZER_REQUEST_FILTER: org.openmetadata.service.security.JwtFilter
+      AUTHORIZER_ADMIN_PRINCIPALS: "[admin]"
+      AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN: '["all"]'
+      AUTHORIZER_INGESTION_PRINCIPALS: "[ingestion-bot]"
+      AUTHORIZER_PRINCIPAL_DOMAIN: "open-metadata.org"
+      AUTHORIZER_ALLOWED_DOMAINS: "[]"
+      AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN: "false"
+      AUTHORIZER_ENABLE_SECURE_SOCKET: "false"
+
+      # LDAP Authentication
+      AUTHENTICATION_PROVIDER: ldap
+      AUTHENTICATION_PUBLIC_KEYS: "[http://localhost:8585/api/v1/system/config/jwks]"
+
+      # LDAP Configuration for OpenLDAP
+      AUTHENTICATION_LDAP_HOST: openldap
+      AUTHENTICATION_LDAP_PORT: 1389
+      AUTHENTICATION_LOOKUP_ADMIN_DN: "cn=admin,dc=openmetadata,dc=org"
+      AUTHENTICATION_LOOKUP_ADMIN_PWD: "admin123"
+      AUTHENTICATION_USER_LOOKUP_BASEDN: "ou=users,dc=openmetadata,dc=org"
+      AUTHENTICATION_USER_MAIL_ATTR: mail
+      AUTHENTICATION_LDAP_POOL_SIZE: 3
+      AUTHENTICATION_LDAP_SSL_ENABLED: "false"
+      AUTHENTICATION_LDAP_TRUSTSTORE_TYPE: TrustAll
+      AUTHENTICATION_LDAP_TRUSTSTORE_PATH: ""
+      AUTHENTICATION_LDAP_KEYSTORE_PASSWORD: ""
+      AUTHENTICATION_LDAP_SSL_KEY_FORMAT: ""
+      AUTHENTICATION_LDAP_ALLOW_WILDCARDS: ""
+      AUTHENTICATION_LDAP_ALLOWED_HOSTNAMES: "[]"
+      AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST: ""
+      AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES: "true"
+
+      # JWT Configuration
+      RSA_PUBLIC_KEY_FILE_PATH: "./conf/public_key.der"
+      RSA_PRIVATE_KEY_FILE_PATH: "./conf/private_key.der"
+      JWT_ISSUER: "open-metadata.org"
+      JWT_KEY_ID: "Gb389a-9f76-gdjs-a92j-0242bk94356"
+
+      # Database configuration for MySQL
+      DB_DRIVER_CLASS: com.mysql.cj.jdbc.Driver
+      DB_SCHEME: mysql
+      DB_PARAMS: allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      DB_USER: openmetadata_user
+      DB_USER_PASSWORD: openmetadata_password
+      DB_HOST: mysql
+      DB_PORT: 3306
+      OM_DATABASE: openmetadata_db
+
+      # ElasticSearch Configurations
+      ELASTICSEARCH_HOST: elasticsearch
+      ELASTICSEARCH_PORT: 9200
+      ELASTICSEARCH_SCHEME: http
+      ELASTICSEARCH_USER: ""
+      ELASTICSEARCH_PASSWORD: ""
+      SEARCH_TYPE: "elasticsearch"
+      ELASTICSEARCH_TRUST_STORE_PATH: ""
+      ELASTICSEARCH_TRUST_STORE_PASSWORD: ""
+      ELASTICSEARCH_CONNECTION_TIMEOUT_SECS: 5
+      ELASTICSEARCH_SOCKET_TIMEOUT_SECS: 60
+      ELASTICSEARCH_KEEP_ALIVE_TIMEOUT_SECS: 600
+      ELASTICSEARCH_BATCH_SIZE: 100
+      ELASTICSEARCH_PAYLOAD_BYTES_SIZE: 10485760
+      ELASTICSEARCH_INDEX_MAPPING_LANG: EN
+
+      # Pipeline Service Client Configuration
+      PIPELINE_SERVICE_CLIENT_ENABLED: "false"
+
+      # Heap OPTS Configurations
+      OPENMETADATA_HEAP_OPTS: "-Xmx1G -Xms1G"
+
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
     networks:
       - openmetadata-sso
 
   # OpenMetadata Server
   openmetadata-server:
-    image: openmetadata/server:latest
-    container_name: openmetadata-server
+    container_name: openmetadata_server
+    restart: always
+    image: docker.getcollate.io/openmetadata/server:1.10.4
+    environment:
+      OPENMETADATA_CLUSTER_NAME: openmetadata
+      SERVER_PORT: 8585
+      SERVER_ADMIN_PORT: 8586
+      LOG_LEVEL: INFO
+
+      # OpenMetadata Server Authentication Configuration
+      AUTHORIZER_CLASS_NAME: org.openmetadata.service.security.DefaultAuthorizer
+      AUTHORIZER_REQUEST_FILTER: org.openmetadata.service.security.JwtFilter
+      AUTHORIZER_ADMIN_PRINCIPALS: "[admin]"
+      AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN: '["all"]'
+      AUTHORIZER_INGESTION_PRINCIPALS: "[ingestion-bot]"
+      AUTHORIZER_PRINCIPAL_DOMAIN: "open-metadata.org"
+      AUTHORIZER_ALLOWED_DOMAINS: "[]"
+      AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN: "false"
+      AUTHORIZER_ENABLE_SECURE_SOCKET: "false"
+
+      # LDAP Authentication
+      AUTHENTICATION_PROVIDER: ldap
+      AUTHENTICATION_PUBLIC_KEYS: "[http://localhost:8585/api/v1/system/config/jwks]"
+
+      # LDAP Configuration for OpenLDAP
+      AUTHENTICATION_LDAP_HOST: openldap
+      AUTHENTICATION_LDAP_PORT: 1389
+      AUTHENTICATION_LOOKUP_ADMIN_DN: "cn=admin,dc=openmetadata,dc=org"
+      AUTHENTICATION_LOOKUP_ADMIN_PWD: "admin123"
+      AUTHENTICATION_USER_LOOKUP_BASEDN: "ou=users,dc=openmetadata,dc=org"
+      AUTHENTICATION_USER_MAIL_ATTR: mail
+      AUTHENTICATION_LDAP_POOL_SIZE: 3
+      AUTHENTICATION_LDAP_SSL_ENABLED: "false"
+      AUTHENTICATION_LDAP_TRUSTSTORE_TYPE: TrustAll
+      AUTHENTICATION_LDAP_TRUSTSTORE_PATH: ""
+      AUTHENTICATION_LDAP_KEYSTORE_PASSWORD: ""
+      AUTHENTICATION_LDAP_SSL_KEY_FORMAT: ""
+      AUTHENTICATION_LDAP_ALLOW_WILDCARDS: ""
+      AUTHENTICATION_LDAP_ALLOWED_HOSTNAMES: "[]"
+      AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST: ""
+      AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES: "true"
+
+      # JWT Configuration
+      RSA_PUBLIC_KEY_FILE_PATH: "./conf/public_key.der"
+      RSA_PRIVATE_KEY_FILE_PATH: "./conf/private_key.der"
+      JWT_ISSUER: "open-metadata.org"
+      JWT_KEY_ID: "Gb389a-9f76-gdjs-a92j-0242bk94356"
+
+      # Pipeline Service Client Configuration
+      PIPELINE_SERVICE_CLIENT_ENABLED: "false"
+      SERVER_HOST_API_URL: http://openmetadata-server:8585/api
+
+      # Database configuration for MySQL
+      DB_DRIVER_CLASS: com.mysql.cj.jdbc.Driver
+      DB_SCHEME: mysql
+      DB_PARAMS: allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      DB_USER: openmetadata_user
+      DB_USER_PASSWORD: openmetadata_password
+      DB_HOST: mysql
+      DB_PORT: 3306
+      OM_DATABASE: openmetadata_db
+
+      # ElasticSearch Configurations
+      ELASTICSEARCH_HOST: elasticsearch
+      ELASTICSEARCH_PORT: 9200
+      ELASTICSEARCH_SCHEME: http
+      ELASTICSEARCH_USER: ""
+      ELASTICSEARCH_PASSWORD: ""
+      SEARCH_TYPE: "elasticsearch"
+      ELASTICSEARCH_TRUST_STORE_PATH: ""
+      ELASTICSEARCH_TRUST_STORE_PASSWORD: ""
+      ELASTICSEARCH_CONNECTION_TIMEOUT_SECS: 5
+      ELASTICSEARCH_SOCKET_TIMEOUT_SECS: 60
+      ELASTICSEARCH_KEEP_ALIVE_TIMEOUT_SECS: 600
+      ELASTICSEARCH_BATCH_SIZE: 100
+      ELASTICSEARCH_PAYLOAD_BYTES_SIZE: 10485760
+      ELASTICSEARCH_INDEX_MAPPING_LANG: EN
+
+      # Event Monitoring Configuration
+      EVENT_MONITOR: prometheus
+      EVENT_MONITOR_BATCH_SIZE: 10
+      EVENT_MONITOR_PATH_PATTERN: '["/api/v1/tables/*", "/api/v1/health-check"]'
+      EVENT_MONITOR_LATENCY: "[]"
+
+      # Secrets Manager Configuration
+      SECRET_MANAGER: db
+
+      # Email Configuration
+      OM_EMAIL_ENTITY: "OpenMetadata"
+      OM_SUPPORT_URL: "https://slack.open-metadata.org"
+      AUTHORIZER_ENABLE_SMTP: "false"
+      OPENMETADATA_SERVER_URL: ""
+      OPENMETADATA_SMTP_SENDER_MAIL: ""
+      SMTP_SERVER_ENDPOINT: ""
+      SMTP_SERVER_PORT: ""
+      SMTP_SERVER_USERNAME: ""
+      SMTP_SERVER_PWD: ""
+      SMTP_SERVER_STRATEGY: "SMTP_TLS"
+
+      # Heap OPTS Configurations
+      OPENMETADATA_HEAP_OPTS: "-Xmx1G -Xms1G"
+
+      # Mask passwords values in UI
+      MASK_PASSWORDS_API: "false"
+
+      # OpenMetadata Web Configuration
+      WEB_CONF_URI_PATH: "/api"
+      WEB_CONF_HSTS_ENABLED: "false"
+      WEB_CONF_HSTS_MAX_AGE: "365 days"
+      WEB_CONF_HSTS_INCLUDE_SUBDOMAINS: "true"
+      WEB_CONF_HSTS_PRELOAD: "true"
+      WEB_CONF_FRAME_OPTION_ENABLED: "false"
+      WEB_CONF_FRAME_OPTION: "SAMEORIGIN"
+      WEB_CONF_FRAME_ORIGIN: ""
+      WEB_CONF_CONTENT_TYPE_OPTIONS_ENABLED: "false"
+      WEB_CONF_XSS_PROTECTION_ENABLED: "false"
+      WEB_CONF_XSS_PROTECTION_ON: "true"
+      WEB_CONF_XSS_PROTECTION_BLOCK: "true"
+      WEB_CONF_XSS_CSP_ENABLED: "false"
+      WEB_CONF_XSS_CSP_POLICY: "default-src 'self'"
+      WEB_CONF_XSS_CSP_REPORT_ONLY_POLICY: ""
+      WEB_CONF_REFERRER_POLICY_ENABLED: "false"
+      WEB_CONF_REFERRER_POLICY_OPTION: "SAME_ORIGIN"
+      WEB_CONF_PERMISSION_POLICY_ENABLED: "false"
+      WEB_CONF_PERMISSION_POLICY_OPTION: ""
+      WEB_CONF_CACHE_CONTROL: ""
+      WEB_CONF_PRAGMA: ""
+
+    expose:
+      - 8585
+      - 8586
+    ports:
+      - "8585:8585"
+      - "8586:8586"
     depends_on:
-      mysql:
-        condition: service_healthy
       elasticsearch:
+        condition: service_healthy
+      mysql:
         condition: service_healthy
       openldap:
         condition: service_healthy
-    ports:
-      - "8585:8585"
-    environment:
-      DB_DRIVER_CLASS: com.mysql.cj.jdbc.Driver
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: openmetadata_user
-      DB_USER_PASSWORD: openmetadata_password
-      OM_DATABASE: openmetadata_db
-      ELASTICSEARCH_HOST: elasticsearch
-      ELASTICSEARCH_PORT: 9200
-      AUTHENTICATION_PROVIDER: ldap
-      AUTHENTICATION_LDAP_HOST: openldap
-      AUTHENTICATION_LDAP_PORT: 1389
-      AUTHENTICATION_LDAP_DN_ADMIN_PRINCIPAL: cn=admin,dc=openmetadata,dc=org
-      AUTHENTICATION_LDAP_DN_ADMIN_PASSWORD: admin123
-      AUTHENTICATION_LDAP_USER_BASE_DN: ou=users,dc=openmetadata,dc=org
-      AUTHENTICATION_LDAP_GROUP_BASE_DN: ou=groups,dc=openmetadata,dc=org
-      AUTHORIZER_CLASS_NAME: org.openmetadata.service.security.DefaultAuthorizer
-      AUTHORIZER_REQUEST_FILTER: org.openmetadata.service.security.JwtFilter
-      AUTHORIZER_ADMIN_PRINCIPALS: '[admin@openmetadata.org, adminuser]'
-      AUTHORIZER_PRINCIPAL_DOMAIN: openmetadata.org
-    volumes:
-      - ./openmetadata-ldap.yaml:/openmetadata.yaml:ro
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8585/api/v1/system/status"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+      execute-migrate-all:
+        condition: service_completed_successfully
     networks:
       - openmetadata-sso
-
-volumes:
-  ldap-data:
-  ldap-config:
-  mysql-data:
-  es-data:
-
-networks:
-  openmetadata-sso:
-    driver: bridge
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider",  "http://localhost:8586/healthcheck" ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
