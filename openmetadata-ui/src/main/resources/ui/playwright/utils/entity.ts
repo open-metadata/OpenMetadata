@@ -17,7 +17,7 @@ import {
   BIG_ENTITY_DELETE_TIMEOUT,
   ENTITIES_WITHOUT_FOLLOWING_BUTTON,
   LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
-  LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED,
+  LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED
 } from '../constant/delete';
 import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { SidebarItem } from '../constant/sidebar';
@@ -31,12 +31,12 @@ import {
   readElementInListWithScroll,
   redirectToHomePage,
   toastNotification,
-  uuid,
+  uuid
 } from './common';
 import {
   customFormatDateTime,
   getCurrentMillis,
-  getEpochMillisForFutureDays,
+  getEpochMillisForFutureDays
 } from './dateTime';
 import { searchAndClickOnOption } from './explore';
 import { sidebarClick } from './sidebar';
@@ -2029,12 +2029,45 @@ export const checkExploreSearchFilter = async (
     filterKey === 'tier.tagFQN'
       ? filterValue
       : /["%]/.test(filterValue ?? '')
-      ? encodeURIComponent(escapedValue)
+      ? escapedValue
       : rawFilterValue;
 
-  const querySearchURL = `/api/v1/search/query?*index=dataAsset*query_filter=*should*${filterKey}*${filterValueForSearchURL}*`;
+  // Use a predicate to check the response URL contains the correct filter
+  const queryRes = page.waitForResponse((response) => {
+    const url = response.url();
+    if (
+      !url.includes('/api/v1/search/query') ||
+      !url.includes('index=dataAsset')
+    ) {
+      return false;
+    }
 
-  const queryRes = page.waitForResponse(querySearchURL);
+    // Check if the URL contains the filterKey in query_filter
+    const urlObj = new URL(url);
+    const queryFilter = urlObj.searchParams.get('query_filter');
+
+    if (!queryFilter) {
+      return false;
+    }
+
+    try {
+      const filterObj = JSON.parse(queryFilter);
+      const filterStr = JSON.stringify(filterObj);
+      
+      // Check if the filter contains both the filterKey and filterValue
+      return (
+        filterStr.includes(filterKey) &&
+        filterStr.includes(filterValueForSearchURL)
+      );
+    } catch {
+      // Fallback to simple string match if JSON parse fails
+      return (
+        queryFilter.includes(filterKey) &&
+        queryFilter.includes(filterValueForSearchURL)
+      );
+    }
+  }, { timeout: 30_000 });
+
   await page.click('[data-testid="update-btn"]');
   await queryRes;
   await waitForAllLoadersToDisappear(page);
