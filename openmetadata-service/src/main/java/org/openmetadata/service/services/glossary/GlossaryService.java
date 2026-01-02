@@ -13,10 +13,12 @@
 
 package org.openmetadata.service.services.glossary;
 
+import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
@@ -25,6 +27,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Singleton
@@ -32,6 +35,7 @@ import org.openmetadata.service.services.Service;
 public class GlossaryService extends AbstractEntityService<Glossary> {
 
   @Getter private final GlossaryMapper mapper;
+  private final GlossaryRepository glossaryRepository;
 
   @Inject
   public GlossaryService(
@@ -40,6 +44,11 @@ public class GlossaryService extends AbstractEntityService<Glossary> {
       Authorizer authorizer,
       GlossaryMapper mapper) {
     super(repository, searchRepository, authorizer, Entity.GLOSSARY);
+    this.glossaryRepository = repository;
     this.mapper = mapper;
+  }
+
+  public RestUtil.PutResponse<Glossary> updateVote(String updatedBy, UUID id, VoteRequest request) {
+    return glossaryRepository.updateVote(updatedBy, id, request);
   }
 }

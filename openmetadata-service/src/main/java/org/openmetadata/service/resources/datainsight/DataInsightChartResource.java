@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.datainsight;
 
+import static org.openmetadata.service.services.datainsight.DataInsightChartService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,7 +35,6 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.UUID;
 import lombok.NonNull;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.dataInsight.CreateDataInsightChart;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
@@ -41,54 +42,24 @@ import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.type.DataReportIndex;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.datainsight.DataInsightChartService;
 
-@Slf4j
 @Path("/v1/analytics/dataInsights/charts")
 @Tag(name = "Data Insights", description = "APIs related to Data Insights data and charts.")
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")
-public class DataInsightChartResource
-    extends EntityBaseService<DataInsightChart, DataInsightChartRepository> {
-
-  private final DataInsightChartService service;
+public class DataInsightChartResource {
   public static final String COLLECTION_PATH = DataInsightChartRepository.COLLECTION_PATH;
-  public static final String FIELDS = "owners";
-  private final SearchRepository searchRepository;
+  private final DataInsightChartService service;
 
-  public DataInsightChartResource(
-      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.DATA_INSIGHT_CHART, authorizer, limits);
-    searchRepository = Entity.getSearchRepository();
-    this.service = serviceRegistry.getService(DataInsightChartService.class);
-  }
-
-  public static class DataInsightChartList extends ResultList<DataInsightChart> {
-    /* Required for serde */
-  }
-
-  public static class DataInsightChartResultList extends ResultList<DataInsightChartResult> {
-    /* Required for serde */
-  }
-
-  @Override
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    service.initialize();
+  public DataInsightChartResource(DataInsightChartService service) {
+    this.service = service;
   }
 
   @GET
@@ -105,7 +76,7 @@ public class DataInsightChartResource
                     mediaType = "application/json",
                     schema =
                         @Schema(
-                            implementation = DataInsightChartResource.DataInsightChartList.class)))
+                            implementation = DataInsightChartService.DataInsightChartList.class)))
       })
   public ResultList<DataInsightChart> list(
       @Context UriInfo uriInfo,
@@ -140,7 +111,7 @@ public class DataInsightChartResource
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -165,7 +136,7 @@ public class DataInsightChartResource
       @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -203,7 +174,7 @@ public class DataInsightChartResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -243,7 +214,7 @@ public class DataInsightChartResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -275,7 +246,7 @@ public class DataInsightChartResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -299,7 +270,7 @@ public class DataInsightChartResource
       @Valid CreateDataInsightChart create) {
     DataInsightChart dataInsightChart =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, dataInsightChart);
+    return service.create(uriInfo, securityContext, dataInsightChart);
   }
 
   @PATCH
@@ -313,7 +284,7 @@ public class DataInsightChartResource
               description = "JsonPatch RFC",
               url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response updateDescription(
+  public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID"))
@@ -328,13 +299,13 @@ public class DataInsightChartResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
   @Path("/name/{fqn}")
   @Operation(
-      operationId = "patchDataInsightChart",
+      operationId = "patchDataInsightChartByName",
       summary = "Update a data insight chart by name.",
       description = "Update an existing data insight chart using JsonPatch.",
       externalDocs =
@@ -342,7 +313,7 @@ public class DataInsightChartResource
               description = "JsonPatch RFC",
               url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response updateDescription(
+  public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the data insight chart", schema = @Schema(type = "string"))
@@ -357,7 +328,7 @@ public class DataInsightChartResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -381,7 +352,7 @@ public class DataInsightChartResource
       @Valid CreateDataInsightChart create) {
     DataInsightChart dataInsightChart =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, dataInsightChart);
+    return service.createOrUpdate(uriInfo, securityContext, dataInsightChart);
   }
 
   @DELETE
@@ -406,7 +377,7 @@ public class DataInsightChartResource
       @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return service.delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -431,7 +402,7 @@ public class DataInsightChartResource
       @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -458,7 +429,7 @@ public class DataInsightChartResource
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
@@ -480,7 +451,7 @@ public class DataInsightChartResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET
@@ -499,7 +470,7 @@ public class DataInsightChartResource
                     schema =
                         @Schema(
                             implementation =
-                                DataInsightChartResource.DataInsightChartResultList.class)))
+                                DataInsightChartService.DataInsightChartResultList.class)))
       })
   public Response listDataInsightChartResult(
       @Context SecurityContext securityContext,
@@ -554,10 +525,16 @@ public class DataInsightChartResource
           @QueryParam("endTs")
           Long endTs)
       throws IOException {
-    OperationContext operationContext =
-        new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContext());
-    return searchRepository.listDataInsightChartResult(
-        startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);
+    return service.listDataInsightChartResult(
+        securityContext,
+        startTs,
+        endTs,
+        tier,
+        team,
+        dataInsightChartName,
+        size,
+        from,
+        queryFilter,
+        dataReportIndex);
   }
 }

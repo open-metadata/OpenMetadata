@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.topics;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.services.messaging.TopicService.FIELDS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,17 +53,10 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.TopicRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.messaging.TopicService;
 
 @Path("/v1/topics")
@@ -75,37 +68,12 @@ import org.openmetadata.service.services.messaging.TopicService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "topics")
-public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
+public class TopicResource {
   public static final String COLLECTION_PATH = "v1/topics/";
-  static final String FIELDS = "owners,followers,tags,extension,domains,dataProducts,sourceHash";
+  private final TopicService service;
 
-  private final TopicService topicService;
-
-  @Override
-  public Topic addHref(UriInfo uriInfo, Topic topic) {
-    super.addHref(uriInfo, topic);
-    Entity.withHref(uriInfo, topic.getService());
-    return topic;
-  }
-
-  public TopicResource(Authorizer authorizer, Limits limits) {
-    super(Entity.TOPIC, authorizer, limits);
-    this.topicService = null;
-  }
-
-  public TopicResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
-    super(Entity.TOPIC, authorizer, limits);
-    this.topicService = serviceRegistry.getService(TopicService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("sampleData", MetadataOperation.VIEW_SAMPLE_DATA);
-    return listOf(MetadataOperation.VIEW_SAMPLE_DATA, MetadataOperation.EDIT_SAMPLE_DATA);
-  }
-
-  public static class TopicList extends ResultList<Topic> {
-    /* Required for serde */
+  public TopicResource(TopicService service) {
+    this.service = service;
   }
 
   @GET
@@ -123,7 +91,7 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = TopicList.class)))
+                    schema = @Schema(implementation = TopicService.TopicList.class)))
       })
   public ResultList<Topic> list(
       @Context UriInfo uriInfo,
@@ -161,7 +129,7 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -185,7 +153,7 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -219,7 +187,7 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -257,7 +225,7 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -288,7 +256,7 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -311,10 +279,8 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
       @Context SecurityContext securityContext,
       @Valid CreateTopic create) {
     Topic topic =
-        topicService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, topic);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.create(uriInfo, securityContext, topic);
   }
 
   @PUT
@@ -353,7 +319,8 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateTopic> createRequests) {
-    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+    return service.bulkCreateOrUpdate(
+        uriInfo, securityContext, createRequests, service.getMapper(), async);
   }
 
   @PATCH
@@ -381,7 +348,7 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -410,7 +377,7 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -432,10 +399,8 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
       @Context SecurityContext securityContext,
       @Valid CreateTopic create) {
     Topic topic =
-        topicService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, topic);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.createOrUpdate(uriInfo, securityContext, topic);
   }
 
   @PUT
@@ -459,7 +424,7 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
       @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid TopicSampleData sampleData) {
-    return topicService.addSampleData(uriInfo, securityContext, id, sampleData);
+    return service.addSampleData(uriInfo, securityContext, id, sampleData);
   }
 
   @GET
@@ -482,7 +447,7 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return topicService.getSampleData(uriInfo, securityContext, id);
+    return service.getSampleData(uriInfo, securityContext, id);
   }
 
   @PUT
@@ -510,7 +475,7 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return topicService.addFollower(securityContext, id, userId).toResponse();
+    return service.addFollower(securityContext, id, userId).toResponse();
   }
 
   @DELETE
@@ -537,7 +502,7 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return topicService.deleteFollower(securityContext, id, UUID.fromString(userId)).toResponse();
+    return service.deleteFollower(securityContext, id, UUID.fromString(userId)).toResponse();
   }
 
   @PUT
@@ -562,7 +527,7 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return topicService.updateVote(securityContext, id, request).toResponse();
+    return service.updateVote(securityContext, id, request);
   }
 
   @DELETE
@@ -584,7 +549,7 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return service.delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -606,7 +571,7 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -631,7 +596,7 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
@@ -653,6 +618,6 @@ public class TopicResource extends EntityBaseService<Topic, TopicRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

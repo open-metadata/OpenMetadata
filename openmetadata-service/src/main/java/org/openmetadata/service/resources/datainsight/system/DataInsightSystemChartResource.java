@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.resources.datainsight.system;
 
 import io.swagger.v3.oas.annotations.Hidden;
@@ -24,19 +37,10 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
-import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
-import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.datainsight.DataInsightSystemChartService;
-import org.openmetadata.service.util.EntityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,26 +52,17 @@ import org.slf4j.LoggerFactory;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")
-public class DataInsightSystemChartResource
-    extends EntityBaseService<DataInsightCustomChart, DataInsightSystemChartRepository> {
+public class DataInsightSystemChartResource {
   public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/system/charts";
   private static final Logger LOG = LoggerFactory.getLogger(DataInsightSystemChartResource.class);
-  private DataInsightSystemChartService dataInsightSystemChartService;
+  private final DataInsightSystemChartService service;
 
-  public DataInsightSystemChartResource(Authorizer authorizer, Limits limit) {
-    super(Entity.DATA_INSIGHT_CUSTOM_CHART, authorizer, limit);
+  public DataInsightSystemChartResource(DataInsightSystemChartService service) {
+    this.service = service;
   }
 
-  public DataInsightSystemChartResource(
-      ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limit) {
-    super(Entity.DATA_INSIGHT_CUSTOM_CHART, authorizer, limit);
-    this.dataInsightSystemChartService =
-        serviceRegistry.getService(DataInsightSystemChartService.class);
-  }
-
-  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    dataInsightSystemChartService.initialize();
+    service.initialize();
   }
 
   @GET
@@ -113,9 +108,8 @@ public class DataInsightSystemChartResource
           @QueryParam("filter")
           String filter)
       throws IOException {
-    DataInsightCustomChart diChart = getByNameInternal(uriInfo, securityContext, fqn, null, null);
     DataInsightCustomChartResultList resultList =
-        repository.getPreviewData(diChart, start, end, filter);
+        service.getPreviewData(uriInfo, securityContext, fqn, start, end, filter);
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 
@@ -173,7 +167,7 @@ public class DataInsightSystemChartResource
           String serviceName)
       throws IOException {
     Map<String, DataInsightCustomChartResultList> resultList =
-        repository.listChartData(chartNames, start, end, filter, live, serviceName);
+        service.listChartData(chartNames, start, end, filter, live, serviceName);
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 
@@ -231,17 +225,10 @@ public class DataInsightSystemChartResource
           Long endTime) {
 
     try {
-      // Get the current user
-      String username = securityContext.getUserPrincipal().getName();
-      User user =
-          Entity.getUserRepository().getByName(null, username, EntityUtil.Fields.EMPTY_FIELDS);
-
-      // Call repository method to handle streaming
       Map<String, Object> response =
-          repository.startChartDataStreaming(
-              chartNames, serviceName, filter, entityLink, user.getId(), startTime, endTime);
+          service.startChartDataStreaming(
+              securityContext, chartNames, serviceName, filter, entityLink, startTime, endTime);
 
-      // Check if there's an error in the response
       if (response.containsKey("error")) {
         return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
       }
@@ -285,15 +272,8 @@ public class DataInsightSystemChartResource
           String sessionId) {
 
     try {
-      // Get the current user
-      String username = securityContext.getUserPrincipal().getName();
-      User user =
-          Entity.getUserRepository().getByName(null, username, EntityUtil.Fields.EMPTY_FIELDS);
+      Map<String, Object> response = service.stopChartDataStreaming(securityContext, sessionId);
 
-      // Call repository method to stop streaming
-      Map<String, Object> response = repository.stopChartDataStreaming(sessionId, user.getId());
-
-      // Check if there's an error in the response
       if (response.containsKey("error")) {
         if (response.containsKey("notFound") && (Boolean) response.get("notFound")) {
           return Response.status(Response.Status.NOT_FOUND).entity(response).build();

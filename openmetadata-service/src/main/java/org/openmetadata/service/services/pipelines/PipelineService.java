@@ -13,44 +13,63 @@
 
 package org.openmetadata.service.services.pipelines;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.VoteRequest;
+import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.PipelineRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.pipelines.PipelineMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Singleton
 @Service(entityType = Entity.PIPELINE)
-public class PipelineService extends AbstractEntityService<Pipeline> {
+public class PipelineService extends EntityBaseService<Pipeline, PipelineRepository> {
 
   @Getter private final PipelineMapper mapper;
-  private final PipelineRepository pipelineRepository;
+  public static final String FIELDS =
+      "owners,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domains,sourceHash";
 
   @Inject
   public PipelineService(
-      PipelineRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer,
-      PipelineMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.PIPELINE);
-    this.pipelineRepository = repository;
+      PipelineRepository repository, Authorizer authorizer, PipelineMapper mapper, Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.PIPELINE, Pipeline.class), repository, authorizer, limits);
     this.mapper = mapper;
+  }
+
+  @Override
+  public Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {
+    super.addHref(uriInfo, pipeline);
+    Entity.withHref(uriInfo, pipeline.getService());
+    return pipeline;
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("tasks,pipelineStatus", MetadataOperation.VIEW_BASIC);
+    return listOf(MetadataOperation.EDIT_LINEAGE, MetadataOperation.EDIT_STATUS);
   }
 
   public RestUtil.PutResponse<?> addPipelineStatus(
@@ -58,7 +77,7 @@ public class PipelineService extends AbstractEntityService<Pipeline> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return pipelineRepository.addPipelineStatus(fqn, pipelineStatus);
+    return repository.addPipelineStatus(fqn, pipelineStatus);
   }
 
   public Pipeline deletePipelineStatus(
@@ -66,30 +85,40 @@ public class PipelineService extends AbstractEntityService<Pipeline> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    Pipeline pipeline = pipelineRepository.deletePipelineStatus(fqn, timestamp);
+    Pipeline pipeline = repository.deletePipelineStatus(fqn, timestamp);
     return addHref(uriInfo, pipeline);
   }
 
   public RestUtil.PutResponse<Pipeline> addFollower(
       SecurityContext securityContext, UUID id, UUID userId) {
-    return pipelineRepository.addFollower(securityContext.getUserPrincipal().getName(), id, userId);
+    return addFollower(securityContext.getUserPrincipal().getName(), id, userId);
   }
 
   public RestUtil.PutResponse<Pipeline> deleteFollower(
       SecurityContext securityContext, UUID id, UUID userId) {
-    return pipelineRepository.deleteFollower(
-        securityContext.getUserPrincipal().getName(), id, userId);
+    return deleteFollower(securityContext.getUserPrincipal().getName(), id, userId);
   }
 
-  public RestUtil.PutResponse<Pipeline> updateVote(
-      SecurityContext securityContext, UUID id, VoteRequest request) {
-    return pipelineRepository.updateVote(securityContext.getUserPrincipal().getName(), id, request);
+  public Response updateVote(SecurityContext securityContext, UUID id, VoteRequest request) {
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
   }
 
-  private Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {
-    Entity.withHref(uriInfo, pipeline.getOwners());
-    Entity.withHref(uriInfo, pipeline.getFollowers());
-    Entity.withHref(uriInfo, pipeline.getService());
-    return pipeline;
+  public Response bulkCreateOrUpdate(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      List<CreatePipeline> createRequests,
+      EntityMapper<Pipeline, CreatePipeline> entityMapper,
+      boolean async) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, entityMapper, async);
+  }
+
+  public static class PipelineList extends ResultList<Pipeline> {
+    /* Required for serde */
+  }
+
+  public static class PipelineStatusList extends ResultList<PipelineStatus> {
+    /* Required for serde */
   }
 }

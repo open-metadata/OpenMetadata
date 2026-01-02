@@ -122,6 +122,20 @@ public abstract class EntityBaseService<T extends EntityInterface, K extends Ent
     Entity.registerResourceFieldViewMapping(entityType, fieldsToViewOperations);
   }
 
+  @SuppressWarnings("unchecked")
+  protected EntityBaseService(String entityType, Authorizer authorizer, Limits limits) {
+    this.entityType = entityType;
+    this.repository = (K) Entity.getEntityRepository(entityType);
+    this.entityClass = (Class<T>) Entity.getEntityClassFromType(entityType);
+    this.allowedFields = ResourceEntityInfo.getEntityFields(entityClass);
+    this.authorizer = authorizer;
+    this.limits = limits;
+    addViewOperation(
+        "owners,followers,votes,tags,extension,domains,dataProducts,experts,reviewers", VIEW_BASIC);
+    Entity.registerResourcePermissions(entityType, getEntitySpecificOperations());
+    Entity.registerResourceFieldViewMapping(entityType, fieldsToViewOperations);
+  }
+
   /** Method used for initializing a resource, such as creating default policies, roles, etc. */
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {}
 

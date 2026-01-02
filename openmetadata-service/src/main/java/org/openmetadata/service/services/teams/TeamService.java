@@ -14,6 +14,7 @@
 package org.openmetadata.service.services.teams;
 
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -44,6 +45,9 @@ import org.openmetadata.service.util.RestUtil;
 @Service(entityType = Entity.TEAM)
 public class TeamService extends AbstractEntityService<Team> {
 
+  public static final String FIELDS =
+      "owners,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount,domains";
+
   @Getter private final TeamMapper mapper;
   private final TeamRepository teamRepository;
 
@@ -57,6 +61,26 @@ public class TeamService extends AbstractEntityService<Team> {
     this.teamRepository = repository;
     this.mapper = mapper;
   }
+
+  public Team addHref(UriInfo uriInfo, Team team) {
+    Entity.withHref(uriInfo, team.getOwners());
+    Entity.withHref(uriInfo, team.getFollowers());
+    Entity.withHref(uriInfo, team.getExperts());
+    Entity.withHref(uriInfo, team.getReviewers());
+    Entity.withHref(uriInfo, team.getChildren());
+    Entity.withHref(uriInfo, team.getDomains());
+    Entity.withHref(uriInfo, team.getDataProducts());
+    Entity.withHref(uriInfo, team.getUsers());
+    Entity.withHref(uriInfo, team.getDefaultRoles());
+    Entity.withHref(uriInfo, team.getOwns());
+    Entity.withHref(uriInfo, team.getParents());
+    Entity.withHref(uriInfo, team.getPolicies());
+    return team;
+  }
+
+  public static class TeamList extends ResultList<Team> {}
+
+  public static class TeamHierarchyList extends ResultList<TeamHierarchy> {}
 
   public List<TeamHierarchy> listHierarchy(ListFilter filter, int limit, Boolean isJoinable) {
     return teamRepository.listHierarchy(filter, limit, isJoinable);

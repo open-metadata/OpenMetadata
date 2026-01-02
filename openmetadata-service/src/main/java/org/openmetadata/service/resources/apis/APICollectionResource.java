@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.apis;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.services.apis.APICollectionService.FIELDS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,16 +53,9 @@ import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.APICollectionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.apis.APICollectionService;
 
 @Path("/v1/apiCollections")
@@ -73,33 +66,12 @@ import org.openmetadata.service.services.apis.APICollectionService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "apiCollections")
-public class APICollectionResource
-    extends EntityBaseService<APICollection, APICollectionRepository> {
+public class APICollectionResource {
   public static final String COLLECTION_PATH = "v1/apiCollections/";
   private final APICollectionService service;
-  static final String FIELDS = "owners,apiEndpoints,tags,extension,domains,sourceHash";
 
-  @Override
-  public APICollection addHref(UriInfo uriInfo, APICollection apiCollection) {
-    super.addHref(uriInfo, apiCollection);
-    Entity.withHref(uriInfo, apiCollection.getService());
-    return apiCollection;
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("apiEndpoints", MetadataOperation.VIEW_BASIC);
-    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
-  }
-
-  public APICollectionResource(
-      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.API_COLLECTION, authorizer, limits);
-    this.service = serviceRegistry.getService(APICollectionService.class);
-  }
-
-  public static class APICollectionList extends ResultList<APICollection> {
-    /* Required for serde */
+  public APICollectionResource(APICollectionService service) {
+    this.service = service;
   }
 
   @GET
@@ -118,7 +90,7 @@ public class APICollectionResource
                 @Content(
                     mediaType = "application/json",
                     schema =
-                        @Schema(implementation = APICollectionResource.APICollectionList.class)))
+                        @Schema(implementation = APICollectionService.APICollectionList.class)))
       })
   public ResultList<APICollection> list(
       @Context UriInfo uriInfo,
@@ -158,7 +130,7 @@ public class APICollectionResource
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -183,7 +155,7 @@ public class APICollectionResource
       @Parameter(description = "Id of the API Collection", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -221,7 +193,7 @@ public class APICollectionResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -261,7 +233,7 @@ public class APICollectionResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -293,7 +265,7 @@ public class APICollectionResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -317,7 +289,7 @@ public class APICollectionResource
       @Valid CreateAPICollection create) {
     APICollection apiCollection =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, apiCollection);
+    return service.create(uriInfo, securityContext, apiCollection);
   }
 
   @PUT
@@ -356,7 +328,8 @@ public class APICollectionResource
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateAPICollection> createRequests) {
-    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+    return service.bulkCreateOrUpdate(
+        uriInfo, securityContext, createRequests, service.getMapper(), async);
   }
 
   @PATCH
@@ -385,7 +358,7 @@ public class APICollectionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -414,7 +387,7 @@ public class APICollectionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -438,7 +411,7 @@ public class APICollectionResource
       @Valid CreateAPICollection create) {
     APICollection apiCollection =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, apiCollection);
+    return service.createOrUpdate(uriInfo, securityContext, apiCollection);
   }
 
   @DELETE
@@ -469,7 +442,7 @@ public class APICollectionResource
       @Parameter(description = "Id of the APICollection", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -500,7 +473,7 @@ public class APICollectionResource
       @Parameter(description = "Id of the APICollection", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @PUT
@@ -527,9 +500,7 @@ public class APICollectionResource
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return service.updateVote(securityContext.getUserPrincipal().getName(), id, request);
   }
 
   @DELETE
@@ -562,7 +533,7 @@ public class APICollectionResource
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -584,6 +555,6 @@ public class APICollectionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

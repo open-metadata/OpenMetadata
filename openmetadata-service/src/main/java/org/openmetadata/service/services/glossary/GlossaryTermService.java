@@ -16,12 +16,15 @@ package org.openmetadata.service.services.glossary;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY;
 
+import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.LoadGlossary;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -36,6 +39,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Singleton
@@ -88,5 +92,24 @@ public class GlossaryTermService extends AbstractEntityService<GlossaryTerm> {
         glossaryTermRepository.initializeEntity(term);
       }
     }
+  }
+
+  public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {
+    Entity.withHref(uriInfo, term.getOwners());
+    Entity.withHref(uriInfo, term.getFollowers());
+    Entity.withHref(uriInfo, term.getExperts());
+    Entity.withHref(uriInfo, term.getReviewers());
+    Entity.withHref(uriInfo, term.getChildren());
+    Entity.withHref(uriInfo, term.getDomains());
+    Entity.withHref(uriInfo, term.getDataProducts());
+    Entity.withHref(uriInfo, term.getGlossary());
+    Entity.withHref(uriInfo, term.getParent());
+    Entity.withHref(uriInfo, term.getRelatedTerms());
+    return term;
+  }
+
+  public RestUtil.PutResponse<GlossaryTerm> updateVote(
+      String updatedBy, UUID id, VoteRequest request) {
+    return glossaryTermRepository.updateVote(updatedBy, id, request);
   }
 }

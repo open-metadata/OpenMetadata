@@ -13,39 +13,59 @@
 
 package org.openmetadata.service.services.kpi;
 
+import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
+import org.openmetadata.schema.dataInsight.type.KpiResult;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.jdbi3.KpiRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.kpi.KpiMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 
-/**
- * Service layer for Kpi entity operations.
- *
- * <p>Extends AbstractEntityService to inherit all standard CRUD operations with proper
- * authorization and repository delegation.
- */
 @Slf4j
 @Singleton
 @Service(entityType = Entity.KPI)
-public class KpiService extends AbstractEntityService<Kpi> {
+public class KpiService extends EntityBaseService<Kpi, KpiRepository> {
+
+  public static final String FIELDS = "owners,dataInsightChart,kpiResult";
 
   @Getter private final KpiMapper mapper;
 
   @Inject
   public KpiService(
-      KpiRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer,
-      KpiMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.KPI);
+      KpiRepository repository, Authorizer authorizer, KpiMapper mapper, Limits limits) {
+    super(new ResourceEntityInfo<>(Entity.KPI, Kpi.class), repository, authorizer, limits);
     this.mapper = mapper;
   }
+
+  @Override
+  public Kpi addHref(UriInfo uriInfo, Kpi kpi) {
+    super.addHref(uriInfo, kpi);
+    Entity.withHref(uriInfo, kpi.getDataInsightChart());
+    return kpi;
+  }
+
+  public DataInsightCustomChartResultList getKpiResults(
+      String name, Long startTs, Long endTs, OrderBy orderBy) throws IOException {
+    return repository.getKpiResults(name, startTs, endTs, orderBy);
+  }
+
+  public KpiResult getKpiResult(String name) {
+    return repository.getKpiResult(name);
+  }
+
+  public static class KpiList extends ResultList<Kpi> {}
+
+  public static class KpiResultList extends ResultList<KpiResult> {}
 }

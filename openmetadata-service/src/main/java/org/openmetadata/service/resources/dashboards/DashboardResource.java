@@ -362,7 +362,8 @@ public class DashboardResource extends EntityBaseService<Dashboard, DashboardRep
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateDashboard> createRequests) {
-    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+    return processBulkRequest(
+        uriInfo, securityContext, createRequests, dashboardService.getMapper(), async);
   }
 
   @PATCH

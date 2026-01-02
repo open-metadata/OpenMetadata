@@ -14,6 +14,8 @@
 package org.openmetadata.service.resources.teams;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.services.teams.TeamService.FIELDS;
 
 import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -65,15 +67,17 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.teams.TeamService;
+import org.openmetadata.service.services.teams.TeamService.TeamList;
 import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Path("/v1/teams")
@@ -88,48 +92,32 @@ import org.openmetadata.service.util.CSVExportResponse;
     name = "teams",
     order = 2,
     requiredForOps = true) // Load after roles, and policy resources
-public class TeamResource extends EntityBaseService<Team, TeamRepository> {
+public class TeamResource {
   public static final String COLLECTION_PATH = "/v1/teams/";
   private final TeamService service;
-  static final String FIELDS =
-      "owners,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount,domains";
+  private final Authorizer authorizer;
 
-  @Override
-  public Team addHref(UriInfo uriInfo, Team team) {
-    super.addHref(uriInfo, team);
-    Entity.withHref(uriInfo, team.getUsers());
-    Entity.withHref(uriInfo, team.getDefaultRoles());
-    Entity.withHref(uriInfo, team.getOwns());
-    Entity.withHref(uriInfo, team.getParents());
-    Entity.withHref(uriInfo, team.getPolicies());
-    return team;
-  }
-
-  public TeamResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.TEAM, authorizer, limits);
+  public TeamResource(Authorizer authorizer, ServiceRegistry serviceRegistry) {
+    this.authorizer = authorizer;
     this.service = serviceRegistry.getService(TeamService.class);
   }
 
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation(
-        "profile,owns,defaultRoles,parents,children,policies,userCount,childrenCount",
-        MetadataOperation.VIEW_BASIC);
-    return listOf(MetadataOperation.EDIT_POLICY, MetadataOperation.EDIT_USERS);
-  }
-
-  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    super.initialize(config);
+    Entity.registerResourcePermissions(Entity.TEAM, getEntitySpecificOperations());
     service.initOrganization();
   }
 
-  public static class TeamList extends ResultList<Team> {
-    /* Required for serde */
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    return listOf(MetadataOperation.EDIT_POLICY, MetadataOperation.EDIT_USERS);
   }
 
-  public static class TeamHierarchyList extends ResultList<TeamHierarchy> {
-    /* Required for serde */
+  private Team addHref(UriInfo uriInfo, Team team) {
+    return service.addHref(uriInfo, team);
+  }
+
+  private ResultList<Team> addHref(UriInfo uriInfo, ResultList<Team> list) {
+    listOrEmpty(list.getData()).forEach(i -> addHref(uriInfo, i));
+    return list;
   }
 
   @GET
@@ -230,8 +218,20 @@ public class TeamResource extends EntityBaseService<Team, TeamRepository> {
     if (isJoinable != null) {
       filter.addQueryParam("isJoinable", String.valueOf(isJoinable));
     }
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    RestUtil.validateCursors(before, after);
+    OperationContext operationContext =
+        new OperationContext(Entity.TEAM, MetadataOperation.VIEW_BASIC);
+    ResourceContext resourceContext = filter.getResourceContext(Entity.TEAM);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    EntityUtil.addDomainQueryParam(securityContext, filter, Entity.TEAM);
+    EntityUtil.Fields fields = service.getFields(fieldsParam);
+    ResultList<Team> resultList;
+    if (before != null) {
+      resultList = service.getRepository().listBefore(uriInfo, fields, filter, limitParam, before);
+    } else {
+      resultList = service.getRepository().listAfter(uriInfo, fields, filter, limitParam, after);
+    }
+    return addHref(uriInfo, resultList);
   }
 
   @GET

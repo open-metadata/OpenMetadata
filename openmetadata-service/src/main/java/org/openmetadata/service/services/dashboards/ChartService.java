@@ -13,54 +13,88 @@
 
 package org.openmetadata.service.services.dashboards;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.VoteRequest;
+import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.entity.data.Chart;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ChartRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.charts.ChartMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Singleton
 @Service(entityType = Entity.CHART)
-public class ChartService extends AbstractEntityService<Chart> {
+public class ChartService extends EntityBaseService<Chart, ChartRepository> {
 
   @Getter private final ChartMapper mapper;
-  private final ChartRepository chartRepository;
+  public static final String FIELDS =
+      "owners,followers,tags,domains,dataProducts,sourceHash,dashboards,extension";
 
   @Inject
   public ChartService(
-      ChartRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer,
-      ChartMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.CHART);
-    this.chartRepository = repository;
+      ChartRepository repository, Authorizer authorizer, ChartMapper mapper, Limits limits) {
+    super(new ResourceEntityInfo<>(Entity.CHART, Chart.class), repository, authorizer, limits);
     this.mapper = mapper;
+  }
+
+  @Override
+  public Chart addHref(UriInfo uriInfo, Chart chart) {
+    super.addHref(uriInfo, chart);
+    Entity.withHref(uriInfo, chart.getService());
+    return chart;
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
+    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_LINEAGE);
   }
 
   public RestUtil.PutResponse<Chart> addFollower(
       SecurityContext securityContext, UUID id, UUID userId) {
-    return chartRepository.addFollower(securityContext.getUserPrincipal().getName(), id, userId);
+    return addFollower(securityContext.getUserPrincipal().getName(), id, userId);
   }
 
   public RestUtil.PutResponse<Chart> deleteFollower(
       SecurityContext securityContext, UUID id, UUID userId) {
-    return chartRepository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId);
+    return deleteFollower(securityContext.getUserPrincipal().getName(), id, userId);
   }
 
-  public RestUtil.PutResponse<Chart> updateVote(
-      SecurityContext securityContext, UUID id, VoteRequest request) {
-    return chartRepository.updateVote(securityContext.getUserPrincipal().getName(), id, request);
+  public Response updateVote(SecurityContext securityContext, UUID id, VoteRequest request) {
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
+  }
+
+  public Response bulkCreateOrUpdate(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      List<CreateChart> createRequests,
+      EntityMapper<Chart, CreateChart> entityMapper,
+      boolean async) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, entityMapper, async);
+  }
+
+  public static class ChartList extends ResultList<Chart> {
+    /* Required for serde */
   }
 }

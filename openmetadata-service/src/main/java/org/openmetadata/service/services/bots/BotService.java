@@ -15,6 +15,7 @@ package org.openmetadata.service.services.bots;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
 import javax.inject.Inject;
@@ -25,41 +26,45 @@ import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.bots.BotMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.SecurityUtil;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 @Singleton
 @Service(entityType = Entity.BOT)
-public class BotService extends AbstractEntityService<Bot> {
+public class BotService extends EntityBaseService<Bot, BotRepository> {
 
   @Getter private final BotMapper mapper;
-  private final BotRepository botRepository;
 
   @Inject
   public BotService(
-      BotRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer,
-      BotMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.BOT);
-    this.botRepository = repository;
+      BotRepository repository, Authorizer authorizer, BotMapper mapper, Limits limits) {
+    super(new ResourceEntityInfo<>(Entity.BOT, Bot.class), repository, authorizer, limits);
     this.mapper = mapper;
   }
 
+  @Override
+  public Bot addHref(UriInfo uriInfo, Bot entity) {
+    super.addHref(uriInfo, entity);
+    Entity.withHref(uriInfo, entity.getBotUser());
+    return entity;
+  }
+
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     String domain = SecurityUtil.getDomain(config);
 
-    // First, load the bot users and assign their roles
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     List<User> botUsers = userRepository.getEntitiesFromSeedData(".*json/data/botUser/.*\\.json$");
     for (User botUser : botUsers) {
@@ -81,19 +86,21 @@ public class BotService extends AbstractEntityService<Bot> {
                     return role.getEntityReference();
                   })
               .toList());
-      // Add or update User Bot
       UserUtil.addOrUpdateBotUser(user);
     }
 
-    // Then, load the bots and bind them to the users
-    List<Bot> bots = botRepository.getEntitiesFromSeedData();
+    List<Bot> bots = repository.getEntitiesFromSeedData();
     for (Bot bot : bots) {
       String userName = bot.getBotUser().getName();
       bot.withBotUser(
           userRepository
               .getByName(null, userName, userRepository.getFields("id"))
               .getEntityReference());
-      botRepository.initializeEntity(bot);
+      repository.initializeEntity(bot);
     }
+  }
+
+  public static class BotList extends ResultList<Bot> {
+    /* Required for serde */
   }
 }

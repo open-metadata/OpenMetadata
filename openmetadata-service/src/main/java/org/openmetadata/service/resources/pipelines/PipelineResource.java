@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.resources.pipelines;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
-
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -63,15 +61,9 @@ import org.openmetadata.schema.type.PipelineObservabilityResponse;
 import org.openmetadata.schema.type.PipelineRuntimeTrendList;
 import org.openmetadata.schema.type.PipelineSummary;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.PipelineRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.pipelines.PipelineService;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -83,42 +75,14 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "pipelines")
-public class PipelineResource extends EntityBaseService<Pipeline, PipelineRepository> {
+public class PipelineResource {
   public static final String COLLECTION_PATH = "v1/pipelines/";
-  static final String FIELDS =
-      "owners,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domains,sourceHash";
+  static final String FIELDS = PipelineService.FIELDS;
 
-  private final PipelineService pipelineService;
+  private final PipelineService service;
 
-  @Override
-  public Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {
-    super.addHref(uriInfo, pipeline);
-    Entity.withHref(uriInfo, pipeline.getService());
-    return pipeline;
-  }
-
-  public PipelineResource(Authorizer authorizer, Limits limits) {
-    super(Entity.PIPELINE, authorizer, limits);
-    this.pipelineService = null;
-  }
-
-  public PipelineResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
-    super(Entity.PIPELINE, authorizer, limits);
-    this.pipelineService = serviceRegistry.getService(PipelineService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("tasks,pipelineStatus", MetadataOperation.VIEW_BASIC);
-    return listOf(MetadataOperation.EDIT_LINEAGE, MetadataOperation.EDIT_STATUS);
-  }
-
-  public static class PipelineList extends ResultList<Pipeline> {
-    /* Required for serde */
-  }
-
-  public static class PipelineStatusList extends ResultList<PipelineStatus> {
-    /* Required for serde */
+  public PipelineResource(PipelineService service) {
+    this.service = service;
   }
 
   public static class PipelineSummaryList extends ResultList<PipelineSummary> {
@@ -141,7 +105,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = PipelineList.class)))
+                    schema = @Schema(implementation = PipelineService.PipelineList.class)))
       })
   public ResultList<Pipeline> list(
       @Context UriInfo uriInfo,
@@ -179,7 +143,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -204,7 +168,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
       @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -240,7 +204,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -278,7 +242,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -310,7 +274,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -333,10 +297,8 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
       @Context SecurityContext securityContext,
       @Valid CreatePipeline create) {
     Pipeline pipeline =
-        pipelineService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, pipeline);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.create(uriInfo, securityContext, pipeline);
   }
 
   @PUT
@@ -375,7 +337,8 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreatePipeline> createRequests) {
-    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+    return service.bulkCreateOrUpdate(
+        uriInfo, securityContext, createRequests, service.getMapper(), async);
   }
 
   @PATCH
@@ -404,7 +367,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -433,7 +396,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -456,10 +419,8 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
       @Context SecurityContext securityContext,
       @Valid CreatePipeline create) {
     Pipeline pipeline =
-        pipelineService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, pipeline);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.createOrUpdate(uriInfo, securityContext, pipeline);
   }
 
   @PUT
@@ -487,7 +448,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
           @PathParam("fqn")
           String fqn,
       @Valid PipelineStatus pipelineStatus) {
-    return pipelineService.addPipelineStatus(securityContext, fqn, pipelineStatus).toResponse();
+    return service.addPipelineStatus(securityContext, fqn, pipelineStatus).toResponse();
   }
 
   @GET
@@ -506,7 +467,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = PipelineResource.PipelineStatusList.class)))
+                    schema = @Schema(implementation = PipelineService.PipelineStatusList.class)))
       })
   public ResultList<PipelineStatus> list(
       @Context UriInfo uriInfo,
@@ -567,8 +528,19 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
               schema = @Schema(type = "number"))
           @QueryParam("maxDuration")
           Long maxDuration) {
-    return repository.getPipelineStatuses(
-        fqn, startTs, endTs, limitParam, before, after, status, search, minDuration, maxDuration);
+    return service
+        .getRepository()
+        .getPipelineStatuses(
+            fqn,
+            startTs,
+            endTs,
+            limitParam,
+            before,
+            after,
+            status,
+            search,
+            minDuration,
+            maxDuration);
   }
 
   @DELETE
@@ -597,7 +569,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
       @Parameter(description = "Timestamp of the pipeline status", schema = @Schema(type = "long"))
           @PathParam("timestamp")
           Long timestamp) {
-    return pipelineService.deletePipelineStatus(uriInfo, securityContext, fqn, timestamp);
+    return service.deletePipelineStatus(uriInfo, securityContext, fqn, timestamp);
   }
 
   @PUT
@@ -626,7 +598,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return pipelineService.addFollower(securityContext, id, userId).toResponse();
+    return service.addFollower(securityContext, id, userId).toResponse();
   }
 
   @DELETE
@@ -655,7 +627,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return pipelineService.deleteFollower(securityContext, id, userId).toResponse();
+    return service.deleteFollower(securityContext, id, userId).toResponse();
   }
 
   @PUT
@@ -680,7 +652,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return pipelineService.updateVote(securityContext, id, request).toResponse();
+    return service.updateVote(securityContext, id, request);
   }
 
   @GET
@@ -748,9 +720,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
           @DefaultValue("non-deleted")
           Include include) {
 
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    Fields fields = getFields(fieldsParam);
+    Fields fields = service.getFields(fieldsParam);
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("service", serviceParam)
@@ -762,8 +732,9 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
             .addQueryParam("startTs", startTs != null ? String.valueOf(startTs) : null)
             .addQueryParam("endTs", endTs != null ? String.valueOf(endTs) : null);
 
-    return repository.listPipelineSummaries(
-        uriInfo, securityContext, fields, filter, limitParam, before, after);
+    return service
+        .getRepository()
+        .listPipelineSummaries(uriInfo, securityContext, fields, filter, limitParam, before, after);
   }
 
   @GET
@@ -795,7 +766,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
           String serviceType,
       @Parameter(description = "Filter by service name", schema = @Schema(type = "string"))
           @QueryParam("service")
-          String service,
+          String serviceParam,
       @Parameter(
               description = "Filter by execution status (Successful, Failed, Pending, Skipped)",
               schema = @Schema(type = "string"))
@@ -826,13 +797,17 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
           Long endTs) {
 
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+        new OperationContext(service.getEntityType(), MetadataOperation.VIEW_BASIC);
 
     try {
-      authorizer.authorize(securityContext, operationContext, getResourceContextByName(""));
+      service
+          .getAuthorizer()
+          .authorize(securityContext, operationContext, service.getResourceContextByName(""));
       PipelineMetrics metrics =
-          repository.getPipelineMetrics(
-              query, service, serviceType, status, domain, owner, tier, startTs, endTs);
+          service
+              .getRepository()
+              .getPipelineMetrics(
+                  query, serviceParam, serviceType, status, domain, owner, tier, startTs, endTs);
       return Response.ok(metrics).build();
     } catch (Exception e) {
       PipelineMetrics emptyMetrics =
@@ -901,11 +876,15 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
       @Parameter(description = "Returns list after this cursor") @QueryParam("after")
           String after) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+        new OperationContext(service.getEntityType(), MetadataOperation.VIEW_BASIC);
+    service
+        .getAuthorizer()
+        .authorize(securityContext, operationContext, service.getResourceContextByName(fqn));
     PipelineObservabilityResponse response =
-        repository.getPipelineObservability(
-            fqn, status, startTs, endTs, serviceType, search, limit, before, after);
+        service
+            .getRepository()
+            .getPipelineObservability(
+                fqn, status, startTs, endTs, serviceType, search, limit, before, after);
     return Response.ok(response).build();
   }
 
@@ -951,7 +930,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
           String serviceType,
       @Parameter(description = "Filter by service name", schema = @Schema(type = "string"))
           @QueryParam("service")
-          String service,
+          String serviceParam,
       @Parameter(
               description = "Filter by execution status (Successful, Failed, Pending, Skipped)",
               schema = @Schema(type = "string"))
@@ -983,23 +962,27 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
           Integer offset) {
 
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, getResourceContext());
+        new OperationContext(service.getEntityType(), MetadataOperation.VIEW_BASIC);
+    service
+        .getAuthorizer()
+        .authorize(securityContext, operationContext, service.getResourceContext());
 
     try {
       PipelineExecutionTrendList trendList =
-          repository.getPipelineExecutionTrend(
-              startTs,
-              endTs,
-              pipelineFqn,
-              service,
-              serviceType,
-              status,
-              domain,
-              owner,
-              tier,
-              limit,
-              offset);
+          service
+              .getRepository()
+              .getPipelineExecutionTrend(
+                  startTs,
+                  endTs,
+                  pipelineFqn,
+                  serviceParam,
+                  serviceType,
+                  status,
+                  domain,
+                  owner,
+                  tier,
+                  limit,
+                  offset);
       return Response.ok(trendList).build();
     } catch (Exception e) {
       PipelineExecutionTrendList emptyTrend =
@@ -1053,7 +1036,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
           String serviceType,
       @Parameter(description = "Filter by service name", schema = @Schema(type = "string"))
           @QueryParam("service")
-          String service,
+          String serviceParam,
       @Parameter(
               description = "Filter by execution status (Successful, Failed, Pending, Skipped)",
               schema = @Schema(type = "string"))
@@ -1085,23 +1068,27 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
           Integer offset) {
 
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, getResourceContext());
+        new OperationContext(service.getEntityType(), MetadataOperation.VIEW_BASIC);
+    service
+        .getAuthorizer()
+        .authorize(securityContext, operationContext, service.getResourceContext());
 
     try {
       PipelineRuntimeTrendList trendList =
-          repository.getPipelineRuntimeTrend(
-              startTs,
-              endTs,
-              pipelineFqn,
-              service,
-              serviceType,
-              status,
-              domain,
-              owner,
-              tier,
-              limit,
-              offset);
+          service
+              .getRepository()
+              .getPipelineRuntimeTrend(
+                  startTs,
+                  endTs,
+                  pipelineFqn,
+                  serviceParam,
+                  serviceType,
+                  status,
+                  domain,
+                  owner,
+                  tier,
+                  limit,
+                  offset);
       return Response.ok(trendList).build();
     } catch (Exception e) {
       PipelineRuntimeTrendList emptyTrend =
@@ -1138,7 +1125,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
       @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -1166,7 +1153,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
       @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -1196,7 +1183,7 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -1218,6 +1205,6 @@ public class PipelineResource extends EntityBaseService<Pipeline, PipelineReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

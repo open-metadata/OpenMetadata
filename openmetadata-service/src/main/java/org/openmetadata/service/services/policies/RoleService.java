@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.services.policies;
 
+import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -22,20 +23,47 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.RoleRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.teams.RoleMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 
 @Slf4j
 @Singleton
 @Service(entityType = Entity.ROLE)
-public class RoleService extends AbstractEntityService<Role> {
+public class RoleService extends EntityBaseService<Role, RoleRepository> {
+
+  public static final String FIELDS = "policies,teams,users";
 
   @Getter private final RoleMapper mapper;
+
+  @Inject
+  public RoleService(
+      RoleRepository repository, Authorizer authorizer, RoleMapper mapper, Limits limits) {
+    super(new ResourceEntityInfo<>(Entity.ROLE, Role.class), repository, authorizer, limits);
+    this.mapper = mapper;
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("policies,teams,users", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
+  @Override
+  protected Role addHref(UriInfo uriInfo, Role role) {
+    super.addHref(uriInfo, role);
+    Entity.withHref(uriInfo, role.getPolicies());
+    Entity.withHref(uriInfo, role.getTeams());
+    Entity.withHref(uriInfo, role.getUsers());
+    return role;
+  }
 
   @SneakyThrows
   public void initialize() {
@@ -52,13 +80,5 @@ public class RoleService extends AbstractEntityService<Role> {
     }
   }
 
-  @Inject
-  public RoleService(
-      RoleRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer,
-      RoleMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.ROLE);
-    this.mapper = mapper;
-  }
+  public static class RoleList extends ResultList<Role> {}
 }

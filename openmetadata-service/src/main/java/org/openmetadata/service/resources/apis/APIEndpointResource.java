@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.apis;
 
+import static org.openmetadata.service.services.apis.APIEndpointService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -52,14 +54,8 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.APIEndpointRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.apis.APIEndpointService;
 
 @Path("/v1/apiEndpoints")
@@ -70,28 +66,12 @@ import org.openmetadata.service.services.apis.APIEndpointService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "apiEndpoints")
-public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpointRepository> {
+public class APIEndpointResource {
   public static final String COLLECTION_PATH = "v1/apiEndpoints/";
   private final APIEndpointService service;
 
-  static final String FIELDS = "owners,followers,tags,extension,domains,dataProducts,sourceHash";
-
-  @Override
-  public APIEndpoint addHref(UriInfo uriInfo, APIEndpoint apiEndpoint) {
-    super.addHref(uriInfo, apiEndpoint);
-    Entity.withHref(uriInfo, apiEndpoint.getApiCollection());
-    Entity.withHref(uriInfo, apiEndpoint.getService());
-    return apiEndpoint;
-  }
-
-  public APIEndpointResource(
-      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.API_ENDPOINT, authorizer, limits);
-    this.service = serviceRegistry.getService(APIEndpointService.class);
-  }
-
-  public static class APIEndpointList extends ResultList<APIEndpoint> {
-    /* Required for serde */
+  public APIEndpointResource(APIEndpointService service) {
+    this.service = service;
   }
 
   @GET
@@ -109,7 +89,7 @@ public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpo
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = APIEndpointList.class)))
+                    schema = @Schema(implementation = APIEndpointService.APIEndpointList.class)))
       })
   public ResultList<APIEndpoint> list(
       @Context UriInfo uriInfo,
@@ -156,7 +136,7 @@ public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpo
         new ListFilter(include)
             .addQueryParam("service", serviceParam)
             .addQueryParam("apiCollection", apiCollectionParam);
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -181,7 +161,7 @@ public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpo
       @Parameter(description = "Id of the APIEndpoint", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -219,7 +199,7 @@ public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpo
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -257,7 +237,7 @@ public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpo
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -289,7 +269,7 @@ public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpo
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -313,7 +293,7 @@ public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpo
       @Valid CreateAPIEndpoint create) {
     APIEndpoint apiEndpoint =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, apiEndpoint);
+    return service.create(uriInfo, securityContext, apiEndpoint);
   }
 
   @PUT
@@ -352,7 +332,8 @@ public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpo
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateAPIEndpoint> createRequests) {
-    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+    return service.bulkCreateOrUpdate(
+        uriInfo, securityContext, createRequests, service.getMapper(), async);
   }
 
   @PATCH
@@ -381,7 +362,7 @@ public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpo
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -410,7 +391,7 @@ public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpo
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -434,7 +415,7 @@ public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpo
       @Valid CreateAPIEndpoint create) {
     APIEndpoint apiEndpoint =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, apiEndpoint);
+    return service.createOrUpdate(uriInfo, securityContext, apiEndpoint);
   }
 
   @PUT
@@ -465,7 +446,7 @@ public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpo
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
+    return service
         .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
         .toResponse();
   }
@@ -495,7 +476,7 @@ public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpo
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
+    return service
         .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
         .toResponse();
   }
@@ -522,9 +503,7 @@ public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpo
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return service.updateVote(securityContext.getUserPrincipal().getName(), id, request);
   }
 
   @DELETE
@@ -549,7 +528,7 @@ public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpo
       @Parameter(description = "Id of the APIEndpoint", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return service.delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -574,7 +553,7 @@ public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpo
       @Parameter(description = "Id of the APIEndpoint", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -601,7 +580,7 @@ public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpo
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
@@ -623,6 +602,6 @@ public class APIEndpointResource extends EntityBaseService<APIEndpoint, APIEndpo
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

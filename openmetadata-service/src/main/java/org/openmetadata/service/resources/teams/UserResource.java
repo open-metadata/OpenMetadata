@@ -528,8 +528,12 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
     Fields fields = getFields(fieldsParam);
     String currentEmail = ((CatalogPrincipal) catalogSecurityContext.getUserPrincipal()).getEmail();
     User user =
-        repository.getLoggedInUserByNameAndEmail(
-            uriInfo, catalogSecurityContext.getUserPrincipal().getName(), currentEmail, fields);
+        service.getLoggedInUser(
+            uriInfo,
+            catalogSecurityContext,
+            catalogSecurityContext.getUserPrincipal().getName(),
+            currentEmail,
+            fields);
 
     // Sync the Roles from token to User
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
@@ -1135,7 +1139,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getUserAssets(id, limit, offset)).build();
+    return Response.ok(service.getUserAssets(id, limit, offset)).build();
   }
 
   @GET
@@ -1173,7 +1177,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getUserAssetsByName(name, limit, offset)).build();
+    return Response.ok(service.getUserAssetsByName(name, limit, offset)).build();
   }
 
   @POST
@@ -1712,7 +1716,7 @@ public class UserResource extends EntityBaseService<User, UserRepository> {
   }
 
   public void validateEmailAlreadyExists(String email) {
-    if (repository.checkEmailAlreadyExists(email)) {
+    if (service.checkEmailAlreadyExists(email)) {
       throw new CustomExceptionMessage(
           BAD_REQUEST, "EMAIL_EXISTS", "User with Email Already Exists");
     }

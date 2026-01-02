@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.apps;
 
+import static org.openmetadata.service.services.apps.AppMarketPlaceService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -30,7 +32,6 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
@@ -38,16 +39,9 @@ import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
-import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.apps.AppMarketPlaceService;
 
 @Path("/v1/apps/marketplace")
@@ -57,30 +51,12 @@ import org.openmetadata.service.services.apps.AppMarketPlaceService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "apps/marketplace", order = 7)
-@Slf4j
-public class AppMarketPlaceResource
-    extends EntityBaseService<AppMarketPlaceDefinition, AppMarketPlaceRepository> {
+public class AppMarketPlaceResource {
   public static final String COLLECTION_PATH = "/v1/apps/marketplace/";
-  private final AppMarketPlaceService appMarketPlaceService;
-  static final String FIELDS = "owners,tags";
+  private final AppMarketPlaceService service;
 
-  @Override
-  public void initialize(OpenMetadataApplicationConfig config) {
-    try {
-      appMarketPlaceService.initialize();
-    } catch (Exception ex) {
-      LOG.error("Failed in initializing App MarketPlace Resource", ex);
-    }
-  }
-
-  public AppMarketPlaceResource(
-      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.APP_MARKET_PLACE_DEF, authorizer, limits);
-    this.appMarketPlaceService = serviceRegistry.getService(AppMarketPlaceService.class);
-  }
-
-  public static class AppMarketPlaceDefinitionList extends ResultList<AppMarketPlaceDefinition> {
-    /* Required for serde */
+  public AppMarketPlaceResource(AppMarketPlaceService service) {
+    this.service = service;
   }
 
   @GET
@@ -98,7 +74,10 @@ public class AppMarketPlaceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = AppMarketPlaceDefinitionList.class)))
+                    schema =
+                        @Schema(
+                            implementation =
+                                AppMarketPlaceService.AppMarketPlaceDefinitionList.class)))
       })
   public ResultList<AppMarketPlaceDefinition> list(
       @Context UriInfo uriInfo,
@@ -133,7 +112,7 @@ public class AppMarketPlaceResource
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -157,7 +136,7 @@ public class AppMarketPlaceResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the app", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -192,7 +171,7 @@ public class AppMarketPlaceResource
           @DefaultValue("non-deleted")
           Include include) {
     AppMarketPlaceDefinition definition =
-        getInternal(uriInfo, securityContext, id, fieldsParam, include);
+        service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
     definition.setPreview(ApplicationHandler.getInstance().isPreview(definition.getName()));
     return definition;
   }
@@ -231,7 +210,7 @@ public class AppMarketPlaceResource
           @DefaultValue("non-deleted")
           Include include) {
     AppMarketPlaceDefinition definition =
-        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+        service.getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     definition.setPreview(ApplicationHandler.getInstance().isPreview(definition.getName()));
     return definition;
   }
@@ -264,7 +243,7 @@ public class AppMarketPlaceResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -287,10 +266,8 @@ public class AppMarketPlaceResource
       @Context SecurityContext securityContext,
       @Valid CreateAppMarketPlaceDefinitionReq create) {
     AppMarketPlaceDefinition app =
-        appMarketPlaceService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, app);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.create(uriInfo, securityContext, app);
   }
 
   @PATCH
@@ -318,7 +295,7 @@ public class AppMarketPlaceResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -347,7 +324,7 @@ public class AppMarketPlaceResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -369,10 +346,8 @@ public class AppMarketPlaceResource
       @Context SecurityContext securityContext,
       @Valid CreateAppMarketPlaceDefinitionReq create) {
     AppMarketPlaceDefinition app =
-        appMarketPlaceService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, app);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.createOrUpdate(uriInfo, securityContext, app);
   }
 
   @DELETE
@@ -395,7 +370,7 @@ public class AppMarketPlaceResource
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, true, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, name, true, hardDelete);
   }
 
   @DELETE
@@ -417,7 +392,7 @@ public class AppMarketPlaceResource
           boolean hardDelete,
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, true, hardDelete);
+    return service.delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
   @DELETE
@@ -439,7 +414,7 @@ public class AppMarketPlaceResource
           boolean hardDelete,
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, true, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, true, hardDelete);
   }
 
   @PUT
@@ -461,6 +436,6 @@ public class AppMarketPlaceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

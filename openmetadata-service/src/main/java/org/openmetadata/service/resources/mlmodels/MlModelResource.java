@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.mlmodels;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.services.ml.MlModelService.FIELDS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,16 +53,9 @@ import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.MlModelRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.ml.MlModelService;
 
 @Path("/v1/mlmodels")
@@ -73,38 +66,12 @@ import org.openmetadata.service.services.ml.MlModelService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "mlmodels")
-public class MlModelResource extends EntityBaseService<MlModel, MlModelRepository> {
+public class MlModelResource {
   public static final String COLLECTION_PATH = "v1/mlmodels/";
-  private MlModelService mlModelService;
-  static final String FIELDS =
-      "owners,dashboard,followers,tags,usageSummary,extension,domains,sourceHash";
+  private final MlModelService service;
 
-  @Override
-  public MlModel addHref(UriInfo uriInfo, MlModel mlmodel) {
-    super.addHref(uriInfo, mlmodel);
-    Entity.withHref(uriInfo, mlmodel.getDashboard());
-    Entity.withHref(uriInfo, mlmodel.getService());
-    return mlmodel;
-  }
-
-  public MlModelResource(Authorizer authorizer, Limits limits) {
-    super(Entity.MLMODEL, authorizer, limits);
-  }
-
-  public MlModelResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.MLMODEL, authorizer, limits);
-    this.mlModelService = serviceRegistry.getService(MlModelService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("dashboard", MetadataOperation.VIEW_BASIC);
-    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
-    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
-  }
-
-  public static class MlModelList extends ResultList<MlModel> {
-    /* Required for serde */
+  public MlModelResource(MlModelService service) {
+    this.service = service;
   }
 
   @GET
@@ -123,7 +90,7 @@ public class MlModelResource extends EntityBaseService<MlModel, MlModelRepositor
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = MlModelList.class)))
+                    schema = @Schema(implementation = MlModelService.MlModelList.class)))
       })
   public ResultList<MlModel> list(
       @Context UriInfo uriInfo,
@@ -161,7 +128,7 @@ public class MlModelResource extends EntityBaseService<MlModel, MlModelRepositor
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -198,7 +165,7 @@ public class MlModelResource extends EntityBaseService<MlModel, MlModelRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -236,7 +203,7 @@ public class MlModelResource extends EntityBaseService<MlModel, MlModelRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @POST
@@ -259,10 +226,8 @@ public class MlModelResource extends EntityBaseService<MlModel, MlModelRepositor
       @Context SecurityContext securityContext,
       @Valid CreateMlModel create) {
     MlModel mlModel =
-        mlModelService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, mlModel);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.create(uriInfo, securityContext, mlModel);
   }
 
   @PUT
@@ -301,7 +266,8 @@ public class MlModelResource extends EntityBaseService<MlModel, MlModelRepositor
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateMlModel> createRequests) {
-    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+    return service.bulkCreateOrUpdate(
+        uriInfo, securityContext, createRequests, service.getMapper(), async);
   }
 
   @PATCH
@@ -330,7 +296,7 @@ public class MlModelResource extends EntityBaseService<MlModel, MlModelRepositor
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -359,7 +325,7 @@ public class MlModelResource extends EntityBaseService<MlModel, MlModelRepositor
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -382,10 +348,8 @@ public class MlModelResource extends EntityBaseService<MlModel, MlModelRepositor
       @Context SecurityContext securityContext,
       @Valid CreateMlModel create) {
     MlModel mlModel =
-        mlModelService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, mlModel);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.createOrUpdate(uriInfo, securityContext, mlModel);
   }
 
   @PUT
@@ -467,7 +431,7 @@ public class MlModelResource extends EntityBaseService<MlModel, MlModelRepositor
       @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -499,7 +463,7 @@ public class MlModelResource extends EntityBaseService<MlModel, MlModelRepositor
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @PUT
@@ -524,7 +488,7 @@ public class MlModelResource extends EntityBaseService<MlModel, MlModelRepositor
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return service.updateVote(securityContext, id, request).toResponse();
+    return service.updateVote(securityContext, id, request);
   }
 
   @DELETE
@@ -547,7 +511,7 @@ public class MlModelResource extends EntityBaseService<MlModel, MlModelRepositor
       @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return service.delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -570,7 +534,7 @@ public class MlModelResource extends EntityBaseService<MlModel, MlModelRepositor
       @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -598,7 +562,7 @@ public class MlModelResource extends EntityBaseService<MlModel, MlModelRepositor
       @Parameter(description = "Name of the ML Model", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
@@ -620,6 +584,6 @@ public class MlModelResource extends EntityBaseService<MlModel, MlModelRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

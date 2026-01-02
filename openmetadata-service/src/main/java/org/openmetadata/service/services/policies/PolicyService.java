@@ -14,43 +14,58 @@
 package org.openmetadata.service.services.policies;
 
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.PolicyRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.policies.PolicyMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 
 @Slf4j
 @Singleton
 @Service(entityType = Entity.POLICY)
-public class PolicyService extends AbstractEntityService<Policy> {
+public class PolicyService extends EntityBaseService<Policy, PolicyRepository> {
+
+  public static final String FIELDS = "owners,location,teams,roles";
 
   @Getter private final PolicyMapper mapper;
-  private final PolicyRepository policyRepository;
 
   @Inject
   public PolicyService(
-      PolicyRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer,
-      PolicyMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.POLICY);
-    this.policyRepository = repository;
+      PolicyRepository repository, Authorizer authorizer, PolicyMapper mapper, Limits limits) {
+    super(new ResourceEntityInfo<>(Entity.POLICY, Policy.class), repository, authorizer, limits);
     this.mapper = mapper;
   }
 
+  @Override
+  public Policy addHref(UriInfo uriInfo, Policy policy) {
+    super.addHref(uriInfo, policy);
+    Entity.withHref(uriInfo, policy.getTeams());
+    Entity.withHref(uriInfo, policy.getRoles());
+    return policy;
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("location,teams,roles", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
   public void initialize() {
-    policyRepository.initSeedDataFromResources();
+    repository.initSeedDataFromResources();
   }
 
   public void validateCondition(SecurityContext securityContext, String expression) {
@@ -58,5 +73,9 @@ public class PolicyService extends AbstractEntityService<Policy> {
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
     CompiledRule.validateExpression(expression, Boolean.class);
+  }
+
+  public static class PolicyList extends ResultList<Policy> {
+    /* Required for serde */
   }
 }

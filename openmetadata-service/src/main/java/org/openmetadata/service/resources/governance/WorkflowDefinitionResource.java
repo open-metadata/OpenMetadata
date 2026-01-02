@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.governance;
 
+import static org.openmetadata.service.services.governance.WorkflowDefinitionService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -30,35 +32,17 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.util.Map;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.workflows.Workflow;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
-import org.openmetadata.service.governance.workflows.WorkflowTransactionManager;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.governance.WorkflowDefinitionService;
-import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.RestUtil.PatchResponse;
-import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Path("/v1/governance/workflowDefinitions")
 @Tag(
@@ -68,30 +52,16 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "governanceWorkflows")
-@Slf4j
-public class WorkflowDefinitionResource
-    extends EntityBaseService<WorkflowDefinition, WorkflowDefinitionRepository> {
+public class WorkflowDefinitionResource {
   public static final String COLLECTION_PATH = "v1/governance/workflowDefinitions/";
-  static final String FIELDS = "owners";
-  private WorkflowDefinitionService workflowDefinitionService;
+  private final WorkflowDefinitionService service;
 
-  public WorkflowDefinitionResource(Authorizer authorizer, Limits limits) {
-    super(Entity.WORKFLOW_DEFINITION, authorizer, limits);
+  public WorkflowDefinitionResource(WorkflowDefinitionService service) {
+    this.service = service;
   }
 
-  public WorkflowDefinitionResource(
-      ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
-    super(Entity.WORKFLOW_DEFINITION, authorizer, limits);
-    this.workflowDefinitionService = serviceRegistry.getService(WorkflowDefinitionService.class);
-  }
-
-  public static class WorkflowDefinitionList extends ResultList<WorkflowDefinition> {
-    /* Required for serde */
-  }
-
-  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    workflowDefinitionService.initialize();
+    service.initialize(config);
   }
 
   @GET
@@ -112,7 +82,7 @@ public class WorkflowDefinitionResource
                     schema =
                         @Schema(
                             implementation =
-                                WorkflowDefinitionResource.WorkflowDefinitionList.class)))
+                                WorkflowDefinitionService.WorkflowDefinitionList.class)))
       })
   public ResultList<WorkflowDefinition> list(
       @Context UriInfo uriInfo,
@@ -139,7 +109,7 @@ public class WorkflowDefinitionResource
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -164,7 +134,7 @@ public class WorkflowDefinitionResource
       @Parameter(description = "Id of the Workflow Definition", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -202,15 +172,15 @@ public class WorkflowDefinitionResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @POST
   @Path("/{id}/redeploy")
   @Operation(
-      operationId = "getWorkflowDefinitionByID",
-      summary = "Get a Workflow Definition by Id",
-      description = "Get a Workflow Definition by `Id`.",
+      operationId = "redeployWorkflowDefinition",
+      summary = "Redeploy a Workflow Definition by Id",
+      description = "Redeploy a Workflow Definition by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -226,16 +196,7 @@ public class WorkflowDefinitionResource
           @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
-    WorkflowDefinition wd =
-        repository.get(
-            uriInfo,
-            id,
-            new EntityUtil.Fields(repository.getAllowedFields()),
-            Include.NON_DELETED,
-            false);
-    WorkflowHandler.getInstance().deleteWorkflowDefinition(wd);
-    WorkflowHandler.getInstance().deploy(new Workflow(wd));
-    return Response.status(Response.Status.OK).entity("Workflow Redeployed").build();
+    return service.redeploy(uriInfo, id);
   }
 
   @GET
@@ -275,7 +236,7 @@ public class WorkflowDefinitionResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -308,7 +269,7 @@ public class WorkflowDefinitionResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -331,18 +292,8 @@ public class WorkflowDefinitionResource
       @Context SecurityContext securityContext,
       @Valid CreateWorkflowDefinition create) {
     WorkflowDefinition workflowDefinition =
-        workflowDefinitionService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-
-    // Use WorkflowTransactionManager for atomic operation across both databases
-    // It handles both authorization and transaction coordination
-    WorkflowDefinition created =
-        WorkflowTransactionManager.createWorkflowDefinition(
-            uriInfo, securityContext, workflowDefinition, authorizer, limits);
-    return Response.status(Response.Status.CREATED)
-        .entity(repository.withHref(uriInfo, created))
-        .build();
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.createWorkflow(uriInfo, securityContext, workflowDefinition);
   }
 
   @PATCH
@@ -371,19 +322,13 @@ public class WorkflowDefinitionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    // Use WorkflowTransactionManager for atomic operation across both databases
-    // It handles authorization, patching, and Flowable synchronization
-    PatchResponse<WorkflowDefinition> response =
-        WorkflowTransactionManager.patchWorkflowDefinition(
-            uriInfo, securityContext, id, patch, authorizer);
-    addHref(uriInfo, response.entity());
-    return response.toResponse();
+    return service.patchWorkflow(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
   @Path("/name/{fqn}")
   @Operation(
-      operationId = "patchWorkflowDefinition",
+      operationId = "patchWorkflowDefinitionByName",
       summary = "Update a Workflow Definition by name.",
       description = "Update an existing Workflow Definition using JsonPatch.",
       externalDocs =
@@ -406,13 +351,7 @@ public class WorkflowDefinitionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    // Use WorkflowTransactionManager for atomic operation across both databases
-    // It handles authorization, patching, and Flowable synchronization
-    PatchResponse<WorkflowDefinition> response =
-        WorkflowTransactionManager.patchWorkflowDefinitionByName(
-            uriInfo, securityContext, fqn, patch, authorizer);
-    addHref(uriInfo, response.entity());
-    return response.toResponse();
+    return service.patchWorkflowByName(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -435,20 +374,8 @@ public class WorkflowDefinitionResource
       @Context SecurityContext securityContext,
       @Valid CreateWorkflowDefinition create) {
     WorkflowDefinition workflowDefinition =
-        workflowDefinitionService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-
-    // Let the TransactionManager handle authorization and transaction coordination
-    // This ensures atomic operations across both databases
-    String updatedBy = securityContext.getUserPrincipal().getName();
-    PutResponse<WorkflowDefinition> response =
-        WorkflowTransactionManager.createOrUpdateWorkflowDefinition(
-            uriInfo, securityContext, workflowDefinition, updatedBy, authorizer, limits);
-
-    return Response.status(response.getStatus())
-        .entity(repository.withHref(uriInfo, response.getEntity()))
-        .build();
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.createOrUpdateWorkflow(uriInfo, securityContext, workflowDefinition);
   }
 
   @DELETE
@@ -478,15 +405,7 @@ public class WorkflowDefinitionResource
       @Parameter(description = "Id of the Workflow Definition", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    // Get the workflow to delete
-    WorkflowDefinition workflow =
-        repository.get(uriInfo, id, new EntityUtil.Fields(repository.getAllowedFields()));
-
-    // Use WorkflowTransactionManager for atomic deletion with authorization
-    WorkflowTransactionManager.deleteWorkflowDefinition(
-        securityContext, workflow, hardDelete, authorizer);
-
-    return Response.ok().build();
+    return service.deleteWorkflow(uriInfo, securityContext, id, hardDelete);
   }
 
   @DELETE
@@ -516,7 +435,7 @@ public class WorkflowDefinitionResource
       @Parameter(description = "Id of the Workflow Definition", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -548,15 +467,7 @@ public class WorkflowDefinitionResource
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    // Get the workflow to delete
-    WorkflowDefinition workflow =
-        repository.getByName(uriInfo, fqn, new EntityUtil.Fields(repository.getAllowedFields()));
-
-    // Use WorkflowTransactionManager for atomic deletion with authorization
-    WorkflowTransactionManager.deleteWorkflowDefinition(
-        securityContext, workflow, hardDelete, authorizer);
-
-    return Response.ok().build();
+    return service.deleteWorkflowByName(uriInfo, securityContext, fqn, hardDelete);
   }
 
   @PUT
@@ -578,7 +489,7 @@ public class WorkflowDefinitionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @POST
@@ -603,29 +514,9 @@ public class WorkflowDefinitionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateWorkflowDefinition create) {
-    // Convert to entity for validation
     WorkflowDefinition workflowDefinition =
-        workflowDefinitionService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-
-    // Authorization check - user must have at least VIEW permission for workflows
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-    ResourceContext<WorkflowDefinition> resourceContext = new ResourceContext<>(entityType);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    // Validate the workflow configuration
-    // This will throw BadRequestException on any validation failure
-    repository.validateWorkflow(workflowDefinition);
-
-    return Response.ok()
-        .entity(
-            Map.of(
-                "status", "valid",
-                "message", "Workflow validation successful",
-                "validatedAt", System.currentTimeMillis()))
-        .build();
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.validateWorkflow(securityContext, workflowDefinition);
   }
 
   @POST
@@ -652,56 +543,7 @@ public class WorkflowDefinitionResource
       @Parameter(description = "Name of the Workflow Definition", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    try {
-      WorkflowDefinition workflow =
-          repository.getByName(uriInfo, fqn, repository.getFields("suspended"));
-      if (workflow.getSuspended() != null && workflow.getSuspended()) {
-        return Response.status(Response.Status.BAD_REQUEST)
-            .entity(
-                Map.of(
-                    "status", "error",
-                    "workflow", fqn,
-                    "message",
-                        "Cannot trigger suspended workflow. Please resume the workflow first.",
-                    "code", "WORKFLOW_SUSPENDED"))
-            .build();
-      }
-
-      boolean triggerResponse = WorkflowHandler.getInstance().triggerWorkflow(fqn);
-      if (triggerResponse) {
-        return Response.status(Response.Status.OK)
-            .entity(
-                Map.of(
-                    "status",
-                    "success",
-                    "workflow",
-                    fqn,
-                    "message",
-                    "Workflow triggered successfully",
-                    "triggeredAt",
-                    System.currentTimeMillis()))
-            .build();
-      } else {
-        return Response.status(Response.Status.BAD_REQUEST)
-            .entity(
-                Map.of(
-                    "status", "error",
-                    "workflow", fqn,
-                    "message",
-                        "Failed to trigger workflow. The workflow may not be deployed or may have configuration issues.",
-                    "code", "TRIGGER_FAILED"))
-            .build();
-      }
-    } catch (EntityNotFoundException e) {
-      return Response.status(Response.Status.NOT_FOUND)
-          .entity(
-              Map.of(
-                  "status", "error",
-                  "workflow", fqn,
-                  "message", "Workflow Definition not found",
-                  "code", "WORKFLOW_NOT_FOUND"))
-          .build();
-    }
+    return service.triggerWorkflow(uriInfo, fqn);
   }
 
   @PUT
@@ -725,31 +567,7 @@ public class WorkflowDefinitionResource
       @Parameter(description = "Name of the Workflow Definition", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    // Check if workflow exists
-    WorkflowDefinition workflow = repository.getByName(uriInfo, fqn, repository.getFields("id"));
-
-    // Authorize the operation
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    ResourceContext<WorkflowDefinition> resourceContext =
-        new ResourceContext<>(entityType, workflow.getId(), workflow.getName());
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    // Suspend the workflow through repository layer (separation of concerns)
-    repository.suspendWorkflow(workflow);
-
-    return Response.ok()
-        .entity(
-            Map.of(
-                "status",
-                "suspended",
-                "workflow",
-                fqn,
-                "message",
-                "Workflow suspended successfully",
-                "suspendedAt",
-                System.currentTimeMillis()))
-        .build();
+    return service.suspendWorkflow(uriInfo, securityContext, fqn);
   }
 
   @PUT
@@ -773,30 +591,6 @@ public class WorkflowDefinitionResource
       @Parameter(description = "Name of the Workflow Definition", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    // Check if workflow exists
-    WorkflowDefinition workflow = repository.getByName(uriInfo, fqn, repository.getFields("id"));
-
-    // Authorize the operation
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    ResourceContext<WorkflowDefinition> resourceContext =
-        new ResourceContext<>(entityType, workflow.getId(), workflow.getName());
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    // Resume the workflow through repository layer (separation of concerns)
-    repository.resumeWorkflow(workflow);
-
-    return Response.ok()
-        .entity(
-            Map.of(
-                "status",
-                "resumed",
-                "workflow",
-                fqn,
-                "message",
-                "Workflow resumed successfully",
-                "resumedAt",
-                System.currentTimeMillis()))
-        .build();
+    return service.resumeWorkflow(uriInfo, securityContext, fqn);
   }
 }

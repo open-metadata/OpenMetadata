@@ -18,41 +18,50 @@ import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 import org.openmetadata.service.util.AppMarketPlaceUtil;
 
-/**
- * Service layer for AppMarketPlaceDefinition entity operations.
- *
- * <p>Extends AbstractEntityService to inherit all standard CRUD operations with proper
- * authorization and repository delegation.
- */
 @Slf4j
 @Singleton
 @Service(entityType = Entity.APP_MARKET_PLACE_DEF)
-public class AppMarketPlaceService extends AbstractEntityService<AppMarketPlaceDefinition> {
+public class AppMarketPlaceService
+    extends EntityBaseService<AppMarketPlaceDefinition, AppMarketPlaceRepository> {
 
   @Getter private final AppMarketPlaceMapper mapper;
-  private final AppMarketPlaceRepository appMarketPlaceRepository;
+  public static final String FIELDS = "owners,tags";
 
   @Inject
   public AppMarketPlaceService(
       AppMarketPlaceRepository repository,
-      SearchRepository searchRepository,
       Authorizer authorizer,
-      AppMarketPlaceMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.APP_MARKET_PLACE_DEF);
-    this.appMarketPlaceRepository = repository;
+      AppMarketPlaceMapper mapper,
+      Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.APP_MARKET_PLACE_DEF, AppMarketPlaceDefinition.class),
+        repository,
+        authorizer,
+        limits);
     this.mapper = mapper;
   }
 
-  public void initialize() {
-    AppMarketPlaceUtil.createAppMarketPlaceDefinitions(appMarketPlaceRepository, mapper);
+  @Override
+  public void initialize(org.openmetadata.service.OpenMetadataApplicationConfig config) {
+    try {
+      AppMarketPlaceUtil.createAppMarketPlaceDefinitions(repository, mapper);
+    } catch (Exception ex) {
+      LOG.error("Failed in initializing App MarketPlace Service", ex);
+    }
+  }
+
+  public static class AppMarketPlaceDefinitionList extends ResultList<AppMarketPlaceDefinition> {
+    /* Required for serde */
   }
 }

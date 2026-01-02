@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.drives;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.services.drives.DirectoryService.FIELDS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -54,17 +54,10 @@ import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.DirectoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.drives.DirectoryService;
 
 @Path("/v1/drives/directories")
@@ -75,40 +68,12 @@ import org.openmetadata.service.services.drives.DirectoryService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "directories")
-public class DirectoryResource extends EntityBaseService<Directory, DirectoryRepository> {
+public class DirectoryResource {
   public static final String COLLECTION_PATH = "v1/drives/directories/";
-  static final String FIELDS =
-      "owners,children,parent,usageSummary,tags,extension,domains,sourceHash,lifeCycle,votes,followers,numberOfFiles,numberOfSubDirectories,totalSize,directoryType";
   private final DirectoryService service;
 
-  @Override
-  public Directory addHref(UriInfo uriInfo, Directory directory) {
-    super.addHref(uriInfo, directory);
-    Entity.withHref(uriInfo, directory.getChildren());
-    Entity.withHref(uriInfo, directory.getParent());
-    Entity.withHref(uriInfo, directory.getService());
-    return directory;
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("children,parent", MetadataOperation.VIEW_BASIC);
-    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
-    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
-  }
-
-  public DirectoryResource(Authorizer authorizer, Limits limits) {
-    super(Entity.DIRECTORY, authorizer, limits);
-    this.service = null;
-  }
-
-  public DirectoryResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
-    super(Entity.DIRECTORY, authorizer, limits);
-    this.service = serviceRegistry.getService(DirectoryService.class);
-  }
-
-  public static class DirectoryList extends ResultList<Directory> {
-    /* Required for serde */
+  public DirectoryResource(DirectoryService service) {
+    this.service = service;
   }
 
   @GET
@@ -126,7 +91,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DirectoryList.class)))
+                    schema = @Schema(implementation = DirectoryService.DirectoryList.class)))
       })
   public ResultList<Directory> list(
       @Context UriInfo uriInfo,
@@ -180,7 +145,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
             .addQueryParam("service", serviceParam)
             .addQueryParam("parent", parentParam)
             .addQueryParam("root", String.valueOf(root));
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -217,7 +182,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -257,7 +222,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @POST
@@ -281,7 +246,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
       @Valid CreateDirectory create) {
     Directory directory =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, directory);
+    return service.create(uriInfo, securityContext, directory);
   }
 
   @PUT
@@ -302,7 +267,8 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateDirectory> createRequests) {
-    return processBulkRequest(uriInfo, securityContext, createRequests, service.getMapper(), async);
+    return service.bulkCreateOrUpdate(
+        uriInfo, securityContext, createRequests, service.getMapper(), async);
   }
 
   @PATCH
@@ -331,7 +297,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -360,7 +326,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -384,7 +350,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
       @Valid CreateDirectory create) {
     Directory directory =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, directory);
+    return service.createOrUpdate(uriInfo, securityContext, directory);
   }
 
   @DELETE
@@ -412,7 +378,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
       @Parameter(description = "Id of the directory", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -444,7 +410,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -466,7 +432,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @PUT
@@ -488,7 +454,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET
@@ -512,7 +478,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
       @Parameter(description = "Id of the directory", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -544,7 +510,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @PUT
@@ -573,7 +539,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
+    return service
         .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
         .toResponse();
   }
@@ -604,7 +570,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
+    return service
         .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
         .toResponse();
   }
@@ -632,9 +598,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
           @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return service.updateVote(securityContext.getUserPrincipal().getName(), id, request);
   }
 
   @POST
@@ -662,7 +626,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, null, csv, dryRun, false);
+    return service.importCsvInternal(securityContext, null, csv, dryRun, false);
   }
 
   @GET
@@ -683,7 +647,7 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
           @QueryParam("name")
           String name)
       throws IOException {
-    return exportCsvInternal(securityContext, name, false);
+    return service.exportCsvInternal(securityContext, name, false);
   }
 
   @DELETE
@@ -710,6 +674,6 @@ public class DirectoryResource extends EntityBaseService<Directory, DirectoryRep
       @Parameter(description = "Id of the directory", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 }

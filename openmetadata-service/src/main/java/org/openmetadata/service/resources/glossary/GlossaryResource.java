@@ -409,7 +409,7 @@ public class GlossaryResource extends EntityBaseService<Glossary, GlossaryReposi
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
+    return service
         .updateVote(securityContext.getUserPrincipal().getName(), id, request)
         .toResponse();
   }

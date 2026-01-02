@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.events;
 
+import static org.openmetadata.service.services.events.NotificationTemplateService.FIELDS;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -41,10 +43,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.events.CreateNotificationTemplate;
 import org.openmetadata.schema.api.events.NotificationTemplateRenderRequest;
@@ -60,24 +60,15 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationLogic;
-import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.events.NotificationTemplateService;
-import org.openmetadata.service.util.RestUtil;
 
-@Slf4j
 @Path("/v1/notificationTemplates")
 @Tag(
     name = "Notification Templates",
@@ -85,71 +76,14 @@ import org.openmetadata.service.util.RestUtil;
 @Collection(name = "notificationTemplates")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-public class NotificationTemplateResource
-    extends EntityBaseService<NotificationTemplate, NotificationTemplateRepository> {
+public class NotificationTemplateResource {
 
   public static final String COLLECTION_PATH = "/v1/notificationTemplates";
-  public static final String FIELDS = "";
 
   private final NotificationTemplateService service;
 
-  public NotificationTemplateResource(Authorizer authorizer, Limits limits) {
-    super(Entity.NOTIFICATION_TEMPLATE, authorizer, limits);
-    this.service = null;
-  }
-
-  public NotificationTemplateResource(
-      ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
-    super(Entity.NOTIFICATION_TEMPLATE, authorizer, limits);
-    this.service = serviceRegistry.getService(NotificationTemplateService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("templateBody", MetadataOperation.VIEW_BASIC);
-    return List.of(MetadataOperation.EDIT_USER_NOTIFICATION_TEMPLATE);
-  }
-
-  @Override
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    service.initialize();
-  }
-
-  public static class NotificationTemplateList extends ResultList<NotificationTemplate> {
-    /* Required for serde */
-  }
-
-  /** Helper to build AuthRequest list based on provider type for patch operations. */
-  private List<AuthRequest> buildEditAuthRequests(
-      ProviderType providerType, ResourceContextInterface ctx) {
-    if (ProviderType.SYSTEM.equals(providerType)) {
-      // SYSTEM templates require EDIT_ALL
-      return List.of(
-          new AuthRequest(new OperationContext(entityType, MetadataOperation.EDIT_ALL), ctx));
-    }
-    // USER templates require EDIT_ALL OR EDIT_USER_NOTIFICATION_TEMPLATE
-    return List.of(
-        new AuthRequest(new OperationContext(entityType, MetadataOperation.EDIT_ALL), ctx),
-        new AuthRequest(
-            new OperationContext(entityType, MetadataOperation.EDIT_USER_NOTIFICATION_TEMPLATE),
-            ctx));
-  }
-
-  /**
-   * Tooling endpoints (/validate, /render, /send): allow EITHER CREATE OR any EDIT flavor.
-   * Note: No provider discrimination needed here per requirements.
-   */
-  private void authorizePreviewCapability(SecurityContext securityContext) {
-    List<AuthRequest> anyOf =
-        List.of(
-            new AuthRequest(
-                new OperationContext(entityType, MetadataOperation.CREATE), getResourceContext()),
-            new AuthRequest(
-                new OperationContext(entityType, MetadataOperation.EDIT_ALL), getResourceContext()),
-            new AuthRequest(
-                new OperationContext(entityType, MetadataOperation.EDIT_USER_NOTIFICATION_TEMPLATE),
-                getResourceContext()));
-    authorizer.authorizeRequests(securityContext, anyOf, AuthorizationLogic.ANY);
+  public NotificationTemplateResource(NotificationTemplateService service) {
+    this.service = service;
   }
 
   @GET
@@ -164,7 +98,10 @@ public class NotificationTemplateResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = NotificationTemplateList.class)))
+                    schema =
+                        @Schema(
+                            implementation =
+                                NotificationTemplateService.NotificationTemplateList.class)))
       })
   public ResultList<NotificationTemplate> list(
       @Context UriInfo uriInfo,
@@ -205,7 +142,7 @@ public class NotificationTemplateResource
     if (provider != null) {
       filter.addQueryParam("provider", provider.value());
     }
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -244,7 +181,7 @@ public class NotificationTemplateResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -284,7 +221,7 @@ public class NotificationTemplateResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -307,7 +244,7 @@ public class NotificationTemplateResource
       @Parameter(description = "Id of the notification template", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -339,7 +276,7 @@ public class NotificationTemplateResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -363,7 +300,7 @@ public class NotificationTemplateResource
       @Valid CreateNotificationTemplate create) {
     NotificationTemplate template =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, template);
+    return service.create(uriInfo, securityContext, template);
   }
 
   @PATCH
@@ -404,28 +341,33 @@ public class NotificationTemplateResource
                             "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"new description\"}]")
                       }))
           JsonPatch patch) {
-    NotificationTemplate existing = repository.get(null, id, repository.getFields("*"));
+    NotificationTemplate existing = service.getExistingById(id);
 
     if (!isTemplateFieldPatch(patch)) {
-      return patchInternal(uriInfo, securityContext, id, patch, ChangeSource.MANUAL);
+      return service.patchInternal(uriInfo, securityContext, id, patch, ChangeSource.MANUAL);
     }
 
-    ResourceContext<NotificationTemplate> ctx = getResourceContextById(id);
+    ResourceContext<NotificationTemplate> ctx = service.getResourceContextById(id);
     boolean isSystem = ProviderType.SYSTEM.equals(existing.getProvider());
 
     List<AuthRequest> authRequests =
         isSystem
             ? List.of(
-                new AuthRequest(new OperationContext(entityType, MetadataOperation.EDIT_ALL), ctx))
+                new AuthRequest(
+                    new OperationContext(Entity.NOTIFICATION_TEMPLATE, MetadataOperation.EDIT_ALL),
+                    ctx))
             : List.of(
-                new AuthRequest(new OperationContext(entityType, MetadataOperation.EDIT_ALL), ctx),
+                new AuthRequest(
+                    new OperationContext(Entity.NOTIFICATION_TEMPLATE, MetadataOperation.EDIT_ALL),
+                    ctx),
                 new AuthRequest(
                     new OperationContext(
-                        entityType, MetadataOperation.EDIT_USER_NOTIFICATION_TEMPLATE),
+                        Entity.NOTIFICATION_TEMPLATE,
+                        MetadataOperation.EDIT_USER_NOTIFICATION_TEMPLATE),
                     ctx));
 
     AuthorizationLogic logic = isSystem ? AuthorizationLogic.ALL : AuthorizationLogic.ANY;
-    return patchInternal(uriInfo, securityContext, authRequests, logic, id, patch);
+    return service.patchInternal(uriInfo, securityContext, authRequests, logic, id, patch);
   }
 
   private boolean isTemplateFieldPatch(JsonPatch patch) {
@@ -477,28 +419,35 @@ public class NotificationTemplateResource
                             "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"new description\"}]")
                       }))
           JsonPatch patch) {
-    NotificationTemplate existing = repository.getByName(null, fqn, repository.getFields("*"));
+    NotificationTemplate existing = service.getExistingByName(fqn);
 
     if (!isTemplateFieldPatch(patch)) {
-      return patchInternal(uriInfo, securityContext, existing.getId(), patch, ChangeSource.MANUAL);
+      return service.patchInternal(
+          uriInfo, securityContext, existing.getId(), patch, ChangeSource.MANUAL);
     }
 
-    ResourceContext<NotificationTemplate> ctx = getResourceContextByName(fqn);
+    ResourceContext<NotificationTemplate> ctx = service.getResourceContextByName(fqn);
     boolean isSystem = ProviderType.SYSTEM.equals(existing.getProvider());
 
     List<AuthRequest> authRequests =
         isSystem
             ? List.of(
-                new AuthRequest(new OperationContext(entityType, MetadataOperation.EDIT_ALL), ctx))
+                new AuthRequest(
+                    new OperationContext(Entity.NOTIFICATION_TEMPLATE, MetadataOperation.EDIT_ALL),
+                    ctx))
             : List.of(
-                new AuthRequest(new OperationContext(entityType, MetadataOperation.EDIT_ALL), ctx),
+                new AuthRequest(
+                    new OperationContext(Entity.NOTIFICATION_TEMPLATE, MetadataOperation.EDIT_ALL),
+                    ctx),
                 new AuthRequest(
                     new OperationContext(
-                        entityType, MetadataOperation.EDIT_USER_NOTIFICATION_TEMPLATE),
+                        Entity.NOTIFICATION_TEMPLATE,
+                        MetadataOperation.EDIT_USER_NOTIFICATION_TEMPLATE),
                     ctx));
 
     AuthorizationLogic logic = isSystem ? AuthorizationLogic.ALL : AuthorizationLogic.ANY;
-    return patchInternal(uriInfo, securityContext, authRequests, logic, existing.getId(), patch);
+    return service.patchInternal(
+        uriInfo, securityContext, authRequests, logic, existing.getId(), patch);
   }
 
   @PUT
@@ -527,38 +476,44 @@ public class NotificationTemplateResource
       @Valid CreateNotificationTemplate create) {
 
     final String principal = securityContext.getUserPrincipal().getName();
-    final ResourceContext<NotificationTemplate> ctx = getResourceContextByName(create.getName());
-    final NotificationTemplate existing =
-        repository.findByNameOrNull(create.getName(), Include.ALL);
+    final ResourceContext<NotificationTemplate> ctx =
+        service.getResourceContextByName(create.getName());
+    final NotificationTemplate existing = service.getExisting(create.getName());
 
     final List<AuthRequest> authRequests;
     final AuthorizationLogic authorizationLogic;
 
     if (existing == null) {
-      // New template → requires CREATE
-      authorizationLogic = AuthorizationLogic.ALL;
-      authRequests =
-          List.of(new AuthRequest(new OperationContext(entityType, MetadataOperation.CREATE), ctx));
-    } else if (ProviderType.SYSTEM.equals(existing.getProvider())) {
-      // Existing SYSTEM template → must have EDIT_ALL
       authorizationLogic = AuthorizationLogic.ALL;
       authRequests =
           List.of(
-              new AuthRequest(new OperationContext(entityType, MetadataOperation.EDIT_ALL), ctx));
+              new AuthRequest(
+                  new OperationContext(Entity.NOTIFICATION_TEMPLATE, MetadataOperation.CREATE),
+                  ctx));
+    } else if (ProviderType.SYSTEM.equals(existing.getProvider())) {
+      authorizationLogic = AuthorizationLogic.ALL;
+      authRequests =
+          List.of(
+              new AuthRequest(
+                  new OperationContext(Entity.NOTIFICATION_TEMPLATE, MetadataOperation.EDIT_ALL),
+                  ctx));
     } else {
-      // Existing USER template → EDIT_ALL OR EDIT_USER_NOTIFICATION_TEMPLATE
       authorizationLogic = AuthorizationLogic.ANY;
       authRequests =
           List.of(
-              new AuthRequest(new OperationContext(entityType, MetadataOperation.EDIT_ALL), ctx),
+              new AuthRequest(
+                  new OperationContext(Entity.NOTIFICATION_TEMPLATE, MetadataOperation.EDIT_ALL),
+                  ctx),
               new AuthRequest(
                   new OperationContext(
-                      entityType, MetadataOperation.EDIT_USER_NOTIFICATION_TEMPLATE),
+                      Entity.NOTIFICATION_TEMPLATE,
+                      MetadataOperation.EDIT_USER_NOTIFICATION_TEMPLATE),
                   ctx));
     }
 
     final NotificationTemplate updated = service.getMapper().createToEntity(create, principal);
-    return createOrUpdate(uriInfo, securityContext, authRequests, authorizationLogic, updated);
+    return service.createOrUpdate(
+        uriInfo, securityContext, authRequests, authorizationLogic, updated);
   }
 
   @DELETE
@@ -588,7 +543,7 @@ public class NotificationTemplateResource
       @Parameter(description = "Id of the notification template", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -621,7 +576,7 @@ public class NotificationTemplateResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete) {
-    return super.delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -657,7 +612,7 @@ public class NotificationTemplateResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete) {
-    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -677,34 +632,9 @@ public class NotificationTemplateResource
       @Valid RestoreEntity restore) {
     NotificationTemplate existing =
         Entity.getEntity(Entity.NOTIFICATION_TEMPLATE, restore.getId(), "", Include.DELETED);
-    List<AuthRequest> authRequests;
-    AuthorizationLogic authorizationLogic;
-    ResourceContext<NotificationTemplate> ctx = getResourceContextById(existing.getId());
-    if (ProviderType.SYSTEM.equals(existing.getProvider())) {
-      authorizationLogic = AuthorizationLogic.ALL;
-      authRequests =
-          List.of(
-              new AuthRequest(new OperationContext(entityType, MetadataOperation.EDIT_ALL), ctx));
-    } else {
-      authorizationLogic = AuthorizationLogic.ANY;
-      authRequests =
-          List.of(
-              new AuthRequest(new OperationContext(entityType, MetadataOperation.EDIT_ALL), ctx),
-              new AuthRequest(
-                  new OperationContext(
-                      entityType, MetadataOperation.EDIT_USER_NOTIFICATION_TEMPLATE),
-                  ctx));
-    }
-
-    authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
-
-    RestUtil.PutResponse<NotificationTemplate> put =
-        repository.restoreEntity(securityContext.getUserPrincipal().getName(), existing.getId());
-    repository.restoreFromSearch(put.getEntity());
-    addHref(uriInfo, put.getEntity());
-    LOG.info(
-        "Restored {}:{}", Entity.getEntityTypeFromObject(put.getEntity()), put.getEntity().getId());
-    return put.toResponse();
+    Response response = service.restoreTemplateEntity(securityContext, existing);
+    service.addHref(uriInfo, existing);
+    return response;
   }
 
   @PUT
@@ -732,21 +662,7 @@ public class NotificationTemplateResource
       @Parameter(description = "Id of the notification template", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-
-    NotificationTemplate template = repository.get(null, id, repository.getFields("*"));
-    if (!ProviderType.SYSTEM.equals(template.getProvider())) {
-      return Response.status(Response.Status.BAD_REQUEST)
-          .entity("Cannot reset template: only SYSTEM templates can be reset to default")
-          .build();
-    }
-    List<AuthRequest> authRequests =
-        List.of(
-            new AuthRequest(
-                new OperationContext(entityType, MetadataOperation.EDIT_ALL),
-                getResourceContextById(id)));
-    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ALL);
-    repository.resetToDefault(template);
-    return Response.ok().build();
+    return service.resetToDefaultById(securityContext, id);
   }
 
   @PUT
@@ -776,21 +692,7 @@ public class NotificationTemplateResource
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-
-    NotificationTemplate template = repository.getByName(null, fqn, repository.getFields("*"));
-    if (!ProviderType.SYSTEM.equals(template.getProvider())) {
-      return Response.status(Response.Status.BAD_REQUEST)
-          .entity("Cannot reset template: only SYSTEM templates can be reset to default")
-          .build();
-    }
-    List<AuthRequest> authRequests =
-        List.of(
-            new AuthRequest(
-                new OperationContext(entityType, MetadataOperation.EDIT_ALL),
-                getResourceContextByName(fqn)));
-    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ALL);
-    repository.resetToDefault(template);
-    return Response.ok().build();
+    return service.resetToDefaultByFQN(securityContext, fqn);
   }
 
   @POST
@@ -815,8 +717,8 @@ public class NotificationTemplateResource
   public Response validateTemplate(
       @Context SecurityContext securityContext,
       @Valid NotificationTemplateValidationRequest request) {
-    authorizePreviewCapability(securityContext);
-    NotificationTemplateValidationResponse response = repository.validate(request);
+    service.authorizePreviewCapability(securityContext);
+    NotificationTemplateValidationResponse response = service.validate(request);
 
     return Response.ok(response).build();
   }
@@ -842,8 +744,8 @@ public class NotificationTemplateResource
       })
   public Response renderTemplate(
       @Context SecurityContext securityContext, @Valid NotificationTemplateRenderRequest request) {
-    authorizePreviewCapability(securityContext);
-    NotificationTemplateRenderResponse response = repository.render(request);
+    service.authorizePreviewCapability(securityContext);
+    NotificationTemplateRenderResponse response = service.render(request);
 
     return Response.ok(response).build();
   }
@@ -871,8 +773,8 @@ public class NotificationTemplateResource
       })
   public Response sendTemplate(
       @Context SecurityContext securityContext, @Valid NotificationTemplateSendRequest request) {
-    authorizePreviewCapability(securityContext);
-    NotificationTemplateValidationResponse response = repository.send(request);
+    service.authorizePreviewCapability(securityContext);
+    NotificationTemplateValidationResponse response = service.send(request);
 
     return Response.ok(response).build();
   }
@@ -896,10 +798,7 @@ public class NotificationTemplateResource
       })
   public List<HandlebarsHelperMetadata> getHandlebarsHelpers(
       @Context SecurityContext securityContext) {
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
-        getResourceContext());
-    return repository.getHelperMetadata();
+    service.authorizeHelperAccess(securityContext);
+    return service.getHelperMetadata();
   }
 }

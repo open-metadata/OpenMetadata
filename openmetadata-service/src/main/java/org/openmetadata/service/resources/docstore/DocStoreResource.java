@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.resources.docstore;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
-
 import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,66 +43,37 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.email.EmailTemplate;
 import org.openmetadata.schema.email.TemplateValidationResponse;
 import org.openmetadata.schema.entities.docStore.CreateDocument;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.DocumentRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.docstore.DocStoreService;
 
-@Slf4j
 @Path("/v1/docStore")
 @Tag(name = "Document Store", description = "A `Document` is an generic entity in OpenMetadata.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "knowledgePanel", order = 2)
-public class DocStoreResource extends EntityBaseService<Document, DocumentRepository> {
+public class DocStoreResource {
   public static final String COLLECTION_PATH = "/v1/docStore";
-  private DocStoreService docStoreService;
-
-  @Override
-  public Document addHref(UriInfo uriInfo, Document doc) {
-    super.addHref(uriInfo, doc);
-    return doc;
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("data", MetadataOperation.VIEW_BASIC);
-    return listOf(MetadataOperation.EDIT_ALL);
-  }
-
-  public DocStoreResource(Authorizer authorizer, Limits limits) {
-    super(Entity.DOCUMENT, authorizer, limits);
-  }
+  private final DocStoreService service;
 
   public DocStoreResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
-    super(Entity.DOCUMENT, authorizer, limits);
-    this.docStoreService = serviceRegistry.getService(DocStoreService.class);
+    this.service = serviceRegistry.getService(DocStoreService.class);
   }
 
-  public static class DocumentList extends ResultList<Document> {
-    /* Required for serde */
-  }
-
-  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    docStoreService.initialize();
+    service.initialize();
   }
 
   @GET
@@ -123,7 +92,7 @@ public class DocStoreResource extends EntityBaseService<Document, DocumentReposi
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DocumentList.class)))
+                    schema = @Schema(implementation = DocStoreService.DocumentList.class)))
       })
   public ResultList<Document> list(
       @Context UriInfo uriInfo,
@@ -162,7 +131,7 @@ public class DocStoreResource extends EntityBaseService<Document, DocumentReposi
     if (fqnPrefix != null) {
       filter.addQueryParam("fqnPrefix", fqnPrefix);
     }
-    return super.listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
+    return service.listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
   }
 
   @GET
@@ -186,7 +155,7 @@ public class DocStoreResource extends EntityBaseService<Document, DocumentReposi
       @Parameter(description = "Id of the Document", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -217,7 +186,7 @@ public class DocStoreResource extends EntityBaseService<Document, DocumentReposi
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, "", include);
+    return service.getInternal(uriInfo, securityContext, id, "", include);
   }
 
   @GET
@@ -251,7 +220,7 @@ public class DocStoreResource extends EntityBaseService<Document, DocumentReposi
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, "", include);
+    return service.getByNameInternal(uriInfo, securityContext, name, "", include);
   }
 
   @GET
@@ -283,7 +252,7 @@ public class DocStoreResource extends EntityBaseService<Document, DocumentReposi
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -305,11 +274,8 @@ public class DocStoreResource extends EntityBaseService<Document, DocumentReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDocument cd) {
-    Document doc =
-        docStoreService
-            .getMapper()
-            .createToEntity(cd, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, doc);
+    Document doc = service.createDocumentFromRequest(cd, securityContext);
+    return service.create(uriInfo, securityContext, doc);
   }
 
   @PUT
@@ -331,11 +297,8 @@ public class DocStoreResource extends EntityBaseService<Document, DocumentReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDocument cd) {
-    Document doc =
-        docStoreService
-            .getMapper()
-            .createToEntity(cd, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, doc);
+    Document doc = service.createDocumentFromRequest(cd, securityContext);
+    return service.createOrUpdate(uriInfo, securityContext, doc);
   }
 
   @PUT
@@ -363,8 +326,7 @@ public class DocStoreResource extends EntityBaseService<Document, DocumentReposi
           @PathParam("templateName")
           String templateName,
       @Valid EmailTemplate emailTemplate) {
-    authorizer.authorizeAdmin(securityContext);
-    return repository.validateEmailTemplate(templateName, emailTemplate.getTemplate());
+    return service.validateEmailTemplate(securityContext, templateName, emailTemplate);
   }
 
   @PATCH
@@ -393,7 +355,7 @@ public class DocStoreResource extends EntityBaseService<Document, DocumentReposi
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -422,7 +384,7 @@ public class DocStoreResource extends EntityBaseService<Document, DocumentReposi
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
@@ -441,7 +403,7 @@ public class DocStoreResource extends EntityBaseService<Document, DocumentReposi
       @Parameter(description = "Id of the Document", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, true);
+    return service.delete(uriInfo, securityContext, id, false, true);
   }
 
   @DELETE
@@ -460,7 +422,7 @@ public class DocStoreResource extends EntityBaseService<Document, DocumentReposi
       @Parameter(description = "Id of the Document", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, false, true);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, false, true);
   }
 
   @DELETE
@@ -481,7 +443,7 @@ public class DocStoreResource extends EntityBaseService<Document, DocumentReposi
       @Parameter(description = "Name of the Document", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, false, true);
+    return service.deleteByName(uriInfo, securityContext, name, false, true);
   }
 
   @POST
@@ -507,15 +469,6 @@ public class DocStoreResource extends EntityBaseService<Document, DocumentReposi
       })
   public Response resetEmailTemplate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    try {
-      repository.deleteEmailTemplates();
-      repository.initSeedDataFromResources();
-      return Response.ok("Seed Data init successfully").build();
-    } catch (Exception e) {
-      LOG.error(e.getMessage());
-      return Response.status(Response.Status.BAD_REQUEST)
-          .entity("Seed Data init failed: " + e.getMessage())
-          .build();
-    }
+    return service.resetEmailTemplate();
   }
 }

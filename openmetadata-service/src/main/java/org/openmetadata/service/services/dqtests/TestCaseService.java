@@ -13,39 +13,49 @@
 
 package org.openmetadata.service.services.dqtests;
 
+import jakarta.ws.rs.core.UriInfo;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.dqtests.TestCaseMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 
-/**
- * Service layer for TestCase entity operations.
- *
- * <p>Extends AbstractEntityService to inherit all standard CRUD operations with proper
- * authorization and repository delegation.
- */
 @Slf4j
 @Singleton
 @Service(entityType = Entity.TEST_CASE)
-public class TestCaseService extends AbstractEntityService<TestCase> {
+public class TestCaseService extends EntityBaseService<TestCase, TestCaseRepository> {
+
+  static final String FIELDS =
+      "owners,reviewers,entityStatus,testSuite,testDefinition,testSuites,incidentId,domains,tags,followers";
 
   @Getter private final TestCaseMapper mapper;
 
   @Inject
   public TestCaseService(
-      TestCaseRepository repository,
-      SearchRepository searchRepository,
-      Authorizer authorizer,
-      TestCaseMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.TEST_CASE);
+      TestCaseRepository repository, Authorizer authorizer, TestCaseMapper mapper, Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.TEST_CASE, TestCase.class), repository, authorizer, limits);
     this.mapper = mapper;
+  }
+
+  @Override
+  public TestCase addHref(UriInfo uriInfo, TestCase test) {
+    super.addHref(uriInfo, test);
+    Entity.withHref(uriInfo, test.getTestSuite());
+    Entity.withHref(uriInfo, test.getTestDefinition());
+    return test;
+  }
+
+  public static class TestCaseList extends ResultList<TestCase> {
+    /* Required for serde */
   }
 }

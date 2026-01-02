@@ -42,37 +42,23 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.entity.policies.Policy;
-import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourceDescriptor;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.FunctionList;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.PolicyRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.CollectionRegistry;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.policies.PolicyService;
 
-@Slf4j
 @Path("/v1/policies")
 @Tag(
     name = "Policies",
@@ -81,58 +67,12 @@ import org.openmetadata.service.services.policies.PolicyService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "policies", order = 0, requiredForOps = true)
-public class PolicyResource extends EntityBaseService<Policy, PolicyRepository> {
+public class PolicyResource {
   public static final String COLLECTION_PATH = "v1/policies/";
-  public static final String FIELDS = "owners,location,teams,roles";
   private final PolicyService service;
 
-  @Override
-  public Policy addHref(UriInfo uriInfo, Policy policy) {
-    super.addHref(uriInfo, policy);
-    Entity.withHref(uriInfo, policy.getTeams());
-    Entity.withHref(uriInfo, policy.getRoles());
-    return policy;
-  }
-
-  public PolicyResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.POLICY, authorizer, limits);
-    this.service = serviceRegistry.getService(PolicyService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("location,teams,roles", MetadataOperation.VIEW_BASIC);
-    return null;
-  }
-
-  @Override
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    service.initialize();
-  }
-
-  @Override
-  public void upgrade() {
-    // 1.2.0 upgrade only - Add Create operation to OrganizationPolicy Owner Rule
-    try {
-      Policy organizationPolicy = repository.findByName("OrganizationPolicy", Include.NON_DELETED);
-      String originalJson = JsonUtils.pojoToJson(organizationPolicy);
-      for (Rule rule : organizationPolicy.getRules()) {
-        if (rule.getName().equals("OrganizationPolicy-Owner-Rule")
-            && !rule.getOperations().contains(MetadataOperation.ALL)) {
-          rule.getOperations().clear();
-          rule.getOperations().add(MetadataOperation.ALL);
-        }
-      }
-      String updatedJson = JsonUtils.pojoToJson(organizationPolicy);
-      JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-      repository.patch(null, organizationPolicy.getId(), "admin", patch);
-    } catch (Exception e) {
-      LOG.error("Failed to update OrganizationPolicy", e);
-    }
-  }
-
-  public static class PolicyList extends ResultList<Policy> {
-    /* Required for serde */
+  public PolicyResource(PolicyService service) {
+    this.service = service;
   }
 
   public static class ResourceDescriptorList extends ResultList<ResourceDescriptor> {
@@ -155,14 +95,14 @@ public class PolicyResource extends EntityBaseService<Policy, PolicyRepository> 
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = PolicyList.class)))
+                    schema = @Schema(implementation = PolicyService.PolicyList.class)))
       })
   public ResultList<Policy> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
+              schema = @Schema(type = "string", example = PolicyService.FIELDS))
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(description = "Limit the number policies returned. (1 to 1000000, default = 10)")
@@ -188,7 +128,7 @@ public class PolicyResource extends EntityBaseService<Policy, PolicyRepository> 
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -215,7 +155,7 @@ public class PolicyResource extends EntityBaseService<Policy, PolicyRepository> 
           UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
+              schema = @Schema(type = "string", example = PolicyService.FIELDS))
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
@@ -224,7 +164,7 @@ public class PolicyResource extends EntityBaseService<Policy, PolicyRepository> 
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -253,7 +193,7 @@ public class PolicyResource extends EntityBaseService<Policy, PolicyRepository> 
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
+              schema = @Schema(type = "string", example = PolicyService.FIELDS))
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
@@ -262,7 +202,7 @@ public class PolicyResource extends EntityBaseService<Policy, PolicyRepository> 
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -285,7 +225,7 @@ public class PolicyResource extends EntityBaseService<Policy, PolicyRepository> 
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -316,7 +256,7 @@ public class PolicyResource extends EntityBaseService<Policy, PolicyRepository> 
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @GET
@@ -362,7 +302,7 @@ public class PolicyResource extends EntityBaseService<Policy, PolicyRepository> 
       @Valid CreatePolicy create) {
     Policy policy =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, policy);
+    return service.create(uriInfo, securityContext, policy);
   }
 
   @PATCH
@@ -390,7 +330,7 @@ public class PolicyResource extends EntityBaseService<Policy, PolicyRepository> 
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -419,7 +359,7 @@ public class PolicyResource extends EntityBaseService<Policy, PolicyRepository> 
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -443,7 +383,7 @@ public class PolicyResource extends EntityBaseService<Policy, PolicyRepository> 
       @Valid CreatePolicy create) {
     Policy policy =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, policy);
+    return service.createOrUpdate(uriInfo, securityContext, policy);
   }
 
   @DELETE
@@ -465,7 +405,7 @@ public class PolicyResource extends EntityBaseService<Policy, PolicyRepository> 
           boolean hardDelete,
       @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return service.delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -487,7 +427,7 @@ public class PolicyResource extends EntityBaseService<Policy, PolicyRepository> 
           boolean hardDelete,
       @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -512,7 +452,7 @@ public class PolicyResource extends EntityBaseService<Policy, PolicyRepository> 
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
@@ -534,7 +474,7 @@ public class PolicyResource extends EntityBaseService<Policy, PolicyRepository> 
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET

@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.resources.databases;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
-
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -57,17 +55,11 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.DatabaseSchemaProfilerConfig;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.databases.DatabaseSchemaService;
 import org.openmetadata.service.util.CSVExportResponse;
 
@@ -79,43 +71,13 @@ import org.openmetadata.service.util.CSVExportResponse;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "databaseSchemas")
-public class DatabaseSchemaResource
-    extends EntityBaseService<DatabaseSchema, DatabaseSchemaRepository> {
+public class DatabaseSchemaResource {
   public static final String COLLECTION_PATH = "v1/databaseSchemas/";
-  static final String FIELDS =
-      "owners,tables,usageSummary,tags,certification,extension,domains,sourceHash,followers";
 
-  private final DatabaseSchemaService databaseSchemaService;
+  private final DatabaseSchemaService service;
 
-  @Override
-  public DatabaseSchema addHref(UriInfo uriInfo, DatabaseSchema schema) {
-    super.addHref(uriInfo, schema);
-    Entity.withHref(uriInfo, schema.getTables());
-    Entity.withHref(uriInfo, schema.getService());
-    Entity.withHref(uriInfo, schema.getDatabase());
-    return schema;
-  }
-
-  public DatabaseSchemaResource(Authorizer authorizer, Limits limits) {
-    super(Entity.DATABASE_SCHEMA, authorizer, limits);
-    this.databaseSchemaService = null;
-  }
-
-  public DatabaseSchemaResource(
-      ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
-    super(Entity.DATABASE_SCHEMA, authorizer, limits);
-    this.databaseSchemaService = serviceRegistry.getService(DatabaseSchemaService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("tables", MetadataOperation.VIEW_BASIC);
-    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
-    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
-  }
-
-  public static class DatabaseSchemaList extends ResultList<DatabaseSchema> {
-    /* Required for serde */
+  public DatabaseSchemaResource(DatabaseSchemaService service) {
+    this.service = service;
   }
 
   @GET
@@ -133,14 +95,15 @@ public class DatabaseSchemaResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DatabaseSchemaList.class)))
+                    schema =
+                        @Schema(implementation = DatabaseSchemaService.DatabaseSchemaList.class)))
       })
   public ResultList<DatabaseSchema> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
+              schema = @Schema(type = "string", example = DatabaseSchemaService.FIELDS))
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
@@ -171,7 +134,8 @@ public class DatabaseSchemaResource
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("database", databaseParam);
-    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return service.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -195,7 +159,7 @@ public class DatabaseSchemaResource
       @Parameter(description = "Database schema Id", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -222,7 +186,7 @@ public class DatabaseSchemaResource
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
+              schema = @Schema(type = "string", example = DatabaseSchemaService.FIELDS))
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
@@ -231,7 +195,7 @@ public class DatabaseSchemaResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -262,7 +226,7 @@ public class DatabaseSchemaResource
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
+              schema = @Schema(type = "string", example = DatabaseSchemaService.FIELDS))
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
@@ -271,7 +235,7 @@ public class DatabaseSchemaResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -303,7 +267,7 @@ public class DatabaseSchemaResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -326,10 +290,8 @@ public class DatabaseSchemaResource
       @Context SecurityContext securityContext,
       @Valid CreateDatabaseSchema create) {
     DatabaseSchema schema =
-        databaseSchemaService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, schema);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.create(uriInfo, securityContext, schema);
   }
 
   @PUT
@@ -360,7 +322,7 @@ public class DatabaseSchemaResource
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return databaseSchemaService.addFollower(securityContext, id, userId).toResponse();
+    return service.addFollower(securityContext, id, userId).toResponse();
   }
 
   @DELETE
@@ -388,9 +350,7 @@ public class DatabaseSchemaResource
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return databaseSchemaService
-        .deleteFollower(securityContext, id, UUID.fromString(userId))
-        .toResponse();
+    return service.deleteFollower(securityContext, id, UUID.fromString(userId)).toResponse();
   }
 
   @PATCH
@@ -419,7 +379,7 @@ public class DatabaseSchemaResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -448,7 +408,7 @@ public class DatabaseSchemaResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -471,10 +431,8 @@ public class DatabaseSchemaResource
       @Context SecurityContext securityContext,
       @Valid CreateDatabaseSchema create) {
     DatabaseSchema schema =
-        databaseSchemaService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, schema);
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    return service.createOrUpdate(uriInfo, securityContext, schema);
   }
 
   @PUT
@@ -513,7 +471,8 @@ public class DatabaseSchemaResource
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateDatabaseSchema> createRequests) {
-    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+    return service.processBulkRequest(
+        uriInfo, securityContext, createRequests, service.getMapper(), async);
   }
 
   @GET
@@ -541,10 +500,10 @@ public class DatabaseSchemaResource
               description =
                   "If true, export will include child entities (schemas, tables, columns)",
               schema = @Schema(type = "boolean"))
-          @DefaultValue("false") // Default: Export only database
+          @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive) {
-    return exportCsvInternalAsync(securityContext, name, recursive);
+    return service.exportCsvInternalAsync(securityContext, name, recursive);
   }
 
   @GET
@@ -572,11 +531,11 @@ public class DatabaseSchemaResource
               description =
                   "If true, export will include child entities (schemas, tables, columns)",
               schema = @Schema(type = "boolean"))
-          @DefaultValue("false") // Default: Export only database
+          @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive)
       throws IOException {
-    return exportCsvInternal(securityContext, name, recursive);
+    return service.exportCsvInternal(securityContext, name, recursive);
   }
 
   @PUT
@@ -613,7 +572,7 @@ public class DatabaseSchemaResource
           boolean recursive,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, recursive);
+    return service.importCsvInternal(securityContext, name, csv, dryRun, recursive);
   }
 
   @PUT
@@ -651,7 +610,7 @@ public class DatabaseSchemaResource
           @QueryParam("recursive")
           boolean recursive,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, recursive);
+    return service.importCsvInternalAsync(securityContext, name, csv, dryRun, recursive);
   }
 
   @PUT
@@ -676,7 +635,7 @@ public class DatabaseSchemaResource
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return databaseSchemaService.updateVote(securityContext, id, request).toResponse();
+    return service.updateVote(securityContext, id, request).toResponse();
   }
 
   @DELETE
@@ -704,7 +663,7 @@ public class DatabaseSchemaResource
       @Parameter(description = "Database schema Id", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -733,7 +692,7 @@ public class DatabaseSchemaResource
       @Parameter(description = "Database schema Id", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -762,7 +721,7 @@ public class DatabaseSchemaResource
       @Parameter(description = "Name of the DBSchema", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -784,7 +743,7 @@ public class DatabaseSchemaResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @PUT
@@ -809,7 +768,7 @@ public class DatabaseSchemaResource
           @PathParam("id")
           UUID id,
       @Valid DatabaseSchemaProfilerConfig databaseSchemaProfilerConfig) {
-    return databaseSchemaService.addDatabaseSchemaProfilerConfig(
+    return service.addDatabaseSchemaProfilerConfig(
         uriInfo, securityContext, id, databaseSchemaProfilerConfig);
   }
 
@@ -834,7 +793,7 @@ public class DatabaseSchemaResource
       @Parameter(description = "Id of the databaseSchema", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return databaseSchemaService.getDatabaseSchemaProfilerConfig(uriInfo, securityContext, id);
+    return service.getDatabaseSchemaProfilerConfig(uriInfo, securityContext, id);
   }
 
   @DELETE
@@ -857,7 +816,7 @@ public class DatabaseSchemaResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return databaseSchemaService.deleteDatabaseSchemaProfilerConfig(uriInfo, securityContext, id);
+    return service.deleteDatabaseSchemaProfilerConfig(uriInfo, securityContext, id);
   }
 
   @GET

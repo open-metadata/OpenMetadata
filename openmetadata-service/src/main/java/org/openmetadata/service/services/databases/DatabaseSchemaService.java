@@ -13,8 +13,11 @@
 
 package org.openmetadata.service.services.databases;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -25,33 +28,72 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.type.DatabaseSchemaProfilerConfig;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityBaseService;
+import org.openmetadata.service.resources.ResourceEntityInfo;
 import org.openmetadata.service.resources.databases.DatabaseSchemaMapper;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.AbstractEntityService;
 import org.openmetadata.service.services.Service;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Singleton
 @Service(entityType = Entity.DATABASE_SCHEMA)
-public class DatabaseSchemaService extends AbstractEntityService<DatabaseSchema> {
+public class DatabaseSchemaService
+    extends EntityBaseService<DatabaseSchema, DatabaseSchemaRepository> {
+
+  public static final String FIELDS =
+      "owners,tables,usageSummary,tags,certification,extension,domains,sourceHash,followers";
 
   @Getter private final DatabaseSchemaMapper mapper;
-  private final DatabaseSchemaRepository databaseSchemaRepository;
 
   @Inject
   public DatabaseSchemaService(
       DatabaseSchemaRepository repository,
-      SearchRepository searchRepository,
       Authorizer authorizer,
-      DatabaseSchemaMapper mapper) {
-    super(repository, searchRepository, authorizer, Entity.DATABASE_SCHEMA);
-    this.databaseSchemaRepository = repository;
+      DatabaseSchemaMapper mapper,
+      Limits limits) {
+    super(
+        new ResourceEntityInfo<>(Entity.DATABASE_SCHEMA, DatabaseSchema.class),
+        repository,
+        authorizer,
+        limits);
     this.mapper = mapper;
+  }
+
+  @Override
+  public DatabaseSchema addHref(UriInfo uriInfo, DatabaseSchema schema) {
+    super.addHref(uriInfo, schema);
+    Entity.withHref(uriInfo, schema.getTables());
+    Entity.withHref(uriInfo, schema.getService());
+    Entity.withHref(uriInfo, schema.getDatabase());
+    return schema;
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("tables", MetadataOperation.VIEW_BASIC);
+    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
+    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
+  }
+
+  public RestUtil.PutResponse<DatabaseSchema> updateVote(
+      SecurityContext securityContext, UUID id, VoteRequest request) {
+    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request);
+  }
+
+  public RestUtil.PutResponse<DatabaseSchema> addFollower(
+      SecurityContext securityContext, UUID id, UUID userId) {
+    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId);
+  }
+
+  public RestUtil.PutResponse<DatabaseSchema> deleteFollower(
+      SecurityContext securityContext, UUID id, UUID userId) {
+    return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId);
   }
 
   public DatabaseSchema addDatabaseSchemaProfilerConfig(
@@ -63,7 +105,7 @@ public class DatabaseSchemaService extends AbstractEntityService<DatabaseSchema>
         new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     DatabaseSchema databaseSchema =
-        databaseSchemaRepository.addDatabaseSchemaProfilerConfig(id, databaseSchemaProfilerConfig);
+        repository.addDatabaseSchemaProfilerConfig(id, databaseSchemaProfilerConfig);
     return addHref(uriInfo, databaseSchema);
   }
 
@@ -72,11 +114,11 @@ public class DatabaseSchemaService extends AbstractEntityService<DatabaseSchema>
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    DatabaseSchema databaseSchema = databaseSchemaRepository.find(id, Include.NON_DELETED);
+    DatabaseSchema databaseSchema = repository.find(id, Include.NON_DELETED);
     return addHref(
         uriInfo,
         databaseSchema.withDatabaseSchemaProfilerConfig(
-            databaseSchemaRepository.getDatabaseSchemaProfilerConfig(databaseSchema)));
+            repository.getDatabaseSchemaProfilerConfig(databaseSchema)));
   }
 
   public DatabaseSchema deleteDatabaseSchemaProfilerConfig(
@@ -84,34 +126,11 @@ public class DatabaseSchemaService extends AbstractEntityService<DatabaseSchema>
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    DatabaseSchema databaseSchema = databaseSchemaRepository.deleteDatabaseSchemaProfilerConfig(id);
+    DatabaseSchema databaseSchema = repository.deleteDatabaseSchemaProfilerConfig(id);
     return addHref(uriInfo, databaseSchema);
   }
 
-  public RestUtil.PutResponse<DatabaseSchema> addFollower(
-      SecurityContext securityContext, UUID id, UUID userId) {
-    return databaseSchemaRepository.addFollower(
-        securityContext.getUserPrincipal().getName(), id, userId);
-  }
-
-  public RestUtil.PutResponse<DatabaseSchema> deleteFollower(
-      SecurityContext securityContext, UUID id, UUID userId) {
-    return databaseSchemaRepository.deleteFollower(
-        securityContext.getUserPrincipal().getName(), id, userId);
-  }
-
-  public RestUtil.PutResponse<DatabaseSchema> updateVote(
-      SecurityContext securityContext, UUID id, VoteRequest request) {
-    return databaseSchemaRepository.updateVote(
-        securityContext.getUserPrincipal().getName(), id, request);
-  }
-
-  private DatabaseSchema addHref(UriInfo uriInfo, DatabaseSchema schema) {
-    Entity.withHref(uriInfo, schema.getOwners());
-    Entity.withHref(uriInfo, schema.getFollowers());
-    Entity.withHref(uriInfo, schema.getTables());
-    Entity.withHref(uriInfo, schema.getService());
-    Entity.withHref(uriInfo, schema.getDatabase());
-    return schema;
+  public static class DatabaseSchemaList extends ResultList<DatabaseSchema> {
+    /* Required for serde */
   }
 }

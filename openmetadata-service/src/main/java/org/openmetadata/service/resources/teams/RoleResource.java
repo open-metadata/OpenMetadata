@@ -43,7 +43,6 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -51,19 +50,12 @@ import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.RoleRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.policies.RoleService;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
 
 @Path("/v1/roles")
@@ -79,38 +71,16 @@ import org.openmetadata.service.util.RestUtil;
     order = 1,
     requiredForOps = true) // Load roles after PolicyResource are loaded at Order 0
 @Slf4j
-public class RoleResource extends EntityBaseService<Role, RoleRepository> {
+public class RoleResource {
   public static final String COLLECTION_PATH = "/v1/roles/";
-  public static final String FIELDS = "policies,teams,users";
   private final RoleService service;
 
-  @Override
-  public Role addHref(UriInfo uriInfo, Role role) {
-    super.addHref(uriInfo, role);
-    Entity.withHref(uriInfo, role.getPolicies());
-    Entity.withHref(uriInfo, role.getTeams());
-    Entity.withHref(uriInfo, role.getUsers());
-    return role;
-  }
-
-  public RoleResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.ROLE, authorizer, limits);
+  public RoleResource(ServiceRegistry serviceRegistry) {
     this.service = serviceRegistry.getService(RoleService.class);
   }
 
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("policies,teams,users", MetadataOperation.VIEW_BASIC);
-    return null;
-  }
-
-  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     service.initialize();
-  }
-
-  public static class RoleList extends ResultList<Role> {
-    /* Required for serde */
   }
 
   @GET

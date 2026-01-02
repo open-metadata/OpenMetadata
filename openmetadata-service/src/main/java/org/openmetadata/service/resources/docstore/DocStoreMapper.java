@@ -1,41 +1,26 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.resources.docstore;
 
-import jakarta.ws.rs.core.Response;
-import org.openmetadata.schema.email.EmailTemplate;
-import org.openmetadata.schema.email.TemplateValidationResponse;
 import org.openmetadata.schema.entities.docStore.CreateDocument;
 import org.openmetadata.schema.entities.docStore.Document;
-import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CustomExceptionMessage;
-import org.openmetadata.service.jdbi3.DocumentRepository;
 import org.openmetadata.service.mapper.EntityMapper;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.email.DefaultTemplateProvider;
 
 public class DocStoreMapper implements EntityMapper<Document, CreateDocument> {
-  public DocStoreMapper(Authorizer authorizer) {
-    this.authorizer = authorizer;
-  }
-
-  private final Authorizer authorizer;
 
   @Override
   public Document createToEntity(CreateDocument create, String user) {
-    DocumentRepository documentRepository =
-        (DocumentRepository) Entity.getEntityRepository(Entity.DOCUMENT);
-    // Validate email template
-    if (create.getEntityType().equals(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE)) {
-      // Only Admins Can do these operations
-      authorizer.authorizeAdmin(user);
-      String content = JsonUtils.convertValue(create.getData(), EmailTemplate.class).getTemplate();
-      TemplateValidationResponse validationResp =
-          documentRepository.validateEmailTemplate(create.getName(), content);
-      if (Boolean.FALSE.equals(validationResp.getIsValid())) {
-        throw new CustomExceptionMessage(
-            Response.status(400).entity(validationResp).build(), validationResp.getMessage());
-      }
-    }
     return copy(new Document(), create, user)
         .withFullyQualifiedName(create.getFullyQualifiedName())
         .withData(create.getData())

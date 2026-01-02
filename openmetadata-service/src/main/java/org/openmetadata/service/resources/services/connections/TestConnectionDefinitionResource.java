@@ -1,6 +1,6 @@
 package org.openmetadata.service.resources.services.connections;
 
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.services.connections.TestConnectionDefinitionService.FIELDS;
 
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,21 +22,14 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.TestConnectionDefinitionRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.services.connections.TestConnectionDefinitionService;
 
 @Slf4j
 @Path("/v1/services/testConnectionDefinitions")
@@ -47,31 +40,12 @@ import org.openmetadata.service.security.Authorizer;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestConnectionDefinitions")
-public class TestConnectionDefinitionResource
-    extends EntityBaseService<TestConnectionDefinition, TestConnectionDefinitionRepository> {
+public class TestConnectionDefinitionResource {
   public static final String COLLECTION_PATH = "/v1/services/testConnectionDefinitions";
-  static final String FIELDS = "owners";
+  private final TestConnectionDefinitionService service;
 
-  public TestConnectionDefinitionResource(Authorizer authorizer, Limits limits) {
-    super(Entity.TEST_CONNECTION_DEFINITION, authorizer, limits);
-  }
-
-  @Override
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    List<TestConnectionDefinition> testConnectionDefinitions =
-        repository.getEntitiesFromSeedData(".*json/data/testConnections/.*\\.json$");
-
-    for (TestConnectionDefinition testConnectionDefinition : testConnectionDefinitions) {
-      repository.prepareInternal(testConnectionDefinition, true);
-      testConnectionDefinition.setId(UUID.randomUUID());
-      testConnectionDefinition.setUpdatedBy(ADMIN_USER_NAME);
-      testConnectionDefinition.setUpdatedAt(System.currentTimeMillis());
-      repository.createOrUpdate(null, testConnectionDefinition, ADMIN_USER_NAME);
-    }
-  }
-
-  public static class TestConnectionDefinitionList extends ResultList<TestConnectionDefinition> {
-    /* Required for serde */
+  public TestConnectionDefinitionResource(TestConnectionDefinitionService service) {
+    this.service = service;
   }
 
   @GET
@@ -91,7 +65,7 @@ public class TestConnectionDefinitionResource
                     schema =
                         @Schema(
                             implementation =
-                                TestConnectionDefinitionResource.TestConnectionDefinitionList
+                                TestConnectionDefinitionService.TestConnectionDefinitionList
                                     .class)))
       })
   public ResultList<TestConnectionDefinition> list(
@@ -127,8 +101,7 @@ public class TestConnectionDefinitionResource
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -168,7 +141,7 @@ public class TestConnectionDefinitionResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -206,6 +179,6 @@ public class TestConnectionDefinitionResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 }

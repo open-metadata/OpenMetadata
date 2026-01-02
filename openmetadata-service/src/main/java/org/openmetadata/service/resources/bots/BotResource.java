@@ -42,9 +42,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.io.IOException;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.Bot;
@@ -52,18 +50,10 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.bots.BotService;
 
-@Slf4j
 @Path("/v1/bots")
 @Tag(
     name = "Bots",
@@ -72,30 +62,13 @@ import org.openmetadata.service.services.bots.BotService;
             + "It performs this task as a special user in the system.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "bots", order = 4, requiredForOps = true) // initialize after user resource
-public class BotResource extends EntityBaseService<Bot, BotRepository> {
+@Collection(name = "bots", order = 4, requiredForOps = true)
+public class BotResource {
   public static final String COLLECTION_PATH = "/v1/bots/";
   private final BotService service;
 
-  public BotResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.BOT, authorizer, limits);
-    this.service = serviceRegistry.getService(BotService.class);
-  }
-
-  @Override
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    service.initialize(config);
-  }
-
-  @Override
-  public Bot addHref(UriInfo uriInfo, Bot entity) {
-    super.addHref(uriInfo, entity);
-    Entity.withHref(uriInfo, entity.getBotUser());
-    return entity;
-  }
-
-  public static class BotList extends ResultList<Bot> {
-    /* Required for serde */
+  public BotResource(BotService service) {
+    this.service = service;
   }
 
   @GET
@@ -110,7 +83,7 @@ public class BotResource extends EntityBaseService<Bot, BotRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = BotList.class)))
+                    schema = @Schema(implementation = BotService.BotList.class)))
       })
   public ResultList<Bot> list(
       @Context UriInfo uriInfo,
@@ -136,7 +109,7 @@ public class BotResource extends EntityBaseService<Bot, BotRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return listInternal(
+    return service.listInternal(
         uriInfo, securityContext, "", new ListFilter(include), limitParam, before, after);
   }
 
@@ -162,7 +135,7 @@ public class BotResource extends EntityBaseService<Bot, BotRepository> {
       @QueryParam("include") @DefaultValue("non-deleted") Include include,
       @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return getInternal(uriInfo, securityContext, id, "", include);
+    return service.getInternal(uriInfo, securityContext, id, "", include);
   }
 
   @GET
@@ -193,7 +166,7 @@ public class BotResource extends EntityBaseService<Bot, BotRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(
+    return service.getByNameInternal(
         uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), "", include);
   }
 
@@ -217,7 +190,7 @@ public class BotResource extends EntityBaseService<Bot, BotRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -248,7 +221,7 @@ public class BotResource extends EntityBaseService<Bot, BotRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -270,7 +243,7 @@ public class BotResource extends EntityBaseService<Bot, BotRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) {
     Bot bot =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, bot);
+    return service.create(uriInfo, securityContext, bot);
   }
 
   @PUT
@@ -292,7 +265,7 @@ public class BotResource extends EntityBaseService<Bot, BotRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) {
     Bot bot =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, bot);
+    return service.createOrUpdate(uriInfo, securityContext, bot);
   }
 
   @PATCH
@@ -320,7 +293,7 @@ public class BotResource extends EntityBaseService<Bot, BotRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -349,7 +322,7 @@ public class BotResource extends EntityBaseService<Bot, BotRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
@@ -371,7 +344,7 @@ public class BotResource extends EntityBaseService<Bot, BotRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, true, hardDelete);
+    return service.delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
   @DELETE
@@ -393,7 +366,7 @@ public class BotResource extends EntityBaseService<Bot, BotRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, true, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, true, hardDelete);
   }
 
   @DELETE
@@ -416,7 +389,7 @@ public class BotResource extends EntityBaseService<Bot, BotRepository> {
       @Parameter(description = "Name of the bot", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(
+    return service.deleteByName(
         uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), true, hardDelete);
   }
 
@@ -439,6 +412,6 @@ public class BotResource extends EntityBaseService<Bot, BotRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

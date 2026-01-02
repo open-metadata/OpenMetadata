@@ -100,7 +100,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
   public static final String COLLECTION_PATH = "v1/glossaryTerms/";
   static final String FIELDS =
       "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount";
-  private final GlossaryTermService service;
+  private final GlossaryTermService glossaryTermService;
   private final GlossaryService glossaryService;
 
   @Override
@@ -115,7 +115,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
   public GlossaryTermResource(
       Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
     super(Entity.GLOSSARY_TERM, authorizer, limits);
-    this.service = serviceRegistry.getService(GlossaryTermService.class);
+    this.glossaryTermService = serviceRegistry.getService(GlossaryTermService.class);
     this.glossaryService = serviceRegistry.getService(GlossaryService.class);
   }
 
@@ -132,7 +132,7 @@ public class GlossaryTermResource extends EntityBaseService<GlossaryTerm, Glossa
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     super.initialize(config);
-    service.initialize();
+    glossaryTermService.initialize();
   }
 
   @GET
