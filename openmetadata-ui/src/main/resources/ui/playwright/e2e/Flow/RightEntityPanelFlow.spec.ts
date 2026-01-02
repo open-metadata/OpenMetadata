@@ -145,7 +145,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       const deletedUserDisplayName = deletedUser.getUserDisplayName();
 
       const summaryPanel = adminPage.locator('.entity-summary-panel-container');
-      const ownersSection = summaryPanel.locator('.owners-section');
+      const ownersSection = summaryPanel.getByTestId('owners-section');
 
       await expect(ownersSection).toBeVisible();
 
@@ -219,7 +219,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       const deletedTeamDisplayName = deletedTeam.getTeamDisplayName();
 
       const summaryPanel = adminPage.locator('.entity-summary-panel-container');
-      const ownersSection = summaryPanel.locator('.owners-section');
+      const ownersSection = summaryPanel.getByTestId('owners-section');
 
       await expect(ownersSection).toBeVisible();
 
@@ -1490,7 +1490,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
     const summaryPanel = dataStewardPage.locator(
       '.entity-summary-panel-container'
     );
-    const ownersSection = summaryPanel.locator('.owners-section');
+    const ownersSection = summaryPanel.getByTestId('owners-section');
 
     await expect(ownersSection).toBeVisible();
 
@@ -1760,7 +1760,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
       '.entity-summary-panel-container'
     );
     await waitForAllLoadersToDisappear(dataConsumerPage, 'loader');
-    const ownersSection = summaryPanel.locator('.owners-section');
+    const ownersSection = summaryPanel.getByTestId('owners-section');
 
     await expect(ownersSection).toBeVisible();
   });
