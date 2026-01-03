@@ -117,7 +117,7 @@ public class IngestionPipelineResource
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   static final String FIELDS = "owners,followers";
 
-  @Inject private StreamableLogsMetrics streamableLogsMetrics;
+  @Inject public StreamableLogsMetrics streamableLogsMetrics;
 
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {

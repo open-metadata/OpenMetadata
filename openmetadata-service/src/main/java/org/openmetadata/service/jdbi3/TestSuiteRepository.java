@@ -117,12 +117,13 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
   """;
 
-  public TestSuiteRepository() {
+  @javax.inject.Inject
+  public TestSuiteRepository(CollectionDAO collectionDAO) {
     super(
         TestSuiteResource.COLLECTION_PATH,
         TEST_SUITE,
         TestSuite.class,
-        Entity.getCollectionDAO().testSuiteDAO(),
+        collectionDAO.testSuiteDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
     quoteFqn = false;
@@ -131,6 +132,11 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         .registerHandler(new TestSuitePipelineStatusHandler());
     fieldFetchers.put("summary", this::fetchAndSetTestCaseResultSummary);
     fieldFetchers.put("pipelines", this::fetchAndSetIngestionPipelines);
+  }
+
+  @Deprecated
+  public TestSuiteRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

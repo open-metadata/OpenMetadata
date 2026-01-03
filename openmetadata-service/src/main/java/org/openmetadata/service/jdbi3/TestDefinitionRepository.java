@@ -11,14 +11,20 @@ import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
 
 public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
-  public TestDefinitionRepository() {
+  @javax.inject.Inject
+  public TestDefinitionRepository(CollectionDAO collectionDAO) {
     super(
         TestDefinitionResource.COLLECTION_PATH,
         TEST_DEFINITION,
         TestDefinition.class,
-        Entity.getCollectionDAO().testDefinitionDAO(),
+        collectionDAO.testDefinitionDAO(),
         "",
         "");
+  }
+
+  @Deprecated
+  public TestDefinitionRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

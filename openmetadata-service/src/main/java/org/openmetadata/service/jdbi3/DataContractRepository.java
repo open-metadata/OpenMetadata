@@ -121,16 +121,22 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   private static final List<TestCaseStatus> FAILED_DQ_STATUSES =
       List.of(TestCaseStatus.Failed, TestCaseStatus.Aborted);
 
-  public DataContractRepository(OpenMetadataApplicationConfig config) {
+  @javax.inject.Inject
+  public DataContractRepository(CollectionDAO collectionDAO, OpenMetadataApplicationConfig config) {
     super(
         DataContractResource.COLLECTION_PATH,
         Entity.DATA_CONTRACT,
         DataContract.class,
-        Entity.getCollectionDAO().dataContractDAO(),
+        collectionDAO.dataContractDAO(),
         DATA_CONTRACT_PATCH_FIELDS,
         DATA_CONTRACT_UPDATE_FIELDS);
     this.ingestionPipelineMapper = new IngestionPipelineMapper(config);
     this.openMetadataApplicationConfig = config;
+  }
+
+  @Deprecated
+  public DataContractRepository(OpenMetadataApplicationConfig config) {
+    this(Entity.getCollectionDAO(), config);
   }
 
   @Override

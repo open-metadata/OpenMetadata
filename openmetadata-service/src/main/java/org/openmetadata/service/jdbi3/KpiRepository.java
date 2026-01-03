@@ -39,14 +39,20 @@ public class KpiRepository extends EntityRepository<Kpi> {
   private static final String PATCH_FIELDS =
       "targetValue,dataInsightChart,description,startDate,endDate,metricType";
 
-  public KpiRepository() {
+  @javax.inject.Inject
+  public KpiRepository(CollectionDAO collectionDAO) {
     super(
         KpiResource.COLLECTION_PATH,
         KPI,
         Kpi.class,
-        Entity.getCollectionDAO().kpiDAO(),
+        collectionDAO.kpiDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
+  }
+
+  @Deprecated
+  public KpiRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

@@ -26,15 +26,21 @@ public class AIApplicationRepository extends EntityRepository<AIApplication> {
   private static final String APPLICATION_UPDATE_FIELDS = "modelConfigurations,tools,dataSources";
   private static final String APPLICATION_PATCH_FIELDS = "modelConfigurations,tools,dataSources";
 
-  public AIApplicationRepository() {
+  @javax.inject.Inject
+  public AIApplicationRepository(CollectionDAO collectionDAO) {
     super(
         AIApplicationResource.COLLECTION_PATH,
         Entity.AI_APPLICATION,
         AIApplication.class,
-        Entity.getCollectionDAO().aiApplicationDAO(),
+        collectionDAO.aiApplicationDAO(),
         APPLICATION_PATCH_FIELDS,
         APPLICATION_UPDATE_FIELDS);
     supportsSearch = true;
+  }
+
+  @Deprecated
+  public AIApplicationRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

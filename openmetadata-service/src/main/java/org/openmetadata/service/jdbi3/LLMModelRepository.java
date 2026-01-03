@@ -37,15 +37,21 @@ public class LLMModelRepository extends EntityRepository<LLMModel> {
   private static final String MODEL_UPDATE_FIELDS = "usedByAgents";
   private static final String MODEL_PATCH_FIELDS = "usedByAgents";
 
-  public LLMModelRepository() {
+  @javax.inject.Inject
+  public LLMModelRepository(CollectionDAO collectionDAO) {
     super(
         LLMModelResource.COLLECTION_PATH,
         Entity.LLM_MODEL,
         LLMModel.class,
-        Entity.getCollectionDAO().llmModelDAO(),
+        collectionDAO.llmModelDAO(),
         MODEL_PATCH_FIELDS,
         MODEL_UPDATE_FIELDS);
     supportsSearch = true;
+  }
+
+  @Deprecated
+  public LLMModelRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override
