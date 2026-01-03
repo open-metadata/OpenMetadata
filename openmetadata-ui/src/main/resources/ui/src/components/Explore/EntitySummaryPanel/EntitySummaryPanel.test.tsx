@@ -57,11 +57,69 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <ThemeProvider theme={theme}>{children}</ThemeProvider>
 );
 
-jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityLinkFromType: jest.fn().mockImplementation(() => 'link'),
-  getEntityName: jest.fn().mockImplementation(() => 'displayName'),
-  getEntityOverview: jest.fn().mockImplementation(() => []),
-}));
+jest.mock('../../../utils/EntityUtils', () => {
+  const LINEAGE_TABS_SET = new Set([
+    'apiEndpoint',
+    'chart',
+    'container',
+    'dashboard',
+    'dashboardDataModel',
+    'directory',
+    'mlmodel',
+    'pipeline',
+    'searchIndex',
+    'table',
+    'topic',
+  ]);
+  const SCHEMA_TABS_SET = new Set([
+    'apiCollection',
+    'apiEndpoint',
+    'container',
+    'dashboard',
+    'dashboardDataModel',
+    'database',
+    'databaseSchema',
+    'pipeline',
+    'searchIndex',
+    'table',
+    'topic',
+  ]);
+  const CUSTOM_PROPERTIES_TABS_SET = new Set([
+    'apiCollection',
+    'apiEndpoint',
+    'chart',
+    'container',
+    'dashboard',
+    'dashboardDataModel',
+    'database',
+    'databaseSchema',
+    'dataProduct',
+    'directory',
+    'domain',
+    'file',
+    'glossaryTerm',
+    'metric',
+    'mlmodel',
+    'pipeline',
+    'searchIndex',
+    'spreadsheet',
+    'storedProcedure',
+    'table',
+    'topic',
+    'worksheet',
+  ]);
+
+  return {
+    getEntityLinkFromType: jest.fn().mockImplementation(() => 'link'),
+    getEntityName: jest.fn().mockImplementation(() => 'displayName'),
+    getEntityOverview: jest.fn().mockImplementation(() => []),
+    hasLineageTab: jest.fn((entityType) => LINEAGE_TABS_SET.has(entityType)),
+    hasSchemaTab: jest.fn((entityType) => SCHEMA_TABS_SET.has(entityType)),
+    hasCustomPropertiesTab: jest.fn((entityType) =>
+      CUSTOM_PROPERTIES_TABS_SET.has(entityType)
+    ),
+  };
+});
 jest.mock('../../../utils/StringsUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   stringToHTML: jest.fn(),
