@@ -112,7 +112,7 @@ export const formTheme = (colors: any) => ({
       input: {
         color: colors.gray[900],
         '&::placeholder': {
-          color: colors.gray[500],
+          color: colors.gray[400],
           opacity: 1,
         },
         '&:disabled': {
@@ -514,6 +514,13 @@ export const formTheme = (colors: any) => ({
         boxShadow:
           '0px 12px 16px -4px rgba(10, 13, 18, 0.08), 0px 4px 6px -2px rgba(10, 13, 18, 0.03), 0px 2px 2px -1px rgba(10, 13, 18, 0.04)',
         border: '1px solid rgba(0, 0, 0, 0.08)',
+      },
+    },
+  },
+  MuiFormLabel: {
+    styleOverrides: {
+      asterisk: {
+        color: colors.error[600],
       },
     },
   },

@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Grid } from '@mui/material';
+import { Box, Grid, SxProps, Theme } from '@mui/material';
 import { Form } from 'antd';
 import { castArray } from 'lodash';
 import { Suspense, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import MUIFormItemLabel from '../../components/common/MUIFormItemLabel/MUIFormItemLabel';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import {
   DEFAULT_FORM_VALUE,
@@ -41,6 +42,11 @@ import {
 } from './tagFormFields';
 import './TagsForm.less';
 import { RenameFormProps, SubmitProps } from './TagsPage.interface';
+
+const LABEL_STYLES: SxProps<Theme> = {
+  color: (theme) => theme.palette.grey[700],
+  fontWeight: (theme) => theme.typography.subtitle2.fontWeight,
+};
 
 const TagsForm = ({
   formRef,
@@ -111,7 +117,9 @@ const TagsForm = ({
 
     return {
       ...field,
-      muiLabel: t(field.muiLabel),
+      muiLabel: (
+        <MUIFormItemLabel label={t(field.muiLabel)} labelSx={LABEL_STYLES} />
+      ),
       props: {
         ...field.props,
         placeholder: t(field.placeholder),
@@ -122,7 +130,12 @@ const TagsForm = ({
   const colorField = useMemo(
     () => ({
       ...COLOR_FIELD,
-      muiLabel: t(COLOR_FIELD.muiLabel),
+      muiLabel: (
+        <MUIFormItemLabel
+          label={t(COLOR_FIELD.muiLabel)}
+          labelSx={LABEL_STYLES}
+        />
+      ),
     }),
     [t]
   );
@@ -132,8 +145,8 @@ const TagsForm = ({
 
     return {
       ...field,
-      label: <>{t(field.label as string)}</>,
-      placeholder: t(field.placeholder as string),
+      muiLabel: t(field.muiLabel),
+      placeholder: t(field.placeholder),
       rules: TAG_NAME_VALIDATION_RULES.map((rule) => ({
         ...rule,
         message: rule.message
@@ -156,7 +169,7 @@ const TagsForm = ({
 
     return {
       ...field,
-      label: t(field.label),
+      muiLabel: t(field.muiLabel),
       placeholder: t(field.placeholder),
     };
   }, [t, disableDisplayNameField]);
@@ -169,7 +182,7 @@ const TagsForm = ({
 
     return {
       ...field,
-      label: t(field.label),
+      muiLabel: t(field.muiLabel),
     };
   }, [
     t,
@@ -184,7 +197,7 @@ const TagsForm = ({
 
     return {
       ...field,
-      label: t(field.label),
+      muiLabel: t(field.muiLabel),
     };
   }, [entityRules.canAddMultipleDomains, t]);
 
@@ -197,7 +210,12 @@ const TagsForm = ({
     const fields: FieldProp[] = [
       {
         ...descriptionField,
-        label: t(descriptionField.label),
+        label: (
+          <MUIFormItemLabel
+            label={t(descriptionField.label)}
+            labelSx={LABEL_STYLES}
+          />
+        ),
       },
     ];
 
@@ -232,7 +250,7 @@ const TagsForm = ({
 
     return {
       ...field,
-      label: t(field.label),
+      muiLabel: t(field.muiLabel),
     };
   }, [t, disableMutuallyExclusiveField, isMutuallyExclusive]);
 

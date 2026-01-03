@@ -12,7 +12,7 @@
  */
 
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { Box, Chip, FormLabel, Tooltip } from '@mui/material';
+import { Box, Chip, FormLabel, SxProps, Theme, Tooltip } from '@mui/material';
 import { TooltipProps } from '@mui/material/Tooltip';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +27,7 @@ export interface MUIFormItemLabelProps {
   isBeta?: boolean;
   required?: boolean;
   slotProps?: Partial<TooltipProps>;
+  labelSx?: SxProps<Theme>;
 }
 
 const MUIFormItemLabel: FC<MUIFormItemLabelProps> = ({
@@ -34,6 +35,7 @@ const MUIFormItemLabel: FC<MUIFormItemLabelProps> = ({
   helperTextType = HelperTextType.Tooltip,
   isBeta = false,
   label,
+  labelSx,
   placement = 'top',
   required = false,
   showHelperText = true,
@@ -49,6 +51,7 @@ const MUIFormItemLabel: FC<MUIFormItemLabelProps> = ({
         required={required}
         sx={{
           fontSize: (theme) => theme.typography.body2.fontSize,
+          ...labelSx,
         }}>
         {label}
       </FormLabel>

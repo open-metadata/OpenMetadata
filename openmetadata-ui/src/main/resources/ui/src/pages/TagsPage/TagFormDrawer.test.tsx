@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 
+import { ThemeProvider } from '@mui/material/styles';
+import { createMuiTheme } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { FormInstance } from 'antd';
 import TagFormDrawer from './TagFormDrawer';
+
+const theme = createMuiTheme();
 
 jest.mock('./TagsForm', () => {
   return jest.fn(() => <div data-testid="tags-form">Tags Form</div>);
@@ -52,20 +56,32 @@ describe('TagFormDrawer', () => {
   });
 
   it('should render drawer when open is true', () => {
-    render(<TagFormDrawer {...defaultProps} />);
+    render(
+      <ThemeProvider theme={theme}>
+        <TagFormDrawer {...defaultProps} />
+      </ThemeProvider>
+    );
 
     expect(screen.getByTestId('tag-form-drawer')).toBeInTheDocument();
     expect(screen.getByTestId('form-heading')).toHaveTextContent('Add Tag');
   });
 
   it('should not render drawer when open is false', () => {
-    render(<TagFormDrawer {...defaultProps} open={false} />);
+    render(
+      <ThemeProvider theme={theme}>
+        <TagFormDrawer {...defaultProps} open={false} />
+      </ThemeProvider>
+    );
 
     expect(screen.queryByTestId('tag-form-drawer')).not.toBeInTheDocument();
   });
 
   it('should call onClose when close button is clicked', () => {
-    render(<TagFormDrawer {...defaultProps} />);
+    render(
+      <ThemeProvider theme={theme}>
+        <TagFormDrawer {...defaultProps} />
+      </ThemeProvider>
+    );
 
     const closeButton = screen.getByTestId('drawer-close-icon');
 
@@ -75,7 +91,11 @@ describe('TagFormDrawer', () => {
   });
 
   it('should call onClose when cancel button is clicked', () => {
-    render(<TagFormDrawer {...defaultProps} />);
+    render(
+      <ThemeProvider theme={theme}>
+        <TagFormDrawer {...defaultProps} />
+      </ThemeProvider>
+    );
 
     const cancelButton = screen.getByTestId('cancel-button');
 
@@ -85,13 +105,21 @@ describe('TagFormDrawer', () => {
   });
 
   it('should render TagsForm component', () => {
-    render(<TagFormDrawer {...defaultProps} />);
+    render(
+      <ThemeProvider theme={theme}>
+        <TagFormDrawer {...defaultProps} />
+      </ThemeProvider>
+    );
 
     expect(screen.getByTestId('tags-form')).toBeInTheDocument();
   });
 
   it('should apply disabled attribute to save button when isLoading is true', () => {
-    render(<TagFormDrawer {...defaultProps} isLoading />);
+    render(
+      <ThemeProvider theme={theme}>
+        <TagFormDrawer {...defaultProps} isLoading />
+      </ThemeProvider>
+    );
 
     const saveButton = screen.getByTestId('save-button');
 
@@ -99,7 +127,11 @@ describe('TagFormDrawer', () => {
   });
 
   it('should display "Save" text in save button when isLoading is false', () => {
-    render(<TagFormDrawer {...defaultProps} />);
+    render(
+      <ThemeProvider theme={theme}>
+        <TagFormDrawer {...defaultProps} />
+      </ThemeProvider>
+    );
 
     const saveButton = screen.getByTestId('save-button');
 
