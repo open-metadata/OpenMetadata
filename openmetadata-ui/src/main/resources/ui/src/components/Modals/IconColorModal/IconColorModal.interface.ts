@@ -17,4 +17,5 @@ export interface IconColorModalProps {
   style?: Style;
   onSubmit: (value: Style) => Promise<void>;
   onCancel: () => void;
+  includeCoverImage?: boolean;
 }
