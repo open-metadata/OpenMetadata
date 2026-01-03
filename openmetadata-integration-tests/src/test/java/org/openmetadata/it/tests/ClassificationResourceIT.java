@@ -484,4 +484,124 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
         getEntityWithFields(updatedClassification.getId().toString(), "autoClassificationConfig");
     assertNull(retrievedClassification.getAutoClassificationConfig());
   }
+
+  // ===================================================================
+  // RENAME CONSOLIDATION TESTS
+  // These tests verify that child entities (tags) are preserved when a
+  // classification is renamed and then other fields are updated within
+  // the same session (which triggers change consolidation).
+  // ===================================================================
+
+  /**
+   * Test that tags are preserved when a classification is renamed and then the description is
+   * updated. This tests the consolidation logic to ensure it doesn't revert to a previous version
+   * with the old FQN.
+   */
+  @Test
+  void test_renameAndUpdateDescriptionPreservesTags(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a classification
+    CreateClassification createClassification = new CreateClassification();
+    createClassification.setName(ns.prefix("classification_rename_consolidate"));
+    createClassification.setDescription("Initial description");
+    Classification classification = createEntity(createClassification);
+
+    // Add a tag under this classification
+    CreateTag createTag = new CreateTag();
+    createTag.setName(ns.prefix("tag_for_rename"));
+    createTag.setDescription("Test tag");
+    createTag.setClassification(classification.getFullyQualifiedName());
+    org.openmetadata.schema.entity.classification.Tag tag = client.tags().create(createTag);
+
+    // Verify termCount before rename
+    Classification beforeRename =
+        getEntityWithFields(classification.getId().toString(), "termCount");
+    assertEquals(1, beforeRename.getTermCount(), "Should have 1 tag before rename");
+
+    // Rename the classification
+    String newName = "renamed-" + classification.getName();
+    classification.setName(newName);
+    Classification renamed = patchEntity(classification.getId().toString(), classification);
+    assertEquals(newName, renamed.getName());
+
+    // Verify tags after rename
+    Classification afterRename = getEntityWithFields(renamed.getId().toString(), "termCount");
+    assertEquals(1, afterRename.getTermCount(), "Should have 1 tag after rename");
+
+    // Update description (triggers consolidation logic)
+    renamed.setDescription("Updated description after rename");
+    Classification afterDescUpdate = patchEntity(renamed.getId().toString(), renamed);
+    assertEquals("Updated description after rename", afterDescUpdate.getDescription());
+
+    // Verify tags are preserved after consolidation
+    Classification afterConsolidation =
+        getEntityWithFields(afterDescUpdate.getId().toString(), "termCount");
+    assertEquals(
+        1,
+        afterConsolidation.getTermCount(),
+        "CRITICAL: Tags should be preserved after rename + description update consolidation");
+
+    // Verify the tag's classification reference has the updated FQN
+    org.openmetadata.schema.entity.classification.Tag updatedTag =
+        client.tags().get(tag.getId().toString(), "classification");
+    assertEquals(
+        afterDescUpdate.getFullyQualifiedName(),
+        updatedTag.getClassification().getFullyQualifiedName(),
+        "Tag's classification reference should have updated FQN after consolidation");
+  }
+
+  /**
+   * Test multiple renames followed by updates within the same session. This is a more complex
+   * scenario that tests the robustness of the consolidation fix.
+   */
+  @Test
+  void test_multipleRenamesWithUpdatesPreservesTags(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateClassification createClassification = new CreateClassification();
+    createClassification.setName(ns.prefix("classification_multi_rename"));
+    createClassification.setDescription("Initial description");
+    Classification classification = createEntity(createClassification);
+
+    // Add a tag
+    CreateTag createTag = new CreateTag();
+    createTag.setName(ns.prefix("tag_multi_rename"));
+    createTag.setDescription("Test tag");
+    createTag.setClassification(classification.getFullyQualifiedName());
+    org.openmetadata.schema.entity.classification.Tag tag = client.tags().create(createTag);
+
+    Classification fetched = getEntityWithFields(classification.getId().toString(), "termCount");
+    assertEquals(1, fetched.getTermCount());
+
+    String[] names = {"renamed-first", "renamed-second", "renamed-third"};
+
+    for (int i = 0; i < names.length; i++) {
+      String newName = names[i] + "-" + UUID.randomUUID().toString().substring(0, 8);
+
+      classification.setName(newName);
+      classification = patchEntity(classification.getId().toString(), classification);
+      assertEquals(newName, classification.getName());
+
+      fetched = getEntityWithFields(classification.getId().toString(), "termCount");
+      assertEquals(1, fetched.getTermCount(), "Tags should be preserved after rename " + (i + 1));
+
+      classification.setDescription("Description after rename " + (i + 1));
+      classification = patchEntity(classification.getId().toString(), classification);
+
+      fetched = getEntityWithFields(classification.getId().toString(), "termCount");
+      assertEquals(
+          1,
+          fetched.getTermCount(),
+          "Tags should be preserved after rename + update iteration " + (i + 1));
+    }
+
+    // Verify the tag's classification reference has the final updated FQN
+    org.openmetadata.schema.entity.classification.Tag updatedTag =
+        client.tags().get(tag.getId().toString(), "classification");
+    assertEquals(
+        classification.getFullyQualifiedName(),
+        updatedTag.getClassification().getFullyQualifiedName(),
+        "Tag's classification reference should have final updated FQN");
+  }
 }

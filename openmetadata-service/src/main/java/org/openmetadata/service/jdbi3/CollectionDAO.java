@@ -3206,6 +3206,14 @@ public interface CollectionDAO {
           getTableName(), filter.getQueryParams(), condition, limit, afterName, afterId);
     }
 
+    @SqlQuery("SELECT json FROM domain_entity WHERE fqnHash LIKE :concatFqnhash ")
+    List<String> getNestedDomains(
+        @BindConcat(
+                value = "concatFqnhash",
+                parts = {":fqnhash", ".%"},
+                hash = true)
+            String fqnhash);
+
     @SqlQuery("SELECT COUNT(*) FROM domain_entity WHERE fqnHash LIKE :concatFqnhash ")
     int countNestedDomains(
         @BindConcat(

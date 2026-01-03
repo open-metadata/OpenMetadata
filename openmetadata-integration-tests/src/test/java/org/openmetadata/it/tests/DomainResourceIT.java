@@ -15,6 +15,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -426,5 +427,286 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   @Override
   protected Domain getVersion(UUID id, Double version) {
     return SdkClients.adminClient().domains().getVersion(id.toString(), version);
+  }
+
+  // ===================================================================
+  // DOMAIN RENAME TESTS
+  // Tests that verify domain rename works correctly including:
+  // 1. Basic domain rename
+  // 2. Domain rename with data products
+  // 3. Domain rename with subdomains (cascading FQN updates)
+  // 4. Rename + consolidation scenarios
+  // ===================================================================
+
+  @Test
+  void test_renameDomain(TestNamespace ns) {
+    // Use simple name for rename test (avoid regex metacharacters in REGEXP_REPLACE)
+    String domainName = "domain_" + ns.shortPrefix();
+    CreateDomain create =
+        new CreateDomain()
+            .withName(domainName)
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("Domain for rename test");
+    Domain domain = createEntity(create);
+
+    String oldName = domain.getName();
+    String oldFqn = domain.getFullyQualifiedName();
+    String newName = "renamed_" + oldName;
+
+    domain.setName(newName);
+    Domain renamed = patchEntity(domain.getId().toString(), domain);
+
+    assertEquals(newName, renamed.getName());
+    assertNotEquals(oldFqn, renamed.getFullyQualifiedName());
+
+    // Verify we can get by new FQN
+    Domain fetched = getEntityByName(renamed.getFullyQualifiedName());
+    assertEquals(newName, fetched.getName());
+
+    // Old FQN should not work
+    assertThrows(Exception.class, () -> getEntityByName(oldFqn));
+  }
+
+  @Test
+  void test_renameDomainWithDataProducts(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Use simple name for rename test
+    String domainName = "domain_dp_" + ns.shortPrefix();
+    CreateDomain create =
+        new CreateDomain()
+            .withName(domainName)
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("Domain for rename with data products test");
+    Domain domain = createEntity(create);
+
+    // Create a data product under this domain
+    org.openmetadata.schema.api.domains.CreateDataProduct createDp =
+        new org.openmetadata.schema.api.domains.CreateDataProduct()
+            .withName("dp_under_" + domainName)
+            .withDescription("Data product under domain")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    org.openmetadata.schema.entity.domains.DataProduct dataProduct =
+        client.dataProducts().create(createDp);
+
+    String oldDpFqn = dataProduct.getFullyQualifiedName();
+
+    // Rename the domain
+    String oldName = domain.getName();
+    String newName = "renamed_dp_" + oldName;
+    domain.setName(newName);
+    Domain renamed = patchEntity(domain.getId().toString(), domain);
+    assertEquals(newName, renamed.getName());
+
+    // Data product should still be accessible after domain rename
+    org.openmetadata.schema.entity.domains.DataProduct fetchedDp =
+        client.dataProducts().get(dataProduct.getId().toString());
+    assertNotNull(fetchedDp);
+  }
+
+  @Test
+  void test_renameDomainWithSubdomains(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Use simple names to avoid REGEXP_REPLACE issues with special characters
+    String parentName = "parent_" + ns.shortPrefix();
+    CreateDomain createParent =
+        new CreateDomain()
+            .withName(parentName)
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("Parent domain for subdomain rename test");
+    Domain parent = createEntity(createParent);
+
+    // Create child subdomains
+    String child1Name = "child1_" + parentName;
+    CreateDomain createChild1 =
+        new CreateDomain()
+            .withName(child1Name)
+            .withDomainType(DomainType.SOURCE_ALIGNED)
+            .withParent(parent.getFullyQualifiedName())
+            .withDescription("Child domain 1");
+    Domain child1 = createEntity(createChild1);
+
+    String child2Name = "child2_" + parentName;
+    CreateDomain createChild2 =
+        new CreateDomain()
+            .withName(child2Name)
+            .withDomainType(DomainType.CONSUMER_ALIGNED)
+            .withParent(parent.getFullyQualifiedName())
+            .withDescription("Child domain 2");
+    Domain child2 = createEntity(createChild2);
+
+    String oldChild1Fqn = child1.getFullyQualifiedName();
+    String oldChild2Fqn = child2.getFullyQualifiedName();
+
+    // Rename the parent domain
+    String newParentName = "renamed_" + parentName;
+    parent.setName(newParentName);
+    Domain renamedParent = patchEntity(parent.getId().toString(), parent);
+
+    assertEquals(newParentName, renamedParent.getName());
+    assertEquals(newParentName, renamedParent.getFullyQualifiedName());
+
+    // Verify child domains' FQNs are updated
+    Domain updatedChild1 = getEntity(child1.getId().toString());
+    Domain updatedChild2 = getEntity(child2.getId().toString());
+
+    assertTrue(
+        updatedChild1.getFullyQualifiedName().startsWith(newParentName + "."),
+        "Child1 FQN should start with new parent name");
+    assertTrue(
+        updatedChild2.getFullyQualifiedName().startsWith(newParentName + "."),
+        "Child2 FQN should start with new parent name");
+    assertNotEquals(oldChild1Fqn, updatedChild1.getFullyQualifiedName());
+    assertNotEquals(oldChild2Fqn, updatedChild2.getFullyQualifiedName());
+
+    // Verify we can access children by their new FQNs
+    Domain fetchedChild1 = getEntityByName(updatedChild1.getFullyQualifiedName());
+    assertEquals(child1.getId(), fetchedChild1.getId());
+
+    // Old FQNs should not work
+    assertThrows(Exception.class, () -> getEntityByName(oldChild1Fqn));
+    assertThrows(Exception.class, () -> getEntityByName(oldChild2Fqn));
+  }
+
+  @Test
+  void test_renameDomainWithNestedSubdomains(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a 3-level hierarchy: grandparent -> parent -> child
+    String gpName = "gp_" + ns.shortPrefix();
+    CreateDomain createGp =
+        new CreateDomain()
+            .withName(gpName)
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("Grandparent domain");
+    Domain grandparent = createEntity(createGp);
+
+    String parentName = "parent_" + gpName;
+    CreateDomain createParent =
+        new CreateDomain()
+            .withName(parentName)
+            .withDomainType(DomainType.SOURCE_ALIGNED)
+            .withParent(grandparent.getFullyQualifiedName())
+            .withDescription("Parent domain");
+    Domain parent = createEntity(createParent);
+
+    String childName = "child_" + gpName;
+    CreateDomain createChild =
+        new CreateDomain()
+            .withName(childName)
+            .withDomainType(DomainType.CONSUMER_ALIGNED)
+            .withParent(parent.getFullyQualifiedName())
+            .withDescription("Child domain");
+    Domain child = createEntity(createChild);
+
+    String oldGpFqn = grandparent.getFullyQualifiedName();
+    String oldParentFqn = parent.getFullyQualifiedName();
+    String oldChildFqn = child.getFullyQualifiedName();
+
+    // Rename the grandparent domain
+    String newGpName = "renamed_" + gpName;
+    grandparent.setName(newGpName);
+    Domain renamedGp = patchEntity(grandparent.getId().toString(), grandparent);
+
+    assertEquals(newGpName, renamedGp.getFullyQualifiedName());
+
+    // Verify all levels' FQNs are updated
+    Domain updatedParent = getEntity(parent.getId().toString());
+    Domain updatedChild = getEntity(child.getId().toString());
+
+    assertTrue(
+        updatedParent.getFullyQualifiedName().startsWith(newGpName + "."),
+        "Parent FQN should start with new grandparent name");
+    assertTrue(
+        updatedChild.getFullyQualifiedName().startsWith(newGpName + "."),
+        "Child FQN should start with new grandparent name");
+
+    // Old FQNs should not work
+    assertThrows(Exception.class, () -> getEntityByName(oldGpFqn));
+    assertThrows(Exception.class, () -> getEntityByName(oldParentFqn));
+    assertThrows(Exception.class, () -> getEntityByName(oldChildFqn));
+  }
+
+  /**
+   * Test that reproduces the consolidation bug when:
+   * 1. Domain is renamed
+   * 2. Another field (description) is updated within the same session
+   *
+   * The consolidation logic would revert to the previous version which has the OLD name/FQN,
+   * potentially causing subdomain FQNs to become inconsistent.
+   *
+   * Fix: Skip consolidation when name has changed.
+   */
+  @Test
+  void test_renameAndUpdateDescriptionConsolidation(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Use simple name for rename test
+    String domainName = "domain_consolidate_" + ns.shortPrefix();
+    CreateDomain create =
+        new CreateDomain()
+            .withName(domainName)
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("Initial description");
+    Domain domain = createEntity(create);
+
+    String oldName = domain.getName();
+    String newName = "renamed_consolidate_" + oldName;
+
+    // Rename the domain
+    domain.setName(newName);
+    Domain renamed = patchEntity(domain.getId().toString(), domain);
+    assertEquals(newName, renamed.getName());
+
+    // Update description within the same session (triggers consolidation)
+    renamed.setDescription("Updated description after rename");
+    Domain afterDescUpdate = patchEntity(renamed.getId().toString(), renamed);
+    assertEquals("Updated description after rename", afterDescUpdate.getDescription());
+
+    // Name should still be the new name after consolidation
+    assertEquals(newName, afterDescUpdate.getName());
+    assertTrue(
+        afterDescUpdate.getFullyQualifiedName().equals(newName),
+        "FQN should match new name after consolidation");
+
+    // Verify we can still fetch by new FQN
+    Domain fetched = getEntityByName(afterDescUpdate.getFullyQualifiedName());
+    assertEquals(newName, fetched.getName());
+  }
+
+  /**
+   * Test multiple renames followed by updates within the same session.
+   * This is a more complex scenario that tests the robustness of the consolidation fix.
+   */
+  @Test
+  void test_multipleRenamesWithUpdatesConsolidation(TestNamespace ns) {
+    // Use simple name for rename test
+    String domainName = "domain_multi_" + ns.shortPrefix();
+    CreateDomain create =
+        new CreateDomain()
+            .withName(domainName)
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("Initial description");
+    Domain domain = createEntity(create);
+
+    String[] names = {"renamed_first", "renamed_second", "renamed_third"};
+
+    for (int i = 0; i < names.length; i++) {
+      String newName = names[i] + "_" + UUID.randomUUID().toString().substring(0, 8);
+
+      domain.setName(newName);
+      domain = patchEntity(domain.getId().toString(), domain);
+      assertEquals(newName, domain.getName(), "Name should match after rename " + (i + 1));
+
+      domain.setDescription("Description after rename " + (i + 1));
+      domain = patchEntity(domain.getId().toString(), domain);
+      assertEquals(
+          newName, domain.getName(), "Name should still match after description update " + (i + 1));
+
+      // Verify we can fetch by FQN
+      Domain fetched = getEntityByName(domain.getFullyQualifiedName());
+      assertEquals(newName, fetched.getName());
+    }
   }
 }
