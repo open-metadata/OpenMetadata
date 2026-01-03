@@ -392,23 +392,32 @@ export async function updateEntityWithCoverImage<TEntity>(
       coverImagePosition = coverImageData.position?.y;
     }
 
-    // Build style object
-    const style: Style = {
-      color: styleData.color ?? undefined,
-      iconURL: styleData.iconURL ?? undefined,
-      coverImage:
-        coverImageUrl || coverImagePosition
-          ? {
-              url: coverImageUrl,
-              position: coverImagePosition,
-            }
-          : undefined,
+    // Build updated style by merging current style with changes
+    const entityRecord = entity as Record<string, unknown>;
+    const currentStyle = (entityRecord.style as Style) ?? {};
+
+    // Start with current style and apply updates
+    const updatedStyle: Style = {
+      ...currentStyle,
+      ...(styleData.color !== undefined && { color: styleData.color }),
+      ...(styleData.iconURL !== undefined && { iconURL: styleData.iconURL }),
     };
 
-    // Create JSON patch with only the style field to avoid metadata field conflicts
-    const entityRecord = entity as Record<string, unknown>;
-    const currentData = { style: entityRecord.style };
-    const updatedData = { style };
+    // Handle coverImage update/removal
+    if (coverImageUrl || coverImagePosition) {
+      // Adding or updating cover image
+      updatedStyle.coverImage = {
+        ...(coverImageUrl && { url: coverImageUrl }),
+        ...(coverImagePosition && { position: coverImagePosition }),
+      };
+    } else if (currentStyle.coverImage && 'coverImage' in styleData) {
+      // Explicitly removing cover image (current has it, but new doesn't)
+      delete updatedStyle.coverImage;
+    }
+
+    // Create JSON patch with only the style field
+    const currentData = { style: currentStyle };
+    const updatedData = { style: updatedStyle };
     const jsonPatch = compare(currentData, updatedData);
 
     // Update entity
