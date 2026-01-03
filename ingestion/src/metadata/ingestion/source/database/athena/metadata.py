@@ -166,7 +166,10 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             Tuple[bool, Optional[TablePartition]]:
         """
         columns = inspector.get_columns(
-            table_name=table_name, schema=schema_name, only_partition_columns=True
+            table_name=table_name,
+            schema=schema_name,
+            only_partition_columns=True,
+            glue_client=self.glue_client,
         )
         if columns:
             partition_details = TablePartition(
