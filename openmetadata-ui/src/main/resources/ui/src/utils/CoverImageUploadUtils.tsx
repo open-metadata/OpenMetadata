@@ -206,10 +206,10 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
           coverImageUrl,
           position?
         ): Promise<Awaited<TEntity>> => {
-          // Build updated entity with cover image as nested object (matches backend CoverImage interface)
+          // Build updated style with cover image
           const entityRecord = entity as Record<string, unknown>;
-          const updatedEntity = {
-            ...entity,
+          const currentData = { style: entityRecord.style };
+          const updatedData = {
             style: {
               ...(entityRecord.style as Record<string, unknown>),
               coverImage: {
@@ -220,7 +220,7 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
               },
             },
           };
-          const jsonPatch = compare(entityRecord, updatedEntity);
+          const jsonPatch = compare(currentData, updatedData);
 
           const patchResult = await patchEntity(
             entityRecord.id as string,
@@ -382,6 +382,7 @@ export async function updateEntityWithCoverImage<TEntity>(
             { vertical: 'top', horizontal: 'center' },
             closeSnackbar
           );
+
           throw uploadError;
         }
       }
@@ -404,15 +405,11 @@ export async function updateEntityWithCoverImage<TEntity>(
           : undefined,
     };
 
-    // Build updated entity
+    // Create JSON patch with only the style field to avoid metadata field conflicts
     const entityRecord = entity as Record<string, unknown>;
-    const updatedEntity = {
-      ...entity,
-      style,
-    };
-
-    // Create JSON patch
-    const jsonPatch = compare(entityRecord, updatedEntity);
+    const currentData = { style: entityRecord.style };
+    const updatedData = { style };
+    const jsonPatch = compare(currentData, updatedData);
 
     // Update entity
     const finalEntity = await patchEntity(

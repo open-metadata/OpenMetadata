@@ -1071,11 +1071,11 @@ const DomainDetails = ({
         onSave={onNameSave}
       />
       <IconColorModal
+        includeCoverImage
         open={isStyleEditing}
         style={domain.style}
         onCancel={() => setIsStyleEditing(false)}
         onSubmit={onStyleSave}
-        includeCoverImage
       />
       {subDomainDrawer}
 
