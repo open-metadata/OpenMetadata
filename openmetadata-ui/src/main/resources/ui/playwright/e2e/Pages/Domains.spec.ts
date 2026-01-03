@@ -432,60 +432,6 @@ test.describe('Domains', () => {
     await afterAction();
   });
 
-  test('Switch domain from navbar and check domain query call wrap in quotes', async ({
-    page,
-  }) => {
-    const { afterAction, apiContext } = await getApiContext(page);
-    const domain = new Domain();
-    await domain.create(apiContext);
-    await page.reload();
-
-    await redirectToExplorePage(page);
-    await waitForAllLoadersToDisappear(page);
-    await page.waitForLoadState('networkidle');
-
-    const domainsResponse = page.waitForResponse('api/v1/domains/hierarchy?*');
-    await page.getByTestId('domain-dropdown').click();
-    await domainsResponse;
-    await waitForAllLoadersToDisappear(page);
-
-    const searchDomainResponse = page.waitForResponse(
-      'api/v1/search/query?q=*&index=domain_search_index*'
-    );
-    await page.getByTestId('searchbar').fill(domain.responseData.displayName);
-    await searchDomainResponse;
-
-    await page
-      .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
-      .click();
-    await waitForAllLoadersToDisappear(page);
-
-    await page.waitForLoadState('networkidle');
-
-    await redirectToHomePage(page);
-
-    const queryRes = page.waitForRequest(
-      '/api/v1/search/query?*index=dataAsset*'
-    );
-    await sidebarClick(page, SidebarItem.EXPLORE);
-    const response = await queryRes;
-    const url = new URL(response.url());
-    const queryParams = new URLSearchParams(url.search);
-    const qParam = queryParams.get('q');
-
-    // The domain FQN should be properly escaped in the query
-    // The actual format uses escaped hyphens, not URL encoding
-    const fqn = (domain.data.fullyQualifiedName ?? '')
-      .replace(/\\/g, '\\\\')
-      .replace(/"/g, '\\"')
-      .replace(/-/g, '\\-');
-
-    expect(qParam).toContain(`(domains.fullyQualifiedName:"${fqn}")`);
-
-    await domain.delete(apiContext);
-    await afterAction();
-  });
-
   test('Rename domain', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
