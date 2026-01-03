@@ -28,6 +28,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -57,6 +58,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedSearchIndexExecutor;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.SearchIndexJob;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -137,6 +141,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private BulkSink searchIndexSink;
   private RecreateIndexHandler recreateIndexHandler;
   private ReindexContext recreateContext;
+  private DistributedSearchIndexExecutor distributedExecutor;
 
   @Getter private EventPublisherJob jobData;
   private ExecutorService producerExecutor;
@@ -244,10 +249,19 @@ public class SearchIndexApp extends AbstractNativeApplication {
     try {
       setupEntities();
       LOG.info(
-          "Search Index Job Started for Entities: {}, RecreateIndex: {}",
+          "Search Index Job Started for Entities: {}, RecreateIndex: {}, DistributedIndexing: {}",
           jobData.getEntities(),
-          jobData.getRecreateIndex());
+          jobData.getRecreateIndex(),
+          jobData.getUseDistributedIndexing());
 
+      // Check if distributed indexing is enabled
+      if (Boolean.TRUE.equals(jobData.getUseDistributedIndexing())) {
+        runDistributedReindexing(jobExecutionContext);
+        success = jobData != null && jobData.getStatus() == EventPublisherJob.Status.COMPLETED;
+        return;
+      }
+
+      // Original single-server reindexing logic
       SearchClusterMetrics clusterMetrics = initializeJob(jobExecutionContext);
 
       if (Boolean.TRUE.equals(jobData.getRecreateIndex())) {
@@ -262,6 +276,203 @@ public class SearchIndexApp extends AbstractNativeApplication {
       handleJobCompletion();
     } finally {
       finalizeAllEntityReindex(success);
+    }
+  }
+
+  private void runDistributedReindexing(JobExecutionContext jobExecutionContext) throws Exception {
+    LOG.info("Starting distributed reindexing for entities: {}", jobData.getEntities());
+
+    isSmartReindexing = detectSmartReindexing();
+    jobLogger = new ReindexingJobLogger(jobData, isSmartReindexing);
+    searchIndexStats.set(initializeTotalRecords(jobData.getEntities()));
+    jobData.setStats(searchIndexStats.get());
+
+    distributedExecutor = new DistributedSearchIndexExecutor(collectionDAO);
+    distributedExecutor.performStartupRecovery();
+
+    String createdBy = jobExecutionContext.getJobDetail().getKey().getName();
+    SearchIndexJob distributedJob =
+        distributedExecutor.createJob(jobData.getEntities(), jobData, createdBy);
+
+    LOG.info(
+        "Created distributed job {} with {} total records",
+        distributedJob.getId(),
+        distributedJob.getTotalRecords());
+
+    this.searchIndexSink =
+        searchRepository.createBulkSink(
+            jobData.getBatchSize(), jobData.getMaxConcurrentRequests(), jobData.getPayLoadSize());
+    this.recreateIndexHandler = searchRepository.createReindexHandler();
+
+    if (Boolean.TRUE.equals(jobData.getRecreateIndex())) {
+      recreateContext = reCreateIndexes(jobData.getEntities());
+    }
+
+    updateJobStatus(EventPublisherJob.Status.RUNNING);
+    sendUpdates(jobExecutionContext, true);
+
+    // Set app context for WebSocket broadcasts so frontend can match updates to this record
+    AppRunRecord appRecord = getJobRecord(jobExecutionContext);
+    distributedExecutor.setAppContext(appRecord.getAppId(), appRecord.getStartTime());
+
+    distributedExecutor.execute(
+        searchIndexSink, recreateContext, Boolean.TRUE.equals(jobData.getRecreateIndex()));
+    monitorDistributedJob(jobExecutionContext, distributedJob.getId());
+    closeSinkIfNeeded();
+
+    SearchIndexJob finalJob = distributedExecutor.getJobWithFreshStats();
+    if (finalJob != null) {
+      updateJobDataFromDistributedJob(finalJob);
+      // Save serverStats to job data map so it's persisted by jobWasExecuted
+      saveServerStatsToJobDataMap(jobExecutionContext, finalJob);
+    }
+
+    updateFinalJobStatus();
+    handleJobCompletion();
+  }
+
+  private void saveServerStatsToJobDataMap(
+      JobExecutionContext jobExecutionContext, SearchIndexJob distributedJob) {
+    try {
+      AppRunRecord appRecord = getJobRecord(jobExecutionContext);
+      SuccessContext successContext = appRecord.getSuccessContext();
+      if (successContext == null) {
+        successContext = new SuccessContext();
+      }
+
+      // Add serverStats to successContext
+      if (distributedJob.getServerStats() != null && !distributedJob.getServerStats().isEmpty()) {
+        LOG.info(
+            "Saving serverStats to job data map: {} servers - {}",
+            distributedJob.getServerStats().size(),
+            distributedJob.getServerStats().keySet());
+        successContext.withAdditionalProperty("serverStats", distributedJob.getServerStats());
+        successContext.withAdditionalProperty(
+            "serverCount", distributedJob.getServerStats().size());
+        successContext.withAdditionalProperty(
+            "distributedJobId", distributedJob.getId().toString());
+      }
+
+      // Ensure stats are set
+      if (jobData.getStats() != null) {
+        successContext.withAdditionalProperty("stats", jobData.getStats());
+      }
+
+      appRecord.setSuccessContext(successContext);
+
+      // Update job data map so jobWasExecuted will have the serverStats
+      // Note: "AppScheduleRun" is the key used by OmAppJobListener
+      jobExecutionContext
+          .getJobDetail()
+          .getJobDataMap()
+          .put("AppScheduleRun", JsonUtils.pojoToJson(appRecord));
+
+      LOG.info("Updated job data map with serverStats for final persistence");
+    } catch (Exception e) {
+      LOG.error("Failed to save serverStats to job data map", e);
+    }
+  }
+
+  private void monitorDistributedJob(
+      JobExecutionContext jobExecutionContext, java.util.UUID jobId) {
+    CountDownLatch completionLatch = new CountDownLatch(1);
+    ScheduledExecutorService monitor =
+        Executors.newSingleThreadScheduledExecutor(
+            Thread.ofPlatform().name("distributed-monitor").factory());
+
+    try {
+      monitor.scheduleAtFixedRate(
+          () -> {
+            if (stopped) {
+              LOG.info("Stop signal received, stopping distributed job");
+              distributedExecutor.stop();
+              completionLatch.countDown();
+              return;
+            }
+
+            // Use fresh stats from database instead of cached currentJob
+            SearchIndexJob job = distributedExecutor.getJobWithFreshStats();
+            if (job == null) {
+              completionLatch.countDown();
+              return;
+            }
+
+            IndexJobStatus status = job.getStatus();
+            if (status == IndexJobStatus.COMPLETED
+                || status == IndexJobStatus.COMPLETED_WITH_ERRORS
+                || status == IndexJobStatus.FAILED
+                || status == IndexJobStatus.STOPPED) {
+              LOG.info("Distributed job {} completed with status: {}", jobId, status);
+              completionLatch.countDown();
+              return;
+            }
+
+            // Note: WebSocket updates are handled by DistributedJobStatsAggregator
+            // We only update local job data here for status tracking
+            updateJobDataFromDistributedJob(job);
+          },
+          0,
+          WEBSOCKET_UPDATE_INTERVAL_MS,
+          TimeUnit.MILLISECONDS);
+
+      completionLatch.await();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.warn("Distributed job monitoring interrupted");
+    } finally {
+      monitor.shutdownNow();
+    }
+  }
+
+  private void updateJobDataFromDistributedJob(SearchIndexJob distributedJob) {
+    Stats stats = searchIndexStats.get();
+    if (stats == null) {
+      return;
+    }
+
+    StepStats jobStats = stats.getJobStats();
+    if (jobStats != null) {
+      jobStats.setSuccessRecords((int) distributedJob.getSuccessRecords());
+      jobStats.setFailedRecords((int) distributedJob.getFailedRecords());
+    }
+
+    // Update reader stats - tracks records read from database
+    StepStats readerStats = stats.getReaderStats();
+    if (readerStats != null) {
+      readerStats.setTotalRecords((int) distributedJob.getTotalRecords());
+      readerStats.setSuccessRecords((int) distributedJob.getProcessedRecords());
+      readerStats.setFailedRecords(0); // Reader doesn't track failures separately
+    }
+
+    // Update sink stats - tracks records written to search index
+    StepStats sinkStats = stats.getSinkStats();
+    if (sinkStats != null) {
+      sinkStats.setTotalRecords((int) distributedJob.getProcessedRecords());
+      sinkStats.setSuccessRecords((int) distributedJob.getSuccessRecords());
+      sinkStats.setFailedRecords((int) distributedJob.getFailedRecords());
+    }
+
+    if (distributedJob.getEntityStats() != null && stats.getEntityStats() != null) {
+      for (Map.Entry<String, SearchIndexJob.EntityTypeStats> entry :
+          distributedJob.getEntityStats().entrySet()) {
+        StepStats entityStats =
+            stats.getEntityStats().getAdditionalProperties().get(entry.getKey());
+        if (entityStats != null) {
+          entityStats.setSuccessRecords((int) entry.getValue().getSuccessRecords());
+          entityStats.setFailedRecords((int) entry.getValue().getFailedRecords());
+        }
+      }
+    }
+
+    searchIndexStats.set(stats);
+    jobData.setStats(stats);
+
+    switch (distributedJob.getStatus()) {
+      case COMPLETED -> jobData.setStatus(EventPublisherJob.Status.COMPLETED);
+      case COMPLETED_WITH_ERRORS -> jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
+      case FAILED -> jobData.setStatus(EventPublisherJob.Status.FAILED);
+      case STOPPING, STOPPED -> jobData.setStatus(EventPublisherJob.Status.STOPPED);
+      default -> jobData.setStatus(EventPublisherJob.Status.RUNNING);
     }
   }
 
@@ -608,8 +819,32 @@ public class SearchIndexApp extends AbstractNativeApplication {
           new FailureContext().withAdditionalProperty("failure", jobData.getFailure()));
     }
     if (jobData.getStats() != null) {
-      appRecord.setSuccessContext(
-          new SuccessContext().withAdditionalProperty("stats", jobData.getStats()));
+      SuccessContext successContext =
+          new SuccessContext().withAdditionalProperty("stats", jobData.getStats());
+
+      // Include server stats for distributed jobs
+      if (distributedExecutor != null) {
+        SearchIndexJob distributedJob = distributedExecutor.getJobWithFreshStats();
+        LOG.info(
+            "Distributed job for final save: id={}, serverStats={}",
+            distributedJob != null ? distributedJob.getId() : "null",
+            distributedJob != null && distributedJob.getServerStats() != null
+                ? distributedJob.getServerStats().size() + " servers"
+                : "null");
+        if (distributedJob != null && distributedJob.getServerStats() != null) {
+          LOG.info(
+              "Including serverStats in AppRunRecord: {} servers - {}",
+              distributedJob.getServerStats().size(),
+              distributedJob.getServerStats().keySet());
+          successContext.withAdditionalProperty("serverStats", distributedJob.getServerStats());
+          successContext.withAdditionalProperty(
+              "serverCount", distributedJob.getServerStats().size());
+          successContext.withAdditionalProperty(
+              "distributedJobId", distributedJob.getId().toString());
+        }
+      }
+
+      appRecord.setSuccessContext(successContext);
     }
 
     if (WebSocketManager.getInstance() != null) {
@@ -1542,6 +1777,15 @@ public class SearchIndexApp extends AbstractNativeApplication {
     shutdownSingleExecutor(producerExecutor, "producer");
     shutdownSingleExecutor(consumerExecutor, "consumer");
     shutdownSingleExecutor(jobExecutor, "job");
+
+    // Stop distributed executor if running
+    if (distributedExecutor != null) {
+      try {
+        distributedExecutor.stop();
+      } catch (Exception e) {
+        LOG.error("Error stopping distributed executor", e);
+      }
+    }
   }
 
   private void shutdownSingleExecutor(ExecutorService executor, String executorName) {

@@ -100,7 +100,8 @@ public class SearchIndexEndToEndTest {
     webSocketManagerMock = mockStatic(WebSocketManager.class);
     webSocketManagerMock.when(WebSocketManager::getInstance).thenReturn(webSocketManager);
 
-    doAnswer(
+    lenient()
+        .doAnswer(
             invocation -> {
               String channel = invocation.getArgument(0);
               String content = invocation.getArgument(1);
