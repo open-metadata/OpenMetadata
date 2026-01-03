@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.services.dashboard;
 
+import static org.openmetadata.service.services.serviceentities.DashboardServiceEntityService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -48,23 +50,13 @@ import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.entity.services.DashboardService;
-import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.DashboardServiceRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.services.ServiceEntityResource;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.serviceentities.DashboardServiceEntityService;
 
 @Path("/v1/services/dashboardServices")
@@ -72,21 +64,13 @@ import org.openmetadata.service.services.serviceentities.DashboardServiceEntityS
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "dashboardServices")
-public class DashboardServiceResource
-    extends ServiceEntityResource<
-        DashboardService, DashboardServiceRepository, DashboardConnection> {
+public class DashboardServiceResource {
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
-  public static final String FIELDS = "owners,domains,followers";
+
   private final DashboardServiceEntityService service;
 
-  public DashboardServiceResource(
-      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.DASHBOARD_SERVICE, authorizer, limits, ServiceType.DASHBOARD);
-    this.service = serviceRegistry.getService(DashboardServiceEntityService.class);
-  }
-
-  public static class DashboardServiceList extends ResultList<DashboardService> {
-    /* Required for serde */
+  public DashboardServiceResource(DashboardServiceEntityService service) {
+    this.service = service;
   }
 
   @GET
@@ -101,7 +85,10 @@ public class DashboardServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DashboardServiceList.class)))
+                    schema =
+                        @Schema(
+                            implementation =
+                                DashboardServiceEntityService.DashboardServiceList.class)))
       })
   public ResultList<DashboardService> list(
       @Context UriInfo uriInfo,
@@ -138,7 +125,7 @@ public class DashboardServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
@@ -178,8 +165,8 @@ public class DashboardServiceResource
           @DefaultValue("non-deleted")
           Include include) {
     DashboardService dashboardService =
-        getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    return decryptOrNullify(securityContext, dashboardService);
+        service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.decryptOrNullify(securityContext, dashboardService);
   }
 
   @PUT
@@ -210,7 +197,7 @@ public class DashboardServiceResource
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
+    return service
         .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
         .toResponse();
   }
@@ -240,7 +227,7 @@ public class DashboardServiceResource
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
+    return service
         .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
         .toResponse();
   }
@@ -281,8 +268,8 @@ public class DashboardServiceResource
           @DefaultValue("non-deleted")
           Include include) {
     DashboardService dashboardService =
-        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
-    return decryptOrNullify(securityContext, dashboardService);
+        service.getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return service.decryptOrNullify(securityContext, dashboardService);
   }
 
   @PUT
@@ -307,10 +294,9 @@ public class DashboardServiceResource
           @PathParam("id")
           UUID id,
       @Valid TestConnectionResult testConnectionResult) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    DashboardService service = repository.addTestConnectionResult(id, testConnectionResult);
-    return decryptOrNullify(securityContext, service);
+    DashboardService dashboardService =
+        service.addTestConnectionResult(securityContext, id, testConnectionResult);
+    return service.decryptOrNullify(securityContext, dashboardService);
   }
 
   @GET
@@ -334,7 +320,7 @@ public class DashboardServiceResource
       @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
+    EntityHistory entityHistory = service.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
         entityHistory.getVersions().stream()
@@ -344,7 +330,7 @@ public class DashboardServiceResource
                     DashboardService dashboardService =
                         JsonUtils.readValue((String) json, DashboardService.class);
                     return JsonUtils.pojoToJson(
-                        decryptOrNullify(securityContext, dashboardService));
+                        service.decryptOrNullify(securityContext, dashboardService));
                   } catch (Exception e) {
                     return json;
                   }
@@ -383,8 +369,8 @@ public class DashboardServiceResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    DashboardService dashboardService = super.getVersionInternal(securityContext, id, version);
-    return decryptOrNullify(securityContext, dashboardService);
+    DashboardService dashboardService = service.getVersionInternal(securityContext, id, version);
+    return service.decryptOrNullify(securityContext, dashboardService);
   }
 
   @POST
@@ -408,8 +394,8 @@ public class DashboardServiceResource
       @Valid CreateDashboardService create) {
     DashboardService dashboardService =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, dashboardService);
-    decryptOrNullify(securityContext, (DashboardService) response.getEntity());
+    Response response = service.create(uriInfo, securityContext, dashboardService);
+    service.decryptOrNullify(securityContext, (DashboardService) response.getEntity());
     return response;
   }
 
@@ -434,8 +420,9 @@ public class DashboardServiceResource
       @Valid CreateDashboardService update) {
     DashboardService dashboardService =
         service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(dashboardService));
-    decryptOrNullify(securityContext, (DashboardService) response.getEntity());
+    Response response =
+        service.createOrUpdate(uriInfo, securityContext, service.unmask(dashboardService));
+    service.decryptOrNullify(securityContext, (DashboardService) response.getEntity());
     return response;
   }
 
@@ -465,7 +452,7 @@ public class DashboardServiceResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -494,7 +481,7 @@ public class DashboardServiceResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
@@ -525,7 +512,7 @@ public class DashboardServiceResource
       @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -556,7 +543,7 @@ public class DashboardServiceResource
       @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -588,7 +575,7 @@ public class DashboardServiceResource
       @Parameter(description = "Name of the dashboard service", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
   }
 
   @PUT
@@ -610,16 +597,6 @@ public class DashboardServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  @Override
-  protected DashboardService nullifyConnection(DashboardService service) {
-    return service.withConnection(null);
-  }
-
-  @Override
-  protected String extractServiceType(DashboardService service) {
-    return service.getServiceType().value();
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

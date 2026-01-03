@@ -539,7 +539,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   @Override
-  protected void postUpdate(DataProduct original, DataProduct updated) {
+  public void postUpdate(DataProduct original, DataProduct updated) {
     super.postUpdate(original, updated);
     if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
       if (updated.getEntityStatus() == EntityStatus.APPROVED) {

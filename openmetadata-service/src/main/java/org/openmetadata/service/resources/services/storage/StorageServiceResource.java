@@ -1,4 +1,19 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.resources.services.storage;
+
+import static org.openmetadata.service.services.serviceentities.StorageServiceEntityService.FIELDS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,25 +50,15 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateStorageService;
-import org.openmetadata.schema.entity.services.DatabaseService;
-import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.StorageConnection;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.StorageServiceRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.services.ServiceEntityResource;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.serviceentities.StorageServiceEntityService;
 
 @Slf4j
@@ -64,33 +69,13 @@ import org.openmetadata.service.services.serviceentities.StorageServiceEntitySer
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "storageServices")
-public class StorageServiceResource
-    extends ServiceEntityResource<StorageService, StorageServiceRepository, StorageConnection> {
+public class StorageServiceResource {
   public static final String COLLECTION_PATH = "v1/services/storageServices/";
-  public static final String FIELDS = "pipelines,owners,tags,domains,followers";
+
   private final StorageServiceEntityService service;
 
-  @Override
-  public StorageService addHref(UriInfo uriInfo, StorageService storageService) {
-    super.addHref(uriInfo, storageService);
-    Entity.withHref(uriInfo, storageService.getOwners());
-    return storageService;
-  }
-
-  public StorageServiceResource(
-      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.STORAGE_SERVICE, authorizer, limits, ServiceType.STORAGE);
-    this.service = serviceRegistry.getService(StorageServiceEntityService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
-  }
-
-  public static class StorageServiceList extends ResultList<StorageService> {
-    /* Required for serde */
+  public StorageServiceResource(StorageServiceEntityService service) {
+    this.service = service;
   }
 
   @GET
@@ -106,7 +91,8 @@ public class StorageServiceResource
                 @Content(
                     mediaType = "application/json",
                     schema =
-                        @Schema(implementation = StorageServiceResource.StorageServiceList.class)))
+                        @Schema(
+                            implementation = StorageServiceEntityService.StorageServiceList.class)))
       })
   public ResultList<StorageService> list(
       @Context UriInfo uriInfo,
@@ -142,7 +128,7 @@ public class StorageServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
@@ -179,8 +165,9 @@ public class StorageServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    StorageService storageService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    return decryptOrNullify(securityContext, storageService);
+    StorageService storageService =
+        service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.decryptOrNullify(securityContext, storageService);
   }
 
   @GET
@@ -217,71 +204,9 @@ public class StorageServiceResource
           @DefaultValue("non-deleted")
           Include include) {
     StorageService storageService =
-        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
-    return decryptOrNullify(securityContext, storageService);
-  }
-
-  @PUT
-  @Path("/{id}/followers")
-  @Operation(
-      operationId = "addFollowerToDatabaseService",
-      summary = "Add a follower",
-      description = "Add a user identified by `userId` as followed of this Storage service",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ChangeEvent.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Storage Service for instance {id} is not found")
-      })
-  public Response addFollower(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Storage Service", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id,
-      @Parameter(
-              description = "Id of the user to be added as follower",
-              schema = @Schema(type = "string"))
-          UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
-  }
-
-  @DELETE
-  @Path("/{id}/followers/{userId}")
-  @Operation(
-      operationId = "deleteFollower",
-      summary = "Remove a follower",
-      description = "Remove the user identified `userId` as a follower of the entity.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ChangeEvent.class)))
-      })
-  public Response deleteFollower(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id,
-      @Parameter(
-              description = "Id of the user being removed as follower",
-              schema = @Schema(type = "string"))
-          @PathParam("userId")
-          String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+        service.getByNameInternal(
+            uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
+    return service.decryptOrNullify(securityContext, storageService);
   }
 
   @PUT
@@ -297,7 +222,7 @@ public class StorageServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DatabaseService.class)))
+                    schema = @Schema(implementation = StorageService.class)))
       })
   public StorageService addTestConnectionResult(
       @Context UriInfo uriInfo,
@@ -306,10 +231,7 @@ public class StorageServiceResource
           @PathParam("id")
           UUID id,
       @Valid TestConnectionResult testConnectionResult) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    StorageService service = repository.addTestConnectionResult(id, testConnectionResult);
-    return decryptOrNullify(securityContext, service);
+    return service.addTestConnectionResult(securityContext, id, testConnectionResult);
   }
 
   @GET
@@ -333,7 +255,7 @@ public class StorageServiceResource
       @Parameter(description = "storage service Id", schema = @Schema(type = "string"))
           @PathParam("id")
           UUID id) {
-    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
+    EntityHistory entityHistory = service.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
         entityHistory.getVersions().stream()
@@ -342,7 +264,8 @@ public class StorageServiceResource
                   try {
                     StorageService storageService =
                         JsonUtils.readValue((String) json, StorageService.class);
-                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, storageService));
+                    return JsonUtils.pojoToJson(
+                        service.decryptOrNullify(securityContext, storageService));
                   } catch (Exception e) {
                     return json;
                   }
@@ -382,8 +305,8 @@ public class StorageServiceResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    StorageService storageService = super.getVersionInternal(securityContext, id, version);
-    return decryptOrNullify(securityContext, storageService);
+    StorageService storageService = service.getVersionInternal(securityContext, id, version);
+    return service.decryptOrNullify(securityContext, storageService);
   }
 
   @POST
@@ -407,8 +330,8 @@ public class StorageServiceResource
       @Valid CreateStorageService create) {
     StorageService storageService =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, storageService);
-    decryptOrNullify(securityContext, (StorageService) response.getEntity());
+    Response response = service.create(uriInfo, securityContext, storageService);
+    service.decryptOrNullify(securityContext, (StorageService) response.getEntity());
     return response;
   }
 
@@ -433,8 +356,9 @@ public class StorageServiceResource
       @Valid CreateStorageService update) {
     StorageService storageService =
         service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(storageService));
-    decryptOrNullify(securityContext, (StorageService) response.getEntity());
+    Response response =
+        service.createOrUpdate(uriInfo, securityContext, service.unmask(storageService));
+    service.decryptOrNullify(securityContext, (StorageService) response.getEntity());
     return response;
   }
 
@@ -462,7 +386,7 @@ public class StorageServiceResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -493,7 +417,7 @@ public class StorageServiceResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
@@ -524,7 +448,7 @@ public class StorageServiceResource
       @Parameter(description = "Id of the storage service", schema = @Schema(type = "string"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -555,7 +479,7 @@ public class StorageServiceResource
       @Parameter(description = "Id of the storage service", schema = @Schema(type = "string"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -585,7 +509,71 @@ public class StorageServiceResource
       @Parameter(description = "Name of the StorageService", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+    return service.deleteByName(
+        uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), recursive, hardDelete);
+  }
+
+  @PUT
+  @Path("/{id}/followers")
+  @Operation(
+      operationId = "addFollowerToStorageService",
+      summary = "Add a follower",
+      description = "Add a user identified by `userId` as followed of this Storage service",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Storage Service for instance {id} is not found")
+      })
+  public Response addFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Storage Service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "string"))
+          UUID userId) {
+    return service
+        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
+  }
+
+  @DELETE
+  @Path("/{id}/followers/{userId}")
+  @Operation(
+      operationId = "deleteFollower",
+      summary = "Remove a follower",
+      description = "Remove the user identified `userId` as a follower of the entity.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class)))
+      })
+  public Response deleteFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "string"))
+          @PathParam("userId")
+          String userId) {
+    return service
+        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
+        .toResponse();
   }
 
   @PUT
@@ -607,16 +595,6 @@ public class StorageServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  @Override
-  protected StorageService nullifyConnection(StorageService service) {
-    return service.withConnection(null);
-  }
-
-  @Override
-  protected String extractServiceType(StorageService service) {
-    return service.getServiceType().value();
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

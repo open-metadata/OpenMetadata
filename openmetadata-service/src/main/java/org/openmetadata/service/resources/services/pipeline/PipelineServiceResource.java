@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.services.pipeline;
 
+import static org.openmetadata.service.services.serviceentities.PipelineServiceEntityService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -48,23 +50,13 @@ import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.entity.services.PipelineService;
-import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.PipelineServiceRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.services.ServiceEntityResource;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.serviceentities.PipelineServiceEntityService;
 
 @Path("/v1/services/pipelineServices")
@@ -72,33 +64,13 @@ import org.openmetadata.service.services.serviceentities.PipelineServiceEntitySe
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "pipelineServices")
-public class PipelineServiceResource
-    extends ServiceEntityResource<PipelineService, PipelineServiceRepository, PipelineConnection> {
+public class PipelineServiceResource {
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
-  public static final String FIELDS = "pipelines,owners,domains,followers";
+
   private final PipelineServiceEntityService service;
 
-  @Override
-  public PipelineService addHref(UriInfo uriInfo, PipelineService pipelineService) {
-    super.addHref(uriInfo, pipelineService);
-    Entity.withHref(uriInfo, pipelineService.getPipelines());
-    return pipelineService;
-  }
-
-  public PipelineServiceResource(
-      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.PIPELINE_SERVICE, authorizer, limits, ServiceType.PIPELINE);
-    this.service = serviceRegistry.getService(PipelineServiceEntityService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
-  }
-
-  public static class PipelineServiceList extends ResultList<PipelineService> {
-    /* Required for serde */
+  public PipelineServiceResource(PipelineServiceEntityService service) {
+    this.service = service;
   }
 
   @GET
@@ -115,7 +87,10 @@ public class PipelineServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = PipelineServiceList.class)))
+                    schema =
+                        @Schema(
+                            implementation =
+                                PipelineServiceEntityService.PipelineServiceList.class)))
       })
   public ResultList<PipelineService> list(
       @Context UriInfo uriInfo,
@@ -152,7 +127,7 @@ public class PipelineServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
@@ -192,8 +167,8 @@ public class PipelineServiceResource
           @DefaultValue("non-deleted")
           Include include) {
     PipelineService pipelineService =
-        getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    return decryptOrNullify(securityContext, pipelineService);
+        service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.decryptOrNullify(securityContext, pipelineService);
   }
 
   @GET
@@ -234,8 +209,8 @@ public class PipelineServiceResource
           @DefaultValue("non-deleted")
           Include include) {
     PipelineService pipelineService =
-        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
-    return decryptOrNullify(securityContext, pipelineService);
+        service.getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return service.decryptOrNullify(securityContext, pipelineService);
   }
 
   @PUT
@@ -266,7 +241,7 @@ public class PipelineServiceResource
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
+    return service
         .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
         .toResponse();
   }
@@ -296,7 +271,7 @@ public class PipelineServiceResource
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
+    return service
         .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
         .toResponse();
   }
@@ -323,10 +298,9 @@ public class PipelineServiceResource
           @PathParam("id")
           UUID id,
       @Valid TestConnectionResult testConnectionResult) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    PipelineService service = repository.addTestConnectionResult(id, testConnectionResult);
-    return decryptOrNullify(securityContext, service);
+    PipelineService pipelineService =
+        service.addTestConnectionResult(securityContext, id, testConnectionResult);
+    return service.decryptOrNullify(securityContext, pipelineService);
   }
 
   @GET
@@ -350,7 +324,7 @@ public class PipelineServiceResource
       @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
+    EntityHistory entityHistory = service.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
         entityHistory.getVersions().stream()
@@ -359,7 +333,8 @@ public class PipelineServiceResource
                   try {
                     PipelineService pipelineService =
                         JsonUtils.readValue((String) json, PipelineService.class);
-                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, pipelineService));
+                    return JsonUtils.pojoToJson(
+                        service.decryptOrNullify(securityContext, pipelineService));
                   } catch (Exception e) {
                     return json;
                   }
@@ -398,8 +373,8 @@ public class PipelineServiceResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    PipelineService pipelineService = super.getVersionInternal(securityContext, id, version);
-    return decryptOrNullify(securityContext, pipelineService);
+    PipelineService pipelineService = service.getVersionInternal(securityContext, id, version);
+    return service.decryptOrNullify(securityContext, pipelineService);
   }
 
   @POST
@@ -423,8 +398,8 @@ public class PipelineServiceResource
       @Valid CreatePipelineService create) {
     PipelineService pipelineService =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, pipelineService);
-    decryptOrNullify(securityContext, (PipelineService) response.getEntity());
+    Response response = service.create(uriInfo, securityContext, pipelineService);
+    service.decryptOrNullify(securityContext, (PipelineService) response.getEntity());
     return response;
   }
 
@@ -450,8 +425,9 @@ public class PipelineServiceResource
       @Valid CreatePipelineService update) {
     PipelineService pipelineService =
         service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(pipelineService));
-    decryptOrNullify(securityContext, (PipelineService) response.getEntity());
+    Response response =
+        service.createOrUpdate(uriInfo, securityContext, service.unmask(pipelineService));
+    service.decryptOrNullify(securityContext, (PipelineService) response.getEntity());
     return response;
   }
 
@@ -481,7 +457,7 @@ public class PipelineServiceResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -510,7 +486,7 @@ public class PipelineServiceResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
@@ -541,7 +517,7 @@ public class PipelineServiceResource
       @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -572,7 +548,7 @@ public class PipelineServiceResource
       @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -606,7 +582,7 @@ public class PipelineServiceResource
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -628,16 +604,6 @@ public class PipelineServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  @Override
-  protected PipelineService nullifyConnection(PipelineService service) {
-    return service.withConnection(null);
-  }
-
-  @Override
-  protected String extractServiceType(PipelineService service) {
-    return service.getServiceType().value();
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

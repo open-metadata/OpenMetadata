@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.services.database;
 
+import static org.openmetadata.service.services.serviceentities.DatabaseServiceEntityService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -46,32 +48,20 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
-import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.services.DatabaseService;
-import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.services.ServiceEntityResource;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.serviceentities.DatabaseServiceEntityService;
 import org.openmetadata.service.util.CSVExportResponse;
 
-@Slf4j
 @Path("/v1/services/databaseServices")
 @Tag(
     name = "Database Services",
@@ -81,33 +71,13 @@ import org.openmetadata.service.util.CSVExportResponse;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "databaseServices")
-public class DatabaseServiceResource
-    extends ServiceEntityResource<DatabaseService, DatabaseServiceRepository, DatabaseConnection> {
+public class DatabaseServiceResource {
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
-  public static final String FIELDS = "pipelines,owners,tags,domains,followers";
+
   private final DatabaseServiceEntityService service;
 
-  @Override
-  public DatabaseService addHref(UriInfo uriInfo, DatabaseService dbService) {
-    super.addHref(uriInfo, dbService);
-    Entity.withHref(uriInfo, dbService.getPipelines());
-    return dbService;
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
-  }
-
-  public DatabaseServiceResource(
-      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.DATABASE_SERVICE, authorizer, limits, ServiceType.DATABASE);
-    this.service = serviceRegistry.getService(DatabaseServiceEntityService.class);
-  }
-
-  public static class DatabaseServiceList extends ResultList<DatabaseService> {
-    /* Required for serde */
+  public DatabaseServiceResource(DatabaseServiceEntityService service) {
+    this.service = service;
   }
 
   @GET
@@ -122,7 +92,10 @@ public class DatabaseServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DatabaseServiceList.class)))
+                    schema =
+                        @Schema(
+                            implementation =
+                                DatabaseServiceEntityService.DatabaseServiceList.class)))
       })
   public ResultList<DatabaseService> list(
       @Context UriInfo uriInfo,
@@ -158,7 +131,7 @@ public class DatabaseServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
@@ -198,8 +171,8 @@ public class DatabaseServiceResource
           @DefaultValue("non-deleted")
           Include include) {
     DatabaseService databaseService =
-        getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    return decryptOrNullify(securityContext, databaseService);
+        service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.decryptOrNullify(securityContext, databaseService);
   }
 
   @GET
@@ -238,8 +211,8 @@ public class DatabaseServiceResource
           @DefaultValue("non-deleted")
           Include include) {
     DatabaseService databaseService =
-        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
-    return decryptOrNullify(securityContext, databaseService);
+        service.getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return service.decryptOrNullify(securityContext, databaseService);
   }
 
   @PUT
@@ -264,10 +237,9 @@ public class DatabaseServiceResource
           @PathParam("id")
           UUID id,
       @Valid TestConnectionResult testConnectionResult) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    DatabaseService service = repository.addTestConnectionResult(id, testConnectionResult);
-    return decryptOrNullify(securityContext, service);
+    DatabaseService databaseService =
+        service.addTestConnectionResult(securityContext, id, testConnectionResult);
+    return service.decryptOrNullify(securityContext, databaseService);
   }
 
   @GET
@@ -291,7 +263,7 @@ public class DatabaseServiceResource
       @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
+    EntityHistory entityHistory = service.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
         entityHistory.getVersions().stream()
@@ -300,7 +272,8 @@ public class DatabaseServiceResource
                   try {
                     DatabaseService databaseService =
                         JsonUtils.readValue((String) json, DatabaseService.class);
-                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, databaseService));
+                    return JsonUtils.pojoToJson(
+                        service.decryptOrNullify(securityContext, databaseService));
                   } catch (Exception e) {
                     return json;
                   }
@@ -339,8 +312,8 @@ public class DatabaseServiceResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    DatabaseService databaseService = super.getVersionInternal(securityContext, id, version);
-    return decryptOrNullify(securityContext, databaseService);
+    DatabaseService databaseService = service.getVersionInternal(securityContext, id, version);
+    return service.decryptOrNullify(securityContext, databaseService);
   }
 
   @POST
@@ -364,8 +337,8 @@ public class DatabaseServiceResource
       @Valid CreateDatabaseService create) {
     DatabaseService databaseService =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, databaseService);
-    decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
+    Response response = service.create(uriInfo, securityContext, databaseService);
+    service.decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
   }
 
@@ -390,8 +363,9 @@ public class DatabaseServiceResource
       @Valid CreateDatabaseService update) {
     DatabaseService databaseService =
         service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(databaseService));
-    decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
+    Response response =
+        service.createOrUpdate(uriInfo, securityContext, service.unmask(databaseService));
+    service.decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
   }
 
@@ -423,7 +397,7 @@ public class DatabaseServiceResource
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
+    return service
         .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
         .toResponse();
   }
@@ -453,7 +427,7 @@ public class DatabaseServiceResource
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
+    return service
         .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
         .toResponse();
   }
@@ -484,7 +458,7 @@ public class DatabaseServiceResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -513,7 +487,7 @@ public class DatabaseServiceResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @GET
@@ -541,11 +515,11 @@ public class DatabaseServiceResource
               description =
                   "If true, export will include child entities (schemas, tables, columns)",
               schema = @Schema(type = "boolean"))
-          @DefaultValue("false") // Default: Export only database
+          @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive)
       throws IOException {
-    return exportCsvInternal(securityContext, name, recursive);
+    return service.exportCsvInternal(securityContext, name, recursive);
   }
 
   @GET
@@ -573,10 +547,10 @@ public class DatabaseServiceResource
               description =
                   "If true, export will include child entities (schemas, tables, columns)",
               schema = @Schema(type = "boolean"))
-          @DefaultValue("false") // Default: Export only database
+          @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive) {
-    return exportCsvInternalAsync(securityContext, name, recursive);
+    return service.exportCsvInternalAsync(securityContext, name, recursive);
   }
 
   @PUT
@@ -608,12 +582,12 @@ public class DatabaseServiceResource
           @QueryParam("dryRun")
           boolean dryRun,
       @Parameter(description = "If true, recursive import", schema = @Schema(type = "boolean"))
-          @DefaultValue("false") // Default: Export only database
+          @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, recursive);
+    return service.importCsvInternal(securityContext, name, csv, dryRun, recursive);
   }
 
   @PUT
@@ -651,7 +625,7 @@ public class DatabaseServiceResource
           @QueryParam("recursive")
           boolean recursive,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, recursive);
+    return service.importCsvInternalAsync(securityContext, name, csv, dryRun, recursive);
   }
 
   @DELETE
@@ -682,7 +656,7 @@ public class DatabaseServiceResource
       @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -713,7 +687,7 @@ public class DatabaseServiceResource
       @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -745,7 +719,7 @@ public class DatabaseServiceResource
       @Parameter(description = "Name of the database service", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
   }
 
   @PUT
@@ -767,16 +741,6 @@ public class DatabaseServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  @Override
-  protected DatabaseService nullifyConnection(DatabaseService service) {
-    return service.withConnection(null);
-  }
-
-  @Override
-  protected String extractServiceType(DatabaseService service) {
-    return service.getServiceType().value();
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

@@ -191,7 +191,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   // If we update the contract adding DQ validation, add the pipeline if needed
   @Override
-  protected void postUpdate(DataContract original, DataContract updated) {
+  public void postUpdate(DataContract original, DataContract updated) {
     super.postUpdate(original, updated);
     if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
       if (updated.getEntityStatus() == EntityStatus.APPROVED) {

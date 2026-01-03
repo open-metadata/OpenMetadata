@@ -99,11 +99,12 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
+@Getter
 public abstract class EntityBaseService<T extends EntityInterface, K extends EntityRepository<T>> {
   protected final Class<T> entityClass;
   protected final String entityType;
   protected final Set<String> allowedFields;
-  @Getter protected final K repository;
+  protected final K repository;
   protected final Authorizer authorizer;
   protected final Limits limits;
   protected final Map<String, MetadataOperation> fieldsToViewOperations = new HashMap<>();
@@ -114,20 +115,6 @@ public abstract class EntityBaseService<T extends EntityInterface, K extends Ent
     this.repository = repository;
     this.entityClass = entityInfo.getEntityClass();
     this.allowedFields = entityInfo.getAllowedFields();
-    this.authorizer = authorizer;
-    this.limits = limits;
-    addViewOperation(
-        "owners,followers,votes,tags,extension,domains,dataProducts,experts,reviewers", VIEW_BASIC);
-    Entity.registerResourcePermissions(entityType, getEntitySpecificOperations());
-    Entity.registerResourceFieldViewMapping(entityType, fieldsToViewOperations);
-  }
-
-  @SuppressWarnings("unchecked")
-  protected EntityBaseService(String entityType, Authorizer authorizer, Limits limits) {
-    this.entityType = entityType;
-    this.repository = (K) Entity.getEntityRepository(entityType);
-    this.entityClass = (Class<T>) Entity.getEntityClassFromType(entityType);
-    this.allowedFields = ResourceEntityInfo.getEntityFields(entityClass);
     this.authorizer = authorizer;
     this.limits = limits;
     addViewOperation(
@@ -898,7 +885,7 @@ public abstract class EntityBaseService<T extends EntityInterface, K extends Ent
     return repository.exportToCsv(name, securityContext.getUserPrincipal().getName(), recursive);
   }
 
-  protected CsvImportResult importCsvInternal(
+  public CsvImportResult importCsvInternal(
       SecurityContext securityContext, String name, String csv, boolean dryRun, boolean recursive)
       throws IOException {
     OperationContext operationContext =
@@ -908,11 +895,11 @@ public abstract class EntityBaseService<T extends EntityInterface, K extends Ent
         name, csv, dryRun, securityContext.getUserPrincipal().getName(), recursive);
   }
 
-  protected ResourceContext<T> getResourceContext() {
+  public ResourceContext<T> getResourceContext() {
     return new ResourceContext<>(entityType);
   }
 
-  protected ResourceContext<T> getResourceContextById(UUID id) {
+  public ResourceContext<T> getResourceContextById(UUID id) {
     return new ResourceContext<>(entityType, id, null);
   }
 
@@ -921,7 +908,7 @@ public abstract class EntityBaseService<T extends EntityInterface, K extends Ent
     return new ResourceContext<>(entityType, id, null, operation);
   }
 
-  protected ResourceContext<T> getResourceContextByName(String name) {
+  public ResourceContext<T> getResourceContextByName(String name) {
     return new ResourceContext<>(entityType, null, name);
   }
 
@@ -986,7 +973,7 @@ public abstract class EntityBaseService<T extends EntityInterface, K extends Ent
     return Response.ok(result).build();
   }
 
-  protected <C extends CreateEntity> Response processBulkRequest(
+  public <C extends CreateEntity> Response processBulkRequest(
       UriInfo uriInfo,
       SecurityContext securityContext,
       List<C> createRequests,

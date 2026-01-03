@@ -1,4 +1,19 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.resources.services.llm;
+
+import static org.openmetadata.service.services.serviceentities.LLMServiceEntityService.FIELDS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,23 +51,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateLLMService;
 import org.openmetadata.schema.entity.services.LLMService;
-import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.LLMConnection;
-import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.LLMServiceRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.services.ServiceEntityResource;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.serviceentities.LLMServiceEntityService;
 
 @Slf4j
@@ -65,32 +71,13 @@ import org.openmetadata.service.services.serviceentities.LLMServiceEntityService
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "llmServices")
-public class LLMServiceResource
-    extends ServiceEntityResource<LLMService, LLMServiceRepository, LLMConnection> {
+public class LLMServiceResource {
   public static final String COLLECTION_PATH = "v1/services/llmServices/";
-  public static final String FIELDS = "pipelines,owners,tags,domains,followers";
+
   private final LLMServiceEntityService service;
 
-  @Override
-  public LLMService addHref(UriInfo uriInfo, LLMService llmService) {
-    super.addHref(uriInfo, llmService);
-    Entity.withHref(uriInfo, llmService.getPipelines());
-    return llmService;
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
-  }
-
-  public LLMServiceResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.LLM_SERVICE, authorizer, limits, ServiceType.LLM);
-    this.service = serviceRegistry.getService(LLMServiceEntityService.class);
-  }
-
-  public static class LLMServiceList extends ResultList<LLMService> {
-    /* Required for serde */
+  public LLMServiceResource(LLMServiceEntityService service) {
+    this.service = service;
   }
 
   @GET
@@ -105,7 +92,8 @@ public class LLMServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = LLMServiceList.class)))
+                    schema =
+                        @Schema(implementation = LLMServiceEntityService.LLMServiceList.class)))
       })
   public ResultList<LLMService> list(
       @Context UriInfo uriInfo,
@@ -117,7 +105,7 @@ public class LLMServiceResource
           String fieldsParam,
       @Parameter(
               description = "Filter services by domain",
-              schema = @Schema(type = "string", example = "AI"))
+              schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain,
       @DefaultValue("10")
@@ -141,7 +129,7 @@ public class LLMServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
@@ -150,7 +138,7 @@ public class LLMServiceResource
   @Operation(
       operationId = "getLLMServiceByID",
       summary = "Get an LLM service",
-      description = "Get an LLM service by `Id`.",
+      description = "Get an LLM service by `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -166,9 +154,7 @@ public class LLMServiceResource
   public LLMService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the LLM service", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id,
+      @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -180,8 +166,8 @@ public class LLMServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    LLMService llmService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    return decryptOrNullify(securityContext, llmService);
+    LLMService llmService = service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.decryptOrNullify(securityContext, llmService);
   }
 
   @GET
@@ -189,7 +175,7 @@ public class LLMServiceResource
   @Operation(
       operationId = "getLLMServiceByFQN",
       summary = "Get LLM service by name",
-      description = "Get an LLM service by the service `name`.",
+      description = "Get a LLM service by the service `name`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -200,14 +186,12 @@ public class LLMServiceResource
                     schema = @Schema(implementation = LLMService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "LLM service for instance {name} is not found")
+            description = "LLM service for instance {id} is not found")
       })
   public LLMService getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the LLM service", schema = @Schema(type = "string"))
-          @PathParam("name")
-          String name,
+      @PathParam("name") String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -219,8 +203,10 @@ public class LLMServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    LLMService llmService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
-    return decryptOrNullify(securityContext, llmService);
+    LLMService llmService =
+        service.getByNameInternal(
+            uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
+    return service.decryptOrNullify(securityContext, llmService);
   }
 
   @PUT
@@ -245,10 +231,9 @@ public class LLMServiceResource
           @PathParam("id")
           UUID id,
       @Valid TestConnectionResult testConnectionResult) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    LLMService service = repository.addTestConnectionResult(id, testConnectionResult);
-    return decryptOrNullify(securityContext, service);
+    LLMService llmService =
+        service.addTestConnectionResult(securityContext, id, testConnectionResult);
+    return service.decryptOrNullify(securityContext, llmService);
   }
 
   @GET
@@ -256,7 +241,7 @@ public class LLMServiceResource
   @Operation(
       operationId = "listAllLLMServiceVersion",
       summary = "List LLM service versions",
-      description = "Get a list of all the versions of an LLM service identified by `Id`",
+      description = "Get a list of all the versions of an LLM service identified by `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -269,10 +254,9 @@ public class LLMServiceResource
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the LLM service", schema = @Schema(type = "UUID"))
-          @PathParam("id")
+      @Parameter(description = "LLM service Id", schema = @Schema(type = "string")) @PathParam("id")
           UUID id) {
-    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
+    EntityHistory entityHistory = service.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
         entityHistory.getVersions().stream()
@@ -280,7 +264,8 @@ public class LLMServiceResource
                 json -> {
                   try {
                     LLMService llmService = JsonUtils.readValue((String) json, LLMService.class);
-                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, llmService));
+                    return JsonUtils.pojoToJson(
+                        service.decryptOrNullify(securityContext, llmService));
                   } catch (Exception e) {
                     return json;
                   }
@@ -295,7 +280,7 @@ public class LLMServiceResource
   @Operation(
       operationId = "getSpecificLLMServiceVersion",
       summary = "Get a version of the LLM service",
-      description = "Get a version of the LLM service by given `Id`",
+      description = "Get a version of the LLM service by given `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -311,16 +296,15 @@ public class LLMServiceResource
   public LLMService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the LLM service", schema = @Schema(type = "UUID"))
-          @PathParam("id")
+      @Parameter(description = "LLM service Id", schema = @Schema(type = "string")) @PathParam("id")
           UUID id,
       @Parameter(
               description = "LLM service version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    LLMService llmService = super.getVersionInternal(securityContext, id, version);
-    return decryptOrNullify(securityContext, llmService);
+    LLMService llmService = service.getVersionInternal(securityContext, id, version);
+    return service.decryptOrNullify(securityContext, llmService);
   }
 
   @POST
@@ -344,8 +328,8 @@ public class LLMServiceResource
       @Valid CreateLLMService create) {
     LLMService llmService =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, llmService);
-    decryptOrNullify(securityContext, (LLMService) response.getEntity());
+    Response response = service.create(uriInfo, securityContext, llmService);
+    service.decryptOrNullify(securityContext, (LLMService) response.getEntity());
     return response;
   }
 
@@ -370,9 +354,155 @@ public class LLMServiceResource
       @Valid CreateLLMService update) {
     LLMService llmService =
         service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(llmService));
-    decryptOrNullify(securityContext, (LLMService) response.getEntity());
+    Response response =
+        service.createOrUpdate(uriInfo, securityContext, service.unmask(llmService));
+    service.decryptOrNullify(securityContext, (LLMService) response.getEntity());
     return response;
+  }
+
+  @PATCH
+  @Path("/{id}")
+  @Operation(
+      operationId = "patchLLMService",
+      summary = "Update an LLM service",
+      description = "Update an existing LLM service using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") UUID id,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return service.patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchLLMService",
+      summary = "Update an LLM service using name.",
+      description = "Update an existing LLM service using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("fqn") String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
+  }
+
+  @DELETE
+  @Path("/{id}")
+  @Operation(
+      operationId = "deleteLLMService",
+      summary = "Delete an LLM service",
+      description = "Delete an LLM services.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "LLM service for instance {id} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the LLM service", schema = @Schema(type = "string"))
+          @PathParam("id")
+          UUID id) {
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteLLMServiceAsync",
+      summary = "Asynchronously delete an LLM service",
+      description = "Asynchronously delete an LLM services.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "LLM service for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the LLM service", schema = @Schema(type = "string"))
+          @PathParam("id")
+          UUID id) {
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "deleteLLMServiceByFQN",
+      summary = "Delete an LLMService by fully qualified name",
+      description = "Delete an LLMService by `fullyQualifiedName`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "LLMService for instance {fqn} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the LLMService", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
+    return service.deleteByName(
+        uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), recursive, hardDelete);
   }
 
   @PUT
@@ -380,7 +510,7 @@ public class LLMServiceResource
   @Operation(
       operationId = "addFollowerToLLMService",
       summary = "Add a follower",
-      description = "Add a user identified by `userId` as follower of this LLM service",
+      description = "Add a user identified by `userId` as followed of this LLM service",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -403,7 +533,7 @@ public class LLMServiceResource
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
+    return service
         .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
         .toResponse();
   }
@@ -433,172 +563,21 @@ public class LLMServiceResource
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
+    return service
         .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
         .toResponse();
-  }
-
-  @PATCH
-  @Path("/{id}")
-  @Operation(
-      operationId = "patchLLMService",
-      summary = "Update an LLM service",
-      description = "Update an existing LLM service using JsonPatch.",
-      externalDocs =
-          @ExternalDocumentation(
-              description = "JsonPatch RFC",
-              url = "https://tools.ietf.org/html/rfc6902"))
-  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response patch(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the LLM service", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id,
-      @RequestBody(
-              description = "JsonPatch with array of operations",
-              content =
-                  @Content(
-                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
-                      }))
-          JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
-  }
-
-  @PATCH
-  @Path("/name/{fqn}")
-  @Operation(
-      operationId = "patchLLMService",
-      summary = "Update an LLM service using name.",
-      description = "Update an existing LLM service using JsonPatch.",
-      externalDocs =
-          @ExternalDocumentation(
-              description = "JsonPatch RFC",
-              url = "https://tools.ietf.org/html/rfc6902"))
-  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response patch(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the LLM service", schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn,
-      @RequestBody(
-              description = "JsonPatch with array of operations",
-              content =
-                  @Content(
-                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
-                      }))
-          JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
-  }
-
-  @DELETE
-  @Path("/{id}")
-  @Operation(
-      operationId = "deleteLLMService",
-      summary = "Delete an LLM service by Id",
-      description =
-          "Delete an LLM service. If LLM models belong to the service, it can't be deleted.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(
-            responseCode = "404",
-            description = "LLMService for instance {id} is not found")
-      })
-  public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Recursively delete this entity and it's children. (Default `false`)")
-          @DefaultValue("false")
-          @QueryParam("recursive")
-          boolean recursive,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Id of the LLM service", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
-  }
-
-  @DELETE
-  @Path("/async/{id}")
-  @Operation(
-      operationId = "deleteLLMServiceAsync",
-      summary = "Asynchronously delete an LLM service by Id",
-      description =
-          "Asynchronously delete an LLM service. If LLM models belong to the service, it can't be deleted.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(
-            responseCode = "404",
-            description = "LLM Service for instance {id} is not found")
-      })
-  public Response deleteByIdAsync(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Recursively delete this entity and it's children. (Default `false`)")
-          @DefaultValue("false")
-          @QueryParam("recursive")
-          boolean recursive,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Id of the LLM service", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
-  }
-
-  @DELETE
-  @Path("/name/{name}")
-  @Operation(
-      operationId = "deleteLLMServiceByName",
-      summary = "Delete an LLM service by name",
-      description =
-          "Delete an LLM service by `name`. If LLM models belong to the service, it can't be deleted.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(
-            responseCode = "404",
-            description = "LLMService for instance {name} is not found")
-      })
-  public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(
-              description = "Recursively delete this entity and it's children. (Default `false`)")
-          @QueryParam("recursive")
-          @DefaultValue("false")
-          boolean recursive,
-      @Parameter(description = "Name of the LLM service", schema = @Schema(type = "string"))
-          @PathParam("name")
-          String name) {
-    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
   }
 
   @PUT
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted LLM service",
-      description = "Restore a soft deleted LLM service.",
+      summary = "Restore a soft deleted LLM Service.",
+      description = "Restore a soft deleted LLM Service.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Successfully restored the LLMService.",
+            description = "Successfully restored the LLM Service.",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -608,16 +587,6 @@ public class LLMServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  @Override
-  protected LLMService nullifyConnection(LLMService service) {
-    return service.withConnection(null);
-  }
-
-  @Override
-  protected String extractServiceType(LLMService service) {
-    return service.getServiceType().value();
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

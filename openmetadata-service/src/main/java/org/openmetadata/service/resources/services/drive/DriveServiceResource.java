@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.services.drive;
 
+import static org.openmetadata.service.services.serviceentities.DriveServiceEntityService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -42,7 +44,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -50,24 +51,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateDriveService;
 import org.openmetadata.schema.entity.services.DriveService;
-import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.DriveConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.DriveServiceRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.services.ServiceEntityResource;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.serviceentities.DriveServiceEntityService;
 
 @Slf4j
@@ -80,33 +71,13 @@ import org.openmetadata.service.services.serviceentities.DriveServiceEntityServi
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "driveServices")
-public class DriveServiceResource
-    extends ServiceEntityResource<DriveService, DriveServiceRepository, DriveConnection> {
+public class DriveServiceResource {
   public static final String COLLECTION_PATH = "v1/services/driveServices/";
-  public static final String FIELDS = "pipelines,owners,tags,domains,followers";
+
   private final DriveServiceEntityService service;
 
-  @Override
-  public DriveService addHref(UriInfo uriInfo, DriveService driveService) {
-    super.addHref(uriInfo, driveService);
-    Entity.withHref(uriInfo, driveService.getPipelines());
-    return driveService;
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
-  }
-
-  public DriveServiceResource(
-      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.DRIVE_SERVICE, authorizer, limits, ServiceType.DRIVE);
-    this.service = serviceRegistry.getService(DriveServiceEntityService.class);
-  }
-
-  public static class DriveServiceList extends ResultList<DriveService> {
-    /* Required for serde */
+  public DriveServiceResource(DriveServiceEntityService service) {
+    this.service = service;
   }
 
   @GET
@@ -121,7 +92,8 @@ public class DriveServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DriveServiceList.class)))
+                    schema =
+                        @Schema(implementation = DriveServiceEntityService.DriveServiceList.class)))
       })
   public ResultList<DriveService> list(
       @Context UriInfo uriInfo,
@@ -157,7 +129,7 @@ public class DriveServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
@@ -196,16 +168,17 @@ public class DriveServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    DriveService driveService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    return decryptOrNullify(securityContext, driveService);
+    DriveService driveService =
+        service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.decryptOrNullify(securityContext, driveService);
   }
 
   @GET
-  @Path("/name/{fqn}")
+  @Path("/name/{name}")
   @Operation(
       operationId = "getDriveServiceByFQN",
-      summary = "Get a drive service by name",
-      description = "Get a drive service by fully qualified name.",
+      summary = "Get drive service by name",
+      description = "Get a drive service by the service `name`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -216,16 +189,12 @@ public class DriveServiceResource
                     schema = @Schema(implementation = DriveService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Drive service for instance {fqn} is not found")
+            description = "Drive service for instance {id} is not found")
       })
   public DriveService getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fully qualified name of the drive service",
-              schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn,
+      @PathParam("name") String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -238,183 +207,9 @@ public class DriveServiceResource
           @DefaultValue("non-deleted")
           Include include) {
     DriveService driveService =
-        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
-    return decryptOrNullify(securityContext, driveService);
-  }
-
-  @POST
-  @Operation(
-      operationId = "createDriveService",
-      summary = "Create a drive service",
-      description = "Create a new drive service.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Drive service created",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = DriveService.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
-  public Response create(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Valid CreateDriveService create) {
-    DriveService driveService =
-        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, driveService);
-    decryptOrNullify(securityContext, (DriveService) response.getEntity());
-    return response;
-  }
-
-  @PUT
-  @Operation(
-      operationId = "createOrUpdateDriveService",
-      summary = "Update drive service",
-      description = "Create a new drive service or update an existing one.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Drive service created or updated",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = DriveService.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
-  public Response createOrUpdate(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Valid CreateDriveService create) {
-    DriveService driveService =
-        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, driveService);
-    decryptOrNullify(securityContext, (DriveService) response.getEntity());
-    return response;
-  }
-
-  @PATCH
-  @Path("/{id}")
-  @Operation(
-      operationId = "patchDriveService",
-      summary = "Update a drive service",
-      description = "Update an existing drive service using JsonPatch.",
-      externalDocs =
-          @ExternalDocumentation(
-              description = "JsonPatch RFC",
-              url = "https://tools.ietf.org/html/rfc6902"))
-  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response patch(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the drive service", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id,
-      @RequestBody(
-              description = "JsonPatch with array of operations",
-              content =
-                  @Content(
-                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
-                      }))
-          JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
-  }
-
-  @PUT
-  @Path("/restore")
-  @Operation(
-      operationId = "restore",
-      summary = "Restore a soft deleted drive service",
-      description = "Restore a soft deleted drive service.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully restored the drive service.",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = DriveService.class)))
-      })
-  public Response restoreDriveService(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  @GET
-  @Path("/{id}/versions")
-  @Operation(
-      operationId = "listAllDriveServiceVersion",
-      summary = "List drive service versions",
-      description = "Get a list of all the versions of a drive service identified by `Id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of drive service versions",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = EntityHistory.class)))
-      })
-  public EntityHistory listVersions(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the drive service", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id) {
-    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
-    List<Object> versions =
-        entityHistory.getVersions().stream()
-            .map(
-                json -> {
-                  try {
-                    DriveService driveService =
-                        JsonUtils.readValue((String) json, DriveService.class);
-                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, driveService));
-                  } catch (Exception e) {
-                    return json;
-                  }
-                })
-            .collect(Collectors.toList());
-    entityHistory.setVersions(versions);
-    return entityHistory;
-  }
-
-  @GET
-  @Path("/{id}/versions/{version}")
-  @Operation(
-      operationId = "getSpecificDriveServiceVersion",
-      summary = "Get a version of the drive service",
-      description = "Get a version of the drive service by given `Id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Drive service",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = DriveService.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Drive service for instance {id} and version {version} is not found")
-      })
-  public DriveService getVersion(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the drive service", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id,
-      @Parameter(
-              description = "Drive service version number in the form `major`.`minor`",
-              schema = @Schema(type = "string", example = "0.1 or 1.1"))
-          @PathParam("version")
-          String version) {
-    DriveService driveService = super.getVersionInternal(securityContext, id, version);
-    return decryptOrNullify(securityContext, driveService);
+        service.getByNameInternal(
+            uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
+    return service.decryptOrNullify(securityContext, driveService);
   }
 
   @PUT
@@ -439,148 +234,198 @@ public class DriveServiceResource
           @PathParam("id")
           UUID id,
       @Valid TestConnectionResult testConnectionResult) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    DriveService service = repository.addTestConnectionResult(id, testConnectionResult);
-    return decryptOrNullify(securityContext, service);
-  }
-
-  @PUT
-  @Path("/{id}/followers")
-  @Operation(
-      operationId = "addFollowerToDriveService",
-      summary = "Add a follower",
-      description = "Add a user identified by `userId` as follower of this drive service",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ChangeEvent.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Drive service for instance {id} is not found")
-      })
-  public Response addFollower(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the drive service", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id,
-      @Parameter(
-              description = "Id of the user to be added as follower",
-              schema = @Schema(type = "UUID"))
-          UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
-  }
-
-  @DELETE
-  @Path("/{id}/followers/{userId}")
-  @Operation(
-      operationId = "deleteFollowerFromDriveService",
-      summary = "Remove a follower",
-      description = "Remove the user identified `userId` as a follower of the drive service.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ChangeEvent.class)))
-      })
-  public Response deleteFollower(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the drive service", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id,
-      @Parameter(
-              description = "Id of the user being removed as follower",
-              schema = @Schema(type = "UUID"))
-          @PathParam("userId")
-          UUID userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
-  }
-
-  @PUT
-  @Path("/name/{name}/import")
-  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
-  @Operation(
-      operationId = "importDriveService",
-      summary = "Import service from CSV to update drive service (no creation allowed)",
-      description = "Import a CSV file generated by the export service endpoint.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "CSV import result",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CsvImportResult.class)))
-      })
-  public CsvImportResult importCsv(
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the Drive Service", schema = @Schema(type = "string"))
-          @PathParam("name")
-          String name,
-      @Parameter(
-              description =
-                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
-              schema = @Schema(type = "boolean"))
-          @DefaultValue("true")
-          @QueryParam("dryRun")
-          boolean dryRun,
-      @Parameter(description = "If true, recursive import", schema = @Schema(type = "boolean"))
-          @DefaultValue("false")
-          @QueryParam("recursive")
-          boolean recursive,
-      String csv)
-      throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, recursive);
+    DriveService driveService =
+        service.addTestConnectionResult(securityContext, id, testConnectionResult);
+    return service.decryptOrNullify(securityContext, driveService);
   }
 
   @GET
-  @Path("/name/{name}/export")
+  @Path("/{id}/versions")
   @Operation(
-      operationId = "exportDriveService",
-      summary = "Export drive service in CSV format",
-      description = "Export drive service to CSV file.",
+      operationId = "listAllDriveServiceVersion",
+      summary = "List drive service versions",
+      description = "Get a list of all the versions of a drive service identified by `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Exported csv with drive service",
-            content = @Content(mediaType = "application/json"))
+            description = "List of drive service versions",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
-  public String exportCsv(
+  public EntityHistory listVersions(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the Drive Service", schema = @Schema(type = "string"))
-          @PathParam("name")
-          String name,
+      @Parameter(description = "Drive service Id", schema = @Schema(type = "string"))
+          @PathParam("id")
+          UUID id) {
+    EntityHistory entityHistory = service.listVersionsInternal(securityContext, id);
+
+    List<Object> versions =
+        entityHistory.getVersions().stream()
+            .map(
+                json -> {
+                  try {
+                    DriveService driveService =
+                        JsonUtils.readValue((String) json, DriveService.class);
+                    return JsonUtils.pojoToJson(
+                        service.decryptOrNullify(securityContext, driveService));
+                  } catch (Exception e) {
+                    return json;
+                  }
+                })
+            .collect(Collectors.toList());
+    entityHistory.setVersions(versions);
+    return entityHistory;
+  }
+
+  @GET
+  @Path("/{id}/versions/{version}")
+  @Operation(
+      operationId = "getSpecificDriveServiceVersion",
+      summary = "Get a version of the drive service",
+      description = "Get a version of the drive service by given `id`",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Drive service",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DriveService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Drive service for instance {id} and version {version} is not found")
+      })
+  public DriveService getVersion(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Drive service Id", schema = @Schema(type = "string"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
-              description =
-                  "If true, export will include child entities (directories, files, spreadsheets, worksheets)",
-              schema = @Schema(type = "boolean"))
-          @DefaultValue("false")
-          @QueryParam("recursive")
-          boolean recursive)
-      throws IOException {
-    return exportCsvInternal(securityContext, name, recursive);
+              description = "Drive service version number in the form `major`.`minor`",
+              schema = @Schema(type = "string", example = "0.1 or 1.1"))
+          @PathParam("version")
+          String version) {
+    DriveService driveService = service.getVersionInternal(securityContext, id, version);
+    return service.decryptOrNullify(securityContext, driveService);
+  }
+
+  @POST
+  @Operation(
+      operationId = "createDriveService",
+      summary = "Create drive service",
+      description = "Create a new drive service.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Drive service instance",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DriveService.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response create(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDriveService create) {
+    DriveService driveService =
+        service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
+    Response response = service.create(uriInfo, securityContext, driveService);
+    service.decryptOrNullify(securityContext, (DriveService) response.getEntity());
+    return response;
+  }
+
+  @PUT
+  @Operation(
+      operationId = "createOrUpdateDriveService",
+      summary = "Update drive service",
+      description = "Update an existing or create a new drive service.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Drive service instance",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DriveService.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDriveService update) {
+    DriveService driveService =
+        service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
+    Response response =
+        service.createOrUpdate(uriInfo, securityContext, service.unmask(driveService));
+    service.decryptOrNullify(securityContext, (DriveService) response.getEntity());
+    return response;
+  }
+
+  @PATCH
+  @Path("/{id}")
+  @Operation(
+      operationId = "patchDriveService",
+      summary = "Update a drive service",
+      description = "Update an existing drive service using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") UUID id,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return service.patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchDriveService",
+      summary = "Update a drive service using name.",
+      description = "Update an existing drive service using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("fqn") String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
       operationId = "deleteDriveService",
-      summary = "Delete a drive service by Id",
-      description =
-          "Delete a drive service. If entities (directories, files) belong to the service, it can't be deleted.",
+      summary = "Delete a drive service",
+      description = "Delete a drive services.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(
@@ -599,19 +444,18 @@ public class DriveServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the drive service", schema = @Schema(type = "UUID"))
+      @Parameter(description = "Id of the drive service", schema = @Schema(type = "string"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
   @Path("/async/{id}")
   @Operation(
       operationId = "deleteDriveServiceAsync",
-      summary = "Asynchronously delete a drive service by Id",
-      description =
-          "Asynchronously delete a drive service. If entities (directories, files) belong to the service, it can't be deleted.",
+      summary = "Asynchronously delete a drive service",
+      description = "Asynchronously delete a drive services.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(
@@ -630,24 +474,23 @@ public class DriveServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the drive service", schema = @Schema(type = "UUID"))
+      @Parameter(description = "Id of the drive service", schema = @Schema(type = "string"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
-  @Path("/name/{name}")
+  @Path("/name/{fqn}")
   @Operation(
-      operationId = "deleteDriveServiceByName",
-      summary = "Delete a drive service by name",
-      description =
-          "Delete a drive service by `name`. If entities (directories, files) belong to the service, it can't be deleted.",
+      operationId = "deleteDriveServiceByFQN",
+      summary = "Delete a DriveService by fully qualified name",
+      description = "Delete a DriveService by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(
             responseCode = "404",
-            description = "Drive service for instance {name} is not found")
+            description = "DriveService for instance {fqn} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -661,19 +504,95 @@ public class DriveServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the drive service", schema = @Schema(type = "string"))
-          @PathParam("name")
-          String name) {
-    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
+      @Parameter(description = "Name of the DriveService", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
+    return service.deleteByName(
+        uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), recursive, hardDelete);
   }
 
-  @Override
-  protected DriveService nullifyConnection(DriveService service) {
-    return service.withConnection(null);
+  @PUT
+  @Path("/{id}/followers")
+  @Operation(
+      operationId = "addFollowerToDriveService",
+      summary = "Add a follower",
+      description = "Add a user identified by `userId` as followed of this drive service",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Drive Service for instance {id} is not found")
+      })
+  public Response addFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Drive Service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "string"))
+          UUID userId) {
+    return service
+        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
   }
 
-  @Override
-  protected String extractServiceType(DriveService service) {
-    return service.getServiceType().value();
+  @DELETE
+  @Path("/{id}/followers/{userId}")
+  @Operation(
+      operationId = "deleteFollower",
+      summary = "Remove a follower",
+      description = "Remove the user identified `userId` as a follower of the entity.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class)))
+      })
+  public Response deleteFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "string"))
+          @PathParam("userId")
+          String userId) {
+    return service
+        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
+        .toResponse();
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted Drive Service.",
+      description = "Restore a soft deleted Drive Service.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Drive Service.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DriveService.class)))
+      })
+  public Response restoreDriveService(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

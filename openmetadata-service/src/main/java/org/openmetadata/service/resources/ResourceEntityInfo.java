@@ -9,9 +9,9 @@ import org.openmetadata.schema.EntityInterface;
 
 @Getter
 public class ResourceEntityInfo<T extends EntityInterface> {
-  private final Class<T> entityClass;
-  private final String entityType;
-  private final Set<String> allowedFields;
+  protected final Class<T> entityClass;
+  protected final String entityType;
+  protected final Set<String> allowedFields;
 
   public ResourceEntityInfo(String entityType, Class<T> entityClass) {
     this.entityType = entityType;

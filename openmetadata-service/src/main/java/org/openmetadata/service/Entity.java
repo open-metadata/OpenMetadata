@@ -436,26 +436,9 @@ public final class Entity {
               repository.getClass(), SearchRepository.class, Authorizer.class)
           .newInstance(repository, searchRepository, authorizer);
     } catch (NoSuchMethodException e) {
-      return tryInstantiateServiceWithMapper(clz, repository, authorizer);
+      LOG.error("Failed to Initialize Services");
+      throw new BadRequestException("Failed to Initialize Services");
     }
-  }
-
-  private static Object tryInstantiateServiceWithMapper(
-      Class<?> clz, EntityRepository<?> repository, Authorizer authorizer) throws Exception {
-    java.lang.reflect.Constructor<?>[] constructors = clz.getDeclaredConstructors();
-    for (java.lang.reflect.Constructor<?> constructor : constructors) {
-      Class<?>[] paramTypes = constructor.getParameterTypes();
-      if (paramTypes.length == 4
-          && paramTypes[0].isAssignableFrom(repository.getClass())
-          && paramTypes[1] == Authorizer.class
-          && org.openmetadata.service.mapper.EntityMapper.class.isAssignableFrom(paramTypes[2])
-          && paramTypes[3] == org.openmetadata.service.limits.Limits.class) {
-        Object mapper = paramTypes[2].getDeclaredConstructor().newInstance();
-        return constructor.newInstance(
-            repository, authorizer, mapper, org.openmetadata.service.limits.DefaultLimits.NOOP);
-      }
-    }
-    throw new NoSuchMethodException("No suitable constructor found for " + clz.getSimpleName());
   }
 
   private static List<Class<?>> getServiceClasses() {

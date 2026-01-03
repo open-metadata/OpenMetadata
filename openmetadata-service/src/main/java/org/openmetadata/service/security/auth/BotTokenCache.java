@@ -1,6 +1,7 @@
 package org.openmetadata.service.security.auth;
 
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.services.teams.UserService.USER_PROTECTED_FIELDS;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -17,7 +18,6 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -60,11 +60,7 @@ public class BotTokenCache {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       User user =
           userRepository.getByName(
-              null,
-              botName,
-              new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)),
-              NON_DELETED,
-              true);
+              null, botName, new Fields(Set.of(USER_PROTECTED_FIELDS)), NON_DELETED, true);
       AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
       SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
       secretsManager.decryptAuthenticationMechanism(user.getName(), authenticationMechanism);

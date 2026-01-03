@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.services.apiservices;
 
+import static org.openmetadata.service.services.serviceentities.APIServiceEntityService.FIELDS;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -49,24 +51,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateApiService;
 import org.openmetadata.schema.entity.services.ApiService;
-import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
-import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.APIServiceRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.services.ServiceEntityResource;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.serviceentities.APIServiceEntityService;
 
 @Slf4j
@@ -77,32 +69,13 @@ import org.openmetadata.service.services.serviceentities.APIServiceEntityService
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "apiServices")
-public class APIServiceResource
-    extends ServiceEntityResource<ApiService, APIServiceRepository, ApiConnection> {
+public class APIServiceResource {
   public static final String COLLECTION_PATH = "v1/services/apiServices/";
-  public static final String FIELDS = "pipelines,owners,tags,domains,followers";
+
   private final APIServiceEntityService service;
 
-  @Override
-  public ApiService addHref(UriInfo uriInfo, ApiService apiService) {
-    super.addHref(uriInfo, apiService);
-    Entity.withHref(uriInfo, apiService.getPipelines());
-    return apiService;
-  }
-
-  public APIServiceResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.API_SERVICE, authorizer, limits, ServiceType.API);
-    this.service = serviceRegistry.getService(APIServiceEntityService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
-  }
-
-  public static class APIServiceList extends ResultList<ApiService> {
-    /* Required for serde */
+  public APIServiceResource(APIServiceEntityService service) {
+    this.service = service;
   }
 
   @GET
@@ -118,10 +91,7 @@ public class APIServiceResource
                 @Content(
                     mediaType = "application/json",
                     schema =
-                        @Schema(
-                            implementation =
-                                org.openmetadata.service.resources.services.apiservices
-                                    .APIServiceResource.APIServiceList.class)))
+                        @Schema(implementation = APIServiceEntityService.APIServiceList.class)))
       })
   public ResultList<ApiService> list(
       @Context UriInfo uriInfo,
@@ -157,7 +127,7 @@ public class APIServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
@@ -194,8 +164,8 @@ public class APIServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ApiService apiService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    return decryptOrNullify(securityContext, apiService);
+    ApiService apiService = service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.decryptOrNullify(securityContext, apiService);
   }
 
   @GET
@@ -232,9 +202,9 @@ public class APIServiceResource
           @DefaultValue("non-deleted")
           Include include) {
     ApiService apiService =
-        getByNameInternal(
+        service.getByNameInternal(
             uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
-    return decryptOrNullify(securityContext, apiService);
+    return service.decryptOrNullify(securityContext, apiService);
   }
 
   @PUT
@@ -259,10 +229,9 @@ public class APIServiceResource
           @PathParam("id")
           UUID id,
       @Valid TestConnectionResult testConnectionResult) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    ApiService service = repository.addTestConnectionResult(id, testConnectionResult);
-    return decryptOrNullify(securityContext, service);
+    ApiService apiService =
+        service.addTestConnectionResult(securityContext, id, testConnectionResult);
+    return service.decryptOrNullify(securityContext, apiService);
   }
 
   @GET
@@ -285,7 +254,7 @@ public class APIServiceResource
       @Context SecurityContext securityContext,
       @Parameter(description = "API service Id", schema = @Schema(type = "string")) @PathParam("id")
           UUID id) {
-    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
+    EntityHistory entityHistory = service.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
         entityHistory.getVersions().stream()
@@ -293,7 +262,8 @@ public class APIServiceResource
                 json -> {
                   try {
                     ApiService apiService = JsonUtils.readValue((String) json, ApiService.class);
-                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, apiService));
+                    return JsonUtils.pojoToJson(
+                        service.decryptOrNullify(securityContext, apiService));
                   } catch (Exception e) {
                     return json;
                   }
@@ -331,8 +301,8 @@ public class APIServiceResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    ApiService apiService = super.getVersionInternal(securityContext, id, version);
-    return decryptOrNullify(securityContext, apiService);
+    ApiService apiService = service.getVersionInternal(securityContext, id, version);
+    return service.decryptOrNullify(securityContext, apiService);
   }
 
   @POST
@@ -356,8 +326,8 @@ public class APIServiceResource
       @Valid CreateApiService create) {
     ApiService apiService =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, apiService);
-    decryptOrNullify(securityContext, (ApiService) response.getEntity());
+    Response response = service.create(uriInfo, securityContext, apiService);
+    service.decryptOrNullify(securityContext, (ApiService) response.getEntity());
     return response;
   }
 
@@ -382,8 +352,9 @@ public class APIServiceResource
       @Valid CreateApiService update) {
     ApiService apiService =
         service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(apiService));
-    decryptOrNullify(securityContext, (ApiService) response.getEntity());
+    Response response =
+        service.createOrUpdate(uriInfo, securityContext, service.unmask(apiService));
+    service.decryptOrNullify(securityContext, (ApiService) response.getEntity());
     return response;
   }
 
@@ -411,7 +382,7 @@ public class APIServiceResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -438,7 +409,7 @@ public class APIServiceResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
@@ -468,7 +439,7 @@ public class APIServiceResource
       @Parameter(description = "Id of the API service", schema = @Schema(type = "string"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -498,7 +469,7 @@ public class APIServiceResource
       @Parameter(description = "Id of the API service", schema = @Schema(type = "string"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -528,7 +499,7 @@ public class APIServiceResource
       @Parameter(description = "Name of the APIService", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(
+    return service.deleteByName(
         uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), recursive, hardDelete);
   }
 
@@ -560,7 +531,7 @@ public class APIServiceResource
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
+    return service
         .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
         .toResponse();
   }
@@ -590,7 +561,7 @@ public class APIServiceResource
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
+    return service
         .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
         .toResponse();
   }
@@ -614,16 +585,6 @@ public class APIServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  @Override
-  protected ApiService nullifyConnection(ApiService service) {
-    return service.withConnection(null);
-  }
-
-  @Override
-  protected String extractServiceType(ApiService service) {
-    return service.getServiceType().value();
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

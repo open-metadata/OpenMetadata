@@ -1,4 +1,19 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.resources.services.security;
+
+import static org.openmetadata.service.services.serviceentities.SecurityServiceEntityService.FIELDS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,7 +44,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -37,26 +51,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateSecurityService;
 import org.openmetadata.schema.entity.services.SecurityService;
-import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.SecurityConnection;
-import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.SecurityServiceRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.services.ServiceEntityResource;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.serviceentities.SecurityServiceEntityService;
-import org.openmetadata.service.util.CSVExportResponse;
 
 @Slf4j
 @Path("/v1/services/securityServices")
@@ -66,42 +69,13 @@ import org.openmetadata.service.util.CSVExportResponse;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "securityServices")
-public class SecurityServiceResource
-    extends ServiceEntityResource<SecurityService, SecurityServiceRepository, SecurityConnection> {
+public class SecurityServiceResource {
   public static final String COLLECTION_PATH = "v1/services/securityServices/";
-  public static final String FIELDS = "owners,tags,domains,followers";
+
   private final SecurityServiceEntityService service;
 
-  @Override
-  public SecurityService addHref(UriInfo uriInfo, SecurityService securityService) {
-    super.addHref(uriInfo, securityService);
-    Entity.withHref(uriInfo, securityService.getOwners());
-    return securityService;
-  }
-
-  public SecurityServiceResource(
-      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.SECURITY_SERVICE, authorizer, limits, ServiceType.SECURITY);
-    this.service = serviceRegistry.getService(SecurityServiceEntityService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    return null;
-  }
-
-  @Override
-  protected SecurityService nullifyConnection(SecurityService service) {
-    return service.withConnection(null);
-  }
-
-  @Override
-  protected String extractServiceType(SecurityService service) {
-    return service.getServiceType().value();
-  }
-
-  public static class SecurityServiceList extends ResultList<SecurityService> {
-    /* Required for serde */
+  public SecurityServiceResource(SecurityServiceEntityService service) {
+    this.service = service;
   }
 
   @GET
@@ -116,8 +90,10 @@ public class SecurityServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = SecurityServiceList.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
+                    schema =
+                        @Schema(
+                            implementation =
+                                SecurityServiceEntityService.SecurityServiceList.class)))
       })
   public ResultList<SecurityService> list(
       @Context UriInfo uriInfo,
@@ -153,7 +129,7 @@ public class SecurityServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
@@ -178,9 +154,7 @@ public class SecurityServiceResource
   public SecurityService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the security service", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id,
+      @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -193,8 +167,8 @@ public class SecurityServiceResource
           @DefaultValue("non-deleted")
           Include include) {
     SecurityService securityService =
-        getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    return decryptOrNullify(securityContext, securityService);
+        service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.decryptOrNullify(securityContext, securityService);
   }
 
   @GET
@@ -218,9 +192,7 @@ public class SecurityServiceResource
   public SecurityService getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the security service", schema = @Schema(type = "string"))
-          @PathParam("name")
-          String name,
+      @PathParam("name") String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -233,8 +205,9 @@ public class SecurityServiceResource
           @DefaultValue("non-deleted")
           Include include) {
     SecurityService securityService =
-        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
-    return decryptOrNullify(securityContext, securityService);
+        service.getByNameInternal(
+            uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
+    return service.decryptOrNullify(securityContext, securityService);
   }
 
   @PUT
@@ -259,10 +232,9 @@ public class SecurityServiceResource
           @PathParam("id")
           UUID id,
       @Valid TestConnectionResult testConnectionResult) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    SecurityService service = repository.addTestConnectionResult(id, testConnectionResult);
-    return decryptOrNullify(securityContext, service);
+    SecurityService securityService =
+        service.addTestConnectionResult(securityContext, id, testConnectionResult);
+    return service.decryptOrNullify(securityContext, securityService);
   }
 
   @GET
@@ -270,7 +242,7 @@ public class SecurityServiceResource
   @Operation(
       operationId = "listAllSecurityServiceVersion",
       summary = "List security service versions",
-      description = "Get a list of all the versions of a security service identified by `Id`",
+      description = "Get a list of all the versions of a security service identified by `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -283,10 +255,10 @@ public class SecurityServiceResource
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the security service", schema = @Schema(type = "UUID"))
+      @Parameter(description = "Security service Id", schema = @Schema(type = "string"))
           @PathParam("id")
           UUID id) {
-    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
+    EntityHistory entityHistory = service.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
         entityHistory.getVersions().stream()
@@ -295,7 +267,8 @@ public class SecurityServiceResource
                   try {
                     SecurityService securityService =
                         JsonUtils.readValue((String) json, SecurityService.class);
-                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, securityService));
+                    return JsonUtils.pojoToJson(
+                        service.decryptOrNullify(securityContext, securityService));
                   } catch (Exception e) {
                     return json;
                   }
@@ -310,11 +283,11 @@ public class SecurityServiceResource
   @Operation(
       operationId = "getSpecificSecurityServiceVersion",
       summary = "Get a version of the security service",
-      description = "Get a version of the security service by given `Id`",
+      description = "Get a version of the security service by given `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "security service",
+            description = "Security service",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -326,16 +299,16 @@ public class SecurityServiceResource
   public SecurityService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the security service", schema = @Schema(type = "UUID"))
+      @Parameter(description = "Security service Id", schema = @Schema(type = "string"))
           @PathParam("id")
           UUID id,
       @Parameter(
-              description = "security service version number in the form `major`.`minor`",
+              description = "Security service version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    SecurityService securityService = super.getVersionInternal(securityContext, id, version);
-    return decryptOrNullify(securityContext, securityService);
+    SecurityService securityService = service.getVersionInternal(securityContext, id, version);
+    return service.decryptOrNullify(securityContext, securityService);
   }
 
   @POST
@@ -357,10 +330,10 @@ public class SecurityServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateSecurityService create) {
-    SecurityService securityServiceEntity =
+    SecurityService securityService =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, securityServiceEntity);
-    decryptOrNullify(securityContext, (SecurityService) response.getEntity());
+    Response response = service.create(uriInfo, securityContext, securityService);
+    service.decryptOrNullify(securityContext, (SecurityService) response.getEntity());
     return response;
   }
 
@@ -383,11 +356,157 @@ public class SecurityServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateSecurityService update) {
-    SecurityService securityServiceEntity =
+    SecurityService securityService =
         service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(securityServiceEntity));
-    decryptOrNullify(securityContext, (SecurityService) response.getEntity());
+    Response response =
+        service.createOrUpdate(uriInfo, securityContext, service.unmask(securityService));
+    service.decryptOrNullify(securityContext, (SecurityService) response.getEntity());
     return response;
+  }
+
+  @PATCH
+  @Path("/{id}")
+  @Operation(
+      operationId = "patchSecurityService",
+      summary = "Update a security service",
+      description = "Update an existing security service using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") UUID id,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return service.patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchSecurityService",
+      summary = "Update a security service using name.",
+      description = "Update an existing security service using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("fqn") String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
+  }
+
+  @DELETE
+  @Path("/{id}")
+  @Operation(
+      operationId = "deleteSecurityService",
+      summary = "Delete a security service",
+      description = "Delete a security services.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Security service for instance {id} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the security service", schema = @Schema(type = "string"))
+          @PathParam("id")
+          UUID id) {
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteSecurityServiceAsync",
+      summary = "Asynchronously delete a security service",
+      description = "Asynchronously delete a security services.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Security service for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the security service", schema = @Schema(type = "string"))
+          @PathParam("id")
+          UUID id) {
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "deleteSecurityServiceByFQN",
+      summary = "Delete a SecurityService by fully qualified name",
+      description = "Delete a SecurityService by `fullyQualifiedName`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "SecurityService for instance {fqn} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the SecurityService", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
+    return service.deleteByName(
+        uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), recursive, hardDelete);
   }
 
   @PUT
@@ -418,7 +537,7 @@ public class SecurityServiceResource
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
+    return service
         .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
         .toResponse();
   }
@@ -448,289 +567,21 @@ public class SecurityServiceResource
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
+    return service
         .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
         .toResponse();
-  }
-
-  @PATCH
-  @Path("/{id}")
-  @Operation(
-      operationId = "patchSecurityService",
-      summary = "Update a security service",
-      description = "Update an existing security service using JsonPatch.",
-      externalDocs =
-          @ExternalDocumentation(
-              description = "JsonPatch RFC",
-              url = "https://tools.ietf.org/html/rfc6902"))
-  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response patch(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the security service", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id,
-      @RequestBody(
-              description = "JsonPatch with array of operations",
-              content =
-                  @Content(
-                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
-                      }))
-          JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
-  }
-
-  @PATCH
-  @Path("/name/{fqn}")
-  @Operation(
-      operationId = "patchSecurityService",
-      summary = "Update a security service using name.",
-      description = "Update an existing security service using JsonPatch.",
-      externalDocs =
-          @ExternalDocumentation(
-              description = "JsonPatch RFC",
-              url = "https://tools.ietf.org/html/rfc6902"))
-  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response patch(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the security service", schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn,
-      @RequestBody(
-              description = "JsonPatch with array of operations",
-              content =
-                  @Content(
-                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
-                      }))
-          JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
-  }
-
-  @GET
-  @Path("/name/{name}/export")
-  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
-  @Valid
-  @Operation(
-      operationId = "exportSecurityServices",
-      summary = "Export security service in CSV format",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Exported csv with services from the security services",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = String.class)))
-      })
-  public String exportCsv(
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the Security Service", schema = @Schema(type = "string"))
-          @PathParam("name")
-          String name)
-      throws IOException {
-    return exportCsvInternal(securityContext, name, false);
-  }
-
-  @GET
-  @Path("/name/{name}/exportAsync")
-  @Produces(MediaType.APPLICATION_JSON)
-  @Valid
-  @Operation(
-      operationId = "exportSecurityService",
-      summary = "Export security service in CSV format",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Exported csv with security services",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CSVExportResponse.class)))
-      })
-  public Response exportCsvAsync(
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the Security Service", schema = @Schema(type = "string"))
-          @PathParam("name")
-          String name) {
-    return exportCsvInternalAsync(securityContext, name, false);
-  }
-
-  @PUT
-  @Path("/name/{name}/import")
-  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
-  @Valid
-  @Operation(
-      operationId = "importSecurityService",
-      summary = "Import service from CSV to update security service (no creation allowed)",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Import result",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CsvImportResult.class)))
-      })
-  public CsvImportResult importCsv(
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the Security Service", schema = @Schema(type = "string"))
-          @PathParam("name")
-          String name,
-      @Parameter(
-              description =
-                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
-              schema = @Schema(type = "boolean"))
-          @DefaultValue("true")
-          @QueryParam("dryRun")
-          boolean dryRun,
-      String csv)
-      throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, false);
-  }
-
-  @PUT
-  @Path("/name/{name}/importAsync")
-  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
-  @Produces(MediaType.APPLICATION_JSON)
-  @Valid
-  @Operation(
-      operationId = "importSecurityServiceAsync",
-      summary =
-          "Import service from CSV to update security service asynchronously (no creation allowed)",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Import initiated successfully",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CsvImportResult.class)))
-      })
-  public Response importCsvAsync(
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the Security Service", schema = @Schema(type = "string"))
-          @PathParam("name")
-          String name,
-      @Parameter(
-              description =
-                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
-              schema = @Schema(type = "boolean"))
-          @DefaultValue("true")
-          @QueryParam("dryRun")
-          boolean dryRun,
-      String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
-  }
-
-  @DELETE
-  @Path("/{id}")
-  @Operation(
-      operationId = "deleteSecurityService",
-      summary = "Delete a security service by Id",
-      description =
-          "Delete a security services. If assets belong the service, it can't be deleted.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(
-            responseCode = "404",
-            description = "SecurityService service for instance {id} is not found")
-      })
-  public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Recursively delete this entity and it's children. (Default `false`)")
-          @DefaultValue("false")
-          @QueryParam("recursive")
-          boolean recursive,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Id of the security service", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
-  }
-
-  @DELETE
-  @Path("/async/{id}")
-  @Operation(
-      operationId = "deleteSecurityServiceAsync",
-      summary = "Asynchronously delete a security service by Id",
-      description =
-          "Asynchronously delete a security services. If assets belong the service, it can't be deleted.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(
-            responseCode = "404",
-            description = "SecurityService service for instance {id} is not found")
-      })
-  public Response deleteByIdAsync(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Recursively delete this entity and it's children. (Default `false`)")
-          @DefaultValue("false")
-          @QueryParam("recursive")
-          boolean recursive,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Id of the security service", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
-  }
-
-  @DELETE
-  @Path("/name/{name}")
-  @Operation(
-      operationId = "deleteSecurityServiceByName",
-      summary = "Delete a security service by name",
-      description =
-          "Delete a security services by `name`. If assets belong the service, it can't be "
-              + "deleted.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(
-            responseCode = "404",
-            description = "SecurityService service for instance {name} is not found")
-      })
-  public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(
-              description = "Recursively delete this entity and it's children. (Default `false`)")
-          @QueryParam("recursive")
-          @DefaultValue("false")
-          boolean recursive,
-      @Parameter(description = "Name of the security service", schema = @Schema(type = "string"))
-          @PathParam("name")
-          String name) {
-    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
   }
 
   @PUT
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted security service",
-      description = "Restore a soft deleted security service.",
+      summary = "Restore a soft deleted Security Service.",
+      description = "Restore a soft deleted Security Service.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Successfully restored the SecurityService.",
+            description = "Successfully restored the Security Service.",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -740,6 +591,6 @@ public class SecurityServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

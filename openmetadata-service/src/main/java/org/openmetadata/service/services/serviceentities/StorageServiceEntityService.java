@@ -13,27 +13,36 @@
 
 package org.openmetadata.service.services.serviceentities;
 
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
+import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.StorageService;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.StorageConnection;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.StorageServiceRepository;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.resources.ResourceEntityInfo;
+import org.openmetadata.service.resources.ServiceEntityInfo;
+import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.resources.services.storage.StorageServiceMapper;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.services.Service;
 
 @Slf4j
 @Singleton
 @Service(entityType = Entity.STORAGE_SERVICE)
 public class StorageServiceEntityService
-    extends AbstractServiceEntityService<
-        StorageService, StorageServiceRepository, StorageConnection> {
+    extends ServiceEntityResource<StorageService, StorageServiceRepository, StorageConnection> {
+  public static final String FIELDS = "pipelines,owners,tags,domains,followers";
 
   @Getter private final StorageServiceMapper mapper = new StorageServiceMapper();
 
@@ -41,15 +50,45 @@ public class StorageServiceEntityService
   public StorageServiceEntityService(
       StorageServiceRepository repository, Authorizer authorizer, Limits limits) {
     super(
-        new ResourceEntityInfo<>(Entity.STORAGE_SERVICE, StorageService.class),
+        new ServiceEntityInfo<>(Entity.STORAGE_SERVICE, ServiceType.STORAGE, StorageService.class),
         repository,
         authorizer,
-        limits,
-        ServiceType.STORAGE);
+        limits);
+  }
+
+  @Override
+  public StorageService addHref(UriInfo uriInfo, StorageService storageService) {
+    super.addHref(uriInfo, storageService);
+    Entity.withHref(uriInfo, storageService.getOwners());
+    return storageService;
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
+  @Override
+  protected StorageService nullifyConnection(StorageService service) {
+    return service.withConnection(null);
   }
 
   @Override
   protected String extractServiceType(StorageService service) {
     return service.getServiceType().value();
+  }
+
+  public StorageService addTestConnectionResult(
+      SecurityContext securityContext, UUID serviceId, TestConnectionResult testConnectionResult) {
+    OperationContext operationContext =
+        new OperationContext(getEntityType(), MetadataOperation.CREATE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(serviceId));
+    StorageService service = repository.addTestConnectionResult(serviceId, testConnectionResult);
+    return decryptOrNullify(securityContext, service);
+  }
+
+  public static class StorageServiceList extends ResultList<StorageService> {
+    /* Required for serde */
   }
 }

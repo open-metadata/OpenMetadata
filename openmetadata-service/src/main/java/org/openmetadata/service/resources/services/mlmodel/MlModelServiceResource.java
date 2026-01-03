@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.services.mlmodel;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.services.serviceentities.MlModelServiceEntityService.FIELDS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -47,60 +47,33 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateMlModelService;
 import org.openmetadata.schema.entity.services.MlModelService;
-import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.MlModelConnection;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.MlModelServiceRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.services.ServiceEntityResource;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.serviceentities.MlModelServiceEntityService;
 
+@Slf4j
 @Path("/v1/services/mlmodelServices")
 @Tag(name = "ML Model Services")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "mlmodelServices")
-public class MlModelServiceResource
-    extends ServiceEntityResource<MlModelService, MlModelServiceRepository, MlModelConnection> {
+public class MlModelServiceResource {
   public static final String COLLECTION_PATH = "v1/services/mlmodelServices/";
-  public static final String FIELDS = "pipelines,owners,tags,domains,followers";
+
   private final MlModelServiceEntityService service;
 
-  @Override
-  public MlModelService addHref(UriInfo uriInfo, MlModelService mlModelService) {
-    super.addHref(uriInfo, mlModelService);
-    Entity.withHref(uriInfo, mlModelService.getPipelines());
-    return mlModelService;
-  }
-
-  public MlModelServiceResource(
-      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.MLMODEL_SERVICE, authorizer, limits, ServiceType.ML_MODEL);
-    this.service = serviceRegistry.getService(MlModelServiceEntityService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
-  }
-
-  public static class MlModelServiceList extends ResultList<MlModelService> {
-    /* Required for serde */
+  public MlModelServiceResource(MlModelServiceEntityService service) {
+    this.service = service;
   }
 
   @GET
@@ -117,7 +90,9 @@ public class MlModelServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = MlModelServiceList.class)))
+                    schema =
+                        @Schema(
+                            implementation = MlModelServiceEntityService.MlModelServiceList.class)))
       })
   public ResultList<MlModelService> list(
       @Context UriInfo uriInfo,
@@ -154,7 +129,7 @@ public class MlModelServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
@@ -193,8 +168,9 @@ public class MlModelServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    MlModelService mlModelService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    return decryptOrNullify(securityContext, mlModelService);
+    MlModelService mlModelService =
+        service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.decryptOrNullify(securityContext, mlModelService);
   }
 
   @GET
@@ -233,71 +209,9 @@ public class MlModelServiceResource
           @DefaultValue("non-deleted")
           Include include) {
     MlModelService mlModelService =
-        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
-    return decryptOrNullify(securityContext, mlModelService);
-  }
-
-  @PUT
-  @Path("/{id}/followers")
-  @Operation(
-      operationId = "addFollowerToMlModelService",
-      summary = "Add a follower",
-      description = "Add a user identified by `userId` as followed of this MlModel service",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ChangeEvent.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "MlModel Service for instance {id} is not found")
-      })
-  public Response addFollower(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the MlModel Service", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id,
-      @Parameter(
-              description = "Id of the user to be added as follower",
-              schema = @Schema(type = "string"))
-          UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
-  }
-
-  @DELETE
-  @Path("/{id}/followers/{userId}")
-  @Operation(
-      operationId = "deleteFollower",
-      summary = "Remove a follower",
-      description = "Remove the user identified `userId` as a follower of the entity.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ChangeEvent.class)))
-      })
-  public Response deleteFollower(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id,
-      @Parameter(
-              description = "Id of the user being removed as follower",
-              schema = @Schema(type = "string"))
-          @PathParam("userId")
-          String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+        service.getByNameInternal(
+            uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
+    return service.decryptOrNullify(securityContext, mlModelService);
   }
 
   @PUT
@@ -322,10 +236,7 @@ public class MlModelServiceResource
           @PathParam("id")
           UUID id,
       @Valid TestConnectionResult testConnectionResult) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    MlModelService service = repository.addTestConnectionResult(id, testConnectionResult);
-    return decryptOrNullify(securityContext, service);
+    return service.addTestConnectionResult(securityContext, id, testConnectionResult);
   }
 
   @GET
@@ -349,7 +260,7 @@ public class MlModelServiceResource
       @Parameter(description = "Id of the ML Model service", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
+    EntityHistory entityHistory = service.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
         entityHistory.getVersions().stream()
@@ -358,7 +269,8 @@ public class MlModelServiceResource
                   try {
                     MlModelService mlModelService =
                         JsonUtils.readValue((String) json, MlModelService.class);
-                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, mlModelService));
+                    return JsonUtils.pojoToJson(
+                        service.decryptOrNullify(securityContext, mlModelService));
                   } catch (Exception e) {
                     return json;
                   }
@@ -397,8 +309,8 @@ public class MlModelServiceResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    MlModelService mlModelService = super.getVersionInternal(securityContext, id, version);
-    return decryptOrNullify(securityContext, mlModelService);
+    MlModelService mlModelService = service.getVersionInternal(securityContext, id, version);
+    return service.decryptOrNullify(securityContext, mlModelService);
   }
 
   @POST
@@ -422,8 +334,8 @@ public class MlModelServiceResource
       @Valid CreateMlModelService create) {
     MlModelService mlModelService =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, mlModelService);
-    decryptOrNullify(securityContext, (MlModelService) response.getEntity());
+    Response response = service.create(uriInfo, securityContext, mlModelService);
+    service.decryptOrNullify(securityContext, (MlModelService) response.getEntity());
     return response;
   }
 
@@ -449,8 +361,9 @@ public class MlModelServiceResource
       @Valid CreateMlModelService update) {
     MlModelService mlModelService =
         service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(mlModelService));
-    decryptOrNullify(securityContext, (MlModelService) response.getEntity());
+    Response response =
+        service.createOrUpdate(uriInfo, securityContext, service.unmask(mlModelService));
+    service.decryptOrNullify(securityContext, (MlModelService) response.getEntity());
     return response;
   }
 
@@ -480,7 +393,7 @@ public class MlModelServiceResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -509,7 +422,7 @@ public class MlModelServiceResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
@@ -540,7 +453,7 @@ public class MlModelServiceResource
       @Parameter(description = "Id of the ML Model service", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -571,7 +484,7 @@ public class MlModelServiceResource
       @Parameter(description = "Id of the ML Model service", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -603,7 +516,71 @@ public class MlModelServiceResource
       @Parameter(description = "Name of the ML Model service", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
+    return service.deleteByName(
+        uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), recursive, hardDelete);
+  }
+
+  @PUT
+  @Path("/{id}/followers")
+  @Operation(
+      operationId = "addFollowerToMlModelService",
+      summary = "Add a follower",
+      description = "Add a user identified by `userId` as followed of this MlModel service",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "MlModel Service for instance {id} is not found")
+      })
+  public Response addFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the MlModel Service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "string"))
+          UUID userId) {
+    return service
+        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
+  }
+
+  @DELETE
+  @Path("/{id}/followers/{userId}")
+  @Operation(
+      operationId = "deleteFollower",
+      summary = "Remove a follower",
+      description = "Remove the user identified `userId` as a follower of the entity.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class)))
+      })
+  public Response deleteFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "string"))
+          @PathParam("userId")
+          String userId) {
+    return service
+        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
+        .toResponse();
   }
 
   @PUT
@@ -625,16 +602,6 @@ public class MlModelServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  @Override
-  protected MlModelService nullifyConnection(MlModelService service) {
-    return service.withConnection(null);
-  }
-
-  @Override
-  protected String extractServiceType(MlModelService service) {
-    return service.getServiceType().value();
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }

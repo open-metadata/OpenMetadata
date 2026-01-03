@@ -43,6 +43,7 @@ import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.dataInsight.type.KpiResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -80,7 +81,7 @@ public class KpiResource {
                     mediaType = "application/json",
                     schema = @Schema(implementation = KpiService.KpiList.class)))
       })
-  public Kpi list(
+  public ResultList<Kpi> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(

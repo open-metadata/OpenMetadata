@@ -49,7 +49,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   @Override
-  protected void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
+  public void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
     WorkflowHandler.getInstance().deploy(new Workflow(updated));
   }
 

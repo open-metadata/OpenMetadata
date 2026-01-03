@@ -1,7 +1,19 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.resources.services.metadata;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.services.serviceentities.MetadataServiceEntityService.FIELDS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,36 +46,22 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateMetadataService;
-import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.services.MetadataService;
-import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.services.connections.metadata.ComponentConfig;
-import org.openmetadata.schema.services.connections.metadata.ElasticsSearch;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.MetadataServiceRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.services.ServiceEntityResource;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.serviceentities.MetadataServiceEntityService;
-import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
 @Slf4j
 @Path("/v1/services/metadataServices")
@@ -74,67 +72,19 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
             + "OpenMetadata integrates with such as `Apache Atlas`, `Amundsen`, etc.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "metadataServices", order = 8) // init before IngestionPipelineService
-public class MetadataServiceResource
-    extends ServiceEntityResource<MetadataService, MetadataServiceRepository, MetadataConnection> {
+@Collection(name = "metadataServices", order = 8)
+public class MetadataServiceResource {
   public static final String OPENMETADATA_SERVICE = "OpenMetadata";
   public static final String COLLECTION_PATH = "v1/services/metadataServices/";
-  public static final String FIELDS = "pipelines,owners,tags,followers";
+
   private final MetadataServiceEntityService service;
 
-  @Override
+  public MetadataServiceResource(MetadataServiceEntityService service) {
+    this.service = service;
+  }
+
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    registerMetadataServices(config);
-  }
-
-  private void registerMetadataServices(OpenMetadataApplicationConfig config) throws IOException {
-    List<MetadataService> servicesList =
-        repository.getEntitiesFromSeedData(".*json/data/metadataService/OpenmetadataService.json$");
-    if (!nullOrEmpty(servicesList)) {
-      MetadataService openMetadataService = servicesList.get(0);
-      openMetadataService.setId(UUID.randomUUID());
-      openMetadataService.setUpdatedBy(ADMIN_USER_NAME);
-      openMetadataService.setUpdatedAt(System.currentTimeMillis());
-      if (config.getElasticSearchConfiguration() != null) {
-        OpenMetadataConnection openMetadataServerConnection =
-            new OpenMetadataConnectionBuilder(config)
-                .build()
-                .withElasticsSearch(
-                    getElasticSearchConnectionSink(config.getElasticSearchConfiguration()));
-        MetadataConnection metadataConnection =
-            new MetadataConnection().withConfig(openMetadataServerConnection);
-        openMetadataService.setConnection(metadataConnection);
-      } else {
-        LOG.error("[MetadataService] Missing Elastic Search Config.");
-      }
-      repository.setFullyQualifiedName(openMetadataService);
-      repository.createOrUpdate(null, openMetadataService, ADMIN_USER_NAME);
-    } else {
-      throw new IOException("Failed to initialize OpenMetadata Service.");
-    }
-  }
-
-  @Override
-  public MetadataService addHref(UriInfo uriInfo, MetadataService metadataService) {
-    super.addHref(uriInfo, metadataService);
-    Entity.withHref(uriInfo, metadataService.getOwners());
-    return metadataService;
-  }
-
-  public MetadataServiceResource(
-      Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.METADATA_SERVICE, authorizer, limits, ServiceType.METADATA);
-    this.service = serviceRegistry.getService(MetadataServiceEntityService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
-  }
-
-  public static class MetadataServiceList extends ResultList<MetadataService> {
-    /* Required for serde */
+    service.initialize(config);
   }
 
   @GET
@@ -151,7 +101,8 @@ public class MetadataServiceResource
                     mediaType = "application/json",
                     schema =
                         @Schema(
-                            implementation = MetadataServiceResource.MetadataServiceList.class)))
+                            implementation =
+                                MetadataServiceEntityService.MetadataServiceList.class)))
       })
   public ResultList<MetadataService> list(
       @Context UriInfo uriInfo,
@@ -161,6 +112,11 @@ public class MetadataServiceResource
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain,
       @DefaultValue("10")
           @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(value = 1000000, message = "must be less than or equal to 1000000")
@@ -182,8 +138,8 @@ public class MetadataServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return listInternal(
-        uriInfo, securityContext, fieldsParam, include, null, limitParam, before, after);
+    return service.listInternal(
+        uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
   @GET
@@ -222,8 +178,8 @@ public class MetadataServiceResource
           @DefaultValue("non-deleted")
           Include include) {
     MetadataService metadataService =
-        getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    return decryptOrNullify(securityContext, metadataService);
+        service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.decryptOrNullify(securityContext, metadataService);
   }
 
   @GET
@@ -262,71 +218,9 @@ public class MetadataServiceResource
           @DefaultValue("non-deleted")
           Include include) {
     MetadataService metadataService =
-        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
-    return decryptOrNullify(securityContext, metadataService);
-  }
-
-  @PUT
-  @Path("/{id}/followers")
-  @Operation(
-      operationId = "addFollowerToMetadataService",
-      summary = "Add a follower",
-      description = "Add a user identified by `userId` as followed of this Metadata service",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ChangeEvent.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Metadata Service for instance {id} is not found")
-      })
-  public Response addFollower(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Metadata Service", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id,
-      @Parameter(
-              description = "Id of the user to be added as follower",
-              schema = @Schema(type = "string"))
-          UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
-  }
-
-  @DELETE
-  @Path("/{id}/followers/{userId}")
-  @Operation(
-      operationId = "deleteFollower",
-      summary = "Remove a follower",
-      description = "Remove the user identified `userId` as a follower of the entity.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ChangeEvent.class)))
-      })
-  public Response deleteFollower(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id,
-      @Parameter(
-              description = "Id of the user being removed as follower",
-              schema = @Schema(type = "string"))
-          @PathParam("userId")
-          String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+        service.getByNameInternal(
+            uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
+    return service.decryptOrNullify(securityContext, metadataService);
   }
 
   @PUT
@@ -351,10 +245,9 @@ public class MetadataServiceResource
           @PathParam("id")
           UUID id,
       @Valid TestConnectionResult testConnectionResult) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    MetadataService service = repository.addTestConnectionResult(id, testConnectionResult);
-    return decryptOrNullify(securityContext, service);
+    MetadataService metadataService =
+        service.addTestConnectionResult(securityContext, id, testConnectionResult);
+    return service.decryptOrNullify(securityContext, metadataService);
   }
 
   @GET
@@ -378,7 +271,7 @@ public class MetadataServiceResource
       @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
+    EntityHistory entityHistory = service.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
         entityHistory.getVersions().stream()
@@ -387,12 +280,13 @@ public class MetadataServiceResource
                   try {
                     MetadataService metadataService =
                         JsonUtils.readValue((String) json, MetadataService.class);
-                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, metadataService));
+                    return JsonUtils.pojoToJson(
+                        service.decryptOrNullify(securityContext, metadataService));
                   } catch (Exception e) {
                     return json;
                   }
                 })
-            .toList();
+            .collect(Collectors.toList());
     entityHistory.setVersions(versions);
     return entityHistory;
   }
@@ -426,8 +320,8 @@ public class MetadataServiceResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    MetadataService metadataService = super.getVersionInternal(securityContext, id, version);
-    return decryptOrNullify(securityContext, metadataService);
+    MetadataService metadataService = service.getVersionInternal(securityContext, id, version);
+    return service.decryptOrNullify(securityContext, metadataService);
   }
 
   @POST
@@ -451,8 +345,8 @@ public class MetadataServiceResource
       @Valid CreateMetadataService create) {
     MetadataService metadataService =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, metadataService);
-    decryptOrNullify(securityContext, (MetadataService) response.getEntity());
+    Response response = service.create(uriInfo, securityContext, metadataService);
+    service.decryptOrNullify(securityContext, (MetadataService) response.getEntity());
     return response;
   }
 
@@ -477,8 +371,9 @@ public class MetadataServiceResource
       @Valid CreateMetadataService update) {
     MetadataService metadataService =
         service.getMapper().createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(metadataService));
-    decryptOrNullify(securityContext, (MetadataService) response.getEntity());
+    Response response =
+        service.createOrUpdate(uriInfo, securityContext, service.unmask(metadataService));
+    service.decryptOrNullify(securityContext, (MetadataService) response.getEntity());
     return response;
   }
 
@@ -508,7 +403,7 @@ public class MetadataServiceResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return service.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -537,7 +432,7 @@ public class MetadataServiceResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return service.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
@@ -568,7 +463,7 @@ public class MetadataServiceResource
       @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -599,7 +494,7 @@ public class MetadataServiceResource
       @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -630,7 +525,71 @@ public class MetadataServiceResource
       @Parameter(description = "Name of the metadata service", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
+    return service.deleteByName(
+        uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), recursive, hardDelete);
+  }
+
+  @PUT
+  @Path("/{id}/followers")
+  @Operation(
+      operationId = "addFollowerToMetadataService",
+      summary = "Add a follower",
+      description = "Add a user identified by `userId` as followed of this Metadata service",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Metadata Service for instance {id} is not found")
+      })
+  public Response addFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Metadata Service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "string"))
+          UUID userId) {
+    return service
+        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
+  }
+
+  @DELETE
+  @Path("/{id}/followers/{userId}")
+  @Operation(
+      operationId = "deleteFollower",
+      summary = "Remove a follower",
+      description = "Remove the user identified `userId` as a follower of the entity.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class)))
+      })
+  public Response deleteFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "string"))
+          @PathParam("userId")
+          String userId) {
+    return service
+        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
+        .toResponse();
   }
 
   @PUT
@@ -652,35 +611,6 @@ public class MetadataServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  @Override
-  protected MetadataService nullifyConnection(MetadataService service) {
-    return service.withConnection(null);
-  }
-
-  @Override
-  protected String extractServiceType(MetadataService service) {
-    return service.getServiceType().value();
-  }
-
-  private ElasticsSearch getElasticSearchConnectionSink(ElasticSearchConfiguration esConfig)
-      throws IOException {
-    if (Objects.nonNull(esConfig)) {
-      ElasticsSearch sink = new ElasticsSearch();
-      ComponentConfig componentConfig = new ComponentConfig();
-      sink.withType("elasticsearch")
-          .withConfig(
-              componentConfig
-                  .withAdditionalProperty("es_host", esConfig.getHost())
-                  .withAdditionalProperty("es_port", esConfig.getPort().toString())
-                  .withAdditionalProperty("es_username", esConfig.getUsername())
-                  .withAdditionalProperty("es_password", esConfig.getPassword())
-                  .withAdditionalProperty("scheme", esConfig.getScheme()));
-      return sink;
-    } else {
-      throw new IOException("Elastic Search Configuration Missing");
-    }
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 }
