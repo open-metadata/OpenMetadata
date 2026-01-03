@@ -1,0 +1,75 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/messaging/pubSubConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PubSubConnection",
+  "description": "Google Cloud Pub/Sub Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.messaging.PubSubConnection",
+  "definitions": {
+    "pubSubType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["PubSub"],
+      "default": "PubSub"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/pubSubType",
+      "default": "PubSub"
+    },
+    "gcpConfig": {
+      "title": "GCP Credentials Configuration",
+      "description": "GCP credentials configuration for authenticating with Pub/Sub.",
+      "$ref": "../../../../security/credentials/gcpCredentials.json"
+    },
+    "projectId": {
+      "title": "GCP Project ID",
+      "description": "GCP Project ID where Pub/Sub topics are located. If not specified, will be read from credentials.",
+      "type": "string"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.",
+      "type": "string",
+      "default": "pubsub.googleapis.com"
+    },
+    "useEmulator": {
+      "title": "Use Emulator",
+      "description": "Connect to a Pub/Sub emulator rather than the production service.",
+      "type": "boolean",
+      "default": false
+    },
+    "schemaRegistryEnabled": {
+      "title": "Enable Schema Registry",
+      "description": "Enable fetching schemas from Pub/Sub Schema Registry.",
+      "type": "boolean",
+      "default": true
+    },
+    "includeSubscriptions": {
+      "title": "Include Subscriptions",
+      "description": "Include subscription metadata for each topic.",
+      "type": "boolean",
+      "default": true
+    },
+    "includeDeadLetterTopics": {
+      "title": "Include Dead Letter Topics",
+      "description": "Include dead letter topics in metadata extraction.",
+      "type": "boolean",
+      "default": false
+    },
+    "topicFilterPattern": {
+      "description": "Regex to only fetch topics that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Topic Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["gcpConfig"]
+}
