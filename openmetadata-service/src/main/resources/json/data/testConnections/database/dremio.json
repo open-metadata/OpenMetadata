@@ -1,0 +1,38 @@
+{
+  "name": "Dremio",
+  "displayName": "Dremio Cloud Test Connection",
+  "description": "This Test Connection validates the access against Dremio Cloud REST API and basic metadata extraction of namespaces, folders, and tables.",
+  "steps": [
+    {
+      "name": "CheckAccess",
+      "description": "Validate that we can properly reach Dremio Cloud API and authenticate with the given Personal Access Token (PAT).",
+      "errorMessage": "Failed to connect to Dremio Cloud. Please validate that your Project ID and Personal Access Token (PAT) are correct, and that the region/API URL is properly configured.",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetDatabases",
+      "description": "List all the namespaces (sources/spaces) available in the Dremio Cloud project. Namespaces are mapped as databases in OpenMetadata.",
+      "errorMessage": "Failed to fetch namespaces from Dremio Cloud. Please validate if the PAT has enough privileges to read catalog metadata.",
+      "mandatory": true
+    },
+    {
+      "name": "GetSchemas",
+      "description": "List all the folders within a namespace. Folders are mapped as schemas in OpenMetadata.",
+      "errorMessage": "Failed to fetch folders from Dremio Cloud. Please validate if the PAT has enough privileges to read folder metadata.",
+      "mandatory": true
+    },
+    {
+      "name": "GetTables",
+      "description": "From a given folder, list the tables and views. If no folder is specified, we'll list from a random folder.",
+      "errorMessage": "Failed to fetch tables/views from Dremio Cloud. Please validate if the PAT has enough privileges to read dataset metadata.",
+      "mandatory": true
+    },
+    {
+      "name": "GetQueries",
+      "description": "Check if we can access the query history (sys.project.history.jobs) to get query logs. These queries are analyzed in the usage & lineage workflow.",
+      "errorMessage": "Failed to fetch query history from Dremio Cloud. Please validate if the PAT has privileges to access sys.project.history.jobs for usage and lineage extraction.",
+      "mandatory": false
+    }
+  ]
+}
