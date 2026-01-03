@@ -28,6 +28,8 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.notRevi
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
+import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
+import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
 
 import jakarta.json.JsonPatch;
 import java.util.ArrayList;
@@ -62,6 +64,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -87,7 +90,7 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 @Slf4j
 public class DataProductRepository extends EntityRepository<DataProduct> {
   private static final String UPDATE_FIELDS =
-      "experts,inputPorts,outputPorts"; // Domain field can't be updated
+      "experts,inputPorts,outputPorts,domains"; // Domain can now be updated with asset migration
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
@@ -538,7 +541,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   @Override
   public void restorePatchAttributes(DataProduct original, DataProduct updated) {
     super.restorePatchAttributes(original, updated);
-    updated.withDomains(original.getDomains()); // Domain can't be changed
+    // Domain CAN now be changed - assets will be migrated to the new domain
   }
 
   @Override
@@ -566,6 +569,41 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     // Note: Search index updates for renamed data products are handled in updateName()
     // within entitySpecificUpdate() to ensure we capture the correct old FQN before
     // change consolidation's revert() modifies the 'original' reference.
+
+    // Update search indexes for assets whose domain was migrated
+    updateMigratedAssetsSearchIndex(original, updated);
+  }
+
+  /**
+   * Update search indexes for assets that were migrated to a new domain. This uses a bulk update
+   * operation to efficiently update all assets linked to the data product when its domain changes.
+   */
+  private void updateMigratedAssetsSearchIndex(DataProduct original, DataProduct updated) {
+    List<EntityReference> origDomains = listOrEmpty(original.getDomains());
+    List<EntityReference> updatedDomains = listOrEmpty(updated.getDomains());
+
+    // Only update if domains actually changed
+    if (EntityUtil.entityReferenceListMatch.test(origDomains, updatedDomains)) {
+      return;
+    }
+
+    if (searchRepository == null) {
+      return;
+    }
+
+    // Extract old domain FQNs for removal
+    List<String> oldDomainFqns =
+        origDomains.stream().map(EntityReference::getFullyQualifiedName).toList();
+
+    LOG.info(
+        "Bulk updating asset domains in search index for data product {}: removing {}, adding {}",
+        updated.getFullyQualifiedName(),
+        oldDomainFqns,
+        updatedDomains.stream().map(EntityReference::getFullyQualifiedName).toList());
+
+    // Use bulk update to update all assets linked to this data product
+    searchRepository.updateAssetDomainsForDataProduct(
+        updated.getFullyQualifiedName(), oldDomainFqns, updatedDomains);
   }
 
   private void updateAssetSearchIndexes(String oldFqn, String newFqn) {
@@ -584,6 +622,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public class DataProductUpdater extends EntityUpdater {
     private boolean renameProcessed = false;
+    private boolean domainChangeProcessed = false;
 
     public DataProductUpdater(DataProduct original, DataProduct updated, Operation operation) {
       super(original, updated, operation);
@@ -607,6 +646,128 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       // Track and update input/output port changes (stored as relationships)
       updatePorts("inputPorts", Relationship.INPUT_PORT);
       updatePorts("outputPorts", Relationship.OUTPUT_PORT);
+      // Handle domain change with asset migration
+      updateDataProductDomains();
+    }
+
+    /**
+     * Handle domain change for a data product. When the domain changes, all assets linked to this
+     * data product (via HAS relationship) and all input/output ports must be migrated to the new
+     * domain. This ensures the invariant that a data product can only contain assets from the same
+     * domain.
+     */
+    private void updateDataProductDomains() {
+      List<EntityReference> origDomains = listOrEmpty(original.getDomains());
+      List<EntityReference> updatedDomains = listOrEmpty(updated.getDomains());
+
+      // Check if domains actually changed
+      if (EntityUtil.entityReferenceListMatch.test(origDomains, updatedDomains)) {
+        return;
+      }
+
+      // Only process domain change once per update operation
+      if (domainChangeProcessed) {
+        return;
+      }
+      domainChangeProcessed = true;
+
+      LOG.info(
+          "Data product {} domain changing from {} (IDs: {}) to {} (IDs: {})",
+          updated.getFullyQualifiedName(),
+          origDomains.stream().map(EntityReference::getFullyQualifiedName).toList(),
+          origDomains.stream().map(EntityReference::getId).toList(),
+          updatedDomains.stream().map(EntityReference::getFullyQualifiedName).toList(),
+          updatedDomains.stream().map(EntityReference::getId).toList());
+
+      // Get all assets linked to this data product via HAS relationship
+      // Relationship is: DataProduct --HAS--> Asset, so we use findTo
+      List<CollectionDAO.EntityRelationshipRecord> assetRecords =
+          daoCollection
+              .relationshipDAO()
+              .findTo(updated.getId(), DATA_PRODUCT, Relationship.HAS.ordinal());
+
+      // Get all input ports
+      List<CollectionDAO.EntityRelationshipRecord> inputPortRecords =
+          daoCollection
+              .relationshipDAO()
+              .findTo(updated.getId(), DATA_PRODUCT, Relationship.INPUT_PORT.ordinal());
+
+      // Get all output ports
+      List<CollectionDAO.EntityRelationshipRecord> outputPortRecords =
+          daoCollection
+              .relationshipDAO()
+              .findTo(updated.getId(), DATA_PRODUCT, Relationship.OUTPUT_PORT.ordinal());
+
+      // Combine all asset records
+      List<CollectionDAO.EntityRelationshipRecord> allAssetRecords = new ArrayList<>();
+      allAssetRecords.addAll(assetRecords);
+      allAssetRecords.addAll(inputPortRecords);
+      allAssetRecords.addAll(outputPortRecords);
+
+      if (!allAssetRecords.isEmpty()) {
+        LOG.info(
+            "Migrating {} assets to new domain(s) for data product {}",
+            allAssetRecords.size(),
+            updated.getFullyQualifiedName());
+
+        // Migrate each asset to the new domain(s)
+        for (CollectionDAO.EntityRelationshipRecord record : allAssetRecords) {
+          try {
+            migrateAssetDomain(record.getId(), record.getType(), origDomains, updatedDomains);
+          } catch (Exception e) {
+            LOG.warn(
+                "Failed to migrate domain for asset {} (type: {}): {}",
+                record.getId(),
+                record.getType(),
+                e.getMessage());
+          }
+        }
+      }
+    }
+
+    /**
+     * Migrate an asset from the old domain(s) to the new domain(s). This removes the old domain
+     * relationships and adds new ones. Domains are stored as relationships, not in the entity JSON,
+     * so we only need to update the relationships and refresh the search index.
+     *
+     * <p>The search index update is deferred to postUpdate() which runs after the transaction
+     * commits. This ensures the relationship changes are persisted before the search index is
+     * updated.
+     */
+    private void migrateAssetDomain(
+        UUID assetId,
+        String assetType,
+        List<EntityReference> oldDomains,
+        List<EntityReference> newDomains) {
+      // Remove old domain relationships and lineage for this asset
+      for (EntityReference oldDomain : oldDomains) {
+        LOG.info(
+            "Removing domain relationship: {} ({}) --HAS--> {} ({})",
+            oldDomain.getFullyQualifiedName(),
+            oldDomain.getId(),
+            assetId,
+            assetType);
+        removeDomainLineage(assetId, assetType, oldDomain);
+        deleteRelationship(oldDomain.getId(), DOMAIN, assetId, assetType, Relationship.HAS);
+      }
+
+      // Add new domain relationships and lineage for this asset
+      for (EntityReference newDomain : newDomains) {
+        LOG.info(
+            "Adding domain relationship: {} ({}) --HAS--> {} ({})",
+            newDomain.getFullyQualifiedName(),
+            newDomain.getId(),
+            assetId,
+            assetType);
+        addRelationship(newDomain.getId(), assetId, DOMAIN, assetType, Relationship.HAS);
+        addDomainLineage(assetId, assetType, newDomain);
+      }
+
+      // Invalidate the domain cache for this asset so the new domain is picked up
+      var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
+      if (cachedRelationshipDao != null) {
+        cachedRelationshipDao.invalidateDomains(assetType, assetId);
+      }
     }
 
     private void updateName(DataProduct updated) {

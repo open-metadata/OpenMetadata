@@ -57,11 +57,10 @@ import org.openmetadata.sdk.network.HttpMethod;
 public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataProduct> {
 
   // DataProduct is itself a data product, so this field doesn't apply to it
-  // DataProduct domains cannot be changed via PATCH after creation
   // DataProduct API doesn't expose include parameter for soft delete operations
   {
     supportsDataProducts = false;
-    supportsPatchDomains = false;
+    supportsPatchDomains = true; // Domain change is now supported with asset migration
     supportsSoftDelete = false;
   }
 
@@ -971,5 +970,194 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     assertEquals(
         dataProduct.getFullyQualifiedName(),
         tableWithDataProducts.getDataProducts().get(0).getFullyQualifiedName());
+  }
+
+  // ===================================================================
+  // DOMAIN CHANGE TESTS
+  // Tests that verify domain change works correctly including:
+  // 1. Basic domain change (no assets)
+  // 2. Domain change with asset migration
+  // 3. Domain change for input/output ports
+  // ===================================================================
+
+  @Test
+  void test_changeDataProductDomain_noAssets(TestNamespace ns) {
+    // Create two domains
+    Domain domain1 = createTestDomain(ns, "domain_change_1");
+    Domain domain2 = createTestDomain(ns, "domain_change_2");
+
+    // Create data product in domain1
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_domain_change"))
+            .withDescription("Data product for domain change test")
+            .withDomains(List.of(domain1.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    // Verify initial domain
+    assertEquals(1, dataProduct.getDomains().size());
+    assertEquals(domain1.getId(), dataProduct.getDomains().get(0).getId());
+
+    // Change domain to domain2
+    dataProduct.setDomains(List.of(domain2.getEntityReference()));
+    DataProduct updated = patchEntity(dataProduct.getId().toString(), dataProduct);
+
+    // Verify domain changed
+    assertEquals(1, updated.getDomains().size());
+    assertEquals(domain2.getId(), updated.getDomains().get(0).getId());
+
+    // Fetch fresh and verify
+    DataProduct fetched =
+        SdkClients.adminClient().dataProducts().get(updated.getId().toString(), "domains");
+    assertEquals(1, fetched.getDomains().size());
+    assertEquals(domain2.getId(), fetched.getDomains().get(0).getId());
+  }
+
+  @Test
+  void test_changeDataProductDomain_withAssetMigration(TestNamespace ns) throws Exception {
+    // Create two domains
+    Domain domain1 = createTestDomain(ns, "domain_migrate_1");
+    Domain domain2 = createTestDomain(ns, "domain_migrate_2");
+
+    // Create data product in domain1
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_domain_migrate"))
+            .withDescription("Data product for domain migration test")
+            .withDomains(List.of(domain1.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    // Create a table in domain1 and add it as asset to the data product
+    Table table = createTestTable(ns, "migrate_asset", domain1);
+    BulkAssets addTable = new BulkAssets().withAssets(List.of(table.getEntityReference()));
+    bulkAddAssets(dataProduct.getFullyQualifiedName(), addTable);
+
+    // Verify asset is linked
+    ResultList<EntityReference> assets = getAssets(dataProduct.getId(), 10, 0);
+    assertEquals(1, assets.getPaging().getTotal());
+
+    // Verify table is in domain1
+    Table tableBeforeChange =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "domains");
+    assertEquals(1, tableBeforeChange.getDomains().size());
+    assertEquals(domain1.getId(), tableBeforeChange.getDomains().get(0).getId());
+
+    // Change data product domain to domain2
+    dataProduct.setDomains(List.of(domain2.getEntityReference()));
+    DataProduct updated = patchEntity(dataProduct.getId().toString(), dataProduct);
+
+    // Verify data product is now in domain2
+    assertEquals(1, updated.getDomains().size());
+    assertEquals(domain2.getId(), updated.getDomains().get(0).getId());
+
+    // Verify asset is still linked
+    assets = getAssets(updated.getId(), 10, 0);
+    assertEquals(
+        1, assets.getPaging().getTotal(), "Asset should still be linked after domain change");
+
+    // Verify table's domain was migrated to domain2
+    Table tableAfterChange =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "domains");
+    assertEquals(1, tableAfterChange.getDomains().size());
+    assertEquals(
+        domain2.getId(),
+        tableAfterChange.getDomains().get(0).getId(),
+        "Asset should have been migrated to the new domain");
+  }
+
+  @Test
+  void test_changeDataProductDomain_multipleAssets(TestNamespace ns) throws Exception {
+    // Create two domains
+    Domain domain1 = createTestDomain(ns, "domain_multi_1");
+    Domain domain2 = createTestDomain(ns, "domain_multi_2");
+
+    // Create data product in domain1
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_domain_multi"))
+            .withDescription("Data product for multiple asset migration")
+            .withDomains(List.of(domain1.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    // Create multiple tables in domain1
+    Table table1 = createTestTable(ns, "multi_asset_1", domain1);
+    Table table2 = createTestTable(ns, "multi_asset_2", domain1);
+    Table table3 = createTestTable(ns, "multi_asset_3", domain1);
+
+    // Add all tables as assets
+    BulkAssets addTables =
+        new BulkAssets()
+            .withAssets(
+                List.of(
+                    table1.getEntityReference(),
+                    table2.getEntityReference(),
+                    table3.getEntityReference()));
+    bulkAddAssets(dataProduct.getFullyQualifiedName(), addTables);
+
+    // Verify all assets are linked
+    ResultList<EntityReference> assets = getAssets(dataProduct.getId(), 10, 0);
+    assertEquals(3, assets.getPaging().getTotal());
+
+    // Change data product domain to domain2
+    dataProduct.setDomains(List.of(domain2.getEntityReference()));
+    DataProduct updated = patchEntity(dataProduct.getId().toString(), dataProduct);
+
+    // Verify data product is now in domain2
+    assertEquals(domain2.getId(), updated.getDomains().get(0).getId());
+
+    // Verify all assets are still linked
+    assets = getAssets(updated.getId(), 10, 0);
+    assertEquals(3, assets.getPaging().getTotal(), "All assets should still be linked");
+
+    // Verify all tables' domains were migrated to domain2
+    for (Table table : List.of(table1, table2, table3)) {
+      Table tableAfterChange =
+          SdkClients.adminClient().tables().get(table.getId().toString(), "domains");
+      assertEquals(1, tableAfterChange.getDomains().size());
+      assertEquals(
+          domain2.getId(),
+          tableAfterChange.getDomains().get(0).getId(),
+          "Asset " + table.getName() + " should have been migrated to the new domain");
+    }
+  }
+
+  @Test
+  void test_changeDataProductDomain_andUpdateDescription(TestNamespace ns) throws Exception {
+    // Create two domains
+    Domain domain1 = createTestDomain(ns, "domain_desc_1");
+    Domain domain2 = createTestDomain(ns, "domain_desc_2");
+
+    // Create data product in domain1 with an asset
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_domain_desc"))
+            .withDescription("Initial description")
+            .withDomains(List.of(domain1.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table = createTestTable(ns, "desc_asset", domain1);
+    BulkAssets addTable = new BulkAssets().withAssets(List.of(table.getEntityReference()));
+    bulkAddAssets(dataProduct.getFullyQualifiedName(), addTable);
+
+    // Change domain
+    dataProduct.setDomains(List.of(domain2.getEntityReference()));
+    DataProduct afterDomainChange = patchEntity(dataProduct.getId().toString(), dataProduct);
+    assertEquals(domain2.getId(), afterDomainChange.getDomains().get(0).getId());
+
+    // Update description (triggers consolidation)
+    afterDomainChange.setDescription("Updated description after domain change");
+    DataProduct afterDescUpdate =
+        patchEntity(afterDomainChange.getId().toString(), afterDomainChange);
+    assertEquals("Updated description after domain change", afterDescUpdate.getDescription());
+
+    // Verify domain is still domain2 after consolidation
+    assertEquals(domain2.getId(), afterDescUpdate.getDomains().get(0).getId());
+
+    // Verify asset is still linked and in new domain
+    ResultList<EntityReference> assets = getAssets(afterDescUpdate.getId(), 10, 0);
+    assertEquals(1, assets.getPaging().getTotal());
+
+    Table tableAfter = SdkClients.adminClient().tables().get(table.getId().toString(), "domains");
+    assertEquals(domain2.getId(), tableAfter.getDomains().get(0).getId());
   }
 }

@@ -648,6 +648,19 @@ public class SearchRepository {
     updateEntityIndex(entity);
   }
 
+  /**
+   * Bulk updates domain references for assets when a data product's domain changes. This is more
+   * efficient than updating each entity individually as it uses a single update-by-query operation.
+   *
+   * @param dataProductFqn the fully qualified name of the data product
+   * @param oldDomainFqns list of old domain FQNs to remove from assets
+   * @param newDomains list of new domain references to add to assets
+   */
+  public void updateAssetDomainsForDataProduct(
+      String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    getSearchClient().updateAssetDomainsForDataProduct(dataProductFqn, oldDomainFqns, newDomains);
+  }
+
   public boolean checkIfIndexingIsSupported(String entityType) {
     IndexMapping indexMapping = entityIndexMap.get(entityType);
     if (indexMapping == null) {
