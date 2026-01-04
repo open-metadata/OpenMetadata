@@ -41,6 +41,8 @@ export const createMuiTheme = (
   defaultTheme?: {
     primaryColor: string;
     infoColor: string;
+    hoverColor:string;
+    selectedColor:string;
     successColor: string;
     warningColor: string;
     errorColor: string;
