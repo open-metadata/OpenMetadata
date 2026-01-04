@@ -436,6 +436,7 @@ const columnDetailPanelConfig: ColumnDetailPanelConfig<
     hasTagEditAccess: props.hasTagEditAccess,
     hasGlossaryTermEditAccess: props.hasGlossaryTermEditAccess,
     hasDescriptionEditAccess: props.hasDescriptionEditAccess,
+    hasCustomPropertiesViewAccess: props.hasCustomPropertiesViewAccess,
   }),
   readOnly: (props) => props.isReadOnly || false,
   onUpdate: (props, fields) => props.onUpdate(fields),

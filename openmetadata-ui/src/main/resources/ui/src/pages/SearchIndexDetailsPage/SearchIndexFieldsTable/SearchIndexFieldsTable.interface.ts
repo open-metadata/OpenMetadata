@@ -12,16 +12,19 @@
  */
 
 import { ReactNode } from 'react';
-import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { InjectedColumnDetailPanelProps } from '../../../components/Database/ColumnDetailPanel/withColumnDetailPanel';
+import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 
-export interface SearchIndexFieldsTableProps extends Partial<InjectedColumnDetailPanelProps<SearchIndexField>> {
+export interface SearchIndexFieldsTableProps
+  extends Partial<InjectedColumnDetailPanelProps<SearchIndexField>> {
   searchIndexFields: Array<SearchIndexField>;
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
   hasGlossaryTermEditAccess: boolean;
+  hasCustomPropertiesViewAccess: boolean;
   isReadOnly?: boolean;
   entityFqn: string;
+  viewAllPermission: boolean;
   onUpdate: (fields: Array<SearchIndexField>) => Promise<void>;
   fieldAllRowKeys: string[];
 }

@@ -32,6 +32,9 @@ export interface ColumnDetailPanelProps<T extends ColumnOrTask = Column> {
     viewAllPermission?: boolean;
     customProperties?: boolean;
   };
+  hasViewPermission?: {
+    customProperties?: boolean;
+  };
   allColumns?: T[];
   onNavigate?: (column: T, index?: number) => void;
   tableConstraints?: TableConstraint[];

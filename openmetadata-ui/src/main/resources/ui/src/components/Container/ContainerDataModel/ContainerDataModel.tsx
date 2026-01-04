@@ -65,7 +65,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   hasDescriptionEditAccess,
   hasTagEditAccess,
   hasGlossaryTermEditAccess,
-  hasCustomPropertiesEditAccess: _hasCustomPropertiesEditAccess,
   isReadOnly,
   onUpdate,
   entityFqn,
@@ -321,7 +320,7 @@ const columnDetailPanelConfig: ColumnDetailPanelConfig<
     hasTagEditAccess: props.hasTagEditAccess,
     hasGlossaryTermEditAccess: props.hasGlossaryTermEditAccess,
     hasDescriptionEditAccess: props.hasDescriptionEditAccess,
-    hasCustomPropertiesEditAccess: props.hasCustomPropertiesEditAccess,
+    hasCustomPropertiesViewAccess: props.hasCustomPropertiesViewAccess,
   }),
   readOnly: (props) => props.isReadOnly,
   onUpdate: async (props, updatedColumns) => {

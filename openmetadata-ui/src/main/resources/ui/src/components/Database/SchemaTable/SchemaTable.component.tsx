@@ -837,6 +837,8 @@ const SchemaTable = () => {
           glossaryTerms: editGlossaryTermsPermission,
           description: editDescriptionPermission,
           viewAllPermission: viewAllPermission,
+        }}
+        hasViewPermission={{
           customProperties: viewCustomPropertiesPermission,
         }}
         isOpen={isColumnDetailOpen}

@@ -70,7 +70,7 @@ export const ContainerWidget = () => {
     <ContainerDataModel
       dataModel={containerData?.dataModel}
       entityFqn={decodedContainerName}
-      hasCustomPropertiesEditAccess={viewCustomPropertiesPermission}
+      hasCustomPropertiesViewAccess={viewCustomPropertiesPermission}
       hasDescriptionEditAccess={editDescriptionPermission}
       hasGlossaryTermEditAccess={editGlossaryTermsPermission}
       hasTagEditAccess={editTagsPermission}
