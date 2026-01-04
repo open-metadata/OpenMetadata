@@ -353,11 +353,13 @@ export function withColumnDetailPanel<TField, TProps>(
               glossaryTerms:
                 permissions.hasGlossaryTermEditAccess && !isReadOnly,
               description: permissions.hasDescriptionEditAccess && !isReadOnly,
-              viewAllPermission:
-                permissions.hasCustomPropertiesViewAccess || false,
               customProperties:
                 (permissions.hasCustomPropertiesEditAccess && !isReadOnly) ||
                 false,
+            }}
+            hasViewPermission={{
+              customProperties:
+                permissions.hasCustomPropertiesViewAccess || false,
             }}
             isOpen={isColumnDetailOpen}
             tableFqn={entityFqn}
