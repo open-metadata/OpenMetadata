@@ -33,8 +33,10 @@ docker/docker-compose-quickstart/docker-volumes
 # Java template
 *.class
 venv
-env
+/env
 .java-version
+# Don't ignore integration test env directory
+!openmetadata-integration-tests/src/test/java/org/openmetadata/it/env/
 # logs
 logs
 *.log
