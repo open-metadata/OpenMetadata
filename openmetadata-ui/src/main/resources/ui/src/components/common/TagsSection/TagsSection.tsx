@@ -283,6 +283,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
   if (!nonTierTags.length) {
     return (
       <Box
+        data-testid="tags-section"
         sx={{
           borderBottom: `0.6px solid ${theme.palette.allShades.gray[200]}`,
           paddingBottom: '16px',
@@ -310,6 +311,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
 
   return (
     <Box
+      data-testid="tags-section"
       sx={{
         borderBottom: `0.6px solid ${theme.palette.allShades.gray[200]}`,
         paddingBottom: '16px',

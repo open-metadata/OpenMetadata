@@ -173,7 +173,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await summaryPanelAfterDelete.waitFor({ state: 'visible' });
 
       const ownersSectionAfterDelete =
-        summaryPanelAfterDelete.locator('.owners-section');
+        summaryPanelAfterDelete.getByTestId('owners-section');
       await ownersSectionAfterDelete.waitFor({ state: 'visible' });
 
       await expect(ownersSectionAfterDelete).toBeVisible();
@@ -247,7 +247,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await summaryPanelAfterDelete.waitFor({ state: 'visible' });
 
       const ownersSectionAfterDelete =
-        summaryPanelAfterDelete.locator('.owners-section');
+        summaryPanelAfterDelete.getByTestId('owners-section');
       await ownersSectionAfterDelete.waitFor({ state: 'visible' });
 
       await expect(ownersSectionAfterDelete).toBeVisible();
@@ -296,9 +296,8 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       const deletedTagDisplayName = deletedTag.getTagDisplayName();
 
-      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
-      const tagsSection = summaryPanel.locator('.tags-section');
-
+      const tagsSection = adminPage.getByTestId('tags-section');
+      
       await expect(tagsSection).toBeVisible();
 
       await editTags(adminPage, deletedTagDisplayName);
@@ -314,7 +313,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         '.entity-summary-panel-container'
       );
       const tagsSectionAfterDelete =
-        summaryPanelAfterDelete.locator('.tags-section');
+        summaryPanelAfterDelete.getByTestId('tags-section');
 
       await expect(tagsSectionAfterDelete).toBeVisible();
 
@@ -371,8 +370,8 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       const summaryPanelAfterDelete = adminPage.locator(
         '.entity-summary-panel-container'
       );
-      const glossarySectionAfterDelete = summaryPanelAfterDelete.locator(
-        '.glossary-terms-section'
+      const glossarySectionAfterDelete = summaryPanelAfterDelete.getByTestId(
+        'glossary-terms-section'
       );
 
       await expect(glossarySectionAfterDelete).toBeVisible();
@@ -1536,7 +1535,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
     const summaryPanel = dataStewardPage.locator(
       '.entity-summary-panel-container'
     );
-    const tagsSection = summaryPanel.locator('.tags-section');
+    const tagsSection = summaryPanel.getByTestId('tags-section');
 
     await expect(tagsSection).toBeVisible();
 
@@ -1553,7 +1552,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
     const summaryPanel = dataStewardPage.locator(
       '.entity-summary-panel-container'
     );
-    const glossarySection = summaryPanel.locator('.glossary-terms-section');
+    const glossarySection = summaryPanel.getByTestId('glossary-terms-section');
 
     await expect(glossarySection).toBeVisible();
 
@@ -1795,7 +1794,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     const summaryPanel = dataConsumerPage.locator(
       '.entity-summary-panel-container'
     );
-    const tagsSection = summaryPanel.locator('.tags-section');
+    const tagsSection = summaryPanel.getByTestId('tags-section');
 
     await expect(tagsSection).toBeVisible();
 
@@ -1812,7 +1811,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     const summaryPanel = dataConsumerPage.locator(
       '.entity-summary-panel-container'
     );
-    const glossarySection = summaryPanel.locator('.glossary-terms-section');
+    const glossarySection = summaryPanel.getByTestId('glossary-terms-section');
 
     await expect(glossarySection).toBeVisible();
 

@@ -364,7 +364,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
 
   if (!displayDataProducts?.length) {
     return (
-      <Box>
+      <Box data-testid="data-products-section">
         <Box
           sx={{
             paddingLeft: '14px',
@@ -410,6 +410,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   return (
     <Box>
       <Box
+        data-testid="data-products-section"
         sx={{
           paddingX: '14px',
           paddingBottom: '12px',
