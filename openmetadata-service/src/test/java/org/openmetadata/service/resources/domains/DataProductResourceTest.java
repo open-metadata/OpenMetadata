@@ -1601,4 +1601,189 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     DataProduct updated = getEntity(dataProduct.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(newName, updated.getName());
   }
+
+  @Test
+  void testDataProductDomainMigration(TestInfo test) throws IOException {
+    // Test that when a data product's domain changes, all its assets are migrated to the new domain
+
+    // Disable domain validation rule since we need to add assets before domain migration
+    String domainValidationRule = "Data Product Domain Validation";
+    EntityResourceTest.toggleRule(domainValidationRule, false);
+
+    try {
+      // Create two domains
+      DomainResourceTest domainTest = new DomainResourceTest();
+      Domain sourceDomain =
+          domainTest.createEntity(
+              domainTest.createRequest(getEntityName(test) + "_source"), ADMIN_AUTH_HEADERS);
+      Domain targetDomain =
+          domainTest.createEntity(
+              domainTest.createRequest(getEntityName(test) + "_target"), ADMIN_AUTH_HEADERS);
+
+      // Create data product in source domain
+      DataProduct dataProduct =
+          createEntity(
+              createRequest(getEntityName(test))
+                  .withDomains(List.of(sourceDomain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+
+      // Create tables and assign them to source domain
+      TableResourceTest tableTest = new TableResourceTest();
+      Table table1 =
+          tableTest.createEntity(
+              tableTest
+                  .createRequest(getEntityName(test) + "_table1")
+                  .withDomains(List.of(sourceDomain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+      Table table2 =
+          tableTest.createEntity(
+              tableTest
+                  .createRequest(getEntityName(test) + "_table2")
+                  .withDomains(List.of(sourceDomain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+
+      // Add tables to data product as assets
+      BulkAssets bulkAssets =
+          new BulkAssets()
+              .withAssets(List.of(table1.getEntityReference(), table2.getEntityReference()));
+      bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkAssets);
+
+      // Verify assets were added
+      ResultList<EntityReference> assets =
+          getAssets(dataProduct.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+      assertEquals(2, assets.getPaging().getTotal());
+
+      // Verify tables are in source domain
+      Table table1Before = tableTest.getEntity(table1.getId(), "domains", ADMIN_AUTH_HEADERS);
+      assertEquals(1, table1Before.getDomains().size());
+      assertEquals(sourceDomain.getId(), table1Before.getDomains().get(0).getId());
+
+      Table table2Before = tableTest.getEntity(table2.getId(), "domains", ADMIN_AUTH_HEADERS);
+      assertEquals(1, table2Before.getDomains().size());
+      assertEquals(sourceDomain.getId(), table2Before.getDomains().get(0).getId());
+
+      // CRITICAL: Change data product domain to target domain using PATCH
+      String json = JsonUtils.pojoToJson(dataProduct);
+      dataProduct.setDomains(List.of(targetDomain.getEntityReference()));
+      ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
+      fieldAdded(change, "domains", List.of(targetDomain.getEntityReference()));
+      fieldDeleted(change, "domains", List.of(sourceDomain.getEntityReference()));
+      dataProduct =
+          patchEntityAndCheck(dataProduct, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+      // Verify data product is now in target domain
+      assertEquals(1, dataProduct.getDomains().size());
+      assertEquals(targetDomain.getId(), dataProduct.getDomains().get(0).getId());
+
+      // CRITICAL ASSERTION: Verify tables were migrated to target domain
+      Table table1After = tableTest.getEntity(table1.getId(), "domains", ADMIN_AUTH_HEADERS);
+      assertEquals(
+          1,
+          table1After.getDomains().size(),
+          "Table1 should have exactly 1 domain after migration");
+      assertEquals(
+          targetDomain.getId(),
+          table1After.getDomains().get(0).getId(),
+          "Table1 should be in target domain after migration");
+
+      Table table2After = tableTest.getEntity(table2.getId(), "domains", ADMIN_AUTH_HEADERS);
+      assertEquals(
+          1,
+          table2After.getDomains().size(),
+          "Table2 should have exactly 1 domain after migration");
+      assertEquals(
+          targetDomain.getId(),
+          table2After.getDomains().get(0).getId(),
+          "Table2 should be in target domain after migration");
+
+      // Verify assets are still in the data product
+      assets = getAssets(dataProduct.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+      assertEquals(2, assets.getPaging().getTotal(), "Assets should still be in data product");
+
+    } finally {
+      EntityResourceTest.toggleRule(domainValidationRule, true);
+    }
+  }
+
+  @Test
+  void testDataProductDomainMigrationWithInputOutputPorts(TestInfo test) throws IOException {
+    // Test that input/output ports are also migrated when domain changes
+
+    String domainValidationRule = "Data Product Domain Validation";
+    EntityResourceTest.toggleRule(domainValidationRule, false);
+
+    try {
+      // Create two domains
+      DomainResourceTest domainTest = new DomainResourceTest();
+      Domain sourceDomain =
+          domainTest.createEntity(
+              domainTest.createRequest(getEntityName(test) + "_source_port"), ADMIN_AUTH_HEADERS);
+      Domain targetDomain =
+          domainTest.createEntity(
+              domainTest.createRequest(getEntityName(test) + "_target_port"), ADMIN_AUTH_HEADERS);
+
+      // Create tables for ports and assign them to source domain
+      TableResourceTest tableTest = new TableResourceTest();
+      Table inputPort =
+          tableTest.createEntity(
+              tableTest
+                  .createRequest(getEntityName(test) + "_input")
+                  .withDomains(List.of(sourceDomain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+      Table outputPort =
+          tableTest.createEntity(
+              tableTest
+                  .createRequest(getEntityName(test) + "_output")
+                  .withDomains(List.of(sourceDomain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+
+      // Create data product with input/output ports
+      DataProduct dataProduct =
+          createEntity(
+              createRequest(getEntityName(test))
+                  .withDomains(List.of(sourceDomain.getFullyQualifiedName()))
+                  .withInputPorts(List.of(inputPort.getEntityReference()))
+                  .withOutputPorts(List.of(outputPort.getEntityReference())),
+              ADMIN_AUTH_HEADERS);
+
+      // Verify ports are in source domain
+      Table inputBefore = tableTest.getEntity(inputPort.getId(), "domains", ADMIN_AUTH_HEADERS);
+      assertEquals(sourceDomain.getId(), inputBefore.getDomains().get(0).getId());
+      Table outputBefore = tableTest.getEntity(outputPort.getId(), "domains", ADMIN_AUTH_HEADERS);
+      assertEquals(sourceDomain.getId(), outputBefore.getDomains().get(0).getId());
+
+      // Change data product domain to target domain
+      String json = JsonUtils.pojoToJson(dataProduct);
+      dataProduct.setDomains(List.of(targetDomain.getEntityReference()));
+      ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
+      fieldAdded(change, "domains", List.of(targetDomain.getEntityReference()));
+      fieldDeleted(change, "domains", List.of(sourceDomain.getEntityReference()));
+      dataProduct =
+          patchEntityAndCheck(dataProduct, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+      // Verify ports were migrated to target domain
+      Table inputAfter = tableTest.getEntity(inputPort.getId(), "domains", ADMIN_AUTH_HEADERS);
+      assertEquals(
+          targetDomain.getId(),
+          inputAfter.getDomains().get(0).getId(),
+          "Input port should be in target domain after migration");
+
+      Table outputAfter = tableTest.getEntity(outputPort.getId(), "domains", ADMIN_AUTH_HEADERS);
+      assertEquals(
+          targetDomain.getId(),
+          outputAfter.getDomains().get(0).getId(),
+          "Output port should be in target domain after migration");
+
+      // Verify ports are still associated with data product
+      DataProduct fetchedProduct =
+          getEntity(dataProduct.getId(), "inputPorts,outputPorts", ADMIN_AUTH_HEADERS);
+      assertEquals(1, fetchedProduct.getInputPorts().size());
+      assertEquals(inputPort.getId(), fetchedProduct.getInputPorts().get(0).getId());
+      assertEquals(1, fetchedProduct.getOutputPorts().size());
+      assertEquals(outputPort.getId(), fetchedProduct.getOutputPorts().get(0).getId());
+
+    } finally {
+      EntityResourceTest.toggleRule(domainValidationRule, true);
+    }
+  }
 }

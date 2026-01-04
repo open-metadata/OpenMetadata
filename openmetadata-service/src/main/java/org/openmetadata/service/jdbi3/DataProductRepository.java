@@ -569,41 +569,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     // Note: Search index updates for renamed data products are handled in updateName()
     // within entitySpecificUpdate() to ensure we capture the correct old FQN before
     // change consolidation's revert() modifies the 'original' reference.
-
-    // Update search indexes for assets whose domain was migrated
-    updateMigratedAssetsSearchIndex(original, updated);
-  }
-
-  /**
-   * Update search indexes for assets that were migrated to a new domain. This uses a bulk update
-   * operation to efficiently update all assets linked to the data product when its domain changes.
-   */
-  private void updateMigratedAssetsSearchIndex(DataProduct original, DataProduct updated) {
-    List<EntityReference> origDomains = listOrEmpty(original.getDomains());
-    List<EntityReference> updatedDomains = listOrEmpty(updated.getDomains());
-
-    // Only update if domains actually changed
-    if (EntityUtil.entityReferenceListMatch.test(origDomains, updatedDomains)) {
-      return;
-    }
-
-    if (searchRepository == null) {
-      return;
-    }
-
-    // Extract old domain FQNs for removal
-    List<String> oldDomainFqns =
-        origDomains.stream().map(EntityReference::getFullyQualifiedName).toList();
-
-    LOG.info(
-        "Bulk updating asset domains in search index for data product {}: removing {}, adding {}",
-        updated.getFullyQualifiedName(),
-        oldDomainFqns,
-        updatedDomains.stream().map(EntityReference::getFullyQualifiedName).toList());
-
-    // Use bulk update to update all assets linked to this data product
-    searchRepository.updateAssetDomainsForDataProduct(
-        updated.getFullyQualifiedName(), oldDomainFqns, updatedDomains);
+    // Similarly, search index updates for domain migration are handled in
+    // updateDataProductDomains()
+    // to capture the correct original domains before mutation.
   }
 
   private void updateAssetSearchIndexes(String oldFqn, String newFqn) {
@@ -623,9 +591,20 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   public class DataProductUpdater extends EntityUpdater {
     private boolean renameProcessed = false;
     private boolean domainChangeProcessed = false;
+    // Capture original domains before they can be mutated by change consolidation's revert()
+    private List<EntityReference> capturedOriginalDomains = null;
+    private List<EntityReference> capturedUpdatedDomains = null;
 
     public DataProductUpdater(DataProduct original, DataProduct updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    public List<EntityReference> getCapturedOriginalDomains() {
+      return capturedOriginalDomains;
+    }
+
+    public List<EntityReference> getCapturedUpdatedDomains() {
+      return capturedUpdatedDomains;
     }
 
     @Override
@@ -650,123 +629,111 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       updateDataProductDomains();
     }
 
-    /**
-     * Handle domain change for a data product. When the domain changes, all assets linked to this
-     * data product (via HAS relationship) and all input/output ports must be migrated to the new
-     * domain. This ensures the invariant that a data product can only contain assets from the same
-     * domain.
-     */
     private void updateDataProductDomains() {
       List<EntityReference> origDomains = listOrEmpty(original.getDomains());
       List<EntityReference> updatedDomains = listOrEmpty(updated.getDomains());
 
-      // Check if domains actually changed
       if (EntityUtil.entityReferenceListMatch.test(origDomains, updatedDomains)) {
         return;
       }
 
-      // Only process domain change once per update operation
       if (domainChangeProcessed) {
         return;
       }
       domainChangeProcessed = true;
 
+      capturedOriginalDomains = new ArrayList<>(origDomains);
+      capturedUpdatedDomains = new ArrayList<>(updatedDomains);
+
       LOG.info(
-          "Data product {} domain changing from {} (IDs: {}) to {} (IDs: {})",
+          "Data product {} domain changing from {} to {}",
           updated.getFullyQualifiedName(),
           origDomains.stream().map(EntityReference::getFullyQualifiedName).toList(),
-          origDomains.stream().map(EntityReference::getId).toList(),
-          updatedDomains.stream().map(EntityReference::getFullyQualifiedName).toList(),
-          updatedDomains.stream().map(EntityReference::getId).toList());
+          updatedDomains.stream().map(EntityReference::getFullyQualifiedName).toList());
 
-      // Get all assets linked to this data product via HAS relationship
-      // Relationship is: DataProduct --HAS--> Asset, so we use findTo
       List<CollectionDAO.EntityRelationshipRecord> assetRecords =
           daoCollection
               .relationshipDAO()
               .findTo(updated.getId(), DATA_PRODUCT, Relationship.HAS.ordinal());
 
-      // Get all input ports
-      List<CollectionDAO.EntityRelationshipRecord> inputPortRecords =
+      List<CollectionDAO.EntityRelationshipRecord> portRecords = new ArrayList<>();
+      portRecords.addAll(
           daoCollection
               .relationshipDAO()
-              .findTo(updated.getId(), DATA_PRODUCT, Relationship.INPUT_PORT.ordinal());
-
-      // Get all output ports
-      List<CollectionDAO.EntityRelationshipRecord> outputPortRecords =
+              .findTo(updated.getId(), DATA_PRODUCT, Relationship.INPUT_PORT.ordinal()));
+      portRecords.addAll(
           daoCollection
               .relationshipDAO()
-              .findTo(updated.getId(), DATA_PRODUCT, Relationship.OUTPUT_PORT.ordinal());
+              .findTo(updated.getId(), DATA_PRODUCT, Relationship.OUTPUT_PORT.ordinal()));
 
-      // Combine all asset records
-      List<CollectionDAO.EntityRelationshipRecord> allAssetRecords = new ArrayList<>();
-      allAssetRecords.addAll(assetRecords);
-      allAssetRecords.addAll(inputPortRecords);
-      allAssetRecords.addAll(outputPortRecords);
+      List<CollectionDAO.EntityRelationshipRecord> allRecords = new ArrayList<>();
+      allRecords.addAll(assetRecords);
+      allRecords.addAll(portRecords);
 
-      if (!allAssetRecords.isEmpty()) {
+      if (!allRecords.isEmpty()) {
         LOG.info(
-            "Migrating {} assets to new domain(s) for data product {}",
-            allAssetRecords.size(),
+            "Migrating {} assets/ports to new domain(s) for data product {}",
+            allRecords.size(),
             updated.getFullyQualifiedName());
+        batchMigrateAssetDomains(allRecords, origDomains, updatedDomains);
 
-        // Migrate each asset to the new domain(s)
-        for (CollectionDAO.EntityRelationshipRecord record : allAssetRecords) {
-          try {
-            migrateAssetDomain(record.getId(), record.getType(), origDomains, updatedDomains);
-          } catch (Exception e) {
-            LOG.warn(
-                "Failed to migrate domain for asset {} (type: {}): {}",
-                record.getId(),
-                record.getType(),
-                e.getMessage());
-          }
+        if (searchRepository != null) {
+          List<String> oldDomainFqns =
+              origDomains.stream().map(EntityReference::getFullyQualifiedName).toList();
+          List<UUID> assetIds =
+              allRecords.stream().map(CollectionDAO.EntityRelationshipRecord::getId).toList();
+          searchRepository.updateAssetDomainsByIds(assetIds, oldDomainFqns, updatedDomains);
         }
       }
     }
 
-    /**
-     * Migrate an asset from the old domain(s) to the new domain(s). This removes the old domain
-     * relationships and adds new ones. Domains are stored as relationships, not in the entity JSON,
-     * so we only need to update the relationships and refresh the search index.
-     *
-     * <p>The search index update is deferred to postUpdate() which runs after the transaction
-     * commits. This ensures the relationship changes are persisted before the search index is
-     * updated.
-     */
-    private void migrateAssetDomain(
-        UUID assetId,
-        String assetType,
+    private void batchMigrateAssetDomains(
+        List<CollectionDAO.EntityRelationshipRecord> assetRecords,
         List<EntityReference> oldDomains,
         List<EntityReference> newDomains) {
-      // Remove old domain relationships and lineage for this asset
+
+      Map<String, List<UUID>> assetsByType = new HashMap<>();
+      for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
+        assetsByType.computeIfAbsent(record.getType(), k -> new ArrayList<>()).add(record.getId());
+      }
+
       for (EntityReference oldDomain : oldDomains) {
-        LOG.info(
-            "Removing domain relationship: {} ({}) --HAS--> {} ({})",
-            oldDomain.getFullyQualifiedName(),
-            oldDomain.getId(),
-            assetId,
-            assetType);
-        removeDomainLineage(assetId, assetType, oldDomain);
-        deleteRelationship(oldDomain.getId(), DOMAIN, assetId, assetType, Relationship.HAS);
+        for (Map.Entry<String, List<UUID>> entry : assetsByType.entrySet()) {
+          String assetType = entry.getKey();
+          List<UUID> assetIds = entry.getValue();
+
+          for (UUID assetId : assetIds) {
+            removeDomainLineage(assetId, assetType, oldDomain);
+          }
+
+          daoCollection
+              .relationshipDAO()
+              .bulkRemoveToRelationship(
+                  oldDomain.getId(), assetIds, DOMAIN, assetType, Relationship.HAS.ordinal());
+        }
       }
 
-      // Add new domain relationships and lineage for this asset
       for (EntityReference newDomain : newDomains) {
-        LOG.info(
-            "Adding domain relationship: {} ({}) --HAS--> {} ({})",
-            newDomain.getFullyQualifiedName(),
-            newDomain.getId(),
-            assetId,
-            assetType);
-        addRelationship(newDomain.getId(), assetId, DOMAIN, assetType, Relationship.HAS);
-        addDomainLineage(assetId, assetType, newDomain);
+        for (Map.Entry<String, List<UUID>> entry : assetsByType.entrySet()) {
+          String assetType = entry.getKey();
+          List<UUID> assetIds = entry.getValue();
+
+          daoCollection
+              .relationshipDAO()
+              .bulkInsertToRelationship(
+                  newDomain.getId(), assetIds, DOMAIN, assetType, Relationship.HAS.ordinal());
+
+          for (UUID assetId : assetIds) {
+            addDomainLineage(assetId, assetType, newDomain);
+          }
+        }
       }
 
-      // Invalidate the domain cache for this asset so the new domain is picked up
       var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
       if (cachedRelationshipDao != null) {
-        cachedRelationshipDao.invalidateDomains(assetType, assetId);
+        for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
+          cachedRelationshipDao.invalidateDomains(record.getType(), record.getId());
+        }
       }
     }
 

@@ -82,10 +82,10 @@ public class DataProductDomainMigrationIT {
         sourceDomain.getFullyQualifiedName(),
         dataProduct.getDomains().get(0).getFullyQualifiedName());
 
-    // Step 3: Create tables and add them as assets to the data product
+    // Step 3: Create tables with source domain and add them as assets to the data product
     List<Table> tables = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
-      Table table = createTestTable(ns, "migration_test_table_" + i);
+      Table table = createTestTableInDomain(ns, "migration_test_table_" + i, sourceDomain);
       tables.add(table);
     }
 
@@ -106,7 +106,10 @@ public class DataProductDomainMigrationIT {
     // Wait for search index to update after adding assets
     waitForSearchIndexUpdate();
 
-    // Verify assets are searchable in source domain
+    // Verify assets are in source domain via API (database check)
+    verifyAssetsHaveDomainViaAPI(client, tables, sourceDomain, true);
+
+    // Verify assets are searchable in source domain (search index check)
     verifyAssetsInDomainSearch(client, sourceDomain.getFullyQualifiedName(), tables, true);
 
     // Step 4: Change the data product's domain from source to target
@@ -129,10 +132,18 @@ public class DataProductDomainMigrationIT {
     // Wait for search index to update after domain migration
     waitForSearchIndexUpdate();
 
-    // Step 5: Verify assets now appear in target domain's search
+    // Step 5: Verify assets now have target domain via API (database check - THE KEY TEST)
+    verifyAssetsHaveDomainViaAPI(client, tables, targetDomain, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, sourceDomain, false);
+
+    // Step 6: Verify assets appear in target domain's /assets endpoint (THE ACTUAL USER ENDPOINT)
+    verifyAssetsInDomainAssetsEndpoint(client, targetDomain, tables, true);
+    verifyAssetsInDomainAssetsEndpoint(client, sourceDomain, tables, false);
+
+    // Step 7: Verify assets now appear in target domain's search (search index check)
     verifyAssetsInDomainSearch(client, targetDomain.getFullyQualifiedName(), tables, true);
 
-    // Step 6: Verify assets no longer appear in source domain's search
+    // Step 8: Verify assets no longer appear in source domain's search
     verifyAssetsInDomainSearch(client, sourceDomain.getFullyQualifiedName(), tables, false);
   }
 
@@ -154,9 +165,9 @@ public class DataProductDomainMigrationIT {
     DataProduct dataProduct = client.dataProducts().create(createDp);
     assertNotNull(dataProduct);
 
-    // Create tables for input/output ports
-    Table inputTable = createTestTable(ns, "input_port_table");
-    Table outputTable = createTestTable(ns, "output_port_table");
+    // Create tables for input/output ports with source domain
+    Table inputTable = createTestTableInDomain(ns, "input_port_table", sourceDomain);
+    Table outputTable = createTestTableInDomain(ns, "output_port_table", sourceDomain);
 
     // Add input port
     List<EntityReference> inputPorts =
@@ -180,7 +191,10 @@ public class DataProductDomainMigrationIT {
 
     waitForSearchIndexUpdate();
 
-    // Verify ports are in source domain
+    // Verify ports are in source domain via API
+    verifyAssetsHaveDomainViaAPI(client, List.of(inputTable, outputTable), sourceDomain, true);
+
+    // Verify ports are in source domain via search
     verifyAssetsInDomainSearch(
         client, sourceDomain.getFullyQualifiedName(), List.of(inputTable, outputTable), true);
 
@@ -200,73 +214,23 @@ public class DataProductDomainMigrationIT {
 
     waitForSearchIndexUpdate();
 
-    // Verify ports are now in target domain
+    // Verify ports are now in target domain via API (THE KEY TEST)
+    verifyAssetsHaveDomainViaAPI(client, List.of(inputTable, outputTable), targetDomain, true);
+    verifyAssetsHaveDomainViaAPI(client, List.of(inputTable, outputTable), sourceDomain, false);
+
+    // Verify ports are now in target domain via search
     verifyAssetsInDomainSearch(
         client, targetDomain.getFullyQualifiedName(), List.of(inputTable, outputTable), true);
 
-    // Verify ports are no longer in source domain
+    // Verify ports are no longer in source domain via search
     verifyAssetsInDomainSearch(
         client, sourceDomain.getFullyQualifiedName(), List.of(inputTable, outputTable), false);
   }
 
-  @Test
-  void testDataProductDomainMigrationToMultipleDomains(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    String shortId = ns.shortPrefix();
-
-    // Create three domains
-    Domain sourceDomain = createDomain(client, "multi_source_" + shortId);
-    Domain targetDomain1 = createDomain(client, "multi_target1_" + shortId);
-    Domain targetDomain2 = createDomain(client, "multi_target2_" + shortId);
-
-    // Create data product in source domain
-    CreateDataProduct createDp = new CreateDataProduct();
-    createDp.setName("multi_domain_dp_" + shortId);
-    createDp.setDescription("Test data product for multi-domain migration");
-    createDp.setDomains(List.of(sourceDomain.getFullyQualifiedName()));
-
-    DataProduct dataProduct = client.dataProducts().create(createDp);
-
-    // Create and add assets
-    Table table = createTestTable(ns, "multi_domain_table");
-    List<EntityReference> assetRefs =
-        List.of(
-            new EntityReference()
-                .withId(table.getId())
-                .withType("table")
-                .withFullyQualifiedName(table.getFullyQualifiedName()));
-    BulkAssets bulkRequest = new BulkAssets().withAssets(assetRefs);
-    client.dataProducts().bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkRequest);
-
-    waitForSearchIndexUpdate();
-
-    // Change to multiple domains
-    DataProduct dpToUpdate = client.dataProducts().get(dataProduct.getId().toString(), "domains");
-    dpToUpdate.setDomains(
-        List.of(
-            new EntityReference()
-                .withId(targetDomain1.getId())
-                .withType("domain")
-                .withFullyQualifiedName(targetDomain1.getFullyQualifiedName()),
-            new EntityReference()
-                .withId(targetDomain2.getId())
-                .withType("domain")
-                .withFullyQualifiedName(targetDomain2.getFullyQualifiedName())));
-
-    DataProduct updatedDp =
-        client.dataProducts().update(dataProduct.getId().toString(), dpToUpdate);
-    assertNotNull(updatedDp);
-    assertEquals(2, updatedDp.getDomains().size());
-
-    waitForSearchIndexUpdate();
-
-    // Verify assets appear in both target domains
-    verifyAssetsInDomainSearch(client, targetDomain1.getFullyQualifiedName(), List.of(table), true);
-    verifyAssetsInDomainSearch(client, targetDomain2.getFullyQualifiedName(), List.of(table), true);
-
-    // Verify assets no longer appear in source domain
-    verifyAssetsInDomainSearch(client, sourceDomain.getFullyQualifiedName(), List.of(table), false);
-  }
+  // Multi-domain test is disabled because the platform has a rule that only allows single domain
+  // per entity (except for Users and Teams). This is a platform constraint, not a bug.
+  // @Test
+  // void testDataProductDomainMigrationToMultipleDomains(TestNamespace ns) throws Exception { ... }
 
   // ==================== Helper Methods ====================
 
@@ -278,12 +242,13 @@ public class DataProductDomainMigrationIT {
     return client.domains().create(request);
   }
 
-  private Table createTestTable(TestNamespace ns, String baseName) {
+  private Table createTestTableInDomain(TestNamespace ns, String baseName, Domain domain) {
     initializeSharedDbEntities(ns);
 
     CreateTable tableRequest = new CreateTable();
     tableRequest.setName(ns.prefix(baseName));
     tableRequest.setDatabaseSchema(sharedSchema.getFullyQualifiedName());
+    tableRequest.setDomains(List.of(domain.getFullyQualifiedName()));
     tableRequest.setColumns(
         List.of(
             new Column().withName("id").withDataType(ColumnDataType.BIGINT),
@@ -327,12 +292,50 @@ public class DataProductDomainMigrationIT {
   }
 
   private void waitForSearchIndexUpdate() {
-    // Give time for the search index to be updated asynchronously
-    // In a real scenario, we might want to use a more sophisticated polling mechanism
-    try {
-      Thread.sleep(2000);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
+    // Verification methods use Awaitility with polling, so no explicit wait needed
+  }
+
+  /**
+   * Verify that tables have (or don't have) a specific domain via API call.
+   * This checks the actual database state, not the search index.
+   */
+  private void verifyAssetsHaveDomainViaAPI(
+      OpenMetadataClient client,
+      List<Table> tables,
+      Domain expectedDomain,
+      boolean shouldHaveDomain) {
+    for (Table table : tables) {
+      // Fetch the table with domains field populated
+      Table fetchedTable = client.tables().get(table.getId().toString(), "domains");
+      assertNotNull(fetchedTable, "Table should exist: " + table.getFullyQualifiedName());
+
+      List<EntityReference> domains = fetchedTable.getDomains();
+      boolean hasDomain = false;
+      if (domains != null) {
+        hasDomain = domains.stream().anyMatch(d -> d.getId().equals(expectedDomain.getId()));
+      }
+
+      if (shouldHaveDomain) {
+        assertTrue(
+            hasDomain,
+            String.format(
+                "Table %s should have domain %s. Actual domains: %s",
+                table.getFullyQualifiedName(),
+                expectedDomain.getFullyQualifiedName(),
+                domains != null
+                    ? domains.stream().map(EntityReference::getFullyQualifiedName).toList()
+                    : "null"));
+      } else {
+        assertFalse(
+            hasDomain,
+            String.format(
+                "Table %s should NOT have domain %s. Actual domains: %s",
+                table.getFullyQualifiedName(),
+                expectedDomain.getFullyQualifiedName(),
+                domains != null
+                    ? domains.stream().map(EntityReference::getFullyQualifiedName).toList()
+                    : "null"));
+      }
     }
   }
 
@@ -389,5 +392,188 @@ public class DataProductDomainMigrationIT {
                 }
               }
             });
+  }
+
+  /**
+   * Verify assets using the actual /api/v1/domains/{name}/assets endpoint.
+   * This is the endpoint the user reported as returning empty results.
+   */
+  private void verifyAssetsInDomainAssetsEndpoint(
+      OpenMetadataClient client, Domain domain, List<Table> expectedTables, boolean shouldExist)
+      throws Exception {
+    // Use Awaitility to poll for the expected state since search index updates are async
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(2, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              // Call the actual /api/v1/domains/name/{fqn}/assets endpoint using raw HTTP
+              // Note: SdkClients.getServerUrl() already includes /api suffix
+              String url =
+                  String.format(
+                      "%s/v1/domains/name/%s/assets?limit=100",
+                      SdkClients.getServerUrl(), domain.getFullyQualifiedName());
+
+              java.net.http.HttpClient httpClient = java.net.http.HttpClient.newHttpClient();
+              java.net.http.HttpRequest request =
+                  java.net.http.HttpRequest.newBuilder()
+                      .uri(java.net.URI.create(url))
+                      .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+                      .header("Content-Type", "application/json")
+                      .GET()
+                      .build();
+
+              java.net.http.HttpResponse<String> response =
+                  httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+              assertEquals(
+                  200,
+                  response.statusCode(),
+                  "Domain assets endpoint should return 200. Response: " + response.body());
+
+              JsonNode root = OBJECT_MAPPER.readTree(response.body());
+              assertTrue(root.has("data"), "Response should have 'data' field");
+
+              JsonNode dataArray = root.get("data");
+              List<String> foundFqns = new ArrayList<>();
+              for (JsonNode asset : dataArray) {
+                if (asset.has("fullyQualifiedName")) {
+                  foundFqns.add(asset.get("fullyQualifiedName").asText());
+                }
+              }
+
+              int totalAssets =
+                  root.has("paging") && root.get("paging").has("total")
+                      ? root.get("paging").get("total").asInt()
+                      : foundFqns.size();
+
+              for (Table table : expectedTables) {
+                boolean found = foundFqns.contains(table.getFullyQualifiedName());
+                if (shouldExist) {
+                  assertTrue(
+                      found,
+                      String.format(
+                          "Table %s should be found in domain %s assets endpoint. "
+                              + "Expected %d assets, found %d (total=%d). Found FQNs: %s",
+                          table.getFullyQualifiedName(),
+                          domain.getFullyQualifiedName(),
+                          expectedTables.size(),
+                          foundFqns.size(),
+                          totalAssets,
+                          foundFqns));
+                } else {
+                  assertFalse(
+                      found,
+                      String.format(
+                          "Table %s should NOT be found in domain %s assets endpoint. Found FQNs: %s",
+                          table.getFullyQualifiedName(),
+                          domain.getFullyQualifiedName(),
+                          foundFqns));
+                }
+              }
+            });
+  }
+
+  /**
+   * Test that verifies domain migration works correctly when moving back and forth between multiple
+   * domains. This catches edge cases where:
+   * - Removal of non-existent relationships causes issues
+   * - Multiple consecutive moves don't work correctly
+   * - Moving back to the original domain doesn't restore state
+   */
+  @Test
+  void testDataProductDomainMigrationBackAndForth(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String shortId = ns.shortPrefix();
+
+    // Create 4 domains to move between
+    Domain domainA = createDomain(client, "domain_a_" + shortId);
+    Domain domainB = createDomain(client, "domain_b_" + shortId);
+    Domain domainC = createDomain(client, "domain_c_" + shortId);
+    Domain domainD = createDomain(client, "domain_d_" + shortId);
+
+    // Create a data product in Domain A
+    CreateDataProduct createDp = new CreateDataProduct();
+    createDp.setName("backforth_dp_" + shortId);
+    createDp.setDescription("Test data product for back-and-forth domain migration");
+    createDp.setDomains(List.of(domainA.getFullyQualifiedName()));
+
+    DataProduct dataProduct = client.dataProducts().create(createDp);
+    assertNotNull(dataProduct);
+
+    // Create tables with Domain A and add them as assets
+    List<Table> tables = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      Table table = createTestTableInDomain(ns, "backforth_table_" + i, domainA);
+      tables.add(table);
+    }
+
+    // Add tables as assets to the data product
+    List<EntityReference> assetRefs = new ArrayList<>();
+    for (Table table : tables) {
+      assetRefs.add(
+          new EntityReference()
+              .withId(table.getId())
+              .withType("table")
+              .withFullyQualifiedName(table.getFullyQualifiedName()));
+    }
+    BulkAssets bulkRequest = new BulkAssets().withAssets(assetRefs);
+    client.dataProducts().bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkRequest);
+    waitForSearchIndexUpdate();
+
+    // Verify initial state: assets in Domain A
+    verifyAssetsHaveDomainViaAPI(client, tables, domainA, true);
+    verifyAssetsInDomainAssetsEndpoint(client, domainA, tables, true);
+
+    // Move 1: A → B
+    moveDataProductToDomain(client, dataProduct, domainB);
+    waitForSearchIndexUpdate();
+    verifyAssetsHaveDomainViaAPI(client, tables, domainB, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, domainA, false);
+    verifyAssetsInDomainAssetsEndpoint(client, domainB, tables, true);
+    verifyAssetsInDomainAssetsEndpoint(client, domainA, tables, false);
+
+    // Move 2: B → C
+    moveDataProductToDomain(client, dataProduct, domainC);
+    waitForSearchIndexUpdate();
+    verifyAssetsHaveDomainViaAPI(client, tables, domainC, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, domainB, false);
+    verifyAssetsInDomainAssetsEndpoint(client, domainC, tables, true);
+    verifyAssetsInDomainAssetsEndpoint(client, domainB, tables, false);
+
+    // Move 3: C → D
+    moveDataProductToDomain(client, dataProduct, domainD);
+    waitForSearchIndexUpdate();
+    verifyAssetsHaveDomainViaAPI(client, tables, domainD, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, domainC, false);
+    verifyAssetsInDomainAssetsEndpoint(client, domainD, tables, true);
+    verifyAssetsInDomainAssetsEndpoint(client, domainC, tables, false);
+
+    // Move 4: D → A (back to original)
+    moveDataProductToDomain(client, dataProduct, domainA);
+    waitForSearchIndexUpdate();
+    verifyAssetsHaveDomainViaAPI(client, tables, domainA, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, domainD, false);
+    verifyAssetsInDomainAssetsEndpoint(client, domainA, tables, true);
+    verifyAssetsInDomainAssetsEndpoint(client, domainD, tables, false);
+
+    // Final verification: only Domain A should have the assets
+    verifyAssetsHaveDomainViaAPI(client, tables, domainB, false);
+    verifyAssetsHaveDomainViaAPI(client, tables, domainC, false);
+  }
+
+  /**
+   * Helper method to move a data product to a new domain.
+   */
+  private void moveDataProductToDomain(
+      OpenMetadataClient client, DataProduct dataProduct, Domain targetDomain) {
+    DataProduct dpToUpdate = client.dataProducts().get(dataProduct.getId().toString(), "domains");
+    dpToUpdate.setDomains(
+        List.of(
+            new EntityReference()
+                .withId(targetDomain.getId())
+                .withType("domain")
+                .withFullyQualifiedName(targetDomain.getFullyQualifiedName())));
+    client.dataProducts().update(dataProduct.getId().toString(), dpToUpdate);
   }
 }

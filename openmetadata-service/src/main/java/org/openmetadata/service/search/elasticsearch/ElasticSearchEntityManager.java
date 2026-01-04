@@ -1025,6 +1025,84 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
   }
 
   @Override
+  public void updateAssetDomainsByIds(
+      List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    if (!isClientAvailable) {
+      LOG.error("Elasticsearch client is not available. Cannot update asset domains.");
+      return;
+    }
+
+    if (assetIds == null || assetIds.isEmpty()) {
+      LOG.debug("No asset IDs provided for domain update.");
+      return;
+    }
+
+    try {
+      List<String> idValues = assetIds.stream().map(UUID::toString).toList();
+      String indexName = Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+      LOG.info(
+          "Updating asset domains by IDs: index={}, idCount={}, ids={}",
+          indexName,
+          idValues.size(),
+          idValues);
+      Query idsQuery = Query.of(q -> q.ids(i -> i.values(idValues)));
+
+      List<Map<String, Object>> newDomainsData = new ArrayList<>();
+      for (EntityReference domain : newDomains) {
+        Map<String, Object> domainMap = new HashMap<>();
+        domainMap.put("id", domain.getId().toString());
+        domainMap.put("type", domain.getType());
+        domainMap.put("name", domain.getName());
+        domainMap.put("fullyQualifiedName", domain.getFullyQualifiedName());
+        if (domain.getDisplayName() != null) {
+          domainMap.put("displayName", domain.getDisplayName());
+        }
+        newDomainsData.add(domainMap);
+      }
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldDomainFqns", JsonData.of(oldDomainFqns),
+              "newDomains", JsonData.of(newDomainsData));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(indexName)
+                      .query(idsQuery)
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless)
+                                          .source(SearchClient.UPDATE_ASSET_DOMAIN_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Updated asset domains by IDs: requested={}, total={}, updated={}, noops={}, removed={}, added={}",
+          assetIds.size(),
+          updateResponse.total(),
+          updateResponse.updated(),
+          updateResponse.noops(),
+          oldDomainFqns,
+          newDomains.stream().map(EntityReference::getFullyQualifiedName).toList());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update asset domains: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while updating asset domains by IDs: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
   public void reindexEntities(List<EntityReference> entities) throws IOException {
     if (!isClientAvailable) {
       LOG.error("Elasticsearch client is not available. Cannot reindex entities.");

@@ -293,6 +293,19 @@ public interface EntityManagementClient {
   }
 
   /**
+   * Updates domain references for assets by their IDs. This method performs a bulk update using
+   * document IDs rather than querying by data product FQN.
+   *
+   * @param assetIds list of asset document IDs to update
+   * @param oldDomainFqns list of old domain FQNs to remove from assets
+   * @param newDomains list of new domain references to add to assets
+   */
+  default void updateAssetDomainsByIds(
+      List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    // Default no-op implementation - overridden by search-specific implementations
+  }
+
+  /**
    * Reindexes multiple entities across indices.
    * This method takes a list of entity references, fetches the full entity data,
    * rebuilds the search index documents, and performs a bulk update.

@@ -1030,6 +1030,76 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   }
 
   @Override
+  public void updateAssetDomainsByIds(
+      List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot update asset domains.");
+      return;
+    }
+
+    if (assetIds == null || assetIds.isEmpty()) {
+      LOG.debug("No asset IDs provided for domain update.");
+      return;
+    }
+
+    try {
+      List<String> idValues = assetIds.stream().map(UUID::toString).toList();
+      Query idsQuery = Query.of(q -> q.ids(i -> i.values(idValues)));
+
+      List<Map<String, Object>> newDomainsData = new ArrayList<>();
+      for (EntityReference domain : newDomains) {
+        Map<String, Object> domainMap = new HashMap<>();
+        domainMap.put("id", domain.getId().toString());
+        domainMap.put("type", domain.getType());
+        domainMap.put("name", domain.getName());
+        domainMap.put("fullyQualifiedName", domain.getFullyQualifiedName());
+        if (domain.getDisplayName() != null) {
+          domainMap.put("displayName", domain.getDisplayName());
+        }
+        newDomainsData.add(domainMap);
+      }
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldDomainFqns", JsonData.of(oldDomainFqns),
+              "newDomains", JsonData.of(newDomainsData));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                      .query(idsQuery)
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless.jsonValue())
+                                          .source(SearchClient.UPDATE_ASSET_DOMAIN_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Successfully updated asset domains by IDs: {} assets, removed {}, added {}, updated {} documents",
+          assetIds.size(),
+          oldDomainFqns,
+          newDomains.stream().map(EntityReference::getFullyQualifiedName).toList(),
+          updateResponse.updated());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update asset domains: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while updating asset domains by IDs: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
   public void reindexEntities(List<EntityReference> entities) throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot reindex entities.");

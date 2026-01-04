@@ -661,6 +661,14 @@ public class SearchRepository {
     getSearchClient().updateAssetDomainsForDataProduct(dataProductFqn, oldDomainFqns, newDomains);
   }
 
+  /**
+   * Bulk updates domain references for specific assets by their IDs.
+   */
+  public void updateAssetDomainsByIds(
+      List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    getSearchClient().updateAssetDomainsByIds(assetIds, oldDomainFqns, newDomains);
+  }
+
   public boolean checkIfIndexingIsSupported(String entityType) {
     IndexMapping indexMapping = entityIndexMap.get(entityType);
     if (indexMapping == null) {

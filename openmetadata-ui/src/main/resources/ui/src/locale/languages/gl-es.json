@@ -2140,6 +2140,7 @@
     "disable-tag-description": "Ao desactivar a etiqueta, non poderás buscar por ela nin asignala a ningunha entidade.",
     "disabled-classification-actions-message": "Non podes realizar esta acción en clasificacións desactivadas.",
     "discover-your-data-and-unlock-the-value-of-data-assets": "As cousas simplifícanse co control de calidade de datos sen código. Pasos simples para probar, despregar e reunir resultados, con notificacións instantáneas de fallos de proba. Mantente actualizado con datos fiables nos que podes confiar.",
+    "domain-change-asset-migration-warning": "Changing the domain will move {{count}} asset(s) from the current domain to {{domain}}. Do you want to proceed?",
     "domain-description": "Organize and manage data domains in your organization.",
     "domain-does-not-have-assets": "O dominio {{name}} non ten activos para engadir ao Produto de Datos",
     "domain-type-guide": "Hai tres tipos de dominios: Agregados, Alineados ao Consumidor e Alineados á Fonte.",

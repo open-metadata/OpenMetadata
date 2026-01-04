@@ -32,6 +32,54 @@ const navigateToDataProductPage = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 };
 
+// Helper to navigate to a domain's assets tab and verify asset count
+const navigateToDomainAssetsTab = async (
+  page: Page,
+  domain: Domain,
+  expectedAssetCount: number
+) => {
+  const fqn = domain.responseData.fullyQualifiedName;
+  await page.goto(`/domain/${encodeURIComponent(fqn!)}`);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  // Click on Assets tab
+  await page.getByTestId('assets').click();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  // Verify asset count
+  await checkAssetsCount(page, expectedAssetCount);
+};
+
+// Helper to verify specific assets are visible in the domain's assets tab
+const verifyAssetsInDomain = async (
+  page: Page,
+  domain: Domain,
+  tables: TableClass[],
+  expectedVisible: boolean
+) => {
+  const fqn = domain.responseData.fullyQualifiedName;
+  await page.goto(`/domain/${encodeURIComponent(fqn!)}`);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  // Click on Assets tab
+  await page.getByTestId('assets').click();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  for (const table of tables) {
+    const tableFqn = table.entityResponseData.fullyQualifiedName;
+    const tableCard = page.locator(`[data-testid="table-data-card_${tableFqn}"]`);
+    if (expectedVisible) {
+      await expect(tableCard).toBeVisible({ timeout: 10000 });
+    } else {
+      await expect(tableCard).not.toBeVisible({ timeout: 5000 });
+    }
+  }
+};
+
 test.describe('Data Product Domain Migration', () => {
   const adminUser = new UserClass();
   let shortId: string;
@@ -159,24 +207,31 @@ test.describe('Data Product Domain Migration', () => {
       await adminUser.login(page);
       await redirectToHomePage(page);
 
-      // Navigate directly to data product page via URL
+      // STEP 1: Verify initial state - assets should be under source domain
+      await navigateToDomainAssetsTab(page, sourceDomain, 2);
+
+      // Verify the specific tables are visible under source domain
+      await verifyAssetsInDomain(page, sourceDomain, [table1, table2], true);
+
+      // Verify target domain has no assets initially
+      await navigateToDomainAssetsTab(page, targetDomain, 0);
+
+      // STEP 2: Navigate to data product and verify it's in source domain
       await navigateToDataProductPage(page, dataProduct);
 
-      // Verify we're on the data product page by checking for the data product name
       await expect(
         page.locator('[data-testid="entity-header-name"]')
       ).toContainText(dataProduct.responseData.name);
 
-      // Verify data product is in source domain
       await expect(page.getByTestId('domain-link').first()).toContainText(
         sourceDomain.data.displayName
       );
 
-      // Verify assets are there
+      // Verify assets are in the data product
       await page.getByTestId('assets').click();
       await checkAssetsCount(page, 2);
 
-      // Change domain via API (bypassing complex UI multi-select tree)
+      // STEP 3: Change domain via API (bypassing complex UI multi-select tree)
       const patchResponse = await apiContext.patch(
         `/api/v1/dataProducts/${dataProduct.responseData.id}`,
         {
@@ -198,20 +253,28 @@ test.describe('Data Product Domain Migration', () => {
         }
       );
 
-      // Verify patch succeeded
       expect(patchResponse.ok()).toBeTruthy();
 
-      // Navigate back to the data product page to see updated domain
+      // STEP 4: Verify data product now shows target domain
       await navigateToDataProductPage(page, dataProduct);
 
-      // Verify data product now shows target domain
       await expect(page.getByTestId('domain-link').first()).toContainText(
         targetDomain.data.displayName
       );
 
-      // Verify assets are still there
+      // Verify assets are still in the data product
       await page.getByTestId('assets').click();
       await checkAssetsCount(page, 2);
+
+      // STEP 5: THE KEY VERIFICATION - assets should now appear under TARGET domain
+      // This is the actual bug we're testing - assets must be migrated to the new domain
+      await navigateToDomainAssetsTab(page, targetDomain, 2);
+
+      // Verify the specific tables are now visible under target domain
+      await verifyAssetsInDomain(page, targetDomain, [table1, table2], true);
+
+      // STEP 6: Verify assets are no longer under source domain
+      await navigateToDomainAssetsTab(page, sourceDomain, 0);
     } finally {
       await afterAction();
       await page.close();
