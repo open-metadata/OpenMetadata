@@ -106,6 +106,10 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             logger.info(f"Fetching topic schema {topic_details.topic_name}")
             topic_schema = self._parse_topic_metadata(topic_details.topic_name)
             logger.info(f"Fetching topic config {topic_details.topic_name}")
+            
+            first_broker = self.service_connection.bootstrapServers.split(",")[0].strip()
+            broker_hostname = first_broker.split(":")[0]
+
             topic = CreateTopicRequest(
                 name=EntityName(topic_details.topic_name),
                 service=FullyQualifiedEntityName(self.context.get().messaging_service),
@@ -113,6 +117,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 replicationFactor=len(
                     topic_details.topic_metadata.partitions.get(0).replicas
                 ),
+                namespace=broker_hostname,
             )
             topic_config_resource = self.admin_client.describe_configs(
                 [

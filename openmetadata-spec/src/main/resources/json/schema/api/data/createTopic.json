@@ -108,6 +108,10 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "namespace": {
+      "description": "OpenLineage namespace URI that identifies the messaging system hosting this topic.",
+      "type": "string"
     }
   },
   "required": ["name", "service", "partitions"],

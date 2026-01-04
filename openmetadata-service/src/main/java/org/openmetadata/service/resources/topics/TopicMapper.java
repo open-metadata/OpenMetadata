@@ -22,6 +22,7 @@ public class TopicMapper implements EntityMapper<Topic, CreateTopic> {
         .withReplicationFactor(create.getReplicationFactor())
         .withTopicConfig(create.getTopicConfig())
         .withSourceUrl(create.getSourceUrl())
-        .withSourceHash(create.getSourceHash());
+        .withSourceHash(create.getSourceHash())
+        .withNamespace(create.getNamespace());
   }
 }
