@@ -219,6 +219,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
   if (!displayOwners.length) {
     return (
       <Box
+        data-testid="owners-section"
         sx={{
           borderBottom: `0.6px solid ${theme.palette.allShades.gray[200]}`,
           paddingBottom: '16px',
@@ -267,6 +268,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
 
   return (
     <Box
+      data-testid="owners-section"
       sx={{
         borderBottom: `0.6px solid ${theme.palette.allShades.gray[200]}`,
         paddingBottom: '16px',
