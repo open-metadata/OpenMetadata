@@ -533,7 +533,9 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           glossaryTerms: permissions.EditGlossaryTerms || permissions.EditAll,
           description: permissions.EditDescription || permissions.EditAll,
           viewAllPermission: permissions.ViewAll,
-          customProperties: false,
+        }}
+        hasViewPermission={{
+          customProperties: permissions.ViewCustomFields || permissions.ViewAll,
         }}
         isOpen={isColumnDetailOpen}
         tableFqn={apiEndpointDetails.fullyQualifiedName ?? ''}

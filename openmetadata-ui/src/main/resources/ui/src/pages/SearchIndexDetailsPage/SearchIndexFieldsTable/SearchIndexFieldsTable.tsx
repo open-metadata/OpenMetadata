@@ -75,10 +75,12 @@ import {
 const SearchIndexFieldsTable = ({
   searchIndexFields,
   onUpdate,
+  viewAllPermission,
   hasDescriptionEditAccess,
   hasTagEditAccess,
   hasGlossaryTermEditAccess,
   isReadOnly = false,
+  hasCustomPropertiesViewAccess,
   entityFqn,
   fieldAllRowKeys,
 }: SearchIndexFieldsTableProps) => {
@@ -469,8 +471,10 @@ const SearchIndexFieldsTable = ({
           tags: hasTagEditAccess,
           glossaryTerms: hasGlossaryTermEditAccess,
           description: hasDescriptionEditAccess,
-          viewAllPermission: false,
-          customProperties: false,
+          viewAllPermission: viewAllPermission,
+        }}
+        hasViewPermission={{
+          customProperties: hasCustomPropertiesViewAccess,
         }}
         isOpen={isColumnDetailOpen}
         tableFqn={entityFqn}

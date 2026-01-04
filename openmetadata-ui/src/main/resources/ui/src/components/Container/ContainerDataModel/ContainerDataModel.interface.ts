@@ -17,7 +17,7 @@ export interface ContainerDataModelProps {
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
   hasGlossaryTermEditAccess: boolean;
-  hasCustomPropertiesEditAccess: boolean;
+  hasCustomPropertiesViewAccess: boolean;
   isReadOnly: boolean;
   entityFqn: string;
   onUpdate: (updatedDataModel: Container['dataModel']) => Promise<void>;

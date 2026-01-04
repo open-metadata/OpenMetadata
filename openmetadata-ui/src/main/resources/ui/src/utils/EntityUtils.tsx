@@ -64,7 +64,6 @@ import {
   EntityTabs,
   EntityType,
   FqnPart,
-  TabSpecificField,
 } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
@@ -2923,14 +2922,11 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.NOTIFICATION_TEMPLATE]: t('label.notification-template'),
 };
 
-export const hasSchemaTab = (
-  entityType: EntityType | TabSpecificField.COLUMNS
-): boolean => SCHEMA_TABS_SET.has(entityType);
+export const hasSchemaTab = (entityType: EntityType): boolean =>
+  SCHEMA_TABS_SET.has(entityType);
 
-export const hasLineageTab = (
-  entityType: EntityType | TabSpecificField.COLUMNS
-): boolean => LINEAGE_TABS_SET.has(entityType);
+export const hasLineageTab = (entityType: EntityType): boolean =>
+  LINEAGE_TABS_SET.has(entityType);
 
-export const hasCustomPropertiesTab = (
-  entityType: EntityType | TabSpecificField.COLUMNS
-): boolean => CUSTOM_PROPERTIES_TABS_SET.has(entityType);
+export const hasCustomPropertiesTab = (entityType: EntityType): boolean =>
+  CUSTOM_PROPERTIES_TABS_SET.has(entityType);

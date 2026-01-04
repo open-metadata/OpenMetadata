@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-new.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
-import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { updateTableColumn } from '../../../rest/tableAPI';
@@ -70,6 +70,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   updateColumnDescription,
   updateColumnTags,
   hasEditPermission = {},
+  hasViewPermission = {},
   allColumns = [],
   onNavigate,
   tableConstraints = [],
@@ -493,7 +494,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           entityType={entityType}
           isEntityDataLoading={false}
           viewCustomPropertiesPermission={
-            hasEditPermission.customProperties ?? false
+            hasViewPermission?.customProperties ?? false
           }
         />
       </div>
@@ -681,8 +682,9 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           </Card>
           <div className="m-r-sm">
             <EntityRightPanelVerticalNav
+              isColumnDetailPanel
               activeTab={activeTab}
-              entityType={TabSpecificField.COLUMNS}
+              entityType={entityType}
               verticalNavConatinerclassName="column-detail-panel-vertical-nav"
               onTabChange={handleTabChange}
             />

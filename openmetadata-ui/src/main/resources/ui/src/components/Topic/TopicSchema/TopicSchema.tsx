@@ -540,6 +540,8 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           glossaryTerms: hasGlossaryTermEditAccess,
           description: hasDescriptionEditAccess,
           viewAllPermission: permissions.ViewAll,
+        }}
+        hasViewPermission={{
           customProperties: hasCustomPropertiesViewAccess,
         }}
         isOpen={isColumnDetailOpen}

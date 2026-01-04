@@ -19,7 +19,7 @@ import { ReactComponent as ExploreIcon } from '../../../assets/svg/explore-verti
 import { ReactComponent as PlatformLineageIcon } from '../../../assets/svg/explore-vertical-nav-icons/ic-platform-lineage.svg';
 import { ReactComponent as SchemaIcon } from '../../../assets/svg/explore-vertical-nav-icons/ic-schema.svg';
 import { ReactComponent as DataQualityIcon } from '../../../assets/svg/ic-data-contract.svg';
-import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import {
   hasCustomPropertiesTab,
   hasLineageTab,
@@ -38,6 +38,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
     onTabChange,
     verticalNavConatinerclassName,
     isSideDrawer = false,
+    isColumnDetailPanel = false,
   }) => {
     const { t } = useTranslation();
 
@@ -52,7 +53,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       ];
 
       // Add schema tab for entities that have schema
-      if (hasSchemaTab(entityType)) {
+      if (hasSchemaTab(entityType) && !isColumnDetailPanel) {
         items.push({
           key: EntityRightPanelTab.SCHEMA,
           icon: <SchemaIcon height={16} width={16} />,
@@ -61,7 +62,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
         });
       }
       // Add lineage tab for most entities
-      if (hasLineageTab(entityType)) {
+      if (hasLineageTab(entityType) && !isColumnDetailPanel) {
         items.push({
           key: EntityRightPanelTab.LINEAGE,
           icon: <PlatformLineageIcon height={16} width={16} />,
@@ -71,10 +72,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       }
 
       // Add data quality tab for tables
-      if (
-        entityType === EntityType.TABLE ||
-        entityType === TabSpecificField.COLUMNS
-      ) {
+      if (entityType === EntityType.TABLE) {
         items.push({
           key: EntityRightPanelTab.DATA_QUALITY,
           icon: <DataQualityIcon height={16} width={16} />,

@@ -63,7 +63,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   hasDescriptionEditAccess,
   hasTagEditAccess,
   hasGlossaryTermEditAccess,
-  hasCustomPropertiesEditAccess,
+  hasCustomPropertiesViewAccess,
   isReadOnly,
   onUpdate,
   entityFqn,
@@ -351,7 +351,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
           glossaryTerms: hasGlossaryTermEditAccess,
           description: hasDescriptionEditAccess,
           viewAllPermission: false,
-          customProperties: hasCustomPropertiesEditAccess,
+        }}
+        hasViewPermission={{
+          customProperties: hasCustomPropertiesViewAccess,
         }}
         isOpen={isColumnDetailOpen}
         tableFqn={entityFqn}

@@ -502,6 +502,8 @@ const ModelTab = () => {
           glossaryTerms: hasEditGlossaryTermPermission,
           description: hasEditDescriptionPermission,
           viewAllPermission: permissions.ViewAll,
+        }}
+        hasViewPermission={{
           customProperties: viewCustomPropertiesPermission,
         }}
         isOpen={isColumnDetailOpen}

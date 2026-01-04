@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { EntityType } from '../../../enums/entity.enum';
 
 // Sets for O(1) lookup performance - exported for reuse across the codebase
-export const SCHEMA_TABS_SET = new Set<EntityType | TabSpecificField.COLUMNS>([
+export const SCHEMA_TABS_SET = new Set<EntityType>([
   EntityType.API_COLLECTION,
   EntityType.API_ENDPOINT,
   EntityType.CONTAINER,
@@ -27,7 +27,7 @@ export const SCHEMA_TABS_SET = new Set<EntityType | TabSpecificField.COLUMNS>([
   EntityType.TOPIC,
 ]);
 
-export const LINEAGE_TABS_SET = new Set<EntityType | TabSpecificField.COLUMNS>([
+export const LINEAGE_TABS_SET = new Set<EntityType>([
   EntityType.API_ENDPOINT,
   EntityType.CHART,
   EntityType.CONTAINER,
@@ -41,9 +41,7 @@ export const LINEAGE_TABS_SET = new Set<EntityType | TabSpecificField.COLUMNS>([
   EntityType.TOPIC,
 ]);
 
-export const CUSTOM_PROPERTIES_TABS_SET = new Set<
-  EntityType | TabSpecificField.COLUMNS
->([
+export const CUSTOM_PROPERTIES_TABS_SET = new Set<EntityType>([
   EntityType.API_COLLECTION,
   EntityType.API_ENDPOINT,
   EntityType.CHART,

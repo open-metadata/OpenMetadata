@@ -19,8 +19,10 @@ export interface SearchIndexFieldsTableProps {
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
   hasGlossaryTermEditAccess: boolean;
+  hasCustomPropertiesViewAccess: boolean;
   isReadOnly?: boolean;
   entityFqn: string;
+  viewAllPermission: boolean;
   onUpdate: (fields: Array<SearchIndexField>) => Promise<void>;
   fieldAllRowKeys: string[];
 }

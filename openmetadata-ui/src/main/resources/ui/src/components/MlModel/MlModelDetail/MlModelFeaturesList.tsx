@@ -336,6 +336,8 @@ const MlModelFeaturesList = () => {
             glossaryTerms: hasEditGlossaryTermPermission,
             description: permissions.EditAll || permissions.EditDescription,
             viewAllPermission: permissions.ViewAll,
+          }}
+          hasViewPermission={{
             customProperties: hasViewCustomPropertiesPermission,
           }}
           isOpen={isColumnDetailOpen}

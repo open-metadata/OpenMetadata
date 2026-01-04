@@ -422,6 +422,8 @@ export const PipelineTaskTab = () => {
           tags: editTagsPermission,
           glossaryTerms: editGlossaryTermsPermission,
           description: editDescriptionPermission,
+        }}
+        hasViewPermission={{
           customProperties: viewCustomPropertiesPermission,
         }}
         isOpen={isDetailPanelOpen}

@@ -30,6 +30,8 @@ function SearchIndexFieldsTab() {
     hasDescriptionEditAccess,
     hasGlossaryTermEditAccess,
     hasTagEditAccess,
+    hasCustomPropertiesViewAccess,
+    viewAllPermission,
   } = useMemo(
     () => ({
       hasDescriptionEditAccess:
@@ -37,6 +39,9 @@ function SearchIndexFieldsTab() {
       hasGlossaryTermEditAccess:
         permissions.EditAll || permissions.EditGlossaryTerms,
       hasTagEditAccess: permissions.EditAll || permissions.EditTags,
+      hasCustomPropertiesViewAccess:
+        permissions.ViewAll || permissions.ViewCustomFields,
+      viewAllPermission: permissions.ViewAll,
     }),
     [permissions]
   );
@@ -62,11 +67,13 @@ function SearchIndexFieldsTab() {
     <SearchIndexFieldsTable
       entityFqn={entityFqn}
       fieldAllRowKeys={fieldAllRowKeys}
+      hasCustomPropertiesViewAccess={hasCustomPropertiesViewAccess}
       hasDescriptionEditAccess={hasDescriptionEditAccess}
       hasGlossaryTermEditAccess={hasGlossaryTermEditAccess}
       hasTagEditAccess={hasTagEditAccess}
       isReadOnly={Boolean(deleted)}
       searchIndexFields={fields}
+      viewAllPermission={viewAllPermission}
       onUpdate={handleSearchIndexFieldsUpdate}
     />
   );
