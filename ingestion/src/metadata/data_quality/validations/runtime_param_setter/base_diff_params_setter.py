@@ -200,6 +200,8 @@ class BaseTableParameter:
                 kwargs["path"] = f"/{database}"
         if kwargs["scheme"] in {Dialects.MSSQL, Dialects.Snowflake, Dialects.Trino}:
             kwargs["path"] = f"/{database}/{schema}"
+        if kwargs["scheme"] in {Dialects.MySQL, Dialects.MariaDB}:
+            kwargs["path"] = f"/{schema}"
         return url._replace(**kwargs).geturl()
 
     @staticmethod
