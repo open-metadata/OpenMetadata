@@ -2,13 +2,13 @@
 
 # Governance
 
-> **6 Components** | **27 Files** | **509 Tests** | **939 Scenarios** 🚀
+> **6 Components** | **42 Files** | **671 Tests** | **1111 Scenarios** 🚀
 
 ## Table of Contents
 - [Custom Properties](#custom-properties)
 - [Metrics](#metrics)
-- [Glossary](#glossary)
 - [Domains & Data Products](#domains-data-products)
+- [Glossary](#glossary)
 - [Tags](#tags)
 - [Data Contracts](#data-contracts)
 
@@ -457,194 +457,6 @@
 
 ---
 
-<div id="glossary"></div>
-
-## Glossary
-
-<details open>
-<summary>📄 <b>Glossary.spec.ts</b> (35 tests, 59 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts)
-
-### Glossary tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Glossary tests** - Glossary & terms creation for reviewer as user | Glossary & terms creation for reviewer as user |
-| | ↳ *Create Glossary* | |
-| | ↳ *Create Glossary Terms* | |
-| | ↳ *Approve Glossary Term from Glossary Listing for reviewer user* | |
-| 2 | **Glossary tests** - Glossary & terms creation for reviewer as team | Glossary & terms creation for reviewer as team |
-| | ↳ *Create Glossary* | |
-| | ↳ *Create Glossary Terms* | |
-| | ↳ *Approve Glossary Term from Glossary Listing for reviewer team* | |
-| 3 | **Glossary tests** - Update Glossary and Glossary Term | Update Glossary and Glossary Term |
-| | ↳ *Update Glossary* | |
-| | ↳ *Update Glossary Term* | |
-| 4 | **Glossary tests** - Add, Update and Verify Data Glossary Term | Add, Update and Verify Data Glossary Term |
-| 5 | **Glossary tests** - Approve and reject glossary term from Glossary Listing | Approve and reject glossary term from Glossary Listing |
-| | ↳ *Create Glossary and Terms* | |
-| | ↳ *Approve and Reject Glossary Term* | |
-| 6 | **Glossary tests** - Add and Remove Assets | Add and Remove Assets |
-| | ↳ *Add asset to glossary term using entity* | |
-| 7 | **Glossary tests** - Rename Glossary Term and verify assets | Rename Glossary Term and verify assets |
-| | ↳ *Assign Glossary Term to table column* | |
-| | ↳ *Rename Glossary Term* | |
-| | ↳ *Verify the entity page by clicking on asset* | |
-| | ↳ *Rename the same entity again* | |
-| 8 | **Glossary tests** - Verify asset selection modal filters are shown upfront | Asset selection modal filters are shown upfront |
-| | ↳ *Verify filters are visible upfront and can be applied* | |
-| 9 | **Glossary tests** - Drag and Drop Glossary Term | Drag and Drop Glossary Term |
-| | ↳ *Drag and Drop Glossary Term* | |
-| | ↳ *Drag and Drop Glossary Term back at parent level* | |
-| 10 | **Glossary tests** - Drag and Drop Glossary Term Approved Terms having reviewer | Drag and Drop Glossary Term Approved Terms having reviewer |
-| | ↳ *Update Glossary Term Reviewer* | |
-| | ↳ *Drag and Drop Glossary Term* | |
-| 11 | **Glossary tests** - Change glossary term hierarchy using menu options | Change glossary term hierarchy using menu options |
-| 12 | **Glossary tests** - Change glossary term hierarchy using menu options across glossary | Change glossary term hierarchy using menu options across glossary |
-| | ↳ *Delete glossary to verify broken relation* | |
-| 13 | **Glossary tests** - Assign Glossary Term to entity and check assets | Assign Glossary Term to entity and check assets |
-| 14 | **Glossary tests** - Request description task for Glossary | Request description task for Glossary |
-| 15 | **Glossary tests** - Request description task for Glossary Term | Request description task for Glossary Term |
-| 16 | **Glossary tests** - Request tags for Glossary | Request tags for Glossary |
-| 17 | **Glossary tests** - Delete Glossary and Glossary Term using Delete Modal | Delete Glossary and Glossary Term using Delete Modal |
-| 18 | **Glossary tests** - Async Delete - single delete success | Async Delete - single delete success |
-| 19 | **Glossary tests** - Async Delete - WebSocket failure triggers recovery | Async Delete - WebSocket failure triggers recovery |
-| 20 | **Glossary tests** - Async Delete - multiple deletes all succeed | Async Delete - multiple deletes all succeed |
-| 21 | **Glossary tests** - Async Delete - multiple deletes with mixed results | Async Delete - multiple deletes with mixed results |
-| 22 | **Glossary tests** - Verify Expand All For Nested Glossary Terms | Expand All For Nested Glossary Terms |
-| 23 | **Glossary tests** - Column selection and visibility for Glossary Terms table | Column selection and visibility for Glossary Terms table |
-| | ↳ *Open column dropdown and select columns and check if they are visible* | |
-| | ↳ *Open column dropdown and deselect columns and check if they are hidden* | |
-| | ↳ *View All columns selection* | |
-| | ↳ *Hide All columns selection* | |
-| 24 | **Glossary tests** - Glossary Terms Table Status filtering | Glossary Terms Table Status filtering |
-| | ↳ *Deselect status and check if the table has filtered rows* | |
-| | ↳ *Re-select the status and check if it appears again* | |
-| 25 | **Glossary tests** - Column dropdown drag-and-drop functionality for Glossary Terms table | Column dropdown drag-and-drop functionality for Glossary Terms table |
-| 26 | **Glossary tests** - Glossary Term Update in Glossary Page should persist tree | Glossary Term Update in Glossary Page should persist tree |
-| 27 | **Glossary tests** - Add Glossary Term inside another Term | Add Glossary Term inside another Term |
-| 28 | **Glossary tests** - Check for duplicate Glossary Term | For duplicate Glossary Term |
-| | ↳ *Create Glossary Term One* | |
-| | ↳ *Create Glossary Term Two* | |
-| 29 | **Glossary tests** - Verify Glossary Deny Permission | Glossary Deny Permission |
-| 30 | **Glossary tests** - Verify Glossary Term Deny Permission | Glossary Term Deny Permission |
-| 31 | **Glossary tests** - Term should stay approved when changes made by reviewer | Term should stay approved when changes made by reviewer |
-| | ↳ *Navigate to glossary and verify workflow widget* | |
-| | ↳ *Perform Changes by reviewer* | |
-| 32 | **Glossary tests** - Glossary creation with domain selection | Glossary creation with domain selection |
-| | ↳ *Create domain* | |
-| | ↳ *Navigate to Glossary page* | |
-| | ↳ *Open Add Glossary form* | |
-| | ↳ *Save glossary and verify creation with domain* | |
-| 33 | **Glossary tests** - Create glossary, change language to Dutch, and delete glossary | Create glossary, change language to Dutch, and delete glossary |
-| | ↳ *Create Glossary via API* | |
-| | ↳ *Navigate to Glossary page* | |
-| | ↳ *Change application language to German* | |
-| | ↳ *Open delete modal and verify delete confirmation* | |
-| | ↳ *Change language back to English* | |
-| 34 | **Glossary tests** - should handle glossary after description is deleted | Tests that verify UI handles entities with deleted descriptions gracefully. The issue occurs when: 1. An entity is created with a description 2. The description is later deleted/cleared via API patch 3. The API returns the entity without a description field (due to @JsonInclude(NON_NULL)) 4. UI should handle this gracefully instead of crashing |
-| 35 | **Glossary tests** - should handle glossary term after description is deleted | Handle glossary term after description is deleted |
-
-</details>
-
-<details open>
-<summary>📄 <b>LargeGlossaryPerformance.spec.ts</b> (9 tests, 9 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/LargeGlossaryPerformance.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LargeGlossaryPerformance.spec.ts)
-
-### Large Glossary Performance Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Large Glossary Performance Tests** - should handle large number of glossary terms with pagination | Handle large number of glossary terms with pagination |
-| 2 | **Large Glossary Performance Tests** - should search and filter glossary terms | Search and filter glossary terms |
-| 3 | **Large Glossary Performance Tests** - should expand and collapse all terms | Expand and collapse all terms |
-| 4 | **Large Glossary Performance Tests** - should expand individual terms | Expand individual terms |
-| 5 | **Large Glossary Performance Tests** - should maintain scroll position when loading more terms | Maintain scroll position when loading more terms |
-| 6 | **Large Glossary Performance Tests** - should handle status filtering | Handle status filtering |
-| 7 | **Large Glossary Performance Tests** - should show term count in glossary listing | Show term count in glossary listing |
-| 8 | **Large Glossary Performance Tests** - should handle drag and drop for term reordering | Handle drag and drop for term reordering |
-
-### Large Glossary Child Term Performace
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Large Glossary Child Term Performace** - should handle large number of glossary child term with pagination | Handle large number of glossary child term with pagination |
-
-</details>
-
-<details open>
-<summary>📄 <b>GlossaryPagination.spec.ts</b> (2 tests, 2 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/GlossaryPagination.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/GlossaryPagination.spec.ts)
-
-### Glossary tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Glossary tests** - should check for glossary term search | For glossary term search |
-| 2 | **Glossary tests** - should check for nested glossary term search | For nested glossary term search |
-
-</details>
-
-<details open>
-<summary>📄 <b>GlossaryPermissions.spec.ts</b> (2 tests, 2 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/Permissions/GlossaryPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permissions/GlossaryPermissions.spec.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | Glossary allow operations | Glossary allow operations |
-| 2 | Glossary deny operations | Glossary deny operations |
-
-</details>
-
-<details open>
-<summary>📄 <b>GlossaryImportExport.spec.ts</b> (2 tests, 8 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts)
-
-### Glossary Bulk Import Export
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Glossary Bulk Import Export** - Glossary Bulk Import Export | Glossary Bulk Import Export |
-| | ↳ *create custom properties for extension edit* | |
-| | ↳ *should export data glossary term details* | |
-| | ↳ *should import and edit with one additional glossaryTerm* | |
-| | ↳ *should have term in review state* | |
-| | ↳ *delete custom properties* | |
-| 2 | **Glossary Bulk Import Export** - Check for Circular Reference in Glossary Import | For Circular Reference in Glossary Import |
-| | ↳ *Create glossary for circular reference test* | |
-| | ↳ *Import initial glossary terms* | |
-| | ↳ *Import CSV with circular reference and verify error* | |
-
-</details>
-
-<details open>
-<summary>📄 <b>GlossaryVersionPage.spec.ts</b> (2 tests, 4 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/VersionPages/GlossaryVersionPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/GlossaryVersionPage.spec.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | Glossary | Glossary |
-| | ↳ *Version changes* | |
-| | ↳ *Should display the owner & reviewer changes* | |
-| 2 | GlossaryTerm | GlossaryTerm |
-| | ↳ *Version changes* | |
-| | ↳ *Should display the owner & reviewer changes* | |
-
-</details>
-
-
----
-
 <div id="domains-data-products"></div>
 
 ## Domains & Data Products
@@ -760,6 +572,27 @@
 </details>
 
 <details open>
+<summary>📄 <b>DataProductPersonaCustomization.spec.ts</b> (2 tests, 7 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataProductPersonaCustomization.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataProductPersonaCustomization.spec.ts)
+
+### Data Product Persona customization
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Product Persona customization** - Data Product - customization should work | Data Product - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 2 | **Data Product Persona customization** - Data Product - customize tab label should only render if it's customized by user | Data Product - customize tab label should only render if it's customized by user |
+| | ↳ *pre-requisite* | |
+| | ↳ *apply tab label customization for Data Product* | |
+| | ↳ *validate applied label change for Data Product Documentation tab* | |
+
+</details>
+
+<details open>
 <summary>📄 <b>DomainPermissions.spec.ts</b> (2 tests, 2 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/Permissions/DomainPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permissions/DomainPermissions.spec.ts)
@@ -787,6 +620,542 @@
 | | ↳ *Navigate to subdomains tab and verify initial data load* | |
 | | ↳ *Test pagination navigation* | |
 | | ↳ *Create new subdomain and verify count updates* | |
+
+</details>
+
+
+---
+
+<div id="glossary"></div>
+
+## Glossary
+
+<details open>
+<summary>📄 <b>Glossary.spec.ts</b> (44 tests, 68 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts)
+
+### Glossary tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary tests** - Glossary & terms creation for reviewer as user | Glossary & terms creation for reviewer as user |
+| | ↳ *Create Glossary* | |
+| | ↳ *Create Glossary Terms* | |
+| | ↳ *Approve Glossary Term from Glossary Listing for reviewer user* | |
+| 2 | **Glossary tests** - Glossary & terms creation for reviewer as team | Glossary & terms creation for reviewer as team |
+| | ↳ *Create Glossary* | |
+| | ↳ *Create Glossary Terms* | |
+| | ↳ *Approve Glossary Term from Glossary Listing for reviewer team* | |
+| 3 | **Glossary tests** - Update Glossary and Glossary Term | Update Glossary and Glossary Term |
+| | ↳ *Update Glossary* | |
+| | ↳ *Update Glossary Term* | |
+| 4 | **Glossary tests** - Add, Update and Verify Data Glossary Term | Add, Update and Verify Data Glossary Term |
+| 5 | **Glossary tests** - Approve and reject glossary term from Glossary Listing | Approve and reject glossary term from Glossary Listing |
+| | ↳ *Create Glossary and Terms* | |
+| | ↳ *Approve and Reject Glossary Term* | |
+| 6 | **Glossary tests** - Add and Remove Assets | Add and Remove Assets |
+| | ↳ *Add asset to glossary term using entity* | |
+| 7 | **Glossary tests** - Rename Glossary Term and verify assets | Rename Glossary Term and verify assets |
+| | ↳ *Assign Glossary Term to table column* | |
+| | ↳ *Rename Glossary Term* | |
+| | ↳ *Verify the entity page by clicking on asset* | |
+| | ↳ *Rename the same entity again* | |
+| 8 | **Glossary tests** - Verify asset selection modal filters are shown upfront | Asset selection modal filters are shown upfront |
+| | ↳ *Verify filters are visible upfront and can be applied* | |
+| 9 | **Glossary tests** - Drag and Drop Glossary Term | Drag and Drop Glossary Term |
+| | ↳ *Drag and Drop Glossary Term* | |
+| | ↳ *Drag and Drop Glossary Term back at parent level* | |
+| 10 | **Glossary tests** - Drag and Drop Glossary Term Approved Terms having reviewer | Drag and Drop Glossary Term Approved Terms having reviewer |
+| | ↳ *Update Glossary Term Reviewer* | |
+| | ↳ *Drag and Drop Glossary Term* | |
+| 11 | **Glossary tests** - Change glossary term hierarchy using menu options | Change glossary term hierarchy using menu options |
+| 12 | **Glossary tests** - Change glossary term hierarchy using menu options across glossary | Change glossary term hierarchy using menu options across glossary |
+| | ↳ *Delete glossary to verify broken relation* | |
+| 13 | **Glossary tests** - Assign Glossary Term to entity and check assets | Assign Glossary Term to entity and check assets |
+| 14 | **Glossary tests** - Request description task for Glossary | Request description task for Glossary |
+| 15 | **Glossary tests** - Request description task for Glossary Term | Request description task for Glossary Term |
+| 16 | **Glossary tests** - Request tags for Glossary | Request tags for Glossary |
+| 17 | **Glossary tests** - Delete Glossary and Glossary Term using Delete Modal | Delete Glossary and Glossary Term using Delete Modal |
+| 18 | **Glossary tests** - Async Delete - single delete success | Async Delete - single delete success |
+| 19 | **Glossary tests** - Async Delete - WebSocket failure triggers recovery | Async Delete - WebSocket failure triggers recovery |
+| 20 | **Glossary tests** - Async Delete - multiple deletes all succeed | Async Delete - multiple deletes all succeed |
+| 21 | **Glossary tests** - Async Delete - multiple deletes with mixed results | Async Delete - multiple deletes with mixed results |
+| 22 | **Glossary tests** - Verify Expand All For Nested Glossary Terms | Expand All For Nested Glossary Terms |
+| 23 | **Glossary tests** - Column selection and visibility for Glossary Terms table | Column selection and visibility for Glossary Terms table |
+| | ↳ *Open column dropdown and select columns and check if they are visible* | |
+| | ↳ *Open column dropdown and deselect columns and check if they are hidden* | |
+| | ↳ *View All columns selection* | |
+| | ↳ *Hide All columns selection* | |
+| 24 | **Glossary tests** - Glossary Terms Table Status filtering | Glossary Terms Table Status filtering |
+| | ↳ *Deselect status and check if the table has filtered rows* | |
+| | ↳ *Re-select the status and check if it appears again* | |
+| 25 | **Glossary tests** - Column dropdown drag-and-drop functionality for Glossary Terms table | Column dropdown drag-and-drop functionality for Glossary Terms table |
+| 26 | **Glossary tests** - Glossary Term Update in Glossary Page should persist tree | Glossary Term Update in Glossary Page should persist tree |
+| 27 | **Glossary tests** - Add Glossary Term inside another Term | Add Glossary Term inside another Term |
+| 28 | **Glossary tests** - Check for duplicate Glossary Term | For duplicate Glossary Term |
+| | ↳ *Create Glossary Term One* | |
+| | ↳ *Create Glossary Term Two* | |
+| 29 | **Glossary tests** - Verify Glossary Deny Permission | Glossary Deny Permission |
+| 30 | **Glossary tests** - Verify Glossary Term Deny Permission | Glossary Term Deny Permission |
+| 31 | **Glossary tests** - Term should stay approved when changes made by reviewer | Term should stay approved when changes made by reviewer |
+| | ↳ *Navigate to glossary and verify workflow widget* | |
+| | ↳ *Perform Changes by reviewer* | |
+| 32 | **Glossary tests** - Glossary creation with domain selection | Glossary creation with domain selection |
+| | ↳ *Create domain* | |
+| | ↳ *Navigate to Glossary page* | |
+| | ↳ *Open Add Glossary form* | |
+| | ↳ *Save glossary and verify creation with domain* | |
+| 33 | **Glossary tests** - Create glossary, change language to Dutch, and delete glossary | Create glossary, change language to Dutch, and delete glossary |
+| | ↳ *Create Glossary via API* | |
+| | ↳ *Navigate to Glossary page* | |
+| | ↳ *Change application language to German* | |
+| | ↳ *Open delete modal and verify delete confirmation* | |
+| | ↳ *Change language back to English* | |
+| 34 | **Glossary tests** - should handle glossary after description is deleted | Tests that verify UI handles entities with deleted descriptions gracefully. The issue occurs when: 1. An entity is created with a description 2. The description is later deleted/cleared via API patch 3. The API returns the entity without a description field (due to @JsonInclude(NON_NULL)) 4. UI should handle this gracefully instead of crashing |
+| 35 | **Glossary tests** - should handle glossary term after description is deleted | Handle glossary term after description is deleted |
+| 36 | **Glossary tests** - Create glossary with all optional fields (tags, owners, reviewers, domain) | Create glossary with all optional fields (tags, owners, reviewers, domain) |
+| 37 | **Glossary tests** - Create glossary term via row action (+) button | Create glossary term via row action (+) button |
+| 38 | **Glossary tests** - Create term with synonyms during creation | Create term with synonyms during creation |
+| 39 | **Glossary tests** - Create term with references during creation | Create term with references during creation |
+| 40 | **Glossary tests** - Create term with related terms, tags and owners during creation | Create term with related terms, tags and owners during creation |
+| 41 | **Glossary tests** - Update glossary term display name via edit modal | Update glossary term display name via edit modal |
+| 42 | **Glossary tests** - Update glossary display name via rename modal | Update glossary display name via rename modal |
+| 43 | **Glossary tests** - Cancel glossary delete operation | Cancel glossary delete operation |
+| 44 | **Glossary tests** - Cancel glossary term delete operation | Cancel glossary term delete operation |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryAdvancedOperations.spec.ts</b> (27 tests, 27 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts)
+
+### Glossary Advanced Operations
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary Advanced Operations** - should create glossary with mutually exclusive toggle OFF | Create glossary with mutually exclusive toggle OFF |
+| 2 | **Glossary Advanced Operations** - should create glossary with multiple owners (users + teams) | Create glossary with multiple owners (users + teams) |
+| 3 | **Glossary Advanced Operations** - should replace owner on glossary | Replace owner on glossary |
+| 4 | **Glossary Advanced Operations** - should replace reviewer on glossary | Replace reviewer on glossary |
+| 5 | **Glossary Advanced Operations** - should remove domain from glossary | Remove domain from glossary |
+| 6 | **Glossary Advanced Operations** - should change domain on glossary | Change domain on glossary |
+| 7 | **Glossary Advanced Operations** - should create term with custom style color | Create term with custom style color |
+| 8 | **Glossary Advanced Operations** - should create term with custom style icon URL | Create term with custom style icon URL |
+| 9 | **Glossary Advanced Operations** - should update term style to set color | Update term style to set color |
+| 10 | **Glossary Advanced Operations** - should update term style to set icon URL | Update term style to set icon URL |
+| 11 | **Glossary Advanced Operations** - should clear all synonyms from term | Clear all synonyms from term |
+| 12 | **Glossary Advanced Operations** - should edit reference name | Edit reference name |
+| 13 | **Glossary Advanced Operations** - should edit reference URL | Edit reference URL |
+| 14 | **Glossary Advanced Operations** - should remove individual reference from term | Remove individual reference from term |
+| 15 | **Glossary Advanced Operations** - should remove related term | Remove related term |
+| 16 | **Glossary Advanced Operations** - should remove owner from term | Remove owner from term |
+| 17 | **Glossary Advanced Operations** - should remove reviewer from term | Remove reviewer from term |
+| 18 | **Glossary Advanced Operations** - should create term with related terms | Create term with related terms |
+| 19 | **Glossary Advanced Operations** - should remove tags from term | Remove tags from term |
+| 20 | **Glossary Advanced Operations** - should cancel glossary creation without saving | Cancel glossary creation without saving |
+| 21 | **Glossary Advanced Operations** - should cancel term creation without saving | Cancel term creation without saving |
+| 22 | **Glossary Advanced Operations** - should update term display name via manage menu | Update term display name via manage menu |
+| 23 | **Glossary Advanced Operations** - should show bidirectional related term link | Show bidirectional related term link |
+| 24 | **Glossary Advanced Operations** - should handle term with very long name | Handle term with very long name |
+| 25 | **Glossary Advanced Operations** - should handle term with very long description | Handle term with very long description |
+| 26 | **Glossary Advanced Operations** - should show error when glossary name exceeds limit | Show error when glossary name exceeds limit |
+| 27 | **Glossary Advanced Operations** - should show error when term name exceeds limit | Show error when term name exceeds limit |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryP3Tests.spec.ts</b> (21 tests, 21 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts)
+
+### Glossary P3 Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary P3 Tests** - should create glossary with unicode characters in name | Create glossary with unicode characters in name |
+| 2 | **Glossary P3 Tests** - should remove color style from term via API | Remove color style from term via API |
+| 3 | **Glossary P3 Tests** - should remove icon style from term via API | Remove icon style from term via API |
+| 4 | **Glossary P3 Tests** - should handle special characters in search | Handle special characters in search |
+| 5 | **Glossary P3 Tests** - should display vote count correctly | Display vote count correctly |
+| 6 | **Glossary P3 Tests** - should navigate to activity feed for potential reply | Navigate to activity feed for potential reply |
+| 7 | **Glossary P3 Tests** - should access activity feed for comment editing | Access activity feed for comment editing |
+| 8 | **Glossary P3 Tests** - should access activity feed for comment deletion | Access activity feed for comment deletion |
+| 9 | **Glossary P3 Tests** - should handle back/forward browser navigation | Handle back/forward browser navigation |
+| 10 | **Glossary P3 Tests** - should show loading state during navigation | Show loading state during navigation |
+| 11 | **Glossary P3 Tests** - should toggle right panel if available | Toggle right panel if available |
+| 12 | **Glossary P3 Tests** - should handle special characters in term fields | Handle special characters in term fields |
+| 13 | **Glossary P3 Tests** - should handle unicode and emoji in description | Handle unicode and emoji in description |
+| 14 | **Glossary P3 Tests** - should handle concurrent edits gracefully | Handle concurrent edits gracefully |
+| 15 | **Glossary P3 Tests** - should handle slow network gracefully | Handle slow network gracefully |
+| 16 | **Glossary P3 Tests** - should maintain session during normal operations | Maintain session during normal operations |
+| 17 | **Glossary P3 Tests** - should handle deep nesting | Handle deep nesting |
+| 18 | **Glossary P3 Tests** - should handle rapid UI interactions | Handle rapid UI interactions |
+| 19 | **Glossary P3 Tests** - should handle multiple rapid API calls | Handle multiple rapid API calls |
+| 20 | **Glossary P3 Tests** - should show error state when navigating to non-existent glossary | Show error state when navigating to non-existent glossary |
+| 21 | **Glossary P3 Tests** - should show error state when navigating to non-existent term | Show error state when navigating to non-existent term |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryCRUDOperations.spec.ts</b> (13 tests, 13 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts)
+
+### Glossary CRUD Operations
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary CRUD Operations** - should create glossary with tags, owners, and description | Create glossary with tags, owners, and description |
+| 2 | **Glossary CRUD Operations** - should create glossary with mutually exclusive enabled | Create glossary with mutually exclusive enabled |
+| 3 | **Glossary CRUD Operations** - should create term with synonyms | Create term with synonyms |
+| 4 | **Glossary CRUD Operations** - should create term with references | Create term with references |
+| 5 | **Glossary CRUD Operations** - should remove owner from glossary | Remove owner from glossary |
+| 6 | **Glossary CRUD Operations** - should remove reviewer from glossary | Remove reviewer from glossary |
+| 7 | **Glossary CRUD Operations** - should delete parent term and cascade delete children | Delete parent term and cascade delete children |
+| 8 | **Glossary CRUD Operations** - should display parent term with children for drag operation | Display parent term with children for drag operation |
+| 9 | **Glossary CRUD Operations** - should navigate between tabs on term page | Navigate between tabs on term page |
+| 10 | **Glossary CRUD Operations** - should create child term via row action button | Create child term via row action button |
+| 11 | **Glossary CRUD Operations** - should create term with tags | Create term with tags |
+| 12 | **Glossary CRUD Operations** - should remove synonym from term | Remove synonym from term |
+| 13 | **Glossary CRUD Operations** - should remove tag from glossary | Remove tag from glossary |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryAssets.spec.ts</b> (10 tests, 10 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts)
+
+### Glossary Asset Operations
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary Asset Operations** - should add topic asset to glossary term | Add topic asset to glossary term |
+| 2 | **Glossary Asset Operations** - should add pipeline asset to glossary term | Add pipeline asset to glossary term |
+| 3 | **Glossary Asset Operations** - should open summary panel when clicking asset card | Open summary panel when clicking asset card |
+| 4 | **Glossary Asset Operations** - should search within assets tab | Search within assets tab |
+| 5 | **Glossary Asset Operations** - should remove asset from glossary term | Remove asset from glossary term |
+| 6 | **Glossary Asset Operations** - should remove glossary term tag from entity page | Remove glossary term tag from entity page |
+| 7 | **Glossary Asset Operations** - should bulk select and remove multiple assets | Bulk select and remove multiple assets |
+| 8 | **Glossary Asset Operations** - should filter assets by entity type | Filter assets by entity type |
+| 9 | **Glossary Asset Operations** - should add asset via Add Assets dropdown button | Add asset via Add Assets dropdown button |
+| 10 | **Glossary Asset Operations** - should paginate through assets | Paginate through assets |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryWorkflow.spec.ts</b> (10 tests, 10 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts)
+
+### Term Status Transitions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Term Status Transitions** - should start term as Approved when glossary has no reviewers | Start term as Approved when glossary has no reviewers |
+| 2 | **Term Status Transitions** - should start term as Draft when glossary has reviewers | Start term as Draft when glossary has reviewers |
+| 3 | **Term Status Transitions** - should inherit reviewers from glossary when term is created | Inherit reviewers from glossary when term is created |
+
+### Workflow History
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Workflow History** - should show workflow history popover on status badge hover | Show workflow history popover on status badge hover |
+| 2 | **Workflow History** - should view workflow history on term details page | View workflow history on term details page |
+
+### Standalone Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | non-reviewer should not see approve/reject buttons | Non-reviewer should not see approve/reject buttons |
+| 2 | should display correct status badge color and icon | Display correct status badge color and icon |
+| 3 | owner should not see approve/reject buttons if not a reviewer | Owner should not see approve/reject buttons if not a reviewer |
+| 4 | should change status when non-reviewer edits approved term | Change status when non-reviewer edits approved term |
+| 5 | should delete parent term and cascade delete children | Delete parent term and cascade delete children |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryNavigation.spec.ts</b> (9 tests, 9 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryNavigation.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryNavigation.spec.ts)
+
+### Glossary Navigation
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary Navigation** - should navigate between tabs on glossary page | Navigate between tabs on glossary page |
+| 2 | **Glossary Navigation** - should navigate between tabs on glossary term page | Navigate between tabs on glossary term page |
+| 3 | **Glossary Navigation** - should navigate via breadcrumbs | Navigate via breadcrumbs |
+| 4 | **Glossary Navigation** - should navigate to nested term via deep link | Navigate to nested term via deep link |
+| 5 | **Glossary Navigation** - should show empty state when glossary has no terms | Show empty state when glossary has no terms |
+| 6 | **Glossary Navigation** - should view activity feed on glossary | View activity feed on glossary |
+| 7 | **Glossary Navigation** - should view activity feed on glossary term | View activity feed on glossary term |
+| 8 | **Glossary Navigation** - should post comment on glossary activity feed | Post comment on glossary activity feed |
+| 9 | **Glossary Navigation** - should post comment on glossary term activity feed | Post comment on glossary term activity feed |
+
+</details>
+
+<details open>
+<summary>📄 <b>LargeGlossaryPerformance.spec.ts</b> (9 tests, 9 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts)
+
+### Large Glossary Performance Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Large Glossary Performance Tests** - should handle large number of glossary terms with pagination | Handle large number of glossary terms with pagination |
+| 2 | **Large Glossary Performance Tests** - should search and filter glossary terms | Search and filter glossary terms |
+| 3 | **Large Glossary Performance Tests** - should expand and collapse all terms | Expand and collapse all terms |
+| 4 | **Large Glossary Performance Tests** - should expand individual terms | Expand individual terms |
+| 5 | **Large Glossary Performance Tests** - should maintain scroll position when loading more terms | Maintain scroll position when loading more terms |
+| 6 | **Large Glossary Performance Tests** - should handle status filtering | Handle status filtering |
+| 7 | **Large Glossary Performance Tests** - should show term count in glossary listing | Show term count in glossary listing |
+| 8 | **Large Glossary Performance Tests** - should handle drag and drop for term reordering | Handle drag and drop for term reordering |
+
+### Large Glossary Child Term Performace
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Large Glossary Child Term Performace** - should handle large number of glossary child term with pagination | Handle large number of glossary child term with pagination |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryPermissions.spec.ts</b> (9 tests, 9 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Permissions/GlossaryPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permissions/GlossaryPermissions.spec.ts)
+
+### Glossary Permissions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary Permissions** - Glossary allow operations | Glossary allow operations |
+| 2 | **Glossary Permissions** - Glossary deny operations | Glossary deny operations |
+| 3 | **Glossary Permissions** - EditDescription only permission | EditDescription only permission |
+| 4 | **Glossary Permissions** - EditOwners only permission | EditOwners only permission |
+| 5 | **Glossary Permissions** - EditTags only permission | EditTags only permission |
+| 6 | **Glossary Permissions** - Delete only permission | Delete only permission |
+| 7 | **Glossary Permissions** - Create only permission | Create only permission |
+| 8 | **Glossary Permissions** - ViewBasic permission shows read-only access | ViewBasic permission shows read-only access |
+| 9 | **Glossary Permissions** - Team-based permissions work correctly | Team-based permissions work correctly |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryImportExport.spec.ts</b> (7 tests, 18 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts)
+
+### Glossary Bulk Import Export
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary Bulk Import Export** - Glossary Bulk Import Export | Glossary Bulk Import Export |
+| | ↳ *create custom properties for extension edit* | |
+| | ↳ *should export data glossary term details* | |
+| | ↳ *should import and edit with one additional glossaryTerm* | |
+| | ↳ *should have term in review state* | |
+| | ↳ *delete custom properties* | |
+| 2 | **Glossary Bulk Import Export** - Check for Circular Reference in Glossary Import | For Circular Reference in Glossary Import |
+| | ↳ *Create glossary for circular reference test* | |
+| | ↳ *Import initial glossary terms* | |
+| | ↳ *Import CSV with circular reference and verify error* | |
+| 3 | **Glossary Bulk Import Export** - Import validation - missing required fields | Import validation - missing required fields |
+| | ↳ *Create glossary for validation test* | |
+| | ↳ *Import CSV with missing required name field* | |
+| 4 | **Glossary Bulk Import Export** - Import validation - invalid parent reference | Import validation - invalid parent reference |
+| | ↳ *Create glossary for parent ref test* | |
+| | ↳ *Import CSV with invalid parent reference* | |
+| 5 | **Glossary Bulk Import Export** - Import partial success - some terms pass, some fail | Import partial success - some terms pass, some fail |
+| | ↳ *Create glossary for partial success test* | |
+| | ↳ *Import CSV with mixed valid and invalid terms* | |
+| 6 | **Glossary Bulk Import Export** - Export large glossary with many terms | Export large glossary with many terms |
+| | ↳ *Create glossary with many terms* | |
+| | ↳ *Export glossary and verify all terms* | |
+| 7 | **Glossary Bulk Import Export** - Export maintains hierarchy structure in CSV | Export maintains hierarchy structure in CSV |
+| | ↳ *Create glossary with hierarchical terms* | |
+| | ↳ *Export and verify hierarchy in CSV* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryVersionPage.spec.ts</b> (7 tests, 9 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/VersionPages/GlossaryVersionPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/GlossaryVersionPage.spec.ts)
+
+### Standalone Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | Glossary | Glossary |
+| | ↳ *Version changes* | |
+| | ↳ *Should display the owner & reviewer changes* | |
+| 2 | GlossaryTerm | GlossaryTerm |
+| | ↳ *Version changes* | |
+| | ↳ *Should display the owner & reviewer changes* | |
+| 3 | Navigate between versions | Navigate between versions |
+| 4 | Return to current version from history | Return to current version from history |
+| 5 | Version diff shows synonym changes | Version diff shows synonym changes |
+| 6 | Version diff shows reference changes | Version diff shows reference changes |
+| 7 | Version diff shows related term changes | Version diff shows related term changes |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryHierarchy.spec.ts</b> (6 tests, 6 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryHierarchy.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryHierarchy.spec.ts)
+
+### Glossary Hierarchy
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary Hierarchy** - should move nested term to root level of same glossary | Move nested term to root level of same glossary |
+| 2 | **Glossary Hierarchy** - should move term to root of different glossary | Move term to root of different glossary |
+| 3 | **Glossary Hierarchy** - should move term with children to different glossary | Move term with children to different glossary |
+| 4 | **Glossary Hierarchy** - should cancel move operation | Cancel move operation |
+| 5 | **Glossary Hierarchy** - should navigate 5+ levels deep in hierarchy | Navigate 5+ levels deep in hierarchy |
+| 6 | **Glossary Hierarchy** - should cancel drag and drop operation | Cancel drag and drop operation |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryPagination.spec.ts</b> (6 tests, 6 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryPagination.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryPagination.spec.ts)
+
+### Glossary tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary tests** - should check for glossary term search | For glossary term search |
+| 2 | **Glossary tests** - should check for nested glossary term search | For nested glossary term search |
+| 3 | **Glossary tests** - should perform case-insensitive search | Perform case-insensitive search |
+| 4 | **Glossary tests** - should show empty state when search returns no results | Show empty state when search returns no results |
+| 5 | **Glossary tests** - should filter by InReview status | Filter by InReview status |
+| 6 | **Glossary tests** - should filter by multiple statuses | Filter by multiple statuses |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryRemoveOperations.spec.ts</b> (6 tests, 6 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryRemoveOperations.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryRemoveOperations.spec.ts)
+
+### Glossary Remove Operations
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary Remove Operations** - should add and remove owner from glossary | Add and remove owner from glossary |
+| 2 | **Glossary Remove Operations** - should add and remove reviewer from glossary | Add and remove reviewer from glossary |
+| 3 | **Glossary Remove Operations** - should add and remove owner from glossary term | Add and remove owner from glossary term |
+| 4 | **Glossary Remove Operations** - should add and remove reviewer from glossary term | Add and remove reviewer from glossary term |
+| 5 | **Glossary Remove Operations** - should add and remove tags from glossary | Add and remove tags from glossary |
+| 6 | **Glossary Remove Operations** - should add and remove tags from glossary term | Add and remove tags from glossary term |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryTermDetails.spec.ts</b> (6 tests, 6 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryTermDetails.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryTermDetails.spec.ts)
+
+### Glossary Term Details Operations
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary Term Details Operations** - should add and remove synonyms from glossary term | Add and remove synonyms from glossary term |
+| 2 | **Glossary Term Details Operations** - should add and remove references from glossary term | Add and remove references from glossary term |
+| 3 | **Glossary Term Details Operations** - should add and remove related terms from glossary term | Add and remove related terms from glossary term |
+| 4 | **Glossary Term Details Operations** - should verify bidirectional related term link | Bidirectional related term link |
+| 5 | **Glossary Term Details Operations** - should edit term via pencil icon in table row | Edit term via pencil icon in table row |
+| 6 | **Glossary Term Details Operations** - should create term with all optional fields populated | Create term with all optional fields populated |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryMiscOperations.spec.ts</b> (5 tests, 5 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts)
+
+### Glossary Miscellaneous Operations
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary Miscellaneous Operations** - should delete glossary and remove tags from assets | Delete glossary and remove tags from assets |
+| 2 | **Glossary Miscellaneous Operations** - should update child FQN when parent is renamed | Update child FQN when parent is renamed |
+| 3 | **Glossary Miscellaneous Operations** - should delete term and remove tag from assets | Delete term and remove tag from assets |
+| 4 | **Glossary Miscellaneous Operations** - should delete parent term and remove both parent and child tags from assets | Delete parent term and remove both parent and child tags from assets |
+| 5 | **Glossary Miscellaneous Operations** - should not allow dragging term to itself | Not allow dragging term to itself |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryP2Tests.spec.ts</b> (5 tests, 5 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryP2Tests.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryP2Tests.spec.ts)
+
+### Glossary P2 Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary P2 Tests** - should create glossary with special characters in name | Create glossary with special characters in name |
+| 2 | **Glossary P2 Tests** - should view workflow history on term | View workflow history on term |
+| 3 | **Glossary P2 Tests** - should show history popover on status badge hover | Show history popover on status badge hover |
+| 4 | **Glossary P2 Tests** - should create term with Draft status when no reviewers | Create term with Draft status when no reviewers |
+| 5 | **Glossary P2 Tests** - should show column settings with custom properties option | Show column settings with custom properties option |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryFormValidation.spec.ts</b> (5 tests, 5 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/GlossaryFormValidation.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryFormValidation.spec.ts)
+
+### Glossary Form Validation
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary Form Validation** - should show error when glossary name is empty | Show error when glossary name is empty |
+| 2 | **Glossary Form Validation** - should show error when glossary description is empty | Show error when glossary description is empty |
+| 3 | **Glossary Form Validation** - should show error when creating glossary with duplicate name | Show error when creating glossary with duplicate name |
+| 4 | **Glossary Form Validation** - should show error when term name is empty | Show error when term name is empty |
+| 5 | **Glossary Form Validation** - should show error when term description is empty | Show error when term description is empty |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryBulkOperations.spec.ts</b> (4 tests, 4 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryBulkOperations.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryBulkOperations.spec.ts)
+
+### Glossary Bulk Operations
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary Bulk Operations** - should navigate to bulk edit page when clicking bulk edit button | Navigate to bulk edit page when clicking bulk edit button |
+| 2 | **Glossary Bulk Operations** - should be able to select multiple terms for bulk operations | Be able to select multiple terms for bulk operations |
+| 3 | **Glossary Bulk Operations** - should prevent dragging parent to its own child | Prevent dragging parent to its own child |
+| 4 | **Glossary Bulk Operations** - should be able to toggle mutually exclusive setting | Be able to toggle mutually exclusive setting |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryVoting.spec.ts</b> (3 tests, 3 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryVoting.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryVoting.spec.ts)
+
+### Glossary Voting
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary Voting** - should upvote, downvote, and remove vote on glossary | Upvote, downvote, and remove vote on glossary |
+| 2 | **Glossary Voting** - should upvote, downvote, and remove vote on glossary term | Upvote, downvote, and remove vote on glossary term |
+| 3 | **Glossary Voting** - should persist vote after page reload | Persist vote after page reload |
 
 </details>
 

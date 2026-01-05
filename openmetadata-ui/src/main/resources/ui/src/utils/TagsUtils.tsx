@@ -606,18 +606,6 @@ export const getTagAssetsQueryFilter = (fqn: string) => {
   return getTermQuery({ [fieldName]: fqn });
 };
 
-export const getTagImageSrc = (iconURL: string) => {
-  if (!iconURL) {
-    return '';
-  }
-
-  if (iconURL.startsWith('http') || iconURL.startsWith('data:image')) {
-    return iconURL;
-  }
-
-  return `${window.location.origin}/${iconURL}`;
-};
-
 /**
  * Check if a tag is a glossary tag
  */

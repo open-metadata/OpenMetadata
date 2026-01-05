@@ -21,6 +21,7 @@ import { dataDisplayTheme } from "./data-display-theme";
 import { formTheme } from "./form-theme";
 import "./mui-theme-types";
 import { navigationTheme } from "./navigation-theme";
+import { tabTheme } from "./tab-theme";
 import { shadows } from "./shadows";
 import {
   BODY_FONT_SIZES,
@@ -71,6 +72,7 @@ export const createMuiTheme = (
     ...formTheme(themeColors),
     ...navigationTheme(themeColors),
     ...dataDisplayTheme(themeColors),
+    ...tabTheme(themeColors),
   };
 
   return createTheme({
