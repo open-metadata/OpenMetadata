@@ -576,9 +576,12 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     }
 
     try {
-      logger.info("Client registration request body: " + body.toString());
       OAuthClientMetadata clientMetadata =
           getObjectMapper().readValue(body.toString(), OAuthClientMetadata.class);
+
+      logger.debug(
+          "Client registration request received for client: {}",
+          clientMetadata.getClientName() != null ? clientMetadata.getClientName() : "unnamed");
 
       Object clientInfo = registrationHandler.handle(clientMetadata).join();
       setCorsHeaders(request, response);
