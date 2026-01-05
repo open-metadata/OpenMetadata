@@ -21,10 +21,12 @@ import org.openmetadata.service.notifications.template.handlebars.helpers.OrHelp
 import org.openmetadata.service.notifications.template.handlebars.helpers.ParseEntityLinkHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.PluckHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.ProcessMentionsHelper;
+import org.openmetadata.service.notifications.template.handlebars.helpers.RenderTableSampleHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.ResolveDomainHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.SplitHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.StartsWithHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.TextDiffHelper;
+import org.openmetadata.service.notifications.template.handlebars.helpers.TruncateHelper;
 
 /**
  * Provider for Handlebars instances configured with all custom helpers for notification templates.
@@ -61,6 +63,7 @@ public class HandlebarsProvider {
         new AndHelper(),
         new NotHelper(),
         new TextDiffHelper(),
+        new TruncateHelper(),
         new CamelCaseToTitleHelper(),
         new ResolveDomainHelper(),
         new FormatDateHelper(),
@@ -74,7 +77,8 @@ public class HandlebarsProvider {
         new LengthHelper(),
         new LimitHelper(),
         new MathHelper(),
-        new GtHelper());
+        new GtHelper(),
+        new RenderTableSampleHelper());
   }
 
   /**
