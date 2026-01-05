@@ -37,8 +37,7 @@ CREATE TABLE IF NOT EXISTS oauth_authorization_codes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     code VARCHAR(512) UNIQUE NOT NULL,
     client_id VARCHAR(255) NOT NULL,
-    connector_name VARCHAR(255) NOT NULL,
-    user_name VARCHAR(255),
+    user_name VARCHAR(255) NOT NULL,
     code_challenge VARCHAR(255),
     code_challenge_method VARCHAR(10),
     redirect_uri TEXT NOT NULL,
@@ -49,7 +48,7 @@ CREATE TABLE IF NOT EXISTS oauth_authorization_codes (
     CONSTRAINT oauth_authorization_codes_fk_client FOREIGN KEY (client_id) REFERENCES oauth_clients(client_id) ON DELETE CASCADE,
     CONSTRAINT oauth_authorization_codes_expires_check CHECK (expires_at > 0),
     CONSTRAINT oauth_authorization_codes_code_check CHECK (char_length(code) > 0),
-    CONSTRAINT oauth_authorization_codes_connector_check CHECK (char_length(connector_name) > 0),
+    CONSTRAINT oauth_authorization_codes_user_check CHECK (char_length(user_name) > 0),
     CONSTRAINT oauth_authorization_codes_scopes_check CHECK (jsonb_typeof(scopes) = 'array'),
     CONSTRAINT oauth_authorization_codes_challenge_method_check CHECK (
         code_challenge_method IS NULL OR
@@ -59,14 +58,12 @@ CREATE TABLE IF NOT EXISTS oauth_authorization_codes (
 
 CREATE INDEX IF NOT EXISTS idx_oauth_authz_codes_code ON oauth_authorization_codes(code);
 CREATE INDEX IF NOT EXISTS idx_oauth_authz_codes_client_id ON oauth_authorization_codes(client_id);
-CREATE INDEX IF NOT EXISTS idx_oauth_authz_codes_connector ON oauth_authorization_codes(connector_name);
 CREATE INDEX IF NOT EXISTS idx_oauth_authz_codes_user ON oauth_authorization_codes(user_name);
 CREATE INDEX IF NOT EXISTS idx_oauth_authz_codes_expires_at ON oauth_authorization_codes(expires_at);
 CREATE INDEX IF NOT EXISTS idx_oauth_authz_codes_created_at ON oauth_authorization_codes(created_at);
 
 COMMENT ON TABLE oauth_authorization_codes IS 'Temporary authorization codes for OAuth 2.0 authorization code flow';
 COMMENT ON COLUMN oauth_authorization_codes.code IS 'Unique authorization code string';
-COMMENT ON COLUMN oauth_authorization_codes.connector_name IS 'Name of the connector/service being authorized';
 COMMENT ON COLUMN oauth_authorization_codes.user_name IS 'Username of the user who initiated the authorization';
 COMMENT ON COLUMN oauth_authorization_codes.code_challenge IS 'PKCE code challenge for public clients';
 COMMENT ON COLUMN oauth_authorization_codes.code_challenge_method IS 'PKCE code challenge method (plain or S256)';
@@ -80,21 +77,19 @@ CREATE TABLE IF NOT EXISTS oauth_access_tokens (
     token_hash VARCHAR(255) UNIQUE NOT NULL,
     access_token_encrypted TEXT NOT NULL,
     client_id VARCHAR(255) NOT NULL,
-    connector_name VARCHAR(255) NOT NULL,
-    user_name VARCHAR(255),
+    user_name VARCHAR(255) NOT NULL,
     scopes JSONB NOT NULL DEFAULT '[]'::jsonb,
     expires_at BIGINT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT oauth_access_tokens_fk_client FOREIGN KEY (client_id) REFERENCES oauth_clients(client_id) ON DELETE CASCADE,
     CONSTRAINT oauth_access_tokens_expires_check CHECK (expires_at > 0),
     CONSTRAINT oauth_access_tokens_hash_check CHECK (char_length(token_hash) > 0),
-    CONSTRAINT oauth_access_tokens_connector_check CHECK (char_length(connector_name) > 0),
+    CONSTRAINT oauth_access_tokens_user_check CHECK (char_length(user_name) > 0),
     CONSTRAINT oauth_access_tokens_scopes_check CHECK (jsonb_typeof(scopes) = 'array')
 );
 
 CREATE INDEX IF NOT EXISTS idx_oauth_access_tokens_hash ON oauth_access_tokens(token_hash);
 CREATE INDEX IF NOT EXISTS idx_oauth_access_tokens_client_id ON oauth_access_tokens(client_id);
-CREATE INDEX IF NOT EXISTS idx_oauth_access_tokens_connector ON oauth_access_tokens(connector_name);
 CREATE INDEX IF NOT EXISTS idx_oauth_access_tokens_user ON oauth_access_tokens(user_name);
 CREATE INDEX IF NOT EXISTS idx_oauth_access_tokens_expires_at ON oauth_access_tokens(expires_at);
 CREATE INDEX IF NOT EXISTS idx_oauth_access_tokens_created_at ON oauth_access_tokens(created_at);
@@ -102,7 +97,6 @@ CREATE INDEX IF NOT EXISTS idx_oauth_access_tokens_created_at ON oauth_access_to
 COMMENT ON TABLE oauth_access_tokens IS 'Active OAuth 2.0 access tokens for API authentication';
 COMMENT ON COLUMN oauth_access_tokens.token_hash IS 'SHA-256 hash of the access token for lookup';
 COMMENT ON COLUMN oauth_access_tokens.access_token_encrypted IS 'Encrypted access token value';
-COMMENT ON COLUMN oauth_access_tokens.connector_name IS 'Name of the connector/service this token authorizes';
 COMMENT ON COLUMN oauth_access_tokens.user_name IS 'Username of the user who authorized the token';
 COMMENT ON COLUMN oauth_access_tokens.expires_at IS 'Unix timestamp (milliseconds) when token expires';
 
@@ -113,8 +107,8 @@ CREATE TABLE IF NOT EXISTS oauth_refresh_tokens (
     token_hash VARCHAR(255) UNIQUE NOT NULL,
     refresh_token_encrypted TEXT NOT NULL,
     client_id VARCHAR(255) NOT NULL,
-    connector_name VARCHAR(255) NOT NULL,
-    user_name VARCHAR(255),
+    user_name VARCHAR(255) NOT NULL,
+    
     scopes JSONB NOT NULL DEFAULT '[]'::jsonb,
     expires_at BIGINT NOT NULL,
     revoked BOOLEAN NOT NULL DEFAULT FALSE,
@@ -122,13 +116,13 @@ CREATE TABLE IF NOT EXISTS oauth_refresh_tokens (
     CONSTRAINT oauth_refresh_tokens_fk_client FOREIGN KEY (client_id) REFERENCES oauth_clients(client_id) ON DELETE CASCADE,
     CONSTRAINT oauth_refresh_tokens_expires_check CHECK (expires_at > 0),
     CONSTRAINT oauth_refresh_tokens_hash_check CHECK (char_length(token_hash) > 0),
-    CONSTRAINT oauth_refresh_tokens_connector_check CHECK (char_length(connector_name) > 0),
+    CONSTRAINT oauth_refresh_tokens_user_check CHECK (char_length(connector_name) > 0),
     CONSTRAINT oauth_refresh_tokens_scopes_check CHECK (jsonb_typeof(scopes) = 'array')
 );
 
 CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_hash ON oauth_refresh_tokens(token_hash);
 CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_client_id ON oauth_refresh_tokens(client_id);
-CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_connector ON oauth_refresh_tokens(connector_name);
+CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_user ON oauth_refresh_tokens(connector_name);
 CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_user ON oauth_refresh_tokens(user_name);
 CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_revoked ON oauth_refresh_tokens(revoked);
 CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_expires_at ON oauth_refresh_tokens(expires_at);
@@ -137,27 +131,11 @@ CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_created_at ON oauth_refresh_
 COMMENT ON TABLE oauth_refresh_tokens IS 'OAuth 2.0 refresh tokens for obtaining new access tokens';
 COMMENT ON COLUMN oauth_refresh_tokens.token_hash IS 'SHA-256 hash of the refresh token for lookup';
 COMMENT ON COLUMN oauth_refresh_tokens.refresh_token_encrypted IS 'Encrypted refresh token value';
-COMMENT ON COLUMN oauth_refresh_tokens.connector_name IS 'Name of the connector/service this token authorizes';
+COMMENT ON COLUMN oauth_refresh_tokens.user_name IS 'Username of the user who authorized the token';
 COMMENT ON COLUMN oauth_refresh_tokens.user_name IS 'Username of the user who authorized the token';
 COMMENT ON COLUMN oauth_refresh_tokens.revoked IS 'Whether the refresh token has been revoked';
 COMMENT ON COLUMN oauth_refresh_tokens.expires_at IS 'Unix timestamp (milliseconds) when token expires';
 
--- OAuth Token Mappings Table
--- Maps MCP tokens to OAuth access tokens for integration
-CREATE TABLE IF NOT EXISTS oauth_token_mappings (
-    mcp_token_hash VARCHAR(255) PRIMARY KEY,
-    access_token_id UUID NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT oauth_token_mappings_fk_access_token FOREIGN KEY (access_token_id) REFERENCES oauth_access_tokens(id) ON DELETE CASCADE,
-    CONSTRAINT oauth_token_mappings_hash_check CHECK (char_length(mcp_token_hash) > 0)
-);
-
-CREATE INDEX IF NOT EXISTS idx_oauth_token_mappings_access_token ON oauth_token_mappings(access_token_id);
-CREATE INDEX IF NOT EXISTS idx_oauth_token_mappings_created_at ON oauth_token_mappings(created_at);
-
-COMMENT ON TABLE oauth_token_mappings IS 'Mapping between MCP tokens and OAuth access tokens';
-COMMENT ON COLUMN oauth_token_mappings.mcp_token_hash IS 'SHA-256 hash of the MCP token';
-COMMENT ON COLUMN oauth_token_mappings.access_token_id IS 'Reference to the associated OAuth access token';
 
 -- OAuth Audit Log Table
 -- Tracks all OAuth-related events for security and compliance
@@ -165,7 +143,7 @@ CREATE TABLE IF NOT EXISTS oauth_audit_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_type VARCHAR(50) NOT NULL,
     client_id VARCHAR(255),
-    connector_name VARCHAR(255),
+    
     user_name VARCHAR(255),
     success BOOLEAN NOT NULL,
     error_message TEXT,
