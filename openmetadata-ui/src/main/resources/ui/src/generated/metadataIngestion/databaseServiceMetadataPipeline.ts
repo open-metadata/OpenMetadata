@@ -77,6 +77,10 @@ export interface DatabaseServiceMetadataPipeline {
      */
     markDeletedTables?: boolean;
     /**
+     * Set the 'Override Lineage' toggle to control whether to override the existing lineage.
+     */
+    overrideLineage?: boolean;
+    /**
      * Set the 'Override Metadata' toggle to control whether to override the existing metadata
      * in the OpenMetadata server with the metadata fetched from the source. If the toggle is
      * set to true, the metadata fetched from the source will override the existing metadata in

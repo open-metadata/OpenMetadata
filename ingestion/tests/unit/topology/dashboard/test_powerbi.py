@@ -353,7 +353,8 @@ class PowerBIUnitTest(TestCase):
         result = self.powerbi._parse_databricks_source(
             MOCK_DATABRICKS_NATIVE_INVALID_QUERY_EXP, MOCK_DASHBOARD_DATA_MODEL
         )
-        self.assertIsNone(result)
+        # sqlglot parses this sql and returns empty source list vs sqlfluff raising the error, hence adjusting test
+        self.assertEqual(result, [])
 
         result = self.powerbi._parse_databricks_source(
             MOCK_DATABRICKS_NATIVE_INVALID_EXP, MOCK_DASHBOARD_DATA_MODEL

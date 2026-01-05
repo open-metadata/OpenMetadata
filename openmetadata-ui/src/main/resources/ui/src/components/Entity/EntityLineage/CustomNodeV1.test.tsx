@@ -212,6 +212,9 @@ jest.mock('react-i18next', () => ({
       if (key === 'label.slash-symbol') {
         return '/';
       }
+      if (key === 'message.only-show-columns-with-lineage') {
+        return 'Only show columns with Lineage';
+      }
 
       return key;
     },
@@ -248,6 +251,44 @@ describe('CustomNodeV1', () => {
 
     expect(screen.getByTestId('lineage-node-dim_customer')).toBeInTheDocument();
     expect(screen.getByTestId('dbt-icon')).toBeInTheDocument();
+  });
+
+  it('should render breadcrumb for node full path', () => {
+    const nodeWithFqn = {
+      ...mockNodeDataProps,
+      data: {
+        node: {
+          ...mockNodeDataProps.data.node,
+          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_customer',
+        },
+      },
+    };
+
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...nodeWithFqn} />
+      </ReactFlowProvider>
+    );
+
+    const breadcrumbContainer = screen.getByTestId('lineage-breadcrumbs');
+
+    expect(breadcrumbContainer).toBeInTheDocument();
+
+    const breadcrumbItems = within(breadcrumbContainer).getAllByText(
+      (_content, element) =>
+        element?.classList.contains('lineage-breadcrumb-item') ?? false
+    );
+
+    expect(breadcrumbItems).toHaveLength(3);
+    expect(breadcrumbItems[0]).toHaveTextContent('sample_data');
+    expect(breadcrumbItems[1]).toHaveTextContent('ecommerce_db');
+    expect(breadcrumbItems[2]).toHaveTextContent('shopify');
+
+    const separators = breadcrumbContainer.querySelectorAll(
+      '.lineage-breadcrumb-item-separator'
+    );
+
+    expect(separators).toHaveLength(2);
   });
 
   it('should render footer only when there are children', () => {
@@ -563,6 +604,27 @@ describe('CustomNodeV1', () => {
       const filterButton = screen.getByTestId('lineage-filter-button');
       fireEvent.click(filterButton);
     };
+
+    it('should render tooltip on hovering filter button in lineage node', async () => {
+      isColumnLayerActive = true;
+      columnsHavingLineage = ['col0', 'col2', 'col5'];
+
+      render(
+        <ReactFlowProvider>
+          <CustomNodeV1Component {...mockNodeDataProps} />
+        </ReactFlowProvider>
+      );
+
+      const filterButton = screen.getByTestId('lineage-filter-button');
+
+      expect(filterButton).toBeInTheDocument();
+
+      fireEvent.mouseOver(filterButton);
+
+      expect(
+        await screen.findByText('Only show columns with Lineage')
+      ).toBeInTheDocument();
+    });
 
     describe('Column Filter', () => {
       it('should only render columns with lineage when filter is on', () => {

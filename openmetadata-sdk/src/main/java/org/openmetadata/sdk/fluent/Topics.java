@@ -68,6 +68,57 @@ public final class Topics {
     return getClient().topics().create(request);
   }
 
+  // ==================== Direct Access Methods ====================
+
+  public static Topic get(String id) {
+    return getClient().topics().get(id);
+  }
+
+  public static Topic get(String id, String fields) {
+    return getClient().topics().get(id, fields);
+  }
+
+  public static Topic get(String id, String fields, String include) {
+    return getClient().topics().get(id, fields, include);
+  }
+
+  public static Topic getByName(String fqn) {
+    return getClient().topics().getByName(fqn);
+  }
+
+  public static Topic getByName(String fqn, String fields) {
+    return getClient().topics().getByName(fqn, fields);
+  }
+
+  public static Topic update(String id, Topic entity) {
+    return getClient().topics().update(id, entity);
+  }
+
+  public static void delete(String id) {
+    getClient().topics().delete(id);
+  }
+
+  public static void delete(String id, java.util.Map<String, String> params) {
+    getClient().topics().delete(id, params);
+  }
+
+  public static void restore(String id) {
+    getClient().topics().restore(id);
+  }
+
+  public static org.openmetadata.sdk.models.ListResponse<Topic> list(
+      org.openmetadata.sdk.models.ListParams params) {
+    return getClient().topics().list(params);
+  }
+
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(java.util.UUID id) {
+    return getClient().topics().getVersionList(id);
+  }
+
+  public static Topic getVersion(String id, Double version) {
+    return getClient().topics().getVersion(id, version);
+  }
+
   // ==================== Finding/Retrieval ====================
 
   public static TopicFinder find(String id) {
