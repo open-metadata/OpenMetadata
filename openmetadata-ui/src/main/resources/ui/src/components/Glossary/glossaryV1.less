@@ -52,7 +52,7 @@
     padding: 8px 0px;
     background: @white;
     border: 1px solid #dde3ea;
-    box-shadow: 1px 1px 3px rgb(0 0 0 / 12%);
+    box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.12);
     border-radius: 4px;
 
     .ant-dropdown-menu-item {
@@ -201,5 +201,15 @@
       background: @grey-3;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
     }
+  }
+}
+
+// Background color for nested glossary terms
+.ant-table-tbody > tr.glossary-nested-row {
+  background-color: @grey-50;
+
+  &:hover > td,
+  > td.ant-table-cell-row-hover {
+    background-color: @grey-100;
   }
 }

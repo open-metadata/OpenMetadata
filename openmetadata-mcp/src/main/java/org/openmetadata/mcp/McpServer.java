@@ -2,6 +2,7 @@ package org.openmetadata.mcp;
 
 import io.dropwizard.core.setup.Environment;
 import io.dropwizard.jetty.MutableServletContextHandler;
+import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransport;
@@ -21,6 +22,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
 public class McpServer implements McpServerProvider {
@@ -48,14 +50,17 @@ public class McpServer implements McpServerProvider {
       Limits limits,
       OpenMetadataApplicationConfig config) {
     this.jwtFilter =
-        new JwtFilter(config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
+        new JwtFilter(
+            SecurityConfigurationManager.getCurrentAuthConfig(),
+            SecurityConfigurationManager.getCurrentAuthzConfig());
     this.authorizer = authorizer;
     this.limits = limits;
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
     McpAuthFilter authFilter =
         new McpAuthFilter(
             new JwtFilter(
-                config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration()));
+                SecurityConfigurationManager.getCurrentAuthConfig(),
+                SecurityConfigurationManager.getCurrentAuthzConfig()));
     List<McpSchema.Tool> tools = getTools();
     List<McpSchema.Prompt> prompts = getPrompts();
     addStatelessTransport(contextHandler, authFilter, tools, prompts);
@@ -84,14 +89,14 @@ public class McpServer implements McpServerProvider {
 
     HttpServletStatelessServerTransport statelessTransport =
         HttpServletStatelessServerTransport.builder()
-            .objectMapper(JsonUtils.getObjectMapper())
+            .jsonMapper(new JacksonMcpJsonMapper(JsonUtils.getObjectMapper()))
             .messageEndpoint("/mcp")
             .contextExtractor(new AuthEnrichedMcpContextExtractor())
             .build();
 
     McpStatelessSyncServer server =
         io.modelcontextprotocol.server.McpServer.sync(statelessTransport)
-            .serverInfo("openmetadata-mcp-stateless", "0.11.2")
+            .serverInfo("openmetadata-mcp-stateless", "0.14.0")
             .capabilities(serverCapabilities)
             .build();
     addToolsToServer(server, tools);
@@ -130,7 +135,6 @@ public class McpServer implements McpServerProvider {
   private McpStatelessServerFeatures.SyncPromptSpecification getPrompt(McpSchema.Prompt prompt) {
     return new McpStatelessServerFeatures.SyncPromptSpecification(
         prompt,
-        (exchange, arguments) ->
-            promptsContext.callPrompt(jwtFilter, prompt.name(), arguments).getResult());
+        (exchange, arguments) -> promptsContext.callPrompt(jwtFilter, prompt.name(), arguments));
   }
 }

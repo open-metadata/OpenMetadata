@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,7 +12,12 @@
  *  limitations under the License.
  */
 
-import { Table } from '../generated/entity/data/table';
+import {
+  DataModel,
+  DataType,
+  ModelType,
+  Table,
+} from '../generated/entity/data/table';
 import { LabelType, State, TagSource } from '../generated/tests/testCase';
 
 export const MOCK_TABLE = {
@@ -19,7 +25,6 @@ export const MOCK_TABLE = {
   name: 'dim_address',
   fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
   description:
-    // eslint-disable-next-line max-len
     'This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.',
   version: 0.1,
   updatedAt: 1659764891329,
@@ -29,7 +34,7 @@ export const MOCK_TABLE = {
   columns: [
     {
       name: 'address_id',
-      dataType: 'NUMERIC',
+      dataType: DataType.Numeric,
       dataTypeDisplay: 'numeric',
       description: 'Unique identifier for the address.',
       fullyQualifiedName:
@@ -55,7 +60,7 @@ export const MOCK_TABLE = {
     },
     {
       name: 'shop_id',
-      dataType: 'NUMERIC',
+      dataType: DataType.Numeric,
       dataTypeDisplay: 'numeric',
       description:
         'The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.',
@@ -82,7 +87,7 @@ export const MOCK_TABLE = {
     },
     {
       name: 'first_name',
-      dataType: 'VARCHAR',
+      dataType: DataType.Varchar,
       dataLength: 100,
       dataTypeDisplay: 'varchar',
       description: 'First name of the customer.',
@@ -106,7 +111,7 @@ export const MOCK_TABLE = {
     },
     {
       name: 'last_name',
-      dataType: 'VARCHAR',
+      dataType: DataType.Varchar,
       dataLength: 100,
       dataTypeDisplay: 'varchar',
       description: 'Last name of the customer.',
@@ -292,4 +297,39 @@ export const MOCK_TIER_DATA = {
       'https://ashishgupta.me/_next/image?url=%2Fimage%2Fa1.png&w=3840&q=75',
   },
   tagFQN: 'Tier.Tier4',
+};
+
+export const MOCK_TABLE_DBT: DataModel = {
+  dbtSourceProject: 'jaffle_shop',
+  description:
+    'Staging table for payment data - cleaned and standardized raw payment information',
+  modelType: ModelType.Dbt,
+  path: 'models/staging/stg_payments.sql',
+  rawSql:
+    "with source as (\n    \n    {#-\n    Normally we would select from the table here, but we are using seeds to load\n    our data in this project\n    #}\n    select * from {{ ref('raw_payments') }}\n\n),\n\nrenamed as (\n\n    select\n        id as payment_id,\n        order_id,\n        payment_method,\n        cycle_name,\n\n        -- `amount` is currently stored in cents, so we convert it to dollars\n        amount / 100 as amount\n\n    from source\n\n)\n\nselect * from renamed",
+  resourceType: 'model',
+  sql: 'with source as (\n    select * from "dev"."dbt_production"."raw_payments"\n\n),\n\nrenamed as (\n\n    select\n        id as payment_id,\n        order_id,\n        payment_method,\n        cycle_name,\n\n        -- `amount` is currently stored in cents, so we convert it to dollars\n        amount / 100 as amount\n\n    from source\n\n)\n\nselect * from renamed',
+  tags: [],
+  upstream: ['redshift.dev.dbt_production.raw_payments'],
+  columns: [
+    {
+      children: [],
+      tags: [],
+      dataLength: 1,
+      dataType: DataType.Int,
+      description: 'Unique identifier for each payment transaction',
+      name: 'payment_id',
+      ordinalPosition: 1,
+    },
+    {
+      children: [],
+      tags: [],
+      dataLength: 1,
+      dataType: DataType.Varchar,
+      description:
+        'Method used for payment (credit_card, coupon, bank_transfer, gift_card)',
+      name: '"payment_method"',
+      ordinalPosition: 3,
+    },
+  ],
 };

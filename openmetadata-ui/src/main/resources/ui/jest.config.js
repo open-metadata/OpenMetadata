@@ -20,12 +20,7 @@ module.exports = {
   cache: true,
   cacheDirectory: './node_modules/.cache/jest',
 
-  globals: {
-    // TypeScript
-    'ts-jest': {
-      tsconfig: 'tsconfig.json',
-    },
-  },
+  // Removed globals for Jest 29+ compatibility
 
   // Working directory
   roots: ['<rootDir>/src'],
@@ -46,10 +41,16 @@ module.exports = {
     '<rootDir>/src/enums/*',
   ],
 
-  // Transforms
+  // Transforms for Jest 29+
   transform: {
-    '^.+\\.ts|tsx?$': 'ts-jest',
-    '^.+\\.js|jsx?$': '<rootDir>/node_modules/babel-jest',
+    '^.+\\.(ts|tsx)$': [
+      'ts-jest',
+      {
+        tsconfig: 'tsconfig.json',
+        useESM: true,
+      },
+    ],
+    '^.+\\.(js|jsx)$': 'babel-jest',
   },
 
   setupFilesAfterEnv: ['./src/setupTests.js'],
@@ -66,18 +67,21 @@ module.exports = {
       '<rootDir>/node_modules/@azure/msal-browser/lib/msal-browser.cjs',
     '@azure/msal-react':
       '<rootDir>/node_modules/@azure/msal-react/dist/index.js',
-    axios: 'axios/dist/node/axios.cjs',
+    '^axios$': '<rootDir>/node_modules/axios/dist/node/axios.cjs',
     '@melloware/react-logviewer':
       '<rootDir>/node_modules/@melloware/react-logviewer/dist/cjs/index.js',
     'react-antd-column-resize':
       '<rootDir>/src/test/unit/mocks/reactColumnResize.mock.js',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(@azure/msal-react|react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd/invariant|@react-dnd/asap|@react-dnd/shallowequal|@melloware/react-logviewer))',
+    'node_modules/(?!(@azure/msal-react|react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd/invariant|@react-dnd/asap|@react-dnd/shallowequal|@melloware/react-logviewer|@material/material-color-utilities|@openmetadata/ui-core-components|nanoid|@rjsf/core|@rjsf/utils|@rjsf/validator-ajv8|uuid|elkjs))',
   ],
 
   // TypeScript
   preset: 'ts-jest',
+
+  // ESM support
+  extensionsToTreatAsEsm: ['.ts', '.tsx'],
 
   // Test Environment
   testEnvironment: 'jsdom',
@@ -86,7 +90,9 @@ module.exports = {
   testResultsProcessor: 'jest-sonar-reporter',
 
   // use fake timers
-  timers: 'fake',
+  fakeTimers: {
+    enableGlobally: true,
+  },
 
   moduleDirectories: ['node_modules', 'src'],
 

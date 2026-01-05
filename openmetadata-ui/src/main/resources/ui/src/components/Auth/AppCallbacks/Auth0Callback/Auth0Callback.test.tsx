@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { useAuth0 } from '@auth0/auth0-react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 
+import { useAuth0 } from '@auth0/auth0-react';
 import { MemoryRouter } from 'react-router-dom';
 import Auth0Callback from './Auth0Callback';
 
@@ -40,7 +40,6 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });
 
-const mockUseAuth0 = useAuth0 as jest.Mock;
 const mockHandleSuccessfulLogin = jest.fn();
 
 jest.mock('@auth0/auth0-react', () => ({
@@ -76,7 +75,7 @@ describe('Test Auth0Callback component', () => {
   });
 
   it('Check if the Auth0Callback renders error from Auth0', async () => {
-    mockUseAuth0.mockReturnValue({
+    (useAuth0 as jest.Mock).mockReturnValue({
       isAuthenticated: false,
       error: { message: 'unknown error' },
       user: {},
@@ -91,11 +90,12 @@ describe('Test Auth0Callback component', () => {
   });
 
   it('Should call successful login handler on Success', async () => {
-    mockUseAuth0.mockReturnValue({
+    const mockGetIdTokenClaims = jest.fn();
+    (useAuth0 as jest.Mock).mockReturnValue({
       isAuthenticated: true,
-      getIdTokenClaims: jest.fn(() =>
-        Promise.resolve({ __raw: 'raw_id_token' })
-      ),
+      getIdTokenClaims: mockGetIdTokenClaims.mockResolvedValue({
+        __raw: 'raw_id_token',
+      }),
       user: {
         email: 'test_email',
         name: 'test_user',
@@ -103,15 +103,14 @@ describe('Test Auth0Callback component', () => {
         locale: 'test_locale',
       },
     });
-    render(<Auth0Callback />, {
-      wrapper: MemoryRouter,
+
+    await act(async () => {
+      render(<Auth0Callback />, {
+        wrapper: MemoryRouter,
+      });
     });
 
     expect(screen.queryByTestId('auth0-error')).not.toBeInTheDocument();
-
-    // wait until all the promises in the component have been resolved
-    // eslint-disable-next-line no-undef
-    await new Promise(process.nextTick);
 
     expect(mockHandleSuccessfulLogin).toHaveBeenCalledTimes(1);
     expect(mockHandleSuccessfulLogin).toHaveBeenCalledWith({

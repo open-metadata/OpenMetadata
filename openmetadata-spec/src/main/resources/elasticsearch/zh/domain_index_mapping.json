@@ -70,7 +70,14 @@
         }
       },
       "domainType": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -192,6 +199,9 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "experts": {
         "type": "keyword"
       },
@@ -219,6 +229,14 @@
             "type": "keyword"
           }
         }
+      },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "tags": {
         "properties": {

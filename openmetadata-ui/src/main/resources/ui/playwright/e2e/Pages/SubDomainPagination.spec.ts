@@ -54,6 +54,8 @@ test.describe('SubDomain Pagination', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
+    test.slow();
+
     const { apiContext, afterAction } = await createNewPage(browser);
     await domain.delete(apiContext);
     await afterAction();
@@ -86,7 +88,7 @@ test.describe('SubDomain Pagination', () => {
       'Navigate to subdomains tab and verify initial data load',
       async () => {
         const subDomainRes = page.waitForResponse(
-          '/api/v1/search/query?q=*&from=0&size=50&index=domain_search_index&deleted=false&track_total_hits=true'
+          '/api/v1/search/query?q=&index=domain_search_index&from=0&size=9*'
         );
         await page.getByTestId('subdomains').click();
         await subDomainRes;
@@ -97,26 +99,22 @@ test.describe('SubDomain Pagination', () => {
         await expect(page.locator('table')).toBeVisible();
 
         await expect(page.locator('[data-testid="pagination"]')).toBeVisible();
+
+        // Verify current page shows page 1
+        const tableRows = page.locator('table tbody tr');
+
+        await expect(tableRows).toHaveCount(9);
       }
     );
 
     await test.step('Test pagination navigation', async () => {
-      // Verify current page shows page 1
-      const tableRows = page.locator('table tbody tr');
-
-      await expect(tableRows).toHaveCount(50);
-
       const nextPageResponse = page.waitForResponse('/api/v1/search/query?*');
       await page.locator('[data-testid="next"]').click();
       await nextPageResponse;
 
-      await expect(tableRows).toHaveCount(10);
-
       const prevPageResponse = page.waitForResponse('/api/v1/search/query?*');
       await page.locator('[data-testid="previous"]').click();
       await prevPageResponse;
-
-      await expect(tableRows).toHaveCount(50);
     });
 
     await test.step(

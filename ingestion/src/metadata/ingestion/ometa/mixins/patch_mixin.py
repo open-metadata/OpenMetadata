@@ -16,10 +16,14 @@ To be used by OpenMetadata class
 import json
 import traceback
 from copy import deepcopy
-from typing import Dict, List, Optional, Type, TypeVar, Union
+from typing import Any, Dict, List, Optional, Type, TypeVar, Union
+from uuid import UUID
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.entity.automations.response.queryRunnerResponse import (
+    QueryRunnerResponse,
+)
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -32,6 +36,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.reverseIngesti
     ReverseIngestionResponse,
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import EntityLink, Markdown
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.lifeCycle import LifeCycle
@@ -55,6 +60,20 @@ logger = ometa_logger()
 T = TypeVar("T", bound=BaseModel)
 
 OWNER_TYPES: List[str] = ["user", "team"]
+
+
+def convert_uuids_to_strings(obj: Any) -> Any:
+    """
+    Recursively convert UUID objects to strings for JSON serialization
+    """
+    if isinstance(obj, UUID):
+        return str(obj)
+    elif isinstance(obj, dict):
+        return {key: convert_uuids_to_strings(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_uuids_to_strings(item) for item in obj]
+    else:
+        return obj
 
 
 def update_column_tags(
@@ -557,7 +576,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
     def patch_automation_workflow_response(
         self,
         automation_workflow: AutomationWorkflow,
-        result: Union[TestConnectionResult, ReverseIngestionResponse],
+        result: Union[
+            TestConnectionResult, ReverseIngestionResponse, QueryRunnerResponse
+        ],
         workflow_status: WorkflowStatus,
     ) -> None:
         """
@@ -570,17 +591,16 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         }
 
         # for deserializing into json convert enum object to string
-        if isinstance(result, TestConnectionResult):
-            result_data[PatchField.VALUE]["status"] = result_data[PatchField.VALUE][
-                "status"
-            ].value
-        else:
+        if isinstance(result, ReverseIngestionResponse):
             # Convert UUID in string
             data = result_data[PatchField.VALUE]
             data["serviceId"] = str(data["serviceId"])
             for operation_result in data["results"]:
                 operation_result["id"] = str(operation_result["id"])
-
+        else:
+            result_data[PatchField.VALUE]["status"] = result_data[PatchField.VALUE][
+                "status"
+            ].value
         status_data: Dict = {
             PatchField.PATH: PatchPath.STATUS,
             PatchField.OPERATION: PatchOperation.ADD,
@@ -625,18 +645,14 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         entity: Type[T],
         source: T,
         domains: EntityReferenceList = None,
-        force: bool = False,
     ) -> Optional[T]:
         """
-        Given an Entity type and ID, JSON PATCH the owner. If not owner Entity type and
-        not owner ID are provided, the owner is removed.
+        Given an Entity type and ID, JSON PATCH the domain.
 
         Args
             entity (T): Entity Type of the entity to be patched
-            entity_id: ID of the entity to be patched
-            owner: Entity Reference of the owner. If None, the owner will be removed
-            force: if True, we will patch any existing owner. Otherwise, we will maintain
-                the existing data.
+            source: Source entity object
+            domains: Entity Reference List of the domains. If None, the domain will be removed
         Returns
             Updated Entity
         """
@@ -647,10 +663,83 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         if not instance:
             return None
 
-        if instance.domains and instance.domains.root and not force:
-            return None
+        # Check if domains are already the same, skip if identical
+        if instance.domains and instance.domains.root and domains and domains.root:
+            existing_domain_ids = {str(d.id) for d in instance.domains.root}
+            new_domain_ids = {str(d.id) for d in domains.root}
+            if existing_domain_ids == new_domain_ids:
+                return None
 
         destination = deepcopy(instance)
         destination.domains = domains
 
         return self.patch(entity=entity, source=instance, destination=destination)
+
+    def patch_custom_properties(
+        self,
+        entity: Type[T],
+        entity_id: Union[str, basic.Uuid],
+        custom_properties: Dict[str, Any],
+        force: bool = False,
+    ) -> Optional[T]:
+        """
+        Given an Entity type and ID, JSON PATCH the custom properties.
+
+        Args
+            entity (T): Entity Type
+            entity_id: ID
+            custom_properties: Dictionary of custom properties to add/update
+            force: if True, we will overwrite all existing custom properties. Otherwise, we will merge
+                with existing data.
+        Returns
+            Updated Entity
+        """
+        instance = self.get_by_id(entity=entity, entity_id=entity_id)
+
+        if not instance:
+            logger.warning(
+                f"Cannot find an instance of {entity.__name__} with the given ID."
+            )
+            return None
+
+        # Get existing custom properties from extension
+        existing_custom_properties = {}
+        if hasattr(instance, "extension") and instance.extension:
+            if hasattr(instance.extension, "root") and isinstance(
+                instance.extension.root, dict
+            ):
+                existing_custom_properties = instance.extension.root.copy()
+
+        # Merge with new properties if not forcing
+        if not force and existing_custom_properties:
+            # Merge new properties with existing ones
+            final_properties = {**existing_custom_properties, **custom_properties}
+        else:
+            final_properties = custom_properties
+
+        # Convert UUID objects to strings for JSON serialization
+        final_properties = convert_uuids_to_strings(final_properties)
+
+        try:
+            res = self.client.patch(
+                path=f"{self.get_suffix(entity)}/{model_str(entity_id)}",
+                data=json.dumps(
+                    [
+                        {
+                            PatchField.OPERATION: PatchOperation.REPLACE
+                            if existing_custom_properties
+                            else PatchOperation.ADD,
+                            PatchField.PATH: "/extension",
+                            PatchField.VALUE: final_properties,
+                        }
+                    ]
+                ),
+            )
+            return entity(**res)
+
+        except Exception as exc:
+            logger.error(
+                f"Error trying to PATCH custom properties for {entity.__name__}: {entity_id} - {exc}"
+            )
+            logger.debug(traceback.format_exc())
+            return None

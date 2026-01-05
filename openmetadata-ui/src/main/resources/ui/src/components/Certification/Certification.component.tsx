@@ -11,16 +11,26 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Popover, Radio, Space, Spin, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Empty,
+  Popover,
+  Radio,
+  Space,
+  Spin,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certification.svg';
 import { Tag } from '../../generated/entity/classification/tag';
+import { Paging } from '../../generated/type/paging';
 import { getTags } from '../../rest/tagAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import { getTagImageSrc } from '../../utils/IconUtils';
 import { stringToHTML } from '../../utils/StringsUtils';
-import { getTagImageSrc } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { FocusTrapWithContainer } from '../common/FocusTrap/FocusTrapWithContainer';
 import Loader from '../common/Loader/Loader';
@@ -35,59 +45,85 @@ const Certification = ({
   onClose,
 }: CertificationProps) => {
   const { t } = useTranslation();
-  const popoverRef = useRef<any>(null);
+  const popoverRef = useRef<{ close: () => void } | null>(null);
   const [isLoadingCertificationData, setIsLoadingCertificationData] =
     useState<boolean>(false);
+  const [hasContentLoading, setHasContentLoading] = useState<boolean>(false);
   const [certifications, setCertifications] = useState<Array<Tag>>([]);
   const [selectedCertification, setSelectedCertification] = useState<string>(
     currentCertificate ?? ''
   );
-  const certificationCardData = useMemo(() => {
-    return (
-      <Radio.Group
-        className="h-max-100 overflow-y-auto overflow-x-hidden"
-        value={selectedCertification}>
-        {certifications.map((certificate) => {
-          const tagSrc = getTagImageSrc(certificate.style?.iconURL ?? '');
-          const title = getEntityName(certificate);
-          const { id, fullyQualifiedName, description } = certificate;
+  const [paging, setPaging] = useState<Paging>({} as Paging);
+  const [currentPage, setCurrentPage] = useState(1);
 
-          return (
-            <div
-              className="certification-card-item cursor-pointer"
-              key={id}
-              style={{ cursor: 'pointer' }}
-              onClick={() => {
-                setSelectedCertification(fullyQualifiedName ?? '');
-              }}>
-              <Radio
-                className="certification-radio-top-right"
-                data-testid={`radio-btn-${fullyQualifiedName}`}
-                value={fullyQualifiedName}
-              />
-              <div className="certification-card-content">
-                {tagSrc ? (
-                  <img alt={title} src={tagSrc} />
-                ) : (
-                  <div className="certification-icon">
-                    <CertificationIcon height={28} width={28} />
-                  </div>
-                )}
-                <div>
-                  <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-body">
-                    {title}
-                  </Typography.Paragraph>
-                  <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-muted">
-                    {stringToHTML(description)}
-                  </Typography.Paragraph>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </Radio.Group>
-    );
-  }, [certifications, selectedCertification]);
+  const getCertificationData = async (page = 1, append = false) => {
+    if (page === 1) {
+      setIsLoadingCertificationData(true);
+    } else {
+      setHasContentLoading(true);
+    }
+
+    try {
+      const response = await getTags({
+        parent: 'Certification',
+        limit: 50,
+        after: page > 1 ? paging.after : undefined,
+        disabled: false,
+      });
+
+      const { data, paging: newPaging } = response;
+
+      // Sort certifications with Gold, Silver, Bronze first (only for initial load)
+      const sortedData =
+        page === 1
+          ? [...data].sort((a, b) => {
+              const order: Record<string, number> = {
+                Gold: 0,
+                Silver: 1,
+                Bronze: 2,
+              };
+
+              const aName = getEntityName(a);
+              const bName = getEntityName(b);
+
+              const aOrder = order[aName] ?? 3;
+              const bOrder = order[bName] ?? 3;
+
+              return aOrder - bOrder;
+            })
+          : data;
+
+      if (append) {
+        setCertifications((prev) => [...prev, ...sortedData]);
+      } else {
+        setCertifications(sortedData);
+      }
+
+      setPaging(newPaging);
+      setCurrentPage(page);
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.certification-plural-lowercase'),
+        })
+      );
+    } finally {
+      setIsLoadingCertificationData(false);
+      setHasContentLoading(false);
+    }
+  };
+
+  const handleScroll = async (e: React.UIEvent<HTMLDivElement>) => {
+    const { currentTarget } = e;
+    const isAtBottom =
+      currentTarget.scrollTop + currentTarget.offsetHeight >=
+      currentTarget.scrollHeight - 1; // -1 for precision tolerance
+
+    if (isAtBottom && paging.after && !hasContentLoading) {
+      await getCertificationData(currentPage + 1, true);
+    }
+  };
 
   const updateCertificationData = async (value?: string) => {
     setIsLoadingCertificationData(true);
@@ -98,43 +134,78 @@ const Certification = ({
     setIsLoadingCertificationData(false);
     popoverRef.current?.close();
   };
-  const getCertificationData = async () => {
-    setIsLoadingCertificationData(true);
-    try {
-      const { data } = await getTags({
-        parent: 'Certification',
-        limit: 50,
-      });
 
-      // Sort certifications with Gold, Silver, Bronze first
-      const sortedData = [...data].sort((a, b) => {
-        const order: Record<string, number> = {
-          Gold: 0,
-          Silver: 1,
-          Bronze: 2,
-        };
-
-        const aName = getEntityName(a);
-        const bName = getEntityName(b);
-
-        const aOrder = order[aName] ?? 3;
-        const bOrder = order[bName] ?? 3;
-
-        return aOrder - bOrder;
-      });
-
-      setCertifications(sortedData);
-    } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.certification-plural-lowercase'),
-        })
+  const certificationCardData = useMemo(() => {
+    if (certifications.length === 0 && !isLoadingCertificationData) {
+      return (
+        <Empty
+          description={t('label.no-entity-available', {
+            entity: t('label.certification-plural-lowercase'),
+          })}
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+        />
       );
-    } finally {
-      setIsLoadingCertificationData(false);
     }
-  };
+
+    return (
+      <div
+        className="h-max-100 overflow-y-auto overflow-x-hidden"
+        onScroll={handleScroll}>
+        <Radio.Group className="w-full" value={selectedCertification}>
+          {certifications.map((certificate) => {
+            const tagSrc = getTagImageSrc(certificate.style?.iconURL ?? '');
+            const title = getEntityName(certificate);
+            const { id, fullyQualifiedName, description } = certificate;
+
+            return (
+              <div
+                className="certification-card-item cursor-pointer"
+                key={id}
+                style={{ cursor: 'pointer' }}
+                onClick={() => {
+                  setSelectedCertification(fullyQualifiedName ?? '');
+                }}>
+                <Radio
+                  className="certification-radio-top-right"
+                  data-testid={`radio-btn-${fullyQualifiedName}`}
+                  value={fullyQualifiedName}
+                />
+                <div className="certification-card-content">
+                  {tagSrc ? (
+                    <img alt={title} src={tagSrc} />
+                  ) : (
+                    <div className="certification-icon">
+                      <CertificationIcon height={28} width={28} />
+                    </div>
+                  )}
+                  <div>
+                    <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-body">
+                      {title}
+                    </Typography.Paragraph>
+                    <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-muted">
+                      {stringToHTML(description)}
+                    </Typography.Paragraph>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </Radio.Group>
+        {hasContentLoading && (
+          <div className="flex justify-center p-2">
+            <Loader size="small" />
+          </div>
+        )}
+      </div>
+    );
+  }, [
+    certifications,
+    selectedCertification,
+    hasContentLoading,
+    handleScroll,
+    isLoadingCertificationData,
+    t,
+  ]);
 
   const handleCloseCertification = async () => {
     popoverRef.current?.close();
@@ -143,16 +214,19 @@ const Certification = ({
 
   const onOpenChange = (visible: boolean) => {
     if (visible) {
-      getCertificationData();
+      getCertificationData(1);
       setSelectedCertification(currentCertificate);
+      setCurrentPage(1);
+      setPaging({} as Paging);
     } else {
       setSelectedCertification('');
+      setCertifications([]);
     }
   };
 
   useEffect(() => {
     if (popoverProps?.open && certifications.length === 0) {
-      getCertificationData();
+      getCertificationData(1);
     }
   }, [popoverProps?.open]);
 

@@ -14,11 +14,14 @@ import { expect, test } from '@playwright/test';
 
 import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { Domain } from '../../support/domain/Domain';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
   getApiContext,
@@ -27,6 +30,7 @@ import {
 } from '../../utils/common';
 import {
   createColumnRowDetails,
+  createColumnRowDetailsWithEncloseDot,
   createCustomPropertiesForEntity,
   createDatabaseRowDetails,
   createDatabaseSchemaRowDetails,
@@ -53,9 +57,16 @@ test.use({
   },
 });
 
+const user1 = new UserClass();
+const user2 = new UserClass();
+const glossary = new Glossary();
+const glossaryTerm = new GlossaryTerm(glossary);
+const domain1 = new Domain();
+const domain2 = new Domain();
+
 const glossaryDetails = {
-  name: EntityDataClass.glossaryTerm1.data.name,
-  parent: EntityDataClass.glossary1.data.name,
+  name: glossaryTerm.data.name,
+  parent: glossary.data.name,
 };
 
 const databaseDetails1 = {
@@ -94,7 +105,7 @@ const columnDetails1 = {
 };
 
 const columnDetails2 = {
-  ...createColumnRowDetails(),
+  ...createColumnRowDetailsWithEncloseDot(),
   glossary: glossaryDetails,
 };
 
@@ -104,19 +115,15 @@ const storedProcedureDetails = {
 };
 
 test.describe('Bulk Import Export', () => {
-  test.beforeAll('setup pre-test', async ({ browser }, testInfo) => {
+  test.beforeAll('setup pre-test', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
-    testInfo.setTimeout(90000);
-    await EntityDataClass.preRequisitesForTests(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll('Cleanup', async ({ browser }, testInfo) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    testInfo.setTimeout(90000);
-    await EntityDataClass.postRequisitesForTests(apiContext);
+    await user1.create(apiContext);
+    await user2.create(apiContext);
+    await glossary.create(apiContext);
+    await glossaryTerm.create(apiContext);
+    await domain1.create(apiContext);
+    await domain2.create(apiContext);
     await afterAction();
   });
 
@@ -176,10 +183,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...databaseDetails1,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain1.responseData,
+            domains: domain1.responseData,
           },
           page,
           customPropertyRecord
@@ -206,10 +213,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...databaseSchemaDetails1,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain1.responseData,
+            domains: domain1.responseData,
           },
           page
         );
@@ -236,10 +243,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...tableDetails1,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain1.responseData,
+            domains: domain1.responseData,
           },
           page
         );
@@ -284,10 +291,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...storedProcedureDetails,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain2.responseData,
+            domains: domain2.responseData,
           },
           page
         );
@@ -317,10 +324,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...databaseDetails2,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain2.responseData,
+            domains: domain2.responseData,
           },
           page
         );
@@ -426,10 +433,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...databaseSchemaDetails1,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain1.responseData,
+            domains: domain1.responseData,
           },
           page,
           customPropertyRecord
@@ -457,10 +464,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...tableDetails1,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain1.responseData,
+            domains: domain1.responseData,
           },
           page
         );
@@ -505,10 +512,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...databaseSchemaDetails2,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain1.responseData,
+            domains: domain1.responseData,
           },
           page
         );
@@ -626,10 +633,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...tableDetails1,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain1.responseData,
+            domains: domain1.responseData,
           },
           page,
           customPropertyRecord
@@ -676,10 +683,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...tableDetails2,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain1.responseData,
+            domains: domain1.responseData,
           },
           page,
           customPropertyRecord
@@ -706,7 +713,7 @@ test.describe('Bulk Import Export', () => {
         await fillRecursiveColumnDetails(
           {
             ...columnDetails2,
-            fullyQualifiedName: `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails2.name}.${columnDetails2.name}`,
+            fullyQualifiedName: `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails2.name}."${columnDetails2.name}"`,
           },
           page
         );
@@ -835,7 +842,6 @@ test.describe('Bulk Import Export', () => {
       }
     );
 
-    await tableEntity.delete(apiContext);
     await afterAction();
   });
 
@@ -881,10 +887,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...databaseDetails1,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain1.responseData,
+            domains: domain1.responseData,
           },
           page,
           undefined,
@@ -1024,13 +1030,11 @@ test.describe('Bulk Import Export', () => {
         page.getByTestId('glossary-container').getByTestId('add-tag')
       ).toBeVisible();
 
-      await expect(page.getByTestId('Tier')).toContainText('No Tier');
+      await expect(page.getByTestId('Tier')).toContainText('--');
 
-      await expect(page.getByTestId('certification-label')).toContainText(
-        'No Certification'
-      );
+      await expect(page.getByTestId('certification-label')).toContainText('--');
 
-      await expect(page.getByTestId('owner-label')).toContainText('No Owners');
+      await expect(page.getByTestId('owner-label')).toContainText('--');
 
       await expect(page.getByTestId('no-domain-text')).toBeVisible();
     });

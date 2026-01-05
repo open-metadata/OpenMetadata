@@ -1,0 +1,24 @@
+{
+  "$id": "https://open-metadata.org/schema/api/events/notificationTemplateSendRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NotificationTemplateSendRequest",
+  "description": "Request to render and send a notification template with mock data to external destinations.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.events.NotificationTemplateSendRequest",
+  "properties": {
+    "renderRequest": {
+      "$ref": "./notificationTemplateRenderRequest.json",
+      "description": "Template rendering parameters (template content, resource, eventType)"
+    },
+    "destinations": {
+      "type": "array",
+      "description": "External-only destinations for sending test notifications (Slack, Teams, GChat, Email, Webhook).",
+      "items": {
+        "$ref": "../../events/eventSubscription.json#/definitions/destination"
+      },
+      "minItems": 1
+    }
+  },
+  "required": ["renderRequest", "destinations"],
+  "additionalProperties": false
+}

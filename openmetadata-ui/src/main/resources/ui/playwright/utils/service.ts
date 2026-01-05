@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick, SettingOptionsType } from './sidebar';
 
 export const searchServiceFromSettingPage = async (
   page: Page,
   service: string
 ) => {
-  const serviceResponse = page.waitForResponse(`/api/v1/search/query?q=*`);
+  const serviceResponse = page.waitForResponse((response) => {
+    const url = response.url();
+
+    return url.includes('/api/v1/search/query') && url.includes(service);
+  });
   await page.fill('[data-testid="searchbar"]', service);
 
   await serviceResponse;
@@ -29,9 +34,12 @@ export const visitServiceDetailsPage = async (
   verifyHeader = false,
   visitChildrenTab = true
 ) => {
-  const serviceResponse = page.waitForResponse('/api/v1/services/*');
+  const serviceResponse = page.waitForResponse(
+    '/api/v1/services/*?fields=owners*'
+  );
   await settingClick(page, service.type as SettingOptionsType);
   await serviceResponse;
+  await waitForAllLoadersToDisappear(page);
 
   await searchServiceFromSettingPage(page, service.name);
 

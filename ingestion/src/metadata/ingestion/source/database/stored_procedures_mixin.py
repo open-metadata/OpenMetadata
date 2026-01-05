@@ -168,6 +168,9 @@ class StoredProcedureLineageMixin(ABC):
 
         # Yield the ProcedureAndQuery for filtered stored procedure
         for query_by_procedure in queries:
+            if not query_by_procedure.procedure_name:
+                continue
+
             procedure_name = query_by_procedure.procedure_name.lower()
             queries_count_per_procedure[procedure_name] += 1
 

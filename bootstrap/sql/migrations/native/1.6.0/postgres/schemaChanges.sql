@@ -588,7 +588,7 @@ create table ACT_RU_EVENT_SUBSCR (
     EVENT_NAME_ varchar(255),
     EXECUTION_ID_ varchar(64),
     PROC_INST_ID_ varchar(64),
-    ACTIVITY_ID_ varchar(64),
+    ACTIVITY_ID_ varchar(255),
     CONFIGURATION_ varchar(255),
     CREATED_ timestamp not null,
     PROC_DEF_ID_ varchar(64),
@@ -1375,3 +1375,6 @@ WHERE jsonb_extract_path_text(json, 'serviceType') = 'Mstr';
 UPDATE chart_entity
 SET json = jsonb_set(json, '{serviceType}', '"MicroStrategy"')
 WHERE jsonb_extract_path_text(json, 'serviceType') = 'Mstr';
+
+-- Increase Flowable ACTIVITY_ID_ column size to support longer user-defined workflow node names
+ALTER TABLE ACT_RU_EVENT_SUBSCR ALTER COLUMN ACTIVITY_ID_ TYPE varchar(255);

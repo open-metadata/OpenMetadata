@@ -12,7 +12,7 @@
 """
 Table Count Metric definition
 """
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 from sqlalchemy import func
 
@@ -20,6 +20,13 @@ from metadata.generated.schema.configuration.profilerConfiguration import Metric
 from metadata.generated.schema.entity.data.table import Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.metrics.core import StaticMetric, _label
+from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
+from metadata.utils.logger import profiler_logger
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+logger = profiler_logger()
 
 
 class RowCount(StaticMetric):
@@ -51,7 +58,32 @@ class RowCount(StaticMetric):
 
     def df_fn(self, dfs=None):
         """pandas function"""
-        return sum(len(df.index) for df in dfs)
+        try:
+            computation = self.get_pandas_computation()
+            accumulator = computation.create_accumulator()
+            for df in dfs:
+                accumulator = computation.update_accumulator(accumulator, df)
+            return computation.aggregate_accumulator(accumulator)
+        except Exception as err:
+            logger.debug(f" Failure when Computing RowCount.\n Error: {err}")
+            return 0
+
+    def get_pandas_computation(self) -> PandasComputation:
+        """Returns the logic to compute this metrics using Pandas"""
+        return PandasComputation[int, int](
+            create_accumulator=lambda: 0,
+            update_accumulator=lambda acc, df: RowCount.update_accumulator(acc, df),
+            aggregate_accumulator=lambda acc: acc,
+        )
+
+    @staticmethod
+    def update_accumulator(running_count: int, df: "pd.DataFrame") -> int:
+        """Computes one DataFrame chunk and updates the running count
+
+        Maintains a single running total of rows. Adds the chunk's row count
+        to the current total and returns the updated sum.
+        """
+        return running_count + len(df.index)
 
     @classmethod
     def nosql_fn(cls, client: NoSQLAdaptor) -> Callable[[Table], int]:

@@ -11,12 +11,18 @@
  *  limitations under the License.
  */
 import { expect, Page, Response } from '@playwright/test';
+import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { visitDataQualityTab } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
 
-test.describe('Add TestCase New Flow', () => {
+/**
+ * Data Quality: Add Test Case (New Flow)
+ * @description E2E coverage for creating table/column test cases via the new flow, validating scheduler/pipeline behavior, bulk adding from entity page, and enforcing permissions for non-owner roles.
+ */
+test.describe('Add TestCase New Flow', { tag: DOMAIN_TAGS.OBSERVABILITY }, () => {
   // Helper function to select table
   const selectTable = async (page: Page, table: TableClass) => {
     await page.click('[id="root\\/table"]');
@@ -67,6 +73,21 @@ test.describe('Add TestCase New Flow', () => {
     await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
     await expect(page.locator('[data-id="name"]')).toBeVisible();
+
+    // test case name restriction for `:: " >` character
+    const invalidTestCaseNames = ['test::case', 'test"case', 'test>case'];
+    for (const name of invalidTestCaseNames) {
+      await page.getByTestId('test-case-name').fill(name);
+      await page.waitForSelector(`#testCaseFormV1_testName_help`, {
+        state: 'visible',
+      });
+
+      await expect(page.locator('#testCaseFormV1_testName_help')).toHaveText(
+        'Name cannot contain double colons (::), quotes ("), or greater-than symbols (>).'
+      );
+
+      await page.getByTestId('test-case-name').clear();
+    }
 
     await page.getByTestId('test-case-name').fill(`${testTypeId}_test_case`);
     await page.click('[id="root\\/testType"]');
@@ -143,19 +164,23 @@ test.describe('Add TestCase New Flow', () => {
     const testCaseDoc = page.waitForResponse(
       '/locales/en-US/OpenMetadata/TestCaseForm.md'
     );
+    const tableEntityResponse = page.waitForResponse(
+      '/api/v1/search/query?q=*&index=table_search_index*'
+    );
     await page.getByTestId('add-test-case-btn').click();
+    await tableEntityResponse;
     await page.waitForSelector('[data-testid="test-case-form-v1"]', {
       state: 'visible',
     });
     await testCaseDoc;
     await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
   };
 
   const visitDataQualityPage = async (page: Page) => {
     await page.goto('/data-quality/test-cases');
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
   };
 
   test.beforeEach(async ({ page }) => {
@@ -173,6 +198,14 @@ test.describe('Add TestCase New Flow', () => {
     testTypeId: 'columnValuesToBeUnique',
   };
 
+  /**
+   * Tests creating a table-level test case
+   * @description Creates a table-row-count Equals test case from the Data Quality page and verifies the test entity and associated pipeline visibility.
+   * Steps
+   * 1. Open the test case form and select a table via indexed search.
+   * 2. Fill the test name, select "table row count to equal", set params, and submit.
+   * 3. Assert that TestSuite pipeline creation call occurs and the created test case is visible on the entity page.
+   */
   test('Add Table Test Case', async ({ page }) => {
     const table = new TableClass();
     const { apiContext } = await getApiContext(page);
@@ -187,6 +220,10 @@ test.describe('Add TestCase New Flow', () => {
       await createTestCase({
         page,
         ...tableTestCaseDetails,
+      });
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
       });
 
       await expect(page.getByTestId('entity-header-name')).toHaveText(
@@ -217,6 +254,14 @@ test.describe('Add TestCase New Flow', () => {
     });
   });
 
+  /**
+   * Tests creating a column-level test case
+   * @description Creates a Column Values To Be Unique test case from the Data Quality page and validates the created test entity and test suite pipeline.
+   * Steps
+   * 1. Open the test case form, switch to Column Level, select table and a column.
+   * 2. Fill test metadata and submit the form.
+   * 3. Verify the created test displays on the entity page and pipeline tab shows the TestSuite pipeline.
+   */
   test('Add Column Test Case', async ({ page }) => {
     const table = new TableClass();
     const { apiContext } = await getApiContext(page);
@@ -269,6 +314,14 @@ test.describe('Add TestCase New Flow', () => {
     });
   });
 
+  /**
+   * Tests bulk creation from entity page and pipeline validation
+   * @description Adds a table-level and a column-level test case from the table details page and verifies test counts and the TestSuite pipeline, including edit navigation.
+   * Steps
+   * 1. From the table details page, add a table-level test case.
+   * 2. Add a column-level test case (scheduler card hidden; verify no pipeline POST).
+   * 3. Assert test count is 2 and pipeline count is 1; open pipeline list and navigate to edit.
+   */
   test('Add multiple test case from table details page and validate pipeline', async ({
     page,
   }) => {
@@ -281,7 +334,7 @@ test.describe('Add TestCase New Flow', () => {
     await visitDataQualityTab(page, table);
 
     await page
-      .getByRole('menuitem', {
+      .getByRole('tab', {
         name: 'Data Quality',
       })
       .click();
@@ -290,7 +343,7 @@ test.describe('Add TestCase New Flow', () => {
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await page.click('[data-testid="profiler-add-table-test-btn"]');
-    await page.click('[data-testid="table"]');
+    await page.getByRole('menuitem', { name: 'Test case' }).click();
     await page.waitForLoadState('networkidle');
 
     await createTestCase({
@@ -299,7 +352,11 @@ test.describe('Add TestCase New Flow', () => {
     });
 
     await page.click('[data-testid="profiler-add-table-test-btn"]');
-    await page.click('[data-testid="column"]');
+    await page.getByRole('menuitem', { name: 'Test case' }).click();
+    await page
+      .getByTestId('select-table-card')
+      .getByText('Column Level')
+      .click();
     await page.waitForLoadState('networkidle');
 
     await selectColumn(page, table.entity.columns[0].name);
@@ -359,6 +416,14 @@ test.describe('Add TestCase New Flow', () => {
     );
   });
 
+  /**
+   * Tests permission enforcement for non-owner roles
+   * @description Validates that Data Consumer and Data Steward roles cannot create test cases and see the correct form validation message.
+   * Steps
+   * 1. As Data Consumer and Data Steward, open the create test case form.
+   * 2. Select a table and attempt to submit.
+   * 3. Verify the form helper shows lack-of-permission message and creation is blocked.
+   */
   test('Non-owner user should not able to add test case', async ({
     dataConsumerPage,
     dataStewardPage,
@@ -371,7 +436,7 @@ test.describe('Add TestCase New Flow', () => {
     for (const page of [dataConsumerPage, dataStewardPage]) {
       await visitDataQualityPage(page);
 
-      await page.getByTestId('add-test-case-btn').click();
+      await openTestCaseForm(page);
 
       await selectTable(page, table);
 

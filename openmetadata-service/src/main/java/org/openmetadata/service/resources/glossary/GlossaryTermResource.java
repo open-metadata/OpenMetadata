@@ -67,6 +67,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -784,6 +785,88 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return Response.ok().entity(repository.bulkRemoveGlossaryToAssets(id, request)).build();
   }
 
+  @GET
+  @Path("/{id}/assets")
+  @Operation(
+      operationId = "listGlossaryTermAssets",
+      summary = "List assets tagged with this glossary term",
+      description =
+          "Get a paginated list of assets that have this glossary term applied. "
+              + "Use limit and offset query params for pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityReference.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Glossary term for instance {id} is not found")
+      })
+  public Response listGlossaryTermAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset) {
+    return Response.ok(repository.getGlossaryTermAssets(id, limit, offset)).build();
+  }
+
+  @GET
+  @Path("/name/{fqn}/assets")
+  @Operation(
+      operationId = "listGlossaryTermAssetsByName",
+      summary = "List assets tagged with this glossary term by fully qualified name",
+      description =
+          "Get a paginated list of assets that have this glossary term applied. "
+              + "Use limit and offset query params for pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityReference.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Glossary term for instance {fqn} is not found")
+      })
+  public Response listGlossaryTermAssetsByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the glossary term",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset) {
+    return Response.ok(repository.getGlossaryTermAssetsByName(fqn, limit, offset)).build();
+  }
+
   @PUT
   @Path("/{id}/moveAsync")
   @Operation(
@@ -821,6 +904,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         securityContext,
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.PUT));
+
+    // Validate the move operation synchronously before submitting to async executor
+    // This will throw IllegalArgumentException if circular reference detected
+    repository.validateMoveOperation(id, moveRequest);
 
     String jobId = UUID.randomUUID().toString();
     GlossaryTerm glossaryTerm =
@@ -959,5 +1046,156 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @GET
+  @Path("/assets/counts")
+  @Operation(
+      operationId = "getAllGlossaryTermsWithAssetsCount",
+      summary = "Get all glossary terms with their asset counts",
+      description =
+          "Get a map of glossary term fully qualified names to their asset counts using search aggregation.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Map of glossary term FQN to asset count",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getAllGlossaryTermsWithAssetsCount(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    java.util.Map<String, Integer> result = repository.getAllGlossaryTermsWithAssetsCount();
+    return Response.ok(result).build();
+  }
+
+  @GET
+  @Path("/name/{fqn}/export")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportGlossaryTerm",
+      summary = "Export glossary term in CSV format",
+      description = "Export glossary term and its children in CSV format.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with glossary terms",
+            content = @Content(mediaType = "text/plain"))
+      })
+  public String exportCsv(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the glossary term",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn)
+      throws IOException {
+    return exportCsvInternal(securityContext, fqn, false);
+  }
+
+  @GET
+  @Path("/name/{fqn}/exportAsync")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportGlossaryTermAsync",
+      summary = "Export glossary term in CSV format asynchronously",
+      description = "Export glossary term and its children in CSV format asynchronously.",
+      responses = {
+        @ApiResponse(
+            responseCode = "202",
+            description = "Export initiated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.service.util.CSVExportResponse.class)))
+      })
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the glossary term",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
+    return exportCsvInternalAsync(securityContext, fqn, false);
+  }
+
+  @PUT
+  @Path("/name/{fqn}/import")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "importGlossaryTerm",
+      summary = "Import glossary terms from CSV",
+      description =
+          "Import glossary terms from CSV to create, and update glossary terms. This is a synchronous API.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public CsvImportResult importCsv(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the glossary term",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(description = "CSV data to import", required = true) String csv,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun)
+      throws IOException {
+    return importCsvInternal(securityContext, fqn, csv, dryRun, false);
+  }
+
+  @PUT
+  @Path("/name/{fqn}/importAsync")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "importGlossaryTermAsync",
+      summary = "Import glossary term from CSV asynchronously",
+      description =
+          "Import glossary term and its children from CSV format asynchronously to create or update glossary terms.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import initiated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.service.util.CSVImportResponse.class)))
+      })
+  public Response importCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the glossary term",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(description = "CSV data to import", required = true) String csv,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("dryRun")
+          @DefaultValue("true")
+          boolean dryRun) {
+    return importCsvInternalAsync(securityContext, fqn, csv, dryRun, false);
   }
 }

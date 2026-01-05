@@ -14,7 +14,7 @@ import java.util.Optional;
 import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
@@ -149,7 +149,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
   }
 
-  private void createDataQualityDataIndex() {
+  public void createDataQualityDataIndex() {
     try {
       createIndexInternal(Entity.TEST_CASE_RESULT);
       createIndexInternal(Entity.TEST_CASE_RESOLUTION_STATUS);
@@ -165,7 +165,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     deleteIndexInternal(Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
-  private void createOrUpdateDataAssetsDataStream() {
+  public void createOrUpdateDataAssetsDataStream() {
     DataInsightsSearchInterface searchInterface = getSearchInterface();
 
     ElasticSearchConfiguration config = searchRepository.getSearchConfiguration();

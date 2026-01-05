@@ -60,6 +60,8 @@ public record WorksheetIndex(Worksheet worksheet) implements ColumnIndex {
     doc.putAll(commonAttributes);
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
+    doc.put("classificationTags", parseTags.getClassificationTags());
+    doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("serviceType", worksheet.getServiceType());
     doc.put("service", getEntityWithDisplayName(worksheet.getService()));
     doc.put("spreadsheet", getEntityWithDisplayName(worksheet.getSpreadsheet()));

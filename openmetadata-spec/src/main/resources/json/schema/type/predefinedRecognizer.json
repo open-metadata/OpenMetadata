@@ -1,0 +1,84 @@
+{
+  "$id": "https://open-metadata.org/schema/type/predefinedRecognizer.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PredefinedRecognizer",
+  "description": "Built-in recognizer definition. See https://github.com/microsoft/presidio/tree/04920aafbb2958b7359183bf5a72af627cdb2808/presidio-analyzer/presidio_analyzer/predefined_recognizers",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.PredefinedRecognizer",
+  "properties": {
+    "type": {
+      "const": "predefined"
+    },
+    "name": {
+      "description": "Name of the recognizer (defaults to class name if not provided)",
+      "enum": [
+        "AbaRoutingRecognizer",
+        "CreditCardRecognizer",
+        "CryptoRecognizer",
+        "DateRecognizer",
+        "EmailRecognizer",
+        "IbanRecognizer",
+        "IpRecognizer",
+        "NhsRecognizer",
+        "MedicalLicenseRecognizer",
+        "PhoneRecognizer",
+        "SgFinRecognizer",
+        "UrlRecognizer",
+        "UsBankRecognizer",
+        "UsItinRecognizer",
+        "UsLicenseRecognizer",
+        "UsPassportRecognizer",
+        "UsSsnRecognizer",
+        "EsNifRecognizer",
+        "SpacyRecognizer",
+        "StanzaRecognizer",
+        "AuAbnRecognizer",
+        "AuAcnRecognizer",
+        "AuTfnRecognizer",
+        "AuMedicareRecognizer",
+        "TransformersRecognizer",
+        "ItDriverLicenseRecognizer",
+        "ItFiscalCodeRecognizer",
+        "ItVatCodeRecognizer",
+        "ItIdentityCardRecognizer",
+        "ItPassportRecognizer",
+        "InPanRecognizer",
+        "GLiNERRecognizer",
+        "PlPeselRecognizer",
+        "AzureAILanguageRecognizer",
+        "InAadhaarRecognizer",
+        "InVehicleRegistrationRecognizer",
+        "SgUenRecognizer",
+        "InVoterRecognizer",
+        "InPassportRecognizer",
+        "FiPersonalIdentityCodeRecognizer",
+        "EsNieRecognizer",
+        "UkNinoRecognizer"
+      ],
+      "type": "string"
+    },
+    "supportedLanguage": {
+      "description": "Language supported by this recognizer (ISO 639-1 code)",
+      "type": "string",
+      "default": "en",
+      "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+    },
+    "context": {
+      "description": "List of context words that can help boost confidence score",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "supportedEntities": {
+      "description": "PII (Personally Identifiable Information) tags for classification and detection of sensitive data",
+      "type": "array",
+      "items": {
+        "$ref": "piiEntity.json"
+      }
+    }
+  },
+  "required": ["type", "name"],
+  "additionalProperties": false
+}

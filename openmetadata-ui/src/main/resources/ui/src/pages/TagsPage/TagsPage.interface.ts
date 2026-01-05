@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 
+import { FormInstance } from 'antd';
 import { LoadingState } from 'Models';
-import { Classification } from '../../generated/entity/classification/classification';
+import { CreateClassification } from '../../generated/api/classification/createClassification';
+import { CreateTag } from '../../generated/api/classification/createTag';
+import {
+  AutoClassificationConfig,
+  Classification,
+} from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
+import { EntityReference } from '../../generated/entity/type';
 
 export type DeleteTagDetailsType = {
   id: string;
@@ -35,20 +42,22 @@ export interface SubmitProps {
   mutuallyExclusive?: boolean;
   iconURL?: string;
   color?: string;
+  owners?: EntityReference[];
+  domains?: EntityReference[] | string[];
+  autoClassificationConfigs: AutoClassificationConfig | null;
+  autoClassificationEnabled?: boolean;
+  autoClassificationPriority?: number;
 }
 
 export interface RenameFormProps {
-  visible: boolean;
+  formRef: FormInstance<SubmitProps>;
   isEditing: boolean;
   isTier: boolean;
-  onCancel: () => void;
-  header: string;
-  initialValues?: Omit<Tag, 'id'>;
-  onSubmit: (value: SubmitProps) => Promise<void>;
+  initialValues?: Tag;
+  onSubmit: (value: CreateClassification) => Promise<void>;
   showMutuallyExclusive?: boolean;
   isClassification?: boolean;
   data?: Classification[];
-  isLoading: boolean;
   isSystemTag?: boolean;
   permissions?: {
     createTags?: boolean;
@@ -56,4 +65,31 @@ export interface RenameFormProps {
     editDisplayName?: boolean;
     editAll?: boolean;
   };
+}
+
+export interface ClassificationFormDrawerProps {
+  open: boolean;
+  formRef: FormInstance;
+  classifications: Classification[];
+  isTier: boolean;
+  isLoading: boolean;
+  onClose: () => void;
+  onSubmit: (data: CreateClassification) => Promise<void>;
+}
+
+export interface TagFormDrawerProps {
+  open: boolean;
+  editTag?: Tag;
+  formRef: FormInstance;
+  isTier: boolean;
+  isLoading: boolean;
+  permissions: {
+    createTags: boolean;
+    editAll: boolean;
+    editDescription: boolean;
+    editDisplayName: boolean;
+  };
+  tagsFormHeader: string;
+  onClose: () => void;
+  onSubmit: (data: CreateTag) => Promise<void>;
 }

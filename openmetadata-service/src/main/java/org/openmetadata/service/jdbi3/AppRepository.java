@@ -2,10 +2,14 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.util.UserUtil.getUser;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -48,6 +52,7 @@ public class AppRepository extends EntityRepository<App> {
         UPDATE_FIELDS);
     supportsSearch = false;
     quoteFqn = true;
+    fieldFetchers.put("bot", this::fetchAndSetBotUser);
   }
 
   @Override
@@ -72,7 +77,24 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  public void prepare(App entity, boolean update) {}
+  public void prepare(App entity, boolean update) {
+    // Encrypt sensitive fields in appConfiguration before saving
+    if (entity.getAppConfiguration() != null && entity.getClassName() != null) {
+      try {
+        org.openmetadata.service.apps.ApplicationHandler handler =
+            org.openmetadata.service.apps.ApplicationHandler.getInstance();
+        if (handler != null) {
+          App encryptedApp =
+              handler.appWithEncryptedAppConfiguration(
+                  entity, Entity.getCollectionDAO(), Entity.getSearchRepository());
+          entity.setAppConfiguration(encryptedApp.getAppConfiguration());
+        }
+      } catch (Exception e) {
+        LOG.debug(
+            "Could not encrypt app configuration for {}: {}", entity.getName(), e.getMessage());
+      }
+    }
+  }
 
   public EntityReference createNewAppBot(App application) {
     String botName = String.format("%sBot", application.getName());
@@ -147,15 +169,48 @@ public class AppRepository extends EntityRepository<App> {
   @Override
   public void storeEntity(App entity, boolean update) {
     List<EntityReference> ownerRefs = entity.getOwners();
+    EntityReference bot = entity.getBot();
     entity.withOwners(null);
+    entity.withBot(null);
     store(entity, update);
     entity.withOwners(ownerRefs);
+    entity.setBot(bot);
   }
 
   public EntityReference getBotUser(App application) {
     return application.getBot() != null
         ? application.getBot()
         : getToEntityRef(application.getId(), Relationship.CONTAINS, Entity.BOT, false);
+  }
+
+  public void fetchAndSetBotUser(List<App> apps, EntityUtil.Fields fields) {
+    if (apps == null || apps.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, apps, batchFetchBots(apps), App::setBot);
+  }
+
+  private Map<UUID, EntityReference> batchFetchBots(List<App> apps) {
+    var botsMap = new HashMap<UUID, EntityReference>();
+    if (apps == null || apps.isEmpty()) {
+      return botsMap;
+    }
+
+    // Single batch query to get all bots relationships
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityListToStrings(apps), Relationship.CONTAINS.ordinal(), Entity.BOT);
+
+    // Group bots by ID
+    records.forEach(
+        record -> {
+          var appId = UUID.fromString(record.getFromId());
+          var botRef = getEntityReferenceById(Entity.BOT, UUID.fromString(record.getToId()), ALL);
+          botsMap.put(appId, botRef);
+        });
+
+    return botsMap;
   }
 
   @Override

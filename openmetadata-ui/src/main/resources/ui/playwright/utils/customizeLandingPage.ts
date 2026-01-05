@@ -18,6 +18,7 @@ import {
   visitOwnProfilePage,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { navigateToPersonaWithPagination } from './persona';
 import { settingClick } from './sidebar';
 
 // Entity types mapping from CURATED_ASSETS_LIST
@@ -146,9 +147,10 @@ export const navigateToCustomizeLandingPage = async (
     `/api/v1/docStore/name/persona.${encodeURIComponent(personaName)}`
   );
 
-  // Navigate to the customize landing page
-  await page.getByTestId(`persona-details-card-${personaName}`).click();
+  // Need to find persona card and click as the list might get paginated
+  await navigateToPersonaWithPagination(page, personaName, true);
 
+  // Navigate to the customize landing page
   await page.getByRole('tab', { name: 'Customize UI' }).click();
 
   await page.getByTestId('LandingPage').click();
@@ -198,7 +200,7 @@ export const setUserDefaultPersona = async (
   const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
 
   // Click on the persona option by text within the dropdown
-  await page.locator(`[data-testid="${personaName}-option"]`).click();
+  await page.click(`.ant-select-dropdown:visible [title="${personaName}"]`);
 
   await page
     .locator('[data-testid="user-profile-default-persona-edit-save"]')
@@ -258,6 +260,8 @@ export const removeAndVerifyWidget = async (
 
   await redirectToHomePage(page);
 
+  await waitForAllLoadersToDisappear(page);
+
   await expect(page.getByTestId(widgetKey)).not.toBeVisible();
 };
 
@@ -273,18 +277,28 @@ export const addAndVerifyWidget = async (
   await openAddCustomizeWidgetModal(page);
   await waitForAllLoadersToDisappear(page);
 
-  await page.locator(`[data-testid="${widgetKey}"]`).click();
+  await page
+    .getByRole('dialog', { name: 'Customize Home' })
+    .getByTestId(widgetKey)
+    .click();
 
   await page.locator('[data-testid="apply-btn"]').click();
 
-  await expect(page.getByTestId(widgetKey)).toBeVisible();
+  await expect(
+    page.getByTestId('page-layout-v1').getByTestId(widgetKey)
+  ).toBeVisible();
 
   await page.locator('[data-testid="save-button"]').click();
   await page.waitForLoadState('networkidle');
 
   await redirectToHomePage(page);
 
-  await expect(page.getByTestId(widgetKey)).toBeVisible();
+  await waitForAllLoadersToDisappear(page);
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
+  await expect(
+    page.getByTestId('page-layout-v1').getByTestId(widgetKey)
+  ).toBeVisible();
 };
 
 export const addCuratedAssetPlaceholder = async ({
@@ -362,4 +376,249 @@ export const selectAssetTypes = async (
 
   // Close the dropdown
   await page.getByText('Select Asset Type').click();
+};
+
+// Helper function to test widget footer "View More" button
+export const verifyWidgetFooterViewMore = async (
+  page: Page,
+  {
+    widgetKey,
+    expectedLink,
+    link,
+  }: {
+    widgetKey: string;
+    expectedLink?: string;
+    link?: string;
+  }
+) => {
+  // Wait for the page to load
+  await waitForAllLoadersToDisappear(page);
+
+  const widget = page.getByTestId(widgetKey);
+
+  await expect(widget).toBeVisible();
+
+  // Wait for the data to appear in the widget
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
+  // Check for widget footer
+  const widgetFooter = widget.locator('[data-testid="widget-footer"]');
+  const footerExists = await widgetFooter.isVisible().catch(() => false);
+
+  if (!footerExists) {
+    // No footer is expected for this widget
+    return;
+  }
+
+  // Footer exists, check for view more button
+  const viewMoreButton = widget.locator('.footer-view-more-button');
+  const buttonExists = await viewMoreButton.isVisible().catch(() => false);
+
+  if (!buttonExists) {
+    // No view more button in footer
+    return;
+  }
+
+  // View more button exists, verify it
+  await expect(viewMoreButton).toBeVisible();
+
+  // Get and verify the href
+  const href = await viewMoreButton.getAttribute('href');
+
+  if (expectedLink) {
+    // Exact link match
+    expect(href).toBe(expectedLink);
+  } else if (link) {
+    // Pattern match
+    expect(href).toContain(link);
+  }
+
+  // Click and verify navigation
+  await viewMoreButton.click();
+
+  if (expectedLink) {
+    // Wait for the specific URL
+    await page.waitForURL(expectedLink);
+  } else if (link) {
+    const currentUrl = page.url();
+
+    // Wait for URL matching pattern
+    expect(currentUrl).toContain(link);
+  }
+};
+
+export const verifyWidgetEntityNavigation = async (
+  page: Page,
+  {
+    widgetKey,
+    entitySelector,
+    urlPattern,
+    emptyStateTestId,
+    verifyElement,
+    apiResponseUrl,
+    searchQuery,
+  }: {
+    widgetKey: string;
+    entitySelector: string;
+    urlPattern: string;
+    emptyStateTestId?: string;
+    verifyElement?: string;
+    apiResponseUrl: string;
+    searchQuery: string | string[];
+  }
+) => {
+  // Wait for API response matching the search query
+  const response = page.waitForResponse((response) => {
+    if (!response.url().includes(apiResponseUrl)) {
+      return false;
+    }
+
+    // Handle multiple query parts (for complex queries like Data Assets)
+    if (Array.isArray(searchQuery)) {
+      return searchQuery.every((query) => response.url().includes(query));
+    }
+
+    // Handle single query string
+    return response.url().includes(searchQuery);
+  });
+
+  await redirectToHomePage(page);
+
+  await response;
+
+  // Wait for loaders after navigation
+  await waitForAllLoadersToDisappear(page);
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
+  // Get widget after navigation to home page
+  const widget = page.getByTestId(widgetKey);
+
+  // Wait for widget to be visible
+  await expect(widget).toBeVisible();
+
+  // Wait again for any widget-specific loaders
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+  await page.waitForTimeout(1000);
+
+  // Check for entity items in the widget
+  const entityItems = widget.locator(entitySelector);
+  const hasEntities = (await entityItems.count()) > 0;
+
+  if (hasEntities) {
+    await expect(entityItems.first()).toBeVisible();
+
+    // Get the first entity item
+    const firstEntity = entityItems.first();
+
+    // Check if it's a link or button and click appropriately
+    const isLink = (await firstEntity.locator('.item-link').count()) > 0;
+
+    if (isLink) {
+      // For widgets with links inside (like My Data)
+      const entityLink = firstEntity.locator('.item-link').first();
+      await entityLink.click();
+    } else {
+      // For widgets with direct clickable cards (like Domains, Data Products)
+      await firstEntity.click();
+    }
+
+    // Wait for navigation
+    await page.waitForLoadState('networkidle');
+
+    // Verify we're on the correct page
+    const currentUrl = page.url();
+
+    expect(currentUrl).toContain(urlPattern);
+
+    // Verify page element is visible if specified
+    if (verifyElement) {
+      const pageElement = page.locator(verifyElement);
+
+      await expect(pageElement).toBeVisible();
+    }
+
+    // Navigate back to home for next tests
+    await redirectToHomePage(page);
+  } else {
+    // Check for empty state if no entities
+    const emptyState = widget.locator('[data-testid="widget-empty-state"]');
+
+    await expect(emptyState).toBeVisible();
+
+    if (emptyStateTestId) {
+      const emptyStateComponent = page.getByTestId(emptyStateTestId);
+
+      await expect(emptyStateComponent).toBeVisible();
+    }
+  }
+};
+
+export const verifyWidgetHeaderNavigation = async (
+  page: Page,
+  widgetKey: string,
+  expectedTitle: string,
+  navigationUrl: string
+) => {
+  const widget = page.getByTestId(widgetKey);
+
+  await expect(widget).toBeVisible();
+
+  // Wait for loaders before interacting with widget header
+  await waitForAllLoadersToDisappear(page);
+
+  // Verify widget header
+  const widgetHeader = widget.getByTestId('widget-header');
+
+  await expect(widgetHeader).toBeVisible();
+
+  // Verify header title
+  const headerTitle = widgetHeader.getByTestId('widget-title');
+
+  await expect(headerTitle).toBeVisible();
+  await expect(headerTitle).toContainText(expectedTitle);
+
+  // Click header title to navigate
+  await headerTitle.click();
+
+  const currentUrl = page.url();
+
+  // Wait for navigation
+  expect(currentUrl).toContain(navigationUrl);
+
+  // Navigate back to home page for next tests
+  await redirectToHomePage(page);
+};
+
+export const verifyDomainCountInDomainWidget = async (
+  page: Page,
+  domainId: string,
+  expectedCount: number
+) => {
+  const domainWidget = page.getByTestId('KnowledgePanel.Domains');
+
+  await expect(domainWidget).toBeVisible();
+
+  const domainCountElement = domainWidget.locator(
+    `[data-testid="domain-card-${domainId}"] .domain-card-count`
+  );
+
+  await expect(domainCountElement).toBeVisible();
+  await expect(domainCountElement).toContainText(expectedCount.toString());
+};
+
+export const verifyDataProductCountInDataProductWidget = async (
+  page: Page,
+  dataProductId: string,
+  expectedCount: number
+) => {
+  const dataProductWidget = page.getByTestId('KnowledgePanel.DataProducts');
+
+  await expect(dataProductWidget).toBeVisible();
+
+  const dataProductCountElement = dataProductWidget.locator(
+    `[data-testid="data-product-card-${dataProductId}"] [data-testid="data-product-asset-count"]`
+  );
+
+  await expect(dataProductCountElement).toBeVisible();
+  await expect(dataProductCountElement).toContainText(expectedCount.toString());
 };

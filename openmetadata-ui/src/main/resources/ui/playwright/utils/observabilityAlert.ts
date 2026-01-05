@@ -14,8 +14,8 @@
 import { expect, Page } from '@playwright/test';
 import { ALERT_UPDATED_DESCRIPTION } from '../constant/alert';
 import {
-  AlertDetails,
-  ObservabilityCreationDetails,
+    AlertDetails,
+    ObservabilityCreationDetails
 } from '../constant/alert.interface';
 import { SidebarItem } from '../constant/sidebar';
 import { Domain } from '../support/domain/Domain';
@@ -24,15 +24,15 @@ import { PipelineClass } from '../support/entity/PipelineClass';
 import { TableClass } from '../support/entity/TableClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-  addDomainFilter,
-  addEntityFQNFilter,
-  addOwnerFilter,
-  addPipelineStatusUpdatesAction,
-  checkRecentEventDetails,
-  inputBasicAlertInformation,
-  visitAlertDetailsPage,
-  visitEditAlertPage,
-  waitForRecentEventsToFinishExecution,
+    addDomainFilter,
+    addEntityFQNFilter,
+    addOwnerFilter,
+    addPipelineStatusUpdatesAction,
+    checkRecentEventDetails,
+    inputBasicAlertInformation,
+    visitAlertDetailsPage,
+    visitEditAlertPage,
+    waitForRecentEventsToFinishExecution
 } from './alert';
 import { clickOutside, descriptionBox, redirectToHomePage } from './common';
 import { addMultiOwner, updateDescription } from './entity';
@@ -68,17 +68,27 @@ export const addExternalDestination = async ({
   category,
   secretKey,
   input = '',
+  advancedConfig,
 }: {
   page: Page;
   destinationNumber: number;
   category: string;
   input?: string;
   secretKey?: string;
+  advancedConfig?: {
+    secretKey?: string;
+    headers?: Array<{ key: string; value: string }>;
+    queryParams?: Array<{ key: string; value: string }>;
+  };
 }) => {
   // Select destination category
   await page.click(
     `[data-testid="destination-category-select-${destinationNumber}"]`
   );
+
+  await page.waitForSelector(`.ant-select-dropdown:visible`, {
+    state: 'visible',
+  });
 
   // Select external tab
   await page.click(`[data-testid="tab-label-external"]:visible`);
@@ -117,6 +127,69 @@ export const addExternalDestination = async ({
       `[data-testid="secret-key-input-${destinationNumber}"]`,
       secretKey
     );
+  }
+
+  if (advancedConfig) {
+    await page
+      .getByTestId(`destination-${destinationNumber}`)
+      .getByText('Advanced Configuration')
+      .click();
+
+    if (advancedConfig.secretKey) {
+      await expect(
+        page.getByTestId(`secret-key-input-${destinationNumber}`)
+      ).toBeVisible();
+
+      await page.fill(
+        `[data-testid="secret-key-input-${destinationNumber}"]`,
+        advancedConfig.secretKey
+      );
+    }
+
+    if (advancedConfig.headers) {
+      for (let i = 0; i < advancedConfig.headers.length; i++) {
+        const header = advancedConfig.headers[i];
+
+        await page
+          .getByTestId(`add-header-button-${destinationNumber}`)
+          .click();
+
+        await expect(page.getByTestId(`header-key-input-${i}`)).toBeVisible();
+        await expect(page.getByTestId(`header-value-input-${i}`)).toBeVisible();
+
+        await page.fill(`[data-testid="header-key-input-${i}"]`, header.key);
+        await page.fill(
+          `[data-testid="header-value-input-${i}"]`,
+          header.value
+        );
+      }
+    }
+
+    if (advancedConfig.queryParams) {
+      for (let i = 0; i < advancedConfig.queryParams.length; i++) {
+        const queryParam = advancedConfig.queryParams[i];
+
+        await page
+          .getByTestId(`add-query-param-button-${destinationNumber}`)
+          .click();
+
+        await expect(
+          page.getByTestId(`query-param-key-input-${i}`)
+        ).toBeVisible();
+        await expect(
+          page.getByTestId(`query-param-value-input-${i}`)
+        ).toBeVisible();
+
+        await page.fill(
+          `[data-testid="query-param-key-input-${i}"]`,
+          queryParam.key
+        );
+        await page.fill(
+          `[data-testid="query-param-value-input-${i}"]`,
+          queryParam.value
+        );
+      }
+    }
   }
 
   await clickOutside(page);
@@ -396,7 +469,7 @@ export const editObservabilityAlert = async ({
   await addOwnerFilter({
     page,
     filterNumber: 0,
-    ownerName: user.getUserName(),
+    ownerName: user.getUserDisplayName(),
     selectId: 'Owner Name',
   });
 

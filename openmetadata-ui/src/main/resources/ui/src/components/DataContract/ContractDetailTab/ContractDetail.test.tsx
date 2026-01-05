@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,13 +11,7 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom';
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
 import { DataContractMode } from '../../../constants/DataContract.constants';
@@ -28,12 +21,11 @@ import {
 } from '../../../generated/entity/data/dataContract';
 import { Column } from '../../../generated/entity/data/table';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
-import { TestCase } from '../../../generated/tests/testCase';
 import {
   getContractResultByResultId,
   validateContractById,
 } from '../../../rest/contractAPI';
-import { getListTestCaseBySearch } from '../../../rest/testAPI';
+import '../../../test/unit/mocks/mui.mock';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractDetail } from './ContractDetail';
 
@@ -42,17 +34,12 @@ jest.mock('../../../rest/contractAPI', () => ({
   validateContractById: jest.fn(),
 }));
 
-jest.mock('../../../rest/testAPI', () => ({
-  getListTestCaseBySearch: jest.fn(),
-  getTestCaseExecutionSummary: jest.fn(),
-}));
-
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => {
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return function MockErrorPlaceHolder({ type, children }: any) {
     return (
       <div data-testid="error-placeholder" data-type={type}>
@@ -67,6 +54,20 @@ jest.mock('../ContractExecutionChart/ContractExecutionChart.component', () => {
     return (
       <div data-testid="contract-execution-chart">
         Chart for {contract?.name}
+      </div>
+    );
+  };
+});
+
+jest.mock('../ContractQualityCard/ContractQualityCard.component', () => {
+  return jest.fn().mockImplementation(() => <p>ContractQualityCard</p>);
+});
+
+jest.mock('../ContractSecurity/ContractSecurityCard.component', () => {
+  return function MockContractSecurityCard({ security }: any) {
+    return (
+      <div data-testid="contract-security-card">
+        ContractSecurityCard - {security?.dataClassification}
       </div>
     );
   };
@@ -92,6 +93,20 @@ jest.mock('../ContractYaml/ContractYaml.component', () => {
   return function MockContractYaml({ contract }: any) {
     return <div data-testid="contract-yaml">YAML for {contract?.name}</div>;
   };
+});
+
+jest.mock('../ContractSLACard/ContractSLA.component', () =>
+  jest
+    .fn()
+    .mockImplementation(({ contract }: any) => (
+      <div data-testid="contract-sla">SLA for {contract?.name}</div>
+    ))
+);
+
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
+  return jest.fn().mockImplementation(() => {
+    return <div>RichTextEditorPreviewerV1</div>;
+  });
 });
 
 jest.mock('../../common/Table/Table', () => {
@@ -127,6 +142,7 @@ jest.mock('react-i18next', () => ({
         'label.execution-summary': 'Execution Summary',
         'label.last-execution': 'Last Execution',
         'message.no-test-case-found': 'No test cases found',
+        'label.security': 'Security',
       };
 
       return translations[key] || key;
@@ -189,31 +205,10 @@ const mockContractResults: DataContractResult = {
   },
   contractExecutionStatus: ContractExecutionStatus.Success,
 };
-const mockTestCases: TestCase[] = [
-  {
-    id: 'test-1',
-    name: 'Test Case 1',
-    fullyQualifiedName: 'test.case.1',
-    entityLink: '',
-    testDefinition: {
-      id: 'test-definition',
-      type: 'testDefinition',
-    },
-    testSuite: {
-      id: 'suite-1',
-      name: 'Test Suite 1',
-      fullyQualifiedName: 'suite.1',
-      type: 'testSuite',
-    },
-  },
-];
 
 describe('ContractDetail', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
-      data: mockTestCases,
-    });
     (getContractResultByResultId as jest.Mock).mockResolvedValue(
       mockContractResults
     );
@@ -244,11 +239,12 @@ describe('ContractDetail', () => {
       );
 
       expect(screen.getByText('Test Contract')).toBeInTheDocument();
-      expect(screen.getByText(/Test Description/i)).toBeInTheDocument();
+      expect(screen.getByText('label.description')).toBeInTheDocument();
+      expect(screen.getByText('RichTextEditorPreviewerV1')).toBeInTheDocument();
     });
 
     it('should display contract actions', () => {
-      const { getByTestId, debug } = render(
+      const { getByTestId } = render(
         <ContractDetail
           contract={mockContract}
           onDelete={mockOnDelete}
@@ -256,12 +252,50 @@ describe('ContractDetail', () => {
         />,
         { wrapper: MemoryRouter }
       );
-      debug();
 
-      expect(getByTestId('contract-edit-button')).toBeInTheDocument();
-      expect(getByTestId('delete-contract-button')).toBeInTheDocument();
-      expect(getByTestId('export-contract-button')).toBeInTheDocument();
-      expect(getByTestId('contract-run-now-button')).toBeInTheDocument();
+      expect(getByTestId('manage-contract-actions')).toBeInTheDocument();
+    });
+
+    it('should not display contract created by or created at if data is not present', () => {
+      const { getByTestId, queryByTestId } = render(
+        <ContractDetail
+          contract={mockContract}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(
+        queryByTestId('contract-created-by-label')
+      ).not.toBeInTheDocument();
+
+      expect(
+        queryByTestId('contract-created-at-label')
+      ).not.toBeInTheDocument();
+
+      expect(getByTestId('manage-contract-actions')).toBeInTheDocument();
+    });
+
+    it('should display contract created by or created at if data is present', () => {
+      const { getByTestId, queryByTestId } = render(
+        <ContractDetail
+          contract={{
+            ...mockContract,
+            createdBy: 'admin',
+            createdAt: 1758556706799,
+          }}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(queryByTestId('contract-created-by-label')).toBeInTheDocument();
+
+      expect(queryByTestId('contract-created-at-label')).toBeInTheDocument();
+
+      expect(getByTestId('manage-contract-actions')).toBeInTheDocument();
     });
   });
 
@@ -275,6 +309,8 @@ describe('ContractDetail', () => {
         />,
         { wrapper: MemoryRouter }
       );
+
+      fireEvent.click(screen.getByTestId('manage-contract-actions'));
 
       const editButton = screen.getByTestId('contract-edit-button');
       fireEvent.click(editButton);
@@ -292,6 +328,7 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
+      fireEvent.click(screen.getByTestId('manage-contract-actions'));
       const deleteButton = screen.getByTestId('delete-contract-button');
       fireEvent.click(deleteButton);
 
@@ -310,6 +347,7 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
+      fireEvent.click(screen.getByTestId('manage-contract-actions'));
       const validateButton = screen.getByTestId('contract-run-now-button');
 
       await act(async () => {
@@ -335,6 +373,7 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
+      fireEvent.click(screen.getByTestId('manage-contract-actions'));
       const validateButton = screen.getByTestId('contract-run-now-button');
 
       await act(async () => {
@@ -342,31 +381,6 @@ describe('ContractDetail', () => {
       });
 
       expect(showErrorToast).toHaveBeenCalledWith(mockError);
-    });
-
-    it('should show loading state during validation', async () => {
-      (validateContractById as jest.Mock).mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 100))
-      );
-
-      const { debug } = render(
-        <ContractDetail
-          contract={mockContract}
-          onDelete={mockOnDelete}
-          onEdit={mockOnEdit}
-        />,
-        { wrapper: MemoryRouter }
-      );
-
-      const validateButton = screen.getByTestId('contract-run-now-button');
-
-      fireEvent.click(validateButton);
-
-      debug(validateButton);
-
-      await waitFor(() => {
-        expect(validateButton).toHaveClass('ant-btn-loading');
-      });
     });
   });
 
@@ -417,33 +431,20 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(getListTestCaseBySearch).toHaveBeenCalled();
-
-      expect(await screen.findByText('Test Case 1')).toBeInTheDocument();
-
-      expect(screen.getByTestId('mock-table')).toBeInTheDocument();
+      expect(screen.queryByText('ContractQualityCard')).toBeInTheDocument();
     });
 
-    it('should handle test case loading state', async () => {
-      (getListTestCaseBySearch as jest.Mock).mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 100))
-      );
-
+    it('should not display test cases when contract has quality expectations', async () => {
       render(
         <ContractDetail
-          contract={mockContract}
+          contract={{ ...mockContract, testSuite: undefined }}
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
         { wrapper: MemoryRouter }
       );
 
-      expect(getContractResultByResultId).toHaveBeenCalled();
-      expect(
-        await screen.findByTestId('contract-status-card-item-label.schema')
-      ).toBeInTheDocument();
-
-      expect(screen.getByTestId('loading')).toBeInTheDocument();
+      expect(screen.queryByText('ContractQualityCard')).not.toBeInTheDocument();
     });
   });
 
@@ -509,11 +510,42 @@ describe('ContractDetail', () => {
     });
   });
 
-  describe('Error Handling', () => {
-    it('should handle API errors gracefully', async () => {
-      const mockError = new AxiosError('API Error');
-      (getListTestCaseBySearch as jest.Mock).mockRejectedValue(mockError);
+  describe('Contract Security', () => {
+    it('should display security section when contract has security data', () => {
+      const contractWithSecurity: DataContract = {
+        ...mockContract,
+        security: {
+          dataClassification: 'PII,Sensitive',
+          policies: [
+            {
+              accessPolicy: 'Read Only',
+              identities: ['user1@example.com'],
+              rowFilters: [],
+            },
+          ],
+        },
+      };
 
+      render(
+        <ContractDetail
+          contract={contractWithSecurity}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      // Check that the security card is rendered
+      expect(screen.getByTestId('security-card')).toBeInTheDocument();
+      expect(screen.getByTestId('contract-security-card')).toBeInTheDocument();
+
+      // Check the content
+      expect(
+        screen.getByText('ContractSecurityCard - PII,Sensitive')
+      ).toBeInTheDocument();
+    });
+
+    it('should not display security section when contract has no security data', () => {
       render(
         <ContractDetail
           contract={mockContract}
@@ -523,10 +555,39 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      // Should not crash and continue rendering
-      expect(screen.getByText('Test Contract')).toBeInTheDocument();
+      expect(screen.queryByTestId('security-card')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('contract-security-card')
+      ).not.toBeInTheDocument();
     });
 
+    it('should render security card even with empty dataClassification and policies', () => {
+      const contractWithEmptySecurity: DataContract = {
+        ...mockContract,
+        security: {
+          dataClassification: '',
+          policies: [],
+        },
+      };
+
+      render(
+        <ContractDetail
+          contract={contractWithEmptySecurity}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      // isEmpty returns false for objects with properties, even if values are empty
+      // So the security section will be displayed
+      expect(screen.getByTestId('security-card')).toBeInTheDocument();
+      expect(screen.getByTestId('contract-security-card')).toBeInTheDocument();
+      expect(screen.getByText('ContractSecurityCard -')).toBeInTheDocument();
+    });
+  });
+
+  describe('Error Handling', () => {
     it('should handle undefined contract gracefully', () => {
       render(
         <ContractDetail
@@ -556,23 +617,6 @@ describe('ContractDetail', () => {
       expect(
         screen.getByTestId('contract-execution-chart')
       ).toBeInTheDocument();
-    });
-  });
-
-  describe('Accessibility', () => {
-    it('should have proper button roles and ARIA attributes', () => {
-      render(
-        <ContractDetail
-          contract={mockContract}
-          onDelete={mockOnDelete}
-          onEdit={mockOnEdit}
-        />,
-        { wrapper: MemoryRouter }
-      );
-
-      expect(screen.getByTestId('contract-edit-button')).toBeInTheDocument();
-      expect(screen.getByTestId('delete-contract-button')).toBeInTheDocument();
-      expect(screen.getByTestId('contract-run-now-button')).toBeInTheDocument();
     });
   });
 });

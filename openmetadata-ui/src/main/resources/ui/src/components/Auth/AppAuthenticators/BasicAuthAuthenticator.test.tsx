@@ -37,8 +37,7 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => ({
 }));
 
 jest.mock('../../../rest/auth-API', () => ({
-  getAccessTokenOnExpiry: (params: { refreshToken: string }) =>
-    getAccessTokenOnExpiry(params),
+  getAccessTokenOnExpiry: () => getAccessTokenOnExpiry(),
 }));
 
 jest.mock('../../common/Loader/Loader', () => () => (
@@ -114,12 +113,14 @@ describe('BasicAuthenticator', () => {
     );
   });
 
-  it('should reject renewIdToken if no refresh token', async () => {
+  it('should reject renewIdToken if getAccessTokenOnExpiry fails', async () => {
     (useApplicationStore as unknown as jest.Mock).mockReturnValue({
       isApplicationLoading: false,
       authConfig: { provider: AuthProvider.Basic },
     });
-    getRefreshToken.mockReturnValue(undefined);
+    getAccessTokenOnExpiry.mockRejectedValue(
+      new Error('message.no-token-available')
+    );
     const ref = createRef<AuthenticatorRef>();
     render(
       <BasicAuthenticator ref={ref}>
@@ -137,7 +138,6 @@ describe('BasicAuthenticator', () => {
       isApplicationLoading: false,
       authConfig: { provider: AuthProvider.Basic },
     });
-    getRefreshToken.mockReturnValue('refresh-token');
     const response: AccessTokenResponse = {
       accessToken: 'access-token',
       refreshToken: 'new-refresh-token',
@@ -157,10 +157,8 @@ describe('BasicAuthenticator', () => {
       result = await ref.current?.renewIdToken();
     });
 
-    expect(getAccessTokenOnExpiry).toHaveBeenCalledWith({
-      refreshToken: 'refresh-token',
-    });
-    expect(setRefreshToken).toHaveBeenCalledWith('new-refresh-token');
+    expect(getAccessTokenOnExpiry).toHaveBeenCalled();
+
     expect(setOidcToken).toHaveBeenCalledWith('access-token');
     expect(result).toEqual(response);
   });

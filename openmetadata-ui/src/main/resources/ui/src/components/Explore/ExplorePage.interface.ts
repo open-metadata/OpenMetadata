@@ -14,6 +14,8 @@
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { Kpi } from '../../generated/dataInsight/kpi/kpi';
+import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { Tag } from '../../generated/entity/classification/tag';
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
@@ -22,10 +24,12 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
+import { Directory } from '../../generated/entity/data/directory';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Metric } from '../../generated/entity/data/metric';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
+import { Query } from '../../generated/entity/data/query';
 import { SearchIndex as SearchIndexEntity } from '../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { Table } from '../../generated/entity/data/table';
@@ -33,12 +37,16 @@ import { Topic } from '../../generated/entity/data/topic';
 import { APIService } from '../../generated/entity/services/apiService';
 import { DashboardService } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
+import { DriveService } from '../../generated/entity/services/driveService';
+import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { MlmodelService } from '../../generated/entity/services/mlmodelService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { SearchService } from '../../generated/entity/services/searchService';
 import { StorageService } from '../../generated/entity/services/storageService';
+import { Type } from '../../generated/entity/type';
 import { TestCase } from '../../generated/tests/testCase';
+import { TestSuite } from '../../generated/tests/testSuite';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -66,7 +74,11 @@ export type ExploreSearchIndex =
   | SearchIndex.DASHBOARD_DATA_MODEL
   | SearchIndex.API_COLLECTION_INDEX
   | SearchIndex.API_ENDPOINT_INDEX
-  | SearchIndex.METRIC_SEARCH_INDEX;
+  | SearchIndex.METRIC_SEARCH_INDEX
+  | SearchIndex.DIRECTORY_SEARCH_INDEX
+  | SearchIndex.FILE_SEARCH_INDEX
+  | SearchIndex.SPREADSHEET_SEARCH_INDEX
+  | SearchIndex.WORKSHEET_SEARCH_INDEX;
 
 export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 
@@ -104,7 +116,9 @@ export interface ExploreProps {
 export interface ExploreQuickFilterField {
   key: string;
   label: string;
-  value: SearchDropdownOption[] | undefined;
+  labelKeyOptions?: Record<string, string | number | boolean>;
+  value?: SearchDropdownOption[];
+  hideCounts?: boolean;
 }
 
 // Type for all the explore tab entities
@@ -132,8 +146,15 @@ export type EntityUnion =
   | SearchService
   | APIEndpoint
   | APIService
+  | DriveService
   | APICollection
-  | Metric;
+  | Metric
+  | Type
+  | TestSuite
+  | Kpi
+  | AppMarketPlaceDefinition
+  | IngestionPipeline
+  | Query;
 
 export type EntityWithServices =
   | Topic
@@ -146,7 +167,8 @@ export type EntityWithServices =
   | DatabaseSchema
   | SearchIndexEntity
   | APICollection
-  | APIEndpoint;
+  | APIEndpoint
+  | Directory;
 
 export type EntityServiceUnion =
   | DatabaseService
@@ -156,7 +178,8 @@ export type EntityServiceUnion =
   | MlmodelService
   | StorageService
   | SearchService
-  | APIService;
+  | APIService
+  | DriveService;
 
 export interface EntityDetailsObjectInterface {
   details: SearchedDataProps['data'][number]['_source'];

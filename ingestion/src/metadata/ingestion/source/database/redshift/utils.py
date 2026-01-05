@@ -109,7 +109,7 @@ def _get_column_info(self, *args, **kwargs):
     )._get_column_info(*args, **kwdrs)
 
     # raw_data_type is not included in column_info as
-    # redhift doesn't support complex data types directly
+    # redshift doesn't support complex data types directly
     # https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
 
     if "info" not in column_info:
@@ -413,7 +413,8 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     view = self._get_redshift_relation(connection, view_name, schema, **kw)
     pattern = re.compile("WITH NO SCHEMA BINDING", re.IGNORECASE)
     view_definition = str(sa.text(pattern.sub("", view.view_definition)))
-    if not view_definition.startswith("create"):
+    create_view_pattern = re.compile(r"CREATE\s+VIEW", re.IGNORECASE)
+    if not create_view_pattern.search(view_definition):
         view_definition = (
             f"CREATE VIEW {view.schema}.{view.relname} AS {view_definition}"
         )

@@ -26,7 +26,10 @@ import {
   selectAssetTypes,
   setUserDefaultPersona,
 } from '../../utils/customizeLandingPage';
-import { getEntityDisplayName } from '../../utils/entity';
+import {
+  getEntityDisplayName,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 
 const adminUser = new UserClass();
 const persona = new PersonaClass();
@@ -62,10 +65,10 @@ function toNameableEntity(
     return undefined;
   }
   const holder = entity as unknown as {
-    entity?: { name?: string; displayName?: string };
+    entityResponseData?: { name?: string; displayName?: string };
   };
 
-  return holder?.entity;
+  return holder?.entityResponseData;
 }
 
 const test = base.extend<{ page: Page }>({
@@ -87,9 +90,6 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   await adminUser.setAdminRole(apiContext);
   await persona.create(apiContext, [adminUser.responseData.id]);
 
-  // Use EntityDataClass for creating all test entities
-  await EntityDataClass.preRequisitesForTests(apiContext, { all: true });
-
   await afterAction();
 });
 
@@ -97,9 +97,6 @@ base.afterAll('Cleanup', async ({ browser }) => {
   test.slow(true);
 
   const { afterAction, apiContext } = await performAdminLogin(browser);
-
-  // Use EntityDataClass for cleanup
-  await EntityDataClass.postRequisitesForTests(apiContext, { all: true });
 
   // Delete user and persona
   await adminUser.delete(apiContext);
@@ -156,7 +153,8 @@ test.describe('Curated Assets Widget', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--field .ant-select'),
-        'Display Name'
+        'Display Name',
+        true
       );
 
       await selectOption(
@@ -185,6 +183,8 @@ test.describe('Curated Assets Widget', () => {
 
       await page.waitForLoadState('networkidle');
 
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
       await expect(
         page
           .getByTestId('KnowledgePanel.CuratedAssets')
@@ -198,6 +198,8 @@ test.describe('Curated Assets Widget', () => {
 
       await page.waitForLoadState('networkidle');
 
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
       await expect(
         page.getByTestId('KnowledgePanel.CuratedAssets')
       ).toBeVisible();
@@ -209,6 +211,8 @@ test.describe('Curated Assets Widget', () => {
       ).toBeVisible();
 
       await page.waitForLoadState('networkidle');
+
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
       await expect(
         page
@@ -260,13 +264,14 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator.locator('.rule--field .ant-select'),
-      'Deleted'
+      'Deleted',
+      true
     );
 
     await selectOption(
       page,
       ruleLocator.locator('.rule--operator .ant-select'),
-      '=='
+      'Is'
     );
 
     await ruleLocator
@@ -278,13 +283,16 @@ test.describe('Curated Assets Widget', () => {
     const queryResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes('index=all')
+        response.url().includes('index=all') &&
+        response.url().includes('true')
     );
 
     await page.locator('[data-testid="saveButton"]').click();
     await queryResponse;
 
     await page.waitForLoadState('networkidle');
+
+    await waitForAllLoadersToDisappear(page);
 
     // Save and verify widget creation
     await expect(
@@ -335,12 +343,13 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator1.locator('.rule--field .ant-select'),
-      'Owners'
+      'Owners',
+      true
     );
     await selectOption(
       page,
       ruleLocator1.locator('.rule--operator .ant-select'),
-      'Is not null'
+      'Is Set'
     );
 
     await page.getByRole('button', { name: 'Add Condition' }).click();
@@ -352,12 +361,13 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
-      'Deleted'
+      'Deleted',
+      true
     );
     await selectOption(
       page,
       ruleLocator2.locator('.rule--operator .ant-select'),
-      '=='
+      'Is'
     );
     await ruleLocator2
       .locator('.rule--value .rule--widget--BOOLEAN .ant-switch')
@@ -388,11 +398,13 @@ test.describe('Curated Assets Widget', () => {
     await redirectToHomePage(page);
     await removeLandingBanner(page);
 
+    await page.waitForLoadState('networkidle');
+
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
     await expect(
       page.getByTestId('KnowledgePanel.CuratedAssets')
     ).toBeVisible();
-
-    await page.waitForLoadState('networkidle');
 
     await expect(
       page
@@ -439,12 +451,13 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator1.locator('.rule--field .ant-select'),
-      'Deleted'
+      'Deleted',
+      true
     );
     await selectOption(
       page,
       ruleLocator1.locator('.rule--operator .ant-select'),
-      '=='
+      'Is'
     );
     await ruleLocator1
       .locator('.rule--value .rule--widget--BOOLEAN .ant-switch')
@@ -457,7 +470,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
-      'Display Name'
+      'Display Name',
+      true
     );
     await selectOption(
       page,
@@ -488,6 +502,8 @@ test.describe('Curated Assets Widget', () => {
 
     await page.waitForLoadState('networkidle');
 
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
     // Verify on customize page: widget and at least one entity item
     await expect(
       page.getByTestId('KnowledgePanel.CuratedAssets')
@@ -509,11 +525,11 @@ test.describe('Curated Assets Widget', () => {
 
     await page.waitForLoadState('networkidle');
 
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
     await expect(
       page.getByTestId('KnowledgePanel.CuratedAssets')
     ).toBeVisible();
-
-    await page.waitForLoadState('networkidle');
 
     await expect(
       page
@@ -560,7 +576,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator1.locator('.rule--field .ant-select'),
-      'Owners'
+      'Owners',
+      true
     );
     await selectOption(
       page,
@@ -570,7 +587,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator1.locator('.rule--value .ant-select'),
-      'admin'
+      'admin',
+      true
     );
 
     await page.getByRole('button', { name: 'Add Condition' }).click();
@@ -588,7 +606,7 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--operator .ant-select'),
-      '=='
+      'Is'
     );
     await selectOption(
       page,
@@ -610,12 +628,13 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator3.locator('.rule--operator .ant-select'),
-      '!='
+      'Is Not'
     );
     await selectOption(
       page,
       ruleLocator3.locator('.rule--value .ant-select'),
-      'Tier.Tier5'
+      'tier.tier5',
+      true
     );
 
     // Wait for save button to be enabled
@@ -624,13 +643,16 @@ test.describe('Curated Assets Widget', () => {
     const queryResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes('index=all')
+        response.url().includes('index=all') &&
+        response.url().includes('tier.tier5')
     );
 
     await page.locator('[data-testid="saveButton"]').click();
     await queryResponse;
 
     await page.waitForLoadState('networkidle');
+
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
     // Verify on customize page: widget and at least one entity item
     await expect(
@@ -653,11 +675,11 @@ test.describe('Curated Assets Widget', () => {
 
     await page.waitForLoadState('networkidle');
 
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
     await expect(
       page.getByTestId('KnowledgePanel.CuratedAssets')
     ).toBeVisible();
-
-    await page.waitForLoadState('networkidle');
 
     await expect(
       page

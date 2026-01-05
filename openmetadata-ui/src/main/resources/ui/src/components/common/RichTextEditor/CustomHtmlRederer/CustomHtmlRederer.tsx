@@ -36,8 +36,8 @@ import React from 'react';
 import ReactDOMServer from 'react-dom/server';
 import CopyIcon from '../../../../assets/svg/icon-copy.svg';
 import {
-  MARKDOWN_MATCH_ID,
   markdownTextAndIdRegex,
+  MARKDOWN_MATCH_ID,
 } from '../../../../constants/regex.constants';
 import { MarkdownToHTMLConverter } from '../../../../utils/FeedUtils';
 import i18n from '../../../../utils/i18next/LocalUtil';
@@ -98,6 +98,12 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
   info(node) {
     return getHTMLTokens(node);
   },
+  htmlInline(_, { origin }) {
+    // This handles inline HTML elements like <span data-id="value">
+    const originResult = origin && origin();
+
+    return originResult || null;
+  },
   tip(node) {
     return getHTMLTokens(node);
   },
@@ -108,7 +114,7 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
     const { fenceLength, info } = node as CodeBlockMdNode;
     const infoWords = info ? info.split(/\s+/) : [];
     const preClasses = ['relative', 'code-block'];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const codeAttrs: Record<string, any> = {};
 
     const codeText = node.literal ?? '';

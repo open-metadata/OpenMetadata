@@ -29,6 +29,15 @@ public interface AuthenticatorHandler {
 
   void init(OpenMetadataApplicationConfig config);
 
+  /**
+   * Reload the authentication configuration without restarting the server
+   * @param config New authentication configuration
+   */
+  default void reload(OpenMetadataApplicationConfig config) {
+    // Default implementation reinitializes
+    init(config);
+  }
+
   JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException;
 
   void checkIfLoginBlocked(String userName);

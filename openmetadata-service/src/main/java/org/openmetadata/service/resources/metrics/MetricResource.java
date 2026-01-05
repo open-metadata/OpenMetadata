@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.metrics;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -75,7 +76,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   public static final String COLLECTION_PATH = "v1/metrics/";
   private final MetricMapper mapper = new MetricMapper();
   static final String FIELDS =
-      "owners,relatedMetrics,followers,tags,extension,domains,dataProducts";
+      "owners,reviewers,relatedMetrics,followers,tags,extension,domains,dataProducts";
 
   public MetricResource(Authorizer authorizer, Limits limits) {
     super(Entity.METRIC, authorizer, limits);
@@ -312,6 +313,27 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
     return createOrUpdate(uriInfo, securityContext, metric);
   }
 
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateOrUpdateMetrics",
+      summary = "Bulk create or update metrics",
+      description = "Create or update multiple metrics in a single operation.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Bulk operation results"),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing"),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      List<CreateMetric> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+  }
+
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -546,5 +568,26 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @GET
+  @Path("/customUnits")
+  @Operation(
+      operationId = "getCustomUnitsOfMeasurement",
+      summary = "Get list of custom units of measurement",
+      description =
+          "Get a list of all custom units of measurement that have been used in existing metrics. This helps UI provide autocomplete suggestions.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of custom units",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(type = "string"))))
+      })
+  public Response getCustomUnitsOfMeasurement(@Context SecurityContext securityContext) {
+    List<String> customUnits = repository.getDistinctCustomUnitsOfMeasurement();
+    return Response.ok(customUnits).build();
   }
 }

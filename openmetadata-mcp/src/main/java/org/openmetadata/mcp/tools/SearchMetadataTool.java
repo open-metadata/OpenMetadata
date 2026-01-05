@@ -1,9 +1,11 @@
 package org.openmetadata.mcp.tools;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.SearchUtil.mapEntityTypesToIndexNames;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -40,7 +42,8 @@ public class SearchMetadataTool implements McpTool {
           "owners",
           "tier",
           "tableType",
-          "columnNames");
+          "columnNames",
+          "deleted");
 
   private static final List<String> DETAILED_EXCLUDE_KEYS =
       List.of(
@@ -50,7 +53,6 @@ public class SearchMetadataTool implements McpTool {
           "updatedBy",
           "usageSummary",
           "followers",
-          "deleted",
           "votes",
           "lifeCycle",
           "sourceHash",
@@ -86,17 +88,30 @@ public class SearchMetadataTool implements McpTool {
       throws IOException {
     LOG.info("Executing searchMetadata with params: {}", params);
     String query = params.containsKey("query") ? (String) params.get("query") : "*";
-    int limit = 10;
-    if (params.containsKey("limit")) {
-      Object limitObj = params.get("limit");
+    String entityType = params.containsKey("entityType") ? (String) params.get("entityType") : null;
+    String index = entityType == null ? "dataAsset" : mapEntityTypesToIndexNames(entityType);
+
+    int size = 10;
+    if (params.containsKey("size")) {
+      Object limitObj = params.get("size");
       if (limitObj instanceof Number number) {
-        limit = number.intValue();
+        size = number.intValue();
       } else if (limitObj instanceof String string) {
-        limit = Integer.parseInt(string);
+        size = Integer.parseInt(string);
       }
     }
 
-    limit = Math.min(limit, 50);
+    int from = 0;
+    if (params.containsKey("from")) {
+      Object limitObj = params.get("from");
+      if (limitObj instanceof Number number) {
+        from = number.intValue();
+      } else if (limitObj instanceof String string) {
+        from = Integer.parseInt(string);
+      }
+    }
+
+    size = Math.min(size, 50);
 
     boolean includeDeleted = false;
     if (params.containsKey("include_deleted")) {
@@ -120,28 +135,63 @@ public class SearchMetadataTool implements McpTool {
       }
     }
 
-    String entityType =
-        params.containsKey("entity_type") ? (String) params.get("entity_type") : null;
-    String index = mapEntityTypesToIndexNames(entityType);
+    String queryFilter = null;
+    if (params.containsKey("queryFilter")) {
+      queryFilter = (String) params.get("queryFilter");
+      JsonNode queryNode = JsonUtils.getObjectMapper().readTree(queryFilter);
+
+      if (!queryNode.has("query")) {
+        ObjectNode queryWrapper = JsonUtils.getObjectMapper().createObjectNode();
+        queryWrapper.set("query", queryNode);
+        queryFilter = JsonUtils.pojoToJson(queryWrapper);
+      } else {
+        queryFilter = JsonUtils.pojoToJson(queryNode);
+      }
+      LOG.debug("Applied query filter to query: {}", queryFilter);
+    } else {
+
+    }
 
     LOG.info(
         "Search query: {}, index: {}, limit: {}, includeDeleted: {}",
-        query,
+        queryFilter,
         index,
-        limit,
+        size,
         includeDeleted);
 
-    SearchRequest searchRequest =
-        new SearchRequest()
-            .withQuery(query)
-            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
-            .withSize(limit)
-            .withFrom(0)
-            .withFetchSource(true)
-            .withDeleted(includeDeleted);
+    SearchRequest searchRequest;
+    if (!nullOrEmpty(queryFilter)) {
+      // When queryFilter is provided, use it directly as it's already a transformed OpenSearch
+      // query
+      searchRequest =
+          new SearchRequest()
+              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
+              .withQueryFilter(queryFilter)
+              .withSize(size)
+              .withFrom(from)
+              .withFetchSource(true)
+              .withDeleted(includeDeleted);
+    } else {
+      // Fallback to basic query when no queryFilter is provided
+      searchRequest =
+          new SearchRequest()
+              .withQuery(query)
+              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
+              .withSize(size)
+              .withFrom(from)
+              .withFetchSource(true)
+              .withDeleted(includeDeleted);
+    }
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    Response response = Entity.getSearchRepository().search(searchRequest, subjectContext);
+    Response response;
+    if (!nullOrEmpty(queryFilter)) {
+      // Use direct query method when queryFilter is provided since it's already a transformed query
+      response = Entity.getSearchRepository().searchWithDirectQuery(searchRequest, subjectContext);
+    } else {
+      // Use regular search for basic queries
+      response = Entity.getSearchRepository().search(searchRequest, subjectContext);
+    }
 
     Map<String, Object> searchResponse;
     if (response.getEntity() instanceof String responseStr) {
@@ -153,7 +203,7 @@ public class SearchMetadataTool implements McpTool {
       searchResponse = JsonUtils.convertValue(response.getEntity(), Map.class);
     }
 
-    return buildEnhancedSearchResponse(searchResponse, query, limit, requestedFields);
+    return buildEnhancedSearchResponse(searchResponse, query, size, requestedFields);
   }
 
   @Override
@@ -181,31 +231,29 @@ public class SearchMetadataTool implements McpTool {
     }
 
     List<Object> hits = safeGetList(topHits.get("hits"));
-    if (hits == null || hits.isEmpty()) {
-      return createEmptyResponse();
-    }
-
     List<Map<String, Object>> cleanedResults = new ArrayList<>();
     int totalResults = 0;
+    if (hits != null && !hits.isEmpty()) {
 
-    if (topHits.get("total") instanceof Map) {
-      Map<String, Object> totalObj = safeGetMap(topHits.get("total"));
-      if (totalObj != null && totalObj.get("value") instanceof Number) {
-        totalResults = ((Number) totalObj.get("value")).intValue();
+      if (topHits.get("total") instanceof Map) {
+        Map<String, Object> totalObj = safeGetMap(topHits.get("total"));
+        if (totalObj != null && totalObj.get("value") instanceof Number) {
+          totalResults = ((Number) totalObj.get("value")).intValue();
+        }
+      } else if (topHits.get("total") instanceof Number) {
+        totalResults = ((Number) topHits.get("total")).intValue();
       }
-    } else if (topHits.get("total") instanceof Number) {
-      totalResults = ((Number) topHits.get("total")).intValue();
-    }
 
-    for (Object hitObj : hits) {
-      Map<String, Object> hit = safeGetMap(hitObj);
-      if (hit == null) continue;
+      for (Object hitObj : hits) {
+        Map<String, Object> hit = safeGetMap(hitObj);
+        if (hit == null) continue;
 
-      Map<String, Object> source = safeGetMap(hit.get("_source"));
-      if (source == null) continue;
+        Map<String, Object> source = safeGetMap(hit.get("_source"));
+        if (source == null) continue;
 
-      Map<String, Object> cleanedSource = cleanSearchResult(source, requestedFields);
-      cleanedResults.add(cleanedSource);
+        Map<String, Object> cleanedSource = cleanSearchResult(source, requestedFields);
+        cleanedResults.add(cleanedSource);
+      }
     }
 
     Map<String, Object> result = new HashMap<>();
@@ -214,11 +262,16 @@ public class SearchMetadataTool implements McpTool {
     result.put("returnedCount", cleanedResults.size());
     result.put("query", query);
 
+    // Add aggregations if present in search response
+    if (searchResponse.containsKey("aggregations")) {
+      result.put("aggregations", searchResponse.get("aggregations"));
+    }
+
     if (totalResults > requestedLimit) {
       result.put(
           "message",
           String.format(
-              "Found %d total results, showing first %d. Use pagination or refine your search for more specific results.",
+              "Found %d total results, showing first %d. Use pagination or refine your search for more specific results, you can call these 3 times by yourself with pagination , and then only if the user ask for more paginate.",
               totalResults, cleanedResults.size()));
       result.put("hasMore", true);
     }
@@ -239,11 +292,18 @@ public class SearchMetadataTool implements McpTool {
 
     // Add any specifically requested additional fields
     for (String field : requestedFields) {
-      if (source.containsKey(field) && !ESSENTIAL_FIELDS_ONLY.contains(field)) {
+      if (source.containsKey(field)) {
         result.put(field, source.get(field));
       }
     }
 
+    // Cleanup Description in case of huge description
+    if (result.containsKey("description")) {
+      String description = (String) result.get("description");
+      if (description.length() > 3000) {
+        result.put("description", description.substring(0, 300) + "...");
+      }
+    }
     return result;
   }
 
