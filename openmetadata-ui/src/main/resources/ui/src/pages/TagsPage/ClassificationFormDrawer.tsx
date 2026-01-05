@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Drawer, IconButton, Typography } from '@mui/material';
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Drawer,
+  IconButton,
+  Typography,
+} from '@mui/material';
 import { XClose } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -46,11 +53,10 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
         sx={{
           px: 6,
           py: 5,
-          borderBottom: 1,
-          borderColor: 'divider',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          boxShadow: (theme) => theme.shadows[1],
         }}>
         <Typography data-testid="form-heading" variant="h6">
           {t('label.adding-new-classification')}
@@ -82,11 +88,10 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
         sx={{
           px: 6,
           py: 3,
-          borderTop: 1,
-          borderColor: 'divider',
           display: 'flex',
           justifyContent: 'flex-end',
           gap: 2,
+          boxShadow: (theme) => `0px -4px 6px -2px ${theme.palette.grey[200]}`,
         }}>
         <Button
           data-testid="cancel-button"
@@ -97,9 +102,11 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
         <Button
           data-testid="save-button"
           disabled={isLoading}
+          loading={isLoading}
+          loadingIndicator={<CircularProgress color="inherit" size={18} />}
           variant="contained"
           onClick={() => formRef.submit()}>
-          {isLoading ? t('label.saving') : t('label.save')}
+          {t('label.save')}
         </Button>
       </Box>
     </Drawer>

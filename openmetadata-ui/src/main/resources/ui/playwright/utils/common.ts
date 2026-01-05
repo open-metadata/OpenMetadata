@@ -63,7 +63,7 @@ export const redirectToHomePage = async (
   await page.goto('/');
   await page.waitForURL('**/my-data');
   if (waitForNetworkIdle) {
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   }
 };
 
