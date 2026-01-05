@@ -626,7 +626,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       updatePorts("inputPorts", Relationship.INPUT_PORT);
       updatePorts("outputPorts", Relationship.OUTPUT_PORT);
       // Handle domain change with asset migration
-      updateDataProductDomains();
+      // Skip during consolidation to avoid incorrect intermediate migrations.
+      // Asset migration should only happen on the final update, not during
+      // intermediate consolidation steps which may temporarily revert state.
+      if (!consolidatingChanges) {
+        updateDataProductDomains();
+      }
     }
 
     private void updateDataProductDomains() {

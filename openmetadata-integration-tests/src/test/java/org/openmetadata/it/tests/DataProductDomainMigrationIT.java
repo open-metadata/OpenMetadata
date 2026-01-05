@@ -232,6 +232,502 @@ public class DataProductDomainMigrationIT {
   // @Test
   // void testDataProductDomainMigrationToMultipleDomains(TestNamespace ns) throws Exception { ... }
 
+  /**
+   * Test migration from a parent domain to its own subdomain.
+   * Scenario: DataProduct in "Engineering" domain moves to "Engineering.Backend" subdomain.
+   */
+  @Test
+  void testDataProductMigrationFromDomainToOwnSubdomain(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String shortId = ns.shortPrefix();
+
+    // Create parent domain
+    Domain parentDomain = createDomain(client, "parent_" + shortId);
+
+    // Create subdomain under parent
+    Domain subdomain = createSubdomain(client, "sub_" + shortId, parentDomain);
+
+    // Create data product in parent domain
+    CreateDataProduct createDp = new CreateDataProduct();
+    createDp.setName("dp_parent_to_sub_" + shortId);
+    createDp.setDescription("Test data product for parent to subdomain migration");
+    createDp.setDomains(List.of(parentDomain.getFullyQualifiedName()));
+
+    DataProduct dataProduct = client.dataProducts().create(createDp);
+    assertNotNull(dataProduct);
+    assertEquals(
+        parentDomain.getFullyQualifiedName(),
+        dataProduct.getDomains().get(0).getFullyQualifiedName());
+
+    // Create tables in parent domain and add as assets
+    List<Table> tables = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      Table table = createTestTableInDomain(ns, "parent_to_sub_table_" + i, parentDomain);
+      tables.add(table);
+    }
+
+    // Add tables as assets
+    List<EntityReference> assetRefs = new ArrayList<>();
+    for (Table table : tables) {
+      assetRefs.add(
+          new EntityReference()
+              .withId(table.getId())
+              .withType("table")
+              .withFullyQualifiedName(table.getFullyQualifiedName()));
+    }
+    BulkAssets bulkRequest = new BulkAssets().withAssets(assetRefs);
+    client.dataProducts().bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkRequest);
+    waitForSearchIndexUpdate();
+
+    // Verify initial state: assets in parent domain
+    verifyAssetsHaveDomainViaAPI(client, tables, parentDomain, true);
+
+    // Move data product from parent to subdomain
+    moveDataProductToDomain(client, dataProduct, subdomain);
+    waitForSearchIndexUpdate();
+
+    // Verify assets are now in subdomain
+    verifyAssetsHaveDomainViaAPI(client, tables, subdomain, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, parentDomain, false);
+    verifyAssetsInDomainAssetsEndpoint(client, subdomain, tables, true);
+    // Note: We don't verify parent domain's assets endpoint returns false because
+    // hierarchical domains may include subdomain assets in the parent's assets endpoint
+  }
+
+  /**
+   * Test migration from a domain to another domain's subdomain.
+   * Scenario: DataProduct in "Engineering" domain moves to "Sales.Analytics" subdomain.
+   */
+  @Test
+  void testDataProductMigrationFromDomainToAnotherDomainsSubdomain(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String shortId = ns.shortPrefix();
+
+    // Create source domain (no parent)
+    Domain sourceDomain = createDomain(client, "src_domain_" + shortId);
+
+    // Create target parent domain and its subdomain
+    Domain targetParent = createDomain(client, "tgt_parent_" + shortId);
+    Domain targetSubdomain = createSubdomain(client, "tgt_sub_" + shortId, targetParent);
+
+    // Create data product in source domain
+    CreateDataProduct createDp = new CreateDataProduct();
+    createDp.setName("dp_cross_domain_sub_" + shortId);
+    createDp.setDescription("Test data product for cross-domain subdomain migration");
+    createDp.setDomains(List.of(sourceDomain.getFullyQualifiedName()));
+
+    DataProduct dataProduct = client.dataProducts().create(createDp);
+    assertNotNull(dataProduct);
+    assertEquals(
+        sourceDomain.getFullyQualifiedName(),
+        dataProduct.getDomains().get(0).getFullyQualifiedName());
+
+    // Create tables in source domain and add as assets
+    List<Table> tables = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      Table table = createTestTableInDomain(ns, "cross_domain_table_" + i, sourceDomain);
+      tables.add(table);
+    }
+
+    // Add tables as assets
+    List<EntityReference> assetRefs = new ArrayList<>();
+    for (Table table : tables) {
+      assetRefs.add(
+          new EntityReference()
+              .withId(table.getId())
+              .withType("table")
+              .withFullyQualifiedName(table.getFullyQualifiedName()));
+    }
+    BulkAssets bulkRequest = new BulkAssets().withAssets(assetRefs);
+    client.dataProducts().bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkRequest);
+    waitForSearchIndexUpdate();
+
+    // Verify initial state: assets in source domain
+    verifyAssetsHaveDomainViaAPI(client, tables, sourceDomain, true);
+
+    // Move data product from source domain to target subdomain
+    moveDataProductToDomain(client, dataProduct, targetSubdomain);
+    waitForSearchIndexUpdate();
+
+    // Verify assets are now in target subdomain
+    verifyAssetsHaveDomainViaAPI(client, tables, targetSubdomain, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, sourceDomain, false);
+    // Also verify assets are NOT directly in the target parent domain
+    verifyAssetsHaveDomainViaAPI(client, tables, targetParent, false);
+    verifyAssetsInDomainAssetsEndpoint(client, targetSubdomain, tables, true);
+    verifyAssetsInDomainAssetsEndpoint(client, sourceDomain, tables, false);
+  }
+
+  /**
+   * Test migration from one subdomain to another subdomain (different parent domains).
+   * Scenario: DataProduct in "Engineering.Backend" moves to "Sales.Analytics".
+   */
+  @Test
+  void testDataProductMigrationBetweenSubdomains(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String shortId = ns.shortPrefix();
+
+    // Create source parent domain and subdomain
+    Domain sourceParent = createDomain(client, "src_parent_" + shortId);
+    Domain sourceSubdomain = createSubdomain(client, "src_sub_" + shortId, sourceParent);
+
+    // Create target parent domain and subdomain
+    Domain targetParent = createDomain(client, "tgt_parent_" + shortId);
+    Domain targetSubdomain = createSubdomain(client, "tgt_sub_" + shortId, targetParent);
+
+    // Create data product in source subdomain
+    CreateDataProduct createDp = new CreateDataProduct();
+    createDp.setName("dp_sub_to_sub_" + shortId);
+    createDp.setDescription("Test data product for subdomain to subdomain migration");
+    createDp.setDomains(List.of(sourceSubdomain.getFullyQualifiedName()));
+
+    DataProduct dataProduct = client.dataProducts().create(createDp);
+    assertNotNull(dataProduct);
+    assertEquals(
+        sourceSubdomain.getFullyQualifiedName(),
+        dataProduct.getDomains().get(0).getFullyQualifiedName());
+
+    // Create tables in source subdomain and add as assets
+    List<Table> tables = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      Table table = createTestTableInDomain(ns, "sub_to_sub_table_" + i, sourceSubdomain);
+      tables.add(table);
+    }
+
+    // Add tables as assets
+    List<EntityReference> assetRefs = new ArrayList<>();
+    for (Table table : tables) {
+      assetRefs.add(
+          new EntityReference()
+              .withId(table.getId())
+              .withType("table")
+              .withFullyQualifiedName(table.getFullyQualifiedName()));
+    }
+    BulkAssets bulkRequest = new BulkAssets().withAssets(assetRefs);
+    client.dataProducts().bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkRequest);
+    waitForSearchIndexUpdate();
+
+    // Verify initial state: assets in source subdomain
+    verifyAssetsHaveDomainViaAPI(client, tables, sourceSubdomain, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, sourceParent, false);
+
+    // Move data product from source subdomain to target subdomain
+    moveDataProductToDomain(client, dataProduct, targetSubdomain);
+    waitForSearchIndexUpdate();
+
+    // Verify assets are now in target subdomain
+    verifyAssetsHaveDomainViaAPI(client, tables, targetSubdomain, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, sourceSubdomain, false);
+    // Verify assets are NOT in either parent domain
+    verifyAssetsHaveDomainViaAPI(client, tables, sourceParent, false);
+    verifyAssetsHaveDomainViaAPI(client, tables, targetParent, false);
+    verifyAssetsInDomainAssetsEndpoint(client, targetSubdomain, tables, true);
+    verifyAssetsInDomainAssetsEndpoint(client, sourceSubdomain, tables, false);
+  }
+
+  /**
+   * Test migration from a subdomain back to its parent domain.
+   * Scenario: DataProduct in "Engineering.Backend" subdomain moves UP to "Engineering" domain.
+   */
+  @Test
+  void testDataProductMigrationFromSubdomainToParentDomain(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String shortId = ns.shortPrefix();
+
+    // Create parent domain and subdomain
+    Domain parentDomain = createDomain(client, "parent_up_" + shortId);
+    Domain subdomain = createSubdomain(client, "sub_up_" + shortId, parentDomain);
+
+    // Create data product in subdomain
+    CreateDataProduct createDp = new CreateDataProduct();
+    createDp.setName("dp_sub_to_parent_" + shortId);
+    createDp.setDescription("Test data product for subdomain to parent migration");
+    createDp.setDomains(List.of(subdomain.getFullyQualifiedName()));
+
+    DataProduct dataProduct = client.dataProducts().create(createDp);
+    assertNotNull(dataProduct);
+    assertEquals(
+        subdomain.getFullyQualifiedName(), dataProduct.getDomains().get(0).getFullyQualifiedName());
+
+    // Create tables in subdomain and add as assets
+    List<Table> tables = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      Table table = createTestTableInDomain(ns, "sub_to_parent_table_" + i, subdomain);
+      tables.add(table);
+    }
+
+    // Add tables as assets
+    List<EntityReference> assetRefs = new ArrayList<>();
+    for (Table table : tables) {
+      assetRefs.add(
+          new EntityReference()
+              .withId(table.getId())
+              .withType("table")
+              .withFullyQualifiedName(table.getFullyQualifiedName()));
+    }
+    BulkAssets bulkRequest = new BulkAssets().withAssets(assetRefs);
+    client.dataProducts().bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkRequest);
+    waitForSearchIndexUpdate();
+
+    // Verify initial state: assets in subdomain
+    verifyAssetsHaveDomainViaAPI(client, tables, subdomain, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, parentDomain, false);
+
+    // Move data product from subdomain UP to parent domain
+    moveDataProductToDomain(client, dataProduct, parentDomain);
+    waitForSearchIndexUpdate();
+
+    // Verify assets are now in parent domain
+    verifyAssetsHaveDomainViaAPI(client, tables, parentDomain, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, subdomain, false);
+    verifyAssetsInDomainAssetsEndpoint(client, parentDomain, tables, true);
+    verifyAssetsInDomainAssetsEndpoint(client, subdomain, tables, false);
+  }
+
+  /**
+   * Test migration between sibling subdomains (same parent domain).
+   * Scenario: DataProduct in "Engineering.Backend" moves to "Engineering.Frontend" (same parent).
+   */
+  @Test
+  void testDataProductMigrationBetweenSiblingSubdomains(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String shortId = ns.shortPrefix();
+
+    // Create parent domain with two sibling subdomains
+    Domain parentDomain = createDomain(client, "parent_sibling_" + shortId);
+    Domain subdomain1 = createSubdomain(client, "sibling1_" + shortId, parentDomain);
+    Domain subdomain2 = createSubdomain(client, "sibling2_" + shortId, parentDomain);
+
+    // Create data product in first subdomain
+    CreateDataProduct createDp = new CreateDataProduct();
+    createDp.setName("dp_sibling_" + shortId);
+    createDp.setDescription("Test data product for sibling subdomain migration");
+    createDp.setDomains(List.of(subdomain1.getFullyQualifiedName()));
+
+    DataProduct dataProduct = client.dataProducts().create(createDp);
+    assertNotNull(dataProduct);
+    assertEquals(
+        subdomain1.getFullyQualifiedName(),
+        dataProduct.getDomains().get(0).getFullyQualifiedName());
+
+    // Create tables in first subdomain and add as assets
+    List<Table> tables = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      Table table = createTestTableInDomain(ns, "sibling_table_" + i, subdomain1);
+      tables.add(table);
+    }
+
+    // Add tables as assets
+    List<EntityReference> assetRefs = new ArrayList<>();
+    for (Table table : tables) {
+      assetRefs.add(
+          new EntityReference()
+              .withId(table.getId())
+              .withType("table")
+              .withFullyQualifiedName(table.getFullyQualifiedName()));
+    }
+    BulkAssets bulkRequest = new BulkAssets().withAssets(assetRefs);
+    client.dataProducts().bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkRequest);
+    waitForSearchIndexUpdate();
+
+    // Verify initial state: assets in subdomain1
+    verifyAssetsHaveDomainViaAPI(client, tables, subdomain1, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, subdomain2, false);
+    verifyAssetsHaveDomainViaAPI(client, tables, parentDomain, false);
+
+    // Move data product from subdomain1 to sibling subdomain2
+    moveDataProductToDomain(client, dataProduct, subdomain2);
+    waitForSearchIndexUpdate();
+
+    // Verify assets are now in subdomain2
+    verifyAssetsHaveDomainViaAPI(client, tables, subdomain2, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, subdomain1, false);
+    // Assets should NOT be directly in parent domain
+    verifyAssetsHaveDomainViaAPI(client, tables, parentDomain, false);
+    verifyAssetsInDomainAssetsEndpoint(client, subdomain2, tables, true);
+    verifyAssetsInDomainAssetsEndpoint(client, subdomain1, tables, false);
+  }
+
+  /**
+   * Test migration from a subdomain to a completely unrelated top-level domain.
+   * Scenario: DataProduct in "Engineering.Backend" moves to "Marketing" domain.
+   */
+  @Test
+  void testDataProductMigrationFromSubdomainToUnrelatedDomain(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String shortId = ns.shortPrefix();
+
+    // Create source parent and subdomain
+    Domain sourceParent = createDomain(client, "src_parent_unrel_" + shortId);
+    Domain sourceSubdomain = createSubdomain(client, "src_sub_unrel_" + shortId, sourceParent);
+
+    // Create unrelated target domain (no parent relationship)
+    Domain targetDomain = createDomain(client, "unrel_target_" + shortId);
+
+    // Create data product in source subdomain
+    CreateDataProduct createDp = new CreateDataProduct();
+    createDp.setName("dp_sub_to_unrel_" + shortId);
+    createDp.setDescription("Test data product for subdomain to unrelated domain migration");
+    createDp.setDomains(List.of(sourceSubdomain.getFullyQualifiedName()));
+
+    DataProduct dataProduct = client.dataProducts().create(createDp);
+    assertNotNull(dataProduct);
+    assertEquals(
+        sourceSubdomain.getFullyQualifiedName(),
+        dataProduct.getDomains().get(0).getFullyQualifiedName());
+
+    // Create tables in source subdomain and add as assets
+    List<Table> tables = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      Table table = createTestTableInDomain(ns, "sub_to_unrel_table_" + i, sourceSubdomain);
+      tables.add(table);
+    }
+
+    // Add tables as assets
+    List<EntityReference> assetRefs = new ArrayList<>();
+    for (Table table : tables) {
+      assetRefs.add(
+          new EntityReference()
+              .withId(table.getId())
+              .withType("table")
+              .withFullyQualifiedName(table.getFullyQualifiedName()));
+    }
+    BulkAssets bulkRequest = new BulkAssets().withAssets(assetRefs);
+    client.dataProducts().bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkRequest);
+    waitForSearchIndexUpdate();
+
+    // Verify initial state: assets in source subdomain
+    verifyAssetsHaveDomainViaAPI(client, tables, sourceSubdomain, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, sourceParent, false);
+    verifyAssetsHaveDomainViaAPI(client, tables, targetDomain, false);
+
+    // Move data product from source subdomain to unrelated target domain
+    moveDataProductToDomain(client, dataProduct, targetDomain);
+    waitForSearchIndexUpdate();
+
+    // Verify assets are now in target domain
+    verifyAssetsHaveDomainViaAPI(client, tables, targetDomain, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, sourceSubdomain, false);
+    verifyAssetsHaveDomainViaAPI(client, tables, sourceParent, false);
+    verifyAssetsInDomainAssetsEndpoint(client, targetDomain, tables, true);
+    verifyAssetsInDomainAssetsEndpoint(client, sourceSubdomain, tables, false);
+  }
+
+  /**
+   * Test that multiple rapid changes to a data product (within session consolidation window)
+   * work correctly. This tests the scenario where a user:
+   * 1. Changes domain
+   * 2. Updates description
+   * 3. Adds/removes owner
+   * 4. Changes domain again
+   * All within a short time window where changes may be consolidated.
+   */
+  @Test
+  void testDataProductMultipleChangesWithDomainMigration(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String shortId = ns.shortPrefix();
+
+    // Create three domains
+    Domain domainA = createDomain(client, "multi_a_" + shortId);
+    Domain domainB = createDomain(client, "multi_b_" + shortId);
+    Domain domainC = createDomain(client, "multi_c_" + shortId);
+
+    // Create data product in Domain A
+    CreateDataProduct createDp = new CreateDataProduct();
+    createDp.setName("multi_change_dp_" + shortId);
+    createDp.setDescription("Initial description");
+    createDp.setDomains(List.of(domainA.getFullyQualifiedName()));
+
+    DataProduct dataProduct = client.dataProducts().create(createDp);
+    assertNotNull(dataProduct);
+
+    // Create tables in Domain A and add as assets
+    List<Table> tables = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      Table table = createTestTableInDomain(ns, "multi_change_table_" + i, domainA);
+      tables.add(table);
+    }
+
+    // Add tables as assets
+    List<EntityReference> assetRefs = new ArrayList<>();
+    for (Table table : tables) {
+      assetRefs.add(
+          new EntityReference()
+              .withId(table.getId())
+              .withType("table")
+              .withFullyQualifiedName(table.getFullyQualifiedName()));
+    }
+    BulkAssets bulkRequest = new BulkAssets().withAssets(assetRefs);
+    client.dataProducts().bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkRequest);
+    waitForSearchIndexUpdate();
+
+    // Verify initial state
+    verifyAssetsHaveDomainViaAPI(client, tables, domainA, true);
+
+    // Change 1: Move to Domain B
+    DataProduct dp = client.dataProducts().get(dataProduct.getId().toString(), "domains,owners");
+    dp.setDomains(
+        List.of(
+            new EntityReference()
+                .withId(domainB.getId())
+                .withType("domain")
+                .withFullyQualifiedName(domainB.getFullyQualifiedName())));
+    client.dataProducts().update(dataProduct.getId().toString(), dp);
+
+    // Verify after first domain change: assets should be in B, not A
+    verifyAssetsHaveDomainViaAPI(client, tables, domainB, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, domainA, false);
+
+    // Change 2: Update description (without waiting for search index)
+    dp = client.dataProducts().get(dataProduct.getId().toString(), "domains,owners");
+    dp.setDescription("Updated description after first domain change");
+    client.dataProducts().update(dataProduct.getId().toString(), dp);
+
+    // Verify after description change: assets should still be in B only
+    verifyAssetsHaveDomainViaAPI(client, tables, domainB, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, domainA, false);
+
+    // Change 3: Add an owner (simulate user adding themselves)
+    dp = client.dataProducts().get(dataProduct.getId().toString(), "domains,owners");
+    // Just update description again to simulate activity
+    dp.setDescription("Description updated again with owner change");
+    client.dataProducts().update(dataProduct.getId().toString(), dp);
+
+    // Verify after second description change: assets should still be in B only
+    verifyAssetsHaveDomainViaAPI(client, tables, domainB, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, domainA, false);
+
+    // Change 4: Move to Domain C (second domain change in quick succession)
+    dp = client.dataProducts().get(dataProduct.getId().toString(), "domains,owners");
+    dp.setDomains(
+        List.of(
+            new EntityReference()
+                .withId(domainC.getId())
+                .withType("domain")
+                .withFullyQualifiedName(domainC.getFullyQualifiedName())));
+    client.dataProducts().update(dataProduct.getId().toString(), dp);
+
+    // Now wait for search index to catch up with all changes
+    waitForSearchIndexUpdate();
+
+    // Verify final state: assets should be in Domain C (the last domain)
+    verifyAssetsHaveDomainViaAPI(client, tables, domainC, true);
+    verifyAssetsHaveDomainViaAPI(client, tables, domainB, false);
+    verifyAssetsHaveDomainViaAPI(client, tables, domainA, false);
+
+    // Verify via domain assets endpoint
+    verifyAssetsInDomainAssetsEndpoint(client, domainC, tables, true);
+    verifyAssetsInDomainAssetsEndpoint(client, domainB, tables, false);
+    verifyAssetsInDomainAssetsEndpoint(client, domainA, tables, false);
+
+    // Verify data product has the updated description
+    DataProduct finalDp = client.dataProducts().get(dataProduct.getId().toString(), "domains");
+    assertEquals("Description updated again with owner change", finalDp.getDescription());
+    assertEquals(
+        domainC.getFullyQualifiedName(), finalDp.getDomains().get(0).getFullyQualifiedName());
+  }
+
   // ==================== Helper Methods ====================
 
   private Domain createDomain(OpenMetadataClient client, String name) {
@@ -239,6 +735,15 @@ public class DataProductDomainMigrationIT {
     request.setName(name);
     request.setDescription("Test domain for data product migration tests");
     request.setDomainType(CreateDomain.DomainType.AGGREGATE);
+    return client.domains().create(request);
+  }
+
+  private Domain createSubdomain(OpenMetadataClient client, String name, Domain parent) {
+    CreateDomain request = new CreateDomain();
+    request.setName(name);
+    request.setDescription("Test subdomain for data product migration tests");
+    request.setDomainType(CreateDomain.DomainType.AGGREGATE);
+    request.setParent(parent.getFullyQualifiedName());
     return client.domains().create(request);
   }
 
