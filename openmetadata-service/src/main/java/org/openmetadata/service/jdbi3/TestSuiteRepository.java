@@ -336,54 +336,57 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
             ? "testCase.domains.fullyQualifiedName"
             : "domains.fullyQualifiedName";
 
-    String domainFilter =
+    String domainFilterStr =
         String.format("{\"term\": {\"%s\": \"%s\"}}", domainField, escapeDoubleQuotes(domain));
 
     if (nullOrEmpty(query)) {
-      return String.format("{\"query\": {\"bool\": {\"must\": [%s]}}}", domainFilter);
+      return String.format("{\"query\": {\"bool\": {\"filter\": [%s]}}}", domainFilterStr);
     }
 
-    try {
-      JsonReader reader = Json.createReader(new java.io.StringReader(query));
-      JsonObject queryJson = reader.readObject();
-      reader.close();
+    try (JsonReader queryReader = Json.createReader(new java.io.StringReader(query));
+        JsonReader domainReader = Json.createReader(new java.io.StringReader(domainFilterStr))) {
 
+      JsonObject queryJson = queryReader.readObject();
       JsonObject queryObj = queryJson.getJsonObject("query");
-      if (queryObj != null) {
-        JsonObject boolObj = queryObj.getJsonObject("bool");
-        if (boolObj != null) {
-          JsonArray mustArray = boolObj.getJsonArray("must");
-          JsonArrayBuilder newMustBuilder = Json.createArrayBuilder();
 
-          if (mustArray != null) {
-            for (JsonValue value : mustArray) {
-              newMustBuilder.add(value);
-            }
-          }
-
-          JsonReader domainReader = Json.createReader(new java.io.StringReader(domainFilter));
-          newMustBuilder.add(domainReader.readObject());
-          domainReader.close();
-
-          JsonObjectBuilder newBoolBuilder = Json.createObjectBuilder();
-          for (String key : boolObj.keySet()) {
-            if (!"must".equals(key)) {
-              newBoolBuilder.add(key, boolObj.get(key));
-            }
-          }
-          newBoolBuilder.add("must", newMustBuilder);
-
-          jakarta.json.JsonObjectBuilder newQueryBuilder = jakarta.json.Json.createObjectBuilder();
-          newQueryBuilder.add("bool", newBoolBuilder);
-
-          jakarta.json.JsonObjectBuilder resultBuilder = jakarta.json.Json.createObjectBuilder();
-          resultBuilder.add("query", newQueryBuilder);
-
-          return resultBuilder.build().toString();
-        }
+      if (queryObj == null) {
+        return query;
       }
+
+      JsonObject domainFilterObj = domainReader.readObject();
+      JsonObject boolObj = queryObj.getJsonObject("bool");
+
+      JsonObjectBuilder newBoolBuilder = Json.createObjectBuilder();
+      JsonArrayBuilder filterBuilder = Json.createArrayBuilder();
+      filterBuilder.add(domainFilterObj);
+
+      if (boolObj != null) {
+        for (String key : boolObj.keySet()) {
+          if ("filter".equals(key)) {
+            JsonArray existingFilters = boolObj.getJsonArray("filter");
+            if (existingFilters != null) {
+              for (JsonValue value : existingFilters) {
+                filterBuilder.add(value);
+              }
+            }
+          } else {
+            newBoolBuilder.add(key, boolObj.get(key));
+          }
+        }
+      } else {
+        JsonArrayBuilder mustBuilder = Json.createArrayBuilder();
+        mustBuilder.add(queryObj);
+        newBoolBuilder.add("must", mustBuilder);
+      }
+
+      newBoolBuilder.add("filter", filterBuilder);
+
+      JsonObjectBuilder resultBuilder = Json.createObjectBuilder();
+      resultBuilder.add("query", Json.createObjectBuilder().add("bool", newBoolBuilder));
+
+      return resultBuilder.build().toString();
     } catch (Exception e) {
-      LOG.warn("Failed to parse query for domain injection: {}", e.getMessage());
+      LOG.error("Error adding domain filter to query: {}", e.getMessage());
     }
 
     return query;
