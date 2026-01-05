@@ -425,6 +425,32 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             "Failed to find pipeline status for %s at %s", pipeline.getName(), timestamp));
   }
 
+  private Long calculateActualDuration(PipelineStatus pipelineStatus) {
+    if (pipelineStatus.getTaskStatus() == null || pipelineStatus.getTaskStatus().isEmpty()) {
+      return null;
+    }
+
+    Long minStartTime =
+        pipelineStatus.getTaskStatus().stream()
+            .map(task -> task.getStartTime())
+            .filter(java.util.Objects::nonNull)
+            .min(Long::compare)
+            .orElse(null);
+
+    Long maxEndTime =
+        pipelineStatus.getTaskStatus().stream()
+            .map(task -> task.getEndTime())
+            .filter(java.util.Objects::nonNull)
+            .max(Long::compare)
+            .orElse(null);
+
+    if (minStartTime != null && maxEndTime != null && maxEndTime >= minStartTime) {
+      return maxEndTime - minStartTime;
+    }
+
+    return null;
+  }
+
   public ResultList<PipelineStatus> getPipelineStatuses(
       String fqn,
       Long starTs,
@@ -480,18 +506,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               .collect(java.util.stream.Collectors.toList());
     }
 
-    // Apply duration filters
+    // Apply duration filters using task-level timings
     if (minDuration != null || maxDuration != null) {
       pipelineStatuses =
           pipelineStatuses.stream()
               .filter(
                   ps -> {
-                    if (ps.getEndTime() == null || ps.getTimestamp() == null) {
+                    Long actualDuration = calculateActualDuration(ps);
+                    if (actualDuration == null) {
                       return false;
                     }
-                    long duration = ps.getEndTime() - ps.getTimestamp();
-                    boolean meetsMin = minDuration == null || duration >= minDuration;
-                    boolean meetsMax = maxDuration == null || duration <= maxDuration;
+                    boolean meetsMin = minDuration == null || actualDuration >= minDuration;
+                    boolean meetsMax = maxDuration == null || actualDuration <= maxDuration;
                     return meetsMin && meetsMax;
                   })
               .collect(java.util.stream.Collectors.toList());
