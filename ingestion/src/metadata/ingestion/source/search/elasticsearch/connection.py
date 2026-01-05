@@ -199,7 +199,9 @@ def test_connection(
         try:
             result = client.indices.get_alias(expand_wildcards="open")
             if result is None:
-                raise ConnectionError("Failed to retrieve search indexes from Elasticsearch")
+                raise ConnectionError(
+                    "Failed to retrieve search indexes from Elasticsearch"
+                )
             return result
         except Exception as exc:
             raise ConnectionError(

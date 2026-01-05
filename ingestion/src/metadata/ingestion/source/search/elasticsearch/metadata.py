@@ -162,7 +162,9 @@ class ElasticsearchSource(SearchServiceSource):
                         data=SearchIndexSampleData(
                             messages=[
                                 str(message)
-                                for message in sample_data.get("hits", {}).get("hits", [])
+                                for message in sample_data.get("hits", {}).get(
+                                    "hits", []
+                                )
                             ]
                         ),
                     )

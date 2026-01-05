@@ -448,7 +448,9 @@ class ESMixin(Generic[T]):
         try:
             response = self.client.get(query_string)
             if response is None:
-                logger.warning(f"Received null response from Elasticsearch for query: {query_string}")
+                logger.warning(
+                    f"Received null response from Elasticsearch for query: {query_string}"
+                )
                 return None
             return ESResponse.model_validate(response)
         except Exception as exc:
