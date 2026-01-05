@@ -138,7 +138,9 @@ export const addAssetsToTag = async (
     const visibleName = entityDisplayName ?? name;
 
     const searchRes = page.waitForResponse(
-      `/api/v1/search/query?q=${visibleName}&index=all&from=0&size=25&**`
+      `/api/v1/search/query?q=${encodeURIComponent(
+        visibleName
+      )}&index=all&from=0&size=25&**`
     );
     await page
       .getByTestId('asset-selection-modal')
