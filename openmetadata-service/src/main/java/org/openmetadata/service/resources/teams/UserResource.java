@@ -153,6 +153,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
@@ -871,9 +872,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } else if (!isCurrentUser) {
       // For non-bot users, only the user themselves can generate their own token
       // or an admin can do it
-      try {
-        authorizer.authorizeAdmin(securityContext);
-      } catch (AuthorizationException e) {
+      SubjectContext subjectContext = SubjectContext.getSubjectContext(currentUserName);
+      if (!subjectContext.isAdmin()) {
         throw new AuthorizationException(
             "Users can only generate tokens for themselves. "
                 + "Admins can generate tokens for bot users.");

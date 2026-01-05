@@ -1526,7 +1526,9 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     JWTAuthMechanism jwtAuthMechanism =
         TestUtils.post(
             getResource("users/generateToken"),
-            new GenerateTokenRequest().withId(user.getId()).withJWTTokenExpiry(JWTTokenExpiry.Seven),
+            new GenerateTokenRequest()
+                .withId(user.getId())
+                .withJWTTokenExpiry(JWTTokenExpiry.Seven),
             JWTAuthMechanism.class,
             OK.getStatusCode(),
             ADMIN_AUTH_HEADERS);

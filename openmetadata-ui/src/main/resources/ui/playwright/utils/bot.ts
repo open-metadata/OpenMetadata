@@ -44,11 +44,11 @@ export const getCreatedBot = async (
   }: {
     botName: string;
     botDisplayName?: string;
-  }
+  },
 ) => {
   // Click on created Bot name
   const fetchResponse = page.waitForResponse(
-    `/api/v1/bots/name/${encodeURIComponent(botName)}?*`
+    `/api/v1/bots/name/${encodeURIComponent(botName)}?*`,
   );
   await page.getByTestId(`bot-link-${botDisplayName ?? botName}`).click();
   await fetchResponse;
@@ -75,11 +75,11 @@ export const createBot = async (page: Page) => {
 
   // Verify bot is getting added in the bots listing page
   await expect(
-    page.getByTestId(`bot-link-${BOT_DETAILS.botName}`)
+    page.getByTestId(`bot-link-${BOT_DETAILS.botName}`),
   ).toBeVisible();
 
   await expect(
-    page.getByRole('cell', { name: BOT_DETAILS.description })
+    page.getByRole('cell', { name: BOT_DETAILS.description }),
   ).toBeVisible();
 
   // Get created bot
@@ -88,7 +88,7 @@ export const createBot = async (page: Page) => {
   await expect(page.getByTestId('revoke-button')).toContainText('Revoke token');
 
   await expect(page.getByTestId('center-panel')).toContainText(
-    `${BOT_DETAILS.JWTToken} Token`
+    `${BOT_DETAILS.JWTToken} Token`,
   );
 
   await expect(page.getByTestId('token-expiry')).toBeVisible();
@@ -127,7 +127,7 @@ export const updateBotDetails = async (page: Page) => {
 
   // Verify the display name is updated on bot details page
   await expect(
-    page.getByTestId('left-panel').getByText(BOT_DETAILS.updatedBotName)
+    page.getByTestId('left-panel').getByText(BOT_DETAILS.updatedBotName),
   ).toBeVisible();
 
   // Click on edit description button
@@ -145,11 +145,11 @@ export const updateBotDetails = async (page: Page) => {
 
   // Verify the updated name is displayed in the Bots listing page
   await expect(
-    page.getByTestId(`bot-link-${BOT_DETAILS.updatedBotName}`)
+    page.getByTestId(`bot-link-${BOT_DETAILS.updatedBotName}`),
   ).toContainText(BOT_DETAILS.updatedBotName);
 
   await expect(
-    page.locator(`[data-row-key="${botName}"] [data-testid="markdown-parser"]`)
+    page.locator(`[data-row-key="${botName}"] [data-testid="markdown-parser"]`),
   ).toContainText(BOT_DETAILS.updatedDescription);
 };
 
@@ -172,20 +172,22 @@ export const tokenExpirationForDays = async (page: Page) => {
     // Save the updated date
     const expiryDate = customFormatDateTime(
       getEpochMillisForFutureDays(expiryTime),
-      `ccc d'th' MMMM, yyyy`
+      `ccc d'th' MMMM, yyyy`,
     );
 
     // Wait for the new generateToken API endpoint
     const generateTokenResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/users/generateToken') &&
-        response.request().method() === 'POST'
+        response.request().method() === 'POST',
     );
     await page.click('[data-testid="save-edit"]');
     await generateTokenResponse;
 
     await expect(
-      page.locator('[data-testid="center-panel"] [data-testid="revoke-button"]')
+      page.locator(
+        '[data-testid="center-panel"] [data-testid="revoke-button"]',
+      ),
     ).toBeVisible();
 
     // Verify the expiry time
@@ -208,7 +210,7 @@ export const tokenExpirationUnlimitedDays = async (page: Page) => {
   const generateTokenResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/users/generateToken') &&
-      response.request().method() === 'POST'
+      response.request().method() === 'POST',
   );
   // Save the selected changes
   await page.click('[data-testid="save-edit"]');
@@ -216,7 +218,7 @@ export const tokenExpirationUnlimitedDays = async (page: Page) => {
 
   // Verify the updated expiry time
   const revokeButton = page.locator(
-    '[data-testid="center-panel"] [data-testid="revoke-button"]'
+    '[data-testid="center-panel"] [data-testid="revoke-button"]',
   );
 
   await expect(revokeButton).toBeVisible();
@@ -274,7 +276,7 @@ export const resetTokenFromBotPage = async (page: Page, botName: string) => {
   const generateTokenResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/users/generateToken') &&
-      response.request().method() === 'POST'
+      response.request().method() === 'POST',
   );
   await page.getByTestId('save-edit').click();
   await generateTokenResponse;
