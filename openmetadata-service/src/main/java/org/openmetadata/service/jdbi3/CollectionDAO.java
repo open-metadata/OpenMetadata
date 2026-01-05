@@ -4871,6 +4871,12 @@ public interface CollectionDAO {
         @Bind("newFQN") String newFQN,
         @BindFQN("newFQNHash") String newFQNHash);
 
+    @SqlUpdate(
+        "UPDATE tag_usage SET targetFQNHash = :newTargetFQNHash WHERE targetFQNHash = :oldTargetFQNHash")
+    void updateTargetFQNHash(
+        @BindFQN("oldTargetFQNHash") String oldTargetFQNHash,
+        @BindFQN("newTargetFQNHash") String newTargetFQNHash);
+
     @SqlUpdate("<update>")
     void updateTagPrefixInternal(@Define("update") String update);
 

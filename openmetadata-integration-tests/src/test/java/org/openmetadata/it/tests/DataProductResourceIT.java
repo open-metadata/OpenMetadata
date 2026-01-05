@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -1178,6 +1179,145 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
           tableAfterChange.getDomains().get(0).getId(),
           "Asset " + table.getName() + " should have been migrated to the new domain");
     }
+  }
+
+  @Test
+  void test_renameDataProductWithTags(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_rename_tags"))
+            .withDescription("Data product for rename with tags test")
+            .withDomains(List.of(domain.getFullyQualifiedName()))
+            .withTags(List.of(shared.PERSONAL_DATA_TAG_LABEL));
+    DataProduct dataProduct = createEntity(create);
+
+    assertNotNull(dataProduct.getTags());
+    assertEquals(1, dataProduct.getTags().size());
+    assertEquals(
+        shared.PERSONAL_DATA_TAG.getFullyQualifiedName(), dataProduct.getTags().get(0).getTagFQN());
+
+    String oldName = dataProduct.getName();
+    String oldFqn = dataProduct.getFullyQualifiedName();
+    String newName = "renamed-" + oldName;
+
+    dataProduct.setName(newName);
+    DataProduct renamed = patchEntity(dataProduct.getId().toString(), dataProduct);
+
+    assertEquals(newName, renamed.getName());
+    assertNotEquals(oldFqn, renamed.getFullyQualifiedName());
+
+    DataProduct fetchedWithTags = getEntityWithFields(renamed.getId().toString(), "tags");
+    assertNotNull(fetchedWithTags.getTags(), "Tags should not be null after rename");
+    assertEquals(1, fetchedWithTags.getTags().size(), "Tags should be preserved after rename");
+    assertEquals(
+        shared.PERSONAL_DATA_TAG.getFullyQualifiedName(),
+        fetchedWithTags.getTags().get(0).getTagFQN(),
+        "Tag FQN should remain unchanged after data product rename");
+  }
+
+  @Test
+  void test_renameDataProductWithGlossaryTerms(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_rename_glossary"))
+            .withDescription("Data product for rename with glossary terms test")
+            .withDomains(List.of(domain.getFullyQualifiedName()))
+            .withTags(List.of(shared.GLOSSARY1_TERM1_LABEL));
+    DataProduct dataProduct = createEntity(create);
+
+    assertNotNull(dataProduct.getTags());
+    assertEquals(1, dataProduct.getTags().size());
+    assertEquals(
+        shared.GLOSSARY1_TERM1.getFullyQualifiedName(), dataProduct.getTags().get(0).getTagFQN());
+    assertEquals(TagLabel.TagSource.GLOSSARY, dataProduct.getTags().get(0).getSource());
+
+    String oldName = dataProduct.getName();
+    String oldFqn = dataProduct.getFullyQualifiedName();
+    String newName = "renamed-" + oldName;
+
+    dataProduct.setName(newName);
+    DataProduct renamed = patchEntity(dataProduct.getId().toString(), dataProduct);
+
+    assertEquals(newName, renamed.getName());
+    assertNotEquals(oldFqn, renamed.getFullyQualifiedName());
+
+    DataProduct fetchedWithTags = getEntityWithFields(renamed.getId().toString(), "tags");
+    assertNotNull(fetchedWithTags.getTags(), "Glossary terms should not be null after rename");
+    assertEquals(
+        1, fetchedWithTags.getTags().size(), "Glossary terms should be preserved after rename");
+    assertEquals(
+        shared.GLOSSARY1_TERM1.getFullyQualifiedName(),
+        fetchedWithTags.getTags().getFirst().getTagFQN(),
+        "Glossary term FQN should remain unchanged after data product rename");
+    assertEquals(
+        TagLabel.TagSource.GLOSSARY,
+        fetchedWithTags.getTags().getFirst().getSource(),
+        "Tag source should remain GLOSSARY after rename");
+  }
+
+  @Test
+  void test_renameDataProductWithMultipleTagsAndGlossaryTerms(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_rename_mixed"))
+            .withDescription("Data product for rename with mixed tags/glossary terms test")
+            .withDomains(List.of(domain.getFullyQualifiedName()))
+            .withTags(
+                List.of(
+                    shared.PERSONAL_DATA_TAG_LABEL,
+                    shared.PII_SENSITIVE_TAG_LABEL,
+                    shared.GLOSSARY1_TERM1_LABEL));
+    DataProduct dataProduct = createEntity(create);
+
+    assertNotNull(dataProduct.getTags());
+    assertEquals(3, dataProduct.getTags().size());
+
+    String oldName = dataProduct.getName();
+    String newName = "renamed-" + oldName;
+
+    dataProduct.setName(newName);
+    DataProduct renamed = patchEntity(dataProduct.getId().toString(), dataProduct);
+
+    DataProduct fetchedWithTags = getEntityWithFields(renamed.getId().toString(), "tags");
+    assertNotNull(
+        fetchedWithTags.getTags(), "Tags and glossary terms should not be null after rename");
+    assertEquals(
+        3,
+        fetchedWithTags.getTags().size(),
+        "All tags and glossary terms should be preserved after rename");
+
+    List<String> tagFQNs = fetchedWithTags.getTags().stream().map(TagLabel::getTagFQN).toList();
+
+    assertTrue(
+        tagFQNs.contains(shared.PERSONAL_DATA_TAG.getFullyQualifiedName()),
+        "Classification tag 1 should be preserved");
+    assertTrue(
+        tagFQNs.contains(shared.SENSITIVE_TAG.getFullyQualifiedName()),
+        "Classification tag 2 should be preserved");
+    assertTrue(
+        tagFQNs.contains(shared.GLOSSARY1_TERM1.getFullyQualifiedName()),
+        "Glossary term should be preserved");
+
+    long classificationCount =
+        fetchedWithTags.getTags().stream()
+            .filter(t -> t.getSource() == TagLabel.TagSource.CLASSIFICATION)
+            .count();
+    long glossaryCount =
+        fetchedWithTags.getTags().stream()
+            .filter(t -> t.getSource() == TagLabel.TagSource.GLOSSARY)
+            .count();
+
+    assertEquals(2, classificationCount, "Should have 2 classification tags");
+    assertEquals(1, glossaryCount, "Should have 1 glossary term");
   }
 
   @Test

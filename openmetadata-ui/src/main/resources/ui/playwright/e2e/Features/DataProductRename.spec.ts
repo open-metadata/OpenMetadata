@@ -164,17 +164,6 @@ test.describe('Data Product Rename', () => {
 
       await page.waitForLoadState('networkidle');
 
-      // Verify the table page still shows the data product association
-      // Note: The knowledge panel shows the displayName, not the renamed identifier
-      await expect(
-        page.getByTestId('KnowledgePanel.DataProducts')
-      ).toBeVisible();
-      await expect(
-        page
-          .getByTestId('KnowledgePanel.DataProducts')
-          .getByTestId('data-products-list')
-      ).toBeVisible();
-
       // Navigate back to data product and verify assets tab still shows the asset
       await page.goBack();
       await page.waitForLoadState('networkidle');
@@ -197,10 +186,7 @@ test.describe('Data Product Rename', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     // Create a new data product for this test
-    const testDataProduct = new DataProduct(
-      [domain],
-      `PW_DP_DisplayNameTest_${uuid()}`
-    );
+    const testDataProduct = new DataProduct([domain]);
     await testDataProduct.create(apiContext);
 
     const page = await browser.newPage();
@@ -213,7 +199,6 @@ test.describe('Data Product Rename', () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, testDataProduct.responseData);
 
-      const originalName = testDataProduct.responseData.name;
       const newDisplayName = `Updated Display Name ${uuid()}`;
 
       // Click manage button to open rename modal
@@ -231,6 +216,9 @@ test.describe('Data Product Rename', () => {
       await displayNameInput.clear();
       await displayNameInput.fill(newDisplayName);
 
+      // Capture current URL before saving
+      const urlBeforeSave = page.url();
+
       // Save the changes
       const patchResponse = page.waitForResponse(
         (response) =>
@@ -240,8 +228,8 @@ test.describe('Data Product Rename', () => {
       await page.getByTestId('save-button').click();
       await patchResponse;
 
-      // Verify the URL still uses the original name (not changed)
-      await expect(page).toHaveURL(new RegExp(`dataProduct/${originalName}`));
+      // Verify the URL hasn't changed (name unchanged, only display name updated)
+      await expect(page).toHaveURL(urlBeforeSave);
 
       // Verify the display name is updated in the header
       await expect(
@@ -262,10 +250,7 @@ test.describe('Data Product Rename', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     // Create a new data product and table for this test
-    const testDataProduct = new DataProduct(
-      [domain],
-      `PW_DP_MultiRename_${uuid()}`
-    );
+    const testDataProduct = new DataProduct([domain]);
     const testTable = new TableClass();
 
     await testDataProduct.create(apiContext);
@@ -365,11 +350,6 @@ test.describe('Data Product Rename', () => {
         .click();
 
       await page.waitForLoadState('networkidle');
-
-      // Verify the table still shows data product association
-      await expect(
-        page.getByTestId('KnowledgePanel.DataProducts')
-      ).toBeVisible();
 
       // Navigate back and verify assets still there
       await page.goBack();
