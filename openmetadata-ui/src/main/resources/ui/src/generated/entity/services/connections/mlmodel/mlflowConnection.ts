@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -24,6 +24,12 @@ export interface MlflowConnection {
      */
     registryUri:                 string;
     supportsMetadataExtraction?: boolean;
+    /**
+     * Authentication token for MLflow. This will be set as the MLFLOW_TRACKING_TOKEN
+     * environment variable for secure access to MLflow deployments. Supports Databricks, AWS
+     * SageMaker, and other hosted MLflow instances.
+     */
+    token?: string;
     /**
      * Mlflow Experiment tracking URI. E.g., http://localhost:5000
      */
