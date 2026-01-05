@@ -1,0 +1,3 @@
+-- No schema changes required for this migration
+-- This migration only fixes FQN hash for entities with service names containing dots
+-- The data migration is handled in Java code

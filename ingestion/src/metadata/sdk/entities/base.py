@@ -455,11 +455,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
         if isinstance(payload, dict):
             return cast(JsonDict, payload)
         if isinstance(payload, BaseModel):
-            json_result: Dict[
-                str, Any
-            ] = payload.model_dump(  # pyright: ignore[reportUnknownMemberType]
-                mode="json"
-            )
+            json_result: Dict[str, Any] = payload.model_dump(mode="json")
             return json_result
         raise TypeError("Expected mapping-compatible payload")
 
@@ -485,3 +481,51 @@ class BaseEntity(Generic[TEntity, TCreate]):
         if root is not None:
             return str(root)
         return str(identifier)
+
+    # ------------------------------------------------------------------
+    # EntityReference helper
+    # ------------------------------------------------------------------
+    @staticmethod
+    def to_entity_reference(entity: Any) -> Dict[str, Any]:
+        """Convert an entity to an EntityReference dict.
+
+        This is useful when setting owners, domains, or other reference fields
+        that expect EntityReference objects rather than full entities.
+
+        Can be called as either a static method or instance method:
+            Teams.to_entity_reference(team)  # static
+            team.to_entity_reference()       # instance (via __call__)
+
+        Args:
+            entity: The entity to convert (must have id, type, and name attributes)
+
+        Returns:
+            A dict with id, type, name, and optionally fullyQualifiedName
+
+        Example:
+            >>> team = Teams.retrieve_by_name("engineering")
+            >>> user = Users.retrieve_by_name("john.doe")
+            >>> database.owners = [
+            ...     team.to_entity_reference(),
+            ...     user.to_entity_reference()
+            ... ]
+        """
+        entity_id = getattr(entity, "id", None)
+        entity_type = getattr(entity, "entityType", None)
+        entity_name = getattr(entity, "name", None)
+        fqn = getattr(entity, "fullyQualifiedName", None)
+
+        if entity_id is None:
+            raise ValueError("Entity must have an 'id' attribute")
+
+        ref: Dict[str, Any] = {
+            "id": BaseEntity._stringify_identifier(entity_id),
+            "type": entity_type or entity.__class__.__name__.lower(),
+        }
+
+        if entity_name:
+            ref["name"] = str(entity_name)
+        if fqn:
+            ref["fullyQualifiedName"] = str(fqn)
+
+        return ref
