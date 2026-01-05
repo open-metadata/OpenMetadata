@@ -113,6 +113,7 @@ const AuthMechanismForm: FC<Props> = ({
     onSave({
       authType: AuthType.Jwt,
       config: {
+        // For SCIM we only want token with Unlimited expiry
         JWTTokenExpiry: JWTTokenExpiry.Unlimited,
       },
     });
