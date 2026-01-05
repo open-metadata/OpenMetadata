@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test, expect } from '../../support/fixtures/userPages';
+import { expect, Page, test as base } from '@playwright/test';
 import {
   DATA_CONSUMER_RULES,
   DATA_STEWARD_RULES,
@@ -91,6 +91,31 @@ const role = new RolesClass();
 const persona1 = new PersonaClass();
 const persona2 = new PersonaClass();
 
+const test = base.extend<{
+  adminPage: Page;
+  dataConsumerPage: Page;
+  dataStewardPage: Page;
+}>({
+  adminPage: async ({ browser }, use) => {
+    const adminPage = await browser.newPage();
+    await adminUser.login(adminPage);
+    await use(adminPage);
+    await adminPage.close();
+  },
+  dataConsumerPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await dataConsumerUser.login(page);
+    await use(page);
+    await page.close();
+  },
+  dataStewardPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await dataStewardUser.login(page);
+    await use(page);
+    await page.close();
+  },
+});
+
 const entities = [
   EntityDataClass.table1,
   EntityDataClass.topic1,
@@ -128,12 +153,8 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await tableEntity2.create(apiContext);
   await policy.create(apiContext, DATA_STEWARD_RULES);
   await role.create(apiContext, [policy.responseData.name]);
-
-  const adminUserResponse = await apiContext.get('/api/v1/users/name/admin');
-  const adminUserData = await adminUserResponse.json();
-
-  await persona1.create(apiContext, [adminUserData.id]);
-  await persona2.create(apiContext, [adminUserData.id]);
+  await persona1.create(apiContext, [adminUser.responseData.id]);
+  await persona2.create(apiContext, [adminUser.responseData.id]);
 
   await afterAction();
 });
@@ -554,98 +575,51 @@ test.describe('User Profile Feed Interactions', () => {
   });
 });
 
-test.describe.serial('User Profile Dropdown Persona Interactions', () => {
+test.describe('User Profile Dropdown Persona Interactions', () => {
   test.slow(true);
 
   test.beforeAll('Prerequisites', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    const adminUserResponse = await apiContext.get(
-      '/api/v1/users/name/admin?fields=personas,defaultPersona'
+    const { apiContext, afterAction } = await performUserLogin(
+      browser,
+      adminUser
     );
-    const adminUserData = await adminUserResponse.json();
 
-    const patchOperations = [];
-
-    if (adminUserData.defaultPersona) {
-      patchOperations.push({ op: 'remove', path: '/defaultPersona' });
-    }
-    if (adminUserData.personas?.length > 0) {
-      patchOperations.push({ op: 'remove', path: '/personas' });
-    }
-
-    patchOperations.push({
-      op: 'add',
-      path: '/personas',
-      value: [
+    await adminUser.patch({
+      apiContext,
+      patchData: [
         {
-          id: persona1.responseData.id,
-          type: 'persona',
-          name: persona1.responseData.name,
-          fullyQualifiedName: persona1.responseData.fullyQualifiedName,
+          op: 'add',
+          path: '/personas',
+          value: [
+            {
+              id: persona1.responseData.id,
+              type: 'persona',
+              name: persona1.responseData.name,
+              fullyQualifiedName: persona1.responseData.fullyQualifiedName,
+            },
+            {
+              id: persona2.responseData.id,
+              type: 'persona',
+              name: persona2.responseData.name,
+              fullyQualifiedName: persona2.responseData.fullyQualifiedName,
+            },
+          ],
         },
         {
-          id: persona2.responseData.id,
-          type: 'persona',
-          name: persona2.responseData.name,
-          fullyQualifiedName: persona2.responseData.fullyQualifiedName,
+          op: 'add',
+          path: '/defaultPersona',
+          value: {
+            id: persona1.responseData.id,
+            name: persona1.responseData.name,
+            displayName: persona1.responseData.displayName,
+            fullyQualifiedName: persona1.responseData.fullyQualifiedName,
+            type: 'persona',
+          },
         },
       ],
     });
 
-    patchOperations.push({
-      op: 'add',
-      path: '/defaultPersona',
-      value: {
-        id: persona1.responseData.id,
-        name: persona1.responseData.name,
-        displayName: persona1.responseData.displayName,
-        fullyQualifiedName: persona1.responseData.fullyQualifiedName,
-        type: 'persona',
-      },
-    });
-
-    await apiContext.patch(`/api/v1/users/${adminUserData.id}`, {
-      data: patchOperations,
-      headers: {
-        'Content-Type': 'application/json-patch+json',
-      },
-    });
-
     await afterAction();
-  });
-
-  test.afterAll('Cleanup personas', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    const adminUserResponse = await apiContext.get(
-      '/api/v1/users/name/admin?fields=personas,defaultPersona'
-    );
-    const adminUserData = await adminUserResponse.json();
-
-    const cleanupOperations = [];
-
-    if (adminUserData.defaultPersona) {
-      cleanupOperations.push({ op: 'remove', path: '/defaultPersona' });
-    }
-    if (adminUserData.personas?.length > 0) {
-      cleanupOperations.push({ op: 'remove', path: '/personas' });
-    }
-
-    if (cleanupOperations.length > 0) {
-      await apiContext.patch(`/api/v1/users/${adminUserData.id}`, {
-        data: cleanupOperations,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      });
-    }
-
-    await afterAction();
-  });
-
-  test.beforeEach('Navigate to home page', async ({ adminPage }) => {
-    await redirectToHomePage(adminPage);
   });
 
   test('Should display persona dropdown with pagination', async ({
@@ -1034,47 +1008,35 @@ test.describe.serial('User Profile Dropdown Persona Interactions', () => {
 });
 
 test.describe('User Profile Persona Interactions', () => {
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    const adminUserResponse = await apiContext.get(
-      '/api/v1/users/name/admin?fields=personas,defaultPersona'
+  test.beforeEach(async ({ browser }) => {
+    const { apiContext, afterAction } = await performUserLogin(
+      browser,
+      adminUser
     );
-    const adminUserData = await adminUserResponse.json();
 
-    const patchOperations = [];
-
-    if (adminUserData.defaultPersona) {
-      patchOperations.push({ op: 'remove', path: '/defaultPersona' });
-    }
-    if (adminUserData.personas?.length > 0) {
-      patchOperations.push({ op: 'remove', path: '/personas' });
-    }
-
-    patchOperations.push({
-      op: 'add',
-      path: '/personas',
-      value: [
+    // Patch admin user to add personas
+    await adminUser.patch({
+      apiContext,
+      patchData: [
         {
-          id: persona1.responseData.id,
-          type: 'persona',
-          name: persona1.responseData.name,
-          fullyQualifiedName: persona1.responseData.fullyQualifiedName,
-        },
-        {
-          id: persona2.responseData.id,
-          type: 'persona',
-          name: persona2.responseData.name,
-          fullyQualifiedName: persona2.responseData.fullyQualifiedName,
+          op: 'add',
+          path: '/personas',
+          value: [
+            {
+              id: persona1.responseData.id,
+              type: 'persona',
+              name: persona1.responseData.name,
+              fullyQualifiedName: persona1.responseData.fullyQualifiedName,
+            },
+            {
+              id: persona2.responseData.id,
+              type: 'persona',
+              name: persona2.responseData.name,
+              fullyQualifiedName: persona2.responseData.fullyQualifiedName,
+            },
+          ],
         },
       ],
-    });
-
-    await apiContext.patch(`/api/v1/users/${adminUserData.id}`, {
-      data: patchOperations,
-      headers: {
-        'Content-Type': 'application/json-patch+json',
-      },
     });
 
     await afterAction();
