@@ -10,24 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../styles/variables.less';
+import React from "react";
 
-.tags-form {
-  .mutually-exclusive-switch {
-    line-height: 1rem;
-  }
-
-  .description-text-area .block-editor-wrapper {
-    border-radius: @border-rad-xs;
-    .tiptap.ProseMirror {
-      height: 100px;
-      p:last-child {
-        padding: 0;
-      }
-    }
-  }
-  .description-text-area .bar-menu-wrapper {
-    border-top-left-radius: @border-rad-xs;
-    border-top-right-radius: @border-rad-xs;
-  }
+export interface TabItem {
+  label: string;
+  value: string;
+  disabled?: boolean;
 }
+
+export interface CommonTabPanelPropsType {
+  children?: React.ReactNode;
+  index: string;
+  value: string;
+}
+
+export type StorybookComponent<TArgs> = React.FC<TArgs> & {
+  args?: TArgs;
+  argTypes?: Record<string, unknown>;
+};
+
