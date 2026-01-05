@@ -26,13 +26,15 @@
     based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services,
     OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
   </description>
-  <version>1.10.0-SNAPSHOT</version>
+  <version>1.12.0-SNAPSHOT</version>
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
     <module>openmetadata-spec</module>
+    <module>openmetadata-sdk</module>
     <module>common</module>
     <module>openmetadata-shaded-deps</module>
     <module>openmetadata-service</module>
+    <module>openmetadata-integration-tests</module>
     <module>openmetadata-mcp</module>
     <module>openmetadata-ui-core-components</module>
     <module>openmetadata-ui</module>
@@ -63,16 +65,7 @@
     </developer>
   </developers>
 
-  <distributionManagement>
-    <snapshotRepository>
-      <id>ossrh</id>
-      <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-    </snapshotRepository>
-    <repository>
-      <id>ossrh</id>
-      <url>https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/</url>
-    </repository>
-  </distributionManagement>
+  <!-- distributionManagement section removed - not needed with central-publishing-maven-plugin -->
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -83,7 +76,7 @@
     <dropwizard.version>4.0.14</dropwizard.version>
     <dropwizard-jdbi3.version>4.0.14</dropwizard-jdbi3.version>
     <diffMatch.version>1.0</diffMatch.version>
-    <jersey-bom.version>3.1.5</jersey-bom.version>
+    <jersey-bom.version>3.1.10</jersey-bom.version>
     <javax.ws.rs-api.version>2.1.1</javax.ws.rs-api.version>
     <!-- update from here -->
     <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
@@ -100,7 +93,6 @@
     <jdbi3.version>3.37.1</jdbi3.version>
     <commons-cli.version>1.9.0</commons-cli.version>
     <commons-io.version>2.17.0</commons-io.version>
-    <flyway.version>9.22.3</flyway.version>
     <redshift-jdbc.version>2.1.0.30</redshift-jdbc.version>
     <gson.version>2.11.0</gson.version>
     <mysql.connector.version>9.3.0</mysql.connector.version>
@@ -108,16 +100,17 @@
     <jsonschema2pojo.version>1.2.2</jsonschema2pojo.version>
     <lombok.version>1.18.36</lombok.version>
     <tomcat-jdbc.version>11.0.5</tomcat-jdbc.version>
+    <hikaricp.version>7.0.2</hikaricp.version>
     <elasticsearch.version>7.17.25</elasticsearch.version>
     <opensearch.version>2.6.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.25</openapiswagger.version>
     <httpclient.version>4.5.14</httpclient.version>
-    <spring.version>6.2.10</spring.version>
-    <log4j.version>2.21.0</log4j.version>
+    <spring.version>6.2.11</spring.version>
+    <log4j.version>2.25.3</log4j.version>
     <org.junit.jupiter.version>5.9.3</org.junit.jupiter.version>
     <dropwizard-health.version>4.0.14</dropwizard-health.version>
-    <handlebars.version>4.3.1</handlebars.version>
+    <handlebars.version>4.5.0</handlebars.version>
     <fernet.version>1.5.0</fernet.version>
     <antlr.version>4.13.2</antlr.version>
 
@@ -150,23 +143,39 @@
     <slack.version>1.29.2</slack.version>
     <spotless.version>2.41.1</spotless.version>
     <picocli.version>4.7.6</picocli.version>
-    <logback-core.version>1.5.18</logback-core.version>
+    <logback-core.version>1.5.19</logback-core.version>
     <logback-classic.version>1.5.18</logback-classic.version>
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
     <jetty.version>11.0.25</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
-    <mcp-sdk.version>0.11.2</mcp-sdk.version>
+    <mcp-sdk.version>0.14.0</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
+    <flyway.version>9.22.3</flyway.version>
+    <angus-mail.version>2.0.4</angus-mail.version>
+    <commonmark.version>0.26.0</commonmark.version>
+    <flexmark.version>0.64.8</flexmark.version>
+    <owasp-html-sanitizer.version>20240325.1</owasp-html-sanitizer.version>
   </properties>
 
   <dependencyManagement>
     <dependencies>
       <dependency>
+        <groupId>org.eclipse.angus</groupId>
+        <artifactId>angus-mail</artifactId>
+        <version>${angus-mail.version}</version>
+      </dependency>
+      <dependency>
         <groupId>org.antlr</groupId>
         <artifactId>antlr4-runtime</artifactId>
         <version>${antlr.version}</version>
+      </dependency>
+      <!-- Override grpc-netty-shaded globally to fix CVE-2024-1106 -->
+      <dependency>
+        <groupId>io.grpc</groupId>
+        <artifactId>grpc-netty-shaded</artifactId>
+        <version>1.76.0</version>
       </dependency>
       <dependency>
         <groupId>org.glassfish.jersey</groupId>
@@ -352,17 +361,6 @@
         <version>${commons-io.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.flywaydb</groupId>
-        <artifactId>flyway-maven-plugin</artifactId>
-        <version>${flyway.version}</version>
-        <exclusions>
-          <exclusion>
-            <groupId>org.codehaus.plexus</groupId>
-            <artifactId>plexus-utils</artifactId>
-          </exclusion>
-        </exclusions>
-      </dependency>
-      <dependency>
         <groupId>com.mysql</groupId>
         <artifactId>mysql-connector-j</artifactId>
         <version>${mysql.connector.version}</version>
@@ -374,11 +372,6 @@
         </exclusions>
       </dependency>
       <dependency>
-        <groupId>org.flywaydb</groupId>
-        <artifactId>flyway-mysql</artifactId>
-        <version>${flyway.version}</version>
-      </dependency>
-      <dependency>
         <groupId>org.postgresql</groupId>
         <artifactId>postgresql</artifactId>
         <version>${postgres.connector.version}</version>
@@ -387,16 +380,6 @@
         <groupId>com.google.code.gson</groupId>
         <artifactId>gson</artifactId>
         <version>${gson.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.opensearch.client</groupId>
-        <artifactId>opensearch-rest-high-level-client</artifactId>
-        <version>${opensearch.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.elasticsearch.client</groupId>
-        <artifactId>elasticsearch-rest-high-level-client</artifactId>
-        <version>${elasticsearch.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.httpcomponents</groupId>
@@ -510,6 +493,11 @@
         <groupId>org.apache.tomcat</groupId>
         <artifactId>tomcat-jdbc</artifactId>
         <version>${tomcat-jdbc.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.zaxxer</groupId>
+        <artifactId>HikariCP</artifactId>
+        <version>${hikaricp.version}</version>
       </dependency>
       <dependency>
         <groupId>org.junit.jupiter</groupId>
@@ -657,6 +645,29 @@
         <groupId>io.lettuce</groupId>
         <artifactId>lettuce-core</artifactId>
         <version>${lettuce.version}</version>
+      </dependency>
+
+      <!-- Flyway dependencies - only for SQL parsing, not migration management -->
+      <dependency>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-core</artifactId>
+        <version>${flyway.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-maven-plugin</artifactId>
+        <version>${flyway.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.codehaus.plexus</groupId>
+            <artifactId>plexus-utils</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-mysql</artifactId>
+        <version>${flyway.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -1052,14 +1063,14 @@
         </configuration>
       </plugin>
       <plugin>
-        <groupId>org.sonatype.plugins</groupId>
-        <artifactId>nexus-staging-maven-plugin</artifactId>
-        <version>1.6.13</version>
+        <groupId>org.sonatype.central</groupId>
+        <artifactId>central-publishing-maven-plugin</artifactId>
+        <version>0.9.0</version>
         <extensions>true</extensions>
         <configuration>
-          <serverId>ossrh</serverId>
-          <nexusUrl>https://ossrh-staging-api.central.sonatype.com/</nexusUrl>
-          <autoReleaseAfterClose>true</autoReleaseAfterClose>
+          <publishingServerId>central</publishingServerId>
+          <autoPublish>true</autoPublish>
+          <waitUntil>published</waitUntil>
         </configuration>
       </plugin>
     </plugins>

@@ -173,7 +173,7 @@ class ProfilerTest(TestCase):
             maxLength=None,
             mean=30.5,
             sum=61.0,
-            stddev=0.25,
+            stddev=0.5,
             variance=None,
             distinctCount=2.0,
             distinctProportion=1.0,
@@ -182,7 +182,7 @@ class ProfilerTest(TestCase):
             firstQuartile=30.0,
             thirdQuartile=31.0,
             interQuartileRange=1.0,
-            nonParametricSkew=2.0,
+            nonParametricSkew=1.0,
             histogram=Histogram(boundaries=["30.000 and up"], frequencies=[2]),
         )
 

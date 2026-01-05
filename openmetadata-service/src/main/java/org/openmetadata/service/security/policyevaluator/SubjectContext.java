@@ -39,13 +39,18 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
-public record SubjectContext(User user) {
+public record SubjectContext(User user, String impersonatedBy) {
   private static final String USER_FIELDS = "roles,teams,isAdmin,profile,domains";
   public static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile,domains";
 
   public static SubjectContext getSubjectContext(String userName) {
-    User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
-    return new SubjectContext(user);
+    User user = SubjectCache.getUserContext(userName);
+    return new SubjectContext(user, null);
+  }
+
+  public static SubjectContext getSubjectContext(String userName, String impersonatedBy) {
+    User user = SubjectCache.getUserContext(userName);
+    return new SubjectContext(user, impersonatedBy);
   }
 
   public boolean isAdmin() {
@@ -68,6 +73,28 @@ public record SubjectContext(User user) {
         for (EntityReference userTeam : listOrEmpty(user.getTeams())) {
           if (userTeam.getName().equals(owner.getName())) {
             return true; // Owner is a team, and the user is part of this team.
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  public boolean isReviewer(List<EntityReference> reviewers) {
+    if (nullOrEmpty(reviewers)) {
+      return false;
+    }
+    for (EntityReference reviewer : reviewers) {
+      // Reviewer is the same user
+      if (reviewer.getType().equals(Entity.USER) && reviewer.getName().equals(user.getName())) {
+        return true;
+      }
+
+      // Reviewer is a team and user is a member of that team
+      if (reviewer.getType().equals(Entity.TEAM)) {
+        for (EntityReference userTeam : listOrEmpty(user.getTeams())) {
+          if (userTeam.getName().equals(reviewer.getName())) {
+            return true;
           }
         }
       }
@@ -185,7 +212,27 @@ public record SubjectContext(User user) {
 
   // Iterate over all the policies of the team hierarchy the user belongs to
   public Iterator<PolicyContext> getPolicies(List<EntityReference> resourceOwners) {
-    return new UserPolicyIterator(user, resourceOwners, new ArrayList<>());
+    // Get cached user policies (roles + team hierarchy)
+    List<PolicyContext> cachedPolicies = SubjectCache.getPolicies(user.getName());
+
+    // If no resource owners, return cached policies directly
+    if (nullOrEmpty(resourceOwners)) {
+      return cachedPolicies.iterator();
+    }
+
+    // Add resource owner team policies (not cached - resource specific)
+    List<PolicyContext> allPolicies = new ArrayList<>(cachedPolicies);
+
+    // Get all teams visited during user policy loading to avoid duplicates
+    List<UUID> teamsVisited = SubjectCache.getVisitedTeams(user.getName());
+
+    for (EntityReference owner : resourceOwners) {
+      if (owner.getType().equals(Entity.TEAM)) {
+        allPolicies.addAll(SubjectCache.getTeamPoliciesForResource(owner.getId(), teamsVisited));
+      }
+    }
+
+    return allPolicies.iterator();
   }
 
   public List<EntityReference> getTeams() {
@@ -194,7 +241,7 @@ public record SubjectContext(User user) {
 
   /** Returns true if the user has any of the roles (either direct or inherited roles) */
   public boolean hasAnyRole(String roles) {
-    return hasRole(user(), roles);
+    return hasRole(user, roles);
   }
 
   /** Return true if the given user has any roles the list of roles */

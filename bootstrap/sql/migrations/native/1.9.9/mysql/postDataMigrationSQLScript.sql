@@ -28,7 +28,8 @@ SET pdts.json = JSON_OBJECT(
     'profileData', pdts.json,
     'profileType', 'table'
 )
-WHERE pdts.extension = 'table.tableProfile';
+WHERE pdts.extension = 'table.tableProfile'
+AND pdts.json->>'$.profileData' IS NULL;
 
 -- Migrate system profiles (direct match)
 UPDATE profiler_data_time_series pdts
@@ -45,7 +46,8 @@ SET pdts.json = JSON_OBJECT(
     'profileData', pdts.json,
     'profileType', 'system'
 )
-WHERE pdts.extension = 'table.systemProfile';
+WHERE pdts.extension = 'table.systemProfile'
+AND pdts.json->>'$.profileData' IS NULL;
 
 -- Migrate column profiles using temporary mapping table for better performance
 -- Create temporary mapping table to extract table hash from column hash

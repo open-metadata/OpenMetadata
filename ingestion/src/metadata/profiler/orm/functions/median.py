@@ -43,6 +43,13 @@ def _(elements, compiler, **kwargs):
     return MedianFn.default_fn(elements, compiler, **kwargs)
 
 
+@compiles(MedianFn, Dialects.Snowflake)
+def _(elements, compiler, **kwargs):
+    col = compiler.process(elements.clauses.clauses[0])
+    percentile = elements.clauses.clauses[2].value
+    return "approx_percentile(%s, %s)" % (col, percentile)
+
+
 @compiles(MedianFn, Dialects.BigQuery)
 def _(elements, compiler, **kwargs):
     col, _, percentile = [
@@ -166,52 +173,138 @@ def _(elements, compiler, **kwargs):
 
 @compiles(MedianFn, Dialects.MySQL)
 def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
-    """Median computation for MySQL"""
+    """
+    MySQL median implementation with optional GROUP BY correlation.
+
+    Supports two modes:
+    1. Non-correlated (default): MedianFn(col, table, percentile)
+       - Computes median across entire table
+       - Used by profiler
+
+    2. Correlated: MedianFn(col, table, percentile, dimension_col_name)
+       - Computes median per-group when used with GROUP BY
+       - Used by dimensionality validation
+       - Correlation: WHERE inner.dimension = outer.dimension
+       - dimension_col_name should be a string column name
+    """
     col = compiler.process(elements.clauses.clauses[0])
     table = elements.clauses.clauses[1].value
     percentile = elements.clauses.clauses[2].value
 
-    return """
-    (SELECT
-        {col}
-    FROM (
-        SELECT
-            {col}, 
-            ROW_NUMBER() OVER () AS row_num
-        FROM 
-            {table},
-            (SELECT @counter := COUNT(*) FROM {table}) t_count 
-        ORDER BY {col}
-        ) temp
-    WHERE temp.row_num = ROUND({percentile} * @counter)
-    )
-    """.format(
-        col=col, table=table, percentile=percentile
-    )
+    # Check for optional 4th parameter (dimension column name string for correlation)
+    dimension_col = None
+    if len(elements.clauses.clauses) > 3:
+        dimension_col = elements.clauses.clauses[3].value
+
+    if dimension_col:
+        # CORRELATED MODE: Respect GROUP BY context
+        # Filter subquery by dimension: WHERE inner.dim = outer.dim
+        return """
+        (SELECT
+            {col}
+        FROM (
+            SELECT
+                {col},
+                ROW_NUMBER() OVER () AS row_num
+            FROM
+                {table} AS median_inner,
+                (SELECT @counter := COUNT(*)
+                 FROM {table} AS median_count
+                 WHERE median_count.{dimension_col} = {table}.{dimension_col}) t_count
+            WHERE median_inner.{dimension_col} = {table}.{dimension_col}
+            ORDER BY {col}
+            ) temp
+        WHERE temp.row_num = ROUND({percentile} * @counter)
+        )
+        """.format(
+            col=col, table=table, percentile=percentile, dimension_col=dimension_col
+        )
+    else:
+        # NON-CORRELATED MODE: Original behavior (profiler)
+        return """
+        (SELECT
+            {col}
+        FROM (
+            SELECT
+                {col},
+                ROW_NUMBER() OVER () AS row_num
+            FROM
+                {table},
+                (SELECT @counter := COUNT(*) FROM {table}) t_count
+            ORDER BY {col}
+            ) temp
+        WHERE temp.row_num = ROUND({percentile} * @counter)
+        )
+        """.format(
+            col=col, table=table, percentile=percentile
+        )
 
 
 @compiles(MedianFn, Dialects.SQLite)
 def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
+    """
+    SQLite median implementation with optional GROUP BY correlation.
+
+    Supports two modes:
+    1. Non-correlated (default): MedianFn(col, table, percentile)
+       - Computes median across entire table
+       - Used by profiler
+
+    2. Correlated: MedianFn(col, table, percentile, dimension_col_name)
+       - Computes median per-group when used with GROUP BY
+       - Used by dimensionality validation
+       - Correlation: WHERE inner.dimension = outer.dimension
+       - dimension_col_name should be a string column name
+    """
     col = compiler.process(elements.clauses.clauses[0])
     table = elements.clauses.clauses[1].value
     percentile = elements.clauses.clauses[2].value
 
-    return """
-    (SELECT 
-        {col}
-    FROM {table}
-    WHERE {col} IS NOT NULL
-    ORDER BY {col}
-    LIMIT 1
-    OFFSET (
-            SELECT ROUND(COUNT(*) * {percentile} -1)
-            FROM {table}
-            WHERE {col} IS NOT NULL
+    # Check for optional 4th parameter (dimension column name string for correlation)
+    dimension_col = None
+    if len(elements.clauses.clauses) > 3:
+        dimension_col = elements.clauses.clauses[3].value
+
+    if dimension_col:
+        # CORRELATED MODE: Respect GROUP BY context
+        # Uses window functions to enable correlation (avoids double-nested subquery)
+        # Filter by dimension: WHERE inner.dimension = outer.dimension
+        return """
+        (SELECT AVG({col})
+         FROM (
+           SELECT {col},
+                  ROW_NUMBER() OVER (ORDER BY {col}) as rn,
+                  COUNT(*) OVER () as cnt
+           FROM {table} AS median_inner
+           WHERE median_inner.{dimension_col} = {table}.{dimension_col}
+             AND {col} IS NOT NULL
+         )
+         WHERE rn IN (
+           CAST((cnt + 1) * {percentile} AS INTEGER),
+           CAST(cnt * {percentile} + 1 AS INTEGER)
+         )
         )
-    )
-    """.format(
-        col=col, table=table, percentile=percentile
-    )
+        """.format(
+            col=col, table=table, percentile=percentile, dimension_col=dimension_col
+        )
+    else:
+        # NON-CORRELATED MODE: Original behavior (profiler)
+        return """
+        (SELECT
+            {col}
+        FROM {table}
+        WHERE {col} IS NOT NULL
+        ORDER BY {col}
+        LIMIT 1
+        OFFSET (
+                SELECT ROUND(COUNT(*) * {percentile} -1)
+                FROM {table}
+                WHERE {col} IS NOT NULL
+            )
+        )
+        """.format(
+            col=col, table=table, percentile=percentile
+        )
 
 
 @compiles(MedianFn, Dialects.Doris)
@@ -219,3 +312,16 @@ def _(elements, compiler, **kwargs):
     col = compiler.process(elements.clauses.clauses[0])
     percentile = elements.clauses.clauses[2].value
     return "percentile_approx(%s, %.2f)" % (col, percentile)
+
+
+@compiles(MedianFn, Dialects.PinotDB)
+def _(elements, compiler, **kw):  # pylint: disable=unused-argument
+    """Median/percentile computation for PinotDB.
+
+    PinotDB uses PERCENTILE(column, percentile_value) syntax instead of
+    the standard SQL PERCENTILE_CONT(...) WITHIN GROUP (ORDER BY ...) syntax.
+    """
+    col = compiler.process(elements.clauses.clauses[0])
+    percentile = elements.clauses.clauses[2].value
+    percentile_int = int(percentile * 100)
+    return "PERCENTILE(%s, %d)" % (col, percentile_int)

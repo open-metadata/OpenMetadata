@@ -37,6 +37,7 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Database } from '../../generated/entity/data/database';
+import { Operation } from '../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
@@ -52,7 +53,10 @@ import {
   getCommonDiffsFromVersionData,
   getCommonExtraInfoForVersionDetails,
 } from '../../utils/EntityVersionUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
@@ -93,6 +97,14 @@ function DatabaseVersionPage() {
 
   const viewVersionPermission = useMemo(
     () => servicePermissions.ViewAll || servicePermissions.ViewBasic,
+    [servicePermissions]
+  );
+  const viewCustomPropertiesPermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        servicePermissions,
+        Operation.ViewCustomFields
+      ),
     [servicePermissions]
   );
 
@@ -252,7 +264,7 @@ function DatabaseVersionPage() {
             isVersionView
             entityType={EntityType.DATABASE}
             hasEditAccess={false}
-            hasPermission={viewVersionPermission}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },

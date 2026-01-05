@@ -20,7 +20,6 @@ import {
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { Table } from '../../generated/entity/data/table';
-import { getCurrentMillis } from '../../utils/date-time/DateTimeUtils';
 import {
   getEntityChildDetails,
   getSortedTagsWithHighlight,
@@ -38,7 +37,10 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { EntityReference } from '../../generated/entity/type';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { fetchCharts } from '../../utils/DashboardDetailsUtils';
-import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../utils/date-time/DateTimeUtils';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
@@ -185,6 +187,10 @@ export const DataAssetSummaryPanel = ({
       case EntityType.STORED_PROCEDURE:
       case EntityType.TABLE:
       case EntityType.TOPIC:
+      case EntityType.DIRECTORY:
+      case EntityType.FILE:
+      case EntityType.SPREADSHEET:
+      case EntityType.WORKSHEET:
         return (
           <>
             {entityInfo.some((info) =>

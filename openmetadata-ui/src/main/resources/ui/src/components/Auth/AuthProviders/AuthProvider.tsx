@@ -26,9 +26,8 @@ import {
   InternalAxiosRequestConfig,
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import { isEmpty, isNil, isNumber } from 'lodash';
+import { isNil, isNumber } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
-import Qs from 'qs';
 import {
   ComponentType,
   createContext,
@@ -44,14 +43,12 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
 import {
-  DEFAULT_DOMAIN_VALUE,
   ES_MAX_PAGE_SIZE,
   REDIRECT_PATHNAME,
   ROUTES,
 } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
-import { SearchIndex } from '../../../enums/search.enum';
 import {
   AuthenticationConfiguration,
   ClientType,
@@ -78,9 +75,8 @@ import {
   prepareUserProfileFromClaims,
   validateAuthFields,
 } from '../../../utils/AuthProvider.util';
-import { getPathNameFromWindowLocation } from '../../../utils/RouterUtils';
-import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import {
+  clearOidcToken,
   getOidcToken,
   getRefreshToken,
   setOidcToken,
@@ -89,6 +85,7 @@ import {
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
+import { withDomainFilter } from '../../../utils/DomainUtils';
 import Loader from '../../common/Loader/Loader';
 import Auth0Authenticator from '../AppAuthenticators/Auth0Authenticator';
 import BasicAuthAuthenticator from '../AppAuthenticators/BasicAuthAuthenticator';
@@ -122,7 +119,6 @@ const isEmailVerifyField = 'isEmailVerified';
 let requestInterceptor: number | null = null;
 let responseInterceptor: number | null = null;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let pendingRequests: any[] = [];
 
 type AuthContextType = {
@@ -233,7 +229,20 @@ export const AuthProvider = ({
 
   const handledVerifiedUser = () => {
     if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
-      navigate(ROUTES.HOME);
+      // Check if provider uses OidcAuthenticator which has routing logic
+      const usesOidcAuthenticator = [
+        AuthProviderEnum.Google,
+        AuthProviderEnum.CustomOidc,
+        AuthProviderEnum.AwsCognito,
+      ].includes(authConfig?.provider as AuthProviderEnum);
+
+      // For providers using OidcAuthenticator, navigate to HOME for routing
+      // For all others (Azure, Auth0, SAML, etc.), navigate directly to MY_DATA
+      if (usesOidcAuthenticator && clientType !== ClientType.Confidential) {
+        navigate(ROUTES.HOME);
+      } else {
+        navigate(ROUTES.MY_DATA);
+      }
     }
   };
 
@@ -252,8 +261,7 @@ export const AuthProvider = ({
 
   const resetUserDetails = (forceLogout = false) => {
     setCurrentUser({} as User);
-    setOidcToken('');
-    setRefreshToken('');
+    clearOidcToken();
     setIsAuthenticated(false);
     setApplicationLoading(false);
     clearTimeout(timeoutId);
@@ -452,56 +460,6 @@ export const AuthProvider = ({
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const withDomainFilter = (config: InternalAxiosRequestConfig<any>) => {
-    const isGetRequest = config.method === 'get';
-    const activeDomain = useDomainStore.getState().activeDomain;
-    const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
-    const currentPath = getPathNameFromWindowLocation();
-    const shouldNotIntercept = [
-      '/domain',
-      '/auth/logout',
-      '/auth/refresh',
-    ].reduce((prev, curr) => {
-      return prev || currentPath.startsWith(curr);
-    }, false);
-
-    // Do not intercept requests from domains page or /auth endpoints
-    if (shouldNotIntercept) {
-      return config;
-    }
-
-    if (isGetRequest && hasActiveDomain) {
-      // Filter ES Query
-      if (config.url?.includes('/search/query')) {
-        if (config.params?.index === SearchIndex.TAG) {
-          return config;
-        }
-
-        // Parse and update the query parameter
-        const queryParams = Qs.parse(config.url.split('?')[1]);
-        // adding quotes for exact matching
-        const domainStatement = `(domains.fullyQualifiedName:"${escapeESReservedCharacters(
-          activeDomain
-        )}")`;
-        queryParams.q = queryParams.q ?? '';
-        queryParams.q += isEmpty(queryParams.q)
-          ? domainStatement
-          : ` AND ${domainStatement}`;
-
-        // Update the URL with the modified query parameter
-        config.url = `${config.url.split('?')[0]}?${Qs.stringify(queryParams)}`;
-      } else {
-        config.params = {
-          ...config.params,
-          domain: activeDomain,
-        };
-      }
-    }
-
-    return config;
-  };
-
   /**
    * Initialize Axios interceptors to intercept every request and response
    * to handle appropriately. This should be called only when security is enabled.
@@ -517,7 +475,6 @@ export const AuthProvider = ({
     }
 
     requestInterceptor = axiosClient.interceptors.request.use(async function (
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       config: InternalAxiosRequestConfig<any>
     ) {
       // Need to read token from local storage as it might have been updated with refresh

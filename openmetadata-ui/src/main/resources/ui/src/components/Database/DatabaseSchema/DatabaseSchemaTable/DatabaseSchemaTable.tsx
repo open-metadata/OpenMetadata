@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
+  INITIAL_TABLE_FILTERS,
   PAGE_SIZE,
 } from '../../../../constants/constants';
 import { DATABASE_SCHEMAS_DUMMY_DATA } from '../../../../constants/Database.constants';
@@ -41,14 +42,17 @@ import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
+import { useTableFilters } from '../../../../hooks/useTableFilters';
 import {
   getDatabaseSchemas,
   patchDatabaseSchemaDetails,
 } from '../../../../rest/databaseAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
+  getColumnSorter,
   getEntityBulkEditPath,
   highlightSearchText,
 } from '../../../../utils/EntityUtils';
@@ -57,6 +61,7 @@ import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
 import {
   dataProductTableObject,
+  descriptionTableObject,
   domainTableObject,
   ownerTableObject,
   tagTableObject,
@@ -66,7 +71,6 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import DisplayName from '../../../common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -82,8 +86,12 @@ export const DatabaseSchemaTable = ({
   const { permissions } = usePermissionProvider();
   const [schemas, setSchemas] = useState<DatabaseSchema[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showDeletedSchemas, setShowDeletedSchemas] = useState<boolean>(false);
+
   const { data } = useGenericContext<Database>();
+  const { filters: tableFilters, setFilters } = useTableFilters(
+    INITIAL_TABLE_FILTERS
+  );
+  const { showDeletedTables: showDeletedSchemas } = tableFilters;
 
   const { deleted: isDatabaseDeleted } = data ?? {};
 
@@ -111,6 +119,7 @@ export const DatabaseSchemaTable = ({
     paging,
     handlePagingChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
 
   const fetchDatabaseSchema = useCallback(
@@ -141,69 +150,77 @@ export const DatabaseSchemaTable = ({
     [pageSize, decodedDatabaseFQN, showDeletedSchemas]
   );
 
-  const searchSchema = async (
-    searchValue: string,
-    pageNumber = INITIAL_PAGING_VALUE
-  ) => {
-    setIsLoading(true);
-    try {
-      const response = await searchQuery({
-        query: `(name.keyword:*${searchValue}*) OR (description.keyword:*${searchValue}*)`,
-        pageNumber,
-        pageSize: PAGE_SIZE,
-        queryFilter: {
-          query: {
-            bool: {
-              must: [
-                { term: { 'database.fullyQualifiedName': decodedDatabaseFQN } },
-              ],
-            },
-          },
-        },
-        searchIndex: SearchIndex.DATABASE_SCHEMA,
-        includeDeleted: showDeletedSchemas,
-        trackTotalHits: true,
+  const searchSchema = useCallback(
+    async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
+      setIsLoading(true);
+      handlePageChange(pageNumber, {
+        cursorType: null,
+        cursorValue: undefined,
       });
-      const data = response.hits.hits.map((schema) => schema._source);
-      const total = response.hits.total.value;
-      setSchemas(data);
-      handlePagingChange({ total });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      try {
+        const response = await searchQuery({
+          query: '',
+          pageNumber,
+          pageSize: PAGE_SIZE,
+          queryFilter: buildSchemaQueryFilter(
+            'database.fullyQualifiedName',
+            decodedDatabaseFQN,
+            searchValue
+          ),
+          searchIndex: SearchIndex.DATABASE_SCHEMA,
+          includeDeleted: showDeletedSchemas,
+          trackTotalHits: true,
+        });
+        const data = response.hits.hits.map((schema) => schema._source);
+        const total = response.hits.total.value;
+        setSchemas(data);
+        handlePagingChange({ total });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [decodedDatabaseFQN, showDeletedSchemas, handlePagingChange]
+  );
 
   const handleShowDeletedSchemas = useCallback((value: boolean) => {
-    setShowDeletedSchemas(value);
-    handlePageChange(INITIAL_PAGING_VALUE);
+    setFilters({ showDeletedTables: value });
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
   }, []);
 
   const handleSchemaPageChange = useCallback(
     ({ currentPage, cursorType }: PagingHandlerParams) => {
       if (searchValue) {
         searchSchema(searchValue, currentPage);
+        handlePageChange(currentPage);
       } else if (cursorType) {
         fetchDatabaseSchema({ [cursorType]: paging[cursorType] });
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
       }
-      handlePageChange(currentPage);
     },
     [paging, fetchDatabaseSchema, searchSchema, searchValue]
   );
 
-  const onSchemaSearch = (value: string) => {
-    navigate({
-      search: QueryString.stringify({
-        schema: isEmpty(value) ? undefined : value,
-      }),
-    });
-    if (value) {
-      searchSchema(value);
-    } else {
-      fetchDatabaseSchema();
-    }
-  };
+  const onSchemaSearch = useCallback(
+    (value: string) => {
+      setFilters({ schema: isEmpty(value) ? undefined : value });
+      if (value) {
+        searchSchema(value);
+      } else {
+        fetchDatabaseSchema();
+        handlePageChange(INITIAL_PAGING_VALUE);
+      }
+    },
+    [setFilters, searchSchema, fetchDatabaseSchema]
+  );
 
   const handleDisplayNameUpdate = useCallback(
     async (data: EntityName, id?: string) => {
@@ -238,6 +255,7 @@ export const DatabaseSchemaTable = ({
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 250,
+        sorter: getColumnSorter<DatabaseSchema, 'name'>('name'),
         render: (_, record: DatabaseSchema) => (
           <DisplayName
             displayName={stringToHTML(
@@ -259,20 +277,7 @@ export const DatabaseSchemaTable = ({
           />
         ),
       },
-      {
-        title: t('label.description'),
-        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
-        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
-        width: 300,
-        render: (text: string) =>
-          text?.trim() ? (
-            <RichTextEditorPreviewerNew markdown={text} />
-          ) : (
-            <span className="text-grey-muted">
-              {t('label.no-entity', { entity: t('label.description') })}
-            </span>
-          ),
-      },
+      ...descriptionTableObject<DatabaseSchema>({ width: 300 }),
       ...ownerTableObject<DatabaseSchema>(),
       ...domainTableObject<DatabaseSchema>(),
       ...dataProductTableObject<DatabaseSchema>(),
@@ -300,6 +305,13 @@ export const DatabaseSchemaTable = ({
 
       return;
     }
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchDatabaseSchema({ [cursorType]: cursorValue });
+
+      return;
+    }
 
     fetchDatabaseSchema();
   }, [
@@ -308,7 +320,20 @@ export const DatabaseSchemaTable = ({
     showDeletedSchemas,
     isDatabaseDeleted,
     isCustomizationPage,
+    pagingCursor,
   ]);
+
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('label.search-for-type', {
+        type: t('label.schema'),
+      }),
+      typingInterval: 500,
+      searchValue: searchValue,
+      onSearch: onSchemaSearch,
+    }),
+    [onSchemaSearch, searchValue]
+  );
 
   return (
     <Table
@@ -351,14 +376,7 @@ export const DatabaseSchemaTable = ({
       pagination={false}
       rowKey="id"
       scroll={TABLE_SCROLL_VALUE}
-      searchProps={{
-        placeholder: t('label.search-for-type', {
-          type: t('label.schema'),
-        }),
-        value: searchValue,
-        typingInterval: 500,
-        onSearch: onSchemaSearch,
-      }}
+      searchProps={searchProps}
       size="small"
       staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
     />

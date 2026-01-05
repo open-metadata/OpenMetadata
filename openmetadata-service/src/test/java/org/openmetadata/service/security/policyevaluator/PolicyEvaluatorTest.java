@@ -87,12 +87,14 @@ class PolicyEvaluatorTest {
       ALL, VIEW_ALL, VIEW_BASIC, VIEW_QUERIES, EDIT_ALL, EDIT_LINEAGE, EDIT_CUSTOM_FIELDS
     };
     ResourcePermission rp1 = getResourcePermission("r1", Access.DENY, op1);
+    rp1.setPermissions(PolicyEvaluator.trimPermissions(rp1.getPermissions()));
     List<MetadataOperation> expectedOp1 = new ArrayList<>(List.of(ALL, VIEW_ALL, EDIT_ALL));
 
     MetadataOperation[] op2 = {
       ALL, VIEW_BASIC, VIEW_USAGE, EDIT_ALL, EDIT_LINEAGE, EDIT_CUSTOM_FIELDS, EDIT_DISPLAY_NAME
     };
     ResourcePermission rp2 = getResourcePermission("r2", Access.ALLOW, op2);
+    rp2.setPermissions(PolicyEvaluator.trimPermissions(rp2.getPermissions()));
     List<MetadataOperation> expectedOp2 =
         new ArrayList<>(List.of(ALL, VIEW_BASIC, VIEW_USAGE, EDIT_ALL));
 
@@ -107,6 +109,8 @@ class PolicyEvaluatorTest {
       ALL, VIEW_ALL, VIEW_BASIC, VIEW_QUERIES, EDIT_ALL, EDIT_LINEAGE, EDIT_CUSTOM_FIELDS
     };
     ResourcePermission rp = getResourcePermission("testResource", Access.ALLOW, operations);
+    List<Permission> trimmedPermissions = PolicyEvaluator.trimPermissions(rp.getPermissions());
+    rp.setPermissions(trimmedPermissions);
     List<MetadataOperation> expectedOperations = new ArrayList<>(List.of(ALL, VIEW_ALL, EDIT_ALL));
     assertEqualsPermissions(expectedOperations, rp.getPermissions());
   }

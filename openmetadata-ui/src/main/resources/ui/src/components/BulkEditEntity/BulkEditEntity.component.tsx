@@ -57,6 +57,15 @@ const BulkEditEntity = ({
   const { triggerExportForBulkEdit, csvExportData, clearCSVExportData } =
     useEntityExportModalProvider();
 
+  const translatedSteps = useMemo(
+    () =>
+      ENTITY_BULK_EDIT_STEPS.map((step) => ({
+        ...step,
+        name: t(step.name),
+      })),
+    [t]
+  );
+
   const handleCancel = () => {
     clearCSVExportData();
     navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
@@ -122,7 +131,7 @@ const BulkEditEntity = ({
         <Stepper
           activeStep={activeStep}
           className="w-max-600 mx-auto"
-          steps={ENTITY_BULK_EDIT_STEPS}
+          steps={translatedSteps}
         />
       </Col>
 

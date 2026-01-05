@@ -1,0 +1,146 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+
+.domains-section {
+  border-bottom: solid;
+  border-bottom-width: 0.6px;
+  border-color: @grey-15;
+  padding-bottom: 16px;
+  .domains-header {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-left: 14px;
+    padding-right: 14px;
+    .domains-title {
+      font-weight: 600;
+      font-size: 13px;
+      color: @grey-900;
+    }
+  }
+
+  .domains-content {
+    padding-left: 14px;
+    padding-right: 14px;
+
+    .no-data-placeholder {
+      color: @grey-500;
+      font-size: 12px;
+    }
+
+    .domains-display {
+      .domains-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+
+        .domain-item {
+          display: flex;
+          align-items: center;
+          height: 26px;
+          border: 1px solid @grey-40;
+          border-radius: 6px !important;
+          background-color: @white;
+          min-width: 0;
+          transition: all 0.2s ease;
+          overflow: hidden;
+
+          .domain-card-bar {
+            height: 100%;
+            border-left: 6px solid @primary-color;
+            display: flex;
+            align-items: center;
+            width: 100%;
+            min-width: 0;
+            padding-top: 3px;
+            padding-bottom: 3px;
+
+            .domain-card-content {
+              display: flex;
+              align-items: center;
+              width: 100%;
+              min-width: 0;
+              gap: 4px;
+
+              .domain-card-icon {
+                width: 14px;
+                height: 14px;
+                border-radius: 2px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+
+                svg {
+                  width: 14px;
+                  height: 14px;
+                }
+              }
+
+              .domain-name {
+                font-size: 12px;
+                font-weight: 400;
+                color: @grey-700;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+            }
+          }
+        }
+
+        .show-more-domains-button {
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          padding: 0;
+          height: auto;
+          width: 100%;
+          background-color: transparent;
+          border: none;
+          color: @primary-7;
+          font-size: 12px;
+          font-weight: 400;
+          cursor: pointer;
+          transition: all 0.2s ease;
+
+          &:hover {
+            text-decoration: underline;
+          }
+
+          &:focus {
+            outline: none;
+          }
+        }
+      }
+    }
+
+    // Ensure popover appears below the selector
+    :global(.domain-select-popover) {
+      .ant-popover-arrow {
+        display: none;
+      }
+    }
+  }
+  .domain-select-popover {
+    .ant-popover-inner {
+      border-radius: 16px !important;
+    }
+  }
+}
+.domain-popover {
+  width: 300px !important;
+  left: 10px !important;
+}

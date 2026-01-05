@@ -33,10 +33,10 @@ import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-c
 import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
 import { ReactComponent as RunIcon } from '../../../assets/svg/ic-circle-pause.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export-box.svg';
-import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-v1.svg';
+import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-gear.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
-
 import {
+  CONTRACT_DATE_TIME_FORMAT,
   DataContractMode,
   DATA_CONTRACT_ACTION_DROPDOWN_KEY,
 } from '../../../constants/DataContract.constants';
@@ -45,26 +45,31 @@ import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import {
+  exportContractToODCSYaml,
   getContractResultByResultId,
   validateContractById,
 } from '../../../rest/contractAPI';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import {
+  downloadContractAsODCSYaml,
   downloadContractYamlFile,
   getConstraintStatus,
 } from '../../../utils/DataContract/DataContractUtils';
+import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getPopupContainer } from '../../../utils/formUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
-import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import ContractExecutionChart from '../ContractExecutionChart/ContractExecutionChart.component';
 import ContractQualityCard from '../ContractQualityCard/ContractQualityCard.component';
 import ContractSchemaTable from '../ContractSchemaTable/ContractSchemaTable.component';
+import ContractSecurityCard from '../ContractSecurity/ContractSecurityCard.component';
 import ContractSemantics from '../ContractSemantics/ContractSemantics.component';
 import ContractSLA from '../ContractSLACard/ContractSLA.component';
 import ContractViewSwitchTab from '../ContractViewSwitchTab/ContractViewSwitchTab.component';
@@ -155,6 +160,18 @@ const ContractDetail: React.FC<{
         key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.EXPORT,
       },
       {
+        label: (
+          <div
+            className="contract-action-dropdown-item"
+            data-testid="export-odcs-contract-button">
+            <ExportIcon className="anticon" />
+
+            {t('label.export-odcs')}
+          </div>
+        ),
+        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.EXPORT_ODCS,
+      },
+      {
         type: 'divider',
       },
       {
@@ -180,6 +197,24 @@ const ContractDetail: React.FC<{
     downloadContractYamlFile(contract);
   }, [contract]);
 
+  const handleExportODCSContract = useCallback(async () => {
+    if (!contract?.id) {
+      return;
+    }
+
+    try {
+      const yamlContent = await exportContractToODCSYaml(contract.id);
+      downloadContractAsODCSYaml(yamlContent, contract.name ?? 'contract');
+      showSuccessToast(
+        t('message.export-entity-successfully', {
+          entity: t('label.odcs-contract'),
+        })
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, [contract]);
+
   const handleRunNow = async () => {
     if (contract?.id) {
       try {
@@ -203,6 +238,9 @@ const ContractDetail: React.FC<{
         case DATA_CONTRACT_ACTION_DROPDOWN_KEY.EXPORT:
           return handleExportContract();
 
+        case DATA_CONTRACT_ACTION_DROPDOWN_KEY.EXPORT_ODCS:
+          return handleExportODCSContract();
+
         case DATA_CONTRACT_ACTION_DROPDOWN_KEY.DELETE:
           return onDelete();
 
@@ -210,7 +248,13 @@ const ContractDetail: React.FC<{
           return onEdit();
       }
     },
-    [onDelete, onEdit, handleRunNow, handleExportContract]
+    [
+      onDelete,
+      onEdit,
+      handleRunNow,
+      handleExportContract,
+      handleExportODCSContract,
+    ]
   );
 
   const handleModeChange = useCallback((e: RadioChangeEvent) => {
@@ -252,12 +296,13 @@ const ContractDetail: React.FC<{
 
               <Dropdown
                 destroyPopupOnHide
+                getPopupContainer={getPopupContainer}
                 menu={{
                   items: contractActionsItems,
                   onClick: handleContractAction,
                 }}
                 overlayClassName="contract-action-dropdown"
-                overlayStyle={{ width: 150 }}
+                overlayStyle={{ width: 180 }}
                 placement="bottomRight"
                 trigger={['click']}>
                 <Button
@@ -271,6 +316,55 @@ const ContractDetail: React.FC<{
             </div>
           </Col>
           <Col className="d-flex items-center gap-2" span={24}>
+            {contract.createdBy && (
+              <>
+                <div className="d-flex items-center">
+                  <Typography.Text
+                    className="contract-sub-header-title"
+                    data-testid="contract-created-by-label">
+                    {`${t('label.created-by')} : `}
+                  </Typography.Text>
+
+                  <OwnerLabel
+                    owners={[
+                      { name: contract.createdBy, type: 'user', id: '' },
+                    ]}
+                  />
+                </div>
+
+                <Divider
+                  className="self-center vertical-divider"
+                  type="vertical"
+                />
+              </>
+            )}
+
+            {contract.createdAt && (
+              <>
+                <div className="d-flex items-center">
+                  <Typography.Text
+                    className="contract-sub-header-title"
+                    data-testid="contract-created-at-label">
+                    {`${t('label.created-at')} : `}
+                  </Typography.Text>
+
+                  <Typography.Text
+                    className="contract-sub-header-value"
+                    data-testid="contract-created-at-value">
+                    {customFormatDateTime(
+                      contract.createdAt,
+                      CONTRACT_DATE_TIME_FORMAT
+                    )}
+                  </Typography.Text>
+                </div>
+
+                <Divider
+                  className="self-center vertical-divider"
+                  type="vertical"
+                />
+              </>
+            )}
+
             <div className="d-flex items-center">
               <Typography.Text
                 className="contract-sub-header-title"
@@ -335,11 +429,11 @@ const ContractDetail: React.FC<{
 
   if (!contract) {
     return (
-      <ErrorPlaceHolderNew
+      <ErrorPlaceHolder
         icon={
           <EmptyContractIcon className="empty-contract-icon" height={140} />
         }
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}>
         <Typography.Paragraph className="m-t-md w-80" type="secondary">
           {t('message.create-contract-description')}
         </Typography.Paragraph>
@@ -352,7 +446,7 @@ const ContractDetail: React.FC<{
           onClick={onEdit}>
           {t('label.add-entity', { entity: t('label.contract') })}
         </Button>
-      </ErrorPlaceHolderNew>
+      </ErrorPlaceHolder>
     );
   }
 
@@ -377,20 +471,21 @@ const ContractDetail: React.FC<{
           )}
 
           {/* Description Component */}
-          <Col className="contract-card-items" span={24}>
-            <div className="contract-card-header-container">
-              <Typography.Text className="contract-card-header">
-                {t('label.description')}
-              </Typography.Text>
-              <Divider className="contract-dash-separator" />
-            </div>
+          {!isDescriptionContentEmpty(contract.description ?? '') && (
+            <Col className="contract-card-items" span={24}>
+              <div className="contract-card-header-container">
+                <Typography.Text className="contract-card-header">
+                  {t('label.description')}
+                </Typography.Text>
+                <Divider className="contract-dash-separator" />
+              </div>
 
-            <RichTextEditorPreviewerNew
-              enableSeeMoreVariant
-              markdown={contract.description ?? ''}
-              maxLineLength="3"
-            />
-          </Col>
+              <RichTextEditorPreviewerV1
+                enableSeeMoreVariant
+                markdown={contract.description ?? ''}
+              />
+            </Col>
+          )}
 
           {/* Terms of Use Component */}
           {!isDescriptionContentEmpty(contract.termsOfUse ?? '') && (
@@ -402,10 +497,9 @@ const ContractDetail: React.FC<{
                 <Divider className="contract-dash-separator" />
               </div>
 
-              <RichTextEditorPreviewerNew
+              <RichTextEditorPreviewerV1
                 enableSeeMoreVariant
                 markdown={contract.termsOfUse ?? ''}
-                maxLineLength="3"
               />
             </Col>
           )}
@@ -428,8 +522,28 @@ const ContractDetail: React.FC<{
 
               <ContractSchemaTable
                 contractStatus={constraintStatus['schema']}
+                latestSchemaValidationResult={
+                  latestContractResults?.schemaValidation
+                }
                 schemaDetail={schemaDetail}
               />
+            </Col>
+          )}
+
+          {/* Security Component */}
+          {!isEmpty(contract.security) && (
+            <Col
+              className="contract-card-items"
+              data-testid="security-card"
+              span={24}>
+              <div className="contract-card-header-container">
+                <Typography.Text className="contract-card-header">
+                  {t('label.security')}
+                </Typography.Text>
+                <Divider className="contract-dash-separator" />
+              </div>
+
+              <ContractSecurityCard security={contract.security} />
             </Col>
           )}
 

@@ -124,7 +124,7 @@ const ManageButton: FC<ManageButtonProps> = ({
       ? ([
           {
             label: (
-              <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
+              <Tooltip title={canDelete ? '' : t(NO_PERMISSION_FOR_ACTION)}>
                 <ManageButtonItemLabel
                   description={t('message.restore-action-description', {
                     entityType,

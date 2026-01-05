@@ -427,7 +427,12 @@ class UnitycatalogSource(
                 database_name=table_fqn_list[0],
                 service_name=self.context.get().database_service,
             )
-            if referred_table_fqn:
+
+            # Check if the referred table exists in OpenMetadata before adding constraint
+            referred_table = self.metadata.get_by_name(
+                entity=Table, fqn=referred_table_fqn
+            )
+            if referred_table:
                 for parent_column in column.parent_columns:
                     col_fqn = fqn._build(referred_table_fqn, parent_column, quote=False)
                     if col_fqn:

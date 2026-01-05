@@ -6,9 +6,12 @@ import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENT
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.CallActivity;
 import org.flowable.bpmn.model.EndEvent;
@@ -23,6 +26,7 @@ import org.flowable.bpmn.model.TimerEventDefinition;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchEntitiesImpl;
@@ -34,8 +38,9 @@ import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTa
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
 import org.quartz.CronTrigger;
 
+@Slf4j
 public class PeriodicBatchEntityTrigger implements TriggerInterface {
-  private final Process process;
+  private final List<Process> processes = new ArrayList<>();
 
   @Getter private final String triggerWorkflowId;
   public static String HAS_FINISHED_VARIABLE = "hasFinished";
@@ -46,48 +51,54 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
       String mainWorkflowName,
       String triggerWorkflowId,
       PeriodicBatchEntityTriggerDefinition triggerDefinition) {
-    Process process = new Process();
-    process.setId(triggerWorkflowId);
-    process.setName(triggerWorkflowId);
-    attachWorkflowInstanceListeners(process);
-
-    Optional<TimerEventDefinition> oTimerDefinition =
-        Optional.ofNullable(getTimerEventDefinition(triggerDefinition.getConfig().getSchedule()));
-
-    StartEvent startEvent =
-        new StartEventBuilder().id(getFlowableElementId(triggerWorkflowId, "startEvent")).build();
-    startEvent.setAsynchronousLeave(true);
-    oTimerDefinition.ifPresent(startEvent::addEventDefinition);
-    process.addFlowElement(startEvent);
-
-    ServiceTask fetchEntitiesTask = getFetchEntitiesTask(triggerWorkflowId, triggerDefinition);
-    process.addFlowElement(fetchEntitiesTask);
-
-    CallActivity workflowTrigger =
-        getWorkflowTriggerCallActivity(triggerWorkflowId, mainWorkflowName);
-    process.addFlowElement(workflowTrigger);
-
-    EndEvent endEvent =
-        new EndEventBuilder().id(getFlowableElementId(triggerWorkflowId, "endEvent")).build();
-    process.addFlowElement(endEvent);
-
-    SequenceFlow finished = new SequenceFlow(fetchEntitiesTask.getId(), endEvent.getId());
-    finished.setConditionExpression(String.format("${%s}", HAS_FINISHED_VARIABLE));
-
-    SequenceFlow notFinished = new SequenceFlow(fetchEntitiesTask.getId(), workflowTrigger.getId());
-    notFinished.setConditionExpression(String.format("${!%s}", HAS_FINISHED_VARIABLE));
-
-    // Start -> Fetch Entities
-    process.addFlowElement(new SequenceFlow(startEvent.getId(), fetchEntitiesTask.getId()));
-    // Fetch Entities -> End
-    process.addFlowElement(finished);
-    // Fetch Entities -> WorkflowTrigger
-    process.addFlowElement(notFinished);
-    // WorkflowTrigger -> Fetch Entities (Loop Back to get next batch)
-    process.addFlowElement(new SequenceFlow(workflowTrigger.getId(), fetchEntitiesTask.getId()));
-
-    this.process = process;
     this.triggerWorkflowId = triggerWorkflowId;
+    List<String> entityTypes = getEntityTypesFromConfig(triggerDefinition.getConfig());
+
+    for (String entityType : entityTypes) {
+      String processId = String.format("%s-%s", triggerWorkflowId, entityType);
+      Process process = new Process();
+      process.setId(processId);
+      process.setName(processId);
+      attachWorkflowInstanceListeners(process);
+
+      Optional<TimerEventDefinition> oTimerDefinition =
+          Optional.ofNullable(getTimerEventDefinition(triggerDefinition.getConfig().getSchedule()));
+
+      StartEvent startEvent =
+          new StartEventBuilder().id(getFlowableElementId(processId, "startEvent")).build();
+      startEvent.setAsynchronousLeave(true);
+      oTimerDefinition.ifPresent(startEvent::addEventDefinition);
+      process.addFlowElement(startEvent);
+
+      ServiceTask fetchEntitiesTask =
+          getFetchEntitiesTask(processId, entityType, triggerDefinition);
+      process.addFlowElement(fetchEntitiesTask);
+
+      CallActivity workflowTrigger = getWorkflowTriggerCallActivity(processId, mainWorkflowName);
+      process.addFlowElement(workflowTrigger);
+
+      EndEvent endEvent =
+          new EndEventBuilder().id(getFlowableElementId(processId, "endEvent")).build();
+      process.addFlowElement(endEvent);
+
+      SequenceFlow finished = new SequenceFlow(fetchEntitiesTask.getId(), endEvent.getId());
+      finished.setConditionExpression(String.format("${%s}", HAS_FINISHED_VARIABLE));
+
+      SequenceFlow notFinished =
+          new SequenceFlow(fetchEntitiesTask.getId(), workflowTrigger.getId());
+      notFinished.setConditionExpression(String.format("${!%s}", HAS_FINISHED_VARIABLE));
+
+      // Start -> Fetch Entities
+      process.addFlowElement(new SequenceFlow(startEvent.getId(), fetchEntitiesTask.getId()));
+      // Fetch Entities -> End
+      process.addFlowElement(finished);
+      // Fetch Entities -> WorkflowTrigger
+      process.addFlowElement(notFinished);
+      // WorkflowTrigger -> Fetch Entities (Loop Back to get next batch)
+      process.addFlowElement(new SequenceFlow(workflowTrigger.getId(), fetchEntitiesTask.getId()));
+
+      processes.add(process);
+    }
   }
 
   private TimerEventDefinition getTimerEventDefinition(AppSchedule schedule) {
@@ -136,17 +147,20 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
   }
 
   private ServiceTask getFetchEntitiesTask(
-      String workflowTriggerId, PeriodicBatchEntityTriggerDefinition triggerDefinition) {
-    FieldExtension entityTypeExpr =
-        new FieldExtensionBuilder()
-            .fieldName("entityTypeExpr")
-            .fieldValue(triggerDefinition.getConfig().getEntityType())
-            .build();
+      String workflowTriggerId,
+      String entityType,
+      PeriodicBatchEntityTriggerDefinition triggerDefinition) {
+    FieldExtension entityTypesExpr =
+        new FieldExtensionBuilder().fieldName("entityTypesExpr").fieldValue(entityType).build();
+
+    // Extract entity-specific filter based on the filter configuration
+    String entitySpecificFilter =
+        extractEntitySpecificFilter(triggerDefinition.getConfig().getFilters(), entityType);
 
     FieldExtension searchFilterExpr =
         new FieldExtensionBuilder(false)
             .fieldName("searchFilterExpr")
-            .fieldValue(triggerDefinition.getConfig().getFilters())
+            .fieldValue(entitySpecificFilter)
             .build();
 
     FieldExtension batchSizeExpr =
@@ -161,7 +175,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
             .implementation(FetchEntitiesImpl.class.getName())
             .build();
 
-    serviceTask.getFieldExtensions().add(entityTypeExpr);
+    serviceTask.getFieldExtensions().add(entityTypesExpr);
     serviceTask.getFieldExtensions().add(searchFilterExpr);
     serviceTask.getFieldExtensions().add(batchSizeExpr);
 
@@ -170,8 +184,50 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     return serviceTask;
   }
 
+  private String extractEntitySpecificFilter(Object filtersObj, String entityType) {
+    if (filtersObj == null) {
+      return null;
+    }
+
+    // Handle map format with entity-specific filters (values are JSON strings)
+    if (filtersObj instanceof Map) {
+      @SuppressWarnings("unchecked")
+      Map<String, String> filterMap = (Map<String, String>) filtersObj;
+
+      // First check for entity-specific filter
+      String specificFilter = filterMap.get(entityType);
+      if (specificFilter != null && !specificFilter.isEmpty()) {
+        return specificFilter;
+      }
+
+      // Fall back to default filter if no specific filter found
+      String defaultFilter = filterMap.get("default");
+      if (defaultFilter != null && !defaultFilter.isEmpty()) {
+        return defaultFilter;
+      }
+
+      return null;
+    }
+
+    // If it's not a map, try to convert to string
+    return JsonUtils.pojoToJson(filtersObj);
+  }
+
+  private List<String> getEntityTypesFromConfig(Object configObj) {
+    Map<String, Object> configMap = JsonUtils.getMap(configObj);
+    @SuppressWarnings("unchecked")
+    List<String> entityTypes = (List<String>) configMap.get("entityTypes");
+    if (entityTypes != null && !entityTypes.isEmpty()) {
+      return entityTypes;
+    }
+    LOG.debug("No entityTypes found in workflow trigger configuration, returning empty list");
+    return new ArrayList<>();
+  }
+
   @Override
   public void addToWorkflow(BpmnModel model) {
-    model.addProcess(process);
+    for (Process process : processes) {
+      model.addProcess(process);
+    }
   }
 }

@@ -10,9 +10,24 @@
 #  limitations under the License.
 
 """
-Processor util to fetch pii sensitive columns
+Processor util to fetch pii sensitive columns.
+
+DEPRECATED: This processor is deprecated in favor of TagProcessor which supports
+multiple classifications and respects classification-level configuration.
+
+For migration, use TagProcessor instead:
+    from metadata.pii.tag_processor import TagProcessor
+    processor = TagProcessor(config, metadata, classification_filter=["PII"])
 """
+import warnings
 from typing import Any, Sequence
+
+warnings.warn(
+    "PIIProcessor is deprecated and will be removed in a future version. "
+    "Please use TagProcessor instead for enhanced multi-classification support.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Column
@@ -27,7 +42,7 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.algorithms.tags import PIISensitivityTag
-from metadata.pii.algorithms.utils import get_top_classes, normalize_scores
+from metadata.pii.algorithms.utils import build_reason, get_top_classes
 from metadata.pii.base_processor import AutoClassificationProcessor
 from metadata.pii.constants import PII
 from metadata.utils import fqn
@@ -45,6 +60,7 @@ class PIIProcessor(AutoClassificationProcessor):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
+        tolerance: float = 0.01,
     ):
         super().__init__(config, metadata)
 
@@ -56,10 +72,10 @@ class PIIProcessor(AutoClassificationProcessor):
         self._classifier: ColumnClassifier[PIISensitivityTag] = PIISensitiveClassifier()
 
         self.confidence_threshold = self.source_config.confidence / 100
-        self._tolerance = 0.01
+        self._tolerance = tolerance
 
     @staticmethod
-    def build_tag_label(tag: PIISensitivityTag) -> TagLabel:
+    def build_tag_label(tag: PIISensitivityTag, score: float) -> TagLabel:
         tag_fqn = fqn.build(
             metadata=None,
             entity_type=Tag,
@@ -72,6 +88,7 @@ class PIIProcessor(AutoClassificationProcessor):
             source=TagSource.Classification,
             state=State.Suggested,
             labelType=LabelType.Generated,
+            reason=build_reason(tag_fqn, score),
         )
 
         return tag_label
@@ -92,9 +109,10 @@ class PIIProcessor(AutoClassificationProcessor):
             sample_data, column_name=column.name.root, column_data_type=column.dataType
         )
 
-        scores = normalize_scores(scores, tol=self._tolerance)
+        # Filter noise and cap at 1.0 (don't normalize to sum=1)
+        scores = {k: min(v, 1.0) for k, v in scores.items() if v > self._tolerance}
 
         # winner is at most 1 tag
         winner = get_top_classes(scores, 1, self.confidence_threshold)
-        tag_labels = [self.build_tag_label(tag) for tag in winner]
+        tag_labels = [self.build_tag_label(tag, scores[tag]) for tag in winner]
         return tag_labels

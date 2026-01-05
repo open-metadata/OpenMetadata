@@ -62,6 +62,17 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
+jest.mock(
+  '../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
 describe('MlModelVersion tests', () => {
   it('Should render component properly if not loading', async () => {
     await act(async () => {

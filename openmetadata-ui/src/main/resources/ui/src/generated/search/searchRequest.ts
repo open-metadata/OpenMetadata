@@ -52,6 +52,11 @@ export interface SearchRequest {
      */
     from?: number;
     /**
+     * Include aggregations in the search response. Defaults to true. Set to false to skip
+     * aggregations for faster response times when only search results are needed.
+     */
+    includeAggregations?: boolean;
+    /**
      * Get only selected fields of the document body for each hit. Empty value will return all
      * fields
      */

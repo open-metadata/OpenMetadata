@@ -14,11 +14,10 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -68,7 +67,7 @@ import QueryViewer from '../../common/QueryViewer/QueryViewer.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import SampleDataWithMessages from '../../Database/SampleDataWithMessages/SampleDataWithMessages';
-import Lineage from '../../Lineage/Lineage.component';
+import { EntityLineageTab } from '../../Lineage/EntityLineageTab/EntityLineageTab';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -264,6 +263,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     editLineagePermission,
     viewSampleDataPermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -293,6 +293,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         Operation.ViewSampleData
       ),
       viewAllPermission: topicPermissions.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        topicPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [topicPermissions, deleted]
   );
@@ -342,20 +346,20 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         />
       ),
       lineageTab: (
-        <LineageProvider>
-          <Lineage
-            deleted={topicDetails.deleted}
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
             entity={topicDetails as SourceType}
             entityType={EntityType.TOPIC}
             hasEditAccess={editLineagePermission}
           />
-        </LineageProvider>
+        </Suspense>
       ),
       customPropertiesTab: topicDetails && (
         <CustomPropertyTable<EntityType.TOPIC>
           entityType={EntityType.TOPIC}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
       viewSampleDataPermission,
@@ -392,6 +396,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     editAllPermission,
     viewSampleDataPermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(
     async (newCertification?: Tag) => {

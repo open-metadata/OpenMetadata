@@ -25,6 +25,7 @@ import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.*;
 import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
+import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
@@ -82,7 +83,7 @@ public class MinioLogStorageIntegrationTest {
         new LogStorageConfiguration()
             .withType(LogStorageConfiguration.Type.S_3)
             .withBucketName(TEST_BUCKET)
-            .withRegion("us-east-1")
+            .withAwsConfig(new AWSCredentials().withAwsRegion("us-east-1"))
             .withPrefix("logs")
             .withEnableServerSideEncryption(false) // MinIO doesn't need SSE
             .withStorageClass(

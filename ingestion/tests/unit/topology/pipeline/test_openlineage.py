@@ -5,6 +5,8 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 from uuid import UUID
 
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -24,9 +26,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.pipeline.openlineage.metadata import OpenlineageSource
 from metadata.ingestion.source.pipeline.openlineage.models import OpenLineageEvent
 from metadata.ingestion.source.pipeline.openlineage.utils import (
+    FQNNotFoundException,
     message_to_open_lineage_event,
 )
 
@@ -138,10 +142,10 @@ class OpenLineageUnitTest(unittest.TestCase):
             MOCK_OL_CONFIG["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.open_lineage_source.context.__dict__["pipeline"] = MOCK_PIPELINE.name.root
-        self.open_lineage_source.context.__dict__[
-            "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.root
+        self.open_lineage_source.context.get().pipeline = MOCK_PIPELINE.name.root
+        self.open_lineage_source.context.get().pipeline_service = (
+            MOCK_PIPELINE_SERVICE.name.root
+        )
         self.open_lineage_source.source_config.lineageInformation = {
             "dbServiceNames": ["skun"]
         }
@@ -527,6 +531,253 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         self.assertEqual(col_lineage, expected_col_lineage)
         self.assertEqual(table_lineage, expected_table_lineage)
+
+    @patch(
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
+    )
+    @patch(
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_schema_fqn_from_om"
+    )
+    def test_get_create_table_request(self, mock_get_schema_fqn, mock_get_table_fqn):
+        """Test successful table creation request with multiple columns when table doesn't exist"""
+        # Setup: Table doesn't exist, schema exists
+        mock_get_table_fqn.side_effect = FQNNotFoundException("Table not found")
+        mock_get_schema_fqn.return_value = "testService.testDatabase.testSchema"
+        table_data = {
+            "name": "testSchema.employees",
+            "namespace": "bigquery",
+            "facets": {
+                "schema": {
+                    "fields": [
+                        {"name": "employee_id", "type": "INT64"},
+                        {"name": "first_name", "type": "STRING"},
+                        {"name": "last_name", "type": "STRING"},
+                        {"name": "email", "type": "STRING"},
+                        {"name": "salary", "type": "FLOAT64"},
+                        {"name": "hire_date", "type": "TIMESTAMP"},
+                        {"name": "department_id", "type": "INT64"},
+                        {"name": "is_active", "type": "BOOLEAN"},
+                    ]
+                }
+            },
+        }
+
+        result = self.open_lineage_source.get_create_table_request(table_data)
+
+        # Assertions
+        self.assertIsInstance(result, Either)
+        self.assertIsNone(result.left)
+        self.assertIsNotNone(result.right)
+
+        create_request = result.right
+        self.assertIsInstance(create_request, CreateTableRequest)
+        self.assertEqual(create_request.name.root, "employees")
+        self.assertEqual(
+            create_request.databaseSchema.root, "testService.testDatabase.testSchema"
+        )
+        self.assertEqual(len(create_request.columns), 8)
+
+        # Verify all columns are created with correct types
+        expected_columns = [
+            ("employee_id", "BIGINT", "INT64"),
+            ("first_name", "STRING", "STRING"),
+            ("last_name", "STRING", "STRING"),
+            ("email", "STRING", "STRING"),
+            ("salary", "DOUBLE", "FLOAT64"),
+            ("hire_date", "TIMESTAMP", "TIMESTAMP"),
+            ("department_id", "BIGINT", "INT64"),
+            ("is_active", "BOOLEAN", "BOOLEAN"),
+        ]
+
+        for i, (expected_name, expected_type, expected_type_display) in enumerate(
+            expected_columns
+        ):
+            self.assertEqual(create_request.columns[i].name.root, expected_name)
+            self.assertEqual(create_request.columns[i].dataType.value, expected_type)
+            self.assertEqual(
+                create_request.columns[i].dataTypeDisplay, expected_type_display
+            )
+
+    @patch("confluent_kafka.Consumer")
+    def test_get_pipelines_list_filters_complete_events(self, mock_consumer_class):
+        """Test that get_pipelines_list returns COMPLETE events"""
+        event = copy.deepcopy(VALID_EVENT)
+        event["eventType"] = "COMPLETE"
+        self.setup_mock_consumer_with_kafka_event(event)
+
+        result_generator = self.open_lineage_source.get_pipelines_list()
+        results = list(result_generator)
+
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0].event_type, "COMPLETE")
+
+    @patch("confluent_kafka.Consumer")
+    def test_get_pipelines_list_filters_running_events(self, mock_consumer_class):
+        """Test that get_pipelines_list returns RUNNING events"""
+        event = copy.deepcopy(VALID_EVENT)
+        event["eventType"] = "RUNNING"
+        self.setup_mock_consumer_with_kafka_event(event)
+
+        result_generator = self.open_lineage_source.get_pipelines_list()
+        results = list(result_generator)
+
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0].event_type, "RUNNING")
+
+    @patch("confluent_kafka.Consumer")
+    def test_get_pipelines_list_filters_start_events(self, mock_consumer_class):
+        """Test that get_pipelines_list returns START events"""
+        event = copy.deepcopy(VALID_EVENT)
+        event["eventType"] = "START"
+        self.setup_mock_consumer_with_kafka_event(event)
+
+        result_generator = self.open_lineage_source.get_pipelines_list()
+        results = list(result_generator)
+
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0].event_type, "START")
+
+    @patch("confluent_kafka.Consumer")
+    def test_get_pipelines_list_filters_out_fail_events(self, mock_consumer_class):
+        """Test that get_pipelines_list filters out FAIL events"""
+        event = copy.deepcopy(VALID_EVENT)
+        event["eventType"] = "FAIL"
+        self.setup_mock_consumer_with_kafka_event(event)
+
+        result_generator = self.open_lineage_source.get_pipelines_list()
+        results = list(result_generator)
+
+        self.assertEqual(len(results), 0)
+
+    @patch("confluent_kafka.Consumer")
+    def test_get_pipelines_list_filters_out_abort_events(self, mock_consumer_class):
+        """Test that get_pipelines_list filters out ABORT events"""
+        event = copy.deepcopy(VALID_EVENT)
+        event["eventType"] = "ABORT"
+        self.setup_mock_consumer_with_kafka_event(event)
+
+        result_generator = self.open_lineage_source.get_pipelines_list()
+        results = list(result_generator)
+
+        self.assertEqual(len(results), 0)
+
+    @patch(
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
+    )
+    def test_lineage_merge_start_with_data_running_without(self, mock_get_table_fqn):
+        """
+        Test that START event with lineage data followed by RUNNING event without
+        lineage data does not overwrite existing lineage in the database.
+
+        This simulates Flink streaming jobs where:
+        - START event contains initial lineage
+        - RUNNING events are heartbeats with no/empty lineage
+
+        The test verifies the complete flow:
+        1. START event creates lineage with column details
+        2. RUNNING event with empty data is processed
+        3. Query back the lineage - it should still have the original data
+        """
+        # Create START event with lineage data
+        start_event = copy.deepcopy(FULL_OL_KAFKA_EVENT)
+        start_event["eventType"] = "START"
+
+        # Create RUNNING event with same job but no lineage (empty inputs/outputs)
+        running_event = copy.deepcopy(FULL_OL_KAFKA_EVENT)
+        running_event["eventType"] = "RUNNING"
+        running_event["inputs"] = []
+        running_event["outputs"] = []
+
+        # Mock table FQN lookup
+        def mock_fqn_side_effect(table_details):
+            return f"testService.shopify.{table_details.name}"
+
+        mock_get_table_fqn.side_effect = mock_fqn_side_effect
+
+        # Mock metadata.get_by_name for table lookups
+        from_table_id = "69fc8906-4a4a-45ab-9a54-9cc2d399e10e"
+        to_table_id = "59fc8906-4a4a-45ab-9a54-9cc2d399e10e"
+
+        def mock_get_uuid_by_name(entity, fqn):
+            if fqn == "testService.shopify.raw_product_catalog":
+                return Mock(id=from_table_id)
+            elif fqn == "testService.shopify.fact_order_new5":
+                return Mock(id=to_table_id)
+            elif "openlineage_source" in fqn:  # Pipeline entity
+                return Mock(id=Mock(root="79fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+            return None
+
+        # Process START event with lineage
+        start_ol_event = message_to_open_lineage_event(start_event)
+        with patch.object(
+            OpenMetadataConnection,
+            "get_by_name",
+            create=True,
+            side_effect=mock_get_uuid_by_name,
+        ):
+            start_lineage_results = list(
+                self.open_lineage_source.yield_pipeline_lineage_details(start_ol_event)
+            )
+
+        # Process RUNNING event without lineage
+        running_ol_event = message_to_open_lineage_event(running_event)
+        with patch.object(
+            OpenMetadataConnection,
+            "get_by_name",
+            create=True,
+            side_effect=mock_get_uuid_by_name,
+        ):
+            running_lineage_results = list(
+                self.open_lineage_source.yield_pipeline_lineage_details(
+                    running_ol_event
+                )
+            )
+
+        # Extract lineage requests from START event
+        start_lineage_requests = [
+            r.right
+            for r in start_lineage_results
+            if r.right and isinstance(r.right, AddLineageRequest)
+        ]
+
+        # Extract lineage requests from RUNNING event
+        running_lineage_requests = [
+            r.right
+            for r in running_lineage_results
+            if r.right and isinstance(r.right, AddLineageRequest)
+        ]
+
+        # Verify START event produced lineage with column details
+        start_requests_with_columns = [
+            req
+            for req in start_lineage_requests
+            if req.edge.lineageDetails and req.edge.lineageDetails.columnsLineage
+        ]
+        self.assertGreater(
+            len(start_requests_with_columns),
+            0,
+            "START event should produce lineage requests with column details",
+        )
+
+        # Count column lineage entries from START
+        start_column_count = sum(
+            len(req.edge.lineageDetails.columnsLineage)
+            for req in start_requests_with_columns
+        )
+        self.assertGreater(
+            start_column_count, 0, "START event should have column lineage"
+        )
+
+        # Key assertion: RUNNING event with empty inputs/outputs produces no lineage requests
+        # This prevents empty data from being sent to the database
+        self.assertEqual(
+            len(running_lineage_requests),
+            0,
+            "RUNNING event with empty inputs/outputs should not produce any lineage requests",
+        )
 
 
 if __name__ == "__main__":

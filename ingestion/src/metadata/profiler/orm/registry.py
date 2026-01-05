@@ -79,7 +79,7 @@ class PythonDialects(Enum):
     MSSQL = "mssql"
     MySQL = "mysql"
     Oracle = "oracle"
-    PinotDB = "pinotdb"
+    PinotDB = "pinot"
     Postgres = "postgresql"
     Presto = "presto"
     Redshift = "redshift"
@@ -88,6 +88,7 @@ class PythonDialects(Enum):
     Snowflake = "snowflake"
     Teradata = "teradatasql"
     Trino = "trino"
+    UnityCatalog = "unitycatalog"
     Vertica = "vertica"
 
 

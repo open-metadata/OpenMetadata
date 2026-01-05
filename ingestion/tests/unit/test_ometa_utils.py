@@ -16,11 +16,28 @@ import base64
 import json
 from unittest import TestCase
 
+from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.mlmodel import MlModel
+from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.connections.headers import render_query_header
+from metadata.ingestion.models.topology import (
+    get_entity_hierarchy,
+    get_entity_hierarchy_depth,
+)
 from metadata.ingestion.ometa.utils import (
     build_entity_reference,
     decode_jwt_token,
@@ -28,6 +45,7 @@ from metadata.ingestion.ometa.utils import (
     get_entity_type,
     model_str,
 )
+from metadata.utils.constants import ENTITY_REFERENCE_CLASS_MAP
 
 MOCK_TABLE = Table(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
@@ -71,6 +89,43 @@ class OMetaUtilsTest(TestCase):
 
         self.assertEqual(get_entity_type("hello"), "hello")
         self.assertEqual(get_entity_type(MlModel), "mlmodel")
+
+    def test_get_entity_type_camel_case_consistency(self):
+        """
+        Test that get_entity_type returns camelCase entity types
+        that match ENTITY_REFERENCE_CLASS_MAP keys (Issue #20838)
+
+        This test demonstrates the current failing behavior where
+        get_entity_type returns lowercase versions instead of
+        proper camelCase that matches the reference map.
+        """
+
+        # Test cases that should return camelCase to match ENTITY_REFERENCE_CLASS_MAP
+        test_cases = [
+            (APIEndpoint, "apiEndpoint"),
+            (DashboardDataModel, "dashboardDataModel"),
+            (DatabaseSchema, "databaseSchema"),
+            (SearchIndex, "searchIndex"),
+            (DatabaseService, "databaseService"),
+            (User, "user"),  # This one works correctly
+        ]
+
+        for entity_class, expected_type in test_cases:
+            with self.subTest(entity_class=entity_class.__name__):
+                result = get_entity_type(entity_class)
+                self.assertEqual(
+                    result,
+                    expected_type,
+                    f"get_entity_type({entity_class.__name__}) returned '{result}' "
+                    f"but should return '{expected_type}' to match ENTITY_REFERENCE_CLASS_MAP",
+                )
+
+                # Verify the expected type exists in ENTITY_REFERENCE_CLASS_MAP
+                self.assertIn(
+                    expected_type,
+                    ENTITY_REFERENCE_CLASS_MAP,
+                    f"Expected type '{expected_type}' should exist in ENTITY_REFERENCE_CLASS_MAP",
+                )
 
     def test_model_str(self):
         """
@@ -226,3 +281,117 @@ class OMetaUtilsTest(TestCase):
         self.assertEqual(result["iss"], "open-metadata.org")
         self.assertEqual(result["email"], "ingestion-bot@open-metadata.org")
         self.assertEqual(result["isBot"], False)
+
+    def test_get_entity_hierarchy_returns_dict(self):
+        """Test that get_entity_hierarchy returns a dictionary"""
+        hierarchy = get_entity_hierarchy()
+
+        self.assertIsInstance(hierarchy, dict)
+        self.assertGreater(len(hierarchy), 0, "Hierarchy should not be empty")
+
+    def test_get_entity_hierarchy_caching(self):
+        """Test that get_entity_hierarchy uses caching"""
+        first_call = get_entity_hierarchy()
+        second_call = get_entity_hierarchy()
+
+        self.assertIs(
+            first_call,
+            second_call,
+            "Should return the same cached instance on subsequent calls",
+        )
+
+    def test_get_entity_hierarchy_database_service_order(self):
+        """Test that database service entities are in correct hierarchical order"""
+        db_service_depth = get_entity_hierarchy_depth(DatabaseService)
+        database_depth = get_entity_hierarchy_depth(Database)
+        schema_depth = get_entity_hierarchy_depth(DatabaseSchema)
+        table_depth = get_entity_hierarchy_depth(Table)
+
+        self.assertLess(
+            db_service_depth,
+            database_depth,
+            "DatabaseService should come before Database in hierarchy",
+        )
+        self.assertLess(
+            database_depth,
+            schema_depth,
+            "Database should come before DatabaseSchema in hierarchy",
+        )
+        self.assertLess(
+            schema_depth,
+            table_depth,
+            "DatabaseSchema should come before Table in hierarchy",
+        )
+
+    def test_get_entity_hierarchy_messaging_service_order(self):
+        """Test that messaging service entities are in correct hierarchical order"""
+        messaging_service_depth = get_entity_hierarchy_depth(MessagingService)
+        topic_depth = get_entity_hierarchy_depth(Topic)
+
+        self.assertLess(
+            messaging_service_depth,
+            topic_depth,
+            "MessagingService should come before Topic in hierarchy",
+        )
+
+    def test_get_entity_hierarchy_dashboard_service_order(self):
+        """Test that dashboard service entities are in correct hierarchical order"""
+        dashboard_service_depth = get_entity_hierarchy_depth(DashboardService)
+        dashboard_depth = get_entity_hierarchy_depth(Dashboard)
+
+        self.assertLess(
+            dashboard_service_depth,
+            dashboard_depth,
+            "DashboardService should come before Dashboard in hierarchy",
+        )
+
+    def test_get_entity_hierarchy_pipeline_service_order(self):
+        """Test that pipeline service entities are in correct hierarchical order"""
+        pipeline_service_depth = get_entity_hierarchy_depth(PipelineService)
+        pipeline_depth = get_entity_hierarchy_depth(Pipeline)
+
+        self.assertLess(
+            pipeline_service_depth,
+            pipeline_depth,
+            "PipelineService should come before Pipeline in hierarchy",
+        )
+
+    def test_get_entity_hierarchy_depth_unknown_entity(self):
+        """Test that unknown entity types return a default depth"""
+
+        class UnknownEntity:
+            pass
+
+        depth = get_entity_hierarchy_depth(UnknownEntity)
+        self.assertEqual(depth, 999, "Unknown entities should return depth 999")
+
+    def test_get_entity_hierarchy_depth_all_entities_have_valid_depth(self):
+        """Test that all entities in the hierarchy have valid (non-negative) depths"""
+        hierarchy = get_entity_hierarchy()
+
+        for entity_type, depth in hierarchy.items():
+            with self.subTest(entity_type=entity_type.__name__):
+                self.assertIsInstance(
+                    depth, int, f"{entity_type.__name__} depth should be an integer"
+                )
+                self.assertGreaterEqual(
+                    depth, 0, f"{entity_type.__name__} depth should be non-negative"
+                )
+
+    def test_get_entity_hierarchy_services_at_root(self):
+        """Test that all service types are at depth 0 (root level)"""
+        service_types = [
+            DatabaseService,
+            DashboardService,
+            MessagingService,
+            PipelineService,
+        ]
+
+        for service_type in service_types:
+            with self.subTest(service_type=service_type.__name__):
+                depth = get_entity_hierarchy_depth(service_type)
+                self.assertEqual(
+                    depth,
+                    0,
+                    f"{service_type.__name__} should be at root level (depth 0)",
+                )

@@ -12,6 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
+import { useTheme } from '@mui/material';
 import { Button, Tag } from 'antd';
 import classNames from 'classnames';
 import React, { Fragment, useMemo } from 'react';
@@ -20,13 +21,11 @@ import { ReactComponent as IconEditCircle } from '../../../assets/svg/ic-edit-ci
 import { ReactComponent as FunctionIcon } from '../../../assets/svg/ic-function.svg';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-grey.svg';
-import { RED_3 } from '../../../constants/Color.constants';
 import { FOREIGN_OBJECT_SIZE } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { StatusType } from '../../../generated/entity/data/pipeline';
 import { LineageLayer } from '../../../generated/settings/settings';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   getColumnSourceTargetHandles,
   getEdgePathData,
@@ -96,9 +95,11 @@ export const CustomEdge = ({
     onColumnEdgeRemove,
     dataQualityLineage,
     dqHighlightedEdges,
+    selectedColumn,
+    columnsInCurrentPages,
   } = useLineageProvider();
 
-  const { theme } = useApplicationStore();
+  const theme = useTheme();
 
   // Get edge path data once
   const { edgePath, edgeCenterX, edgeCenterY } = useMemo(
@@ -152,46 +153,82 @@ export const CustomEdge = ({
     );
   }, [isColumnLineage, tracedColumns, sourceHandle, targetHandle]);
 
+  const areBothColumnHandlesPresentInCurrentPage = useMemo(() => {
+    const decodedHandles = getColumnSourceTargetHandles({
+      sourceHandle,
+      targetHandle,
+    });
+
+    const allColumnsInCurrentPages = new Set(
+      Object.values(columnsInCurrentPages).flat()
+    );
+
+    return (
+      allColumnsInCurrentPages.has(decodedHandles.sourceHandle ?? '') &&
+      allColumnsInCurrentPages.has(decodedHandles.targetHandle ?? '')
+    );
+  }, [columnsInCurrentPages, sourceHandle, targetHandle]);
+
   // Calculate edge style with memoization
   const updatedStyle = useMemo(() => {
     const isNodeTraced =
       tracedNodes.includes(edge.fromEntity.id) &&
       tracedNodes.includes(edge.toEntity.id);
 
-    const isStrokeNeeded = isColumnLineage ? isColumnHighlighted : isNodeTraced;
-    let opacity = 1;
-    if (isColumnLineage) {
-      opacity =
-        tracedNodes.length === 0 &&
-        (tracedColumns.length === 0 || isColumnHighlighted)
-          ? 1
-          : 0.25;
+    let stroke = '';
+    let display = '';
+
+    // For nodes edges
+    if (isNodeTraced) {
+      stroke = theme.palette.primary.main;
+      display = 'block';
+    } else if (tracedNodes.length === 0 && tracedColumns.length === 0) {
+      display = 'block';
     } else {
-      opacity = tracedNodes.length === 0 || isStrokeNeeded ? 1 : 0.25;
+      display = 'none';
     }
 
-    let stroke = isStrokeNeeded ? theme.primaryColor : undefined;
+    // For columns edges
+    if (isColumnLineage) {
+      display = 'none';
+      const noTracing = tracedNodes.length === 0 && tracedColumns.length === 0;
+
+      if (isColumnHighlighted) {
+        display = 'block';
+        stroke = selectedColumn
+          ? theme.palette.allShades.indigo[600]
+          : theme.palette.primary.main;
+      } else if (noTracing && areBothColumnHandlesPresentInCurrentPage) {
+        display = 'block';
+      }
+    }
 
     if (showDqTracing) {
-      stroke = RED_3;
+      stroke = theme.palette.allShades.error[600];
     }
 
     return {
       ...style,
       stroke,
-      opacity,
+      display,
     };
   }, [
-    style,
     tracedNodes,
     edge.fromEntity.id,
     edge.toEntity.id,
-    isColumnHighlighted,
-    isColumnLineage,
     tracedColumns.length,
+    isColumnLineage,
     showDqTracing,
-    theme.primaryColor,
+    style,
+    theme.palette.primary.main,
+    theme.palette.allShades.indigo,
+    theme.palette.allShades.error,
+    isColumnHighlighted,
+    areBothColumnHandlesPresentInCurrentPage,
+    selectedColumn,
   ]);
+
+  const shouldShowEdgeIcon = updatedStyle.display === 'block';
 
   // Calculate conditions for various component displays
   const isPipelineEdgeAllowed = useMemo(() => {
@@ -215,7 +252,6 @@ export const CustomEdge = ({
   }, [isColumnLineage, pipeline]);
 
   const isSelectedEditMode = selected && isEditMode;
-  const isSelected = selected;
 
   // Calculate pipeline status for styling
   const currentPipelineStatus = useMemo(() => {
@@ -408,13 +444,9 @@ export const CustomEdge = ({
 
     return icons;
   }, [
-    selected,
-    tracedNodes.length,
-    tracedColumns.length,
     isColumnLineageAllowed,
     hasLabel,
     isSelectedEditMode,
-    isSelected,
     data?.columnFunctionValue,
     data?.isExpanded,
     edge.fromEntity.fullyQualifiedName,
@@ -440,7 +472,7 @@ export const CustomEdge = ({
         markerEnd={markerEnd}
         style={updatedStyle}
       />
-      {renderIcons}
+      {shouldShowEdgeIcon && renderIcons}
     </Fragment>
   );
 };

@@ -22,9 +22,8 @@
           ]
         },
         "om_ngram": {
-          "tokenizer": "ngram",
-          "min_gram": 2,
-          "max_gram": 3,
+          "type": "custom",
+          "tokenizer": "n_gram_tokenizer",
           "filter": [
             "lowercase"
           ]
@@ -54,6 +53,17 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        }
+      },
+      "tokenizer": {
+        "n_gram_tokenizer": {
+          "type": "ngram",
+          "min_gram": 2,
+          "max_gram": 3,
+          "token_chars": [
+            "letter",
+            "digit"
+          ]
         }
       }
     }
@@ -412,14 +422,7 @@
         "type": "integer"
       },
       "entityType": {
-        "type": "keyword",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer",
-            "ignore_above": 256
-          }
-        }
+        "type": "keyword"
       },
       "tier": {
         "properties": {
@@ -445,6 +448,14 @@
             "type": "keyword"
           }
         }
+      },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "tags": {
         "properties": {
@@ -473,9 +484,6 @@
       "entityStatus": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
-      },
-      "entityType": {
-        "type": "keyword"
       },
       "totalVotes": {
         "type": "long",

@@ -12,7 +12,7 @@
  */
 import { Button, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -21,7 +21,6 @@ import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../components/common/Table/Table';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -61,6 +60,7 @@ import {
   getNotificationAlertsEditPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
+import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const NotificationListPage = () => {
@@ -77,6 +77,7 @@ const NotificationListPage = () => {
     handlePagingChange,
     showPagination,
     paging,
+    pagingCursor,
   } = usePaging();
   const { getResourceLimit } = useLimitStore();
   const { getEntityPermissionByFqn, getResourcePermission } =
@@ -137,7 +138,10 @@ const NotificationListPage = () => {
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
-      getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.NOTIFICATIONS),
+      getSettingPageEntityBreadCrumb(
+        GlobalSettingsMenuCategory.NOTIFICATIONS,
+        t('label.alert-plural')
+      ),
     []
   );
 
@@ -180,8 +184,14 @@ const NotificationListPage = () => {
   }, []);
 
   useEffect(() => {
-    fetchAlerts();
-  }, [pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchAlerts({ [cursorType]: cursorValue });
+    } else {
+      fetchAlerts();
+    }
+  }, [pageSize, pagingCursor]);
 
   const handleAlertDelete = useCallback(async () => {
     try {
@@ -197,7 +207,14 @@ const NotificationListPage = () => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         fetchAlerts({ [cursorType]: paging[cursorType] });
-        handlePageChange(currentPage);
+        handlePageChange(
+          currentPage,
+          {
+            cursorType,
+            cursorValue: paging[cursorType],
+          },
+          pageSize
+        );
       }
     },
     [paging]
@@ -231,22 +248,7 @@ const NotificationListPage = () => {
           return resources?.join(', ') || '--';
         },
       },
-      {
-        title: t('label.description').toString(),
-        dataIndex: 'description',
-        flex: true,
-        key: 'description',
-        render: (description: string) =>
-          isEmpty(description) ? (
-            <Typography.Text className="text-grey-muted">
-              {t('label.no-entity', {
-                entity: t('label.description'),
-              })}
-            </Typography.Text>
-          ) : (
-            <RichTextEditorPreviewerNew markdown={description} />
-          ),
-      },
+      ...descriptionTableObject(),
       {
         title: t('label.action-plural').toString(),
         dataIndex: 'fullyQualifiedName',
@@ -314,7 +316,12 @@ const NotificationListPage = () => {
         </Col>
         <Col span={24}>
           <div className="d-flex justify-between">
-            <PageHeader data={PAGE_HEADERS.NOTIFICATION} />
+            <PageHeader
+              data={{
+                header: t(PAGE_HEADERS.NOTIFICATION.header),
+                subHeader: t(PAGE_HEADERS.NOTIFICATION.subHeader),
+              }}
+            />
             {(alertResourcePermission?.Create ||
               alertResourcePermission?.All) && (
               <LimitWrapper resource="eventsubscription">
