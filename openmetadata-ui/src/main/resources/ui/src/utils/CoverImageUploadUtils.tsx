@@ -386,10 +386,16 @@ export async function updateEntityWithCoverImage<TEntity>(
           throw uploadError;
         }
       }
-    } else if (coverImageData?.url) {
-      // Existing URL - preserve it
+    } else if (coverImageData) {
+      // No new file - use existing URL and position from form data or preserve from entity
       coverImageUrl = coverImageData.url;
       coverImagePosition = coverImageData.position?.y;
+
+      // If URL is not in form data, try to preserve from existing entity
+      if (!coverImageUrl) {
+        const entityStyle = (entity as Record<string, unknown>).style as Style | undefined;
+        coverImageUrl = entityStyle?.coverImage?.url;
+      }
     }
 
     // Build style object
