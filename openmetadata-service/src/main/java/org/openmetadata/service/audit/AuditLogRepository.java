@@ -197,41 +197,78 @@ public class AuditLogRepository {
       Long startTs,
       Long endTs,
       int limitParam,
+      String before,
       String after) {
-    if (!nullOrEmpty(after)) {
-      RestUtil.validateCursors(null, after);
-    }
+    RestUtil.validateCursors(before, after);
 
     int limit = sanitizeLimit(limitParam);
 
+    AuditLogCursor beforeCursor = AuditLogCursor.fromEncoded(before);
     AuditLogCursor afterCursor = AuditLogCursor.fromEncoded(after);
 
     String baseCondition = buildBaseCondition();
-    String cursorCondition = buildAfterCondition();
-    String condition = baseCondition + cursorCondition;
-
     String entityFqnHash = nullOrEmpty(entityFqn) ? null : FullyQualifiedName.buildHash(entityFqn);
 
-    List<AuditLogRecord> records =
-        auditLogDAO.list(
-            condition,
-            ORDER_DESC,
-            userName,
-            actorType,
-            serviceName,
-            entityType,
-            entityFqn,
-            entityFqnHash,
-            eventType,
-            startTs,
-            endTs,
-            afterCursor != null ? afterCursor.eventTs() : null,
-            afterCursor != null ? afterCursor.id() : null,
-            limit + 1);
+    List<AuditLogRecord> records;
+    boolean isBackward = beforeCursor != null;
+
+    if (isBackward) {
+      // Backward pagination: get records before the cursor (newer records)
+      String cursorCondition = buildBeforeCondition();
+      String condition = baseCondition + cursorCondition;
+
+      records =
+          auditLogDAO.list(
+              condition,
+              ORDER_ASC,
+              userName,
+              actorType,
+              serviceName,
+              entityType,
+              entityFqn,
+              entityFqnHash,
+              eventType,
+              startTs,
+              endTs,
+              beforeCursor.eventTs(),
+              beforeCursor.id(),
+              limit + 1);
+
+      // Reverse to maintain consistent DESC ordering in response
+      records = new java.util.ArrayList<>(records);
+      java.util.Collections.reverse(records);
+    } else {
+      // Forward pagination: get records after the cursor (older records)
+      String cursorCondition = buildAfterCondition();
+      String condition = baseCondition + cursorCondition;
+
+      records =
+          auditLogDAO.list(
+              condition,
+              ORDER_DESC,
+              userName,
+              actorType,
+              serviceName,
+              entityType,
+              entityFqn,
+              entityFqnHash,
+              eventType,
+              startTs,
+              endTs,
+              afterCursor != null ? afterCursor.eventTs() : null,
+              afterCursor != null ? afterCursor.id() : null,
+              limit + 1);
+    }
 
     boolean hasMore = records.size() > limit;
     if (hasMore) {
-      records.remove(limit);
+      if (isBackward) {
+        // For backward pagination, remove from the beginning (oldest of the fetched newer records)
+        records.remove(0);
+      } else {
+        // For forward pagination, remove from the end (oldest record)
+        records.remove(limit);
+      }
     }
 
     int total =
@@ -249,13 +286,26 @@ public class AuditLogRepository {
 
     List<AuditLogEntry> resultEntries = records.stream().map(this::toAuditLogEntry).toList();
 
+    // Compute cursors for navigation
+    String beforeCursorOut = null;
     String afterCursorOut = null;
-    if (!resultEntries.isEmpty() && hasMore) {
+
+    if (!resultEntries.isEmpty()) {
+      AuditLogEntry first = resultEntries.get(0);
       AuditLogEntry last = resultEntries.get(resultEntries.size() - 1);
-      afterCursorOut = AuditLogCursor.encode(last.getEventTs(), last.getId());
+
+      // Before cursor points to the first (newest) record for backward navigation
+      if (afterCursor != null || isBackward) {
+        beforeCursorOut = AuditLogCursor.encode(first.getEventTs(), first.getId());
+      }
+
+      // After cursor points to the last (oldest) record for forward navigation
+      if (hasMore || isBackward) {
+        afterCursorOut = AuditLogCursor.encode(last.getEventTs(), last.getId());
+      }
     }
 
-    return new ResultList<>(resultEntries, null, afterCursorOut, total);
+    return new ResultList<>(resultEntries, beforeCursorOut, afterCursorOut, total);
   }
 
   private AuditLogEntry toAuditLogEntry(AuditLogRecord record) {
@@ -353,7 +403,12 @@ public class AuditLogRepository {
         + "OR (event_ts = :afterEventTs AND id < :afterId))";
   }
 
+  private String buildBeforeCondition() {
+    return " AND (event_ts > :afterEventTs OR (event_ts = :afterEventTs AND id > :afterId))";
+  }
+
   private static final String ORDER_DESC = "ORDER BY event_ts DESC, id DESC";
+  private static final String ORDER_ASC = "ORDER BY event_ts ASC, id ASC";
 
   private int sanitizeLimit(int requested) {
     int limit = requested <= 0 ? 25 : requested;

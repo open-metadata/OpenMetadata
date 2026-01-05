@@ -70,10 +70,15 @@ public class AuditLogResource {
           @Max(200)
           int limit,
       @Parameter(
-              description = "Returns results with cursor after this value",
+              description = "Returns results after this cursor (for forward pagination)",
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
+      @Parameter(
+              description = "Returns results before this cursor (for backward pagination)",
+              schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
       @Parameter(description = "Filter by username", schema = @Schema(type = "string"))
           @QueryParam("userName")
           String userName,
@@ -120,6 +125,7 @@ public class AuditLogResource {
         startTs,
         endTs,
         limit,
+        before,
         after);
   }
 

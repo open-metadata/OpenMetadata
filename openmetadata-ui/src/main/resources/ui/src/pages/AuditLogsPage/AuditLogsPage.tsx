@@ -149,8 +149,6 @@ const resolveEntityType = (value?: string): EntityType | undefined => {
   );
 };
 
-const PAGE_SIZE = 25;
-
 const AuditLogsPage = () => {
   const { t } = useTranslation();
 
@@ -173,7 +171,7 @@ const AuditLogsPage = () => {
       setIsLoading(true);
       try {
         const response: AuditLogListResponse = await getAuditLogs({
-          limit: PAGE_SIZE,
+          limit: PAGE_SIZE_MEDIUM,
           after: params?.after,
           userName: filters.userName ? filters.userName.trim() : undefined,
           entityFQN: filters.entityFQN ? filters.entityFQN.trim() : undefined,
@@ -888,7 +886,7 @@ const AuditLogsPage = () => {
             <NextPrevious
               currentPage={currentPage}
               isLoading={isLoading}
-              pageSize={PAGE_SIZE}
+              pageSize={PAGE_SIZE_MEDIUM}
               paging={paging}
               pagingHandler={handlePaging}
             />

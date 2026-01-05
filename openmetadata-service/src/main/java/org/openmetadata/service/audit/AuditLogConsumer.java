@@ -107,6 +107,7 @@ public class AuditLogConsumer implements Job {
     }
 
     int processedCount = 0;
+    int skippedCount = 0;
     long lastSuccessfulOffset = currentOffset;
 
     LOG.debug("Processing batch: currentOffset={}, recordCount={}", currentOffset, records.size());
@@ -126,11 +127,14 @@ public class AuditLogConsumer implements Job {
       } catch (JsonParsingException ex) {
         // JSON parsing error - skip this event and continue
         // The event data is corrupt, retrying won't help
-        LOG.warn(
-            "Skipping change event at offset {} due to JSON parsing error: {}",
+        LOG.error(
+            "Skipping corrupt change event at offset {} - JSON parsing failed. "
+                + "Event data: [truncated to 500 chars] {}. Error: {}",
             record.offset(),
+            truncateForLogging(record.json(), 500),
             ex.getMessage());
         lastSuccessfulOffset = record.offset();
+        skippedCount++;
       } catch (Exception ex) {
         // Database or other error - stop processing this batch
         // Don't advance offset past failed events so they'll be retried
@@ -147,7 +151,28 @@ public class AuditLogConsumer implements Job {
       saveOffsetToDatabase(collectionDAO, lastSuccessfulOffset);
     }
 
+    // Log summary if any events were skipped
+    if (skippedCount > 0) {
+      LOG.warn(
+          "Audit log batch completed: processed={}, skipped={} (due to corrupt JSON), "
+              + "offsetRange=[{} -> {}]",
+          processedCount,
+          skippedCount,
+          currentOffset,
+          lastSuccessfulOffset);
+    }
+
     return processedCount;
+  }
+
+  private String truncateForLogging(String value, int maxLength) {
+    if (value == null) {
+      return "null";
+    }
+    if (value.length() <= maxLength) {
+      return value;
+    }
+    return value.substring(0, maxLength) + "...";
   }
 
   /**
