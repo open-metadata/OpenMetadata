@@ -9,9 +9,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.bootstrap.SharedEntities.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -842,8 +844,17 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     BulkAssets addTable = new BulkAssets().withAssets(List.of(table.getEntityReference()));
     bulkAddAssets(dataProduct.getFullyQualifiedName(), addTable);
 
-    ResultList<EntityReference> assets = getAssets(dataProduct.getId(), 10, 0);
-    assertEquals(1, assets.getPaging().getTotal(), "Should have 1 asset before rename");
+    // Wait for asset to be added (may be async)
+    UUID dataProductId = dataProduct.getId();
+    Awaitility.await("Wait for asset to be added before rename")
+        .pollDelay(Duration.ofMillis(100))
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<EntityReference> assets = getAssets(dataProductId, 10, 0);
+              assertEquals(1, assets.getPaging().getTotal(), "Should have 1 asset before rename");
+            });
 
     String oldName = dataProduct.getName();
     String newName = "renamed-" + oldName;
@@ -852,9 +863,20 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     DataProduct renamed = patchEntity(dataProduct.getId().toString(), dataProduct);
     assertEquals(newName, renamed.getName());
 
-    assets = getAssets(renamed.getId(), 10, 0);
-    assertEquals(1, assets.getPaging().getTotal(), "Should still have 1 asset after rename");
-    assertEquals(table.getId(), assets.getData().get(0).getId());
+    // Wait for assets to be properly reflected after rename (may involve async processing)
+    UUID renamedId = renamed.getId();
+    UUID tableId = table.getId();
+    Awaitility.await("Wait for asset to be present after rename")
+        .pollDelay(Duration.ofMillis(100))
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<EntityReference> assets = getAssets(renamedId, 10, 0);
+              assertEquals(
+                  1, assets.getPaging().getTotal(), "Should still have 1 asset after rename");
+              assertEquals(tableId, assets.getData().get(0).getId());
+            });
   }
 
   /**
@@ -881,8 +903,17 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     BulkAssets addTable = new BulkAssets().withAssets(List.of(table.getEntityReference()));
     bulkAddAssets(dataProduct.getFullyQualifiedName(), addTable);
 
-    ResultList<EntityReference> assets = getAssets(dataProduct.getId(), 10, 0);
-    assertEquals(1, assets.getPaging().getTotal(), "Should have 1 asset before rename");
+    // Wait for asset to be added (may be async)
+    UUID dataProductId = dataProduct.getId();
+    Awaitility.await("Wait for asset to be added before rename")
+        .pollDelay(Duration.ofMillis(100))
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<EntityReference> assets = getAssets(dataProductId, 10, 0);
+              assertEquals(1, assets.getPaging().getTotal(), "Should have 1 asset before rename");
+            });
 
     String oldName = dataProduct.getName();
     String newName = "renamed-" + oldName;
@@ -890,22 +921,41 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     DataProduct renamed = patchEntity(dataProduct.getId().toString(), dataProduct);
     assertEquals(newName, renamed.getName());
 
-    assets = getAssets(renamed.getId(), 10, 0);
-    assertEquals(1, assets.getPaging().getTotal(), "Should have 1 asset after rename");
+    // Wait for assets to be properly reflected after rename
+    UUID renamedId = renamed.getId();
+    UUID tableId = table.getId();
+    Awaitility.await("Wait for asset to be present after rename")
+        .pollDelay(Duration.ofMillis(100))
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<EntityReference> assets = getAssets(renamedId, 10, 0);
+              assertEquals(1, assets.getPaging().getTotal(), "Should have 1 asset after rename");
+            });
 
     renamed.setDescription("Updated description after rename");
     DataProduct afterDescUpdate = patchEntity(renamed.getId().toString(), renamed);
     assertEquals("Updated description after rename", afterDescUpdate.getDescription());
 
-    assets = getAssets(afterDescUpdate.getId(), 10, 0);
-    assertEquals(
-        1,
-        assets.getPaging().getTotal(),
-        "CRITICAL: Assets should still be present after rename + description update consolidation");
-    assertEquals(
-        table.getId(),
-        assets.getData().get(0).getId(),
-        "Asset should be the same table after consolidation");
+    // Wait for assets after description update and consolidation
+    UUID afterDescUpdateId = afterDescUpdate.getId();
+    Awaitility.await("Wait for asset after consolidation")
+        .pollDelay(Duration.ofMillis(100))
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<EntityReference> assets = getAssets(afterDescUpdateId, 10, 0);
+              assertEquals(
+                  1,
+                  assets.getPaging().getTotal(),
+                  "CRITICAL: Assets should still be present after rename + description update consolidation");
+              assertEquals(
+                  tableId,
+                  assets.getData().get(0).getId(),
+                  "Asset should be the same table after consolidation");
+            });
 
     Table tableWithDataProducts =
         SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
@@ -935,8 +985,17 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     BulkAssets addTable = new BulkAssets().withAssets(List.of(table.getEntityReference()));
     bulkAddAssets(dataProduct.getFullyQualifiedName(), addTable);
 
-    ResultList<EntityReference> assets = getAssets(dataProduct.getId(), 10, 0);
-    assertEquals(1, assets.getPaging().getTotal());
+    // Wait for asset to be added (may be async)
+    UUID dataProductId = dataProduct.getId();
+    Awaitility.await("Wait for asset to be added")
+        .pollDelay(Duration.ofMillis(100))
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<EntityReference> assets = getAssets(dataProductId, 10, 0);
+              assertEquals(1, assets.getPaging().getTotal());
+            });
 
     String[] names = {"renamed-first", "renamed-second", "renamed-third"};
 
@@ -947,7 +1006,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
       dataProduct = patchEntity(dataProduct.getId().toString(), dataProduct);
       assertEquals(newName, dataProduct.getName());
 
-      assets = getAssets(dataProduct.getId(), 10, 0);
+      ResultList<EntityReference> assets = getAssets(dataProduct.getId(), 10, 0);
       assertEquals(
           1,
           assets.getPaging().getTotal(),

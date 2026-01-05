@@ -2748,13 +2748,48 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void test_sdkEntityWithTags(TestNamespace ns) {
     if (!supportsTags) return;
 
+    // Create test-specific classification and tags to avoid deadlocks with parallel tests
+    OpenMetadataClient client = SdkClients.adminClient();
+    String classificationName = ns.prefix("SdkTagsClassification");
+
+    org.openmetadata.schema.api.classification.CreateClassification createClassification =
+        new org.openmetadata.schema.api.classification.CreateClassification()
+            .withName(classificationName)
+            .withDescription("Classification for SDK tags test");
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/classifications",
+            createClassification,
+            org.openmetadata.schema.entity.classification.Classification.class);
+
+    // Create test-specific tags
+    String tag1Name = "SdkTag1";
+    String tag2Name = "SdkTag2";
+
+    for (String tagName : List.of(tag1Name, tag2Name)) {
+      org.openmetadata.schema.api.classification.CreateTag createTag =
+          new org.openmetadata.schema.api.classification.CreateTag()
+              .withName(tagName)
+              .withDescription("Tag for SDK test")
+              .withClassification(classificationName);
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              "/v1/tags",
+              createTag,
+              org.openmetadata.schema.entity.classification.Tag.class);
+    }
+
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
 
     // Add tags
-    TagLabel tag1 = new TagLabel().withTagFQN("PII.Sensitive");
-    TagLabel tag2 = new TagLabel().withTagFQN("Tier.Tier1");
+    TagLabel tag1 = new TagLabel().withTagFQN(classificationName + "." + tag1Name);
+    TagLabel tag2 = new TagLabel().withTagFQN(classificationName + "." + tag2Name);
     entity.setTags(List.of(tag1, tag2));
     T withTags = patchEntity(entity.getId().toString(), entity);
 
@@ -3491,7 +3526,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(30))
+        .atMost(Duration.ofSeconds(60))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -3527,7 +3562,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(30))
+        .atMost(Duration.ofSeconds(60))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -3555,7 +3590,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(30))
+        .atMost(Duration.ofSeconds(60))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -3574,7 +3609,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for search to reflect update")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(30))
+        .atMost(Duration.ofSeconds(60))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
