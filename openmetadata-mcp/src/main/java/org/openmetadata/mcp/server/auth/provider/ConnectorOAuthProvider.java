@@ -938,14 +938,14 @@ public class ConnectorOAuthProvider implements OAuthAuthorizationServerProvider,
         try {
           tokenRepository.deleteAccessToken(tokenString);
         } catch (Exception e) {
-          LOG.debug("Token {} not found as access token", tokenString);
+          LOG.debug("Token not found as access token");
         }
         try {
           tokenRepository.revokeRefreshToken(tokenString);
         } catch (Exception e) {
-          LOG.debug("Token {} not found as refresh token", tokenString);
+          LOG.debug("Token not found as refresh token");
         }
-        LOG.info("Revoked token: {}", tokenString);
+        LOG.info("Revoked token");
       } else {
         LOG.warn("Unknown token type for revocation: {}", token.getClass());
       }

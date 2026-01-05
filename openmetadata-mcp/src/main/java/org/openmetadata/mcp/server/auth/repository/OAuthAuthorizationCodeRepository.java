@@ -60,7 +60,7 @@ public class OAuthAuthorizationCodeRepository {
    */
   public void markAsUsed(String code) {
     dao.markAsUsed(code);
-    LOG.debug("Marked authorization code as used: {}", code);
+    LOG.debug("Marked authorization code as used");
   }
 
   /**
@@ -74,12 +74,10 @@ public class OAuthAuthorizationCodeRepository {
   public OAuthAuthorizationCodeRecord markAsUsedAtomic(String code) {
     int rowsAffected = dao.markAsUsedAtomic(code);
     if (rowsAffected == 1) {
-      LOG.debug("Atomically marked authorization code as used: {}", code);
+      LOG.debug("Atomically marked authorization code as used");
       return dao.findByCode(code);
     }
-    LOG.warn(
-        "Failed to atomically mark authorization code as used (already used or not found): {}",
-        code);
+    LOG.warn("Failed to atomically mark authorization code as used (already used or not found)");
     return null;
   }
 
@@ -88,7 +86,7 @@ public class OAuthAuthorizationCodeRepository {
    */
   public void delete(String code) {
     dao.delete(code);
-    LOG.debug("Deleted authorization code: {}", code);
+    LOG.debug("Deleted authorization code");
   }
 
   /**

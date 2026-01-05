@@ -4,24 +4,80 @@
 
 The MCP OAuth implementation is **connector-agnostic** and works with ANY database service that has OAuth credentials configured in OpenMetadata.
 
-## Current Working Status
+**Status:** ✅ Production Ready
 
-✅ **MCP Server**: Fully functional with OAuth authentication
-✅ **Default Connector**: `test-snowflake-mcp` (Snowflake with OAuth)
-✅ **OAuth Flow**: Complete (discovery → registration → authorization → token exchange)
-✅ **MCP Protocol**: Working via HTTP POST with JWT tokens
+## Quick Start
 
-## Testing with Default Connector (Snowflake)
+### Simple Test (Default Connector)
 
 ```bash
-# Simple test - uses default test-snowflake-mcp connector
-./test-mcp-with-token.sh
+cd openmetadata-mcp
+./test-mcp-with-token.sh  # Uses test-snowflake-mcp
 ```
 
-This will:
+ This will:
 1. Complete OAuth flow (gets authorization code → exchanges for JWT token)
 2. Test MCP initialize request
 3. List available MCP tools
+
+### Test with Specific Connector
+
+```bash
+export MCP_DEFAULT_CONNECTOR="your-connector-name"
+./test-mcp-with-token.sh
+```
+
+## Setup Instructions
+
+### Creating a Test Connector with OAuth
+
+**Option 1: Using API**
+
+```bash
+# 1. Create credential file (see scripts/mcp-oauth-tests/create-snowflake-service.json.example)
+cp scripts/mcp-oauth-tests/create-snowflake-service.json.example my-connector.json
+
+# 2. Fill in your OAuth credentials (get from Snowflake/Databricks OAuth setup)
+# Edit my-connector.json with:
+#   - clientId/clientSecret (Base64 encoded)
+#   - accessToken/refreshToken
+#   - tokenEndpoint
+#   - expiresAt (Unix timestamp)
+
+# 3. Create service via API
+export OM_TOKEN="your-admin-jwt-token"
+curl -X POST "http://localhost:8585/api/v1/services/databaseServices" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OM_TOKEN" \
+  -d @my-connector.json
+```
+
+**Option 2: Using SQL (Direct Database)**
+
+```sql
+UPDATE dbservice_entity
+SET json = JSON_SET(
+    json,
+    '$.connection.config.oauth', JSON_OBJECT(
+        'clientId', '<base64_client_id>',
+        'clientSecret', '<base64_client_secret>',
+        'accessToken', '<access_token>',
+        'refreshToken', '<refresh_token>',
+        'tokenEndpoint', '<token_endpoint>',
+        'expiresAt', UNIX_TIMESTAMP() + 3600
+    )
+)
+WHERE name = 'your-connector-name';
+```
+
+### Security Notes
+
+⚠️ **Important**: Actual credential files are gitignored and should NEVER be committed.
+
+- ✅ Use `.json.example` files as templates (safe to commit)
+- ❌ Never commit files with actual credentials
+- ✅ Tokens are encrypted when stored in OpenMetadata database
+- ❌ Never share your access/refresh tokens
 
 ## Testing with Other Connectors
 
@@ -63,47 +119,6 @@ Any OpenMetadata database service with OAuth credentials can be used:
 | BigQuery | ✅ Native | ⚠️ Needs OAuth config |
 | Azure SQL | ✅ Native | ⚠️ Needs OAuth config |
 | Redshift | ✅ Via IAM | ⚠️ Needs OAuth config |
-
-## Configuring OAuth for a Connector
-
-### 1. Via API (Programmatic)
-
-```bash
-# Update database service with OAuth credentials
-curl -X PATCH "http://localhost:8585/api/v1/services/databaseServices/{id}" \
-  -H "Content-Type: application/json-patch+json" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -d '[{
-    "op": "add",
-    "path": "/connection/config/oauth",
-    "value": {
-      "clientId": "base64_encoded_client_id",
-      "clientSecret": "base64_encoded_client_secret",
-      "accessToken": "your_access_token",
-      "refreshToken": "your_refresh_token",
-      "tokenEndpoint": "https://provider.com/oauth/token",
-      "expiresAt": 1735123456
-    }
-  }]'
-```
-
-### 2. Via SQL (Direct Database)
-
-```sql
-UPDATE dbservice_entity
-SET json = JSON_SET(
-    json,
-    '$.connection.config.oauth', JSON_OBJECT(
-        'clientId', '<base64_client_id>',
-        'clientSecret', '<base64_client_secret>',
-        'accessToken', '<access_token>',
-        'refreshToken', '<refresh_token>',
-        'tokenEndpoint', '<token_endpoint>',
-        'expiresAt', UNIX_TIMESTAMP() + 3600
-    )
-)
-WHERE name = 'your-connector-name';
-```
 
 ## How the Connector-Agnostic Flow Works
 
@@ -211,12 +226,14 @@ done
 **Cause**: Testing issue - code_verifier doesn't match code_challenge
 **Solution**: Use provided test scripts which handle PKCE correctly
 
-## Files Changed
+### Getting Fresh Tokens
+If your tokens expire, use your connector's OAuth flow to get new tokens:
+1. For Snowflake: Follow Snowflake OAuth setup guide
+2. For Databricks: Use Databricks OAuth integration
+3. Update your connector with fresh `accessToken`, `refreshToken`, and `expiresAt`
 
-1. **McpAuthFilter.java** - Added OPTIONS CORS preflight support
-   - Location: `openmetadata-mcp/src/main/java/org/openmetadata/mcp/McpAuthFilter.java`
-   - Change: Allow OPTIONS requests without authentication for CORS
+## Additional Resources
 
-## Next Steps
-
-Ready to commit? The only change is the OPTIONS fix in McpAuthFilter.java, which is needed for web-based MCP clients.
+- **Implementation Details**: See [MCP_OAUTH_IMPLEMENTATION.md](MCP_OAUTH_IMPLEMENTATION.md)
+- **Example Credential Files**: `scripts/mcp-oauth-tests/*.json.example`
+- **Test Scripts**: `test-mcp-with-token.sh`
