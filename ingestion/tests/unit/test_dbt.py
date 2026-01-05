@@ -2635,7 +2635,8 @@ class TestDownloadDbtFiles(TestCase):
     @patch("metadata.ingestion.source.database.dbt.metadata.OpenMetadata")
     def test_no_override_metadata_for_source_descriptions(self, mock_ometa):
         """Test that SOURCE descriptions are not overridden when overrideMetadata is False"""
-        # Create a config with overrideMetadata disabled (default)
+        # Create a config with overrideMetadata explicitly disabled
+        # (Explicitly set to False to make test intent clear, even though it's the default)
         config_without_override = deepcopy(mock_dbt_config)
         config_without_override["source"]["sourceConfig"]["config"]["overrideMetadata"] = False
         
