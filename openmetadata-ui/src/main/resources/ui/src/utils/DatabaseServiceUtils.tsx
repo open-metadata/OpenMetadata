@@ -63,6 +63,7 @@ import snowflakeConnection from '../jsons/connectionSchemas/connections/database
 import sqliteConnection from '../jsons/connectionSchemas/connections/database/sqliteConnection.json';
 import synapseConnection from '../jsons/connectionSchemas/connections/database/synapseConnection.json';
 import teradataConnection from '../jsons/connectionSchemas/connections/database/teradataConnection.json';
+import timescaleConnection from '../jsons/connectionSchemas/connections/database/timescaleConnection.json';
 import trinoConnection from '../jsons/connectionSchemas/connections/database/trinoConnection.json';
 import unityCatalogConnection from '../jsons/connectionSchemas/connections/database/unityCatalogConnection.json';
 import verticaConnection from '../jsons/connectionSchemas/connections/database/verticaConnection.json';
@@ -292,6 +293,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.Teradata: {
       schema = teradataConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Timescale: {
+      schema = timescaleConnection;
 
       break;
     }

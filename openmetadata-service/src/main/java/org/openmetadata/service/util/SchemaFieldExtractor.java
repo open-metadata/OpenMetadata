@@ -597,14 +597,17 @@ public class SchemaFieldExtractor {
 
   private static String getEntitySubdirectory(String entityType) {
     Map<String, String> entityTypeToSubdirectory =
-        Map.of(
-            "dashboard", "data",
-            "table", "data",
-            "pipeline", "data",
-            "votes", "data",
-            "dataProduct", "domains",
-            "domain", "domains",
-            "notificationTemplate", "events");
+        Map.ofEntries(
+            Map.entry("dashboard", "data"),
+            Map.entry("table", "data"),
+            Map.entry("pipeline", "data"),
+            Map.entry("votes", "data"),
+            Map.entry("dataProduct", "domains"),
+            Map.entry("domain", "domains"),
+            Map.entry("notificationTemplate", "events"),
+            Map.entry("tag", "classification"),
+            Map.entry("classification", "classification"),
+            Map.entry("page", "data"));
     return entityTypeToSubdirectory.getOrDefault(entityType, "data");
   }
 

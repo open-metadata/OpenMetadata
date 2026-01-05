@@ -57,7 +57,10 @@ export enum EntityFields {
   OWNERS = 'owners.displayName.keyword',
   TAG = 'tags.tagFQN',
   TIER = 'tier.tagFQN',
+  CLASSIFICATION_TAGS = 'classificationTags',
+  GLOSSARY_TERMS = 'glossaryTags',
   CERTIFICATION = 'certification.tagLabel.tagFQN',
+  DOMAIN_TYPE = 'domainType.keyword',
   SERVICE = 'service.displayName.keyword',
   DATABASE = 'database.displayName.keyword',
   DATABASE_NAME = 'database.name.keyword',
@@ -77,6 +80,8 @@ export enum EntityFields {
   TAGS_LABEL_TYPE = 'tags.labelType',
   TIER_LABEL_TYPE = 'tier.labelType',
   CREATED_BY = 'createdBy',
+  DATA_PRODUCT = 'dataProducts.displayName.keyword',
+  FULLY_QUALIFIED_NAME = 'fullyQualifiedName',
   PARENT = 'parent.displayName.keyword',
   DIRECTORY = 'directory.displayName.keyword',
   FILE_TYPE = 'fileType',
@@ -84,14 +89,6 @@ export enum EntityFields {
   LAST_MODIFIED_BY = 'lastModifiedBy',
   SPREADSHEET = 'spreadsheet.displayName.keyword',
 }
-
-export const EntitySourceFields: Partial<Record<EntityFields, string[]>> = {
-  [EntityFields.SERVICE_NAME]: ['service.name'],
-  [EntityFields.DATABASE_SCHEMA_NAME]: ['databaseSchema.name'],
-  [EntityFields.DATABASE_NAME]: ['database.name'],
-  [EntityFields.COLUMN]: ['columns.name'],
-  [EntityFields.NAME_KEYWORD]: ['name'],
-};
 
 // This enum contains list of fields that are there in the object of the entity
 // For example, in Glossary object, there are fields like name, description, parent, etc.
@@ -107,11 +104,13 @@ export enum EntityReferenceFields {
   GLOSSARY_TERM = 'glossaryTerm',
   TIER = 'tier',
   DOMAIN = 'domains',
-  DATA_PRODUCT = 'dataProduct',
+  DATA_PRODUCTS = 'dataProducts',
   TABLE_TYPE = 'tableType',
   EXTENSION = 'extension',
   SERVICE = 'service.name',
   UPDATED_BY = 'updatedBy',
   CHANGE_DESCRIPTION = 'changeDescription',
   DELETED = 'deleted',
+  UPDATED_AT = 'updatedAt',
+  VERSION = 'version',
 }

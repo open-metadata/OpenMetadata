@@ -18,13 +18,35 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
 import { DATA_CONTRACT_SLA } from '../../../constants/DataContract.constants';
 import { DataContract } from '../../../generated/entity/data/dataContract';
+import { Table } from '../../../generated/entity/data/table';
 import { Transi18next } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import './contract-sla.less';
 
 const ContractSLA: React.FC<{
   contract: DataContract;
 }> = ({ contract }) => {
   const { t } = useTranslation();
+  const { data: tableData } = useGenericContext();
+
+  const tableColumnNameMap = useMemo(() => {
+    const columns = (tableData as Table).columns;
+    if (!isEmpty(columns)) {
+      const tableColumnNamesObject = new Map<string, string>();
+
+      columns.forEach((item) =>
+        tableColumnNamesObject.set(
+          item.fullyQualifiedName ?? '',
+          getEntityName(item)
+        )
+      );
+
+      return tableColumnNamesObject;
+    }
+
+    return null;
+  }, [tableData]);
 
   const renderSLAData = useMemo(() => {
     if (isEmpty(contract.sla)) {
@@ -103,8 +125,24 @@ const ContractSLA: React.FC<{
       });
     }
 
+    if (contract.sla?.columnName) {
+      slaList.push({
+        key: DATA_CONTRACT_SLA.COLUMN_NAME,
+        label: (
+          <Transi18next
+            i18nKey="message.column-name-sla-description"
+            renderElement={<strong />}
+            values={{
+              label: t('label.column'),
+              data: tableColumnNameMap?.get(contract.sla?.columnName ?? ''),
+            }}
+          />
+        ),
+      });
+    }
+
     return slaList;
-  }, [contract.sla]);
+  }, [contract.sla, tableColumnNameMap]);
 
   if (isEmpty(renderSLAData)) {
     return null;

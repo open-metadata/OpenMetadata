@@ -79,8 +79,6 @@ class NifiClient:
             client_config.cert = (cc_path, ck_path)
 
             self.client = REST(client_config)
-            access = self.client.get("access")
-            logger.debug(access)
 
     @property
     def token(self) -> str:

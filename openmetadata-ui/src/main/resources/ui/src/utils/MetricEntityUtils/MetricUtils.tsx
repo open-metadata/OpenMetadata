@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import Loader from '../../components/common/Loader/Loader';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
-import { EntityLineageTab } from '../../components/Lineage/EntityLineageTab/EntityLineageTab';
 import MetricExpression from '../../components/Metric/MetricExpression/MetricExpression';
 import RelatedMetrics from '../../components/Metric/RelatedMetrics/RelatedMetrics';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
@@ -32,6 +33,11 @@ import { PageType } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from '../i18next/LocalUtil';
 import { MetricDetailPageTabProps } from './MetricDetailsClassBase';
+const EntityLineageTab = lazy(() =>
+  import('../../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+    (module) => ({ default: module.EntityLineageTab })
+  )
+);
 
 const granularityOrder = [
   MetricGranularity.Second,
@@ -85,7 +91,7 @@ export const getMetricDetailsPageTabs = ({
   activeTab,
   editLineagePermission,
   editCustomAttributePermission,
-  viewAllPermission,
+  viewCustomPropertiesPermission,
   getEntityFeedCount,
   fetchMetricDetails,
   metricDetails,
@@ -153,12 +159,14 @@ export const getMetricDetailsPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <EntityLineageTab
-          deleted={Boolean(metricDetails?.deleted)}
-          entity={metricDetails as SourceType}
-          entityType={EntityType.METRIC}
-          hasEditAccess={editLineagePermission}
-        />
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(metricDetails?.deleted)}
+            entity={metricDetails as SourceType}
+            entityType={EntityType.METRIC}
+            hasEditAccess={editLineagePermission}
+          />
+        </Suspense>
       ),
     },
     {
@@ -176,7 +184,7 @@ export const getMetricDetailsPageTabs = ({
         <CustomPropertyTable<EntityType.METRIC>
           entityType={EntityType.METRIC}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

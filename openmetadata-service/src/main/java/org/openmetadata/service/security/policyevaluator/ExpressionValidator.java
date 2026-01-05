@@ -33,19 +33,45 @@ public class ExpressionValidator {
   private static final Set<String> ALLOWED_FUNCTIONS = initAllowedFunctions();
 
   // Patterns that indicate potentially dangerous expressions
-  private static final List<String> DANGEROUS_PATTERNS =
+  // Using precise regex patterns to avoid false positives while maintaining security
+  // Each pattern uses (?<![\\w$]) negative lookbehind to ensure the token isn't part of an
+  // identifier
+  private static final List<Pattern> DANGEROUS_PATTERNS =
       Arrays.asList(
-          "T(",
-          "new ",
-          "System.",
-          "Runtime",
-          "getClass",
-          "ClassLoader",
-          "forName",
-          "exec",
-          "eval",
-          "ProcessBuilder",
-          "java.lang.reflect");
+          // SpEL type reference: T(java.lang.Runtime) - used to access static methods
+          Pattern.compile("(?<![\\w$])T\\s*\\("),
+
+          // Constructor invocation: new ProcessBuilder() - prevents object instantiation
+          // Requires whitespace after 'new' to avoid matching "renewable", "brand_new", etc.
+          Pattern.compile("(?<![\\w$])new\\s+"),
+
+          // System class access: System.exit(), System.getenv() - keep broad for security
+          Pattern.compile("(?<![\\w$])System\\."),
+
+          // Runtime class reference - catches Runtime.getRuntime() pattern
+          Pattern.compile("(?<![\\w$])Runtime\\b"),
+
+          // Reflection via getClass() method - requires dot prefix to ensure method call
+          Pattern.compile("\\.\\s*getClass\\s*\\("),
+
+          // ClassLoader reference - can load arbitrary bytecode
+          Pattern.compile("(?<![\\w$])ClassLoader\\b"),
+
+          // Class.forName() or any forName() call - dynamic class loading
+          Pattern.compile("\\.\\s*forName\\s*\\("),
+
+          // exec() method call - executes system commands
+          Pattern.compile("\\.\\s*exec\\s*\\("),
+
+          // eval() function call - requires function call syntax to avoid false positives
+          // This prevents matching table names like "customer_evaluations"
+          Pattern.compile("(?<![\\w$])eval\\s*\\("),
+
+          // ProcessBuilder class - used to spawn system processes
+          Pattern.compile("(?<![\\w$])ProcessBuilder\\b"),
+
+          // Java reflection package - direct reflection access
+          Pattern.compile("(?<![\\w$])java\\.lang\\.reflect\\b"));
 
   private static Set<String> initAllowedFunctions() {
     Set<String> allowedFunctions = new HashSet<>();
@@ -131,12 +157,13 @@ public class ExpressionValidator {
       return;
     }
 
-    // Check for dangerous patterns
-    for (String pattern : DANGEROUS_PATTERNS) {
-      if (expression.contains(pattern)) {
+    // Check for dangerous patterns using regex to avoid false positives
+    for (Pattern pattern : DANGEROUS_PATTERNS) {
+      Matcher patternMatcher = pattern.matcher(expression);
+      if (patternMatcher.find()) {
         throw new IllegalArgumentException(
             "Expression contains potentially unsafe pattern: "
-                + pattern
+                + pattern.pattern()
                 + ". "
                 + "Only use approved policy functions with @Function annotations.");
       }

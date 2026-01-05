@@ -14,6 +14,10 @@
  * Credentials for a Gitlab repository
  */
 export interface GitlabCredentials {
+    /**
+     * Gitlab instance URL. For Gitlab.com, use https://gitlab.com
+     */
+    gitHostURL?:     string;
     repositoryName:  string;
     repositoryOwner: string;
     token?:          string;

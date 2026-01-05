@@ -68,7 +68,7 @@ def build_auto_classification_workflow_config(
             config={},
         ),
         processor=Processor(
-            type="orm-profiler",
+            type="tag-pii-processor",
             config={},
         ),
         workflowConfig=WorkflowConfig(

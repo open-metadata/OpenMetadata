@@ -40,6 +40,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import pipelineClassBase from '../../../utils/PipelineClassBase';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
@@ -217,6 +218,7 @@ const PipelineDetails = ({
     editCustomAttributePermission,
     editLineagePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -245,6 +247,10 @@ const PipelineDetails = ({
           PermissionOperation.EditLineage
         ) && !deleted,
       viewAllPermission: pipelinePermissions.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        pipelinePermissions,
+        PermissionOperation.ViewCustomFields
+      ),
     }),
     [pipelinePermissions, deleted]
   );
@@ -294,6 +300,7 @@ const PipelineDetails = ({
       pipelineDetails,
       pipelineFQN,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       editLineagePermission,
       editCustomAttributePermission,
       deleted: Boolean(pipelineDetails.deleted),
@@ -325,6 +332,7 @@ const PipelineDetails = ({
     editLineagePermission,
     editCustomAttributePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   ]);
 
   const toggleTabExpanded = () => {

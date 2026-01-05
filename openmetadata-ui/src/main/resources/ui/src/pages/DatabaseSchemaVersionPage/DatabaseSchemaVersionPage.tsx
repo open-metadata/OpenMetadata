@@ -38,6 +38,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
+import { Operation } from '../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
@@ -56,7 +57,10 @@ import {
   getCommonDiffsFromVersionData,
   getCommonExtraInfoForVersionDetails,
 } from '../../utils/EntityVersionUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
@@ -78,6 +82,7 @@ function DatabaseSchemaVersionPage() {
     handlePagingChange,
     handlePageChange,
     currentPage,
+    pagingCursor,
   } = pagingInfo;
 
   const [tableData, setTableData] = useState<Array<Table>>([]);
@@ -97,6 +102,15 @@ function DatabaseSchemaVersionPage() {
 
   const viewVersionPermission = useMemo(
     () => servicePermissions.ViewAll || servicePermissions.ViewBasic,
+    [servicePermissions]
+  );
+
+  const viewCustomPropertiesPermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        servicePermissions,
+        Operation.ViewCustomFields
+      ),
     [servicePermissions]
   );
 
@@ -195,8 +209,12 @@ function DatabaseSchemaVersionPage() {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         getSchemaTables({ [cursorType]: paging[cursorType] });
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
       }
-      handlePageChange(currentPage);
     },
     [paging, getSchemaTables]
   );
@@ -304,7 +322,7 @@ function DatabaseSchemaVersionPage() {
             isVersionView
             entityType={EntityType.DATABASE_SCHEMA}
             hasEditAccess={false}
-            hasPermission={viewVersionPermission}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
@@ -428,9 +446,16 @@ function DatabaseSchemaVersionPage() {
 
   useEffect(() => {
     if (!isEmpty(currentVersionData)) {
+      const { cursorType, cursorValue } = pagingCursor ?? {};
+
+      if (cursorType && cursorValue) {
+        getSchemaTables({ [cursorType]: cursorValue, limit: pageSize });
+
+        return;
+      }
       getSchemaTables({ limit: pageSize });
     }
-  }, [currentVersionData, pageSize]);
+  }, [currentVersionData, pageSize, pagingCursor]);
 
   return versionComponent;
 }
