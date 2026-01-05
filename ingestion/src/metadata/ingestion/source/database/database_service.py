@@ -225,6 +225,8 @@ class DatabaseServiceSource(
     stored_procedure_source_state: Set = set()
     database_entity_source_state: Set = set()
     schema_entity_source_state: Set = set()
+    # Track schemas where table listing failed to prevent unwanted deletions
+    schema_table_listing_failed: Set = set()
     # Big union of types we want to fetch dynamically
     service_connection: DatabaseConnection.model_fields["config"].annotation
 
@@ -730,6 +732,15 @@ class DatabaseServiceSource(
             )
 
             for schema_fqn in schema_fqn_list:
+                # Skip schemas where table listing failed to prevent unwanted deletions
+                if schema_fqn in self.schema_table_listing_failed:
+                    logger.warning(
+                        f"Skipping mark deleted tables for schema [{schema_fqn}] "
+                        f"because table listing failed for this schema. "
+                        f"Tables will not be marked as deleted to prevent accidental data loss."
+                    )
+                    continue
+                    
                 yield from delete_entity_from_source(
                     metadata=self.metadata,
                     entity_type=Table,

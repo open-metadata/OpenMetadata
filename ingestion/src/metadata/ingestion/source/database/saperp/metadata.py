@@ -89,42 +89,58 @@ class SaperpSource(CommonDbSourceService):
         """
         Ingest the tables from SAP ERP
         """
-        for table in self.connection_obj.list_tables() or []:
-            try:
-                table_name = table.tabname
-                table_type = TABLE_TYPE_MAP.get(table.tabclass, TableType.Regular)
-                if (
-                    table_type == TableType.Regular and self.source_config.includeTables
-                ) or (table_type == TableType.View and self.source_config.includeViews):
-                    table_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                        schema_name=self.context.get().database_schema,
-                        table_name=table_name,
-                        skip_es_search=True,
-                    )
-                    if filter_by_table(
-                        self.source_config.tableFilterPattern,
-                        (
-                            table_fqn
-                            if self.source_config.useFqnForFiltering
-                            else table_name
-                        ),
-                    ):
-                        self.status.filter(
-                            table_fqn,
-                            "Table Filtered Out",
+        schema_name = self.context.get().database_schema
+        try:
+            for table in self.connection_obj.list_tables() or []:
+                try:
+                    table_name = table.tabname
+                    table_type = TABLE_TYPE_MAP.get(table.tabclass, TableType.Regular)
+                    if (
+                        table_type == TableType.Regular and self.source_config.includeTables
+                    ) or (table_type == TableType.View and self.source_config.includeViews):
+                        table_fqn = fqn.build(
+                            self.metadata,
+                            entity_type=Table,
+                            service_name=self.context.get().database_service,
+                            database_name=self.context.get().database,
+                            schema_name=self.context.get().database_schema,
+                            table_name=table_name,
+                            skip_es_search=True,
                         )
-                        continue
-                    yield table
+                        if filter_by_table(
+                            self.source_config.tableFilterPattern,
+                            (
+                                table_fqn
+                                if self.source_config.useFqnForFiltering
+                                else table_name
+                            ),
+                        ):
+                            self.status.filter(
+                                table_fqn,
+                                "Table Filtered Out",
+                            )
+                            continue
+                        yield table
 
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Unable to process table information for table: {str(table_name)} - {err}"
-                )
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Unable to process table information for table: {str(table_name)} - {err}"
+                    )
+        except Exception as err:
+            logger.warning(
+                f"Fetching tables names failed for schema {schema_name} due to - {err}"
+            )
+            logger.debug(traceback.format_exc())
+            # Record the failed schema to prevent unwanted table deletions
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
+                schema_name=schema_name,
+            )
+            self.schema_table_listing_failed.add(schema_fqn)
 
     def _check_col_length(  # pylint: disable=arguments-differ
         self, datatype: str, col_length: Optional[str], col_decimals: Optional[str]

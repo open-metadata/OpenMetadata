@@ -214,60 +214,75 @@ class IcebergSource(DatabaseServiceSource):
         """
         namespace = self.context.get().database_schema
 
-        for table_identifier in self.iceberg.list_tables(namespace):
-            try:
-                table = self._load_iceberg_table(table_identifier)
-                # extract table name from table identifier, which does not include catalog name
-                table_name = get_table_name_as_str(table_identifier)
-                if not table:
-                    logger.debug(
-                        f"iceberg Table could not be fetched for table name = {table_name}"
+        try:
+            for table_identifier in self.iceberg.list_tables(namespace):
+                try:
+                    table = self._load_iceberg_table(table_identifier)
+                    # extract table name from table identifier, which does not include catalog name
+                    table_name = get_table_name_as_str(table_identifier)
+                    if not table:
+                        logger.debug(
+                            f"iceberg Table could not be fetched for table name = {table_name}"
+                        )
+                        continue
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
+                        table_name=table_name,
                     )
-                    continue
-                table_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
-                    table_name=table_name,
-                )
-                if filter_by_table(
-                    self.config.sourceConfig.config.tableFilterPattern,
-                    table_fqn
-                    if self.config.sourceConfig.config.useFqnForFiltering
-                    else table_name,
-                ):
-                    self.status.filter(
-                        table_fqn,
-                        "Table Filtered Out",
-                    )
-                    continue
+                    if filter_by_table(
+                        self.config.sourceConfig.config.tableFilterPattern,
+                        table_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else table_name,
+                    ):
+                        self.status.filter(
+                            table_fqn,
+                            "Table Filtered Out",
+                        )
+                        continue
 
-                self.context.get().iceberg_table = table
-                yield table_name, TableType.Regular
-            except pyiceberg.exceptions.NoSuchPropertyException:
-                logger.warning(
-                    f"Table [{table_identifier}] does not have the 'table_type' property. Skipped."
-                )
-                continue
-            except pyiceberg.exceptions.NoSuchIcebergTableError:
-                logger.warning(
-                    f"Table [{table_identifier}] is not an Iceberg Table. Skipped."
-                )
-                continue
-            except pyiceberg.exceptions.NoSuchTableError:
-                logger.warning(f"Table [{table_identifier}] not Found. Skipped.")
-                continue
-            except Exception as exc:
-                table_name = ".".join(table_identifier)
-                self.status.failed(
-                    StackTraceError(
-                        name=table_name,
-                        error=f"Unexpected exception to get table [{table_name}]: {exc}",
-                        stackTrace=traceback.format_exc(),
+                    self.context.get().iceberg_table = table
+                    yield table_name, TableType.Regular
+                except pyiceberg.exceptions.NoSuchPropertyException:
+                    logger.warning(
+                        f"Table [{table_identifier}] does not have the 'table_type' property. Skipped."
                     )
-                )
+                    continue
+                except pyiceberg.exceptions.NoSuchIcebergTableError:
+                    logger.warning(
+                        f"Table [{table_identifier}] is not an Iceberg Table. Skipped."
+                    )
+                    continue
+                except pyiceberg.exceptions.NoSuchTableError:
+                    logger.warning(f"Table [{table_identifier}] not Found. Skipped.")
+                    continue
+                except Exception as exc:
+                    table_name = ".".join(table_identifier)
+                    self.status.failed(
+                        StackTraceError(
+                            name=table_name,
+                            error=f"Unexpected exception to get table [{table_name}]: {exc}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
+        except Exception as err:
+            logger.warning(
+                f"Fetching tables names failed for schema {namespace} due to - {err}"
+            )
+            logger.debug(traceback.format_exc())
+            # Record the failed schema to prevent unwanted table deletions
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
+                schema_name=namespace,
+            )
+            self.schema_table_listing_failed.add(schema_fqn)
 
     def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
         owner = get_owner_from_table(
