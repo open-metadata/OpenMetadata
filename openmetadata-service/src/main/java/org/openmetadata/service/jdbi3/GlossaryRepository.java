@@ -276,7 +276,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
             Entity.getEntityByName(
                 GLOSSARY_TERM,
                 glossaryTermFqn,
-                "id,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owners,status,style,parent",
+                "id,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owners,entityStatus,style,parent",
                 Include.NON_DELETED);
         glossaryTermExists = true;
       } catch (EntityNotFoundException ex) {
@@ -495,7 +495,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
               ? recordFieldChangesArray[recordIndex]
               : new ChangeDescription();
 
-      String status = isCreated ? "EntityCreated" : "EntityUpdated";
+      String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
 
       if (!Boolean.TRUE.equals(importResult.getDryRun())) {
         try {

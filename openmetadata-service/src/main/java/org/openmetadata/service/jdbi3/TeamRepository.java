@@ -1160,9 +1160,9 @@ public class TeamRepository extends EntityRepository<Team> {
           .withDefaultRoles(defaultRoles)
           .withPolicies(policies);
 
-      getParents(printer, csvRecord, team); // This method also handles parent validation
+      List<EntityReference> originalParents = team.getParents();
+      getParents(printer, csvRecord, team);
 
-      // Since getParents can set processRecord to false, we need to check it here.
       if (processRecord) {
         if (!teamExists) {
           if (!nullOrEmpty(team.getParents())) {
@@ -1172,11 +1172,11 @@ public class TeamRepository extends EntityRepository<Team> {
                     .withNewValue(JsonUtils.pojoToJson(team.getParents())));
           }
         } else {
-          if (!Objects.equals(team.getParents(), team.getParents())) {
+          if (!Objects.equals(originalParents, team.getParents())) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("parents")
-                    .withOldValue(JsonUtils.pojoToJson(team.getParents()))
+                    .withOldValue(JsonUtils.pojoToJson(originalParents))
                     .withNewValue(JsonUtils.pojoToJson(team.getParents())));
           }
         }
@@ -1213,10 +1213,15 @@ public class TeamRepository extends EntityRepository<Team> {
               ? recordFieldChangesArray[recordIndex]
               : new ChangeDescription();
 
-      String status = isCreated ? "EntityCreated" : "EntityUpdated";
+      String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
 
       if (!Boolean.TRUE.equals(importResult.getDryRun())) {
         try {
+          if (isCreated) {
+            team.setId(UUID.randomUUID());
+            team.setUpdatedBy(importedBy);
+            team.setUpdatedAt(System.currentTimeMillis());
+          }
           EntityRepository<Team> repository =
               (EntityRepository<Team>) Entity.getEntityRepository(TEAM);
           repository.createOrUpdate(null, team, importedBy);

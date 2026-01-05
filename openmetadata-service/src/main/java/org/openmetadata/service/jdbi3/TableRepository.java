@@ -1913,15 +1913,16 @@ public class TableRepository extends EntityRepository<Table> {
 
       for (int i = 1; i < records.size(); i++) {
         CSVRecord record = records.get(i);
+        int arrayIndex = i - 1;
         boolean isCreated =
             recordCreateStatusArray != null
-                && i < recordCreateStatusArray.length
-                && recordCreateStatusArray[i];
+                && arrayIndex < recordCreateStatusArray.length
+                && recordCreateStatusArray[arrayIndex];
         ChangeDescription changeDescription =
             recordFieldChangesArray != null
-                    && i < recordFieldChangesArray.length
-                    && recordFieldChangesArray[i] != null
-                ? recordFieldChangesArray[i]
+                    && arrayIndex < recordFieldChangesArray.length
+                    && recordFieldChangesArray[arrayIndex] != null
+                ? recordFieldChangesArray[arrayIndex]
                 : new ChangeDescription();
         String status;
         if (isCreated) {

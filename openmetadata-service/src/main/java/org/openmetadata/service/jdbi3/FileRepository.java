@@ -548,10 +548,15 @@ public class FileRepository extends EntityRepository<File> {
               ? recordFieldChangesArray[recordIndex]
               : new ChangeDescription();
 
-      String status = isCreated ? "EntityCreated" : "EntityUpdated";
+      String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
 
       if (!Boolean.TRUE.equals(importResult.getDryRun())) {
         try {
+          if (isCreated) {
+            file.setId(UUID.randomUUID());
+            file.setUpdatedBy(importedBy);
+            file.setUpdatedAt(System.currentTimeMillis());
+          }
           EntityRepository<File> repository =
               (EntityRepository<File>) Entity.getEntityRepository(FILE);
           repository.createOrUpdate(null, file, importedBy);

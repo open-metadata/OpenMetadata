@@ -1766,7 +1766,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               ? recordFieldChangesArray[recordIndex]
               : new ChangeDescription();
 
-      String status = isCreated ? "EntityCreated" : "EntityUpdated";
+      String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
 
       if (!Boolean.TRUE.equals(importResult.getDryRun())) {
         try {
