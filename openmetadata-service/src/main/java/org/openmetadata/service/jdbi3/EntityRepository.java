@@ -2525,7 +2525,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
         jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
         entity.setExtension(jsonNode);
       }
+      case "hyperlink-cp" -> validateHyperlinkUrl(fieldValue, fieldName);
       default -> {}
+    }
+  }
+
+  private void validateHyperlinkUrl(JsonNode fieldValue, String fieldName) {
+    if (fieldValue == null || fieldValue.isNull()) {
+      return;
+    }
+    JsonNode urlNode = fieldValue.get("url");
+    if (urlNode == null || urlNode.isNull() || urlNode.asText().isEmpty()) {
+      return;
+    }
+    String url = urlNode.asText();
+    try {
+      java.net.URI uri = new java.net.URI(url);
+      String scheme = uri.getScheme();
+      if (scheme == null
+          || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid URL protocol for field '%s': URL must use http or https protocol",
+                fieldName));
+      }
+    } catch (java.net.URISyntaxException e) {
+      throw new IllegalArgumentException(
+          String.format("Invalid URL format for field '%s': %s", fieldName, e.getMessage()));
     }
   }
 

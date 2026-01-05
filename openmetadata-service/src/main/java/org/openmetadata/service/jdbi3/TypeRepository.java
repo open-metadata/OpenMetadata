@@ -200,8 +200,8 @@ public class TypeRepository extends EntityRepository<Type> {
           customProperty.getCustomPropertyConfig(), getDateTimeTokens(), "Invalid dateTime format");
       case "time-cp" -> validateDateFormat(
           customProperty.getCustomPropertyConfig(), getTimeTokens(), "Invalid time format");
-        // hyperlink-cp requires no special config validation - URL format validation is handled at
-        // the frontend level
+        // hyperlink-cp requires no special config validation - URL protocol validation
+        // (http/https only) is enforced in EntityRepository.validateHyperlinkUrl
       case "int", "string", "hyperlink-cp" -> {}
     }
   }

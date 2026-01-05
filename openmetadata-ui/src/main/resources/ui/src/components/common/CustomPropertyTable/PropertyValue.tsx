@@ -96,23 +96,19 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   property,
   isRenderedInRightPanel = false,
 }) => {
-  const { propertyName, propertyType, value, isTableType, isHyperlinkType } =
-    useMemo(() => {
-      const propertyName = property.name;
-      const propertyType = property.propertyType;
-      const isTableType = propertyType.name === TABLE_TYPE_CUSTOM_PROPERTY;
-      const isHyperlinkType =
-        propertyType.name === HYPERLINK_TYPE_CUSTOM_PROPERTY;
+  const { propertyName, propertyType, value, isTableType } = useMemo(() => {
+    const propertyName = property.name;
+    const propertyType = property.propertyType;
+    const isTableType = propertyType.name === TABLE_TYPE_CUSTOM_PROPERTY;
 
-      const value = extension?.[propertyName];
+    const value = extension?.[propertyName];
 
-      return {
-        propertyName,
-        propertyType,
-        value,
-        isTableType,
-        isHyperlinkType,
-      };
+    return {
+      propertyName,
+      propertyType,
+      value,
+      isTableType,
+    };
   }, [property, extension]);
 
   const { t } = useTranslation();
@@ -762,6 +758,24 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         const formId = `hyperlink-form-${propertyName}`;
 
+        const validateSafeUrl = (_: unknown, urlValue: string) => {
+          if (!urlValue) {
+            return Promise.resolve();
+          }
+          try {
+            const parsed = new URL(urlValue);
+            if (['http:', 'https:'].includes(parsed.protocol)) {
+              return Promise.resolve();
+            }
+
+            return Promise.reject(
+              new Error(t('message.url-must-use-http-or-https'))
+            );
+          } catch {
+            return Promise.reject(new Error(t('message.invalid-url')));
+          }
+        };
+
         return (
           <InlineEdit
             className="custom-property-inline-edit-container"
@@ -797,8 +811,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                     }),
                   },
                   {
-                    type: 'url',
-                    message: t('message.invalid-url'),
+                    validator: validateSafeUrl,
                   },
                 ]}
                 style={{ ...commonStyle, marginBottom: '16px' }}>
@@ -1038,11 +1051,25 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           return null;
         }
 
+        const isSafeUrl = (url: string): boolean => {
+          try {
+            const parsed = new URL(url);
+
+            return ['http:', 'https:'].includes(parsed.protocol);
+          } catch {
+            return false;
+          }
+        };
+
+        const safeHref = isSafeUrl(hyperlinkValue.url)
+          ? hyperlinkValue.url
+          : '#';
+
         return (
           <Typography.Link
             className="break-all property-value"
             data-testid="hyperlink-value"
-            href={hyperlinkValue.url}
+            href={safeHref}
             rel="noopener noreferrer"
             target="_blank">
             {hyperlinkValue.displayText || hyperlinkValue.url}
@@ -1074,7 +1101,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     const propertyValue = getPropertyValue();
 
     // if value is not undefined or property is a table type(at least show the columns), return the property value
-    return !isUndefined(value) || isTableType || isHyperlinkType ? (
+    return !isUndefined(value) || isTableType ? (
       propertyValue
     ) : (
       <span className="text-grey-muted" data-testid="no-data">
