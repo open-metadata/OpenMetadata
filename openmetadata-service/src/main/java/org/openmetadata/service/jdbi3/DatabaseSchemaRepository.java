@@ -586,8 +586,10 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     }
 
     private void initializeArrays(int csvRecordCount) {
-      recordCreateStatusArray = new boolean[csvRecordCount];
-      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
+      // Size arrays to exclude header row (index 0 not used with current record numbering)
+      int arraySize = csvRecordCount > 0 ? csvRecordCount - 1 : 0;
+      recordCreateStatusArray = new boolean[arraySize];
+      recordFieldChangesArray = new ChangeDescription[arraySize];
     }
 
     @Override
@@ -709,9 +711,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         tableExists = false;
       }
 
-      // Store create status with null check
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
-      if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+      // Store create status with adjusted index (array excludes header, so subtract 2)
+      int recordIndex = (int) csvRecord.getRecordNumber() - 2;
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
         recordCreateStatusArray[recordIndex] = !tableExists;
       }
 
@@ -828,8 +832,10 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       if (!fieldsUpdated.isEmpty()) {
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
-      // Store change description with null check
-      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+      // Store change description with adjusted index
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
         recordFieldChangesArray[recordIndex] = changeDescription;
       }
 
@@ -855,7 +861,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     private void createEntityWithChangeDescription(
         CSVPrinter printer, CSVRecord csvRecord, Table table, String entityType)
         throws IOException {
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      // Adjusted index to account for header row (array sized as records.size() - 1)
+      int recordIndex = (int) csvRecord.getRecordNumber() - 2;
       boolean isCreated =
           recordCreateStatusArray != null
                   && recordIndex >= 0

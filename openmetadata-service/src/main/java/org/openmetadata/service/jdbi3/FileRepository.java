@@ -234,8 +234,9 @@ public class FileRepository extends EntityRepository<File> {
     private ChangeDescription[] recordFieldChangesArray;
 
     private void initializeArrays(int csvRecordCount) {
-      recordCreateStatusArray = new boolean[csvRecordCount];
-      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
+      int arraySize = csvRecordCount > 0 ? csvRecordCount - 1 : 0;
+      recordCreateStatusArray = new boolean[arraySize];
+      recordFieldChangesArray = new ChangeDescription[arraySize];
     }
 
     @Override
@@ -284,8 +285,10 @@ public class FileRepository extends EntityRepository<File> {
       }
 
       // Store create status with null check
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
-      if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+      int recordIndex = (int) csvRecord.getRecordNumber() - 2;
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
         recordCreateStatusArray[recordIndex] = !fileExists;
       }
 
@@ -460,7 +463,9 @@ public class FileRepository extends EntityRepository<File> {
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
       // Store change description with null check
-      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
         recordFieldChangesArray[recordIndex] = changeDescription;
       }
 
@@ -536,9 +541,11 @@ public class FileRepository extends EntityRepository<File> {
 
     private void createEntityWithChangeDescription(
         CSVPrinter printer, CSVRecord csvRecord, File file) throws IOException {
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      int recordIndex = (int) csvRecord.getRecordNumber() - 2;
       boolean isCreated =
-          (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length)
+          (recordCreateStatusArray != null
+                  && recordIndex >= 0
+                  && recordIndex < recordCreateStatusArray.length)
               ? recordCreateStatusArray[recordIndex]
               : false;
       ChangeDescription changeDescription =

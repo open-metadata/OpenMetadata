@@ -354,8 +354,9 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
     private ChangeDescription[] recordFieldChangesArray;
 
     private void initializeArrays(int csvRecordCount) {
-      recordCreateStatusArray = new boolean[csvRecordCount];
-      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
+      int arraySize = csvRecordCount > 0 ? csvRecordCount - 1 : 0;
+      recordCreateStatusArray = new boolean[arraySize];
+      recordFieldChangesArray = new ChangeDescription[arraySize];
     }
 
     @Override
@@ -405,8 +406,10 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
       }
 
       // Store create status with null check
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
-      if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+      int recordIndex = (int) csvRecord.getRecordNumber() - 2;
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
         recordCreateStatusArray[recordIndex] = !worksheetExists;
       }
 
@@ -580,7 +583,9 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
       // Store change description with null check
-      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
         recordFieldChangesArray[recordIndex] = changeDescription;
       }
 
@@ -672,7 +677,7 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
 
     private void createEntityWithChangeDescription(
         CSVPrinter printer, CSVRecord csvRecord, Worksheet worksheet) throws IOException {
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      int recordIndex = (int) csvRecord.getRecordNumber() - 2;
       boolean isCreated =
           recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length
               ? recordCreateStatusArray[recordIndex]

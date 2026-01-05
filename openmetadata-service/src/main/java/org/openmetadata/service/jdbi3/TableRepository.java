@@ -1850,8 +1850,10 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     private void initializeArrays(int csvRecordCount) {
-      recordCreateStatusArray = new boolean[csvRecordCount];
-      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
+      // Size arrays to exclude header row (index 0 not used with current record numbering)
+      int arraySize = csvRecordCount > 0 ? csvRecordCount - 1 : 0;
+      recordCreateStatusArray = new boolean[arraySize];
+      recordFieldChangesArray = new ChangeDescription[arraySize];
     }
 
     @Override
@@ -1913,15 +1915,17 @@ public class TableRepository extends EntityRepository<Table> {
 
       for (int i = 1; i < records.size(); i++) {
         CSVRecord record = records.get(i);
+        // Adjusted index to account for header row (array sized as records.size() - 1)
+        int arrayIndex = i - 1;
         boolean isCreated =
             recordCreateStatusArray != null
-                && i < recordCreateStatusArray.length
-                && recordCreateStatusArray[i];
+                && arrayIndex < recordCreateStatusArray.length
+                && recordCreateStatusArray[arrayIndex];
         ChangeDescription changeDescription =
             recordFieldChangesArray != null
-                    && i < recordFieldChangesArray.length
-                    && recordFieldChangesArray[i] != null
-                ? recordFieldChangesArray[i]
+                    && arrayIndex < recordFieldChangesArray.length
+                    && recordFieldChangesArray[arrayIndex] != null
+                ? recordFieldChangesArray[arrayIndex]
                 : new ChangeDescription();
         String status;
         if (isCreated) {
@@ -1960,10 +1964,14 @@ public class TableRepository extends EntityRepository<Table> {
       String columnFqn = csvRecord.get(0);
       Column column = findColumn(table.getColumns(), columnFqn);
       boolean columnExists = column != null;
-      // Store create status with null check
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
-      if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
-        recordCreateStatusArray[recordIndex] = !columnExists;
+      // Store create status with adjusted index (array excludes header, so subtract 2)
+      // recordNumber: 1=header, 2=first data row, etc.
+      // arrayIndex: 0=first data row, 1=second data row, etc.
+      int arrayIndex = (int) csvRecord.getRecordNumber() - 2;
+      if (recordCreateStatusArray != null
+          && arrayIndex >= 0
+          && arrayIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[arrayIndex] = !columnExists;
       }
 
       // Track field changes for Phase 2 using ChangeDescription structure
@@ -2080,9 +2088,11 @@ public class TableRepository extends EntityRepository<Table> {
       if (!fieldsUpdated.isEmpty()) {
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
-      // Store change description with null check
-      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
-        recordFieldChangesArray[recordIndex] = changeDescription;
+      // Store change description with adjusted index
+      if (recordFieldChangesArray != null
+          && arrayIndex >= 0
+          && arrayIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[arrayIndex] = changeDescription;
       }
 
       // Apply the updates
