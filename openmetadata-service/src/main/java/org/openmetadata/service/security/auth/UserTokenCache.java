@@ -1,6 +1,7 @@
 package org.openmetadata.service.security.auth;
 
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.services.teams.UserService.USER_PROTECTED_FIELDS;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -21,7 +22,6 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
@@ -72,11 +72,7 @@ public class UserTokenCache {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       User user =
           userRepository.getByName(
-              null,
-              userName,
-              new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)),
-              NON_DELETED,
-              true);
+              null, userName, new Fields(Set.of(USER_PROTECTED_FIELDS)), NON_DELETED, true);
       List<TokenInterface> tokens =
           tokenRepository.findByUserIdAndType(
               user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());

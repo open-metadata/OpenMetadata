@@ -598,7 +598,9 @@ public class DirectoryResource {
           @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return service.updateVote(securityContext.getUserPrincipal().getName(), id, request);
+    return service
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
   }
 
   @POST

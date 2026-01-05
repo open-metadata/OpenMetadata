@@ -36,6 +36,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -67,6 +68,8 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
 import org.openmetadata.service.services.dqtests.TestCaseService;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -229,7 +232,7 @@ public class TestCaseResource {
           new OperationContext(Entity.TEST_SUITE, MetadataOperation.VIEW_BASIC);
       authRequests.add(new AuthRequest(operationContext, testSuiteRC));
     }
-    Fields fields = service.getFields(fieldsParam);
+    EntityUtil.Fields fields = service.getFields(fieldsParam);
 
     return service.listInternal(
         uriInfo, securityContext, fields, filter, limitParam, before, after, authRequests);
@@ -504,7 +507,7 @@ public class TestCaseResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    Fields fields = service.getFields(fieldsParam);
+    EntityUtil.Fields fields = service.getFields(fieldsParam);
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
@@ -547,7 +550,7 @@ public class TestCaseResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    Fields fields = service.getFields(fieldsParam);
+    EntityUtil.Fields fields = service.getFields(fieldsParam);
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();

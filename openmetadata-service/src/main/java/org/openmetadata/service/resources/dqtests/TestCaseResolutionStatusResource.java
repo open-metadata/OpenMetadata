@@ -44,24 +44,19 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityTimeSeriesResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationLogic;
-import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.dqtests.TestCaseResolutionStatusService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Path("/v1/dataQuality/testCases/testCaseIncidentStatus")
@@ -71,19 +66,12 @@ import org.openmetadata.service.util.RestUtil;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestCases")
-public class TestCaseResolutionStatusResource
-    extends EntityTimeSeriesResource<TestCaseResolutionStatus, TestCaseResolutionStatusRepository> {
+public class TestCaseResolutionStatusResource {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseIncidentStatus";
-  private TestCaseResolutionStatusService testCaseResolutionStatusService;
+  private final TestCaseResolutionStatusService service;
 
-  public TestCaseResolutionStatusResource(Authorizer authorizer) {
-    super(Entity.TEST_CASE_RESOLUTION_STATUS, authorizer);
-  }
-
-  public TestCaseResolutionStatusResource(ServiceRegistry serviceRegistry, Authorizer authorizer) {
-    super(Entity.TEST_CASE_RESOLUTION_STATUS, authorizer);
-    this.testCaseResolutionStatusService =
-        serviceRegistry.getService(TestCaseResolutionStatusService.class);
+  public TestCaseResolutionStatusResource(TestCaseResolutionStatusService service) {
+    this.service = service;
   }
 
   public static class TestCaseResolutionStatusResultList
@@ -174,7 +162,7 @@ public class TestCaseResolutionStatusResource
     List<AuthRequest> requests =
         buildViewAuthRequests(testCaseResourceContext, entityResourceContext);
 
-    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+    service.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
 
     ListFilter filter = new ListFilter(include);
     filter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
@@ -183,7 +171,7 @@ public class TestCaseResolutionStatusResource
     filter.addQueryParam("originEntityFQN", originEntityFQN);
     filter.addQueryParam("domain", domain);
 
-    return repository.list(offset, startTs, endTs, limitParam, filter, latest);
+    return service.list(offset, startTs, endTs, limitParam, filter, latest);
   }
 
   @GET
@@ -209,9 +197,9 @@ public class TestCaseResolutionStatusResource
     ResourceContextInterface entityResourceContext = TestCaseResourceContext.builder().build();
     List<AuthRequest> requests =
         buildViewAuthRequests(testCaseResourceContext, entityResourceContext);
-    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+    service.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
 
-    return repository.listTestCaseResolutionStatusesForStateId(stateId);
+    return service.listTestCaseResolutionStatusesForStateId(stateId);
   }
 
   @GET
@@ -234,8 +222,7 @@ public class TestCaseResolutionStatusResource
       @Parameter(description = "Test Case Failure Status ID", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID testCaseResolutionStatusId) {
-    TestCaseResolutionStatus testCaseResolutionStatus =
-        repository.getById(testCaseResolutionStatusId);
+    TestCaseResolutionStatus testCaseResolutionStatus = service.getById(testCaseResolutionStatusId);
     TestCase testCase =
         Entity.getEntityByName(
             Entity.TEST_CASE,
@@ -251,7 +238,7 @@ public class TestCaseResolutionStatusResource
         TestCaseResourceContext.builder().entityLink(entityLink).build();
     List<AuthRequest> requests =
         buildViewAuthRequests(testCaseResourceContext, entityResourceContext);
-    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+    service.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
 
     return testCaseResolutionStatus;
   }
@@ -291,13 +278,13 @@ public class TestCaseResolutionStatusResource
     List<AuthRequest> requests =
         buildEditAuthRequests(testCaseResourceContext, entityResourceContext);
 
-    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+    service.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     TestCaseResolutionStatus testCaseResolutionStatus =
-        testCaseResolutionStatusService
+        service
             .getMapper()
             .createToEntity(
                 createTestCaseResolutionStatus, securityContext.getUserPrincipal().getName());
-    return create(
+    return service.create(
         testCaseResolutionStatus,
         testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName());
   }
@@ -331,7 +318,7 @@ public class TestCaseResolutionStatusResource
           JsonPatch patch)
       throws IntrospectionException, InvocationTargetException, IllegalAccessException {
 
-    TestCaseResolutionStatus testCaseResolutionStatus = repository.getById(id);
+    TestCaseResolutionStatus testCaseResolutionStatus = service.getById(id);
     TestCase testCase =
         Entity.getEntityByName(
             Entity.TEST_CASE,
@@ -348,10 +335,8 @@ public class TestCaseResolutionStatusResource
     List<AuthRequest> requests =
         buildEditAuthRequests(testCaseResourceContext, entityResourceContext);
 
-    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
-    RestUtil.PatchResponse<TestCaseResolutionStatus> response =
-        repository.patch(id, patch, securityContext.getUserPrincipal().getName());
-    return response.toResponse();
+    service.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+    return service.patch(id, patch, securityContext.getUserPrincipal().getName());
   }
 
   @GET
@@ -474,19 +459,13 @@ public class TestCaseResolutionStatusResource
                 new OperationContext(Entity.TABLE, MetadataOperation.VIEW_ALL),
                 entityResourceContext));
 
-    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+    service.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
 
     if (latest) {
-      // For latest results, use aggregation grouped by test case to get the latest status per test
-      // case
-      return repository.listLatestFromSearch(
-          Fields.EMPTY_FIELDS,
-          searchListFilter,
-          "testCase.fullyQualifiedName.keyword", // Group by test case to get latest status per test
-          // case
-          null);
+      return service.listLatestFromSearch(
+          Fields.EMPTY_FIELDS, searchListFilter, "testCase.fullyQualifiedName.keyword", null);
     } else {
-      return repository.listFromSearchWithOffset(
+      return service.listFromSearchWithOffset(
           new Fields(null), searchListFilter, limit, offset, searchSortFilter, null, null);
     }
   }

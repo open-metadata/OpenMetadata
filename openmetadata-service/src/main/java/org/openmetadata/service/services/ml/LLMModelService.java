@@ -56,7 +56,7 @@ public class LLMModelService extends EntityBaseService<LLMModel, LLMModelReposit
   }
 
   @Override
-  protected LLMModel addHref(UriInfo uriInfo, LLMModel llmModel) {
+  public LLMModel addHref(UriInfo uriInfo, LLMModel llmModel) {
     super.addHref(uriInfo, llmModel);
     Entity.withHref(uriInfo, llmModel.getService());
     return llmModel;

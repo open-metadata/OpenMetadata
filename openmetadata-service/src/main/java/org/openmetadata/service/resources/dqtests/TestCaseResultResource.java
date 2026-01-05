@@ -86,7 +86,7 @@ public class TestCaseResultResource
 
   public TestCaseResultResource(ServiceRegistry serviceRegistry, Authorizer authorizer) {
     super(Entity.TEST_CASE_RESULT, authorizer);
-    this.testCaseResultService = serviceRegistry.getService(TestCaseResultService.class);
+    this.testCaseResultService = serviceRegistry.getGenericService(TestCaseResultService.class);
   }
 
   public static class TestCaseResultList extends ResultList<TestCaseResult> {

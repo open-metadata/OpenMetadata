@@ -138,7 +138,7 @@ public abstract class EntityBaseService<T extends EntityInterface, K extends Ent
     return repository.getFields(fields);
   }
 
-  protected T addHref(UriInfo uriInfo, T entity) {
+  public T addHref(UriInfo uriInfo, T entity) {
     Entity.withHref(uriInfo, entity.getOwners());
     Entity.withHref(uriInfo, entity.getFollowers());
     Entity.withHref(uriInfo, entity.getExperts());
@@ -309,7 +309,7 @@ public abstract class EntityBaseService<T extends EntityInterface, K extends Ent
     return listVersionsInternal(securityContext, id, operationContext, getResourceContextById(id));
   }
 
-  protected EntityHistory listVersionsInternal(
+  public EntityHistory listVersionsInternal(
       SecurityContext securityContext,
       UUID id,
       OperationContext operationContext,
@@ -1044,5 +1044,78 @@ public abstract class EntityBaseService<T extends EntityInterface, K extends Ent
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
       }
     }
+  }
+
+  public void authorize(
+      SecurityContext securityContext,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+  }
+
+  public void authorize(
+      SecurityContext securityContext,
+      List<AuthRequest> authRequests,
+      AuthorizationLogic authorizationLogic) {
+    authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+  }
+
+  public void authorize(
+      SecurityContext securityContext, OperationContext operationContext, UUID id) {
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+  }
+
+  public void authorize(
+      SecurityContext securityContext, OperationContext operationContext, String name) {
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+  }
+
+  public void enforceLimits(
+      SecurityContext securityContext,
+      CreateResourceContext<?> createResourceContext,
+      OperationContext operationContext) {
+    limits.enforceLimits(securityContext, createResourceContext, operationContext);
+  }
+
+  public void enforceBulkSizeLimit(int size) {
+    limits.enforceBulkSizeLimit(entityType, size);
+  }
+
+  public boolean authorizePII(SecurityContext securityContext, List<EntityReference> owners) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (subjectContext.isAdmin()) {
+      return true;
+    }
+    return subjectContext.isOwner(owners);
+  }
+
+  public boolean authorizePII(SecurityContext securityContext, EntityReference owner) {
+    return authorizePII(securityContext, owner == null ? null : List.of(owner));
+  }
+
+  @Transaction
+  public PutResponse<T> updateVote(
+      String updatedBy, UUID entityId, org.openmetadata.schema.api.VoteRequest request) {
+    T originalEntity = repository.find(entityId, NON_DELETED);
+    repository.updateVote(updatedBy, entityId, request);
+    T updatedEntity = repository.find(entityId, NON_DELETED);
+    ChangeDescription change =
+        new ChangeDescription().withPreviousVersion(originalEntity.getVersion());
+    fieldAdded(change, "votes", request);
+    ChangeEvent changeEvent =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEntity(updatedEntity)
+            .withChangeDescription(change)
+            .withIncrementalChangeDescription(change)
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withEntityType(entityType)
+            .withEntityId(entityId)
+            .withEntityFullyQualifiedName(updatedEntity.getFullyQualifiedName())
+            .withUserName(updatedBy)
+            .withTimestamp(System.currentTimeMillis())
+            .withCurrentVersion(updatedEntity.getVersion())
+            .withPreviousVersion(change.getPreviousVersion());
+    return new PutResponse<>(Response.Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 }

@@ -17,12 +17,10 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
-import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateAPIEndpoint;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.utils.ResultList;
@@ -71,10 +69,6 @@ public class APIEndpointService extends EntityBaseService<APIEndpoint, APIEndpoi
     Entity.withHref(uriInfo, apiEndpoint.getApiCollection());
     Entity.withHref(uriInfo, apiEndpoint.getService());
     return apiEndpoint;
-  }
-
-  public Response updateVote(String updatedBy, UUID id, VoteRequest request) {
-    return repository.updateVote(updatedBy, id, request).toResponse();
   }
 
   public Response bulkCreateOrUpdate(

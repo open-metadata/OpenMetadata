@@ -85,7 +85,8 @@ public class DataInsightChartService
       Integer size,
       Integer from,
       String queryFilter,
-      String dataReportIndex) {
+      String dataReportIndex)
+      throws IOException {
     OperationContext operationContext =
         new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContext());

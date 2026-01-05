@@ -59,7 +59,7 @@ public class AIGovernancePolicyService
   }
 
   @Override
-  protected AIGovernancePolicy addHref(UriInfo uriInfo, AIGovernancePolicy policy) {
+  public AIGovernancePolicy addHref(UriInfo uriInfo, AIGovernancePolicy policy) {
     super.addHref(uriInfo, policy);
     return policy;
   }

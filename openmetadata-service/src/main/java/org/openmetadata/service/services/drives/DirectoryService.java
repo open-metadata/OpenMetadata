@@ -20,12 +20,10 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDirectory;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -78,10 +76,6 @@ public class DirectoryService extends EntityBaseService<Directory, DirectoryRepo
     addViewOperation("children,parent", MetadataOperation.VIEW_BASIC);
     addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
-  }
-
-  public Response updateVote(String updatedBy, UUID id, VoteRequest request) {
-    return repository.updateVote(updatedBy, id, request).toResponse();
   }
 
   public Response bulkCreateOrUpdate(

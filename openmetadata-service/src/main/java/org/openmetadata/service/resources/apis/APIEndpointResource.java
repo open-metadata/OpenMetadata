@@ -503,7 +503,9 @@ public class APIEndpointResource {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return service.updateVote(securityContext.getUserPrincipal().getName(), id, request);
+    return service
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
   }
 
   @DELETE

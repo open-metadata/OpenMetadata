@@ -66,6 +66,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -95,6 +96,10 @@ public class GlossaryTermResource {
 
   public GlossaryTermResource(GlossaryTermService service) {
     this.service = service;
+  }
+
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    service.initialize();
   }
 
   @GET

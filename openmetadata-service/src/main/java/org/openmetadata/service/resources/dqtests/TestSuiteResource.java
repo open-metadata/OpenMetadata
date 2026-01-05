@@ -51,20 +51,15 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.TestSuiteRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationLogic;
-import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.dqtests.TestSuiteService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -78,7 +73,7 @@ import org.openmetadata.service.util.RestUtil;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestSuites")
-public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRepository> {
+public class TestSuiteResource {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testSuites";
   public static final String BASIC_TEST_SUITE_DELETION_ERROR =
       "Cannot delete logical test suite. To delete logical test suite, use DELETE /v1/dataQuality/testSuites/<...>";
@@ -91,15 +86,8 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
   static final String SEARCH_FIELDS_EXCLUDE = "table,database,databaseSchema,service";
   private final TestSuiteService service;
 
-  public TestSuiteResource(Authorizer authorizer, Limits limits, ServiceRegistry serviceRegistry) {
-    super(Entity.TEST_SUITE, authorizer, limits);
-    this.service = serviceRegistry.getService(TestSuiteService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("tests", MetadataOperation.VIEW_BASIC);
-    return null;
+  public TestSuiteResource(TestSuiteService service) {
+    this.service = service;
   }
 
   public static class TestSuiteList extends ResultList<TestSuite> {
@@ -170,12 +158,11 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
     ListFilter filter = new ListFilter(include);
     filter.addQueryParam("testSuiteType", testSuiteType);
     filter.addQueryParam("includeEmptyTestSuites", includeEmptyTestSuites);
-    EntityUtil.Fields fields = getFields(fieldsParam);
 
     List<AuthRequest> authRequests = getAuthRequestsForListOps();
-    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+    service.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
 
-    return super.listInternal(
+    return service.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -299,17 +286,16 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
       try {
         entity = Entity.getEntityByName(Entity.USER, owner, "", ALL);
       } catch (Exception e) {
-        // If the owner is not a user, then we'll try to get a team
         entity = Entity.getEntityByName(Entity.TEAM, owner, "", ALL);
       }
       searchListFilter.addQueryParam("owners", entity.getId().toString());
     }
 
-    EntityUtil.Fields fields = getFields(fieldsParam);
+    EntityUtil.Fields fields = service.getFields(fieldsParam);
 
     List<AuthRequest> authRequests = getAuthRequestsForListOps();
-    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
-    return repository.listFromSearchWithOffset(
+    service.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+    return service.listFromSearchWithOffset(
         uriInfo,
         fields,
         searchListFilter,
@@ -342,7 +328,7 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
       @Parameter(description = "Id of the test suite", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return service.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -379,7 +365,7 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return service.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -417,7 +403,7 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return service.getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET
@@ -449,7 +435,7 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return service.getVersionInternal(securityContext, id, version);
   }
 
   @GET
@@ -477,13 +463,11 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
           @QueryParam("testSuiteId")
           UUID testSuiteId) {
     List<AuthRequest> authRequests = getAuthRequestsForListOps();
-    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
-    // Set the deprecation header based on draft specification from IETF
-    // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
+    service.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
     response.setHeader("Deprecation", "Monday, October 30, 2024");
     response.setHeader(
         "Link", "api/v1/dataQuality/testSuites/dataQualityReport; rel=\"alternate\"");
-    return repository.getTestSummary(testSuiteId);
+    return service.getTestSummary(testSuiteId);
   }
 
   @GET
@@ -527,12 +511,12 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
           String index)
       throws IOException {
     List<AuthRequest> authRequests = getAuthRequestsForListOps();
-    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+    service.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
     if (nullOrEmpty(aggregationQuery) || nullOrEmpty(index)) {
       throw new IllegalArgumentException("aggregationQuery and index are required parameters");
     }
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    return repository.getDataQualityReport(query, aggregationQuery, index, subjectContext);
+    return service.getDataQualityReport(query, aggregationQuery, index, subjectContext);
   }
 
   @POST
@@ -554,14 +538,13 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTestSuite create) {
-    create =
-        create.withBasicEntityReference(
-            null); // entity reference is not applicable for logical test suites
+    create = create.withBasicEntityReference(null);
     TestSuite testSuite =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     testSuite.setBasic(false);
     List<AuthRequest> authRequests = getAuthRequestsForPost(testSuite);
-    return create(uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
+    return service.create(
+        uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
   }
 
   @POST
@@ -592,7 +575,8 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
     }
     testSuite.setBasic(true);
     List<AuthRequest> authRequests = getAuthRequestsForPost(testSuite);
-    return create(uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
+    return service.create(
+        uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
   }
 
   @PATCH
@@ -624,7 +608,8 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "", ALL);
     List<AuthRequest> authRequests =
         getAuthRequestsForUpdate(testSuite, ResourceContextInterface.Operation.PATCH, patch);
-    return patchInternal(uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, id, patch);
+    return service.patchInternal(
+        uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, id, patch);
   }
 
   @PUT
@@ -646,9 +631,7 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTestSuite create) {
-    create =
-        create.withBasicEntityReference(
-            null); // entity reference is not applicable for logical test suites
+    create = create.withBasicEntityReference(null);
     TestSuite testSuite =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     testSuite.setBasic(false);
@@ -656,7 +639,7 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
         new java.util.ArrayList<>(
             getAuthRequestsForUpdate(testSuite, ResourceContextInterface.Operation.PUT, null));
     authRequests.addAll(getAuthRequestsForPost(testSuite));
-    return createOrUpdate(
+    return service.createOrUpdate(
         uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
   }
 
@@ -684,15 +667,13 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
     TestSuite testSuite =
         service.getMapper().createToEntity(create, securityContext.getUserPrincipal().getName());
     testSuite.setBasic(true);
-    // Set the deprecation header based on draft specification from IETF
-    // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
     response.setHeader("Deprecation", "Monday, March 24, 2025");
     response.setHeader("Link", "api/v1/dataQuality/testSuites/basic; rel=\"alternate\"");
     List<AuthRequest> authRequests =
         new java.util.ArrayList<>(
             getAuthRequestsForUpdate(testSuite, ResourceContextInterface.Operation.PUT, null));
     authRequests.addAll(getAuthRequestsForPost(testSuite));
-    return createOrUpdate(
+    return service.createOrUpdate(
         uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
   }
 
@@ -722,7 +703,7 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
         new java.util.ArrayList<>(
             getAuthRequestsForUpdate(testSuite, ResourceContextInterface.Operation.PUT, null));
     authRequests.addAll(getAuthRequestsForPost(testSuite));
-    return createOrUpdate(
+    return service.createOrUpdate(
         uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
   }
 
@@ -750,16 +731,15 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
           UUID id) {
     OperationContext operationContext =
         new OperationContext(Entity.TEST_SUITE, MetadataOperation.DELETE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    service.authorize(securityContext, operationContext, service.getResourceContextById(id));
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
     if (Boolean.TRUE.equals(testSuite.getBasic())) {
       throw new IllegalArgumentException(NON_BASIC_TEST_SUITE_DELETION_ERROR);
     }
     RestUtil.DeleteResponse<TestSuite> response =
-        repository.deleteLogicalTestSuite(
+        service.deleteLogicalTestSuite(
             securityContext.getUserPrincipal().getName(), testSuite, hardDelete);
-    repository.deleteFromSearch(response.entity(), hardDelete);
-    addHref(uriInfo, response.entity());
+    service.deleteFromSearch(response.entity(), hardDelete);
     return response.toResponse();
   }
 
@@ -787,12 +767,12 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
           UUID id) {
     OperationContext operationContext =
         new OperationContext(Entity.TEST_SUITE, MetadataOperation.DELETE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    service.authorize(securityContext, operationContext, service.getResourceContextById(id));
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
     if (Boolean.TRUE.equals(testSuite.getBasic())) {
       throw new IllegalArgumentException(NON_BASIC_TEST_SUITE_DELETION_ERROR);
     }
-    return repository.deleteLogicalTestSuiteAsync(securityContext, testSuite, hardDelete);
+    return service.deleteLogicalTestSuiteAsync(securityContext, testSuite, hardDelete);
   }
 
   @DELETE
@@ -819,15 +799,14 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
           String name) {
     OperationContext operationContext =
         new OperationContext(Entity.TEST_SUITE, MetadataOperation.DELETE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    service.authorize(securityContext, operationContext, service.getResourceContextByName(name));
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, name, "*", ALL);
     if (Boolean.TRUE.equals(testSuite.getBasic())) {
       throw new IllegalArgumentException(NON_BASIC_TEST_SUITE_DELETION_ERROR);
     }
     RestUtil.DeleteResponse<TestSuite> response =
-        repository.deleteLogicalTestSuite(
+        service.deleteLogicalTestSuite(
             securityContext.getUserPrincipal().getName(), testSuite, hardDelete);
-    addHref(uriInfo, response.entity());
     return response.toResponse();
   }
 
@@ -859,17 +838,16 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
       @Parameter(description = "Name of the test suite", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    OperationContext operationContext =
+        new OperationContext(service.getEntityType(), MetadataOperation.DELETE);
+    service.authorize(securityContext, operationContext, service.getResourceContextByName(name));
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, name, "*", ALL);
     if (Boolean.FALSE.equals(testSuite.getBasic())) {
       throw new IllegalArgumentException(BASIC_TEST_SUITE_DELETION_ERROR);
     }
-    // Set the deprecation header based on draft specification from IETF
-    // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
     response.setHeader("Deprecation", "Monday, March 24, 2025");
     response.setHeader("Link", "api/v1/dataQuality/testSuites/basic; rel=\"alternate\"");
-    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
   }
 
   @DELETE
@@ -899,13 +877,14 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
       @Parameter(description = "Name of the test suite", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    OperationContext operationContext =
+        new OperationContext(service.getEntityType(), MetadataOperation.DELETE);
+    service.authorize(securityContext, operationContext, service.getResourceContextByName(name));
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, name, "*", ALL);
     if (Boolean.FALSE.equals(testSuite.getBasic())) {
       throw new IllegalArgumentException(BASIC_TEST_SUITE_DELETION_ERROR);
     }
-    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
+    return service.deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
   }
 
   @DELETE
@@ -936,17 +915,16 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
       @Parameter(description = "Id of the test suite", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    OperationContext operationContext =
+        new OperationContext(service.getEntityType(), MetadataOperation.DELETE);
+    service.authorize(securityContext, operationContext, service.getResourceContextById(id));
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
     if (Boolean.FALSE.equals(testSuite.getBasic())) {
       throw new IllegalArgumentException(BASIC_TEST_SUITE_DELETION_ERROR);
     }
-    // Set the deprecation header based on draft specification from IETF
-    // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
     response.setHeader("Deprecation", "Monday, March 24, 2025");
     response.setHeader("Link", "api/v1/dataQuality/testSuites/basic; rel=\"alternate\"");
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -976,13 +954,14 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
       @Parameter(description = "Id of the test suite", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    OperationContext operationContext =
+        new OperationContext(service.getEntityType(), MetadataOperation.DELETE);
+    service.authorize(securityContext, operationContext, service.getResourceContextById(id));
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
     if (Boolean.FALSE.equals(testSuite.getBasic())) {
       throw new IllegalArgumentException(BASIC_TEST_SUITE_DELETION_ERROR);
     }
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return service.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @PUT
@@ -1004,16 +983,16 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return service.restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private List<AuthRequest> getAuthRequestsForListOps() {
     ResourceContext<?> entityResourceContext = new ResourceContext<>(Entity.TABLE);
     OperationContext entityOperationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
-    ResourceContext<?> testSuiteResourceContext = getResourceContext();
+    ResourceContext<?> testSuiteResourceContext = service.getResourceContext();
     OperationContext testSuiteOperationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+        new OperationContext(service.getEntityType(), MetadataOperation.VIEW_ALL);
     ResourceContext<?> testCaseResourceContext = new ResourceContext<>(Entity.TEST_CASE);
     OperationContext testCaseOperationContext =
         new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
@@ -1034,9 +1013,9 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
     }
     OperationContext entityOperationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    ResourceContext<?> testSuiteResourceContext = getResourceContext();
+    ResourceContext<?> testSuiteResourceContext = service.getResourceContext();
     OperationContext testSuiteOperationContext =
-        new OperationContext(entityType, MetadataOperation.CREATE);
+        new OperationContext(service.getEntityType(), MetadataOperation.CREATE);
 
     return List.of(
         new AuthRequest(entityOperationContext, entityResourceContext),
@@ -1056,11 +1035,13 @@ public class TestSuiteResource extends EntityBaseService<TestSuite, TestSuiteRep
     OperationContext entityOperationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     ResourceContext<?> testSuiteResourceContext =
-        getResourceContextByName(FullyQualifiedName.quoteName(testSuite.getName()), operation);
+        service.getResourceContextByName(
+            FullyQualifiedName.quoteName(testSuite.getName()), operation);
     if (patch != null) {
-      testSuiteOperationContext = new OperationContext(entityType, patch);
+      testSuiteOperationContext = new OperationContext(service.getEntityType(), patch);
     } else {
-      testSuiteOperationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+      testSuiteOperationContext =
+          new OperationContext(service.getEntityType(), MetadataOperation.EDIT_ALL);
     }
 
     return List.of(

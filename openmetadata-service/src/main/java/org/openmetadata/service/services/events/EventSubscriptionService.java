@@ -113,8 +113,8 @@ public class EventSubscriptionService
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     EventSubscriptionScheduler.initialize(config);
     EventsSubscriptionRegistry.initialize(
-        listOrEmpty(EventSubscriptionResource.getNotificationsFilterDescriptors()),
-        listOrEmpty(EventSubscriptionResource.getObservabilityFilterDescriptors()));
+        listOrEmpty(getNotificationsFilterDescriptors()),
+        listOrEmpty(getObservabilityFilterDescriptors()));
     repository.initSeedDataFromResources();
     initializeEventSubscriptions();
   }

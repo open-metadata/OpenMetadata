@@ -17,6 +17,7 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY;
 
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -85,7 +86,7 @@ public class GlossaryTermService extends EntityBaseService<GlossaryTerm, Glossar
     return null;
   }
 
-  public void initialize() {
+  public void initialize() throws IOException {
     GlossaryRepository glossaryRepository =
         (GlossaryRepository) Entity.getEntityRepository(GLOSSARY);
     List<LoadGlossary> loadGlossaries =

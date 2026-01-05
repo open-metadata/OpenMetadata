@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.services.dqtests;
 
+import java.io.IOException;
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -53,7 +54,7 @@ public class TestDefinitionService
     this.mapper = mapper;
   }
 
-  public void initialize() {
+  public void initialize() throws IOException {
     List<TestDefinition> testDefinitions =
         repository.getEntitiesFromSeedData(".*json/data/tests/.*\\.json$");
     for (TestDefinition testDefinition : testDefinitions) {

@@ -59,7 +59,7 @@ public class PromptTemplateService
   }
 
   @Override
-  protected PromptTemplate addHref(UriInfo uriInfo, PromptTemplate promptTemplate) {
+  public PromptTemplate addHref(UriInfo uriInfo, PromptTemplate promptTemplate) {
     super.addHref(uriInfo, promptTemplate);
     return promptTemplate;
   }

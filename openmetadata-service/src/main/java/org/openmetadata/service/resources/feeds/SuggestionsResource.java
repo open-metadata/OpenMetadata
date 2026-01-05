@@ -101,7 +101,7 @@ public class SuggestionsResource {
   public SuggestionsResource(ServiceRegistry serviceRegistry, Authorizer authorizer) {
     this.dao = Entity.getSuggestionRepository();
     this.authorizer = authorizer;
-    this.suggestionsService = serviceRegistry.getService(SuggestionsService.class);
+    this.suggestionsService = serviceRegistry.getGenericService(SuggestionsService.class);
   }
 
   public static class SuggestionList extends ResultList<Suggestion> {

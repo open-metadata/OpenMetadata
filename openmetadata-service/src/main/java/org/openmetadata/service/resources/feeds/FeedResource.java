@@ -90,6 +90,7 @@ public class FeedResource {
   public static final String COLLECTION_PATH = "/v1/feed/";
   private final FeedRepository dao;
   private final Authorizer authorizer;
+  private final PostMapper postMapper = new PostMapper();
   private FeedService feedService;
 
   public static void addHref(UriInfo uriInfo, List<Thread> threads) {
@@ -113,7 +114,7 @@ public class FeedResource {
   public FeedResource(ServiceRegistry serviceRegistry, Authorizer authorizer) {
     this.dao = Entity.getFeedRepository();
     this.authorizer = authorizer;
-    this.feedService = serviceRegistry.getService(FeedService.class);
+    this.feedService = serviceRegistry.getGenericService(FeedService.class);
   }
 
   public static class ThreadList extends ResultList<Thread> {

@@ -50,7 +50,7 @@ public class DataInsightSystemChartService
         limits);
   }
 
-  public void initialize() {
+  public void initialize() throws IOException {
     List<DataInsightCustomChart> diCharts =
         repository.getEntitiesFromSeedData(".*json/data/dataInsight/custom/.*\\.json$");
     for (DataInsightCustomChart diChart : diCharts) {

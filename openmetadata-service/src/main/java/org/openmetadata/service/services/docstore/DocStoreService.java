@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -84,7 +85,7 @@ public class DocStoreService extends EntityBaseService<Document, DocumentReposit
     return listOf(MetadataOperation.EDIT_ALL);
   }
 
-  public void initialize() {
+  public void initialize() throws IOException {
     repository.initSeedDataFromResources();
   }
 

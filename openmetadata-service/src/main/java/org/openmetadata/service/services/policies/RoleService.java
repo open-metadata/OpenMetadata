@@ -59,7 +59,7 @@ public class RoleService extends EntityBaseService<Role, RoleRepository> {
   }
 
   @Override
-  protected Role addHref(UriInfo uriInfo, Role role) {
+  public Role addHref(UriInfo uriInfo, Role role) {
     super.addHref(uriInfo, role);
     Entity.withHref(uriInfo, role.getPolicies());
     Entity.withHref(uriInfo, role.getTeams());

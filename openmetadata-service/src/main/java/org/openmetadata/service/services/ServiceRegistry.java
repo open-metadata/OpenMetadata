@@ -41,6 +41,7 @@ public class ServiceRegistry {
   private final Map<String, EntityBaseService<?, ?>> servicesByEntityType =
       new ConcurrentHashMap<>();
   private final Map<Class<?>, EntityBaseService<?, ?>> servicesByClass = new ConcurrentHashMap<>();
+  private final Map<Class<?>, Object> genericServices = new ConcurrentHashMap<>();
 
   /**
    * Register a service for an entity type.
@@ -93,6 +94,35 @@ public class ServiceRegistry {
     if (service == null) {
       throw EntityNotFoundException.byMessage(
           String.format("No service registered for class: %s", serviceClass.getName()));
+    }
+    return service;
+  }
+
+  /**
+   * Register a generic service that doesn't extend EntityBaseService.
+   *
+   * @param service The service instance
+   * @param <S> The service type
+   */
+  public <S> void registerGenericService(S service) {
+    genericServices.put(service.getClass(), service);
+    LOG.debug("Registered generic service: {}", service.getClass().getSimpleName());
+  }
+
+  /**
+   * Get a generic service by class.
+   *
+   * @param serviceClass The service class
+   * @param <S> The service type
+   * @return The service instance
+   * @throws EntityNotFoundException if no service of the specified class is registered
+   */
+  @SuppressWarnings("unchecked")
+  public <S> S getGenericService(Class<S> serviceClass) {
+    S service = (S) genericServices.get(serviceClass);
+    if (service == null) {
+      throw EntityNotFoundException.byMessage(
+          String.format("No generic service registered for class: %s", serviceClass.getName()));
     }
     return service;
   }

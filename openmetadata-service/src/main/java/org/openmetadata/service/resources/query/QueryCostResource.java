@@ -55,7 +55,7 @@ public class QueryCostResource
 
   public QueryCostResource(ServiceRegistry serviceRegistry, Authorizer authorizer) {
     super(Entity.QUERY_COST_RECORD, authorizer);
-    this.queryCostService = serviceRegistry.getService(QueryCostService.class);
+    this.queryCostService = serviceRegistry.getGenericService(QueryCostService.class);
   }
 
   @GET

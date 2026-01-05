@@ -61,7 +61,7 @@ public class QueryService extends EntityBaseService<Query, QueryRepository> {
   }
 
   @Override
-  protected Query addHref(UriInfo uriInfo, Query entity) {
+  public Query addHref(UriInfo uriInfo, Query entity) {
     super.addHref(uriInfo, entity);
     Entity.withHref(uriInfo, entity.getUsers());
     Entity.withHref(uriInfo, entity.getQueryUsedIn());
