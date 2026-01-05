@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
@@ -551,9 +552,14 @@ public class DirectoryRepository extends EntityRepository<Directory> {
 
       if (!Boolean.TRUE.equals(importResult.getDryRun())) {
         try {
+          directory.setId(UUID.randomUUID());
+          directory.setUpdatedBy(importedBy);
+          directory.setUpdatedAt(System.currentTimeMillis());
           EntityRepository<Directory> repository =
               (EntityRepository<Directory>) Entity.getEntityRepository(DIRECTORY);
-          repository.createOrUpdate(null, directory, importedBy);
+          boolean update = repository.isUpdateForImport(directory);
+          repository.prepareInternal(directory, update);
+          repository.createOrUpdateForImport(null, directory, importedBy);
         } catch (Exception ex) {
           importFailure(printer, ex.getMessage(), csvRecord);
           importResult.setStatus(ApiStatus.FAILURE);

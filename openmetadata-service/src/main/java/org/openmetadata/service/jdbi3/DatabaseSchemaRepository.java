@@ -880,9 +880,14 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       // Create or update the entity through the repository if not in dry run mode
       if (!Boolean.TRUE.equals(importResult.getDryRun())) {
         try {
+          table.setId(UUID.randomUUID());
+          table.setUpdatedBy(importedBy);
+          table.setUpdatedAt(System.currentTimeMillis());
           EntityRepository<Table> repository =
               (EntityRepository<Table>) Entity.getEntityRepository(TABLE);
-          repository.createOrUpdate(null, table, importedBy);
+          boolean update = repository.isUpdateForImport(table);
+          repository.prepareInternal(table, update);
+          repository.createOrUpdateForImport(null, table, importedBy);
         } catch (Exception ex) {
           importFailure(printer, ex.getMessage(), csvRecord);
           importResult.setStatus(ApiStatus.FAILURE);

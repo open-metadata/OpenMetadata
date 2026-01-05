@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addExtension;
@@ -29,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -330,9 +332,14 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
 
       if (!Boolean.TRUE.equals(importResult.getDryRun())) {
         try {
+          directory.setId(UUID.randomUUID());
+          directory.setUpdatedBy(importedBy);
+          directory.setUpdatedAt(System.currentTimeMillis());
           EntityRepository<Directory> repository =
               (EntityRepository<Directory>) Entity.getEntityRepository(DIRECTORY);
-          repository.createOrUpdate(null, directory, importedBy);
+          boolean update = repository.isUpdateForImport(directory);
+          repository.prepareInternal(directory, update);
+          repository.createOrUpdateForImport(null, directory, importedBy);
         } catch (Exception ex) {
           importFailure(printer, ex.getMessage(), csvRecord);
           importResult.setStatus(ApiStatus.FAILURE);
@@ -348,10 +355,7 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
         String successDetails,
         ChangeDescription changeDescription)
         throws IOException {
-      List<String> recordList = new ArrayList<>();
-      recordList.add(IMPORT_SUCCESS);
-      recordList.add(successDetails);
-      recordList.addAll(inputRecord.toList());
+      List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
 
       if (changeDescription != null) {
         recordList.add(JsonUtils.pojoToJson(changeDescription));

@@ -688,9 +688,14 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
 
       if (!Boolean.TRUE.equals(importResult.getDryRun())) {
         try {
+          worksheet.setId(UUID.randomUUID());
+          worksheet.setUpdatedBy(importedBy);
+          worksheet.setUpdatedAt(System.currentTimeMillis());
           EntityRepository<Worksheet> repository =
               (EntityRepository<Worksheet>) Entity.getEntityRepository(WORKSHEET);
-          repository.createOrUpdate(null, worksheet, importedBy);
+          boolean update = repository.isUpdateForImport(worksheet);
+          repository.prepareInternal(worksheet, update);
+          repository.createOrUpdateForImport(null, worksheet, importedBy);
         } catch (Exception ex) {
           importFailure(printer, ex.getMessage(), csvRecord);
           importResult.setStatus(ApiStatus.FAILURE);

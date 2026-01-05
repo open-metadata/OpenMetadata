@@ -1122,9 +1122,14 @@ public class UserRepository extends EntityRepository<User> {
 
       if (!Boolean.TRUE.equals(importResult.getDryRun())) {
         try {
+          user.setId(UUID.randomUUID());
+          user.setUpdatedBy(importedBy);
+          user.setUpdatedAt(System.currentTimeMillis());
           EntityRepository<User> repository =
               (EntityRepository<User>) Entity.getEntityRepository(USER);
-          repository.createOrUpdate(null, user, importedBy);
+          boolean update = repository.isUpdateForImport(user);
+          repository.prepareInternal(user, update);
+          repository.createOrUpdateForImport(null, user, importedBy);
         } catch (Exception ex) {
           importFailure(printer, ex.getMessage(), csvRecord);
           importResult.setStatus(ApiStatus.FAILURE);

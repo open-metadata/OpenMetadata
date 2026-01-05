@@ -499,9 +499,14 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
       if (!Boolean.TRUE.equals(importResult.getDryRun())) {
         try {
+          glossaryTerm.setId(UUID.randomUUID());
+          glossaryTerm.setUpdatedBy(importedBy);
+          glossaryTerm.setUpdatedAt(System.currentTimeMillis());
           EntityRepository<GlossaryTerm> repository =
               (EntityRepository<GlossaryTerm>) Entity.getEntityRepository(GLOSSARY_TERM);
-          repository.createOrUpdate(null, glossaryTerm, importedBy);
+          boolean update = repository.isUpdateForImport(glossaryTerm);
+          repository.prepareInternal(glossaryTerm, update);
+          repository.createOrUpdateForImport(null, glossaryTerm, importedBy);
         } catch (Exception ex) {
           importFailure(printer, ex.getMessage(), csvRecord);
           importResult.setStatus(ApiStatus.FAILURE);

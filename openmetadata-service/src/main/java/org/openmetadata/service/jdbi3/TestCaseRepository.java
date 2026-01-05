@@ -1770,9 +1770,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
       if (!Boolean.TRUE.equals(importResult.getDryRun())) {
         try {
+          testCase.setId(UUID.randomUUID());
+          testCase.setUpdatedBy(importedBy);
+          testCase.setUpdatedAt(System.currentTimeMillis());
           TestCaseRepository repository =
               (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
-          repository.createOrUpdate(null, testCase, importedBy);
+          boolean update = repository.isUpdateForImport(testCase);
+          repository.prepareInternal(testCase, update);
+          repository.createOrUpdateForImport(null, testCase, importedBy);
         } catch (Exception ex) {
           importFailure(printer, ex.getMessage(), csvRecord);
           importResult.setStatus(ApiStatus.FAILURE);

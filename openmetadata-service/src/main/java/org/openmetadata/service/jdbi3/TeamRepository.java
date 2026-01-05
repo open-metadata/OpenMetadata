@@ -1217,14 +1217,14 @@ public class TeamRepository extends EntityRepository<Team> {
 
       if (!Boolean.TRUE.equals(importResult.getDryRun())) {
         try {
-          if (isCreated) {
-            team.setId(UUID.randomUUID());
-            team.setUpdatedBy(importedBy);
-            team.setUpdatedAt(System.currentTimeMillis());
-          }
+          team.setId(UUID.randomUUID());
+          team.setUpdatedBy(importedBy);
+          team.setUpdatedAt(System.currentTimeMillis());
           EntityRepository<Team> repository =
               (EntityRepository<Team>) Entity.getEntityRepository(TEAM);
-          repository.createOrUpdate(null, team, importedBy);
+          boolean update = repository.isUpdateForImport(team);
+          repository.prepareInternal(team, update);
+          repository.createOrUpdateForImport(null, team, importedBy);
         } catch (Exception ex) {
           importFailure(printer, ex.getMessage(), csvRecord);
           importResult.setStatus(ApiStatus.FAILURE);

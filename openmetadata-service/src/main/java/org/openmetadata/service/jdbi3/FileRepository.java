@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
@@ -552,14 +553,14 @@ public class FileRepository extends EntityRepository<File> {
 
       if (!Boolean.TRUE.equals(importResult.getDryRun())) {
         try {
-          if (isCreated) {
-            file.setId(UUID.randomUUID());
-            file.setUpdatedBy(importedBy);
-            file.setUpdatedAt(System.currentTimeMillis());
-          }
+          file.setId(UUID.randomUUID());
+          file.setUpdatedBy(importedBy);
+          file.setUpdatedAt(System.currentTimeMillis());
           EntityRepository<File> repository =
               (EntityRepository<File>) Entity.getEntityRepository(FILE);
-          repository.createOrUpdate(null, file, importedBy);
+          boolean update = repository.isUpdateForImport(file);
+          repository.prepareInternal(file, update);
+          repository.createOrUpdateForImport(null, file, importedBy);
         } catch (Exception ex) {
           importFailure(printer, ex.getMessage(), csvRecord);
           importResult.setStatus(ApiStatus.FAILURE);

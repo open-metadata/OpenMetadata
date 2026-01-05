@@ -249,9 +249,14 @@ public class DatabaseServiceRepository
       if (database != null && processRecord) {
         if (!Boolean.TRUE.equals(importResult.getDryRun())) {
           try {
+            database.setId(UUID.randomUUID());
+            database.setUpdatedBy(importedBy);
+            database.setUpdatedAt(System.currentTimeMillis());
             EntityRepository<Database> repository =
                 (EntityRepository<Database>) Entity.getEntityRepository(DATABASE);
-            repository.createOrUpdate(null, database, importedBy);
+            boolean update = repository.isUpdateForImport(database);
+            repository.prepareInternal(database, update);
+            repository.createOrUpdateForImport(null, database, importedBy);
           } catch (Exception ex) {
             importFailure(printer, ex.getMessage(), csvRecord);
             importResult.setStatus(ApiStatus.FAILURE);
