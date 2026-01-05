@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.resources.types;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -46,7 +44,6 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.CreateType;
@@ -54,22 +51,11 @@ import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.TypeRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.types.TypeService;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.SchemaFieldExtractor;
 
@@ -85,30 +71,16 @@ import org.openmetadata.service.util.SchemaFieldExtractor;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "types")
 @Slf4j
-public class TypeResource extends EntityBaseService<Type, TypeRepository> {
+public class TypeResource {
   public static final String COLLECTION_PATH = "v1/metadata/types/";
   public SchemaFieldExtractor extractor;
   private TypeService typeService;
 
-  @Override
-  public Type addHref(UriInfo uriInfo, Type type) {
-    listOrEmpty(type.getCustomProperties())
-        .forEach(property -> Entity.withHref(uriInfo, property.getPropertyType()));
-    return type;
-  }
-
-  public TypeResource(Authorizer authorizer, Limits limits) {
-    super(Entity.TYPE, authorizer, limits);
+  public TypeResource(TypeService service) {
+    this.typeService = service;
     extractor = new SchemaFieldExtractor();
   }
 
-  public TypeResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
-    super(Entity.TYPE, authorizer, limits);
-    extractor = new SchemaFieldExtractor();
-    this.typeService = serviceRegistry.getService(TypeService.class);
-  }
-
-  @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     typeService.initialize();
   }
@@ -163,7 +135,8 @@ public class TypeResource extends EntityBaseService<Type, TypeRepository> {
           @QueryParam("after")
           String after) {
     ListFilter filter = new ListFilter(Include.ALL).addQueryParam("category", categoryParam);
-    return super.listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
+    return typeService.listInternal(
+        uriInfo, securityContext, "", filter, limitParam, before, after);
   }
 
   @GET
@@ -198,7 +171,7 @@ public class TypeResource extends EntityBaseService<Type, TypeRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return typeService.getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -234,24 +207,8 @@ public class TypeResource extends EntityBaseService<Type, TypeRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    // For custom property requests on entity types, authorize on the entity type (e.g., "table")
-    // instead of on the Type resource
-    Fields fields = getFields(fieldsParam);
-    if (fields.getFieldList().contains("customProperties")) {
-      try {
-        if (Entity.entityHasField(name, Entity.FIELD_EXTENSION)) {
-          OperationContext operationContext =
-              new OperationContext(name, MetadataOperation.VIEW_CUSTOM_FIELDS);
-          ResourceContext<?> resourceContext = new ResourceContext<>(name);
-          authorizer.authorize(securityContext, operationContext, resourceContext);
-          return addHref(uriInfo, repository.getByName(uriInfo, name, fields, include, false));
-        }
-      } catch (EntityNotFoundException e) {
-        // Not a valid entity type supporting customProperties, fall through to standard Type
-        // authorization
-      }
-    }
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return typeService.getByNameWithCustomAuth(
+        uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET
@@ -274,7 +231,7 @@ public class TypeResource extends EntityBaseService<Type, TypeRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the type", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return typeService.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -305,7 +262,7 @@ public class TypeResource extends EntityBaseService<Type, TypeRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return typeService.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -336,7 +293,7 @@ public class TypeResource extends EntityBaseService<Type, TypeRepository> {
         typeService
             .getMapper()
             .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, type);
+    return typeService.create(uriInfo, securityContext, type);
   }
 
   @PATCH
@@ -364,7 +321,7 @@ public class TypeResource extends EntityBaseService<Type, TypeRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return typeService.patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -393,7 +350,7 @@ public class TypeResource extends EntityBaseService<Type, TypeRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return typeService.patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -418,7 +375,7 @@ public class TypeResource extends EntityBaseService<Type, TypeRepository> {
         typeService
             .getMapper()
             .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, type);
+    return typeService.createOrUpdate(uriInfo, securityContext, type);
   }
 
   @DELETE
@@ -436,7 +393,7 @@ public class TypeResource extends EntityBaseService<Type, TypeRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the type", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, true);
+    return typeService.delete(uriInfo, securityContext, id, false, true);
   }
 
   @DELETE
@@ -454,7 +411,7 @@ public class TypeResource extends EntityBaseService<Type, TypeRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the type", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, false, true);
+    return typeService.deleteByIdAsync(uriInfo, securityContext, id, false, true);
   }
 
   @DELETE
@@ -473,7 +430,7 @@ public class TypeResource extends EntityBaseService<Type, TypeRepository> {
       @Parameter(description = "Name of the type", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, false, true);
+    return typeService.deleteByName(uriInfo, securityContext, name, false, true);
   }
 
   @PUT
@@ -494,12 +451,8 @@ public class TypeResource extends EntityBaseService<Type, TypeRepository> {
       @Parameter(description = "Id of the type", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid CustomProperty property) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PutResponse<Type> response =
-        repository.addCustomProperty(
-            uriInfo, securityContext.getUserPrincipal().getName(), id, property);
-    addHref(uriInfo, response.getEntity());
+        typeService.addOrUpdateCustomProperty(uriInfo, securityContext, id, property);
     return response.toResponse();
   }
 
@@ -511,16 +464,12 @@ public class TypeResource extends EntityBaseService<Type, TypeRepository> {
       @Context SecurityContext securityContext,
       @PathParam("entityType") String entityType,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-
     try {
-      Fields fieldsParam = new Fields(Set.of("customProperties"));
-      Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, include, false);
       List<SchemaFieldExtractor.FieldDefinition> fieldsList =
-          extractor.extractFields(typeEntity, entityType);
+          typeService.getEntityTypeFields(uriInfo, entityType, include);
       return Response.ok(fieldsList).type(MediaType.APPLICATION_JSON).build();
-
     } catch (Exception e) {
-      LOG.error("Error processing schema for entity type: " + entityType, e);
+      LOG.error("Error processing schema for entity type: {}", entityType, e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
           .entity(
               "Error processing schema for entity type: "
@@ -537,18 +486,13 @@ public class TypeResource extends EntityBaseService<Type, TypeRepository> {
   public Response getAllCustomPropertiesByEntityType(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     try {
-      SchemaFieldExtractor extractor = new SchemaFieldExtractor();
       Map<String, List<SchemaFieldExtractor.FieldDefinition>> customPropertiesMap =
-          extractor.extractAllCustomProperties(uriInfo, repository);
+          typeService.getAllCustomPropertiesByEntityType(uriInfo);
       return Response.ok(customPropertiesMap).build();
     } catch (Exception e) {
       LOG.error("Error fetching custom properties: {}", e.getMessage(), e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-          .entity(
-              "Error processing schema for entity type: "
-                  + entityType
-                  + ". Exception: "
-                  + e.getMessage())
+          .entity("Error fetching custom properties. Exception: " + e.getMessage())
           .build();
     }
   }
@@ -583,9 +527,8 @@ public class TypeResource extends EntityBaseService<Type, TypeRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     try {
-      Fields fieldsParam = new Fields(Set.of("customProperties"));
-      Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, include, false);
-      List<CustomProperty> customProperties = listOrEmpty(typeEntity.getCustomProperties());
+      List<CustomProperty> customProperties =
+          typeService.getCustomPropertiesForEntityType(uriInfo, entityType, include);
       return Response.ok(customProperties).type(MediaType.APPLICATION_JSON).build();
     } catch (Exception e) {
       LOG.error("Error fetching custom properties for entity type: {}", entityType, e);

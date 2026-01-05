@@ -786,7 +786,9 @@ public class DatabaseResource {
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return service.addFollower(securityContext, id, userId).toResponse();
+    return service
+        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
   }
 
   @DELETE
@@ -814,6 +816,8 @@ public class DatabaseResource {
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return service.deleteFollower(securityContext, id, UUID.fromString(userId)).toResponse();
+    return service
+        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
+        .toResponse();
   }
 }
