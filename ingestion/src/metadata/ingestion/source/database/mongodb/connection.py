@@ -63,7 +63,9 @@ def get_connection(connection: MongoDBConnection):
         if not connection.databaseName:
             url += "/"
         params = "&".join(
-            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
+            f"{key}={quote_plus(str(value))}"
+            for (key, value) in options.items()
+            if value
         )
         url = f"{url}?{params}"
 
