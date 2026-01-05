@@ -15,14 +15,19 @@ package org.openmetadata.service.services.databases;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.VoteRequest;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
 import org.openmetadata.schema.entity.data.Table;
@@ -30,6 +35,7 @@ import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.DataModel;
+import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PipelineObservability;
@@ -38,8 +44,11 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.EntityBaseService;
@@ -49,6 +58,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.services.Service;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Slf4j
 @Singleton
@@ -376,6 +386,133 @@ public class TableService extends EntityBaseService<Table, TableRepository> {
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.searchTableColumnsByFQN(
         fqn, query, limit, offset, fieldsParam, include, authorizer, securityContext);
+  }
+
+  public ResultList<Table> list(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fieldsParam,
+      ListFilter filter,
+      int limitParam,
+      String before,
+      String after) {
+    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+  }
+
+  public Table get(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      String fieldsParam,
+      Include include) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+  }
+
+  public Table getByName(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fqn,
+      String fieldsParam,
+      Include include) {
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+  }
+
+  public EntityHistory listVersions(SecurityContext securityContext, UUID id) {
+    return listVersionsInternal(securityContext, id);
+  }
+
+  public Table getVersion(SecurityContext securityContext, UUID id, String version) {
+    return getVersionInternal(securityContext, id, version);
+  }
+
+  public Response create(UriInfo uriInfo, SecurityContext securityContext, CreateTable create) {
+    Table table = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    return create(uriInfo, securityContext, table);
+  }
+
+  public Response createOrUpdate(
+      UriInfo uriInfo, SecurityContext securityContext, CreateTable create) {
+    Table table = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    return createOrUpdate(uriInfo, securityContext, table);
+  }
+
+  public Response bulkCreateOrUpdate(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      List<CreateTable> createRequests,
+      boolean async) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+  }
+
+  public Response patchById(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      JsonPatch patch,
+      ChangeSource changeSource) {
+    return patchInternal(uriInfo, securityContext, id, patch, changeSource);
+  }
+
+  public Response patchByName(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fqn,
+      JsonPatch patch,
+      ChangeSource changeSource) {
+    return patchInternal(uriInfo, securityContext, fqn, patch, changeSource);
+  }
+
+  public Response exportCsvAsync(SecurityContext securityContext, String name) {
+    return exportCsvInternalAsync(securityContext, name, false);
+  }
+
+  public String exportCsv(SecurityContext securityContext, String name) throws IOException {
+    return exportCsvInternal(securityContext, name, false);
+  }
+
+  public CsvImportResult importCsv(
+      SecurityContext securityContext, String name, String csv, boolean dryRun) throws IOException {
+    return importCsvInternal(securityContext, name, csv, dryRun, false);
+  }
+
+  public Response importCsvAsync(
+      SecurityContext securityContext, String name, String csv, boolean dryRun) {
+    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
+  }
+
+  public Response deleteById(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      boolean recursive,
+      boolean hardDelete) {
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  public Response deleteByFqn(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fqn,
+      boolean recursive,
+      boolean hardDelete) {
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+  }
+
+  public Response restore(UriInfo uriInfo, SecurityContext securityContext, UUID id) {
+    return restoreEntity(uriInfo, securityContext, id);
+  }
+
+  public PutResponse<Table> addFollower(SecurityContext securityContext, UUID id, UUID userId) {
+    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId);
+  }
+
+  public PutResponse<Table> updateVote(
+      SecurityContext securityContext, UUID id, VoteRequest request) {
+    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request);
+  }
+
+  public PutResponse<Table> deleteFollower(SecurityContext securityContext, UUID id, UUID userId) {
+    return super.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId);
   }
 
   public static class TableList extends ResultList<Table> {

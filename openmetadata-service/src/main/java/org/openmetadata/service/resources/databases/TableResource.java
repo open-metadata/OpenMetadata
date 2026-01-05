@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.databases;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.search.SearchUtils.getRequiredEntityRelationshipFields;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -64,7 +63,6 @@ import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PipelineObservability;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableData;
@@ -78,12 +76,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.TableRepository;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityBaseService;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.databases.TableService;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -95,56 +88,15 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tables")
-public class TableResource extends EntityBaseService<Table, TableRepository> {
+public class TableResource {
   private final TableService tableService;
   public static final String COLLECTION_PATH = "v1/tables/";
   public static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,sampleData,"
           + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domains,dataProducts,lifeCycle,sourceHash";
 
-  @Override
-  public Table addHref(UriInfo uriInfo, Table table) {
-    super.addHref(uriInfo, table);
-    Entity.withHref(uriInfo, table.getDatabaseSchema());
-    Entity.withHref(uriInfo, table.getDatabase());
-    Entity.withHref(uriInfo, table.getService());
-    return table;
-  }
-
-  public TableResource(Authorizer authorizer, Limits limits) {
-    super(Entity.TABLE, authorizer, limits);
-    this.tableService = null;
-  }
-
-  public TableResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
-    super(Entity.TABLE, authorizer, limits);
-    this.tableService = serviceRegistry.getService(TableService.class);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    allowedFields.add("customMetrics");
-    addViewOperation(
-        "columns,tableConstraints,tablePartition,joins,schemaDefinition,dataModel",
-        MetadataOperation.VIEW_BASIC);
-    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
-    addViewOperation("customMetrics", MetadataOperation.VIEW_TESTS);
-    addViewOperation("testSuite", MetadataOperation.VIEW_TESTS);
-    addViewOperation("sampleData", MetadataOperation.VIEW_SAMPLE_DATA);
-    return listOf(
-        MetadataOperation.VIEW_TESTS,
-        MetadataOperation.VIEW_QUERIES,
-        MetadataOperation.VIEW_DATA_PROFILE,
-        MetadataOperation.VIEW_SAMPLE_DATA,
-        MetadataOperation.VIEW_USAGE,
-        MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION,
-        MetadataOperation.EDIT_TESTS,
-        MetadataOperation.EDIT_QUERIES,
-        MetadataOperation.EDIT_DATA_PROFILE,
-        MetadataOperation.EDIT_SAMPLE_DATA,
-        MetadataOperation.EDIT_LINEAGE,
-        MetadataOperation.EDIT_ENTITY_RELATIONSHIP,
-        MetadataOperation.CREATE_TESTS);
+  public TableResource(TableService tableService) {
+    this.tableService = tableService;
   }
 
   public static class TableList extends ResultList<Table> {
@@ -242,7 +194,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
     if (!includeEmptyTestSuite) {
       filter.addQueryParam("includeEmptyTestSuite", false);
     }
-    return super.listInternal(
+    return tableService.list(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -278,7 +230,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return tableService.get(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -316,7 +268,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    return tableService.getByName(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -339,7 +291,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Table Id", schema = @Schema(type = "string")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return tableService.listVersions(securityContext, id);
   }
 
   @GET
@@ -370,7 +322,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return tableService.getVersion(securityContext, id, version);
   }
 
   @POST
@@ -392,11 +344,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTable create) {
-    Table table =
-        tableService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, table);
+    return tableService.create(uriInfo, securityContext, create);
   }
 
   @PUT
@@ -419,11 +367,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTable create) {
-    Table table =
-        tableService
-            .getMapper()
-            .createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, table);
+    return tableService.createOrUpdate(uriInfo, securityContext, create);
   }
 
   @PUT
@@ -456,7 +400,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateTable> createRequests) {
-    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+    return tableService.bulkCreateOrUpdate(uriInfo, securityContext, createRequests, async);
   }
 
   @PATCH
@@ -490,7 +434,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
               schema = @Schema(implementation = ChangeSource.class))
           @QueryParam("changeSource")
           ChangeSource changeSource) {
-    return patchInternal(uriInfo, securityContext, id, patch, changeSource);
+    return tableService.patchById(uriInfo, securityContext, id, patch, changeSource);
   }
 
   @PATCH
@@ -524,7 +468,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
               schema = @Schema(implementation = ChangeSource.class))
           @QueryParam("changeSource")
           ChangeSource changeSource) {
-    return patchInternal(uriInfo, securityContext, fqn, patch, changeSource);
+    return tableService.patchByName(uriInfo, securityContext, fqn, patch, changeSource);
   }
 
   @GET
@@ -548,7 +492,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
       @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return exportCsvInternalAsync(securityContext, name, false);
+    return tableService.exportCsvAsync(securityContext, name);
   }
 
   @GET
@@ -573,7 +517,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
           @PathParam("name")
           String name)
       throws IOException {
-    return exportCsvInternal(securityContext, name, false);
+    return tableService.exportCsv(securityContext, name);
   }
 
   @PUT
@@ -606,7 +550,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, false);
+    return tableService.importCsv(securityContext, name, csv, dryRun);
   }
 
   @PUT
@@ -638,7 +582,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
+    return tableService.importCsvAsync(securityContext, name, csv, dryRun);
   }
 
   @DELETE
@@ -665,7 +609,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
           boolean recursive,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return tableService.deleteById(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -692,7 +636,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
           boolean recursive,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+    return tableService.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -720,7 +664,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
       @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+    return tableService.deleteByFqn(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -742,7 +686,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return tableService.restore(uriInfo, securityContext, restore.getId());
   }
 
   @PUT
@@ -770,9 +714,7 @@ public class TableResource extends EntityBaseService<Table, TableRepository> {
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return tableService.addFollower(securityContext, id, userId).toResponse();
   }
 
   @PUT
