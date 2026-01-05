@@ -14,6 +14,7 @@ Source connection handler
 """
 from functools import partial
 from typing import Optional
+from urllib.parse import quote_plus
 
 from pydantic import BaseModel
 from pymongo import MongoClient
@@ -27,6 +28,10 @@ from metadata.generated.schema.entity.services.connections.database.mongoDBConne
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.builders import (
+    get_connection_options_dict,
+    get_password_secret,
+)
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
@@ -38,23 +43,20 @@ def get_connection(connection: MongoDBConnection):
     """
     # Build MongoDB connection URL
     # MongoDB uses databaseName field for the authentication database
-    from urllib.parse import quote_plus
-    from metadata.ingestion.connections.builders import get_password_secret, get_connection_options_dict
-    
     url = f"{connection.scheme.value}://"
-    
+
     if connection.username:
         url += f"{quote_plus(connection.username)}"
         password = get_password_secret(connection)
         url += f":{quote_plus(password.get_secret_value())}"
         url += "@"
-    
+
     url += connection.hostPort
-    
+
     # Add database name if provided (this is the authentication database)
     if connection.databaseName:
         url += f"/{connection.databaseName}"
-    
+
     # Add connection options
     options = get_connection_options_dict(connection)
     if options:

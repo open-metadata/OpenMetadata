@@ -45,33 +45,33 @@ class TestMongoDBConnectionURL(unittest.TestCase):
             "metadata.ingestion.source.database.mongodb.connection.get_password_secret"
         ) as mock_password:
             mock_password.return_value = connection.password
-            
+
             # Call get_connection
             get_connection(connection)
 
             # Verify MongoClient was called
             assert mock_client.called
-            
+
             # Get the URL that was passed to MongoClient
             call_args = mock_client.call_args
             url = call_args[0][0]
-            
+
             # Parse and verify the URL
             parsed = urlparse(url)
-            
+
             # Check scheme
             assert parsed.scheme == "mongodb", f"Expected scheme 'mongodb', got '{parsed.scheme}'"
-            
+
             # Check username
             assert parsed.username == "testuser", f"Expected username 'testuser', got '{parsed.username}'"
-            
+
             # Check password
             assert parsed.password == "testpass", f"Expected password 'testpass', got '{parsed.password}'"
-            
+
             # Check host and port
             assert parsed.hostname == "localhost", f"Expected hostname 'localhost', got '{parsed.hostname}'"
             assert parsed.port == 27017, f"Expected port 27017, got {parsed.port}"
-            
+
             # Check database (path without leading slash)
             database = parsed.path.lstrip("/")
             assert database == "myauthdb", f"Expected database 'myauthdb', got '{database}'"
@@ -96,20 +96,20 @@ class TestMongoDBConnectionURL(unittest.TestCase):
             "metadata.ingestion.source.database.mongodb.connection.get_password_secret"
         ) as mock_password:
             mock_password.return_value = connection.password
-            
+
             # Call get_connection
             get_connection(connection)
 
             # Verify MongoClient was called
             assert mock_client.called
-            
+
             # Get the URL that was passed to MongoClient
             call_args = mock_client.call_args
             url = call_args[0][0]
-            
+
             # Parse and verify the URL
             parsed = urlparse(url)
-            
+
             # Check that database is empty or not present
             database = parsed.path.lstrip("/")
             assert database == "", f"Expected no database, got '{database}'"
