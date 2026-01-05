@@ -265,6 +265,8 @@ const AssetsTabs = forwardRef(
           }
           if (hits[0]) {
             setSelectedCard(hits[0]._source);
+          } else {
+            setSelectedCard(undefined);
           }
         } catch {
           // Nothing here
@@ -775,32 +777,32 @@ const AssetsTabs = forwardRef(
               'h-full': totalAssetCount === 0,
             })}
             gutter={[0, 20]}>
+            <Col className="d-flex gap-3" span={24}>
+              <Dropdown
+                menu={{
+                  items: filterMenu,
+                  selectedKeys: selectedFilter,
+                }}
+                trigger={['click']}>
+                <Button
+                  className={classNames('feed-filter-icon')}
+                  icon={<FilterIcon height={16} />}
+                />
+              </Dropdown>
+              <div className="flex-1">
+                <Searchbar
+                  removeMargin
+                  showClearSearch
+                  placeholder={t('label.search-entity', {
+                    entity: t('label.asset-plural'),
+                  })}
+                  searchValue={searchValue}
+                  onSearch={setSearchValue}
+                />
+              </div>
+            </Col>
             {totalAssetCount > 0 && (
               <>
-                <Col className="d-flex items-center gap-3" span={24}>
-                  <Dropdown
-                    menu={{
-                      items: filterMenu,
-                      selectedKeys: selectedFilter,
-                    }}
-                    trigger={['click']}>
-                    <Button
-                      className={classNames('feed-filter-icon')}
-                      icon={<FilterIcon height={16} />}
-                    />
-                  </Dropdown>
-                  <div className="flex-1">
-                    <Searchbar
-                      removeMargin
-                      showClearSearch
-                      placeholder={t('label.search-entity', {
-                        entity: t('label.asset-plural'),
-                      })}
-                      searchValue={searchValue}
-                      onSearch={setSearchValue}
-                    />
-                  </div>
-                </Col>
                 {selectedFilter.length > 0 && (
                   <Col className="searched-data-container" span={24}>
                     <div className="d-flex justify-between">

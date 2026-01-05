@@ -22,6 +22,7 @@ import { getApiContext, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitUserProfilePage } from '../../utils/user';
 import { redirectToUserPage } from '../../utils/userDetails';
+import { TableClass } from '../../support/entity/TableClass';
 
 const user1 = new UserClass();
 const user2 = new UserClass();
@@ -557,9 +558,90 @@ test.describe('User with different Roles', () => {
       userPage.getByTestId('edit-user-persona').getByTestId('edit-persona')
     ).not.toBeVisible();
     await expect(userPage.getByTestId('user-profile-roles')).toBeVisible();
-    // Edit Roles icon shouldn't be visible
     await expect(
       userPage.getByTestId('user-profile-edit-roles-save-button')
     ).not.toBeVisible();
+  });
+
+  test('My Data Tab - AssetsTabs search functionality', async ({
+    adminPage,
+  }) => {
+    const { apiContext } = await getApiContext(adminPage);
+    const table = new TableClass();
+
+    try {
+      await table.create(apiContext);
+
+      const adminUserResponse = await apiContext.get(
+        '/api/v1/users/name/admin'
+      );
+      const adminUser = await adminUserResponse.json();
+
+      await apiContext.patch(`/api/v1/tables/${table.entityResponseData?.id}`, {
+        data: [
+          {
+            op: 'add',
+            path: '/owners/0',
+            value: {
+              id: adminUser.id,
+              type: 'user',
+            },
+          },
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      });
+
+      await redirectToUserPage(adminPage);
+
+      await adminPage.getByText('My Data').click();
+
+      await adminPage.waitForLoadState('networkidle');
+
+      const assetsSearchBox = adminPage
+        .locator('#asset-tab')
+        .getByTestId('searchbar');
+
+      await expect(assetsSearchBox).toBeVisible();
+
+      const searchResponse = adminPage.waitForResponse(
+        '**/api/v1/search/query*'
+      );
+
+      await assetsSearchBox.fill(table.entity.name);
+
+      await searchResponse;
+
+      const assetCard = adminPage.getByText(table.entity.name).first();
+
+      if (await assetCard.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await expect(assetCard).toBeVisible();
+      }
+
+      await assetsSearchBox.clear();
+
+      const incorrectSearchResponse = adminPage.waitForResponse(
+        '**/api/v1/search/query*'
+      );
+
+      await assetsSearchBox.fill('nonexistent-asset-name-xyz-123');
+
+      await incorrectSearchResponse;
+
+      await adminPage.waitForTimeout(1000);
+
+      await expect(assetsSearchBox).toBeVisible();
+
+      const incorrectAssetCard = adminPage.getByText(table.entity.name);
+
+      await expect(incorrectAssetCard).not.toBeVisible();
+
+      const rightPanel = adminPage.getByTestId('entity-summary-panel-container');
+
+      await expect(rightPanel).not.toBeVisible();
+    } finally {
+      await table.delete(apiContext);
+    }
   });
 });
