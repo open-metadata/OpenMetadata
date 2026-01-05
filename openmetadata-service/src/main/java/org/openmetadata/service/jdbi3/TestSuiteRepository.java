@@ -15,9 +15,14 @@ import static org.openmetadata.service.search.SearchUtils.getAggregationBuckets;
 import static org.openmetadata.service.search.SearchUtils.getAggregationKeyValue;
 import static org.openmetadata.service.search.SearchUtils.getAggregationObject;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.escapeDoubleQuotes;
 
+import jakarta.json.Json;
 import jakarta.json.JsonArray;
+import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObject;
+import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonReader;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -310,6 +315,78 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       String q, String aggQuery, String index, SubjectContext subjectContext) throws IOException {
     SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggQuery);
     return searchRepository.genericAggregation(q, index, searchAggregation, subjectContext);
+  }
+
+  public DataQualityReport getDataQualityReport(
+      String q, String aggQuery, String index, String domain, SubjectContext subjectContext)
+      throws IOException {
+    String queryWithDomain = addDomainFilter(q, domain, index);
+    SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggQuery);
+    return searchRepository.genericAggregation(
+        queryWithDomain, index, searchAggregation, subjectContext);
+  }
+
+  private String addDomainFilter(String query, String domain, String index) {
+    if (nullOrEmpty(domain)) {
+      return query;
+    }
+
+    String domainField =
+        Entity.TEST_CASE_RESOLUTION_STATUS.equals(index)
+            ? "testCase.domains.fullyQualifiedName"
+            : "domains.fullyQualifiedName";
+
+    String domainFilter =
+        String.format("{\"term\": {\"%s\": \"%s\"}}", domainField, escapeDoubleQuotes(domain));
+
+    if (nullOrEmpty(query)) {
+      return String.format("{\"query\": {\"bool\": {\"must\": [%s]}}}", domainFilter);
+    }
+
+    try {
+      JsonReader reader = Json.createReader(new java.io.StringReader(query));
+      JsonObject queryJson = reader.readObject();
+      reader.close();
+
+      JsonObject queryObj = queryJson.getJsonObject("query");
+      if (queryObj != null) {
+        JsonObject boolObj = queryObj.getJsonObject("bool");
+        if (boolObj != null) {
+          JsonArray mustArray = boolObj.getJsonArray("must");
+          JsonArrayBuilder newMustBuilder = Json.createArrayBuilder();
+
+          if (mustArray != null) {
+            for (JsonValue value : mustArray) {
+              newMustBuilder.add(value);
+            }
+          }
+
+          JsonReader domainReader = Json.createReader(new java.io.StringReader(domainFilter));
+          newMustBuilder.add(domainReader.readObject());
+          domainReader.close();
+
+          JsonObjectBuilder newBoolBuilder = Json.createObjectBuilder();
+          for (String key : boolObj.keySet()) {
+            if (!"must".equals(key)) {
+              newBoolBuilder.add(key, boolObj.get(key));
+            }
+          }
+          newBoolBuilder.add("must", newMustBuilder);
+
+          jakarta.json.JsonObjectBuilder newQueryBuilder = jakarta.json.Json.createObjectBuilder();
+          newQueryBuilder.add("bool", newBoolBuilder);
+
+          jakarta.json.JsonObjectBuilder resultBuilder = jakarta.json.Json.createObjectBuilder();
+          resultBuilder.add("query", newQueryBuilder);
+
+          return resultBuilder.build().toString();
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to parse query for domain injection: {}", e.getMessage());
+    }
+
+    return query;
   }
 
   public TestSummary getTestSummary(List<ResultSummary> testCaseResults) {
