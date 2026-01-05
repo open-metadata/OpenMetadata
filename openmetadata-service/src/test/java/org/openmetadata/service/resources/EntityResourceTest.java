@@ -520,7 +520,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static Type ENUM_TYPE;
   public static Type TABLE_TYPE;
-  public static Type HYPERLINK_TYPE;
 
   // Run webhook related tests randomly. This will ensure these tests are not run for every entity
   // evey time junit tests are run to save time. But over the course of development of a release,

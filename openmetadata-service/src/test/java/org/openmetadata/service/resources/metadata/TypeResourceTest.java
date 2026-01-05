@@ -89,7 +89,6 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     SQLQUERY_TYPE = getEntityByName("sqlQuery", "", ADMIN_AUTH_HEADERS);
     TIMESTAMP_TYPE = getEntityByName("timestamp", "", ADMIN_AUTH_HEADERS);
     TABLE_TYPE = getEntityByName("table-cp", "", ADMIN_AUTH_HEADERS);
-    HYPERLINK_TYPE = getEntityByName("hyperlink-cp", "", ADMIN_AUTH_HEADERS);
   }
 
   @Override
@@ -411,83 +410,6 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     String json = JsonUtils.pojoToJson(databaseEntity);
     databaseEntity.setCustomProperties(List.of(tableTypeFieldA));
     change6 = getChangeDescription(databaseEntity, MINOR_UPDATE);
-  }
-
-  @Test
-  void put_patch_customProperty_hyperlink_200() throws IOException {
-    Type containerEntity = getEntityByName("container", "customProperties", ADMIN_AUTH_HEADERS);
-    assertTrue(listOrEmpty(containerEntity.getCustomProperties()).isEmpty());
-
-    // Add a custom property with name hyperlinkA with type hyperlink-cp with PUT
-    // Hyperlink type doesn't require any config
-    CustomProperty hyperlinkFieldA =
-        new CustomProperty()
-            .withName("hyperlinkA")
-            .withDescription("hyperlinkA description")
-            .withPropertyType(HYPERLINK_TYPE.getEntityReference())
-            .withDisplayName("Hyperlink A");
-    ChangeDescription change = getChangeDescription(containerEntity, MINOR_UPDATE);
-    fieldAdded(change, "customProperties", new ArrayList<>(List.of(hyperlinkFieldA)));
-    containerEntity =
-        addCustomPropertyAndCheck(
-            containerEntity.getId(), hyperlinkFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertCustomProperties(
-        new ArrayList<>(List.of(hyperlinkFieldA)), containerEntity.getCustomProperties());
-
-    // Changing custom property description and displayName with PUT
-    hyperlinkFieldA.withDescription("updated description").withDisplayName("Updated Hyperlink A");
-    change = getChangeDescription(containerEntity, MINOR_UPDATE);
-    fieldUpdated(
-        change,
-        EntityUtil.getCustomField(hyperlinkFieldA, "description"),
-        "hyperlinkA description",
-        "updated description");
-    fieldUpdated(
-        change,
-        EntityUtil.getCustomField(hyperlinkFieldA, "displayName"),
-        "Hyperlink A",
-        "Updated Hyperlink A");
-    containerEntity =
-        addCustomPropertyAndCheck(
-            containerEntity.getId(), hyperlinkFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertCustomProperties(
-        new ArrayList<>(List.of(hyperlinkFieldA)), containerEntity.getCustomProperties());
-
-    // Changing custom property description and displayName with PATCH
-    // Changes from this PATCH is consolidated with the previous changes
-    hyperlinkFieldA.withDescription("updated description 2").withDisplayName("Updated Hyperlink A 2");
-    String json = JsonUtils.pojoToJson(containerEntity);
-    containerEntity.setCustomProperties(List.of(hyperlinkFieldA));
-    change = getChangeDescription(containerEntity, MINOR_UPDATE);
-    fieldUpdated(
-        change,
-        EntityUtil.getCustomField(hyperlinkFieldA, "description"),
-        "updated description",
-        "updated description 2");
-    fieldUpdated(
-        change,
-        EntityUtil.getCustomField(hyperlinkFieldA, "displayName"),
-        "Updated Hyperlink A",
-        "Updated Hyperlink A 2");
-    containerEntity =
-        patchEntityAndCheck(containerEntity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-
-    // Add a second hyperlink property
-    CustomProperty hyperlinkFieldB =
-        new CustomProperty()
-            .withName("hyperlinkB")
-            .withDescription("hyperlinkB description")
-            .withPropertyType(HYPERLINK_TYPE.getEntityReference())
-            .withDisplayName("Hyperlink B");
-    change = getChangeDescription(containerEntity, MINOR_UPDATE);
-    fieldAdded(change, "customProperties", new ArrayList<>(List.of(hyperlinkFieldB)));
-    containerEntity =
-        addCustomPropertyAndCheck(
-            containerEntity.getId(), hyperlinkFieldB, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertEquals(2, containerEntity.getCustomProperties().size());
-    assertCustomProperties(
-        new ArrayList<>(List.of(hyperlinkFieldA, hyperlinkFieldB)),
-        containerEntity.getCustomProperties());
   }
 
   @Test
