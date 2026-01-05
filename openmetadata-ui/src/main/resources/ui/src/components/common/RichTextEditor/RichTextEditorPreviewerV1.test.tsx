@@ -338,8 +338,8 @@ describe('RichTextEditorPreviewerV1', () => {
     render(
       <RichTextEditorPreviewerV1
         {...mockProp}
-        markdown={veryLongMarkdown}
         enableSeeMoreVariant
+        markdown={veryLongMarkdown}
       />
     );
 

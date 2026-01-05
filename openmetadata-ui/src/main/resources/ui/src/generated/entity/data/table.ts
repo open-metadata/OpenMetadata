@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -1110,6 +1110,10 @@ export interface AccessDetails {
  */
 export interface PipelineObservability {
     /**
+     * Average runtime of the pipeline in milliseconds.
+     */
+    averageRunTime?: number;
+    /**
      * End time of the pipeline schedule.
      */
     endTime?: number;
@@ -1170,6 +1174,7 @@ export enum PipelineServiceType {
     KafkaConnect = "KafkaConnect",
     KinesisFirehose = "KinesisFirehose",
     Matillion = "Matillion",
+    Mulesoft = "Mulesoft",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
     Snowplow = "Snowplow",

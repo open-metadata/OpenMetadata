@@ -5,9 +5,9 @@ import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
-import org.openmetadata.sdk.resources.BaseResource;
+import org.openmetadata.sdk.services.EntityServiceBase;
 
-public class DashboardService extends BaseResource<Dashboard> {
+public class DashboardService extends EntityServiceBase<Dashboard> {
   public DashboardService(HttpClient httpClient) {
     super(httpClient, "/v1/dashboards");
   }
@@ -18,9 +18,7 @@ public class DashboardService extends BaseResource<Dashboard> {
   }
 
   // Create using CreateDashboard request
-  public org.openmetadata.schema.entity.data.Dashboard create(CreateDashboard request)
-      throws OpenMetadataException {
-    return httpClient.execute(
-        HttpMethod.POST, basePath, request, org.openmetadata.schema.entity.data.Dashboard.class);
+  public Dashboard create(CreateDashboard request) throws OpenMetadataException {
+    return httpClient.execute(HttpMethod.POST, basePath, request, Dashboard.class);
   }
 }

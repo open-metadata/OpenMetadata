@@ -8,8 +8,12 @@ import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.OpenMetadataHttpClient;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.sdk.services.ai.AIApplicationService;
+import org.openmetadata.sdk.services.ai.LLMModelService;
+import org.openmetadata.sdk.services.ai.PromptTemplateService;
 import org.openmetadata.sdk.services.apiservice.APICollectionService;
 import org.openmetadata.sdk.services.apiservice.APIEndpointService;
+import org.openmetadata.sdk.services.automations.WorkflowService;
 import org.openmetadata.sdk.services.bots.BotService;
 import org.openmetadata.sdk.services.bulk.BulkAPI;
 import org.openmetadata.sdk.services.classification.ClassificationService;
@@ -28,18 +32,26 @@ import org.openmetadata.sdk.services.dataassets.TopicService;
 import org.openmetadata.sdk.services.databases.DatabaseSchemaService;
 import org.openmetadata.sdk.services.databases.DatabaseService;
 import org.openmetadata.sdk.services.databases.StoredProcedureService;
+import org.openmetadata.sdk.services.datacontracts.DataContractService;
 import org.openmetadata.sdk.services.domains.DataProductService;
 import org.openmetadata.sdk.services.domains.DomainService;
+import org.openmetadata.sdk.services.events.ChangeEventService;
 import org.openmetadata.sdk.services.events.EventSubscriptionService;
+import org.openmetadata.sdk.services.events.NotificationTemplateService;
 import org.openmetadata.sdk.services.glossary.GlossaryService;
 import org.openmetadata.sdk.services.glossary.GlossaryTermService;
+import org.openmetadata.sdk.services.governance.AIGovernancePolicyService;
+import org.openmetadata.sdk.services.governance.WorkflowDefinitionService;
 import org.openmetadata.sdk.services.importexport.ImportExportAPI;
 import org.openmetadata.sdk.services.ingestion.IngestionPipelineService;
 import org.openmetadata.sdk.services.lineage.LineageAPI;
+import org.openmetadata.sdk.services.policies.PolicyService;
 import org.openmetadata.sdk.services.search.SearchAPI;
 import org.openmetadata.sdk.services.services.APIServiceService;
 import org.openmetadata.sdk.services.services.DashboardServiceService;
 import org.openmetadata.sdk.services.services.DatabaseServiceService;
+import org.openmetadata.sdk.services.services.DriveServiceService;
+import org.openmetadata.sdk.services.services.LLMServiceService;
 import org.openmetadata.sdk.services.services.MessagingServiceService;
 import org.openmetadata.sdk.services.services.MetadataServiceService;
 import org.openmetadata.sdk.services.services.MlModelServiceService;
@@ -47,9 +59,16 @@ import org.openmetadata.sdk.services.services.PipelineServiceService;
 import org.openmetadata.sdk.services.services.SearchServiceService;
 import org.openmetadata.sdk.services.services.StorageServiceService;
 import org.openmetadata.sdk.services.storages.ContainerService;
+import org.openmetadata.sdk.services.storages.DirectoryService;
+import org.openmetadata.sdk.services.storages.FileService;
+import org.openmetadata.sdk.services.storages.SpreadsheetService;
+import org.openmetadata.sdk.services.storages.WorksheetService;
 import org.openmetadata.sdk.services.teams.PersonaService;
+import org.openmetadata.sdk.services.teams.RoleService;
 import org.openmetadata.sdk.services.teams.TeamService;
 import org.openmetadata.sdk.services.teams.UserService;
+import org.openmetadata.sdk.services.tests.TestCaseResolutionStatusService;
+import org.openmetadata.sdk.services.tests.TestCaseResultService;
 import org.openmetadata.sdk.services.tests.TestCaseService;
 import org.openmetadata.sdk.services.tests.TestDefinitionService;
 import org.openmetadata.sdk.services.tests.TestSuiteService;
@@ -67,6 +86,7 @@ public class OpenMetadataClient {
   private final QueryService queries;
   private final SearchIndexService searchIndexes;
   private final MlModelService mlModels;
+  private final LLMModelService llmModels;
 
   // Databases
   private final DatabaseService databases;
@@ -77,9 +97,17 @@ public class OpenMetadataClient {
   private final UserService users;
   private final TeamService teams;
   private final PersonaService personas;
+  private final RoleService roles;
+
+  // Policies
+  private final PolicyService policies;
 
   // Storages
   private final ContainerService containers;
+  private final DirectoryService directories;
+  private final FileService files;
+  private final SpreadsheetService spreadsheets;
+  private final WorksheetService worksheets;
 
   // Glossary
   private final GlossaryService glossaries;
@@ -109,12 +137,19 @@ public class OpenMetadataClient {
   private final DomainService domains;
 
   // Events
+  private final ChangeEventService changeEvents;
   private final EventSubscriptionService eventSubscriptions;
+  private final NotificationTemplateService notificationTemplates;
 
   // Tests
   private final TestCaseService testCases;
+  private final TestCaseResultService testCaseResults;
+  private final TestCaseResolutionStatusService testCaseResolutionStatuses;
   private final TestSuiteService testSuites;
   private final TestDefinitionService testDefinitions;
+
+  // Data Contracts
+  private final DataContractService dataContracts;
 
   // API Services
   private final APICollectionService apiCollections;
@@ -123,16 +158,29 @@ public class OpenMetadataClient {
   // Service Management
   private final DashboardServiceService dashboardServices;
   private final DatabaseServiceService databaseServices;
+  private final DriveServiceService driveServices;
   private final MessagingServiceService messagingServices;
   private final MetadataServiceService metadataServices;
   private final MlModelServiceService mlModelServices;
   private final PipelineServiceService pipelineServices;
   private final SearchServiceService searchServices;
   private final StorageServiceService storageServices;
+  private final LLMServiceService llmServices;
   private final APIServiceService apiServices;
 
   // Ingestion
   private final IngestionPipelineService ingestionPipelines;
+
+  // Automations
+  private final WorkflowService workflows;
+
+  // Governance
+  private final AIGovernancePolicyService aiGovernancePolicies;
+  private final WorkflowDefinitionService workflowDefinitions;
+
+  // AI
+  private final AIApplicationService aiApplications;
+  private final PromptTemplateService promptTemplates;
 
   public OpenMetadataClient(OpenMetadataConfig config) {
     this.config = config;
@@ -146,6 +194,7 @@ public class OpenMetadataClient {
     this.queries = new QueryService(httpClient);
     this.searchIndexes = new SearchIndexService(httpClient);
     this.mlModels = new MlModelService(httpClient);
+    this.llmModels = new LLMModelService(httpClient);
 
     // Initialize database services
     this.databases = new DatabaseService(httpClient);
@@ -156,9 +205,17 @@ public class OpenMetadataClient {
     this.users = new UserService(httpClient);
     this.teams = new TeamService(httpClient);
     this.personas = new PersonaService(httpClient);
+    this.roles = new RoleService(httpClient);
+
+    // Initialize policy services
+    this.policies = new PolicyService(httpClient);
 
     // Initialize storage services
     this.containers = new ContainerService(httpClient);
+    this.directories = new DirectoryService(httpClient);
+    this.files = new FileService(httpClient);
+    this.spreadsheets = new SpreadsheetService(httpClient);
+    this.worksheets = new WorksheetService(httpClient);
 
     // Initialize glossary services
     this.glossaries = new GlossaryService(httpClient);
@@ -188,12 +245,19 @@ public class OpenMetadataClient {
     this.domains = new DomainService(httpClient);
 
     // Initialize event services
+    this.changeEvents = new ChangeEventService(httpClient);
     this.eventSubscriptions = new EventSubscriptionService(httpClient);
+    this.notificationTemplates = new NotificationTemplateService(httpClient);
 
     // Initialize test services
     this.testCases = new TestCaseService(httpClient);
+    this.testCaseResults = new TestCaseResultService(httpClient);
+    this.testCaseResolutionStatuses = new TestCaseResolutionStatusService(httpClient);
     this.testSuites = new TestSuiteService(httpClient);
     this.testDefinitions = new TestDefinitionService(httpClient);
+
+    // Initialize data contract services
+    this.dataContracts = new DataContractService(httpClient);
 
     // Initialize API services
     this.apiCollections = new APICollectionService(httpClient);
@@ -202,16 +266,29 @@ public class OpenMetadataClient {
     // Initialize service management
     this.dashboardServices = new DashboardServiceService(httpClient);
     this.databaseServices = new DatabaseServiceService(httpClient);
+    this.driveServices = new DriveServiceService(httpClient);
     this.messagingServices = new MessagingServiceService(httpClient);
     this.metadataServices = new MetadataServiceService(httpClient);
     this.mlModelServices = new MlModelServiceService(httpClient);
     this.pipelineServices = new PipelineServiceService(httpClient);
     this.searchServices = new SearchServiceService(httpClient);
     this.storageServices = new StorageServiceService(httpClient);
+    this.llmServices = new LLMServiceService(httpClient);
     this.apiServices = new APIServiceService(httpClient);
 
     // Initialize ingestion services
     this.ingestionPipelines = new IngestionPipelineService(httpClient);
+
+    // Initialize automation services
+    this.workflows = new WorkflowService(httpClient);
+
+    // Initialize governance services
+    this.aiGovernancePolicies = new AIGovernancePolicyService(httpClient);
+    this.workflowDefinitions = new WorkflowDefinitionService(httpClient);
+
+    // Initialize AI services
+    this.aiApplications = new AIApplicationService(httpClient);
+    this.promptTemplates = new PromptTemplateService(httpClient);
   }
 
   public OpenMetadataConfig getConfig() {
@@ -251,6 +328,10 @@ public class OpenMetadataClient {
     return mlModels;
   }
 
+  public LLMModelService llmModels() {
+    return llmModels;
+  }
+
   // Database Service Getters
   public DatabaseService databases() {
     return databases;
@@ -273,6 +354,14 @@ public class OpenMetadataClient {
     return teams;
   }
 
+  public RoleService roles() {
+    return roles;
+  }
+
+  public PolicyService policies() {
+    return policies;
+  }
+
   public PersonaService personas() {
     return personas;
   }
@@ -280,6 +369,22 @@ public class OpenMetadataClient {
   // Storage Service Getters
   public ContainerService containers() {
     return containers;
+  }
+
+  public DirectoryService directories() {
+    return directories;
+  }
+
+  public FileService files() {
+    return files;
+  }
+
+  public SpreadsheetService spreadsheets() {
+    return spreadsheets;
+  }
+
+  public WorksheetService worksheets() {
+    return worksheets;
   }
 
   // Glossary Service Getters
@@ -348,14 +453,30 @@ public class OpenMetadataClient {
     return domains;
   }
 
-  // Event Service Getter
+  // Event Service Getters
+  public ChangeEventService changeEvents() {
+    return changeEvents;
+  }
+
   public EventSubscriptionService eventSubscriptions() {
     return eventSubscriptions;
+  }
+
+  public NotificationTemplateService notificationTemplates() {
+    return notificationTemplates;
   }
 
   // Test Service Getters
   public TestCaseService testCases() {
     return testCases;
+  }
+
+  public TestCaseResultService testCaseResults() {
+    return testCaseResults;
+  }
+
+  public TestCaseResolutionStatusService testCaseResolutionStatuses() {
+    return testCaseResolutionStatuses;
   }
 
   public TestSuiteService testSuites() {
@@ -364,6 +485,11 @@ public class OpenMetadataClient {
 
   public TestDefinitionService testDefinitions() {
     return testDefinitions;
+  }
+
+  // Data Contract Service Getters
+  public DataContractService dataContracts() {
+    return dataContracts;
   }
 
   // API Service Getters
@@ -382,6 +508,10 @@ public class OpenMetadataClient {
 
   public DatabaseServiceService databaseServices() {
     return databaseServices;
+  }
+
+  public DriveServiceService driveServices() {
+    return driveServices;
   }
 
   public MessagingServiceService messagingServices() {
@@ -408,6 +538,10 @@ public class OpenMetadataClient {
     return storageServices;
   }
 
+  public LLMServiceService llmServices() {
+    return llmServices;
+  }
+
   public APIServiceService apiServices() {
     return apiServices;
   }
@@ -415,6 +549,27 @@ public class OpenMetadataClient {
   // Ingestion Service Getters
   public IngestionPipelineService ingestionPipelines() {
     return ingestionPipelines;
+  }
+
+  public WorkflowService workflows() {
+    return workflows;
+  }
+
+  public AIGovernancePolicyService aiGovernancePolicies() {
+    return aiGovernancePolicies;
+  }
+
+  public WorkflowDefinitionService workflowDefinitions() {
+    return workflowDefinitions;
+  }
+
+  // AI Service Getters
+  public AIApplicationService aiApplications() {
+    return aiApplications;
+  }
+
+  public PromptTemplateService promptTemplates() {
+    return promptTemplates;
   }
 
   /**
