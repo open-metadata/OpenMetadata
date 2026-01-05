@@ -3974,6 +3974,80 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   // ===================================================================
+  // FOREIGN KEY VERSIONING TESTS
+  // ===================================================================
+
+  /**
+   * Test that re-updating a table with the same foreign key constraint does not create a new
+   * version. This verifies the fix for the bug where foreign key constraints caused spurious version
+   * updates during re-ingestion because the referredColumns list was not being sorted before
+   * comparison.
+   */
+  @Test
+  void put_foreignKeyConstraintNoSpuriousVersionUpdate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    // Create a "referenced" table (the table that will be referenced by a foreign key)
+    Column refCol = new Column();
+    refCol.setName("id");
+    refCol.setDataType(ColumnDataType.INT);
+
+    CreateTable refTableRequest = new CreateTable();
+    refTableRequest.setName(ns.prefix("ref_table_fk_version"));
+    refTableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    refTableRequest.setColumns(List.of(refCol));
+
+    Table refTable = client.tables().create(refTableRequest);
+    assertNotNull(refTable);
+    String refColFqn = refTable.getColumns().get(0).getFullyQualifiedName();
+
+    // Create the "source" table with a foreign key constraint
+    Column srcCol1 = new Column();
+    srcCol1.setName("src_id");
+    srcCol1.setDataType(ColumnDataType.INT);
+
+    Column srcCol2 = new Column();
+    srcCol2.setName("ref_id");
+    srcCol2.setDataType(ColumnDataType.INT);
+
+    TableConstraint foreignKeyConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("ref_id"))
+            .withReferredColumns(List.of(refColFqn));
+
+    CreateTable srcTableRequest = new CreateTable();
+    srcTableRequest.setName(ns.prefix("src_table_fk_version"));
+    srcTableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    srcTableRequest.setColumns(List.of(srcCol1, srcCol2));
+    srcTableRequest.setTableConstraints(List.of(foreignKeyConstraint));
+
+    Table srcTable = client.tables().create(srcTableRequest);
+    assertNotNull(srcTable);
+    assertEquals(1, srcTable.getTableConstraints().size());
+
+    Double versionAfterCreate = srcTable.getVersion();
+
+    // Now "re-ingest" the same table with the same foreign key constraint
+    // This simulates what happens when ingestion runs multiple times without any actual changes
+    Table srcTableToUpdate =
+        client.tables().getByName(srcTable.getFullyQualifiedName(), "tableConstraints,columns");
+
+    // Set the same constraint again (as if re-ingested)
+    srcTableToUpdate.setTableConstraints(List.of(foreignKeyConstraint));
+
+    Table updatedTable = client.tables().update(srcTable.getId().toString(), srcTableToUpdate);
+
+    // Version should NOT have changed since nothing changed
+    assertEquals(
+        versionAfterCreate,
+        updatedTable.getVersion(),
+        "Version should not change when re-updating with the same foreign key constraint");
+  }
+
+  // ===================================================================
   // PHASE 3: List Operations Support
   // ===================================================================
 
