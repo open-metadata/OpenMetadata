@@ -485,3 +485,18 @@ SNOWFLAKE_QUERY_LOG_QUERY = """
     )
     AND EXECUTION_STATUS = 'SUCCESS';
 """
+
+SNOWFLAKE_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY = """
+    SELECT
+        name AS TABLE_NAME,
+        refresh_start_time AS START_TIME,
+        statistics:insertedRowCount::INT AS ROWS_INSERTED,
+        statistics:deletedRowCount::INT AS ROWS_DELETED,
+        statistics:updatedRowCount::INT AS ROWS_UPDATED
+    FROM
+        TABLE({account_usage_schema}.DYNAMIC_TABLE_REFRESH_HISTORY())
+    WHERE
+        state = 'SUCCEEDED'
+        AND name ILIKE '%{tablename}%'
+        AND refresh_start_time >= DATEADD('DAY', -1, CURRENT_TIMESTAMP);
+"""
