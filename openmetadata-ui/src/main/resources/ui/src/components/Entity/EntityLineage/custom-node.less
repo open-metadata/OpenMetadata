@@ -31,7 +31,7 @@
 // Node default state
 .lineage-node {
   width: 100%;
-  max-width: 320px; //  Max width of Lineage Node, in case of long columns names
+  max-width: 400px; //  Max width of Lineage Node, in case of long columns names
   border: 1px solid @lineage-border;
   border-radius: 10px;
   overflow: hidden;
@@ -77,11 +77,29 @@
     .label-container {
       .custom-node-label-container {
         width: 100%;
-        .lineage-breadcrumb {
+        .lineage-breadcrumbs {
           .lineage-breadcrumb-item {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            font-size: 12px;
+            max-width: 80px;
+          }
+          .lineage-breadcrumb-item-separator {
+            position: relative;
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            margin: 0 6px 0 4px;
+
+            &::after {
+              content: '';
+              position: absolute;
+              inset: 1px;
+              border-top: 1px solid @grey-400;
+              border-right: 1px solid @grey-400;
+              transform: rotate(45deg);
+            }
           }
         }
         .entity-header-name {
@@ -99,8 +117,14 @@
           padding: 8px 16px 0 16px;
 
           .entity-service-icon svg {
-            height: 28px;
-            width: 28px;
+            height: 32px;
+            width: 32px;
+            margin-bottom: 6px;
+          }
+          .entity-service-icon img {
+            height: 32px;
+            width: 32px;
+            margin-bottom: 6px;
           }
 
           &.with-footer::after {
@@ -114,11 +138,26 @@
         }
 
         .entity-footer {
-          padding: 8px 16px 8px 16px;
-          background-color: #ffffff;
           display: flex;
           justify-content: space-between;
           gap: 20px;
+          padding: 8px 16px;
+
+          &__entity-type-and-dropdown {
+            display: flex;
+            gap: 6px;
+
+            .MuiChip-root {
+              background-color: @grey-9;
+              border-color: @grey-15;
+              color: @grey-600;
+            }
+          }
+
+          &__test-summary-and-filter {
+            display: flex;
+            gap: 6px;
+          }
           .test-summary-and-mapping {
             display: flex;
             gap: 5px;
@@ -128,7 +167,7 @@
             min-width: fit-content;
             padding: 2px @size-xs 2px @size-sm;
             border: none;
-            border-radius: 16px;
+            border-radius: 8px;
             box-shadow: none;
 
             background-color: @primary-1;
@@ -163,8 +202,23 @@
             }
           }
 
-          .mapping-icon {
+          .only-show-columns-with-lineage-filter-button {
             cursor: pointer;
+            border: 1px solid transparent;
+            width: 25px;
+            height: 25px;
+            svg {
+              width: 14px;
+            }
+
+            &.active {
+              background-color: @primary-1;
+              color: @blue-7;
+            }
+
+            &:disabled:hover {
+              cursor: not-allowed;
+            }
           }
         }
       }
@@ -173,7 +227,28 @@
       min-height: 48px;
       padding: 12px;
       padding-top: 0;
-      background-color: @grey-1;
+      background-color: @grey-9;
+
+      .inside-current-page-item {
+        margin-top: 0px;
+        display: block;
+        .custom-node-header-column-tracing {
+          display: block;
+        }
+      }
+      .outside-current-page-item:has(.custom-node-column-container) {
+        display: none;
+      }
+      .outside-current-page-item:has(.custom-node-header-column-tracing) {
+        display: block;
+        margin-top: 0px;
+      }
+
+      .outside-current-page-items:has(.custom-node-header-column-tracing) {
+        border-top: 1px solid silver;
+        margin-top: 8px;
+        padding-top: 8px;
+      }
 
       .lineage-collapse-column.ant-collapse {
         border: none;
@@ -183,10 +258,6 @@
           padding: 4px;
           font-size: 12px;
           display: inherit; // to fix the overflow issue of parent column node, which has children.
-
-          .custom-node-column-container {
-            background-color: @lineage-collapse-header;
-          }
         }
 
         .ant-collapse-content-box {
@@ -204,21 +275,11 @@
         position: relative;
         font-size: 12px;
         font-weight: 400;
-        border: 1px solid transparent;
+        border: 1px solid @grey-1;
         border-left: 6px solid transparent;
         border-radius: 4px;
         border-top-left-radius: 6px;
         border-bottom-left-radius: 6px;
-
-        &:hover {
-          background-color: @primary-1;
-          color: @blue-44;
-          .custom-node-column-label {
-            color: inherit;
-            font-weight: 500;
-          }
-          border-left-color: @primary-color;
-        }
 
         .custom-node-name-container {
           min-width: 0;
@@ -249,9 +310,28 @@
           }
         }
       }
+      &:not(.any-column-selected) {
+        .custom-node-column-container {
+          &:hover {
+            background-color: @primary-1;
+            border-left-color: @primary-6;
+          }
+        }
+      }
     }
   }
 
+  &.columns-expanded {
+    .lineage-node-content {
+      .label-container {
+        .custom-node-label-container {
+          .entity-footer {
+            background-color: @grey-9;
+          }
+        }
+      }
+    }
+  }
   &.custom-node-header-active {
     background-color: #eff8ff;
     .lineage-node-content {
@@ -269,10 +349,10 @@
     }
 
     &.columns-expanded {
-      background-color: #d1e9ff;
+      background-color: @primary-1;
       .lineage-node-content {
         .label-container {
-          background-color: #d1e9ff;
+          background-color: @primary-1;
           .custom-node-label-container {
             .entity-footer {
               background-color: #eff8ff;
@@ -281,14 +361,10 @@
         }
         .column-container {
           background-color: #eff8ff;
-          .custom-node-column-container.custom-node-header-column-tracing {
-            background-color: #ffffff;
-            border-color: #1570ef;
-          }
         }
       }
       .lineage-node-badge-container {
-        background-color: #d1e9ff;
+        background-color: @primary-1;
       }
     }
   }
@@ -339,27 +415,39 @@
     }
   }
 
-  &.columns-expanded {
-    .lineage-node-content {
-      .label-container {
-        .custom-node-label-container {
-          .entity-label-container {
-            &::after {
-              content: none;
-            }
-          }
-          .entity-footer {
-            background-color: @grey-1;
+  .lineage-node-content {
+    .label-container {
+      .custom-node-label-container {
+        .entity-label-container {
+          &::after {
+            content: none;
           }
         }
       }
-      .column-container {
+    }
+    .column-container {
+      .custom-node-column-container.custom-node-header-column-tracing {
+        background-color: @primary-1;
+        border-left-color: @primary-6;
+        &:hover {
+          background-color: @primary-1;
+        }
+      }
+      &.any-column-selected {
         .custom-node-column-container.custom-node-header-column-tracing {
-          background-color: #ffffff;
-          border-color: #1570ef;
+          background-color: @indigo-100;
+          border-left-color: @indigo-600;
           &:hover {
-            background-color: @primary-1;
+            background-color: @indigo-100;
+            border-left-color: @indigo-600;
           }
+        }
+      }
+
+      &.creating-edge {
+        .custom-node-column-container:not(.custom-node-header-column-tracing):hover {
+          background-color: @primary-1;
+          border-left-color: @primary-6;
         }
       }
     }
@@ -592,7 +680,7 @@
   z-index: 1; // Adding as column text and data type should be behind handles
 
   &.react-flow__handle-left {
-    left: 0;
+    left: -6px;
   }
 
   &.react-flow__handle-right {
@@ -631,4 +719,8 @@
   display: flex;
   gap: 10px;
   margin: 0px;
+}
+
+.react-flow__edge :hover {
+  stroke: @primary-color;
 }

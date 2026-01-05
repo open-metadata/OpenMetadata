@@ -14,6 +14,7 @@
 import { Button, Col, Divider, Modal, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { isArray, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -287,7 +288,11 @@ const TestSuiteDetailsPage = () => {
     async (updateDomain?: EntityReference | EntityReference[]) => {
       const updatedTestSuite: TestSuite = {
         ...testSuite,
-        domains: updateDomain,
+        domains: isArray(updateDomain)
+          ? updateDomain
+          : isEmpty(updateDomain)
+          ? []
+          : [updateDomain],
       } as TestSuite;
 
       await updateTestSuiteData(updatedTestSuite);
@@ -523,12 +528,12 @@ const TestSuiteDetailsPage = () => {
             <Col span={24}>
               <div className="d-flex flex-wrap gap-2">
                 <DomainLabel
-                  multiple
                   domains={testSuite?.domains}
                   entityFqn={testSuite?.fullyQualifiedName ?? ''}
                   entityId={testSuite?.id ?? ''}
                   entityType={EntityType.TEST_SUITE}
                   hasPermission={testSuitePermissions.EditAll}
+                  multiple={entityRules.canAddMultipleDomains}
                   onUpdate={handleDomainUpdate}
                 />
                 <Divider className="self-center" type="vertical" />

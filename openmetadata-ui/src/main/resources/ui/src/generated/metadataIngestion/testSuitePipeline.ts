@@ -299,6 +299,8 @@ export interface ServiceConnection {
  *
  * Snowplow Pipeline Connection Config
  *
+ * MuleSoft Anypoint Platform Connection Config
+ *
  * MlFlow Connection Config
  *
  * Sklearn Connection Config
@@ -547,6 +549,9 @@ export interface ConfigObject {
      * KafkaConnect Service Management/UI URI.
      *
      * Host and port of the Stitch API host
+     *
+     * MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud,
+     * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
      *
      * Host and port of the ElasticSearch service.
      *
@@ -864,6 +869,9 @@ export interface ConfigObject {
     /**
      * SSL Configuration details.
      *
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
+     *
      * SSL Configuration for OpenMetadata Server
      */
     sslConfig?: SSLConfigObject;
@@ -975,6 +983,8 @@ export interface ConfigObject {
     spaceTypes?: SpaceType[];
     /**
      * ThoughtSpot authentication configuration
+     *
+     * Choose between Connected App (OAuth 2.0) or Basic Authentication.
      */
     authentication?: Authenticationation;
     /**
@@ -1257,6 +1267,16 @@ export interface ConfigObject {
      */
     authMechanism?: AuthMechanismEnum;
     /**
+     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
+     * between the client and server will be encrypted.
+     */
+    encrypt?: boolean;
+    /**
+     * Trust the server certificate without validation. Set to false in production to validate
+     * server certificates against the certificate authority.
+     */
+    trustServerCertificate?: boolean;
+    /**
      * Use slow logs to extract lineage.
      */
     useSlowLogs?: boolean;
@@ -1307,6 +1327,9 @@ export interface ConfigObject {
      * Salesforce Organization ID is the unique identifier for your Salesforce identity
      *
      * Snowplow BDP Organization ID
+     *
+     * Anypoint Platform Organization ID. If not provided, the connector will use the user's
+     * default organization.
      */
     organizationId?: string;
     /**
@@ -1742,6 +1765,8 @@ export interface ConfigObject {
     numberOfStatus?: number;
     /**
      * Regex exclude pipelines.
+     *
+     * Regex to filter MuleSoft applications by name.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
@@ -1824,6 +1849,10 @@ export interface ConfigObject {
      */
     discoveryAPI?: string;
     /**
+     * List of IDs of your DBT cloud environments separated by comma `,`
+     */
+    environmentIds?: string[];
+    /**
      * List of IDs of your DBT cloud jobs seperated by comma `,`
      */
     jobIds?: string[];
@@ -1867,6 +1896,11 @@ export interface ConfigObject {
      * Snowplow deployment type (BDP for managed or Community for self-hosted)
      */
     deployment?: SnowplowDeployment;
+    /**
+     * Anypoint Platform Environment ID. If not provided, the connector will discover all
+     * accessible environments.
+     */
+    environmentId?: string;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -1993,6 +2027,8 @@ export interface UsernamePasswordAuthentication {
  * Regex exclude pipelines.
  *
  * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to filter MuleSoft applications by name.
  *
  * Regex to only fetch MlModels with names matching the pattern.
  *
@@ -2373,6 +2409,10 @@ export enum NoConfigAuthenticationTypes {
  * Basic Auth Credentials
  *
  * API Access Token Auth Credentials
+ *
+ * Choose between Connected App (OAuth 2.0) or Basic Authentication.
+ *
+ * OAuth 2.0 client credentials authentication for Airbyte Cloud
  */
 export interface Authenticationation {
     /**
@@ -2387,6 +2427,14 @@ export interface Authenticationation {
      * Access Token for the API
      */
     accessToken?: string;
+    /**
+     * Client ID for the application registered in Airbyte.
+     */
+    clientId?: string;
+    /**
+     * Client Secret for the application registered in Airbyte.
+     */
+    clientSecret?: string;
 }
 
 export interface AuthenticationModeObject {
@@ -2656,6 +2704,9 @@ export interface Qlik {
  * Client SSL configuration
  *
  * SSL Configuration details.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
  *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
@@ -3288,6 +3339,9 @@ export enum ConnectionScheme {
  *
  * SSL Configuration details.
  *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -3427,6 +3481,11 @@ export interface DatabaseConnectionClass {
      */
     driver?: string;
     /**
+     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
+     * between the client and server will be encrypted.
+     */
+    encrypt?: boolean;
+    /**
      * Host and port of the MSSQL service.
      */
     hostPort?: string;
@@ -3446,7 +3505,12 @@ export interface DatabaseConnectionClass {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                     MssqlScheme;
+    scheme?: MssqlScheme;
+    /**
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
+     */
+    sslConfig?:                  ConsumerConfigSSLClass;
     supportsDatabase?:           boolean;
     supportsDataDiff?:           boolean;
     supportsDBTExtraction?:      boolean;
@@ -3459,6 +3523,11 @@ export interface DatabaseConnectionClass {
      * Regex to only include/exclude tables that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
+    /**
+     * Trust the server certificate without validation. Set to false in production to validate
+     * server certificates against the certificate authority.
+     */
+    trustServerCertificate?: boolean;
     /**
      * Service Type
      */
@@ -4014,6 +4083,9 @@ export enum SpaceType {
  *
  * SSL Configuration details.
  *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -4272,6 +4344,7 @@ export enum ConfigType {
     Mode = "Mode",
     MongoDB = "MongoDB",
     Mssql = "Mssql",
+    Mulesoft = "Mulesoft",
     Mysql = "Mysql",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",

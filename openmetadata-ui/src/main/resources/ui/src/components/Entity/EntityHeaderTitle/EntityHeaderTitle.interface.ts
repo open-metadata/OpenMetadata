@@ -36,4 +36,5 @@ export interface EntityHeaderTitleProps {
   nameClassName?: string;
   displayNameClassName?: string;
   isCustomizedView?: boolean;
+  entityUrl?: string;
 }

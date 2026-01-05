@@ -195,7 +195,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
       Map<String, String> filterMap = (Map<String, String>) filtersObj;
 
       // First check for entity-specific filter
-      String specificFilter = filterMap.get(entityType.toLowerCase());
+      String specificFilter = filterMap.get(entityType);
       if (specificFilter != null && !specificFilter.isEmpty()) {
         return specificFilter;
       }

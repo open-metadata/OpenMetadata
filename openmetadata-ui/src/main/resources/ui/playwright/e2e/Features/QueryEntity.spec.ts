@@ -258,6 +258,51 @@ test('Query Entity', async ({ page }) => {
     expect(updatedQueryCards.length).toBeGreaterThan(0);
   });
 
+  await test.step('Verify vote for query', async () => {
+    await page
+      .getByTestId('extra-option-container')
+      .getByTestId('up-vote-btn')
+      .click();
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const upVoteCount = await page
+      .getByTestId('extra-option-container')
+      .getByTestId('up-vote-btn')
+      .textContent();
+
+    expect(upVoteCount).toBe('1');
+
+    await page
+      .getByTestId('extra-option-container')
+      .getByTestId('down-vote-btn')
+      .click();
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const downVoteCount = await page
+      .getByTestId('extra-option-container')
+      .getByTestId('down-vote-btn')
+      .textContent();
+
+    expect(downVoteCount).toBe('1');
+
+    const upVoteCount2 = await page
+      .getByTestId('extra-option-container')
+      .getByTestId('up-vote-btn')
+      .textContent();
+
+    expect(upVoteCount2).toBe('0');
+  });
+
   await test.step('Visit full screen view of query and Delete', async () => {
     const queryResponse = page.waitForResponse('/api/v1/queries/*');
     await page.click(`[data-testid="query-entity-expand-button"]`);
@@ -345,7 +390,7 @@ test('Verify Query Pagination', async ({ page, browser }) => {
   // Change page size to 25
   await page.locator('.ant-pagination-options-size-changer').click();
   const pageSizeResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=query_search_index&from=0&size=25&query_filter=**'
+    '/api/v1/search/query?q=*&index=query_search_index&from=0&size=25&deleted=false&query_filter=**'
   );
   await page.getByTitle('25 / Page').click();
   await pageSizeResponse;

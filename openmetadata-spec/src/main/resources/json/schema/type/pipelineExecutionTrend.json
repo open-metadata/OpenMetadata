@@ -1,0 +1,50 @@
+{
+  "$id": "https://open-metadata.org/schema/type/pipelineExecutionTrend.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pipeline Execution Trend",
+  "description": "Day-wise pipeline execution trend showing succeeded and failed counts",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.PipelineExecutionTrend",
+  "properties": {
+    "timestamp": {
+      "description": "Timestamp for the execution date",
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "date": {
+      "type": "string",
+      "description": "Date in YYYY-MM-DD format"
+    },
+    "successCount": {
+      "type": "integer",
+      "default": 0,
+      "description": "Number of successful pipeline executions on this date"
+    },
+    "failedCount": {
+      "type": "integer",
+      "default": 0,
+      "description": "Number of failed pipeline executions on this date"
+    },
+    "pendingCount": {
+      "type": "integer",
+      "default": 0,
+      "description": "Number of pending pipeline executions on this date"
+    },
+    "skippedCount": {
+      "type": "integer",
+      "default": 0,
+      "description": "Number of skipped pipeline executions on this date"
+    },
+    "runningCount": {
+      "type": "integer",
+      "default": 0,
+      "description": "Number of running pipeline executions on this date"
+    },
+    "totalCount": {
+      "type": "integer",
+      "default": 0,
+      "description": "Total number of pipeline executions on this date"
+    }
+  },
+  "required": ["timestamp", "date", "totalCount"],
+  "additionalProperties": false
+}

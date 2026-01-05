@@ -59,6 +59,7 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.validateEntityReferences;
 
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.URI;
@@ -633,6 +634,38 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         "childrenCount should be 2 when explicitly requested");
     assertEquals(
         0, listedParentTeam.getUserCount(), "userCount should be 0 when explicitly requested");
+  }
+
+  @Test
+  void test_listTeamsWithParentTeamAndIncludeParameter() throws IOException {
+    Team parentTeam =
+        createWithParents("parent-legal-test", DEPARTMENT, ORG_TEAM.getEntityReference());
+    Team childTeam1 =
+        createWithParents("child-legal-active", GROUP, parentTeam.getEntityReference());
+    Team childTeam2 =
+        createWithParents("child-legal-deleted", GROUP, parentTeam.getEntityReference());
+
+    deleteAndCheckEntity(childTeam2, true, false, ADMIN_AUTH_HEADERS);
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("parentTeam", parentTeam.getName());
+
+    queryParams.put("include", Include.ALL.value());
+    ResultList<Team> allTeams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(2, allTeams.getData().size(), "Should return both deleted and non-deleted teams");
+    assertEquals(2, allTeams.getPaging().getTotal());
+
+    queryParams.put("include", Include.NON_DELETED.value());
+    ResultList<Team> nonDeletedTeams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(1, nonDeletedTeams.getData().size(), "Should return only non-deleted team");
+    assertEquals(1, nonDeletedTeams.getPaging().getTotal());
+    assertEquals(childTeam1.getId(), nonDeletedTeams.getData().getFirst().getId());
+
+    queryParams.put("include", Include.DELETED.value());
+    ResultList<Team> deletedTeams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(1, deletedTeams.getData().size(), "Should return only deleted team");
+    assertEquals(1, deletedTeams.getPaging().getTotal());
+    assertEquals(childTeam2.getId(), deletedTeams.getData().getFirst().getId());
   }
 
   @Test
@@ -1554,5 +1587,43 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(schema.getId())));
     assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
     assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+  }
+
+  @Test
+  void test_getAllTeamsWithAssetsCount(TestInfo test) throws IOException {
+    Team team1 = createEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    Team team2 = createEntity(createRequest(test, 2), ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    Table table1 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 3))
+                .withOwners(List.of(team1.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 4))
+                .withOwners(List.of(team1.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
+    Table table3 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 5))
+                .withOwners(List.of(team2.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
+
+    Map<String, Integer> assetsCount = getAllTeamsWithAssetsCount();
+
+    assertNotNull(assetsCount);
+    assertEquals(2, assetsCount.get(team1.getFullyQualifiedName()), "Team 1 should have 2 assets");
+    assertEquals(1, assetsCount.get(team2.getFullyQualifiedName()), "Team 2 should have 1 asset");
+  }
+
+  private Map<String, Integer> getAllTeamsWithAssetsCount() throws HttpResponseException {
+    WebTarget target = getResource("teams/assets/counts");
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    return response.readEntity(new GenericType<Map<String, Integer>>() {});
   }
 }
