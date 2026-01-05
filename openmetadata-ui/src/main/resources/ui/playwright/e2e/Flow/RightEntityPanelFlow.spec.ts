@@ -350,7 +350,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       const deletedTermDisplayName = deletedTerm.getTermDisplayName();
 
       const summaryPanel = adminPage.locator('.entity-summary-panel-container');
-      const glossarySection = summaryPanel.locator('.glossary-terms-section');
+      const glossarySection = summaryPanel.getByTestId('glossary-terms-section');
 
       await expect(glossarySection).toBeVisible();
 
