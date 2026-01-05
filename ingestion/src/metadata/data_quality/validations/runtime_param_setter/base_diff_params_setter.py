@@ -199,7 +199,7 @@ class BaseTableParameter:
                 url = url.set(drivername=drivername, query={"catalog": database})
             else:
                 url = url.set(drivername=drivername, database=database)
-        elif drivername in {Dialects.MSSQL, Dialects.Snowflake, Dialects.Trino}:
+        if drivername in {Dialects.MSSQL, Dialects.Snowflake, Dialects.Trino}:
             url = url.set(drivername=drivername, database=f"{database}/{schema}")
         else:
             url = url.set(drivername=drivername)
