@@ -130,6 +130,7 @@ export class TableClass extends EntityClass {
       `address${uuid()}`,
       `mail${uuid()}`,
       `email${uuid()}`,
+      `created_at${uuid()}`,
     ];
 
     this.entityLinkColumnsName = [
@@ -141,6 +142,7 @@ export class TableClass extends EntityClass {
       `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[5]}`,
       `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[6]}`,
       this.columnsName[7],
+      this.columnsName[8],
     ];
 
     this.children = [
@@ -204,6 +206,13 @@ export class TableClass extends EntityClass {
         dataLength: 100,
         dataTypeDisplay: 'varchar',
         description: 'Email address of the staff member.',
+      },
+      {
+        name: this.columnsName[8],
+        dataType: 'TIMESTAMP',
+        dataLength: 100,
+        dataTypeDisplay: 'timestamp',
+        description: 'entity created time',
       },
     ];
 

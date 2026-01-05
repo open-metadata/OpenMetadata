@@ -1129,6 +1129,9 @@ test('Table Row Inserted Count To Be Between', async ({ page }) => {
     type: 'tableRowInsertedCountToBeBetween',
     minValue: '5',
     maxValue: '500',
+    columnName: table.entity?.columns[4].name,
+    rangeType: 'DAY',
+    interval: '1'
   };
 
   await table.visitEntityPage(page);
@@ -1174,8 +1177,14 @@ test('Table Row Inserted Count To Be Between', async ({ page }) => {
         page.locator('[data-id="tableRowInsertedCountToBeBetween"]')
       ).toBeVisible();
 
-      await page.fill('#testCaseFormV1_params_minValue', testCase.minValue);
-      await page.fill('#testCaseFormV1_params_maxValue', testCase.maxValue);
+      await page.fill('#testCaseFormV1_params_min', testCase.minValue);
+      await page.fill('#testCaseFormV1_params_max', testCase.maxValue);
+      await page.fill('#testCaseFormV1_params_rangeType', testCase.rangeType);
+      await page.fill('#testCaseFormV1_params_rangeInterval', testCase.interval);
+
+      await page.click('#testCaseFormV1_params_columnName')
+      await page.waitForSelector(`.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${testCase.columnName}"]`, { state: 'visible' });
+      await page.click(`.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${testCase.columnName}"]`)
 
       const createTestCaseResponse = page.waitForResponse(
         (response: Response) =>
@@ -1214,10 +1223,10 @@ test('Table Row Inserted Count To Be Between', async ({ page }) => {
         `Edit ${testCase.name}`
       );
 
-      await page.locator('#testCaseForm_params_minValue').clear();
-      await page.fill('#testCaseForm_params_minValue', '10');
-      await page.locator('#testCaseForm_params_maxValue').clear();
-      await page.fill('#testCaseForm_params_maxValue', '1000');
+      await page.locator('#tableTestForm_params_min').clear();
+      await page.fill('#tableTestForm_params_min', '10');
+      await page.locator('#tableTestForm_params_max').clear();
+      await page.fill('#tableTestForm_params_max', '1000');
 
       await clickUpdateButton(page);
     });
