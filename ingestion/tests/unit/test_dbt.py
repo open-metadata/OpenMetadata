@@ -2585,3 +2585,97 @@ class TestDownloadDbtFiles(TestCase):
             self.assertIsNotNone(result[0].dbt_catalog)
             self.assertIsNotNone(result[0].dbt_run_results)
             self.assertIsNotNone(result[0].dbt_sources)
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.OpenMetadata")
+    def test_override_metadata_for_source_descriptions(self, mock_ometa):
+        """Test that overrideMetadata flag allows updating descriptions for SOURCE resources"""
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+        from metadata.ingestion.source.database.database_service import DataModelLink
+        
+        # Create a config with overrideMetadata enabled
+        config_with_override = deepcopy(mock_dbt_config)
+        config_with_override["source"]["sourceConfig"]["config"]["overrideMetadata"] = True
+        
+        # Create DbtSource instance
+        workflow_config = OpenMetadataWorkflowConfig.model_validate(config_with_override)
+        dbt_source = DbtSource.create(
+            {"workflowConfig": workflow_config.workflowConfig.model_dump()},
+            mock_ometa,
+        )
+        dbt_source.source_config = workflow_config.source.sourceConfig.config
+        
+        # Create mock SOURCE node
+        mock_source_node = MagicMock()
+        mock_source_node.resourceType = DbtCommonEnum.SOURCE.value
+        mock_source_node.description = "Updated source description"
+        mock_source_node.columns = []
+        
+        # Create mock table entity
+        mock_table = MagicMock(spec=Table)
+        mock_table.fullyQualifiedName.root = "test_service.test_db.test_schema.test_table"
+        
+        # Create DataModelLink
+        data_model_link = DataModelLink(
+            table_entity=mock_table,
+            datamodel=mock_source_node,
+            fqn="test_service.test_db.test_schema.test_table"
+        )
+        
+        # Mock patch_description
+        mock_ometa.patch_description = MagicMock()
+        dbt_source.metadata = mock_ometa
+        
+        # Process descriptions
+        list(dbt_source.process_dbt_descriptions(data_model_link))
+        
+        # Verify that patch_description was called with force=True for SOURCE
+        mock_ometa.patch_description.assert_called()
+        call_args = mock_ometa.patch_description.call_args
+        self.assertEqual(call_args[1]["force"], True)
+        
+    @patch("metadata.ingestion.source.database.dbt.metadata.OpenMetadata")
+    def test_no_override_metadata_for_source_descriptions(self, mock_ometa):
+        """Test that SOURCE descriptions are not overridden when overrideMetadata is False"""
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+        from metadata.ingestion.source.database.database_service import DataModelLink
+        
+        # Create a config with overrideMetadata disabled (default)
+        config_without_override = deepcopy(mock_dbt_config)
+        config_without_override["source"]["sourceConfig"]["config"]["overrideMetadata"] = False
+        
+        # Create DbtSource instance
+        workflow_config = OpenMetadataWorkflowConfig.model_validate(config_without_override)
+        dbt_source = DbtSource.create(
+            {"workflowConfig": workflow_config.workflowConfig.model_dump()},
+            mock_ometa,
+        )
+        dbt_source.source_config = workflow_config.source.sourceConfig.config
+        
+        # Create mock SOURCE node
+        mock_source_node = MagicMock()
+        mock_source_node.resourceType = DbtCommonEnum.SOURCE.value
+        mock_source_node.description = "Updated source description"
+        mock_source_node.columns = []
+        
+        # Create mock table entity
+        mock_table = MagicMock(spec=Table)
+        mock_table.fullyQualifiedName.root = "test_service.test_db.test_schema.test_table"
+        
+        # Create DataModelLink
+        data_model_link = DataModelLink(
+            table_entity=mock_table,
+            datamodel=mock_source_node,
+            fqn="test_service.test_db.test_schema.test_table"
+        )
+        
+        # Mock patch_description
+        mock_ometa.patch_description = MagicMock()
+        dbt_source.metadata = mock_ometa
+        
+        # Process descriptions
+        list(dbt_source.process_dbt_descriptions(data_model_link))
+        
+        # Verify that patch_description was called with force=False for SOURCE
+        mock_ometa.patch_description.assert_called()
+        call_args = mock_ometa.patch_description.call_args
+        self.assertEqual(call_args[1]["force"], False)
