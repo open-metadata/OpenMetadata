@@ -194,6 +194,10 @@
     "entityStatus": {
       "description": "Status of the Topic.",
       "$ref": "../../type/status.json"
+    },
+    "namespace": {
+      "description": "Namespace URI that identifies the messaging system hosting this topic.",
+      "type": "string"
     }
   },
   "required": ["id", "name", "partitions", "service"],
