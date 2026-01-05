@@ -13,14 +13,13 @@
 import { expect, Response, test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import { createNewPage, getApiContext, redirectToHomePage } from '../../../utils/common';
-import { clickUpdateButton } from '../../../utils/dataQuality';
+import { clickUpdateButton, visitCreateTestCasePanelFromEntityPage } from '../../../utils/dataQuality';
 import { deleteTestCase } from '../../../utils/testCases';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
+
 const table = new TableClass();
-
-
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await table.create(apiContext);
@@ -47,24 +46,11 @@ test('Table Row Count To Be Between', async ({ page }) => {
     maxValue: '1000',
   };
 
-  await table.visitEntityPage(page);
-  const profileResponse = page.waitForResponse(
-    `/api/v1/tables/${encodeURIComponent(
-      table.entityResponseData?.['fullyQualifiedName']
-    )}/tableProfile/latest?includeColumnProfile=false`
-  );
-  await page.getByText('Data Observability').click();
-  await profileResponse;
-  await page.getByRole('tab', { name: 'Table Profile' }).click();
+  await visitCreateTestCasePanelFromEntityPage(page, table);
 
 
   await test.step('Create', async () => {
-    await page.getByTestId('profiler-add-table-test-btn').click();
-    const testCaseDoc = page.waitForResponse(
-      '/locales/en-US/OpenMetadata/TestCaseForm.md'
-    );
-    await page.getByTestId('test-case').click();
-    await testCaseDoc;
+
     await page.getByTestId('test-case-name').click();
     await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
@@ -159,24 +145,11 @@ test('Table Row Count To Equal', async ({ page }) => {
     value: '100',
   };
 
-  await table.visitEntityPage(page);
-  const profileResponse = page.waitForResponse(
-    `/api/v1/tables/${encodeURIComponent(
-      table.entityResponseData?.['fullyQualifiedName']
-    )}/tableProfile/latest?includeColumnProfile=false`
-  );
-  await page.getByText('Data Observability').click();
-  await profileResponse;
-  await page.getByRole('tab', { name: 'Table Profile' }).click();
+  await visitCreateTestCasePanelFromEntityPage(page, table);
 
 
   await test.step('Create', async () => {
-    await page.getByTestId('profiler-add-table-test-btn').click();
-    const testCaseDoc = page.waitForResponse(
-      '/locales/en-US/OpenMetadata/TestCaseForm.md'
-    );
-    await page.getByTestId('test-case').click();
-    await testCaseDoc;
+
     await page.getByTestId('test-case-name').click();
     await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
@@ -269,24 +242,11 @@ test('Table Column Count To Be Between', async ({ page }) => {
     maxColValue: '10',
   };
 
-  await table.visitEntityPage(page);
-  const profileResponse = page.waitForResponse(
-    `/api/v1/tables/${encodeURIComponent(
-      table.entityResponseData?.['fullyQualifiedName']
-    )}/tableProfile/latest?includeColumnProfile=false`
-  );
-  await page.getByText('Data Observability').click();
-  await profileResponse;
-  await page.getByRole('tab', { name: 'Table Profile' }).click();
+  await visitCreateTestCasePanelFromEntityPage(page, table);
 
 
   await test.step('Create', async () => {
-    await page.getByTestId('profiler-add-table-test-btn').click();
-    const testCaseDoc = page.waitForResponse(
-      '/locales/en-US/OpenMetadata/TestCaseForm.md'
-    );
-    await page.getByTestId('test-case').click();
-    await testCaseDoc;
+
     await page.getByTestId('test-case-name').click();
     await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
@@ -387,24 +347,11 @@ test('Table Column Count To Equal', async ({ page }) => {
     columnCount: '4',
   };
 
-  await table.visitEntityPage(page);
-  const profileResponse = page.waitForResponse(
-    `/api/v1/tables/${encodeURIComponent(
-      table.entityResponseData?.['fullyQualifiedName']
-    )}/tableProfile/latest?includeColumnProfile=false`
-  );
-  await page.getByText('Data Observability').click();
-  await profileResponse;
-  await page.getByRole('tab', { name: 'Table Profile' }).click();
+  await visitCreateTestCasePanelFromEntityPage(page, table);
 
 
   await test.step('Create', async () => {
-    await page.getByTestId('profiler-add-table-test-btn').click();
-    const testCaseDoc = page.waitForResponse(
-      '/locales/en-US/OpenMetadata/TestCaseForm.md'
-    );
-    await page.getByTestId('test-case').click();
-    await testCaseDoc;
+
     await page.getByTestId('test-case-name').click();
     await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
@@ -499,24 +446,11 @@ test('Table Column Name To Exist', async ({ page }) => {
     columnName: table.entity?.columns[0].name,
   };
 
-  await table.visitEntityPage(page);
-  const profileResponse = page.waitForResponse(
-    `/api/v1/tables/${encodeURIComponent(
-      table.entityResponseData?.['fullyQualifiedName']
-    )}/tableProfile/latest?includeColumnProfile=false`
-  );
-  await page.getByText('Data Observability').click();
-  await profileResponse;
-  await page.getByRole('tab', { name: 'Table Profile' }).click();
+  await visitCreateTestCasePanelFromEntityPage(page, table);
 
 
   await test.step('Create', async () => {
-    await page.getByTestId('profiler-add-table-test-btn').click();
-    const testCaseDoc = page.waitForResponse(
-      '/locales/en-US/OpenMetadata/TestCaseForm.md'
-    );
-    await page.getByTestId('test-case').click();
-    await testCaseDoc;
+
     await page.getByTestId('test-case-name').click();
     await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
@@ -609,24 +543,11 @@ test('Table Column To Match Set', async ({ page }) => {
     type: 'tableColumnToMatchSet',
   };
 
-  await table.visitEntityPage(page);
-  const profileResponse = page.waitForResponse(
-    `/api/v1/tables/${encodeURIComponent(
-      table.entityResponseData?.['fullyQualifiedName']
-    )}/tableProfile/latest?includeColumnProfile=false`
-  );
-  await page.getByText('Data Observability').click();
-  await profileResponse;
-  await page.getByRole('tab', { name: 'Table Profile' }).click();
+  await visitCreateTestCasePanelFromEntityPage(page, table);
 
 
   await test.step('Create', async () => {
-    await page.getByTestId('profiler-add-table-test-btn').click();
-    const testCaseDoc = page.waitForResponse(
-      '/locales/en-US/OpenMetadata/TestCaseForm.md'
-    );
-    await page.getByTestId('test-case').click();
-    await testCaseDoc;
+
     await page.getByTestId('test-case-name').click();
     await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
@@ -718,7 +639,7 @@ test('Table Column To Match Set', async ({ page }) => {
  */
 test('Table Difference', async ({ page }) => {
   await redirectToHomePage(page);
-  const { afterAction, apiContext } = await getApiContext(page);
+  const { apiContext } = await getApiContext(page);
   const table1 = new TableClass();
   const table2 = new TableClass();
   await table1.create(apiContext);
@@ -730,24 +651,11 @@ test('Table Difference', async ({ page }) => {
     type: 'tableDiff',
   };
 
-  await table1.visitEntityPage(page);
-  const profileResponse = page.waitForResponse(
-    `/api/v1/tables/${encodeURIComponent(
-      table1.entityResponseData?.['fullyQualifiedName']
-    )}/tableProfile/latest?includeColumnProfile=false`
-  );
-  await page.getByText('Data Observability').click();
-  await profileResponse;
-  await page.getByRole('tab', { name: 'Table Profile' }).click();
+  await visitCreateTestCasePanelFromEntityPage(page, table1);
 
 
   await test.step('Create', async () => {
-    await page.getByTestId('profiler-add-table-test-btn').click();
-    const testCaseDoc = page.waitForResponse(
-      '/locales/en-US/OpenMetadata/TestCaseForm.md'
-    );
-    await page.getByTestId('test-case').click();
-    await testCaseDoc;
+
     await page.getByTestId('test-case-name').click();
     await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
@@ -954,24 +862,11 @@ test('Custom SQL Query', async ({ page }) => {
     type: 'tableCustomSQLQuery',
   };
 
-  await table.visitEntityPage(page);
-  const profileResponse = page.waitForResponse(
-    `/api/v1/tables/${encodeURIComponent(
-      table.entityResponseData?.['fullyQualifiedName']
-    )}/tableProfile/latest?includeColumnProfile=false`
-  );
-  await page.getByText('Data Observability').click();
-  await profileResponse;
-  await page.getByRole('tab', { name: 'Table Profile' }).click();
+  await visitCreateTestCasePanelFromEntityPage(page, table);
 
 
   await test.step('Create', async () => {
-    await page.getByTestId('profiler-add-table-test-btn').click();
-    const testCaseDoc = page.waitForResponse(
-      '/locales/en-US/OpenMetadata/TestCaseForm.md'
-    );
-    await page.getByTestId('test-case').click();
-    await testCaseDoc;
+
     await page.getByTestId('test-case-name').click();
     await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
@@ -1100,24 +995,10 @@ test('Table Row Inserted Count To Be Between', async ({ page }) => {
     interval: '1'
   };
 
-  await table.visitEntityPage(page);
-  const profileResponse = page.waitForResponse(
-    `/api/v1/tables/${encodeURIComponent(
-      table.entityResponseData?.['fullyQualifiedName']
-    )}/tableProfile/latest?includeColumnProfile=false`
-  );
-  await page.getByText('Data Observability').click();
-  await profileResponse;
-  await page.getByRole('tab', { name: 'Table Profile' }).click();
-
+  await visitCreateTestCasePanelFromEntityPage(page, table);
 
   await test.step('Create', async () => {
-    await page.getByTestId('profiler-add-table-test-btn').click();
-    const testCaseDoc = page.waitForResponse(
-      '/locales/en-US/OpenMetadata/TestCaseForm.md'
-    );
-    await page.getByTestId('test-case').click();
-    await testCaseDoc;
+
     await page.getByTestId('test-case-name').click();
     await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 

@@ -155,8 +155,8 @@ export class TableClass extends EntityClass {
       },
       {
         name: this.columnsName[1],
-        dataType: 'NUMERIC',
-        dataTypeDisplay: 'numeric',
+        dataType: 'INT',
+        dataTypeDisplay: 'int',
         description:
           'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
       },
