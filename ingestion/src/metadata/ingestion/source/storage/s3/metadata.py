@@ -357,6 +357,7 @@ class S3Source(StorageServiceSource):
                     and entry.get("Key")
                     and len(entry.get("Key").split("/")) > total_depth
                     and "/_delta_log/" not in entry.get("Key")
+                    and not entry.get("Key").endswith("/_SUCCESS")
                 }
                 for key in candidate_keys:
                     metadata_entry_copy = deepcopy(metadata_entry)
@@ -474,6 +475,7 @@ class S3Source(StorageServiceSource):
             and entry.get("Key")
             and not entry.get("Key").endswith("/")
             and "/_delta_log/" not in entry.get("Key")
+            and not entry.get("Key").endswith("/_SUCCESS")
         ]
         for key in candidate_keys:
             if self.is_valid_unstructured_file(metadata_entry.unstructuredFormats, key):
@@ -686,6 +688,7 @@ class S3Source(StorageServiceSource):
                     and entry.get("Key")
                     and not entry.get("Key").endswith("/")
                     and "/_delta_log/" not in entry.get("Key")
+                    and not entry.get("Key").endswith("/_SUCCESS")
                 ]
                 # pick a random key out of the candidates if any were returned
                 if candidate_keys:
