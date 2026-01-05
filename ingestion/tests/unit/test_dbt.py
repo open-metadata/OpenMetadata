@@ -35,6 +35,8 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.database_service import DataModelLink
+from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     convert_java_to_python_format,
     find_domain_by_name,
@@ -2589,9 +2591,6 @@ class TestDownloadDbtFiles(TestCase):
     @patch("metadata.ingestion.source.database.dbt.metadata.OpenMetadata")
     def test_override_metadata_for_source_descriptions(self, mock_ometa):
         """Test that overrideMetadata flag allows updating descriptions for SOURCE resources"""
-        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
-        from metadata.ingestion.source.database.database_service import DataModelLink
-        
         # Create a config with overrideMetadata enabled
         config_with_override = deepcopy(mock_dbt_config)
         config_with_override["source"]["sourceConfig"]["config"]["overrideMetadata"] = True
@@ -2636,9 +2635,6 @@ class TestDownloadDbtFiles(TestCase):
     @patch("metadata.ingestion.source.database.dbt.metadata.OpenMetadata")
     def test_no_override_metadata_for_source_descriptions(self, mock_ometa):
         """Test that SOURCE descriptions are not overridden when overrideMetadata is False"""
-        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
-        from metadata.ingestion.source.database.database_service import DataModelLink
-        
         # Create a config with overrideMetadata disabled (default)
         config_without_override = deepcopy(mock_dbt_config)
         config_without_override["source"]["sourceConfig"]["config"]["overrideMetadata"] = False
