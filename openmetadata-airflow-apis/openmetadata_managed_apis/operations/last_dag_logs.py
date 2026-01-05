@@ -59,10 +59,11 @@ def format_json_log_line(line: str) -> str:
         timestamp = log_entry.get("timestamp", "")
         level = log_entry.get("level", "INFO").upper()
         event = log_entry.get("event", "")
-        logger_name = log_entry.get("logger", "")
+        logger_name = log_entry.get("filename", "")
+        line_no = log_entry.get("lineno", "")
 
         # Format similar to traditional logs: [timestamp] LEVEL - logger - message
-        return f"[{timestamp}] {level} - {logger_name} - {event}\n"
+        return f"[{timestamp}] {level} - {logger_name}:{line_no} - {event}\n"
     except (json.JSONDecodeError, KeyError, AttributeError):
         # Not JSON or malformed, return as-is
         return line if line.endswith("\n") else line + "\n"

@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.teams.RoleResource;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -236,6 +237,8 @@ public class RoleRepository extends EntityRepository<Role> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updatePolicies(listOrEmpty(original.getPolicies()), listOrEmpty(updated.getPolicies()));
+      // Invalidate policy cache when role policies change
+      SubjectCache.invalidateAll();
     }
 
     private void updatePolicies(

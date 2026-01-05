@@ -1,4 +1,3 @@
-/* eslint-disable no-case-declarations */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import {
   Button,
   Checkbox,
@@ -82,6 +80,7 @@ import {
   getAggregations,
   getQuickFilterQuery,
 } from '../../../../utils/ExploreUtils';
+import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { getTermQuery } from '../../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
@@ -145,7 +144,6 @@ const AssetsTabs = forwardRef(
       handlePageChange,
       handlePageSizeChange,
       handlePagingChange,
-      showPagination,
     } = usePaging();
 
     const isRemovable = useMemo(
@@ -188,7 +186,7 @@ const AssetsTabs = forwardRef(
     const filterMenu: ItemType[] = useMemo(() => {
       return filters.map((filter) => ({
         key: filter.key,
-        label: filter.label,
+        label: translateWithNestedKeys(filter.label, filter.labelKeyOptions),
         onClick: handleMenuClick,
       }));
     }, [filters]);
@@ -197,13 +195,16 @@ const AssetsTabs = forwardRef(
       const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-          return getTermQuery(
-            { 'domains.fullyQualifiedName': entityFqn ?? '' },
-            'must',
-            undefined,
-            {
-              mustNotTerms: { entityType: 'dataProduct' },
-            }
+          return (
+            queryFilter ??
+            getTermQuery(
+              { 'domains.fullyQualifiedName': entityFqn ?? '' },
+              'must',
+              undefined,
+              {
+                mustNotTerms: { entityType: 'dataProduct' },
+              }
+            )
           );
         case AssetsOfEntity.DATA_PRODUCT:
           return getTermQuery({
@@ -262,7 +263,9 @@ const AssetsTabs = forwardRef(
           if (assetCount === undefined) {
             setTotalAssetCount(res.hits.total.value ?? 0);
           }
-          hits[0] && setSelectedCard(hits[0]._source);
+          if (hits[0]) {
+            setSelectedCard(hits[0]._source);
+          }
         } catch {
           // Nothing here
         } finally {
@@ -571,19 +574,17 @@ const AssetsTabs = forwardRef(
                 }
               />
             ))}
-            {showPagination && (
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                isLoading={isLoading}
-                pageSize={pageSize}
-                paging={paging}
-                pagingHandler={({ currentPage }: PagingHandlerParams) =>
-                  handlePageChange(currentPage)
-                }
-                onShowSizeChange={handlePageSizeChange}
-              />
-            )}
+            <NextPrevious
+              isNumberBased
+              currentPage={currentPage}
+              isLoading={isLoading}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={({ currentPage }: PagingHandlerParams) =>
+                handlePageChange(currentPage)
+              }
+              onShowSizeChange={handlePageSizeChange}
+            />
           </div>
         ) : (
           <div className="h-full">{assetErrorPlaceHolder}</div>
@@ -600,7 +601,6 @@ const AssetsTabs = forwardRef(
         selectedItems,
         setSelectedCard,
         handlePageChange,
-        showPagination,
         handlePageSizeChange,
         handleCheckboxChange,
       ]
@@ -731,12 +731,13 @@ const AssetsTabs = forwardRef(
 
         // If current page is already 1 it won't trigger fetchAssets from useEffect
         // Hence need to manually trigger it for this case
-        currentPage === 1 &&
+        if (currentPage === 1) {
           fetchAssets({
             index: [SearchIndex.ALL],
             page: 1,
             queryFilter: quickFilterQuery,
           });
+        }
       },
       closeSummaryPanel() {
         setSelectedCard(undefined);

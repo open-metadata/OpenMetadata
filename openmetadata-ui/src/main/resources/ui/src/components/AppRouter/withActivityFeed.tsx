@@ -14,7 +14,7 @@ import { FC } from 'react';
 import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 
 export const withActivityFeed =
-  <T extends unknown>(Component: FC<T>) =>
+  <T,>(Component: FC<T>) =>
   (props: JSX.IntrinsicAttributes & { children?: React.ReactNode } & T) => {
     return (
       <ActivityFeedProvider>

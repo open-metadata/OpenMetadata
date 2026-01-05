@@ -39,6 +39,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   displayType = DisplayType.POPOVER,
   showNoDataPlaceholder = true,
   newLook = false,
+  entityFqn,
 }: TagsViewerProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -73,6 +74,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
             <Link
               className={classNames(
+                'w-full',
                 { 'diff-added tw-mx-1': tag?.added },
                 { 'diff-removed': tag?.removed }
               )}
@@ -97,6 +99,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             { 'diff-added tw-mx-1': tag?.added },
             { 'diff-removed': tag?.removed }
           )}
+          entityFqn={entityFqn}
           isVersionPage={tag?.added || tag?.removed}
           key={tag.tagFQN}
           newLook={newLook}
@@ -106,7 +109,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         />
       );
     },
-    [muiTags, newLook]
+    [muiTags, newLook, entityFqn]
   );
 
   // sort tags by source so that "Glossary" tags always comes first

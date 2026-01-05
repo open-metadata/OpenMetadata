@@ -48,9 +48,10 @@ export interface ExtensionOptions {
    * @default false
    */
   enableHandlebars?: boolean;
-  // Future extensions can be added here, e.g.:
-  // enableCustomMentions?: boolean;
-  // enableAdvancedTables?: boolean;
+  coreExtensions?: boolean;
+  utilityExtensions?: boolean;
+  tableExtensions?: boolean;
+  advancedContextExtensions?: boolean;
 }
 
 export interface BlockEditorProps {
@@ -62,6 +63,7 @@ export interface BlockEditorProps {
   placeholder?: string;
   showInlineAlert?: boolean;
   extensionOptions?: ExtensionOptions;
+  showMenu?: boolean;
 }
 
 export interface BlockEditorAttachmentProps {
