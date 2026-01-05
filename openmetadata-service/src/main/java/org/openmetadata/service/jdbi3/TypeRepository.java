@@ -200,7 +200,7 @@ public class TypeRepository extends EntityRepository<Type> {
           customProperty.getCustomPropertyConfig(), getDateTimeTokens(), "Invalid dateTime format");
       case "time-cp" -> validateDateFormat(
           customProperty.getCustomPropertyConfig(), getTimeTokens(), "Invalid time format");
-      case "int", "string" -> {}
+      case "int", "string", "hyperlink-cp" -> {}
     }
   }
 

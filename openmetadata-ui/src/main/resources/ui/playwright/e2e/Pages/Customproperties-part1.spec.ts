@@ -31,6 +31,7 @@ const propertiesList = [
   'Sql Query',
   'Time Interval',
   'Timestamp',
+  'Hyperlink',
 ];
 
 // use the admin user to login
