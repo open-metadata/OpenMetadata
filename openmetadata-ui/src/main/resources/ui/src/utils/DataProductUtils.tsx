@@ -47,6 +47,7 @@ import {
   convertDataProductsToEntityReferences as convertDataProductsToEntityReferencesUtil,
   convertEntityReferencesToDataProducts as convertEntityReferencesToDataProductsUtil,
 } from './EntityReferenceUtils';
+import { getQueryFilterToIncludeDomain } from './DomainUtils';
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import {
@@ -127,6 +128,13 @@ export const getDataProductDetailTabs = ({
 }: DataProductDetailPageTabProps) => {
   const totalPortsCount = (inputPortsCount ?? 0) + (outputPortsCount ?? 0);
   
+  const queryFilter = getQueryFilterToIncludeDomain(
+    dataProduct.domains
+      ?.map((domain) => domain.fullyQualifiedName)
+      .join(', ') ?? '',
+    dataProduct.fullyQualifiedName ?? ''
+  );
+  
   return [
     {
       label: (
@@ -197,6 +205,7 @@ export const getDataProductDetailTabs = ({
                       isSummaryPanelOpen={Boolean(previewAsset)}
                       outputPorts={dataProduct.outputPorts}
                       permissions={dataProductPermission}
+                      queryFilter={queryFilter}
                       onPortClick={handleAssetClick}
                       onPortsUpdate={handleAssetSave}
                     />

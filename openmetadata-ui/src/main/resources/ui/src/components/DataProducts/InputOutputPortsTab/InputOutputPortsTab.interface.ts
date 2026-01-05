@@ -13,6 +13,7 @@
 
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityReference } from '../../../generated/entity/type/entityReference';
+import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 
 export enum PortType {
@@ -28,6 +29,7 @@ export interface InputOutputPortsTabProps {
   onPortsUpdate: () => void;
   onPortClick?: (port?: EntityDetailsObjectInterface) => void;
   isSummaryPanelOpen: boolean;
+  queryFilter?: QueryFilterInterface;
 }
 
 export interface InputOutputPortsTabRef {

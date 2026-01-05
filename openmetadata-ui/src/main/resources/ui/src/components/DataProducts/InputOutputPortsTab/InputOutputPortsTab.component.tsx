@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Collapse, Space, Typography } from 'antd';
+import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { forwardRef, useCallback, useImperativeHandle, useState } from 'react';
+import React, { forwardRef, useCallback, useImperativeHandle, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-records.svg';
-import { ReactComponent as PortIcon } from '../../../assets/svg/ic-schema.svg';
-import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type/entityReference';
+import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import {
   addInputPortsToDataProduct,
   addOutputPortsToDataProduct,
@@ -27,15 +26,17 @@ import {
 } from '../../../rest/dataProductAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { PortList } from './PortList.component';
+import AssetsTabs, {
+  AssetsTabRef,
+} from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
+import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import {
   InputOutputPortsTabProps,
   InputOutputPortsTabRef,
   PortType,
 } from './InputOutputPortsTab.interface';
-
-const { Panel } = Collapse;
 
 export const InputOutputPortsTab = forwardRef<
   InputOutputPortsTabRef,
@@ -50,15 +51,20 @@ export const InputOutputPortsTab = forwardRef<
       onPortsUpdate,
       onPortClick,
       isSummaryPanelOpen,
+      queryFilter,
     },
     ref
   ) => {
     const { t } = useTranslation();
     const [isAddingInputPort, setIsAddingInputPort] = useState(false);
     const [isAddingOutputPort, setIsAddingOutputPort] = useState(false);
+    const inputPortsTabRef = React.useRef<AssetsTabRef>(null);
+    const outputPortsTabRef = React.useRef<AssetsTabRef>(null);
 
     const refreshPorts = useCallback(() => {
       onPortsUpdate();
+      inputPortsTabRef.current?.refreshAssets();
+      outputPortsTabRef.current?.refreshAssets();
     }, [onPortsUpdate]);
 
     useImperativeHandle(ref, () => ({
@@ -67,14 +73,21 @@ export const InputOutputPortsTab = forwardRef<
 
     const handleAddInputPort = useCallback(() => {
       setIsAddingInputPort(true);
-      // TODO: Open asset selection modal for input ports
-      // This will be similar to the AssetSelectionDrawer used in DataProductsDetailsPage
     }, []);
 
     const handleAddOutputPort = useCallback(() => {
       setIsAddingOutputPort(true);
-      // TODO: Open asset selection modal for output ports
     }, []);
+
+    const handleInputPortSave = useCallback(async () => {
+      setIsAddingInputPort(false);
+      refreshPorts();
+    }, [refreshPorts]);
+
+    const handleOutputPortSave = useCallback(async () => {
+      setIsAddingOutputPort(false);
+      refreshPorts();
+    }, [refreshPorts]);
 
     const handleRemoveInputPort = useCallback(
       async (port: EntityReference) => {
@@ -112,91 +125,184 @@ export const InputOutputPortsTab = forwardRef<
 
     const hasNoPorts = inputPorts.length === 0 && outputPorts.length === 0;
 
+    // Empty state when no ports at all
     if (hasNoPorts) {
       return (
-        <ErrorPlaceHolder
-          className="m-t-lg"
-          icon={
-            <AddPlaceHolderIcon
-              className="w-24 h-24"
-              data-testid="no-ports-placeholder"
-            />
-          }
-          type="ADD_DATA">
-          <Typography.Paragraph className="text-center">
-            {t('message.no-input-output-ports-configured')}
-          </Typography.Paragraph>
-          <Typography.Paragraph className="text-center text-grey-muted">
-            {t('message.input-output-ports-description')}
-          </Typography.Paragraph>
-          {permissions.EditAll && (
-            <Space className="m-t-md">
-              <Button
-                data-testid="add-input-port-button"
-                type="primary"
-                onClick={handleAddInputPort}>
-                {t('label.add-entity', { entity: t('label.input-port') })}
-              </Button>
-              <Button
-                data-testid="add-output-port-button"
-                type="primary"
-                onClick={handleAddOutputPort}>
-                {t('label.add-entity', { entity: t('label.output-port') })}
-              </Button>
-            </Space>
-          )}
-        </ErrorPlaceHolder>
+        <>
+          <ErrorPlaceHolder
+            className="m-t-lg"
+            icon={
+              <AddPlaceHolderIcon
+                className="w-24 h-24"
+                data-testid="no-ports-placeholder"
+              />
+            }
+            type="ADD_DATA">
+            <Typography.Paragraph className="text-center">
+              {t('message.no-input-output-ports-configured')}
+            </Typography.Paragraph>
+            <Typography.Paragraph className="text-center text-grey-muted">
+              {t('message.input-output-ports-description')}
+            </Typography.Paragraph>
+            {permissions.EditAll && (
+              <Space className="m-t-md">
+                <Button
+                  data-testid="add-input-port-button"
+                  type="primary"
+                  onClick={handleAddInputPort}>
+                  {t('label.add-entity', { entity: t('label.input-port') })}
+                </Button>
+                <Button
+                  data-testid="add-output-port-button"
+                  type="primary"
+                  onClick={handleAddOutputPort}>
+                  {t('label.add-entity', { entity: t('label.output-port') })}
+                </Button>
+              </Space>
+            )}
+          </ErrorPlaceHolder>
+
+          <AssetSelectionDrawer
+            entityFqn={dataProductFqn}
+            open={isAddingInputPort}
+            queryFilter={queryFilter}
+            type={AssetsOfEntity.DATA_PRODUCT}
+            onCancel={() => setIsAddingInputPort(false)}
+            onSave={handleInputPortSave}
+          />
+
+          <AssetSelectionDrawer
+            entityFqn={dataProductFqn}
+            open={isAddingOutputPort}
+            queryFilter={queryFilter}
+            type={AssetsOfEntity.DATA_PRODUCT}
+            onCancel={() => setIsAddingOutputPort(false)}
+            onSave={handleOutputPortSave}
+          />
+        </>
       );
     }
 
+    // Display cards when we have ports
     return (
-      <div className="input-output-ports-tab" data-testid="input-output-ports-tab">
-        <Collapse
-          bordered={false}
-          className="bg-white"
-          defaultActiveKey={['input', 'output']}>
-          <Panel
-            header={
-              <Space>
-                <PortIcon height={16} width={16} />
+      <div className="input-output-ports-tab p-md" data-testid="input-output-ports-tab">
+        <Row gutter={[16, 16]}>
+          <Col span={12}>
+            <Card
+              className="h-full"
+              extra={
+                permissions.EditAll && (
+                  <Button
+                    data-testid="add-input-port-button"
+                    type="primary"
+                    onClick={handleAddInputPort}>
+                    {t('label.add')}
+                  </Button>
+                )
+              }
+              title={
                 <Typography.Text strong>
-                  {t('label.input-port-plural')} ({inputPorts.length})
+                  {t('label.input-port-plural')}
                 </Typography.Text>
-              </Space>
-            }
-            key="input">
-            <PortList
-              canRemove={permissions.EditAll}
-              isSummaryPanelOpen={isSummaryPanelOpen}
-              ports={inputPorts}
-              type={PortType.INPUT}
-              onAddPort={handleAddInputPort}
-              onPortClick={onPortClick}
-              onRemovePort={handleRemoveInputPort}
-            />
-          </Panel>
+              }>
+              {inputPorts.length === 0 ? (
+                <ErrorPlaceHolder
+                  className="m-t-0"
+                  icon={
+                    <AddPlaceHolderIcon
+                      className="w-16 h-16"
+                      data-testid="no-input-ports-placeholder"
+                    />
+                  }
+                  size="small"
+                  type="ADD_DATA">
+                  <Typography.Paragraph className="text-center">
+                    {t('message.no-input-ports-added')}
+                  </Typography.Paragraph>
+                </ErrorPlaceHolder>
+              ) : (
+                <AssetsTabs
+                  assetCount={inputPorts.length}
+                  entityFqn={dataProductFqn}
+                  isSummaryPanelOpen={isSummaryPanelOpen}
+                  permissions={permissions}
+                  ref={inputPortsTabRef}
+                  type={AssetsOfEntity.DATA_PRODUCT}
+                  onAddAsset={handleAddInputPort}
+                  onAssetClick={onPortClick}
+                  onRemoveAsset={refreshPorts}
+                />
+              )}
+            </Card>
+          </Col>
 
-          <Panel
-            header={
-              <Space>
-                <PortIcon height={16} width={16} />
+          <Col span={12}>
+            <Card
+              className="h-full"
+              extra={
+                permissions.EditAll && (
+                  <Button
+                    data-testid="add-output-port-button"
+                    type="primary"
+                    onClick={handleAddOutputPort}>
+                    {t('label.add')}
+                  </Button>
+                )
+              }
+              title={
                 <Typography.Text strong>
-                  {t('label.output-port-plural')} ({outputPorts.length})
+                  {t('label.output-port-plural')}
                 </Typography.Text>
-              </Space>
-            }
-            key="output">
-            <PortList
-              canRemove={permissions.EditAll}
-              isSummaryPanelOpen={isSummaryPanelOpen}
-              ports={outputPorts}
-              type={PortType.OUTPUT}
-              onAddPort={handleAddOutputPort}
-              onPortClick={onPortClick}
-              onRemovePort={handleRemoveOutputPort}
-            />
-          </Panel>
-        </Collapse>
+              }>
+              {outputPorts.length === 0 ? (
+                <ErrorPlaceHolder
+                  className="m-t-0"
+                  icon={
+                    <AddPlaceHolderIcon
+                      className="w-16 h-16"
+                      data-testid="no-output-ports-placeholder"
+                    />
+                  }
+                  size="small"
+                  type="ADD_DATA">
+                  <Typography.Paragraph className="text-center">
+                    {t('message.no-output-ports-added')}
+                  </Typography.Paragraph>
+                </ErrorPlaceHolder>
+              ) : (
+                <AssetsTabs
+                  assetCount={outputPorts.length}
+                  entityFqn={dataProductFqn}
+                  isSummaryPanelOpen={isSummaryPanelOpen}
+                  permissions={permissions}
+                  ref={outputPortsTabRef}
+                  type={AssetsOfEntity.DATA_PRODUCT}
+                  onAddAsset={handleAddOutputPort}
+                  onAssetClick={onPortClick}
+                  onRemoveAsset={refreshPorts}
+                />
+              )}
+            </Card>
+          </Col>
+        </Row>
+
+        <AssetSelectionDrawer
+          entityFqn={dataProductFqn}
+          open={isAddingInputPort}
+          queryFilter={queryFilter}
+          type={AssetsOfEntity.DATA_PRODUCT}
+          onCancel={() => setIsAddingInputPort(false)}
+          onSave={handleInputPortSave}
+        />
+
+        <AssetSelectionDrawer
+          entityFqn={dataProductFqn}
+          open={isAddingOutputPort}
+          queryFilter={queryFilter}
+          type={AssetsOfEntity.DATA_PRODUCT}
+          onCancel={() => setIsAddingOutputPort(false)}
+          onSave={handleOutputPortSave}
+        />
       </div>
     );
   }
