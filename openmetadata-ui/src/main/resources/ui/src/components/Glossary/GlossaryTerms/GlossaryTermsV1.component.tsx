@@ -251,7 +251,7 @@ const GlossaryTermsV1 = ({
                         isSummaryPanelOpen={Boolean(previewAsset)}
                         noDataPlaceholder={{
                           message: t('message.no-data-message', {
-                            entity: t('label.asset-plural'),
+                            entity: t('label.data-asset-plural'),
                           }),
                         }}
                         permissions={assetPermissions}

@@ -617,7 +617,7 @@ export const getDomainDetailTabs = ({
                       isSummaryPanelOpen={false}
                       noDataPlaceholder={{
                         message: t('message.no-data-message', {
-                          entity: t('label.asset-plural'),
+                          entity: t('label.data-asset-plural'),
                         }),
                       }}
                       permissions={domainPermission}
