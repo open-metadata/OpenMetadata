@@ -357,6 +357,7 @@ export async function updateEntityWithCoverImage<TEntity>(
       | { url?: string; position?: { y?: string }; file?: File }
       | undefined;
 
+    console.log('coverImageData', coverImageData);
     let coverImageUrl: string | undefined;
     let coverImagePosition: string | undefined;
 
