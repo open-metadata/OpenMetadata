@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+import os
 from typing import Optional
 
 from mlflow.tracking import MlflowClient
@@ -34,6 +35,11 @@ def get_connection(connection: MlflowConnection) -> MlflowClient:
     """
     Create connection
     """
+    # Set MLFLOW_TRACKING_TOKEN environment variable if token is provided
+    # This supports authentication for Databricks, AWS SageMaker, and other hosted MLflow instances
+    if connection.token:
+        os.environ["MLFLOW_TRACKING_TOKEN"] = connection.token.get_secret_value()
+    
     return MlflowClient(
         tracking_uri=connection.trackingUri,
         registry_uri=connection.registryUri,

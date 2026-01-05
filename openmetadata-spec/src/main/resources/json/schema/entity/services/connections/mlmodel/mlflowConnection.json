@@ -30,6 +30,12 @@
       "description": "Mlflow Model registry backend. E.g., mysql+pymysql://mlflow:password@localhost:3307/experiments",
       "type": "string"
     },
+    "token": {
+      "title": "Token",
+      "description": "Authentication token for MLflow. This will be set as the MLFLOW_TRACKING_TOKEN environment variable for secure access to MLflow deployments. Supports Databricks, AWS SageMaker, and other hosted MLflow instances.",
+      "type": "string",
+      "format": "password"
+    },
     "mlModelFilterPattern": {
       "description": "Regex to only fetch MlModels with names matching the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
