@@ -776,6 +776,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     private void updateEntityLinks(String oldFqn, String newFqn) {
       daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
+      daoCollection.tagUsageDAO().updateTargetFQNHash(oldFqn, newFqn);
       EntityLink newAbout = new EntityLink(DATA_PRODUCT, newFqn);
       daoCollection
           .feedDAO()
