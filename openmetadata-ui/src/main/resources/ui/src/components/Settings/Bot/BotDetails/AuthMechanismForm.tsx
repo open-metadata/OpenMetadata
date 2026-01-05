@@ -113,7 +113,7 @@ const AuthMechanismForm: FC<Props> = ({
     onSave({
       authType: AuthType.Jwt,
       config: {
-        JWTTokenExpiry: JWTTokenExpiry.OneHour,
+        JWTTokenExpiry: JWTTokenExpiry.Unlimited,
       },
     });
   }, [onSave, isSCIMBot]);
