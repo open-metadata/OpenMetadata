@@ -1,0 +1,111 @@
+clusterName: openmetadata
+swagger:
+  resourcePackage: org.openmetadata.service.webservice.resources
+server:
+  rootPath: '/api/*'
+  applicationConnectors:
+    - type: http
+      port: 0
+  adminConnectors:
+    - type: http
+      port: 0
+logging:
+  level: INFO
+  appenders:
+    - type: console
+      logFormat: "%level %logger{5} - %msg%n"
+database:
+  driverClass: org.postgresql.Driver
+  user: test
+  password:
+  url: jdbc:postgresql://localhost:5432/openmetadata
+  # Optimized for single JVM with method-level parallelization
+  # Dynamic factor 1.0 = ~8 threads on 8-core, need sufficient connections
+  maxSize: 100
+  minSize: 20
+  initialSize: 20
+  checkConnectionWhileIdle: true
+  checkConnectionOnBorrow: true
+  evictionInterval: 30 seconds
+  minIdleTime: 10 seconds
+  validationQuery: "SELECT 1"
+  maxWaitForConnection: 30 seconds
+migrationConfiguration:
+  flywayPath: "../bootstrap/sql/migrations/flyway"
+  nativePath: "../bootstrap/sql/migrations/native"
+  extensionPath: ""
+secretsManagerConfiguration:
+  secretsManager: db
+  tags: []
+health:
+  delayedShutdownHandlerEnabled: true
+  shutdownWaitPeriod: 5s
+  healthChecks:
+    - name: OpenMetadataServerHealthCheck
+      critical: true
+authorizerConfiguration:
+  className: "org.openmetadata.service.security.DefaultAuthorizer"
+  containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+  adminPrincipals:
+    - "admin"
+  testPrincipals:
+    - "test"
+  principalDomain: "open-metadata.org"
+  enforcePrincipalDomain: false
+  enableSecureSocketConnection: false
+  allowedEmailRegistrationDomains:
+    - "all"
+authenticationConfiguration:
+  clientType: "public"
+  provider: "openmetadata"
+  providerName: ""
+  publicKeyUrls:
+    - "https://www.googleapis.com/oauth2/v3/certs"
+  authority: "https://accounts.google.com"
+  clientId: "dummy"
+  callbackUrl: "http://localhost:8585/callback"
+  jwtPrincipalClaims:
+    - "email"
+    - "preferred_username"
+    - "sub"
+  enableSelfSignup : true
+jwtTokenConfiguration:
+  rsapublicKeyFilePath: "src/test/resources/public_key.der"
+  rsaprivateKeyFilePath: "src/test/resources/private_key.der"
+  jwtissuer: "open-metadata.org"
+  keyId: "test-key"
+eventMonitoringConfiguration:
+  eventMonitor: "prometheus"
+  batchSize: 10
+  pathPattern: ["/*"]
+  latency: [0.90]
+pipelineServiceClientConfiguration:
+  className: "org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"
+  metadataApiEndpoint: http://localhost:8585/api
+  apiEndpoint: http://localhost:8080
+  hostIp: ""
+  healthCheckInterval: 300
+  verifySSL: "no-ssl"
+  authProvider: "openmetadata"
+  parameters:
+    username: admin
+    password: admin
+    timeout: 10
+    truststorePath: ""
+    truststorePassword: ""
+fernetConfiguration:
+  fernetKey: ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ
+objectStorage:
+  enabled: false
+  provider: NOOP
+  maxFileSize: 5242880
+
+# RDF Configuration - will be dynamically configured by TestSuiteBootstrap
+rdf:
+  enabled: true
+  baseUri: "https://open-metadata.org/"
+  storageType: "FUSEKI"
+  remoteEndpoint: "http://localhost:3030/openmetadata"
+  username: "admin"
+  password: "test-admin"
+  dataset: "openmetadata"

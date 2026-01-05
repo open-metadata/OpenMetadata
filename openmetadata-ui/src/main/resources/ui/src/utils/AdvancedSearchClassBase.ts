@@ -180,8 +180,9 @@ class AdvancedSearchClassBase {
     sourceFields,
     sourceFieldOptionType,
   }) => {
-    let pendingResolve: // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ((result: { values: any[]; hasMore: boolean }) => void) | null = null;
+    let pendingResolve:
+      | ((result: { values: any[]; hasMore: boolean }) => void)
+      | null = null;
     const debouncedFetch = debounce((search: string) => {
       getAggregateFieldOptions(
         searchIndex,
