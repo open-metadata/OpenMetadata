@@ -116,7 +116,7 @@ class TableauSource(DashboardServiceSource):
         super().__init__(config, metadata)
         self.today = datetime.now().strftime("%Y-%m-%d")
         # Pass markDeletedDashboards config to the client
-        if hasattr(self.client, 'mark_deleted_dashboards'):
+        if hasattr(self.client, "mark_deleted_dashboards"):
             self.client.mark_deleted_dashboards = self.source_config.markDeletedDashboards
 
     @classmethod

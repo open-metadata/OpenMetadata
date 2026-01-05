@@ -131,7 +131,7 @@ class TableauClient:
                     "Results from the query might be incomplete at this time. "
                     f"Error message: {error.get('message', 'No message provided')}"
                 )
-                
+
                 if self.mark_deleted_dashboards:
                     logger.error(
                         f"{error_msg}\n"
@@ -383,10 +383,10 @@ class TableauClient:
                     workbook_id=dashboard_id, first=entities_per_page, offset=offset
                 )
             )
-            
+
             # Check for BACKFILL_RUNNING error in GraphQL response
             self._check_backfill_running_error(datasources_graphql_result)
-            
+
             if datasources_graphql_result and datasources_graphql_result.get("data"):
                 if datasources_graphql_result["data"].get("workbooks"):
                     tableau_datasource_connection = TableauDatasourcesConnection(
