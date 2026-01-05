@@ -27,6 +27,7 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DomainLabelV2 } from '../components/DataAssets/DomainLabelV2/DomainLabelV2';
+import { InputOutputPortsTab } from '../components/DataProducts/InputOutputPortsTab/InputOutputPortsTab.component';
 import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../components/Explore/ExplorePage.interface';
 import AssetsTabs, {
@@ -190,15 +191,15 @@ export const getDataProductDetailTabs = ({
                   className: 'domain-resizable-panel-container',
                   wrapInCard: false,
                   children: (
-                    <div className="p-md">
-                      {/* Input/Output Ports content will be added here */}
-                      <Typography.Paragraph>
-                        {t('label.input-port-plural')}: {inputPortsCount ?? 0}
-                      </Typography.Paragraph>
-                      <Typography.Paragraph>
-                        {t('label.output-port-plural')}: {outputPortsCount ?? 0}
-                      </Typography.Paragraph>
-                    </div>
+                    <InputOutputPortsTab
+                      dataProductFqn={dataProduct.fullyQualifiedName ?? ''}
+                      inputPorts={dataProduct.inputPorts}
+                      isSummaryPanelOpen={Boolean(previewAsset)}
+                      outputPorts={dataProduct.outputPorts}
+                      permissions={dataProductPermission}
+                      onPortClick={handleAssetClick}
+                      onPortsUpdate={handleAssetSave}
+                    />
                   ),
                   minWidth: 800,
                   flex: 0.67,
