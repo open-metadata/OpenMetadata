@@ -26,6 +26,15 @@ import {
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
+interface TableColumn {
+  name: string;
+  dataType: string;
+  dataLength?: number;
+  dataTypeDisplay: string;
+  description?: string;
+  children?: TableColumn[];
+}
+
 export class TableClass extends EntityClass {
   service: {
     name: string;
@@ -48,12 +57,12 @@ export class TableClass extends EntityClass {
   schema: { name: string; database: string };
   columnsName: string[];
   entityLinkColumnsName: string[];
-  children: unknown[];
+  children: TableColumn[];
   entity: {
     name: string;
     displayName: string;
     description: string;
-    columns: unknown[];
+    columns: TableColumn[];
     tableType: string;
     databaseSchema: string;
   };
@@ -256,7 +265,7 @@ export class TableClass extends EntityClass {
       name: string;
       displayName: string;
       description?: string;
-      columns?: any[];
+      columns?: TableColumn[];
       databaseSchema?: string;
     },
     apiContext: APIRequestContext
@@ -301,7 +310,8 @@ export class TableClass extends EntityClass {
     await visitEntityPage({
       page,
       searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
+      dataTestId: `${this.entityResponseData.service.name ?? this.service.name
+        }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
 
@@ -391,8 +401,8 @@ export class TableClass extends EntityClass {
     apiContext: APIRequestContext,
     testCaseData?: TestCaseData
   ) {
-    if (isEmpty(this.testSuiteResponseData)) {
-      await this.createTestSuiteAndPipelines(apiContext);
+    if (isEmpty(this.entityResponseData)) {
+      await this.create(apiContext);
     }
 
     const testCase = await apiContext
@@ -409,6 +419,10 @@ export class TableClass extends EntityClass {
         },
       })
       .then((res) => res.json());
+
+    if (isEmpty(this.testSuiteResponseData)) {
+      this.testSuiteResponseData = testCase?.testSuite;
+    }
 
     this.testCasesResponseData.push(testCase);
 

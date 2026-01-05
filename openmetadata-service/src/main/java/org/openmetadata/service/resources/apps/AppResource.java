@@ -246,16 +246,19 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
-      @Parameter(description = "Filter by agent type", schema = @Schema(type = "string"))
+      @Parameter(
+              description =
+                  "Filter by agent type(s). Can be a single value or comma-separated values",
+              schema = @Schema(type = "string"))
           @QueryParam("agentType")
-          String agentType,
+          String agentTypes,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter = new ListFilter(include).addQueryParam("agentType", agentType);
+    ListFilter filter = new ListFilter(include).addQueryParam("agentType", agentTypes);
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -604,7 +607,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    App app = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    if (include != Include.DELETED && !Boolean.TRUE.equals(app.getDeleted())) {
+      return ApplicationHandler.getInstance()
+          .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
+    } else {
+      return app;
+    }
   }
 
   @GET
@@ -640,7 +649,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    App app = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    if (include != Include.DELETED && !Boolean.TRUE.equals(app.getDeleted())) {
+      return ApplicationHandler.getInstance()
+          .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
+    } else {
+      return app;
+    }
   }
 
   @GET

@@ -13,6 +13,7 @@ Utilities for working with the Presidio Library.
 """
 import inspect
 import logging
+from functools import cache
 from typing import Any, Callable, Iterable, List, Optional, Set, Type, Union, cast
 
 import spacy
@@ -43,6 +44,7 @@ from metadata.utils.logger import pii_logger
 logger = pii_logger()
 
 
+@cache
 def load_nlp_engine(
     model_name: str = SPACY_EN_MODEL,
     supported_language: str = SUPPORTED_LANG,

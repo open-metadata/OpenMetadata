@@ -137,6 +137,11 @@ export interface Table {
      */
     owners?: EntityReference[];
     /**
+     * Pipeline observability information for the table. Multiple pipelines can process the same
+     * table.
+     */
+    pipelineObservability?: PipelineObservability[];
+    /**
      * Processed lineage for the table
      */
     processedLineage?: boolean;
@@ -658,6 +663,8 @@ export interface CustomMetric {
  *
  * Reference to the Location that contains this table.
  *
+ * Reference to the pipeline that processes this data asset.
+ *
  * Link to Database service this table is hosted in.
  *
  * Executable test suite associated with this table
@@ -1005,6 +1012,7 @@ export enum FileFormat {
     Jsonl = "jsonl",
     JsonlGz = "jsonl.gz",
     JsonlZip = "jsonl.zip",
+    Mf4 = "MF4",
     Parq = "parq",
     Parquet = "parquet",
     ParquetSnappy = "parquet.snappy",
@@ -1094,6 +1102,83 @@ export interface AccessDetails {
      * Timestamp of data asset accessed for creation, update, read.
      */
     timestamp: number;
+}
+
+/**
+ * This schema defines pipeline observability data that can be associated with data assets
+ * to track pipeline execution information.
+ */
+export interface PipelineObservability {
+    /**
+     * End time of the pipeline schedule.
+     */
+    endTime?: number;
+    /**
+     * Status of the last pipeline execution.
+     */
+    lastRunStatus?: LastRunStatus;
+    /**
+     * Timestamp of the last pipeline execution.
+     */
+    lastRunTime?: number;
+    /**
+     * Reference to the pipeline that processes this data asset.
+     */
+    pipeline: EntityReference;
+    /**
+     * Schedule interval for the pipeline in cron format.
+     */
+    scheduleInterval?: null | string;
+    /**
+     * Type of pipeline service
+     */
+    serviceType?: PipelineServiceType;
+    /**
+     * Start time of the pipeline schedule.
+     */
+    startTime?: number;
+}
+
+/**
+ * Status of the last pipeline execution.
+ */
+export enum LastRunStatus {
+    Failed = "Failed",
+    Pending = "Pending",
+    Running = "Running",
+    Skipped = "Skipped",
+    Successful = "Successful",
+}
+
+/**
+ * Type of pipeline service
+ *
+ * Type of pipeline service - Airflow or Prefect.
+ */
+export enum PipelineServiceType {
+    Airbyte = "Airbyte",
+    Airflow = "Airflow",
+    CustomPipeline = "CustomPipeline",
+    DBTCloud = "DBTCloud",
+    Dagster = "Dagster",
+    DataFactory = "DataFactory",
+    DatabricksPipeline = "DatabricksPipeline",
+    DomoPipeline = "DomoPipeline",
+    Fivetran = "Fivetran",
+    Flink = "Flink",
+    GluePipeline = "GluePipeline",
+    KafkaConnect = "KafkaConnect",
+    KinesisFirehose = "KinesisFirehose",
+    Matillion = "Matillion",
+    Mulesoft = "Mulesoft",
+    Nifi = "Nifi",
+    OpenLineage = "OpenLineage",
+    Snowplow = "Snowplow",
+    Spark = "Spark",
+    Spline = "Spline",
+    Ssis = "SSIS",
+    Stitch = "Stitch",
+    Wherescape = "Wherescape",
 }
 
 /**

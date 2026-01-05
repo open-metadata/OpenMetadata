@@ -11,6 +11,8 @@
 """
 Lineage Parser configuration
 """
+import hashlib
+import time
 import traceback
 from collections import defaultdict
 from copy import deepcopy
@@ -21,6 +23,8 @@ import sqlparse
 from cached_property import cached_property
 from collate_sqllineage import SQLPARSE_DIALECT
 from collate_sqllineage.core.models import Column, DataFunction, Table
+from collate_sqllineage.core.parser.sqlfluff.analyzer import SqlFluffLineageAnalyzer
+from collate_sqllineage.core.parser.sqlglot.analyzer import SqlGlotLineageAnalyzer
 from collate_sqllineage.exceptions import SQLLineageException
 from collate_sqllineage.runner import LineageRunner
 from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
@@ -34,8 +38,10 @@ from metadata.utils.helpers import (
     get_formatted_entity_name,
     insensitive_match,
     insensitive_replace,
+    pretty_print_time_duration,
 )
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.memory_limit import MemoryLimitExceeded
 from metadata.utils.timeout import timeout
 
 # Prevent sqllineage from modifying the logger config
@@ -50,7 +56,9 @@ DictConfigurator.configure = configure
 logger = ingestion_logger()
 
 # max lineage parsing wait in second when using specific dialect
-LINEAGE_PARSING_TIMEOUT = 10
+LINEAGE_PARSING_TIMEOUT = 30
+# max memory in MB that lineage parsing can consume
+LINEAGE_PARSING_MEMORY_LIMIT_MB = 100
 
 
 class LineageParser:
@@ -61,6 +69,7 @@ class LineageParser:
     parser: LineageRunner
     query: str
     _clean_query: str
+    query_hash: str
 
     def __init__(
         self,
@@ -69,6 +78,7 @@ class LineageParser:
         timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
     ):
         self.query = query
+        self.query_hash = self.get_query_hash(query)
         self.query_parsing_success = True
         self.query_parsing_failure_reason = None
         self.dialect = dialect
@@ -79,9 +89,28 @@ class LineageParser:
         )
         if self.masked_query is None:
             self.masked_query = (
-                mask_query(self._clean_query, parser=self.parser, parser_required=True)
+                mask_query(
+                    self._clean_query,
+                    parser=self.parser,
+                    parser_required=True,
+                    query_hash=self.query_hash,
+                )
                 or self._clean_query
             )
+
+    @staticmethod
+    def get_query_hash(query: str, length: int = 8) -> str:
+        """
+        Generate a hash for a query string to track it in multithreaded environments.
+
+        Args:
+            query: SQL query string to hash
+            length: Length of the hash to return (default 8)
+
+        Returns:
+            Truncated MD5 hash of the query
+        """
+        return hashlib.md5(query.encode()).hexdigest()[:length]
 
     @cached_property
     def involved_tables(self) -> Optional[List[Table]]:
@@ -92,9 +121,15 @@ class LineageParser:
         :return: List of involved tables
         """
         try:
-            logger.debug(f"[UsageSink] Source tables: {self.source_tables}")
-            logger.debug(f"[UsageSink] Intermediate tables: {self.intermediate_tables}")
-            logger.debug(f"[UsageSink] Target tables: {self.target_tables}")
+            logger.debug(
+                f"[{self.query_hash}] [UsageSink] Source tables: {self.source_tables}"
+            )
+            logger.debug(
+                f"[{self.query_hash}] [UsageSink] Intermediate tables: {self.intermediate_tables}"
+            )
+            logger.debug(
+                f"[{self.query_hash}] [UsageSink] Target tables: {self.target_tables}"
+            )
 
             return list(
                 set(self.source_tables)
@@ -105,7 +140,8 @@ class LineageParser:
         except SQLLineageException as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Cannot extract source table information from query [{self.masked_query or self.query}]: {exc}"
+                f"[{self.query_hash}] Cannot extract source table information from query"
+                f" [{self.masked_query or self.query}]: {exc}"
             )
 
             return None
@@ -166,7 +202,9 @@ class LineageParser:
                 tgt_col._parent = tgt_column._parent  # pylint: disable=protected-access
                 column_lineage.append((src_col, tgt_col))
         except Exception as err:
-            logger.warning(f"Failed to fetch column level lineage due to: {err}")
+            logger.warning(
+                f"[{self.query_hash}] Failed to fetch column level lineage due to: {err}"
+            )
             logger.debug(traceback.format_exc())
         return column_lineage
 
@@ -188,18 +226,20 @@ class LineageParser:
         # Check if involved_tables is present
         if not self.involved_tables:
             logger.debug(
-                "[UsageSink] No involved tables found — alias map will be empty."
+                f"[{self.query_hash}] [UsageSink] No involved tables found — alias map will be empty."
             )
             return {}
 
         # Log raw involved tables for inspection
         logger.debug(
-            f"[UsageSink] Involved tables before alias mapping: {[str(t) for t in self.involved_tables]}"
+            f"[{self.query_hash}] [UsageSink] Involved tables before alias mapping:"
+            f" {[str(t) for t in self.involved_tables]}"
         )
 
         # Log alias/name pairs for each table
         logger.debug(
-            f"[UsageSink] Table alias-name pairs: {[(t.alias, str(t)) for t in self.involved_tables]}"
+            f"[{self.query_hash}] [UsageSink] Table alias-name pairs:"
+            f" {[(t.alias, str(t)) for t in self.involved_tables]}"
         )
 
         # Build the alias dictionary
@@ -210,7 +250,9 @@ class LineageParser:
         }
 
         # Log the final computed alias map
-        logger.debug(f"[UsageSink] Final computed alias map: {alias_map}")
+        logger.debug(
+            f"[{self.query_hash}] [UsageSink] Final computed alias map: {alias_map}"
+        )
 
         return alias_map
 
@@ -230,9 +272,9 @@ class LineageParser:
         """
         tables = self.clean_table_list
         logger.debug(
-            f"[UsageSink] Searching for table '{table_name}' "
-            f"in schema '{schema_name}', database '{database_name}', "
-            f"within tables list: {tables}"
+            f"[{self.query_hash}] [UsageSink] Searching for table '{table_name}'"
+            f" in schema '{schema_name}', database '{database_name}',"
+            f" within tables list: {tables}"
         )
         table = find_in_iter(element=table_name, container=tables)
         if table:
@@ -250,7 +292,9 @@ class LineageParser:
         if db_schema_table:
             return db_schema_table
 
-        logger.debug(f"Cannot find table {db_schema_table} in involved tables")
+        logger.debug(
+            f"[{self.query_hash}] Cannot find table {db_schema_table} in involved tables"
+        )
         return None
 
     def get_comparison_elements(
@@ -261,18 +305,24 @@ class LineageParser:
         :param identifier: comparison identifier
         :return: table name and column name from the identifier
         """
-        logger.debug(f"[DEBUG] Raw identifier object: {identifier!r}")
-        logger.debug(f"[DEBUG] Identifier type: {type(identifier)}")
-        logger.debug(f"[DEBUG] Identifier value: {getattr(identifier, 'value', None)}")
+        logger.debug(
+            f"[{self.query_hash}] [DEBUG] Raw identifier object: {identifier!r}"
+        )
+        logger.debug(f"[{self.query_hash}] [DEBUG] Identifier type: {type(identifier)}")
+        logger.debug(
+            f"[{self.query_hash}] [DEBUG] Identifier value: {getattr(identifier, 'value', None)}"
+        )
 
         aliases = self.table_aliases
-        logger.debug(f"[DEBUG] Current table aliases: {aliases}")
+        logger.debug(f"[{self.query_hash}] [DEBUG] Current table aliases: {aliases}")
 
         values = identifier.value.split(".")
-        logger.debug(f"[DEBUG] Split identifier values: {values}")
+        logger.debug(f"[{self.query_hash}] [DEBUG] Split identifier values: {values}")
 
         if len(values) > 4:
-            logger.debug(f"Invalid comparison element from identifier: {identifier}")
+            logger.debug(
+                f"[{self.query_hash}] Invalid comparison element from identifier: {identifier}"
+            )
             return None, None
 
         database_name, schema_name, table_or_alias, column_name = (
@@ -280,14 +330,14 @@ class LineageParser:
         ) + values
 
         logger.debug(
-            f"[DEBUG] Parsed components => "
-            f"database_name={database_name}, schema_name={schema_name}, "
-            f"table_or_alias={table_or_alias}, column_name={column_name}"
+            f"[{self.query_hash}] [DEBUG] Parsed components =>"
+            f" database_name={database_name}, schema_name={schema_name},"
+            f" table_or_alias={table_or_alias}, column_name={column_name}"
         )
 
         if not table_or_alias or not column_name:
             logger.debug(
-                f"Cannot obtain comparison elements from identifier {identifier}"
+                f"[{self.query_hash}] Cannot obtain comparison elements from identifier {identifier}"
             )
             return None, None
 
@@ -302,7 +352,9 @@ class LineageParser:
         )
 
         if not table_from_list:
-            logger.debug(f"Cannot find {table_or_alias} in comparison elements")
+            logger.debug(
+                f"[{self.query_hash}] Cannot find {table_or_alias} in comparison elements"
+            )
             return None, None
 
         return table_from_list, column_name
@@ -388,9 +440,12 @@ class LineageParser:
 
                 if not table_left or not table_right:
                     logger.debug(
-                        f"Can't extract table names when parsing JOIN information from {comparison}"
+                        f"[{self.query_hash}] Cannot extract table names when parsing JOIN information"
+                        f" from {comparison}"
                     )
-                    logger.debug(f"Query: {self.masked_query or self.query}")
+                    logger.debug(
+                        f"[{self.query_hash}] Query: {self.masked_query or self.query}"
+                    )
                     continue
 
                 left_table_column = TableColumn(table=table_left, column=column_left)
@@ -402,7 +457,9 @@ class LineageParser:
                     join_data, left_table_column, right_table_column
                 )
             except Exception as exc:
-                logger.debug(f"Cannot process comparison {comparison}: {exc}")
+                logger.debug(
+                    f"[{self.query_hash}] Cannot process comparison {comparison}: {exc}"
+                )
                 logger.debug(traceback.format_exc())
 
     @cached_property
@@ -459,20 +516,112 @@ class LineageParser:
         if insensitive_match(clean_query, "^COPY.*"):
             return None
 
+        # Filter out CREATE TRIGGER statements - they don't provide lineage information
+        if insensitive_match(
+            clean_query, r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?TRIGGER\s+"
+        ):
+            return None
+
+        # Filter out CREATE FUNCTION/PROCEDURE statements - they don't provide lineage information
+        if insensitive_match(
+            clean_query, r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE)\s+"
+        ):
+            return None
+
         return clean_query.strip()
 
     @calculate_execution_time(context="EvaluateBestParser")
     def _evaluate_best_parser(
         self, query: str, dialect: Dialect, timeout_seconds: int
     ) -> Optional[LineageRunner]:
+        """Evaluate and return the best available parser for the query."""
+        start_time = time.time()
+        result = self._evaluate_best_parser_impl(query, dialect, timeout_seconds)
+        elapsed = time.time() - start_time
+
+        elapsed_str = pretty_print_time_duration(elapsed)
+        logger.info(f"[{self.query_hash}] Evaluated best parser in {elapsed_str}")
+
+        return result
+
+    def _evaluate_best_parser_impl(
+        self, query: str, dialect: Dialect, timeout_seconds: int
+    ) -> Optional[LineageRunner]:
         if query is None:
             return None
 
+        logger.debug(
+            f"[{self.query_hash}] Evaluating best parser (query length: {len(query)} chars)"
+            f" for query [{dialect.value}]: {self.masked_query or self.query}"
+        )
+
+        @calculate_execution_time(context="GetSqlGlotLineageRunner")
         @timeout(seconds=timeout_seconds)
-        def get_sqlfluff_lineage_runner(qry: str, dlct: str) -> LineageRunner:
-            lr_dialect = LineageRunner(qry, dialect=dlct)
-            lr_dialect.get_column_lineage()
-            return lr_dialect
+        # disable memory limits until better solution is found as they are performance overhead
+        # @memory_limit(
+        #     max_memory_mb=LINEAGE_PARSING_MEMORY_LIMIT_MB,
+        #     context=self.query_hash,
+        # )
+        def get_sqlglot_lineage_runner(query: str, dialect: str) -> LineageRunner:
+            lr_sqlglot = LineageRunner(
+                query, dialect=dialect, analyzer=SqlGlotLineageAnalyzer
+            )
+            lr_sqlglot.get_column_lineage()
+            return lr_sqlglot
+
+        try:
+            lr_sqlglot = get_sqlglot_lineage_runner(query, dialect.value)
+            _ = len(lr_sqlglot.get_column_lineage()) + len(
+                set(lr_sqlglot.source_tables).union(
+                    set(lr_sqlglot.target_tables).union(
+                        set(lr_sqlglot.intermediate_tables)
+                    )
+                )
+            )
+        except TimeoutError:
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = (
+                f"[{self.query_hash}] Query parsing with SqlGlot failed with"
+                f" timeout of {timeout_seconds} seconds."
+            )
+            logger.debug(self.query_parsing_failure_reason)
+            lr_sqlglot = None
+        except MemoryLimitExceeded:
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = (
+                f"[{self.query_hash}] Query parsing with SqlGlot failed with"
+                f" memory limit of {LINEAGE_PARSING_MEMORY_LIMIT_MB}MB exceeded."
+            )
+            logger.debug(self.query_parsing_failure_reason)
+            lr_sqlglot = None
+        except Exception as err:
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = (
+                f"[{self.query_hash}] Query parsing with SqlGlot failed with"
+                f" error: {err}"
+            )
+            logger.debug(self.query_parsing_failure_reason)
+            logger.debug(traceback.format_exc())
+            lr_sqlglot = None
+
+        if lr_sqlglot:
+            self.query_hash += "-SqlGlot"
+            logger.debug(f"[{self.query_hash}] Selected SqlGlot for query parsing")
+            return lr_sqlglot
+
+        @calculate_execution_time(context="GetSqlFluffLineageRunner")
+        @timeout(seconds=timeout_seconds)
+        # disable memory limits until better solution is found as they are performance overhead
+        # @memory_limit(
+        #     max_memory_mb=LINEAGE_PARSING_MEMORY_LIMIT_MB,
+        #     context=self.query_hash,
+        # )
+        def get_sqlfluff_lineage_runner(query: str, dialect: str) -> LineageRunner:
+            lr_sqlfluff = LineageRunner(
+                query, dialect=dialect, analyzer=SqlFluffLineageAnalyzer
+            )
+            lr_sqlfluff.get_column_lineage()
+            return lr_sqlfluff
 
         try:
             lr_sqlfluff = get_sqlfluff_lineage_runner(query, dialect.value)
@@ -486,52 +635,93 @@ class LineageParser:
         except TimeoutError:
             self.query_parsing_success = False
             self.query_parsing_failure_reason = (
-                f"Lineage with SqlFluff failed for the [{dialect.value}]. "
-                f"Parser has been running for more than {timeout_seconds} seconds."
+                f"[{self.query_hash}] Query parsing with SqlFluff failed with"
+                f" timeout of {timeout_seconds} seconds."
             )
+            logger.debug(self.query_parsing_failure_reason)
             lr_sqlfluff = None
-        except Exception:
+        except MemoryLimitExceeded:
             self.query_parsing_success = False
             self.query_parsing_failure_reason = (
-                f"Lineage with SqlFluff failed for the [{dialect.value}]"
+                f"[{self.query_hash}] Query parsing with SqlFluff failed with"
+                f" memory limit of {LINEAGE_PARSING_MEMORY_LIMIT_MB}MB exceeded."
             )
+            logger.debug(self.query_parsing_failure_reason)
+            lr_sqlfluff = None
+        except Exception as err:
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = (
+                f"[{self.query_hash}] Query parsing with SqlFluff failed with"
+                f" error: {err}"
+            )
+            logger.debug(self.query_parsing_failure_reason)
+            logger.debug(traceback.format_exc())
             lr_sqlfluff = None
 
         if lr_sqlfluff:
+            self.query_hash += "-SqlFluff"
+            logger.debug(f"[{self.query_hash}] Selected SqlFluff for query parsing")
             return lr_sqlfluff
 
+        @calculate_execution_time(context="GetSqlParseLineageRunner")
         @timeout(seconds=timeout_seconds)
-        def get_sqlparser_lineage_runner(qry: str) -> LineageRunner:
-            lr_sqlparser = LineageRunner(qry)
-            lr_sqlparser.get_column_lineage()
-            return lr_sqlparser
+        # disable memory limits until better solution is found as they are performance overhead
+        # @memory_limit(
+        #     max_memory_mb=LINEAGE_PARSING_MEMORY_LIMIT_MB,
+        #     context=self.query_hash,
+        # )
+        def get_sqlparse_lineage_runner(query: str) -> LineageRunner:
+            lr_sqlparse = LineageRunner(query)
+            lr_sqlparse.get_column_lineage()
+            return lr_sqlparse
 
-        lr_sqlparser = None
+        lr_sqlparse = None
         try:
-            lr_sqlparser = get_sqlparser_lineage_runner(query)
-            _ = len(lr_sqlparser.get_column_lineage()) + len(
-                set(lr_sqlparser.source_tables).union(
-                    set(lr_sqlparser.target_tables).union(
-                        set(lr_sqlparser.intermediate_tables)
+            lr_sqlparse = get_sqlparse_lineage_runner(query)
+            _ = len(lr_sqlparse.get_column_lineage()) + len(
+                set(lr_sqlparse.source_tables).union(
+                    set(lr_sqlparse.target_tables).union(
+                        set(lr_sqlparse.intermediate_tables)
                     )
                 )
             )
         except TimeoutError:
             self.query_parsing_success = False
             self.query_parsing_failure_reason = (
-                f"Lineage with SqlParser failed for the [{dialect.value}]. "
-                f"Parser has been running for more than {timeout_seconds} seconds."
+                f"[{self.query_hash}] Query parsing with SqlParse failed with"
+                f" timeout of {timeout_seconds} seconds."
             )
-            return None
-        except Exception:
-            # if both runner have failed we return the usual one
-            logger.debug(f"Failed to parse query with sqlparse & sqlfluff: {query}")
-            return lr_sqlfluff if lr_sqlfluff else None
+            logger.debug(self.query_parsing_failure_reason)
+            lr_sqlparse = None
+        except MemoryLimitExceeded:
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = (
+                f"[{self.query_hash}] Query parsing with SqlParse failed with"
+                f" memory limit of {LINEAGE_PARSING_MEMORY_LIMIT_MB}MB exceeded."
+            )
+            logger.debug(self.query_parsing_failure_reason)
+            lr_sqlparse = None
+        except Exception as err:
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = (
+                f"[{self.query_hash}] Query parsing with SqlParse failed with"
+                f" error: {err}"
+            )
+            logger.debug(self.query_parsing_failure_reason)
+            logger.debug(traceback.format_exc())
+            # All parsers SqlGlot, SqlFluff, SqlParse have failed to parse the query
+            lr_sqlparse = None
 
+        if lr_sqlparse:
+            self.query_hash += "-SqlParse"
+            logger.debug(f"[{self.query_hash}] Selected SqlParse for query parsing")
+            return lr_sqlparse
+
+        # log failed query
         logger.debug(
-            f"Using sqlparse for lineage parsing for query: {self.masked_query or self.query}"
+            f"[{self.query_hash}] Query parsing failed with SqlGlot, SqlFluff and SqlParse"
         )
-        return lr_sqlparser
+        return None
 
     @staticmethod
     def clean_table_name(table: Table) -> Table:

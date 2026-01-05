@@ -400,7 +400,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Get session expiry - use OIDC config if available, otherwise default
     int sessionExpiry = 604800; // Default 7 days in seconds
-    if (SecurityConfigurationManager.getCurrentAuthConfig().getOidcConfiguration() != null) {
+    if (SecurityConfigurationManager.getCurrentAuthConfig().getOidcConfiguration() != null
+        && SecurityConfigurationManager.getCurrentAuthConfig()
+                .getOidcConfiguration()
+                .getSessionExpiry()
+            >= 3600) {
       sessionExpiry =
           SecurityConfigurationManager.getCurrentAuthConfig()
               .getOidcConfiguration()
@@ -495,11 +499,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OMWebConfiguration webConfiguration,
       Environment environment) {
 
+    LOG.info("Registering Asset Servlet with basePath: {}", config.getBasePath());
+    LOG.info("Application Context Path: {}", environment.getApplicationContext().getContextPath());
+
     // Handle Asset Using Servlet
     OpenMetadataAssetServlet assetServlet =
         new OpenMetadataAssetServlet(
             config.getBasePath(), "/assets", "/", "index.html", webConfiguration);
     environment.servlets().addServlet("static", assetServlet).addMapping("/*");
+
+    LOG.info("Asset Servlet registered with mapping: /*");
   }
 
   protected CollectionDAO getDao(Jdbi jdbi) {
@@ -848,6 +857,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     SocketAddressFilter socketAddressFilter;
     String pathSpec = "/api/v1/push/feed/*";
+
+    LOG.info("Initializing WebSockets");
+    LOG.info("WebSocket pathSpec: {}", pathSpec);
+    LOG.info(
+        "Application Context Path during WebSocket init: {}",
+        environment.getApplicationContext().getContextPath());
+
     if (catalogConfig.getAuthorizerConfiguration() != null) {
       socketAddressFilter =
           new SocketAddressFilter(
@@ -860,7 +876,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     EngineIoServerOptions eioOptions = EngineIoServerOptions.newFromDefault();
     eioOptions.setAllowedCorsOrigins(null);
     WebSocketManager.WebSocketManagerBuilder.build(eioOptions);
-    environment.getApplicationContext().setContextPath("/");
     FilterHolder socketAddressFilterHolder = new FilterHolder();
     socketAddressFilterHolder.setFilter(socketAddressFilter);
     environment

@@ -13,6 +13,17 @@
 @import '../../../styles/variables.less';
 
 .entity-details-section {
+  .no-data-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 20px;
+
+    .no-data-text {
+      color: #8c8c8c;
+      font-size: 13px;
+    }
+  }
   .schema-field-cards-container {
     .no-data-container {
       display: flex;
@@ -26,6 +37,15 @@
       .no-data-text {
         color: #8c8c8c;
         font-size: 14px;
+      }
+    }
+
+    .nested-field-card-wrapper {
+      border-bottom: 0.6px solid @grey-15;
+      .field-card-no-border {
+        .field-card {
+          border-bottom: none;
+        }
       }
     }
   }

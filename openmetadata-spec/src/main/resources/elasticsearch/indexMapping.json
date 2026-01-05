@@ -115,6 +115,13 @@
     ],
     "childAliases": []
   },
+  "pipelineStatus": {
+    "indexName": "pipeline_status_search_index",
+    "indexMappingFile": "/elasticsearch/%s/pipeline_status_index_mapping.json",
+    "alias": "pipelineStatus",
+    "parentAliases": [],
+    "childAliases": []
+  },
   "topic": {
     "indexName": "topic_search_index",
     "indexMappingFile": "/elasticsearch/%s/topic_index_mapping.json",
@@ -631,6 +638,55 @@
     "indexMappingFile": "/elasticsearch/%s/query_cost_record_index_mapping.json",
     "alias": "queryCostRecord",
     "parentAliases": [],
+    "childAliases": []
+  },
+  "llmService": {
+    "indexName": "llm_service_search_index",
+    "indexMappingFile": "/elasticsearch/%s/llm_service_index_mapping.json",
+    "alias": "llmService",
+    "parentAliases": [
+      "all",
+      "service"
+    ],
+    "childAliases": [
+      "llmModel"
+    ]
+  },
+  "aiAgent": {
+    "indexName": "ai_agent_search_index",
+    "indexMappingFile": "/elasticsearch/%s/ai_agent_index_mapping.json",
+    "alias": "aiAgent",
+    "parentAliases": [
+      "all"
+    ],
+    "childAliases": []
+  },
+  "llmModel": {
+    "indexName": "llm_model_search_index",
+    "indexMappingFile": "/elasticsearch/%s/llm_model_index_mapping.json",
+    "alias": "llmModel",
+    "parentAliases": [
+      "llmService",
+      "all"
+    ],
+    "childAliases": []
+  },
+  "promptTemplate": {
+    "indexName": "prompt_template_search_index",
+    "indexMappingFile": "/elasticsearch/%s/prompt_template_index_mapping.json",
+    "alias": "promptTemplate",
+    "parentAliases": [
+      "all"
+    ],
+    "childAliases": []
+  },
+  "aiGovernancePolicy": {
+    "indexName": "ai_governance_policy_search_index",
+    "indexMappingFile": "/elasticsearch/%s/ai_governance_policy_index_mapping.json",
+    "alias": "aiGovernancePolicy",
+    "parentAliases": [
+      "all"
+    ],
     "childAliases": []
   }
 }

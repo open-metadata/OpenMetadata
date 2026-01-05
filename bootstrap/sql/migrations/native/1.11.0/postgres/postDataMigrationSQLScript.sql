@@ -100,3 +100,9 @@ SET json = jsonb_set(
 )
 WHERE json->>'name' IN ('CollateAIQualityAgentApplication', 'CollateAITierAgentApplication')
   AND json->>'appType' = 'internal' AND json->>'sourcePythonClass' IS NULL;
+  
+-- Remove bot form App entity  
+UPDATE installed_apps SET json = json - 'bot';
+
+-- Remove SearchIndexingApplication past runs
+delete from apps_extension_time_series where appname = 'SearchIndexingApplication';

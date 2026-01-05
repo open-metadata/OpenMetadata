@@ -17,7 +17,7 @@ import { ExtensionOptions } from '../../BlockEditor/BlockEditor.interface';
 export type TextVariant = 'white' | 'black';
 
 export interface PreviewerProp {
-  markdown: string;
+  markdown?: string;
   maxLength?: number;
   className?: string;
   enableSeeMoreVariant?: boolean;
@@ -40,6 +40,7 @@ export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
   onTextChange?: (value: string) => void;
   placeHolder?: string;
   extensionOptions?: ExtensionOptions;
+  showMenu?: boolean;
 }
 
 export interface EditorContentRef {
