@@ -435,8 +435,6 @@ public class TypeResourceIT {
   void test_addHyperlinkCustomProperty(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    Type containerType = getTypeByName(client, "container");
-
     // Add a hyperlink custom property - hyperlink-cp type doesn't require any config
     String propertyName = ns.prefix("hyperlinkProp");
     CustomProperty hyperlinkProperty = new CustomProperty();
@@ -445,7 +443,7 @@ public class TypeResourceIT {
     hyperlinkProperty.setPropertyType(HYPERLINK_TYPE.getEntityReference());
     hyperlinkProperty.setDisplayName("Test Hyperlink");
 
-    Type updatedType = addCustomProperty(client, containerType.getId(), hyperlinkProperty);
+    Type updatedType = addCustomProperty(client, CONTAINER_ENTITY_TYPE.getId(), hyperlinkProperty);
 
     assertNotNull(updatedType);
     assertNotNull(updatedType.getCustomProperties());
@@ -467,8 +465,6 @@ public class TypeResourceIT {
   void test_updateHyperlinkCustomPropertyDescription(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    Type containerType = getTypeByName(client, "container");
-
     // First, add the hyperlink custom property
     String propertyName = ns.prefix("hyperlinkUpdateProp");
     CustomProperty hyperlinkProperty = new CustomProperty();
@@ -477,7 +473,7 @@ public class TypeResourceIT {
     hyperlinkProperty.setPropertyType(HYPERLINK_TYPE.getEntityReference());
     hyperlinkProperty.setDisplayName("Initial Display Name");
 
-    Type typeWithProperty = addCustomProperty(client, containerType.getId(), hyperlinkProperty);
+    Type typeWithProperty = addCustomProperty(client, CONTAINER_ENTITY_TYPE.getId(), hyperlinkProperty);
 
     // Update the description and displayName
     hyperlinkProperty.setDescription("Updated hyperlink description");
@@ -499,8 +495,6 @@ public class TypeResourceIT {
   void test_addMultipleHyperlinkCustomProperties(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    Type containerType = getTypeByName(client, "container");
-
     // Add first hyperlink property
     String prop1Name = ns.prefix("hyperlinkMulti1");
     CustomProperty hyperlinkProp1 = new CustomProperty();
@@ -509,7 +503,7 @@ public class TypeResourceIT {
     hyperlinkProp1.setPropertyType(HYPERLINK_TYPE.getEntityReference());
     hyperlinkProp1.setDisplayName("Hyperlink 1");
 
-    Type typeWithProp1 = addCustomProperty(client, containerType.getId(), hyperlinkProp1);
+    Type typeWithProp1 = addCustomProperty(client, CONTAINER_ENTITY_TYPE.getId(), hyperlinkProp1);
 
     // Add second hyperlink property
     String prop2Name = ns.prefix("hyperlinkMulti2");
