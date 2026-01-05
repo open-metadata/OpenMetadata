@@ -125,6 +125,8 @@ const DataProductsPage = () => {
           TabSpecificField.OWNERS,
           TabSpecificField.EXPERTS,
           TabSpecificField.ASSETS,
+          TabSpecificField.INPUT_PORTS,
+          TabSpecificField.OUTPUT_PORTS,
           TabSpecificField.EXTENSION,
           TabSpecificField.TAGS,
           TabSpecificField.FOLLOWERS,

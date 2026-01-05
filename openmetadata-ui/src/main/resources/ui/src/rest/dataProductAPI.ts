@@ -183,3 +183,67 @@ export const getAllDataProductsWithAssetsCount = async () => {
 
   return response.data;
 };
+
+export const addInputPortsToDataProduct = async (
+  dataProductFqn: string,
+  ports: EntityReference[]
+) => {
+  const data: { inputPorts: EntityReference[] } = {
+    inputPorts: ports,
+  };
+
+  const response = await APIClient.put<
+    { inputPorts: EntityReference[] },
+    AxiosResponse<DataProduct>
+  >(`${BASE_URL}/${getEncodedFqn(dataProductFqn)}/inputPorts/add`, data);
+
+  return response.data;
+};
+
+export const removeInputPortsFromDataProduct = async (
+  dataProductFqn: string,
+  ports: EntityReference[]
+) => {
+  const data: { inputPorts: EntityReference[] } = {
+    inputPorts: ports,
+  };
+
+  const response = await APIClient.put<
+    { inputPorts: EntityReference[] },
+    AxiosResponse<DataProduct>
+  >(`${BASE_URL}/${getEncodedFqn(dataProductFqn)}/inputPorts/remove`, data);
+
+  return response.data;
+};
+
+export const addOutputPortsToDataProduct = async (
+  dataProductFqn: string,
+  ports: EntityReference[]
+) => {
+  const data: { outputPorts: EntityReference[] } = {
+    outputPorts: ports,
+  };
+
+  const response = await APIClient.put<
+    { outputPorts: EntityReference[] },
+    AxiosResponse<DataProduct>
+  >(`${BASE_URL}/${getEncodedFqn(dataProductFqn)}/outputPorts/add`, data);
+
+  return response.data;
+};
+
+export const removeOutputPortsFromDataProduct = async (
+  dataProductFqn: string,
+  ports: EntityReference[]
+) => {
+  const data: { outputPorts: EntityReference[] } = {
+    outputPorts: ports,
+  };
+
+  const response = await APIClient.put<
+    { outputPorts: EntityReference[] },
+    AxiosResponse<DataProduct>
+  >(`${BASE_URL}/${getEncodedFqn(dataProductFqn)}/outputPorts/remove`, data);
+
+  return response.data;
+};

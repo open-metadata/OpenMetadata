@@ -488,11 +488,16 @@ const DataProductsDetailsPage = ({
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
+    const inputPortsCount = dataProduct.inputPorts?.length ?? 0;
+    const outputPortsCount = dataProduct.outputPorts?.length ?? 0;
+
     const tabs = dataProductClassBase.getDataProductDetailPageTabs({
       dataProduct,
       isVersionsView,
       dataProductPermission,
       assetCount,
+      inputPortsCount,
+      outputPortsCount,
       activeTab: activeTab as EntityTabs,
       assetTabRef,
       previewAsset,
