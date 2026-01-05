@@ -70,6 +70,12 @@ class TableauDataModelsException(Exception):
     """
 
 
+class TableauBackfillRunningException(Exception):
+    """
+    Raise when Tableau Metadata API is in backfill mode and markDeletedDashboards is True
+    """
+
+
 class TableauClient:
     """
     Wrapper to TableauServerConnection
@@ -82,6 +88,7 @@ class TableauClient:
         verify_ssl: Union[bool, str],
         pagination_limit: int,
         ssl_manager: Optional[SSLManager] = None,
+        mark_deleted_dashboards: bool = False,
     ):
         self.tableau_server = Server(str(config.hostPort), use_server_version=True)
         if config.apiVersion:
@@ -94,10 +101,55 @@ class TableauClient:
         self.owner_cache: Dict[str, TableauOwner] = {}
         self.all_projects: List[ProjectItem] = []
         self.ssl_manager = ssl_manager
+        self.mark_deleted_dashboards = mark_deleted_dashboards
 
     @cached_property
     def server_info(self) -> Callable:
         return self.tableau_server.server_info.get
+
+    def _check_backfill_running_error(self, graphql_result: dict) -> None:
+        """
+        Check if GraphQL response contains BACKFILL_RUNNING error.
+        If markDeletedDashboards is True, raises an exception to prevent incomplete data ingestion.
+        Otherwise, logs a warning.
+
+        Args:
+            graphql_result: The GraphQL query result dictionary
+
+        Raises:
+            TableauBackfillRunningException: When BACKFILL_RUNNING is detected and markDeletedDashboards is True
+        """
+        if not graphql_result:
+            return
+
+        errors = graphql_result.get("errors", [])
+        for error in errors:
+            extensions = error.get("extensions", {})
+            if extensions.get("code") == "BACKFILL_RUNNING":
+                error_msg = (
+                    "Tableau Metadata API is in backfill mode (BACKFILL_RUNNING). "
+                    "Results from the query might be incomplete at this time. "
+                    f"Error message: {error.get('message', 'No message provided')}"
+                )
+                
+                if self.mark_deleted_dashboards:
+                    logger.error(
+                        f"{error_msg}\n"
+                        "Aborting ingestion to prevent marking valid entities as deleted due to incomplete data. "
+                        "Please retry the ingestion after the Tableau backfill process completes."
+                    )
+                    raise TableauBackfillRunningException(
+                        f"{error_msg}\n"
+                        "Ingestion aborted because 'markDeletedDashboards' is set to True. "
+                        "Running ingestion during backfill could result in incorrect deletion of metadata. "
+                        "Please wait for Tableau backfill to complete and retry."
+                    )
+                else:
+                    logger.warning(
+                        f"{error_msg}\n"
+                        "Continuing with potentially incomplete data because 'markDeletedDashboards' is set to False. "
+                        "Consider retrying the ingestion after the Tableau backfill process completes for complete results."
+                    )
 
     def server_api_version(self) -> str:
         return self.tableau_server.version
@@ -331,6 +383,10 @@ class TableauClient:
                     workbook_id=dashboard_id, first=entities_per_page, offset=offset
                 )
             )
+            
+            # Check for BACKFILL_RUNNING error in GraphQL response
+            self._check_backfill_running_error(datasources_graphql_result)
+            
             if datasources_graphql_result and datasources_graphql_result.get("data"):
                 if datasources_graphql_result["data"].get("workbooks"):
                     tableau_datasource_connection = TableauDatasourcesConnection(
@@ -406,6 +462,9 @@ class TableauClient:
             if not result:
                 logger.debug("No result returned from GraphQL query")
                 return
+
+            # Check for BACKFILL_RUNNING error in GraphQL response
+            self._check_backfill_running_error(result)
 
             response = CustomSQLTablesResponse(**result)
             if not response.data:
