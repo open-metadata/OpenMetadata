@@ -27,7 +27,6 @@ from metadata.generated.schema.entity.services.connections.database.mongoDBConne
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
-from metadata.ingestion.connections.builders import get_connection_url_common
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
