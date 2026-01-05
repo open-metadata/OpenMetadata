@@ -215,7 +215,7 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
               coverImage: {
                 url: coverImageUrl,
                 ...(position !== undefined && {
-                  position: position, // Store percentage string directly (e.g., "-16%")
+                  position: position,
                 }),
               },
             },
@@ -397,10 +397,13 @@ export async function updateEntityWithCoverImage<TEntity>(
       color: styleData.color ?? undefined,
       iconURL: styleData.iconURL ?? undefined,
       coverImage:
-        coverImageUrl || coverImagePosition
+        coverImageUrl
           ? {
               url: coverImageUrl,
-              position: coverImagePosition,
+              ...(coverImagePosition !== undefined &&
+                coverImagePosition !== null && {
+                  position: coverImagePosition,
+                }),
             }
           : undefined,
     };
