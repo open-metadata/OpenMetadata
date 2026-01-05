@@ -132,11 +132,34 @@
       },
       "required": ["columns"],
       "additionalProperties": false
+    },
+    "hyperlink-cp": {
+      "$comment": "@om-field-type",
+      "title": "Hyperlink",
+      "description": "A hyperlink custom property containing a URL and optional display text. When display text is provided, it renders as a clickable hyperlink with the text label.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.customProperties.Hyperlink",
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "The URL that the hyperlink points to.",
+          "format": "uri"
+        },
+        "displayText": {
+          "type": "string",
+          "description": "Optional display text for the hyperlink. If not provided, the URL will be displayed."
+        }
+      },
+      "required": ["url"],
+      "additionalProperties": false
     }
   },
   "properties": {
     "table-cp": {
       "$ref": "#/definitions/table-cp"
+    },
+    "hyperlink-cp": {
+      "$ref": "#/definitions/hyperlink-cp"
     }
   }
 }

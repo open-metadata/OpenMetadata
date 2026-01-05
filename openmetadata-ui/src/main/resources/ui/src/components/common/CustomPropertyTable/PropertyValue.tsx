@@ -52,7 +52,10 @@ import {
   ICON_DIMENSION,
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
-import { TABLE_TYPE_CUSTOM_PROPERTY } from '../../../constants/CustomProperty.constants';
+import {
+  HYPERLINK_TYPE_CUSTOM_PROPERTY,
+  TABLE_TYPE_CUSTOM_PROPERTY,
+} from '../../../constants/CustomProperty.constants';
 import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -74,6 +77,7 @@ import InlineEdit from '../InlineEdit/InlineEdit.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import {
+  HyperlinkType,
   PropertyValueProps,
   PropertyValueType,
   TimeIntervalType,
@@ -92,19 +96,23 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   property,
   isRenderedInRightPanel = false,
 }) => {
-  const { propertyName, propertyType, value, isTableType } = useMemo(() => {
-    const propertyName = property.name;
-    const propertyType = property.propertyType;
-    const isTableType = propertyType.name === TABLE_TYPE_CUSTOM_PROPERTY;
+  const { propertyName, propertyType, value, isTableType, isHyperlinkType } =
+    useMemo(() => {
+      const propertyName = property.name;
+      const propertyType = property.propertyType;
+      const isTableType = propertyType.name === TABLE_TYPE_CUSTOM_PROPERTY;
+      const isHyperlinkType =
+        propertyType.name === HYPERLINK_TYPE_CUSTOM_PROPERTY;
 
-    const value = extension?.[propertyName];
+      const value = extension?.[propertyName];
 
-    return {
-      propertyName,
-      propertyType,
-      value,
-      isTableType,
-    };
+      return {
+        propertyName,
+        propertyType,
+        value,
+        isTableType,
+        isHyperlinkType,
+      };
   }, [property, extension]);
 
   const { t } = useTranslation();
@@ -745,6 +753,79 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         );
       }
 
+      case HYPERLINK_TYPE_CUSTOM_PROPERTY: {
+        const hyperlinkValue = value as HyperlinkType | undefined;
+        const initialValues = {
+          url: hyperlinkValue?.url ?? '',
+          displayText: hyperlinkValue?.displayText ?? '',
+        };
+
+        const formId = `hyperlink-form-${propertyName}`;
+
+        return (
+          <InlineEdit
+            className="custom-property-inline-edit-container"
+            isLoading={isLoading}
+            saveButtonProps={{
+              disabled: isLoading,
+              htmlType: 'submit',
+              form: formId,
+            }}
+            onCancel={onHideInput}
+            onSave={noop}>
+            <Form
+              id={formId}
+              initialValues={initialValues}
+              layout="vertical"
+              validateMessages={VALIDATION_MESSAGES}
+              onFinish={(values: { url: string; displayText: string }) => {
+                const hyperlinkData: HyperlinkType = {
+                  url: values.url,
+                  ...(values.displayText
+                    ? { displayText: values.displayText }
+                    : {}),
+                };
+                onInputSave(hyperlinkData);
+              }}>
+              <Form.Item
+                name="url"
+                rules={[
+                  {
+                    required: true,
+                    message: t('label.field-required', {
+                      field: t('label.url-uppercase'),
+                    }),
+                  },
+                  {
+                    type: 'url',
+                    message: t('message.invalid-url'),
+                  },
+                ]}
+                style={{ ...commonStyle, marginBottom: '16px' }}>
+                <Input
+                  allowClear
+                  data-testid="hyperlink-url-input"
+                  disabled={isLoading}
+                  placeholder={t('label.enter-entity', {
+                    entity: t('label.url-uppercase'),
+                  })}
+                />
+              </Form.Item>
+              <Form.Item name="displayText" style={commonStyle}>
+                <Input
+                  allowClear
+                  data-testid="hyperlink-display-text-input"
+                  disabled={isLoading}
+                  placeholder={t('label.enter-entity', {
+                    entity: t('label.display-text'),
+                  })}
+                />
+              </Form.Item>
+            </Form>
+          </InlineEdit>
+        );
+      }
+
       default:
         return null;
     }
@@ -950,6 +1031,25 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         return <TableTypePropertyView columns={columns} rows={rows} />;
       }
 
+      case HYPERLINK_TYPE_CUSTOM_PROPERTY: {
+        const hyperlinkValue = value as HyperlinkType | undefined;
+
+        if (!hyperlinkValue?.url) {
+          return null;
+        }
+
+        return (
+          <Typography.Link
+            className="break-all property-value"
+            data-testid="hyperlink-value"
+            href={hyperlinkValue.url}
+            rel="noopener noreferrer"
+            target="_blank">
+            {hyperlinkValue.displayText || hyperlinkValue.url}
+          </Typography.Link>
+        );
+      }
+
       case 'string':
       case 'integer':
       case 'number':
@@ -974,7 +1074,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     const propertyValue = getPropertyValue();
 
     // if value is not undefined or property is a table type(at least show the columns), return the property value
-    return !isUndefined(value) || isTableType ? (
+    return !isUndefined(value) || isTableType || isHyperlinkType ? (
       propertyValue
     ) : (
       <span className="text-grey-muted" data-testid="no-data">

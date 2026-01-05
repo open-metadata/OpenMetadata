@@ -38,6 +38,7 @@ export enum CustomPropertyType {
 }
 export enum CustomPropertyTypeByName {
   TABLE_CP = 'table-cp',
+  HYPERLINK_CP = 'hyperlink-cp',
   STRING = 'string',
   INTEGER = 'integer',
   MARKDOWN = 'markdown',
@@ -246,6 +247,21 @@ export const setValueForProperty = async (data: {
 
       break;
     }
+
+    case 'hyperlink-cp': {
+      // Value format: "url,displayText" or just "url"
+      const [url, displayText] = value.split(',');
+      await page.locator('[data-testid="hyperlink-url-input"]').isVisible();
+      await page.locator('[data-testid="hyperlink-url-input"]').fill(url);
+      if (displayText) {
+        await page
+          .locator('[data-testid="hyperlink-display-text-input"]')
+          .fill(displayText);
+      }
+      await container.locator('[data-testid="inline-save-btn"]').click();
+
+      break;
+    }
   }
   const patchRequest = await patchRequestPromise;
 
@@ -292,6 +308,19 @@ export const validateValueForProperty = async (data: {
     await expect(
       page.getByRole('row', { name: `${values[0]} ${values[1]}` })
     ).toBeVisible();
+  } else if (propertyType === 'hyperlink-cp') {
+    // Value format: "url,displayText" or just "url"
+    const [url, displayText] = value.split(',');
+    const hyperlinkElement = container.getByTestId('hyperlink-value');
+
+    await expect(hyperlinkElement).toBeVisible();
+    await expect(hyperlinkElement).toHaveAttribute('href', url);
+    // Check display text if provided, otherwise check URL is displayed
+    if (displayText) {
+      await expect(hyperlinkElement).toContainText(displayText);
+    } else {
+      await expect(hyperlinkElement).toContainText(url);
+    }
   } else if (propertyType === 'markdown') {
     // For markdown, remove * and _ as they are formatting characters
     await expect(
@@ -417,6 +446,12 @@ export const getPropertyValues = (
       return {
         value: 'column1,column2',
         newValue: 'column3,column4',
+      };
+
+    case 'hyperlink-cp':
+      return {
+        value: 'https://example.com,Example Link',
+        newValue: 'https://openmetadata.io,OpenMetadata',
       };
 
     default:

@@ -18,6 +18,7 @@ import { ReactComponent as EmailIcon } from '../assets/svg/customproperties/emai
 import { ReactComponent as EntityReferenceListIcon } from '../assets/svg/customproperties/entity-list.svg';
 import { ReactComponent as EntityReferenceIcon } from '../assets/svg/customproperties/entity.svg';
 import { ReactComponent as EnumIcon } from '../assets/svg/customproperties/enum.svg';
+import { ReactComponent as HyperlinkIcon } from '../assets/svg/customproperties/hyperlink.svg';
 import { ReactComponent as IntegerIcon } from '../assets/svg/customproperties/integer.svg';
 import { ReactComponent as MarkDownIcon } from '../assets/svg/customproperties/markdown.svg';
 import { ReactComponent as NumberIcon } from '../assets/svg/customproperties/number.svg';
@@ -179,6 +180,8 @@ export const SUPPORTED_FORMAT_MAP = {
 
 export const TABLE_TYPE_CUSTOM_PROPERTY = 'table-cp';
 
+export const HYPERLINK_TYPE_CUSTOM_PROPERTY = 'hyperlink-cp';
+
 export const CUSTOM_PROPERTIES_ICON_MAP = {
   'date-cp': DateIcon,
   'dateTime-cp': DateTimeIcon,
@@ -187,6 +190,7 @@ export const CUSTOM_PROPERTIES_ICON_MAP = {
   entityReference: EntityReferenceIcon,
   entityReferenceList: EntityReferenceListIcon,
   enum: EnumIcon,
+  'hyperlink-cp': HyperlinkIcon,
   integer: IntegerIcon,
   markdown: MarkDownIcon,
   number: NumberIcon,

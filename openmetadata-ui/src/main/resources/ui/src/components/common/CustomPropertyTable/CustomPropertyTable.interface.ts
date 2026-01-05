@@ -94,6 +94,11 @@ export type TableTypePropertyValueType = {
   rows: Record<string, string>[];
 };
 
+export type HyperlinkType = {
+  url: string;
+  displayText?: string;
+};
+
 export type PropertyValueType =
   | string
   | number
@@ -101,4 +106,5 @@ export type PropertyValueType =
   | EntityReference
   | EntityReference[]
   | TimeIntervalType
-  | TableTypePropertyValueType;
+  | TableTypePropertyValueType
+  | HyperlinkType;
