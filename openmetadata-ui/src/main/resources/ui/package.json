@@ -38,7 +38,7 @@
     "playwright:open": "playwright test --ui",
     "playwright:codegen": "playwright codegen",
     "generate:app-docs": "node generateApplicationDocs.js",
-    "generate:e2e-docs": "node playwright/doc-generator/generate.js"
+    "generate:e2e-docs": "PLAYWRIGHT_IS_OSS=true node playwright/doc-generator/generate.js"
   },
   "dependencies": {
     "@analytics/session-utils": "^0.1.17",
@@ -166,7 +166,7 @@
     "@babel/preset-env": "^7.11.0",
     "@babel/preset-react": "^7.10.4",
     "@estruyf/github-actions-reporter": "^1.7.0",
-    "@playwright/test": "1.51.1",
+    "@playwright/test": "1.57.0",
     "@testing-library/jest-dom": "^5.11.10",
     "@testing-library/react": "^14.2.1",
     "@testing-library/react-hooks": "^8.0.1",

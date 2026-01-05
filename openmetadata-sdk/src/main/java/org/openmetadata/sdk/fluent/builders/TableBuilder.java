@@ -42,6 +42,13 @@ public class TableBuilder {
   private EntityReference databaseSchemaRef;
   private EntityReference ownerRef;
 
+  /**
+   * Create a new TableBuilder with the given client.
+   */
+  public static TableBuilder create(OpenMetadataClient client) {
+    return new TableBuilder(client);
+  }
+
   public TableBuilder(OpenMetadataClient client) {
     this.client = client;
     this.request = new CreateTable();
@@ -305,41 +312,7 @@ public class TableBuilder {
    * Create the table and return the created entity.
    */
   public Table create() {
-    CreateTable createRequest = build();
-    // Convert CreateTable to Table
-    Table entity = new Table();
-    entity.setName(createRequest.getName());
-    if (createRequest.getDisplayName() != null)
-      entity.setDisplayName(createRequest.getDisplayName());
-    if (createRequest.getDescription() != null)
-      entity.setDescription(createRequest.getDescription());
-    // TODO: Map other fields as needed
-    return client.tables().create(entity);
-  }
-
-  /**
-   * Create the table with custom request options.
-   */
-  public Table create(Object options) {
-    CreateTable createRequest = build();
-    // TODO: Apply request options
-    return client.tables().create(createRequest);
-  }
-
-  /**
-   * Create or update the table (upsert).
-   */
-  public Table createOrUpdate() {
-    CreateTable createRequest = build();
-    // Convert CreateTable to Table
-    Table entity = new Table();
-    entity.setName(createRequest.getName());
-    if (createRequest.getDisplayName() != null)
-      entity.setDisplayName(createRequest.getDisplayName());
-    if (createRequest.getDescription() != null)
-      entity.setDescription(createRequest.getDescription());
-    // TODO: Map other fields as needed
-    return client.tables().upsert(entity);
+    return client.tables().create(build());
   }
 
   // ==================== Helper Methods ====================

@@ -290,6 +290,7 @@ function flattenTests(suite, testDir) {
            line: specLine,
            description: description,
            steps: steps, 
+           tags: spec.tags || [],
            isSkipped: false // We can check spec.tests[0].status or annotations
        });
     });
@@ -351,9 +352,16 @@ function loadTestsFromPlaywright(testDir) {
           });
       }
       
-      // Calculate totals
+      // Calculate totals and collect tags
       let totalTests = rootTests.length;
-      describes.forEach(d => totalTests += d.tests.length);
+      const fileTags = new Set();
+      
+      rootTests.forEach(t => t.tags && t.tags.forEach(tag => fileTags.add(tag)));
+      
+      describes.forEach(d => {
+        totalTests += d.tests.length;
+        d.tests.forEach(t => t.tags && t.tags.forEach(tag => fileTags.add(tag)));
+      });
       
       return {
           path: filePath,
@@ -362,7 +370,8 @@ function loadTestsFromPlaywright(testDir) {
           totalSteps: 0, 
           totalScenarios: totalTests,
           rootTests: rootTests,
-          describes: describes
+          describes: describes,
+          tags: Array.from(fileTags)
       };
   }
 
