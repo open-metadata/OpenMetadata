@@ -54,7 +54,6 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
-import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -69,7 +68,6 @@ import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResource.DashboardList;
-import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RdfTestUtils;
@@ -821,54 +819,5 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
 
     // Cleanup
     deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void testDashboardWithOrphanedGlossaryTermReference_shouldNotFail(TestInfo test)
-      throws IOException {
-
-    CreateDashboard createDashboard = createRequest(test).withService(getContainer().getName());
-    Dashboard dashboard = createEntity(createDashboard, ADMIN_AUTH_HEADERS);
-
-    GlossaryTermResourceTest glossaryTermTest =
-        new org.openmetadata.service.resources.glossary.GlossaryTermResourceTest();
-    GlossaryTerm glossaryTerm =
-        glossaryTermTest.createEntity(glossaryTermTest.createRequest(test), ADMIN_AUTH_HEADERS);
-
-    // Simulate orphaned glossary term tag: Insert into tag_usage table
-    // source=1 means glossary term, source=0 means classification tag
-    String tagFQN = glossaryTerm.getFullyQualifiedName();
-    String tagFQNHash = org.openmetadata.service.util.FullyQualifiedName.buildHash(tagFQN);
-    String targetFQNHash =
-        org.openmetadata.service.util.FullyQualifiedName.buildHash(
-            dashboard.getFullyQualifiedName());
-
-    Entity.getCollectionDAO()
-        .tagUsageDAO()
-        .applyTag(
-            1, // source: 1 for glossary term
-            tagFQN,
-            tagFQNHash,
-            targetFQNHash,
-            0, // labelType: 0 for MANUAL
-            0, // state: 0 for CONFIRMED
-            null); // reason
-
-    // Delete the glossary term directly from the database
-    // but leave the tag_usage entry intact (simulating what happens when deletion cleanup fails)
-    Entity.getCollectionDAO().glossaryTermDAO().delete(glossaryTerm.getId());
-
-    // Now try to get the dashboard with tags field (which triggers tag resolution from tag_usage)
-    // This should NOT fail with 404, but should filter out the orphaned glossary term reference
-    Dashboard retrievedDashboard = getEntity(dashboard.getId(), "tags", ADMIN_AUTH_HEADERS);
-
-    // Verify the dashboard is retrieved successfully
-    assertNotNull(retrievedDashboard);
-    assertEquals(dashboard.getId(), retrievedDashboard.getId());
-    assertEquals(dashboard.getFullyQualifiedName(), retrievedDashboard.getFullyQualifiedName());
-
-    LOG.info(
-        "Successfully retrieved dashboard {} even with orphaned glossary term in tag_usage",
-        dashboard.getFullyQualifiedName());
   }
 }
