@@ -21,7 +21,7 @@ import {
 } from '../generated/api/teams/createUser';
 import { PersonalAccessToken } from '../generated/auth/personalAccessToken';
 import { Bot } from '../generated/entity/bot';
-import { User } from '../generated/entity/teams/user';
+import { JWTTokenExpiry, User } from '../generated/entity/teams/user';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -129,7 +129,7 @@ export const revokeUserToken = async (id: string) => {
  */
 export interface GenerateTokenRequest {
   id: string;
-  JWTTokenExpiry: string;
+  JWTTokenExpiry: JWTTokenExpiry;
 }
 
 export const generateUserToken = async (request: GenerateTokenRequest) => {

@@ -24,6 +24,7 @@ import { PersonalAccessToken } from '../../../../generated/auth/personalAccessTo
 import {
   AuthenticationMechanism,
   AuthType,
+  JWTTokenExpiry,
 } from '../../../../generated/entity/teams/user';
 import {
   createUserWithPut,
@@ -106,7 +107,9 @@ const AccessTokenCard: FC<MockProps> = ({
         if (updatedAuthMechanism.authType === AuthType.Jwt) {
           await generateUserToken({
             id: botUserData.id,
-            JWTTokenExpiry: updatedAuthMechanism.config?.JWTTokenExpiry ?? '',
+            JWTTokenExpiry:
+              updatedAuthMechanism.config?.JWTTokenExpiry ??
+              JWTTokenExpiry.Unlimited,
           });
           fetchAuthMechanismForBot();
         } else {
