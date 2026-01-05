@@ -383,6 +383,18 @@ test.describe('Glossary Advanced Operations', () => {
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
+      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+        state: 'visible',
+      });
+
+      await page
+        .getByTestId('domain-selectable-tree')
+        .getByTestId('searchbar')
+        .fill(domain.responseData.name);
+        
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       // Click on the selected domain again to deselect/remove it
       const removePatchReq = page.waitForResponse(
@@ -392,6 +404,7 @@ test.describe('Glossary Advanced Operations', () => {
       const selectedDomainTag = page.getByTestId(
         `tag-${domain.responseData.fullyQualifiedName}`
       );
+      await expect(selectedDomainTag).toBeVisible();
       await selectedDomainTag.click();
       await removePatchReq;
       await page.waitForSelector('[data-testid="loader"]', {
