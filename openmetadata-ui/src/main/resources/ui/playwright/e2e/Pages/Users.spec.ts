@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { test, expect } from '../../support/fixtures/userPages';
 import {
   DATA_CONSUMER_RULES,
   DATA_STEWARD_RULES,
@@ -40,7 +41,6 @@ import {
 } from '../../utils/common';
 import { addOwner, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
-import { test, expect } from '../../support/fixtures/userPages';
 import {
   addUser,
   checkDataConsumerPermissions,
@@ -128,8 +128,12 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await tableEntity2.create(apiContext);
   await policy.create(apiContext, DATA_STEWARD_RULES);
   await role.create(apiContext, [policy.responseData.name]);
-  await persona1.create(apiContext, [adminUser.responseData.id]);
-  await persona2.create(apiContext, [adminUser.responseData.id]);
+
+  const adminUserResponse = await apiContext.get('/api/v1/users/name/admin');
+  const adminUserData = await adminUserResponse.json();
+
+  await persona1.create(apiContext, [adminUserData.id]);
+  await persona2.create(apiContext, [adminUserData.id]);
 
   await afterAction();
 });
@@ -556,13 +560,11 @@ test.describe.serial('User Profile Dropdown Persona Interactions', () => {
   test.beforeAll('Prerequisites', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    // Get admin user - the user that adminPage fixture uses
     const adminUserResponse = await apiContext.get(
       '/api/v1/users/name/admin?fields=personas,defaultPersona'
     );
     const adminUserData = await adminUserResponse.json();
 
-    // Build patch operations - remove existing then add new
     const patchOperations = [];
 
     if (adminUserData.defaultPersona) {
@@ -649,13 +651,16 @@ test.describe.serial('User Profile Dropdown Persona Interactions', () => {
   test('Should display persona dropdown with pagination', async ({
     adminPage,
   }) => {
+    // Open user profile dropdown
     await adminPage.locator('[data-testid="dropdown-profile"]').click();
     await adminPage.waitForSelector('[role="menu"].profile-dropdown', {
       state: 'visible',
     });
 
+    // Verify personas section is visible
     await expect(adminPage.getByText('Switch Persona')).toBeVisible();
 
+    // Initially should show limited personas (2 by default)
     const initialPersonaLabels = adminPage.locator(
       '[data-testid="persona-label"]'
     );
@@ -663,10 +668,12 @@ test.describe.serial('User Profile Dropdown Persona Interactions', () => {
 
     expect(initialCount).toBeLessThanOrEqual(2);
 
+    // Check if "more" button exists and click it
     const moreButton = adminPage.getByText(/\d+ More/);
     if (await moreButton.isVisible()) {
       await moreButton.click();
 
+      // Verify all personas are now visible
       const expandedPersonaLabels = adminPage.locator(
         '[data-testid="persona-label"]'
       );
@@ -679,20 +686,24 @@ test.describe.serial('User Profile Dropdown Persona Interactions', () => {
   test('Should display default persona tag correctly', async ({
     adminPage,
   }) => {
+    // Open user profile dropdown
     await adminPage.locator('[data-testid="dropdown-profile"]').click();
     await adminPage.waitForSelector('[role="menu"].profile-dropdown', {
       state: 'visible',
     });
 
+    // Expand personas if needed
     const moreButton = adminPage.getByText(/\d+ More/);
     if (await moreButton.isVisible()) {
       await moreButton.click();
     }
 
+    // Verify default persona tag is visible
     await expect(
       adminPage.locator('[data-testid="default-persona-tag"]')
     ).toBeVisible();
 
+    // Verify default persona is first in the list
     const personaLabels = adminPage.locator('[data-testid="persona-label"]');
     const firstPersona = personaLabels.first();
 
@@ -917,7 +928,7 @@ test.describe.serial('User Profile Dropdown Persona Interactions', () => {
     });
 
     // Select the second persona as default
-    await adminPage.getByTitle(persona2.responseData.displayName).click();
+    await adminPage.getByTitle(persona2.data.displayName).click();
 
     const defaultPersonaChangeResponse =
       adminPage.waitForResponse('/api/v1/users/*');
@@ -1023,35 +1034,47 @@ test.describe.serial('User Profile Dropdown Persona Interactions', () => {
 });
 
 test.describe('User Profile Persona Interactions', () => {
-  test.beforeEach(async ({ browser }) => {
-    const { apiContext, afterAction } = await performUserLogin(
-      browser,
-      adminUser
-    );
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    // Patch admin user to add personas
-    await adminUser.patch({
-      apiContext,
-      patchData: [
+    const adminUserResponse = await apiContext.get(
+      '/api/v1/users/name/admin?fields=personas,defaultPersona'
+    );
+    const adminUserData = await adminUserResponse.json();
+
+    const patchOperations = [];
+
+    if (adminUserData.defaultPersona) {
+      patchOperations.push({ op: 'remove', path: '/defaultPersona' });
+    }
+    if (adminUserData.personas?.length > 0) {
+      patchOperations.push({ op: 'remove', path: '/personas' });
+    }
+
+    patchOperations.push({
+      op: 'add',
+      path: '/personas',
+      value: [
         {
-          op: 'add',
-          path: '/personas',
-          value: [
-            {
-              id: persona1.responseData.id,
-              type: 'persona',
-              name: persona1.responseData.name,
-              fullyQualifiedName: persona1.responseData.fullyQualifiedName,
-            },
-            {
-              id: persona2.responseData.id,
-              type: 'persona',
-              name: persona2.responseData.name,
-              fullyQualifiedName: persona2.responseData.fullyQualifiedName,
-            },
-          ],
+          id: persona1.responseData.id,
+          type: 'persona',
+          name: persona1.responseData.name,
+          fullyQualifiedName: persona1.responseData.fullyQualifiedName,
+        },
+        {
+          id: persona2.responseData.id,
+          type: 'persona',
+          name: persona2.responseData.name,
+          fullyQualifiedName: persona2.responseData.fullyQualifiedName,
         },
       ],
+    });
+
+    await apiContext.patch(`/api/v1/users/${adminUserData.id}`, {
+      data: patchOperations,
+      headers: {
+        'Content-Type': 'application/json-patch+json',
+      },
     });
 
     await afterAction();
@@ -1351,60 +1374,61 @@ test.describe(
       await afterAction();
     });
 
-    test('User Performance across different entities pages', async ({
-      browser,
-    }) => {
-      const { page, afterAction } = await performUserLogin(browser, user);
+    test(
+      'User Performance across different entities pages',
+      async ({ browser }) => {
+        const { page, afterAction } = await performUserLogin(browser, user);
 
-      for (const entity of entities) {
-        await entity.visitEntityPage(page);
-        await page.waitForLoadState('networkidle');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        for (const entity of entities) {
+          await entity.visitEntityPage(page);
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
 
-        await expect(page.getByTestId('entity-header-name')).toHaveText(
-          entity.entityResponseData.name
-        );
+          await expect(page.getByTestId('entity-header-name')).toHaveText(
+            entity.entityResponseData.name
+          );
 
-        const feedResponse = page.waitForResponse(
-          '/api/v1/feed?entityLink=*&type=Conversation'
-        );
+          const feedResponse = page.waitForResponse(
+            '/api/v1/feed?entityLink=*&type=Conversation'
+          );
 
-        await page.getByTestId('activity_feed').click();
-        await feedResponse;
+          await page.getByTestId('activity_feed').click();
+          await feedResponse;
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
 
-        await expect(
-          page.getByTestId('global-setting-left-panel').getByText('All')
-        ).toBeVisible();
+          await expect(
+            page.getByTestId('global-setting-left-panel').getByText('All')
+          ).toBeVisible();
 
-        await expect(
-          page.getByTestId('global-setting-left-panel').getByText('Tasks')
-        ).toBeVisible();
+          await expect(
+            page.getByTestId('global-setting-left-panel').getByText('Tasks')
+          ).toBeVisible();
 
-        const lineageResponse = page.waitForResponse(
-          `/api/v1/lineage/getLineage?fqn=${entity.entityResponseData.fullyQualifiedName}&type=**`
-        );
+          const lineageResponse = page.waitForResponse(
+            `/api/v1/lineage/getLineage?fqn=${entity.entityResponseData.fullyQualifiedName}&type=**`
+          );
 
-        await page.getByTestId('lineage').click();
-        await lineageResponse;
+          await page.getByTestId('lineage').click();
+          await lineageResponse;
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
 
-        await expect(
-          page.getByTestId(
-            `lineage-node-${entity.entityResponseData.fullyQualifiedName}`
-          )
-        ).toBeVisible();
+          await expect(
+            page.getByTestId(
+              `lineage-node-${entity.entityResponseData.fullyQualifiedName}`
+            )
+          ).toBeVisible();
+        }
+
+        await afterAction();
       }
-
-      await afterAction();
-    });
+    );
   }
 );
