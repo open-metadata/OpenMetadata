@@ -175,7 +175,14 @@ export const tokenExpirationForDays = async (page: Page) => {
       `ccc d'th' MMMM, yyyy`
     );
 
+    // Wait for the new generateToken API endpoint
+    const generateTokenResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/generateToken') &&
+        response.request().method() === 'POST'
+    );
     await page.click('[data-testid="save-edit"]');
+    await generateTokenResponse;
 
     await expect(
       page.locator('[data-testid="center-panel"] [data-testid="revoke-button"]')
@@ -197,8 +204,15 @@ export const tokenExpirationUnlimitedDays = async (page: Page) => {
   await page.click('[data-testid="token-expiry"]');
   // Select unlimited days
   await page.getByText('Unlimited').click();
+  // Wait for the new generateToken API endpoint
+  const generateTokenResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/users/generateToken') &&
+      response.request().method() === 'POST'
+  );
   // Save the selected changes
   await page.click('[data-testid="save-edit"]');
+  await generateTokenResponse;
 
   // Verify the updated expiry time
   const revokeButton = page.locator(
@@ -256,7 +270,14 @@ export const resetTokenFromBotPage = async (page: Page, botName: string) => {
 
   await expect(page.getByTestId('save-edit')).toBeVisible();
 
+  // Wait for the new generateToken API endpoint
+  const generateTokenResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/users/generateToken') &&
+      response.request().method() === 'POST'
+  );
   await page.getByTestId('save-edit').click();
+  await generateTokenResponse;
 
   await redirectToHomePage(page);
 };

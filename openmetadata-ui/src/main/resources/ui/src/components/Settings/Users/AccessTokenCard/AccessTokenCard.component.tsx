@@ -27,6 +27,7 @@ import {
 } from '../../../../generated/entity/teams/user';
 import {
   createUserWithPut,
+  generateUserToken,
   getAuthMechanismForBotUser,
   getUserAccessToken,
   revokeAccessToken,
@@ -101,44 +102,49 @@ const AccessTokenCard: FC<MockProps> = ({
     setIsUpdating(true);
     if (botUserData && botData) {
       try {
-        const {
-          isAdmin,
-          timezone,
-          name,
-          description,
-          displayName,
-          profile,
-          email,
-          isBot,
-        } = botUserData;
-
-        const response = await createUserWithPut({
-          isAdmin,
-          timezone,
-          name,
-          description,
-          displayName,
-          profile,
-          email,
-          isBot,
-          authenticationMechanism: {
-            ...botUserData.authenticationMechanism,
-            authType: updatedAuthMechanism.authType,
-            config:
-              updatedAuthMechanism.authType === AuthType.Jwt
-                ? {
-                    JWTTokenExpiry: updatedAuthMechanism.config?.JWTTokenExpiry,
-                  }
-                : {
-                    ssoServiceType: updatedAuthMechanism.config?.ssoServiceType,
-                    authConfig: updatedAuthMechanism.config?.authConfig,
-                  },
-          },
-          botName: botData.name,
-        });
-
-        if (response) {
+        // Use the new generateToken API for bot token generation
+        if (updatedAuthMechanism.authType === AuthType.Jwt) {
+          await generateUserToken({
+            id: botUserData.id,
+            JWTTokenExpiry: updatedAuthMechanism.config?.JWTTokenExpiry ?? '',
+          });
           fetchAuthMechanismForBot();
+        } else {
+          // Fallback to createUserWithPut for non-JWT auth mechanisms (e.g., SSO)
+          const {
+            isAdmin,
+            timezone,
+            name,
+            description,
+            displayName,
+            profile,
+            email,
+            isBot,
+          } = botUserData;
+
+          const response = await createUserWithPut({
+            isAdmin,
+            timezone,
+            name,
+            description,
+            displayName,
+            profile,
+            email,
+            isBot,
+            authenticationMechanism: {
+              ...botUserData.authenticationMechanism,
+              authType: updatedAuthMechanism.authType,
+              config: {
+                ssoServiceType: updatedAuthMechanism.config?.ssoServiceType,
+                authConfig: updatedAuthMechanism.config?.authConfig,
+              },
+            },
+            botName: botData.name,
+          });
+
+          if (response) {
+            fetchAuthMechanismForBot();
+          }
         }
       } catch (error) {
         showErrorToast(error as AxiosError);

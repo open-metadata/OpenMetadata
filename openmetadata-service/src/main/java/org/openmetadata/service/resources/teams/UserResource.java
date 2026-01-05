@@ -829,6 +829,80 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(Response.Status.OK).entity(jwtAuthMechanism).build();
   }
 
+  @POST
+  @Path("/generateToken")
+  @Operation(
+      operationId = "generateJWTTokenForUser",
+      summary = "Generate JWT Token for a User",
+      description =
+          "Generate JWT Token for a bot user. Admins can generate tokens for bot users, "
+              + "and users can generate their own personal access tokens.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The JWT auth mechanism with the generated token",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = JWTAuthMechanism.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - User not authorized")
+      })
+  public Response generateTokenWithId(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid GenerateTokenRequest generateTokenRequest) {
+    UUID userId = generateTokenRequest.getId();
+    if (userId == null) {
+      throw new IllegalArgumentException("User ID is required for token generation");
+    }
+
+    User user = repository.get(uriInfo, userId, repository.getFieldsWithUserAuth("*"));
+
+    // Permission check: admins can generate tokens for bot users,
+    // users can generate their own tokens
+    String currentUserName = securityContext.getUserPrincipal().getName();
+    boolean isCurrentUser = currentUserName.equalsIgnoreCase(user.getName());
+    boolean isBotUser = Boolean.TRUE.equals(user.getIsBot());
+
+    if (isBotUser) {
+      // For bot users, only admins can generate tokens
+      authorizer.authorizeAdmin(securityContext);
+    } else if (!isCurrentUser) {
+      // For non-bot users, only the user themselves can generate their own token
+      // or an admin can do it
+      try {
+        authorizer.authorizeAdmin(securityContext);
+      } catch (AuthorizationException e) {
+        throw new AuthorizationException(
+            "Users can only generate tokens for themselves. "
+                + "Admins can generate tokens for bot users.");
+      }
+    }
+
+    JWTAuthMechanism jwtAuthMechanism =
+        jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
+    AuthenticationMechanism authenticationMechanism =
+        new AuthenticationMechanism()
+            .withConfig(jwtAuthMechanism)
+            .withAuthType(AuthenticationMechanism.AuthType.JWT);
+    user.setAuthenticationMechanism(authenticationMechanism);
+    User updatedUser =
+        repository
+            .createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName())
+            .getEntity();
+    jwtAuthMechanism =
+        JsonUtils.convertValue(
+            updatedUser.getAuthenticationMechanism().getConfig(), JWTAuthMechanism.class);
+    // Invalidate any cached token for this user
+    if (isBotUser) {
+      BotTokenCache.invalidateToken(user.getName());
+    } else {
+      UserTokenCache.invalidateToken(user.getName());
+    }
+    return Response.status(Response.Status.OK).entity(jwtAuthMechanism).build();
+  }
+
   @PUT
   @Path("/revokeToken")
   @Operation(

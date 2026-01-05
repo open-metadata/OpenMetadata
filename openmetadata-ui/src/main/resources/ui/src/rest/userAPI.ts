@@ -122,6 +122,20 @@ export const revokeUserToken = async (id: string) => {
   return response.data;
 };
 
+export interface GenerateTokenRequest {
+  id: string;
+  JWTTokenExpiry: string;
+}
+
+export const generateUserToken = async (request: GenerateTokenRequest) => {
+  const response = await APIClient.post<
+    GenerateTokenRequest,
+    AxiosResponse<AuthenticationMechanism['config']>
+  >('/users/generateToken', request);
+
+  return response.data;
+};
+
 export const getAuthMechanismForBotUser = async (botId: string) => {
   const response = await APIClient.get<AuthenticationMechanism>(
     `/users/auth-mechanism/${botId}`

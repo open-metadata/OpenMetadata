@@ -1506,6 +1506,105 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
+  void post_generateToken_bot_user_200_ok() throws HttpResponseException {
+    // Test the new POST /generateToken endpoint with ID in request body
+    AuthenticationMechanism authMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthType.JWT)
+            .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+    CreateUser create =
+        createBotUserRequest("ingestion-bot-jwt-post")
+            .withEmail("ingestion-bot-jwt-post@email.com")
+            .withRoles(List.of(ROLE1_REF.getId()))
+            .withAuthenticationMechanism(authMechanism);
+    User user = createEntity(create, USER_WITH_CREATE_HEADERS);
+    user = getEntity(user.getId(), "*", ADMIN_AUTH_HEADERS);
+    // Has the given role and the default bot role
+    assertEquals(2, user.getRoles().size());
+
+    // Use the new POST endpoint with ID in request body
+    JWTAuthMechanism jwtAuthMechanism =
+        TestUtils.post(
+            getResource("users/generateToken"),
+            new GenerateTokenRequest().withId(user.getId()).withJWTTokenExpiry(JWTTokenExpiry.Seven),
+            JWTAuthMechanism.class,
+            OK.getStatusCode(),
+            ADMIN_AUTH_HEADERS);
+    assertNotNull(jwtAuthMechanism.getJWTToken());
+    DecodedJWT jwt = decodedJWT(jwtAuthMechanism.getJWTToken());
+    Date date = jwt.getExpiresAt();
+    long daysBetween = ((date.getTime() - jwt.getIssuedAt().getTime()) / (1000 * 60 * 60 * 24));
+    assertTrue(daysBetween >= 6);
+    assertEquals("ingestion-bot-jwt-post", jwt.getClaims().get("sub").asString());
+    assertEquals(true, jwt.getClaims().get("isBot").asBoolean());
+
+    // Verify token was actually generated
+    JWTAuthMechanism fetchedMechanism =
+        TestUtils.get(
+            getResource(String.format("users/token/%s", user.getId())),
+            JWTAuthMechanism.class,
+            ADMIN_AUTH_HEADERS);
+    assertNotNull(fetchedMechanism.getJWTToken());
+
+    // Test revoke token using the existing endpoint
+    TestUtils.put(
+        getResource("users/revokeToken"),
+        new RevokeTokenRequest().withId(user.getId()),
+        OK,
+        ADMIN_AUTH_HEADERS);
+    jwtAuthMechanism =
+        TestUtils.get(
+            getResource(String.format("users/token/%s", user.getId())),
+            JWTAuthMechanism.class,
+            ADMIN_AUTH_HEADERS);
+    assertEquals(StringUtils.EMPTY, jwtAuthMechanism.getJWTToken());
+  }
+
+  @Test
+  void post_generateToken_non_admin_forbidden() throws HttpResponseException {
+    // Test that non-admin users cannot generate tokens for bot users
+    AuthenticationMechanism authMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthType.JWT)
+            .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+    CreateUser create =
+        createBotUserRequest("ingestion-bot-jwt-forbidden")
+            .withEmail("ingestion-bot-jwt-forbidden@email.com")
+            .withRoles(List.of(ROLE1_REF.getId()))
+            .withAuthenticationMechanism(authMechanism);
+    User botUser = createEntity(create, USER_WITH_CREATE_HEADERS);
+
+    // Non-admin user should not be able to generate token for bot user
+    assertResponse(
+        () ->
+            TestUtils.post(
+                getResource("users/generateToken"),
+                new GenerateTokenRequest()
+                    .withId(botUser.getId())
+                    .withJWTTokenExpiry(JWTTokenExpiry.Seven),
+                JWTAuthMechanism.class,
+                FORBIDDEN.getStatusCode(),
+                TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        notAdmin(TEST_USER_NAME));
+  }
+
+  @Test
+  void post_generateToken_missing_id_bad_request() throws HttpResponseException {
+    // Test that missing ID returns bad request
+    assertResponse(
+        () ->
+            TestUtils.post(
+                getResource("users/generateToken"),
+                new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Seven),
+                JWTAuthMechanism.class,
+                BAD_REQUEST.getStatusCode(),
+                ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "User ID is required for token generation");
+  }
+
+  @Test
   void post_createUser_BasicAuth_AdminCreate_login_200_ok(TestInfo test)
       throws HttpResponseException {
     // Create a user with Auth and Try Logging in
