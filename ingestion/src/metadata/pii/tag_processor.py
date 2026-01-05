@@ -12,6 +12,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.pii.algorithms.presidio_utils import load_nlp_engine
 from metadata.pii.algorithms.tag_scoring import ScoreTagsForColumnService
 from metadata.pii.base_processor import AutoClassificationProcessor
 from metadata.pii.classification_manager import (
@@ -68,7 +69,9 @@ class TagProcessor(AutoClassificationProcessor):
 
         # Service that runs analyzers
         if score_tags_for_column is None:
-            score_tags_for_column = ScoreTagsForColumnService()
+            score_tags_for_column = ScoreTagsForColumnService(
+                nlp_engine=load_nlp_engine()
+            )
         self.score_tags_for_column = score_tags_for_column
 
         logger.info(

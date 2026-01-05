@@ -17,8 +17,8 @@ const { execSync } = require('child_process');
 const { generateDomainMarkdown, generateIndexMarkdown } = require('./markdown.js');
 const { loadTestsFromPlaywright } = require('./playwright-loader.js');
 
-// Constants
-// Script is in: openmetadata-ui/src/main/resources/ui/playwright/doc-generator/
+// Constants for Default Run
+const DEFAULT_REPO_BASE_URL = 'https://github.com/open-metadata/OpenMetadata';
 const PLAYWRIGHT_DIR = path.resolve(__dirname, '../e2e');
 const OUTPUT_DIR = path.resolve(__dirname, '../docs');
 
@@ -114,35 +114,58 @@ const DOMAIN_MAPPING = {
   'Service': { domain: 'Integration', name: 'Connectors' },
   'Ingestion': { domain: 'Integration', name: 'Connectors' },
   'Query': { domain: 'Integration', name: 'Connectors' }, // QueryEntity
+  'ApiCollection': { domain: 'Integration', name: 'Connectors' },
 };
 
-function getComponentInfo(fileName) {
-  for (const [key, def] of Object.entries(DOMAIN_MAPPING)) {
+function getComponentInfo(fileName, domainMapping, tags = []) {
+  // 1. Check Tags first (highest priority)
+  // Tags should be like "@Domain:Component" or just "@Domain"
+  for (const tag of tags) {
+    // Remove @ if present
+    const cleanTag = tag.startsWith('@') ? tag.substring(1) : tag;
+    
+    // Check if tag matches a known domain mapping key directly
+    if (domainMapping[cleanTag]) {
+       return domainMapping[cleanTag];
+    }
+  }
+
+  // 2. Fallback to Filename matching
+  for (const [key, def] of Object.entries(domainMapping)) {
     if (fileName.includes(key)) return def;
   }
   return { domain: 'Platform', name: 'Other' };
 }
 
-function main() {
+/**
+ * Main Generation Logic
+ * @param {Object} options - Configuration options
+ * @param {string} options.playwrightDir - Path to Playwright tests
+ * @param {string} options.outputDir - Output path for docs
+ * @param {string} options.repoBaseUrl - Base URL for Git links (e.g. GitHub blob)
+ * @param {Object} options.domainMapping - Mapping of files to components
+ */
+function generateDocs({ playwrightDir, outputDir, repoBaseUrl, domainMapping }) {
   console.log(`🚀 Starting Documentation Generation (Node.js)`);
-  console.log(`   Input: ${PLAYWRIGHT_DIR}`);
-  console.log(`   Output: ${OUTPUT_DIR}`);
+  console.log(`   Input: ${playwrightDir}`);
+  console.log(`   Output: ${outputDir}`);
+  console.log(`   Repo Base: ${repoBaseUrl}`);
 
-  if (!fs.existsSync(PLAYWRIGHT_DIR)) {
+  if (!fs.existsSync(playwrightDir)) {
     console.error(`❌ Playwright directory not found!`);
     process.exit(1);
   }
 
   // 1. Find and Parse Files using Native Playwright Loader
   console.log(`📝 asking Playwright to list tests...`);
-  const parsedFiles = loadTestsFromPlaywright(PLAYWRIGHT_DIR);
+  const parsedFiles = loadTestsFromPlaywright(playwrightDir);
   console.log(`   Received ${parsedFiles.length} file suites from Playwright.`);
 
   // 2. Group by Domain + Component
   const groupings = new Map();
   
   parsedFiles.forEach(file => {
-    const { domain, name } = getComponentInfo(file.fileName);
+    const { domain, name } = getComponentInfo(file.fileName, domainMapping, file.tags);
     const key = `${domain}:${name}`;
     
     if (!groupings.has(key)) {
@@ -166,10 +189,10 @@ function main() {
   console.log(`⚙️  Generating Markdown for ${components.length} components...`);
   
   // Clean output directory
-  if (fs.existsSync(OUTPUT_DIR)) {
-    fs.rmSync(OUTPUT_DIR, { recursive: true, force: true }); 
+  if (fs.existsSync(outputDir)) {
+    fs.rmSync(outputDir, { recursive: true, force: true }); 
   }
-  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  fs.mkdirSync(outputDir, { recursive: true });
 
   // Stats
   const stats = {
@@ -188,27 +211,41 @@ function main() {
 
   // Generate Consolidated Domain Pages
   Object.entries(componentsByDomain).forEach(([domain, comps]) => {
-    const content = generateDomainMarkdown(domain, comps);
-    fs.writeFileSync(path.join(OUTPUT_DIR, `${domain}.md`), content);
+    const content = generateDomainMarkdown(domain, comps, { repoBaseUrl });
+    fs.writeFileSync(path.join(outputDir, `${domain}.md`), content);
     console.log(`   ✓ ${domain}.md`);
   });
 
   // Generate Main Index (README.md)
-  fs.writeFileSync(path.join(OUTPUT_DIR, 'README.md'), generateIndexMarkdown(components, stats));
+  fs.writeFileSync(path.join(outputDir, 'README.md'), generateIndexMarkdown(components, stats));
   console.log(`   ✓ README.md`);
 
   // 5. Stage files in Git
   try {
     console.log(`\n📦 Staging generated docs...`);
-    execSync('git add .', { cwd: OUTPUT_DIR, stdio: 'inherit' });
-    console.log(`   ✓ git add completed for ${OUTPUT_DIR}`);
+    execSync('git add .', { cwd: outputDir, stdio: 'inherit' });
+    console.log(`   ✓ git add completed for ${outputDir}`);
   } catch (error) {
     console.error(`   ⚠️  Warning: Failed to stage files with git.`);
     console.error(error.message);
   }
 
   console.log(`\n✅ Success! Documentation generated in:`);
-  console.log(`   ${OUTPUT_DIR}`);
+  console.log(`   ${outputDir}`);
 }
 
-main();
+
+// Check if run directly
+if (require.main === module) {
+  generateDocs({
+    playwrightDir: PLAYWRIGHT_DIR,
+    outputDir: OUTPUT_DIR,
+    repoBaseUrl: DEFAULT_REPO_BASE_URL,
+    domainMapping: DOMAIN_MAPPING
+  });
+}
+
+module.exports = {
+  generateDocs,
+  DOMAIN_MAPPING
+};

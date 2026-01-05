@@ -1,0 +1,21 @@
+{
+    "name": "Mulesoft",
+    "displayName": "Mulesoft Test Connection",
+    "description": "This Test Connection validates the access against the MuleSoft Anypoint Platform and basic metadata extraction of applications.",
+    "steps": [
+        {
+            "name": "GetEnvironments",
+            "description": "Check if we can successfully list environments from MuleSoft Anypoint Platform.",
+            "errorMessage": "Failed to retrieve environments from MuleSoft. Please validate the credentials and API access.",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "GetApplications",
+            "description": "Check if we can successfully list applications from MuleSoft Anypoint Platform.",
+            "errorMessage": "Failed to retrieve applications from MuleSoft. Please ensure you have proper permissions.",
+            "shortCircuit": true,
+            "mandatory": true
+        }
+    ]
+}

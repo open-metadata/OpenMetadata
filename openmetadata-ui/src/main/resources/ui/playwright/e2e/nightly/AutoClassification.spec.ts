@@ -69,7 +69,7 @@ test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
     await test
       .expect(
         page.locator(
-          `[data-row-key*="user_name"] [data-testid="tag-PII.Sensitive"] `
+          `[data-row-key*="user_name"] [data-testid="tag-General.Person"] `
         )
       )
       .toBeAttached();
@@ -77,7 +77,7 @@ test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
     await test
       .expect(
         page.locator(
-          `[data-row-key*="DWH_X10"] [data-testid="tag-PII.Sensitive"] `
+          `[data-row-key*="DWH_X10"] [data-testid="tag-General.Email"] `
         )
       )
       .toBeAttached();
