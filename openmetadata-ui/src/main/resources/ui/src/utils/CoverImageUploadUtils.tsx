@@ -278,7 +278,7 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
         (error as AxiosError)
       ),
       t('server.add-entity-error', {
-        entity: entityLabel.toLowerCase(),
+        entity: entityLabel,
       }),
       { vertical: 'top', horizontal: 'center' },
       closeSnackbar
@@ -357,7 +357,6 @@ export async function updateEntityWithCoverImage<TEntity>(
       | { url?: string; position?: { y?: string }; file?: File }
       | undefined;
 
-    console.log('coverImageData', coverImageData);
     let coverImageUrl: string | undefined;
     let coverImagePosition: string | undefined;
 
@@ -431,7 +430,7 @@ export async function updateEntityWithCoverImage<TEntity>(
     showNotistackSuccess(
       enqueueSnackbar,
       <Typography sx={{ fontWeight: 600 }} variant="body2">
-        {t('server.entity-updated-successfully', { entity: entityLabel })}
+        {t('server.update-entity-success', { entity: entityLabel })}
       </Typography>,
       closeSnackbar
     );
@@ -446,7 +445,7 @@ export async function updateEntityWithCoverImage<TEntity>(
       enqueueSnackbar,
       error as AxiosError,
       t('server.entity-updating-error', {
-        entity: entityLabel.toLowerCase(),
+        entity: entityLabel,
       }),
       { vertical: 'top', horizontal: 'center' },
       closeSnackbar
