@@ -63,7 +63,7 @@ export const redirectToHomePage = async (
   await page.goto('/');
   await page.waitForURL('**/my-data');
   if (waitForNetworkIdle) {
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   }
 };
 
@@ -511,13 +511,14 @@ export const getRandomLastName = () => {
 };
 
 export const generateRandomUsername = (prefix = '') => {
+  const timestamp = Date.now();
   const firstName = `${prefix}${getRandomFirstName()}`;
   const lastName = `${prefix}${getRandomLastName()}`;
 
   return {
     firstName,
     lastName,
-    email: `${firstName}.${lastName}@example.com`,
+    email: `${firstName}.${lastName}.${timestamp}@example.com`,
     password: 'User@OMD123',
   };
 };

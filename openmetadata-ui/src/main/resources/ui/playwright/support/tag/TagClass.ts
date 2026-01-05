@@ -43,6 +43,8 @@ export type TagData = {
   displayName: string;
   classification: string;
   name: string;
+  autoClassificationEnabled?: boolean;
+  autoClassificationPriority?: number;
 };
 
 export class TagClass {
@@ -54,7 +56,7 @@ export class TagClass {
   constructor(tag: Partial<TagData>) {
     this.randomName = getRandomLastName();
     this.data = {
-      name: `pw-tier-${this.randomName}`,
+      name: tag?.name ?? `pw-tier-${this.randomName}`,
       displayName: `PW Tier ${this.randomName}`,
       description: 'Tier tag for the Collate platform',
       style: {
@@ -62,6 +64,13 @@ export class TagClass {
       },
       classification: tag.classification ?? 'Tier',
     };
+    if (typeof tag.autoClassificationEnabled === 'boolean') {
+      this.data.autoClassificationEnabled = tag.autoClassificationEnabled;
+    }
+
+    if (typeof tag.autoClassificationPriority === 'number') {
+      this.data.autoClassificationPriority = tag.autoClassificationPriority;
+    }
   }
 
   async visitPage(page: Page) {

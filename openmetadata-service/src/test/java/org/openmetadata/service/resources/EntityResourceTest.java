@@ -422,6 +422,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static EntityReference MLFLOW_REFERENCE;
 
+  public static EntityReference OPENAI_REFERENCE;
+
   public static EntityReference S3_OBJECT_STORE_SERVICE_REFERENCE;
   public static EntityReference ELASTICSEARCH_SEARCH_SERVICE_REFERENCE;
   public static EntityReference OPENSEARCH_SEARCH_SERVICE_REFERENCE;
@@ -594,6 +596,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new APIServiceResourceTest().setupAPIService(test);
     new MetadataServiceResourceTest().setupMetadataServices();
     new DriveServiceResourceTest().setupDriveServices(test);
+    new org.openmetadata.service.resources.services.llm.LLMServiceResourceTest()
+        .setupLLMServices(test);
     new TableResourceTest().setupDatabaseSchemas(test);
     new TestSuiteResourceTest().setupTestSuites(test);
     new TestDefinitionResourceTest().setupTestDefinitions();
@@ -2259,6 +2263,91 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(name, entity.getName());
   }
 
+  /**
+   * Test that entities can be created under a service/container with dots in its name. This test
+   * verifies that the FQN is correctly constructed with quoted names when the parent container has
+   * dots in its name.
+   *
+   * <p>Subclasses that support containers with dots in their name should override
+   * createContainerWithDotsInName() to return the container reference.
+   */
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  protected void post_entityUnderContainerWithDots_200() throws IOException {
+    // Get container with dots in name - subclasses should override this method
+    EntityReference containerWithDots = createContainerWithDotsInName(entityType + ".service.test");
+    if (containerWithDots == null) {
+      return; // Entity doesn't support containers with dots or this test
+    }
+
+    try {
+      // Create an entity under the container with dots in name
+      String entityName = entityType + "_under_dotted_container";
+      K request = createRequestUnderContainer(entityName, containerWithDots);
+      if (request == null) {
+        return; // Entity doesn't support creating under a different container
+      }
+
+      T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+
+      // Verify FQN contains the quoted container name
+      String fqn = entity.getFullyQualifiedName();
+      assertTrue(
+          fqn.contains("\""),
+          "FQN should contain quoted container name when container has dots: " + fqn);
+
+      // Verify the entity can be retrieved by name
+      T retrieved = getEntityByName(fqn, "", ADMIN_AUTH_HEADERS);
+      assertEquals(entity.getId(), retrieved.getId());
+
+      // Verify listing by service/container works correctly
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("service", containerWithDots.getFullyQualifiedName());
+      ResultList<T> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+      assertFalse(
+          list.getData().isEmpty(),
+          "Should find entities when filtering by container with dots in name");
+      assertTrue(
+          list.getData().stream().anyMatch(e -> e.getId().equals(entity.getId())),
+          "Should find the created entity in the list");
+    } finally {
+      // Cleanup: delete the container with dots
+      deleteContainerWithDotsInName(containerWithDots);
+    }
+  }
+
+  /**
+   * Override this method in subclasses to create a container (service) with dots in its name. For
+   * example, DatabaseResourceTest would create a DatabaseService with a name like "my.service.test"
+   *
+   * @param name the name to use for the container (will contain dots)
+   * @return the EntityReference to the created container, or null if not supported
+   */
+  protected EntityReference createContainerWithDotsInName(String name) throws IOException {
+    return null; // Default implementation - subclasses override
+  }
+
+  /**
+   * Override this method in subclasses to create a request for an entity under the given container.
+   *
+   * @param name the name for the new entity
+   * @param container the container reference with dots in its name
+   * @return the create request, or null if not supported
+   */
+  protected K createRequestUnderContainer(String name, EntityReference container) {
+    return null; // Default implementation - subclasses override
+  }
+
+  /**
+   * Override this method in subclasses to delete the container created by
+   * createContainerWithDotsInName.
+   *
+   * @param container the container to delete
+   */
+  protected void deleteContainerWithDotsInName(EntityReference container) throws IOException {
+    // Default implementation - subclasses override
+  }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for PUT operations
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2510,7 +2599,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertTagsContain(updated.getTags(), additionalTags);
   }
 
-  private void assertTagsContain(List<TagLabel> tags, List<TagLabel> expectedTags) {
+  protected void assertTagsContain(List<TagLabel> tags, List<TagLabel> expectedTags) {
     for (TagLabel expected : expectedTags) {
       assertTrue(
           tags.stream().anyMatch(tag -> tag.getTagFQN().equals(expected.getTagFQN())),
@@ -2518,7 +2607,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  private void assertTagsDoNotContain(List<TagLabel> tags, List<TagLabel> unexpectedTags) {
+  protected void assertTagsDoNotContain(List<TagLabel> tags, List<TagLabel> unexpectedTags) {
     for (TagLabel unexpected : unexpectedTags) {
       assertFalse(
           tags.stream().anyMatch(tag -> tag.getTagFQN().equals(unexpected.getTagFQN())),
@@ -2536,7 +2625,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     TagLabel autoAppliedTag =
         new TagLabel()
             .withTagFQN("PII.Sensitive")
-            .withLabelType(TagLabel.LabelType.AUTOMATED)
+            .withLabelType(TagLabel.LabelType.GENERATED)
             .withState(TagLabel.State.SUGGESTED)
             .withSource(TagLabel.TagSource.CLASSIFICATION);
 
@@ -2582,7 +2671,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Create entity with auto-applied tag
     TagLabel autoTag =
-        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.AUTOMATED);
+        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.GENERATED);
 
     CreateEntity create = createRequest(getEntityName(test));
     create.setTags(listOf(autoTag));
@@ -2623,7 +2712,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Create multiple entities with same auto-applied tag
     List<T> entities = new ArrayList<>();
     TagLabel autoTag =
-        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.AUTOMATED);
+        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.GENERATED);
 
     for (int i = 0; i < 3; i++) {
       CreateEntity create = createRequest(getEntityName(test) + i);
@@ -2690,7 +2779,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         "Feedback can only be submitted for auto-applied tags");
   }
 
-  private RecognizerFeedback submitRecognizerFeedback(
+  protected RecognizerFeedback submitRecognizerFeedback(
       RecognizerFeedback feedback, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("tags/name/" + feedback.getTagFQN() + "/feedback");
     return TestUtils.post(target, feedback, RecognizerFeedback.class, authHeaders);

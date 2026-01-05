@@ -80,7 +80,6 @@ class DataQualityClassBase {
   }
 
   public getExportDataQualityDashboardButton(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _activeTab: DataQualityPageTabs
   ): React.ReactNode {
     return null;

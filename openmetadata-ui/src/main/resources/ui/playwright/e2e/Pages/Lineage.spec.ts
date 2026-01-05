@@ -14,26 +14,38 @@ import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
+import { ChartClass } from '../../support/entity/ChartClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
+import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
+import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import {
+  clickOutside,
   createNewPage,
   getApiContext,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   activateColumnLayer,
   addColumnLineage,
   addPipelineBetweenNodes,
   applyPipelineFromModal,
+  clickLineageNode,
   connectEdgeBetweenNodes,
+  connectEdgeBetweenNodesViaAPI,
   deleteEdge,
   deleteNode,
   editLineage,
@@ -42,6 +54,7 @@ import {
   rearrangeNodes,
   removeColumnLineage,
   setupEntitiesForLineage,
+  toggleLineageFilters,
   verifyColumnLayerInactive,
   verifyColumnLineageInCSV,
   verifyExportLineageCSV,
@@ -82,16 +95,19 @@ test.afterAll('Cleanup', async ({ browser }) => {
   await afterAction();
 });
 
+test.beforeEach(async ({ page }) => {
+  await redirectToHomePage(page);
+});
+
 for (const EntityClass of entities) {
   const defaultEntity = new EntityClass();
 
   test(`Lineage creation from ${defaultEntity.getType()} entity`, async ({
-    browser,
+    page,
   }) => {
     // 5 minutes to avoid test timeout happening some times in AUTs
     test.setTimeout(300_000);
 
-    const { page } = await createNewPage(browser);
     const { currentEntity, entities, cleanup } = await setupEntitiesForLineage(
       page,
       defaultEntity
@@ -99,7 +115,6 @@ for (const EntityClass of entities) {
 
     try {
       await test.step('Should create lineage for the entity', async () => {
-        await redirectToHomePage(page);
         await currentEntity.visitEntityPage(page);
 
         await visitLineageTab(page);
@@ -114,10 +129,9 @@ for (const EntityClass of entities) {
           await rearrangeNodes(page);
         }
 
-        await page.reload();
         const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+        await page.reload();
         await lineageRes;
-        await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="edit-lineage"]', {
           state: 'visible',
         });
@@ -138,9 +152,8 @@ for (const EntityClass of entities) {
             entity,
             'entityResponseData.fullyQualifiedName'
           );
-          await page
-            .locator(`[data-testid="lineage-node-${toNodeFqn}"]`)
-            .click();
+
+          await clickLineageNode(page, toNodeFqn);
 
           await expect(
             page
@@ -165,9 +178,8 @@ for (const EntityClass of entities) {
           currentEntity,
           'entityResponseData.fullyQualifiedName'
         );
-        await page
-          .locator(`[data-testid="lineage-node-${fromNodeFqn}"]`)
-          .click();
+
+        await clickLineageNode(page, fromNodeFqn);
 
         for (const entity of entities) {
           await applyPipelineFromModal(page, currentEntity, entity, pipeline);
@@ -205,8 +217,7 @@ for (const EntityClass of entities) {
   });
 }
 
-test('Verify column lineage between tables', async ({ browser }) => {
-  const { page } = await createNewPage(browser);
+test('Verify column lineage between tables', async ({ page }) => {
   const { apiContext, afterAction } = await getApiContext(page);
   const table1 = new TableClass();
   const table2 = new TableClass();
@@ -242,10 +253,9 @@ test('Verify column lineage between tables', async ({ browser }) => {
   await afterAction();
 });
 
-test('Verify column lineage between table and topic', async ({ browser }) => {
+test('Verify column lineage between table and topic', async ({ page }) => {
   test.slow();
 
-  const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table = new TableClass();
   const topic = new TopicClass();
@@ -294,6 +304,9 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
     `[data-testid="lineage-node-${topicServiceFqn}"]`
   );
 
+  // ensure node will be visible in the viewport
+  await performZoomOut(page);
+
   await expect(tableServiceNode).toBeVisible();
   await expect(topicServiceNode).toBeVisible();
 
@@ -313,9 +326,8 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
 });
 
 test('Verify column lineage between topic and api endpoint', async ({
-  browser,
+  page,
 }) => {
-  const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const topic = new TopicClass();
   const apiEndpoint = new ApiEndpointClass();
@@ -350,9 +362,8 @@ test('Verify column lineage between topic and api endpoint', async ({
 });
 
 test('Verify column lineage between table and api endpoint', async ({
-  browser,
+  page,
 }) => {
-  const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table = new TableClass();
   const apiEndpoint = new ApiEndpointClass();
@@ -384,10 +395,9 @@ test('Verify column lineage between table and api endpoint', async ({
   await afterAction();
 });
 
-test('Verify function data in edge drawer', async ({ browser }) => {
+test('Verify function data in edge drawer', async ({ page }) => {
   test.slow();
 
-  const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table1 = new TableClass();
   const table2 = new TableClass();
@@ -466,9 +476,8 @@ test('Verify function data in edge drawer', async ({ browser }) => {
 });
 
 test('Verify table search with special characters as handled', async ({
-  browser,
+  page,
 }) => {
-  const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
 
   // Create a table with '/' in the name to test encoding functionality
@@ -528,7 +537,7 @@ test('Verify table search with special characters as handled', async ({
 
     await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
 
-    await page.locator(`[data-testid="lineage-node-${dbFqn}"]`).click();
+    await clickLineageNode(page, dbFqn);
     await page.waitForLoadState('networkidle');
 
     await expect(
@@ -541,10 +550,9 @@ test('Verify table search with special characters as handled', async ({
   }
 });
 
-test('Verify cycle lineage should be handled properly', async ({ browser }) => {
+test('Verify cycle lineage should be handled properly', async ({ page }) => {
   test.slow();
 
-  const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table = new TableClass();
   const topic = new TopicClass();
@@ -692,6 +700,154 @@ test('Verify cycle lineage should be handled properly', async ({ browser }) => {
   }
 });
 
+test('Verify column layer is applied on entering edit mode', async ({
+  page,
+}) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table = new TableClass();
+
+  await table.create(apiContext);
+
+  try {
+    await table.visitEntityPage(page);
+    await visitLineageTab(page);
+
+    const columnLayerBtn = page.locator(
+      '[data-testid="lineage-layer-column-btn"]'
+    );
+
+    await test.step('Verify column layer is inactive initially', async () => {
+      await page.click('[data-testid="lineage-layer-btn"]');
+
+      await expect(columnLayerBtn).not.toHaveClass(/Mui-selected/);
+
+      await clickOutside(page);
+    });
+
+    await test.step(
+      'Enter edit mode and verify column layer is active',
+      async () => {
+        await editLineageClick(page);
+
+        await page.click('[data-testid="lineage-layer-btn"]');
+
+        await expect(columnLayerBtn).toHaveClass(/Mui-selected/);
+
+        await clickOutside(page);
+      }
+    );
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Verify there is no traced nodes and columns on exiting edit mode', async ({
+  page,
+}) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table = new TableClass();
+
+  await table.create(apiContext);
+
+  try {
+    await table.visitEntityPage(page);
+    await visitLineageTab(page);
+
+    const tableFqn = get(table, 'entityResponseData.fullyQualifiedName');
+    const tableNode = page.locator(`[data-testid="lineage-node-${tableFqn}"]`);
+    const firstColumnName = get(table, 'entityResponseData.columns[0].name');
+    const firstColumn = page.locator(
+      `[data-testid="column-${tableFqn}.${firstColumnName}"]`
+    );
+
+    await test.step(
+      'Verify node tracing is cleared on exiting edit mode',
+      async () => {
+        await editLineageClick(page);
+
+        await expect(tableNode).not.toHaveClass(/custom-node-header-active/);
+
+        await tableNode.click({ position: { x: 5, y: 5 } });
+
+        await expect(tableNode).toHaveClass(/custom-node-header-active/);
+
+        await editLineageClick(page);
+
+        await expect(tableNode).not.toHaveClass(/custom-node-header-active/);
+      }
+    );
+
+    await test.step(
+      'Verify column tracing is cleared on exiting edit mode',
+      async () => {
+        await editLineageClick(page);
+
+        await firstColumn.click();
+
+        await expect(firstColumn).toHaveClass(
+          /custom-node-header-column-tracing/
+        );
+
+        await editLineageClick(page);
+
+        await toggleLineageFilters(page, tableFqn);
+
+        await expect(firstColumn).not.toHaveClass(
+          /custom-node-header-column-tracing/
+        );
+      }
+    );
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Verify node full path is present as breadcrumb in lineage node', async ({
+  page,
+}) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table = new TableClass();
+
+  await table.create(apiContext);
+
+  try {
+    await table.visitEntityPage(page);
+    await visitLineageTab(page);
+
+    const tableFqn = get(table, 'entityResponseData.fullyQualifiedName');
+    const tableNode = page.locator(`[data-testid="lineage-node-${tableFqn}"]`);
+
+    await expect(tableNode).toBeVisible();
+
+    const breadcrumbContainer = tableNode.locator(
+      '[data-testid="lineage-breadcrumbs"]'
+    );
+    await expect(breadcrumbContainer).toBeVisible();
+
+    const breadcrumbItems = breadcrumbContainer.locator(
+      '.lineage-breadcrumb-item'
+    );
+    const breadcrumbCount = await breadcrumbItems.count();
+
+    expect(breadcrumbCount).toBeGreaterThan(0);
+
+    const fqnParts: Array<string> = tableFqn.split('.');
+    fqnParts.pop();
+
+    expect(breadcrumbCount).toBe(fqnParts.length);
+
+    for (let i = 0; i < breadcrumbCount; i++) {
+      const breadcrumbText = await breadcrumbItems.nth(i).textContent();
+      expect(breadcrumbText).toBe(fqnParts[i]);
+    }
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
 test.describe.serial('Test pagination in column level lineage', () => {
   const generateColumnsWithNames = (count: number) => {
     const columns = [];
@@ -718,20 +874,23 @@ test.describe.serial('Test pagination in column level lineage', () => {
   let table2Fqn: string;
 
   test.beforeAll(async ({ browser }) => {
-    const { page } = await createNewPage(browser);
-    const { apiContext, afterAction } = await getApiContext(page);
+    const { apiContext, afterAction, page } = await createNewPage(browser);
 
+    await redirectToHomePage(page);
     table1.entity.columns = table1Columns;
     table2.entity.columns = table2Columns;
 
-    await Promise.all([table1.create(apiContext), table2.create(apiContext)]);
+    const [table1Response, table2Response] = await Promise.all([
+      table1.create(apiContext),
+      table2.create(apiContext),
+    ]);
 
-    table1Fqn = get(table1, 'entityResponseData.fullyQualifiedName');
-    table2Fqn = get(table2, 'entityResponseData.fullyQualifiedName');
+    table1Fqn = get(table1Response, 'entity.fullyQualifiedName');
+    table2Fqn = get(table2Response, 'entity.fullyQualifiedName');
 
     await addPipelineBetweenNodes(page, table1, table2);
 
-    await activateColumnLayer(page);
+    await rearrangeNodes(page);
 
     await page.waitForSelector(
       `[data-testid="column-${table1Fqn}.${table1Columns[0].name}"]`,
@@ -751,102 +910,72 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await expect(table2Node).toBeVisible();
 
     await page.getByTestId('full-screen').click();
-
-    const table1PaginationNext = table1Node.locator('[data-testid="next-btn"]');
-    const table2PaginationNext = table2Node.locator('[data-testid="next-btn"]');
-    const table1PaginationPrev = table1Node.locator('[data-testid="prev-btn"]');
-    const table2PaginationPrev = table2Node.locator('[data-testid="prev-btn"]');
+    const table1ColumnFqn = table1Response.entity.columns?.map(
+      (col: { fullyQualifiedName: string }) => col.fullyQualifiedName
+    ) as string[];
+    const table2ColumnFqn = table2Response.entity.columns?.map(
+      (col: { fullyQualifiedName: string }) => col.fullyQualifiedName
+    ) as string[];
 
     await test.step('Add edges between T1-P1 and T2-P1', async () => {
-      await addColumnLineage(
-        page,
-        `${table1Fqn}.${table1Columns[0].name}`,
-        `${table2Fqn}.${table2Columns[0].name}`,
-        false
-      );
-
-      await addColumnLineage(
-        page,
-        `${table1Fqn}.${table1Columns[1].name}`,
-        `${table2Fqn}.${table2Columns[1].name}`,
-        false
-      );
-
-      await addColumnLineage(
-        page,
-        `${table1Fqn}.${table1Columns[2].name}`,
-        `${table2Fqn}.${table2Columns[2].name}`,
-        false
+      await connectEdgeBetweenNodesViaAPI(
+        apiContext,
+        {
+          id: table1Response.entity.id,
+          type: 'table',
+        },
+        {
+          id: table2Response.entity.id,
+          type: 'table',
+        },
+        [
+          {
+            fromColumns: [table1ColumnFqn[0]],
+            toColumn: table2ColumnFqn[0],
+          },
+          {
+            fromColumns: [table1ColumnFqn[1]],
+            toColumn: table2ColumnFqn[1],
+          },
+          {
+            fromColumns: [table1ColumnFqn[2]],
+            toColumn: table2ColumnFqn[2],
+          },
+          {
+            fromColumns: [table1ColumnFqn[0]],
+            toColumn: table2ColumnFqn[5],
+          },
+          {
+            fromColumns: [table1ColumnFqn[1]],
+            toColumn: table2ColumnFqn[6],
+          },
+          {
+            fromColumns: [table1ColumnFqn[3]],
+            toColumn: table2ColumnFqn[7],
+          },
+          {
+            fromColumns: [table1ColumnFqn[4]],
+            toColumn: table2ColumnFqn[7],
+          },
+          {
+            fromColumns: [table1ColumnFqn[5]],
+            toColumn: table2ColumnFqn[5],
+          },
+          {
+            fromColumns: [table1ColumnFqn[6]],
+            toColumn: table2ColumnFqn[6],
+          },
+          {
+            fromColumns: [table1ColumnFqn[8]],
+            toColumn: table2ColumnFqn[7],
+          },
+        ]
       );
     });
 
     await test.step(
-      'Navigate to T2-P2 and add edges between T1-P1 and T2-P2',
-      async () => {
-        if (await table2PaginationNext.isVisible()) {
-          await table2PaginationNext.click();
-          await page.waitForTimeout(500);
-        }
-
-        await addColumnLineage(
-          page,
-          `${table1Fqn}.${table1Columns[0].name}`,
-          `${table2Fqn}.${table2Columns[5].name}`,
-          false
-        );
-
-        await addColumnLineage(
-          page,
-          `${table1Fqn}.${table1Columns[1].name}`,
-          `${table2Fqn}.${table2Columns[6].name}`,
-          false
-        );
-
-        await addColumnLineage(
-          page,
-          `${table1Fqn}.${table1Columns[3].name}`,
-          `${table2Fqn}.${table2Columns[7].name}`,
-          false
-        );
-
-        await addColumnLineage(
-          page,
-          `${table1Fqn}.${table1Columns[4].name}`,
-          `${table2Fqn}.${table2Columns[7].name}`,
-          false
-        );
-      }
-    );
-
-    await test.step(
       'Navigate to T1-P2 and add edges between T1-P2 and T2-P2',
       async () => {
-        if (await table1PaginationNext.isVisible()) {
-          await table1PaginationNext.click();
-          await page.waitForTimeout(500);
-        }
-
-        await addColumnLineage(
-          page,
-          `${table1Fqn}.${table1Columns[5].name}`,
-          `${table2Fqn}.${table2Columns[5].name}`,
-          false
-        );
-
-        await addColumnLineage(
-          page,
-          `${table1Fqn}.${table1Columns[6].name}`,
-          `${table2Fqn}.${table2Columns[6].name}`,
-          false
-        );
-
-        await addColumnLineage(
-          page,
-          `${table1Fqn}.${table1Columns[8].name}`,
-          `${table2Fqn}.${table2Columns[7].name}`,
-          false
-        );
-
         const table1Box = await table1Node.boundingBox();
         if (table1Box) {
           await page.mouse.click(table1Box.x - 10, table1Box.y - 10);
@@ -854,34 +983,27 @@ test.describe.serial('Test pagination in column level lineage', () => {
       }
     );
 
-    if (await table1PaginationPrev.isVisible()) {
-      await table1PaginationPrev.click();
-    }
-    if (await table2PaginationPrev.isVisible()) {
-      await table2PaginationPrev.click();
-    }
-
     await afterAction();
   });
 
   test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await getApiContext(
-      await createNewPage(browser).then((p) => p.page)
-    );
+    const { apiContext, afterAction } = await createNewPage(browser);
     await Promise.all([table1.delete(apiContext), table2.delete(apiContext)]);
     await afterAction();
   });
 
-  test('Verify column visibility across pagination pages', async ({
-    browser,
-  }) => {
-    test.slow();
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
 
-    const { page } = await createNewPage(browser);
+  test('Verify column visibility across pagination pages', async ({ page }) => {
+    test.slow();
 
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
     await activateColumnLayer(page);
+    await toggleLineageFilters(page, table1Fqn);
+    await toggleLineageFilters(page, table2Fqn);
 
     await page.getByTestId('full-screen').click();
 
@@ -940,7 +1062,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await test.step('Navigate to T1-P2 and verify visibility', async () => {
       if (await table1NextBtn.isVisible()) {
         await table1NextBtn.click();
-        await page.waitForTimeout(500);
       }
 
       for (const testId of columnTestIds['T1-P2']) {
@@ -959,7 +1080,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await test.step('Navigate to T2-P2 and verify visibility', async () => {
       if (await table2NextBtn.isVisible()) {
         await table2NextBtn.click();
-        await page.waitForTimeout(500);
       }
 
       for (const testId of columnTestIds['T2-P2']) {
@@ -978,7 +1098,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await test.step('Navigate to T1-P3 and verify visibility', async () => {
       if (await table1NextBtn.isVisible()) {
         await table1NextBtn.click();
-        await page.waitForTimeout(500);
       }
 
       for (const testId of columnTestIds['T1-P3']) {
@@ -997,7 +1116,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await test.step('Navigate to T2-P3 and verify visibility', async () => {
       if (await table2NextBtn.isVisible()) {
         await table2NextBtn.click();
-        await page.waitForTimeout(500);
       }
 
       for (const testId of columnTestIds['T2-P3']) {
@@ -1015,15 +1133,15 @@ test.describe.serial('Test pagination in column level lineage', () => {
   });
 
   test('Verify edges when no column is hovered or selected', async ({
-    browser,
+    page,
   }) => {
     test.slow();
-
-    const { page } = await createNewPage(browser);
 
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
     await activateColumnLayer(page);
+    await toggleLineageFilters(page, table1Fqn);
+    await toggleLineageFilters(page, table2Fqn);
 
     await page.getByTestId('full-screen').click();
 
@@ -1093,7 +1211,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
       async () => {
         if (await table2NextBtn.isVisible()) {
           await table2NextBtn.click();
-          await page.waitForTimeout(500);
         }
 
         const visibleEdges = [
@@ -1149,7 +1266,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
       async () => {
         if (await table1NextBtn.isVisible()) {
           await table1NextBtn.click();
-          await page.waitForTimeout(500);
         }
 
         const visibleEdges = [
@@ -1202,15 +1318,16 @@ test.describe.serial('Test pagination in column level lineage', () => {
   });
 
   test('Verify columns and edges when a column is hovered', async ({
-    browser,
+    page,
   }) => {
     test.slow();
-
-    const { page } = await createNewPage(browser);
 
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
     await activateColumnLayer(page);
+
+    await toggleLineageFilters(page, table1Fqn);
+    await toggleLineageFilters(page, table2Fqn);
 
     await page.getByTestId('full-screen').click();
 
@@ -1222,7 +1339,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
         );
 
         await c1Column.hover();
-        await page.waitForTimeout(500);
 
         // Verify (T1,C1), (T2,C1) and (T2,C6) are highlighted and visible
         const t1c1 = page.locator(
@@ -1263,15 +1379,16 @@ test.describe.serial('Test pagination in column level lineage', () => {
   });
 
   test('Verify columns and edges when a column is clicked', async ({
-    browser,
+    page,
   }) => {
     test.slow();
-
-    const { page } = await createNewPage(browser);
 
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
     await activateColumnLayer(page);
+
+    await toggleLineageFilters(page, table1Fqn);
+    await toggleLineageFilters(page, table2Fqn);
 
     await page.getByTestId('full-screen').click();
 
@@ -1289,14 +1406,12 @@ test.describe.serial('Test pagination in column level lineage', () => {
         const table1NextBtn = table1Node.locator('[data-testid="next-btn"]');
         if (await table1NextBtn.isVisible()) {
           await table1NextBtn.click();
-          await page.waitForTimeout(500);
         }
 
         // Navigate to T2-P2
         const table2NextBtn = table2Node.locator('[data-testid="next-btn"]');
         if (await table2NextBtn.isVisible()) {
           await table2NextBtn.click();
-          await page.waitForTimeout(500);
         }
 
         // Click on (T2,C6)
@@ -1304,7 +1419,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
           `[data-testid="column-${table2Fqn}.${table2Columns[5].name}"]`
         );
         await t2c6Column.click();
-        await page.waitForTimeout(500);
 
         // Verify (T1,C1), (T1,C6) and (T2,C6) are highlighted and visible
         const t1c1 = page.locator(
@@ -1343,4 +1457,427 @@ test.describe.serial('Test pagination in column level lineage', () => {
       }
     );
   });
+
+  test('Verify edges for column level lineage between 2 nodes when filter is toggled', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const { afterAction } = await getApiContext(page);
+
+    try {
+      await test.step('1. Load both the table', async () => {
+        await table1.visitEntityPage(page);
+        await visitLineageTab(page);
+        await activateColumnLayer(page);
+        await page.getByTestId('full-screen').click();
+      });
+
+      const table1Node = page.locator(
+        `[data-testid="lineage-node-${table1Fqn}"]`
+      );
+      const table2Node = page.locator(
+        `[data-testid="lineage-node-${table2Fqn}"]`
+      );
+
+      await toggleLineageFilters(page, table1Fqn);
+      await toggleLineageFilters(page, table2Fqn);
+
+      await test.step(
+        '2. Verify edges visible and hidden for page1 of both the tables',
+        async () => {
+          const visibleEdges = [
+            `column-edge-${btoa(
+              `${table1Fqn}.${table1Columns[0].name}`
+            )}-${btoa(`${table2Fqn}.${table2Columns[0].name}`)}`,
+            `column-edge-${btoa(
+              `${table1Fqn}.${table1Columns[1].name}`
+            )}-${btoa(`${table2Fqn}.${table2Columns[1].name}`)}`,
+            `column-edge-${btoa(
+              `${table1Fqn}.${table1Columns[2].name}`
+            )}-${btoa(`${table2Fqn}.${table2Columns[2].name}`)}`,
+          ];
+
+          const hiddenEdges = [
+            `column-edge-${btoa(
+              `${table1Fqn}.${table1Columns[0].name}`
+            )}-${btoa(`${table2Fqn}.${table2Columns[5].name}`)}`,
+            `column-edge-${btoa(
+              `${table1Fqn}.${table1Columns[1].name}`
+            )}-${btoa(`${table2Fqn}.${table2Columns[6].name}`)}`,
+            `column-edge-${btoa(
+              `${table1Fqn}.${table1Columns[3].name}`
+            )}-${btoa(`${table2Fqn}.${table2Columns[7].name}`)}`,
+          ];
+
+          for (const edgeId of visibleEdges) {
+            await expect(
+              page.locator(`[data-testid="${edgeId}"]`)
+            ).toBeVisible();
+          }
+
+          for (const edgeId of hiddenEdges) {
+            await expect(
+              page.locator(`[data-testid="${edgeId}"]`)
+            ).not.toBeVisible();
+          }
+        }
+      );
+
+      await test.step(
+        '3. Enable the filter for table1 by clicking filter button',
+        async () => {
+          const table1FilterButton = table1Node.locator(
+            '[data-testid="lineage-filter-button"]'
+          );
+          await table1FilterButton.click();
+        }
+      );
+
+      await test.step(
+        '4. Verify that only columns with lineage are visible in table1',
+        async () => {
+          const columnsWithLineage = [0, 1, 2, 3, 4, 5, 6, 8];
+          const columnsWithoutLineage = [7, 9, 10];
+
+          for (const index of columnsWithLineage) {
+            await expect(
+              page.locator(
+                `[data-testid="column-${table1Fqn}.${table1Columns[index].name}"]`
+              )
+            ).toBeVisible();
+          }
+
+          for (const index of columnsWithoutLineage) {
+            await expect(
+              page.locator(
+                `[data-testid="column-${table1Fqn}.${table1Columns[index].name}"]`
+              )
+            ).not.toBeVisible();
+          }
+        }
+      );
+
+      await test.step(
+        '5. Enable the filter for table2 by clicking filter button',
+        async () => {
+          const table2FilterButton = table2Node.locator(
+            '[data-testid="lineage-filter-button"]'
+          );
+          await table2FilterButton.click();
+        }
+      );
+
+      await test.step(
+        '6. Verify that only columns with lineage are visible in table2',
+        async () => {
+          const columnsWithLineage = [0, 1, 2, 5, 6, 7];
+          const columnsWithoutLineage = [3, 4, 8, 9, 10, 11];
+
+          for (const index of columnsWithLineage) {
+            await expect(
+              page.locator(
+                `[data-testid="column-${table2Fqn}.${table2Columns[index].name}"]`
+              )
+            ).toBeVisible();
+          }
+
+          for (const index of columnsWithoutLineage) {
+            await expect(
+              page.locator(
+                `[data-testid="column-${table2Fqn}.${table2Columns[index].name}"]`
+              )
+            ).not.toBeVisible();
+          }
+        }
+      );
+
+      await test.step('7. Verify new edges are now visible.', async () => {
+        const allVisibleEdges = [
+          `column-edge-${btoa(`${table1Fqn}.${table1Columns[0].name}`)}-${btoa(
+            `${table2Fqn}.${table2Columns[0].name}`
+          )}`,
+          `column-edge-${btoa(`${table1Fqn}.${table1Columns[1].name}`)}-${btoa(
+            `${table2Fqn}.${table2Columns[1].name}`
+          )}`,
+          `column-edge-${btoa(`${table1Fqn}.${table1Columns[2].name}`)}-${btoa(
+            `${table2Fqn}.${table2Columns[2].name}`
+          )}`,
+          `column-edge-${btoa(`${table1Fqn}.${table1Columns[0].name}`)}-${btoa(
+            `${table2Fqn}.${table2Columns[5].name}`
+          )}`,
+          `column-edge-${btoa(`${table1Fqn}.${table1Columns[1].name}`)}-${btoa(
+            `${table2Fqn}.${table2Columns[6].name}`
+          )}`,
+          `column-edge-${btoa(`${table1Fqn}.${table1Columns[3].name}`)}-${btoa(
+            `${table2Fqn}.${table2Columns[7].name}`
+          )}`,
+          `column-edge-${btoa(`${table1Fqn}.${table1Columns[4].name}`)}-${btoa(
+            `${table2Fqn}.${table2Columns[7].name}`
+          )}`,
+          `column-edge-${btoa(`${table1Fqn}.${table1Columns[5].name}`)}-${btoa(
+            `${table2Fqn}.${table2Columns[5].name}`
+          )}`,
+          `column-edge-${btoa(`${table1Fqn}.${table1Columns[6].name}`)}-${btoa(
+            `${table2Fqn}.${table2Columns[6].name}`
+          )}`,
+          `column-edge-${btoa(`${table1Fqn}.${table1Columns[8].name}`)}-${btoa(
+            `${table2Fqn}.${table2Columns[7].name}`
+          )}`,
+        ];
+
+        for (const edgeId of allVisibleEdges) {
+          await expect(page.locator(`[data-testid="${edgeId}"]`)).toBeVisible();
+        }
+      });
+    } finally {
+      await afterAction();
+    }
+  });
 });
+
+test('Verify custom properties tab visibility in lineage sidebar', async ({
+  page,
+}) => {
+  const { apiContext } = await getApiContext(page);
+  const currentTable = new TableClass();
+  const upstreamTable = new TableClass();
+  const downstreamTable = new TableClass();
+
+  // Create test entities
+  await Promise.all([
+    currentTable.create(apiContext),
+    upstreamTable.create(apiContext),
+    downstreamTable.create(apiContext),
+  ]);
+
+  await test.step('Create lineage connections', async () => {
+    const currentTableId = currentTable.entityResponseData?.id;
+    const upstreamTableId = upstreamTable.entityResponseData?.id;
+    const downstreamTableId = downstreamTable.entityResponseData?.id;
+
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      {
+        id: upstreamTableId,
+        type: 'table',
+      },
+      {
+        id: currentTableId,
+        type: 'table',
+      },
+      []
+    );
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      {
+        id: currentTableId,
+        type: 'table',
+      },
+      {
+        id: downstreamTableId,
+        type: 'table',
+      },
+      []
+    );
+  });
+
+  await test.step(
+    'Navigate to lineage tab and verify custom properties tab in sidebar',
+    async () => {
+      // Navigate to the entity detail page first (required for visitLineageTab)
+      const searchTerm =
+        currentTable.entityResponseData?.['fullyQualifiedName'] ||
+        currentTable.entity.name;
+
+      await currentTable.visitEntityPage(page, searchTerm);
+
+      // Navigate to lineage tab (this navigates to the full lineage page)
+      await visitLineageTab(page);
+
+      // Click on the current entity node to open the sidebar drawer
+      const nodeFqn = currentTable.entityResponseData?.['fullyQualifiedName'];
+
+      await clickLineageNode(page, nodeFqn);
+
+      // Wait for the lineage entity panel (sidebar drawer) to open
+      const lineagePanel = page.getByTestId('lineage-entity-panel');
+      await expect(lineagePanel).toBeVisible();
+
+      // Wait for the panel content to load
+      await waitForAllLoadersToDisappear(page);
+
+      // Try to find custom properties tab in the lineage sidebar - use data-testid first (priority 1)
+      const customPropertiesTab = lineagePanel.getByTestId(
+        'custom-properties-tab'
+      );
+
+      await expect(customPropertiesTab).toBeVisible();
+
+      await customPropertiesTab.click();
+      await waitForAllLoadersToDisappear(page);
+    }
+  );
+});
+
+test.describe(
+  'Verify custom properties tab visibility logic for supported entity types',
+  () => {
+    const supportedEntities = [
+      { entity: new TableClass(), type: 'table' },
+      { entity: new TopicClass(), type: 'topic' },
+      { entity: new DashboardClass(), type: 'dashboard' },
+      { entity: new PipelineClass(), type: 'pipeline' },
+      { entity: new MlModelClass(), type: 'mlmodel' },
+      { entity: new ContainerClass(), type: 'container' },
+      { entity: new SearchIndexClass(), type: 'searchIndex' },
+      { entity: new ApiEndpointClass(), type: 'apiEndpoint' },
+      { entity: new MetricClass(), type: 'metric' },
+      { entity: new ChartClass(), type: 'chart' },
+    ];
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext } = await createNewPage(browser);
+
+      for (const { entity } of supportedEntities) {
+        await entity.create(apiContext);
+      }
+    });
+
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+    });
+
+    for (const { entity, type } of supportedEntities) {
+      test(`Verify custom properties tab IS visible for supported type: ${type}`, async ({
+        page,
+      }) => {
+        test.slow();
+
+        const searchTerm =
+          entity.entityResponseData?.['fullyQualifiedName'] ||
+          entity.entity.name;
+
+        await entity.visitEntityPage(page, searchTerm);
+        await visitLineageTab(page);
+
+        const nodeFqn = entity.entityResponseData?.['fullyQualifiedName'];
+
+        await clickLineageNode(page, nodeFqn);
+
+        const lineagePanel = page.getByTestId('lineage-entity-panel');
+        await expect(lineagePanel).toBeVisible();
+        await waitForAllLoadersToDisappear(page);
+
+        const customPropertiesTab = lineagePanel.getByTestId(
+          'custom-properties-tab'
+        );
+        await expect(customPropertiesTab).toBeVisible();
+
+        const closeButton = lineagePanel.getByTestId('drawer-close-icon');
+        if (await closeButton.isVisible()) {
+          await closeButton.click();
+          await expect(lineagePanel).not.toBeVisible();
+        }
+      });
+    }
+  }
+);
+
+test.describe(
+  'Verify custom properties tab is NOT visible for unsupported entity types in platform lineage',
+  () => {
+    const unsupportedServices = [
+      { service: new DatabaseServiceClass(), type: 'databaseService' },
+      { service: new MessagingServiceClass(), type: 'messagingService' },
+      { service: new DashboardServiceClass(), type: 'dashboardService' },
+      { service: new PipelineServiceClass(), type: 'pipelineService' },
+      { service: new MlmodelServiceClass(), type: 'mlmodelService' },
+      { service: new StorageServiceClass(), type: 'storageService' },
+      { service: new ApiServiceClass(), type: 'apiService' },
+    ];
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext } = await createNewPage(browser);
+
+      for (const { service } of unsupportedServices) {
+        await service.create(apiContext);
+      }
+    });
+
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+    });
+
+    for (const { service, type } of unsupportedServices) {
+      test(`Verify custom properties tab is NOT visible for ${type} in platform lineage`, async ({
+        page,
+      }) => {
+        test.slow();
+
+        const serviceFqn = get(
+          service,
+          'entityResponseData.fullyQualifiedName'
+        );
+
+        await sidebarClick(page, SidebarItem.LINEAGE);
+
+        const searchEntitySelect = page.getByTestId('search-entity-select');
+        await expect(searchEntitySelect).toBeVisible();
+        await searchEntitySelect.click();
+
+        const searchInput = page
+          .getByTestId('search-entity-select')
+          .locator('.ant-select-selection-search-input');
+          
+        const searchResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/search/query')
+        );
+        await searchInput.fill(service.entity.name);
+
+        const searchResponseResult = await searchResponse;
+        expect(searchResponseResult.status()).toBe(200);
+
+        const nodeSuggestion = page.getByTestId(
+          `node-suggestion-${serviceFqn}`
+        );
+        await expect(nodeSuggestion).toBeVisible();
+
+        const lineageResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/lineage/getLineage')
+        );
+
+        await nodeSuggestion.click();
+
+        const lineageResponseResult = await lineageResponse;
+        expect(lineageResponseResult.status()).toBe(200);
+
+        await expect(
+          page.getByTestId(`lineage-node-${serviceFqn}`)
+        ).toBeVisible();
+
+        await clickLineageNode(page, serviceFqn);
+
+        const lineagePanel = page.getByTestId('lineage-entity-panel');
+        await expect(lineagePanel).toBeVisible();
+        await waitForAllLoadersToDisappear(page);
+
+        const customPropertiesTab = lineagePanel.getByTestId(
+          'custom-properties-tab'
+        );
+        const customPropertiesTabByRole = lineagePanel.getByRole('menuitem', {
+          name: /custom propert/i,
+        });
+
+        await expect(customPropertiesTab).not.toBeVisible();
+        await expect(customPropertiesTabByRole).not.toBeVisible();
+
+        const closeButton = lineagePanel.getByTestId('drawer-close-icon');
+        if (await closeButton.isVisible()) {
+          await closeButton.click();
+          await expect(lineagePanel).not.toBeVisible();
+        }
+      });
+    }
+  }
+);

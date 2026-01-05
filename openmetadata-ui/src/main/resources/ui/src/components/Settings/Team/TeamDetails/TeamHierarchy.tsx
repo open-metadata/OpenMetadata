@@ -21,10 +21,6 @@ import { isEmpty, isUndefined } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import {
-  DESCRIPTION_LENGTH,
-  NO_DATA_PLACEHOLDER,
-} from '../../../../constants/constants';
 import { TABLE_CONSTANTS } from '../../../../constants/Teams.constants';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Team } from '../../../../generated/entity/teams/team';
@@ -37,12 +33,12 @@ import {
 } from '../../../../utils/EntityUtils';
 import { getTeamsWithFqnPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
+import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import { getTableExpandableConfig } from '../../../../utils/TableUtils';
 import { isDropRestricted } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { DraggableBodyRowProps } from '../../../common/Draggable/DraggableBodyRowProps.interface';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
 import { MovedTeamProps, TeamHierarchyProps } from './team.interface';
 import './teams.less';
@@ -52,6 +48,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   data,
   onTeamExpand,
   isFetchingAllTeamAdvancedDetails,
+  isSearchLoading,
   searchTerm,
   showDeletedTeam,
   onShowDeletedTeamChange,
@@ -149,24 +146,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
             owns?.length ?? 0
           ),
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        width: 300,
-        key: 'description',
-        render: (description: string) =>
-          isEmpty(description) ? (
-            <Typography.Paragraph className="m-b-0">
-              {NO_DATA_PLACEHOLDER}
-            </Typography.Paragraph>
-          ) : (
-            <RichTextEditorPreviewerNew
-              markdown={description}
-              maxLength={DESCRIPTION_LENGTH}
-              showReadMoreBtn={false}
-            />
-          ),
-      },
+      ...descriptionTableObject<Team>({ width: 300 }),
     ];
   }, [data, isFetchingAllTeamAdvancedDetails, onTeamExpand]);
 
@@ -302,7 +282,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
             )}
           </Space>
         }
-        loading={isTableLoading || isTeamBasicDataLoading}
+        loading={isTableLoading || isTeamBasicDataLoading || isSearchLoading}
         locale={{
           emptyText: <FilterTablePlaceHolder />,
         }}

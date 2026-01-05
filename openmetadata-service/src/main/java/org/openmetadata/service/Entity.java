@@ -144,6 +144,8 @@ public final class Entity {
 
   public static final String FIELD_RELATED_TERMS = "relatedTerms";
 
+  public static final String FIELD_COLUMNS = "columns";
+
   //
   // Service entities
   //
@@ -158,6 +160,7 @@ public final class Entity {
   public static final String SECURITY_SERVICE = "securityService";
   public static final String API_SERVICE = "apiService";
   public static final String DRIVE_SERVICE = "driveService";
+  public static final String LLM_SERVICE = "llmService";
   //
   // Data asset entities
   //
@@ -195,6 +198,15 @@ public final class Entity {
   public static final String TAG = "tag";
   public static final String CLASSIFICATION = "classification";
   public static final String TYPE = "type";
+
+  //
+  // AI entities
+  //
+  public static final String AI_APPLICATION = "aiApplication";
+  public static final String LLM_MODEL = "llmModel";
+  public static final String PROMPT_TEMPLATE = "promptTemplate";
+  public static final String AGENT_EXECUTION = "agentExecution";
+  public static final String AI_GOVERNANCE_POLICY = "aiGovernancePolicy";
   public static final String TEST_DEFINITION = "testDefinition";
   public static final String TEST_CONNECTION_DEFINITION = "testConnectionDefinition";
   public static final String TEST_SUITE = "testSuite";
@@ -289,6 +301,7 @@ public final class Entity {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SECURITY, SECURITY_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.API, API_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.DRIVE, DRIVE_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.LLM, LLM_SERVICE);
 
     ENTITY_SERVICE_TYPE_MAP.put(DATABASE, DATABASE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(DATABASE_SCHEMA, DATABASE_SERVICE);
@@ -310,6 +323,7 @@ public final class Entity {
     ENTITY_SERVICE_TYPE_MAP.put(FILE, DRIVE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(SPREADSHEET, DRIVE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(WORKSHEET, DRIVE_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(LLM_MODEL, LLM_SERVICE);
 
     PARENT_ENTITY_TYPES.addAll(
         listOf(
@@ -325,6 +339,7 @@ public final class Entity {
             SEARCH_SERVICE,
             SECURITY_SERVICE,
             DRIVE_SERVICE,
+            LLM_SERVICE,
             DATABASE,
             DATABASE_SCHEMA,
             CLASSIFICATION,
@@ -715,7 +730,9 @@ public final class Entity {
             GLOSSARY,
             GLOSSARY_TERM,
             TAG,
-            CLASSIFICATION)
+            CLASSIFICATION,
+            AI_APPLICATION,
+            LLM_MODEL)
         .contains(entityType);
   }
 

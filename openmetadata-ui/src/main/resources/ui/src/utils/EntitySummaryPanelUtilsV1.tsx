@@ -341,7 +341,7 @@ const SchemaFieldCardsV1: React.FC<{
       setIsLoading(false);
       setHasInitialized(false);
     };
-  }, [entityType, fqn, searchText, fetchPaginatedColumns]);
+  }, [entityType, fqn, searchText]);
 
   const handleToggleExpand = useCallback((key: string) => {
     setExpandedRowKeys((prev) =>
@@ -633,7 +633,7 @@ const APICollectionEndpointsV1: React.FC<{
       setIsLoading(false);
       setHasInitialized(false);
     };
-  }, [fetchEndpoints]);
+  }, [fqn]);
 
   if (loading || (isLoading && !hasInitialized)) {
     return (
@@ -726,7 +726,7 @@ const DatabaseSchemaTablesV1: React.FC<{
       setIsLoading(false);
       setHasInitialized(false);
     };
-  }, [fetchPaginatedTables]);
+  }, [fqn]);
 
   const loadMoreBtn = useMemo(() => {
     // For now, we fetch all tables at once, so no load more button needed
@@ -1012,7 +1012,7 @@ const DatabaseSchemasV1: React.FC<{
   entityInfo: any;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+}> = ({ entityInfo, loading }) => {
   const databaseSchemas = entityInfo.databaseSchemas || [];
 
   if (loading) {

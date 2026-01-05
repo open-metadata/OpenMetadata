@@ -27,6 +27,7 @@ import { getEntityChildDetails } from '../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
+  hasLineageTab,
 } from '../../utils/EntityUtils';
 
 import { AxiosError } from 'axios';
@@ -50,6 +51,7 @@ import DataQualitySection from '../common/DataQualitySection/DataQualitySection'
 import DescriptionSection from '../common/DescriptionSection/DescriptionSection';
 import DomainsSection from '../common/DomainsSection/DomainsSection';
 import GlossaryTermsSection from '../common/GlossaryTermsSection/GlossaryTermsSection';
+import LineageSection from '../common/LineageSection/LineageSection';
 import Loader from '../common/Loader/Loader';
 import OverviewSection from '../common/OverviewSection/OverviewSection';
 import OwnersSection from '../common/OwnersSection/OwnersSection';
@@ -77,7 +79,7 @@ export const DataAssetSummaryPanelV1 = ({
   onGlossaryTermsUpdate,
   onDescriptionUpdate,
   onLinkClick,
-  isSideDrawer = false,
+  onLineageClick,
 }: DataAssetSummaryPanelProps) => {
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
@@ -164,6 +166,11 @@ export const DataAssetSummaryPanelV1 = ({
       entityType === EntityType.DASHBOARD ? chartsDetailsLoading : false
     );
   }, [dataAsset, entityType, highlights, charts, chartsDetailsLoading]);
+
+  const shouldShowLineageSection = useMemo(
+    () => hasLineageTab(entityType),
+    [entityType]
+  );
 
   const fetchIncidentCount = useCallback(async () => {
     if (
@@ -446,6 +453,14 @@ export const DataAssetSummaryPanelV1 = ({
                 />
               )
             )}
+            {shouldShowLineageSection && (
+              <LineageSection
+                entityFqn={dataAsset.fullyQualifiedName}
+                entityType={entityType}
+                key={`lineage-${dataAsset.id}`}
+                onLineageClick={onLineageClick}
+              />
+            )}
             <div>
               <OwnersSection
                 entityId={dataAsset.id}
@@ -503,9 +518,7 @@ export const DataAssetSummaryPanelV1 = ({
                 key={`tags-${dataAsset.id}-${
                   (dataAsset.tags as unknown[])?.length || 0
                 }`}
-                tags={dataAsset.tags?.filter(
-                  (tag: TagLabel) => tag.source !== TagSource.Glossary
-                )}
+                tags={dataAsset.tags}
                 onTagsUpdate={onTagsUpdate}
               />
             </div>
