@@ -12,12 +12,21 @@
  */
 import { expect, Response, test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
-import { getApiContext, redirectToHomePage } from '../../../utils/common';
+import { createNewPage, getApiContext, redirectToHomePage } from '../../../utils/common';
 import { clickUpdateButton } from '../../../utils/dataQuality';
 import { deleteTestCase } from '../../../utils/testCases';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
+const table = new TableClass();
+
+
+test.beforeAll(async ({ browser }) => {
+  const { apiContext, afterAction } = await createNewPage(browser);
+  await table.create(apiContext);
+  await afterAction();
+});
+
 
 /**
  * Table Row Count To Be Between test case
@@ -30,9 +39,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
  */
 test('Table Row Count To Be Between', async ({ page }) => {
   await redirectToHomePage(page);
-  const { afterAction, apiContext } = await getApiContext(page);
-  const table = new TableClass();
-  await table.create(apiContext);
+
   const testCase = {
     name: `${table.entity.name}_row_count_between`,
     type: 'tableRowCountToBeBetween',
@@ -50,91 +57,88 @@ test('Table Row Count To Be Between', async ({ page }) => {
   await profileResponse;
   await page.getByRole('tab', { name: 'Table Profile' }).click();
 
-  try {
-    await test.step('Create', async () => {
-      await page.getByTestId('profiler-add-table-test-btn').click();
-      const testCaseDoc = page.waitForResponse(
-        '/locales/en-US/OpenMetadata/TestCaseForm.md'
-      );
-      await page.getByTestId('test-case').click();
-      await testCaseDoc;
-      await page.getByTestId('test-case-name').click();
-      await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
-      await expect(page.locator('[data-id="name"]')).toBeVisible();
+  await test.step('Create', async () => {
+    await page.getByTestId('profiler-add-table-test-btn').click();
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
+    await page.getByTestId('test-case').click();
+    await testCaseDoc;
+    await page.getByTestId('test-case-name').click();
+    await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
-      await page.getByTestId('test-case-name').fill(testCase.name);
+    await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.click('[id="root\\/testType"]');
-      await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
+    await page.getByTestId('test-case-name').fill(testCase.name);
 
-      await expect(page.locator('[data-id="testType"]')).toBeVisible();
+    await page.click('[id="root\\/testType"]');
+    await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
 
-      await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.getByTestId('tableRowCountToBeBetween').click();
-      await page.waitForSelector(`[data-id="tableRowCountToBeBetween"]`, {
-        state: 'visible',
-      });
+    await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-      await expect(
-        page.locator('[data-id="tableRowCountToBeBetween"]')
-      ).toBeVisible();
-
-      await page.fill('#testCaseFormV1_params_minValue', testCase.minValue);
-      await page.fill('#testCaseFormV1_params_maxValue', testCase.maxValue);
-
-      const createTestCaseResponse = page.waitForResponse(
-        (response: Response) =>
-          response.url().includes('/api/v1/dataQuality/testCases') &&
-          response.request().method() === 'POST'
-      );
-      await page.getByTestId('create-btn').click();
-      const response = await createTestCaseResponse;
-
-      expect(response.status()).toBe(201);
-
-      const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?*fields=*'
-      );
-      await page.getByRole('tab', { name: 'Data Quality' }).click();
-      await testCaseResponse;
-
-      await expect(page.getByTestId(testCase.name)).toBeVisible();
+    await page.fill('[id="root\\/testType"]', testCase.type);
+    await page.getByTestId('tableRowCountToBeBetween').click();
+    await page.waitForSelector(`[data-id="tableRowCountToBeBetween"]`, {
+      state: 'visible',
     });
 
-    await test.step('Edit', async () => {
-      await expect(
-        page.getByTestId(testCase.name).getByRole('link')
-      ).toBeVisible();
+    await expect(
+      page.locator('[data-id="tableRowCountToBeBetween"]')
+    ).toBeVisible();
 
-      const testCaseDoc = page.waitForResponse(
-        '/locales/en-US/OpenMetadata/TestCaseForm.md'
-      );
-      const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
-      await page.getByTestId(`action-dropdown-${testCase.name}`).click();
-      await page.getByTestId(`edit-${testCase.name}`).click();
-      await testCaseDoc;
-      await testDefinitionResponse;
+    await page.fill('#testCaseFormV1_params_minValue', testCase.minValue);
+    await page.fill('#testCaseFormV1_params_maxValue', testCase.maxValue);
 
-      await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
-        `Edit ${testCase.name}`
-      );
+    const createTestCaseResponse = page.waitForResponse(
+      (response: Response) =>
+        response.url().includes('/api/v1/dataQuality/testCases') &&
+        response.request().method() === 'POST'
+    );
+    await page.getByTestId('create-btn').click();
+    const response = await createTestCaseResponse;
 
-      await page.locator('#tableTestForm_params_minValue').clear();
-      await page.fill('#tableTestForm_params_minValue', '20');
-      await page.locator('#tableTestForm_params_maxValue').clear();
-      await page.fill('#tableTestForm_params_maxValue', '2000');
+    expect(response.status()).toBe(201);
 
-      await clickUpdateButton(page);
-    });
+    const testCaseResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*fields=*'
+    );
+    await page.getByRole('tab', { name: 'Data Quality' }).click();
+    await testCaseResponse;
 
-    await test.step('Delete', async () => {
-      await deleteTestCase(page, testCase.name);
-    });
-  } finally {
-    await table.delete(apiContext);
-    await afterAction();
-  }
+    await expect(page.getByTestId(testCase.name)).toBeVisible();
+  });
+
+  await test.step('Edit', async () => {
+    await expect(
+      page.getByTestId(testCase.name).getByRole('link')
+    ).toBeVisible();
+
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
+    const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
+    await page.getByTestId(`action-dropdown-${testCase.name}`).click();
+    await page.getByTestId(`edit-${testCase.name}`).click();
+    await testCaseDoc;
+    await testDefinitionResponse;
+
+    await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
+      `Edit ${testCase.name}`
+    );
+
+    await page.locator('#tableTestForm_params_minValue').clear();
+    await page.fill('#tableTestForm_params_minValue', '20');
+    await page.locator('#tableTestForm_params_maxValue').clear();
+    await page.fill('#tableTestForm_params_maxValue', '2000');
+
+    await clickUpdateButton(page);
+  });
+
+  await test.step('Delete', async () => {
+    await deleteTestCase(page, testCase.name);
+  });
+
 });
 
 /**
@@ -148,9 +152,7 @@ test('Table Row Count To Be Between', async ({ page }) => {
  */
 test('Table Row Count To Equal', async ({ page }) => {
   await redirectToHomePage(page);
-  const { afterAction, apiContext } = await getApiContext(page);
-  const table = new TableClass();
-  await table.create(apiContext);
+
   const testCase = {
     name: `${table.entity.name}_row_count_equal`,
     type: 'tableRowCountToEqual',
@@ -167,88 +169,85 @@ test('Table Row Count To Equal', async ({ page }) => {
   await profileResponse;
   await page.getByRole('tab', { name: 'Table Profile' }).click();
 
-  try {
-    await test.step('Create', async () => {
-      await page.getByTestId('profiler-add-table-test-btn').click();
-      const testCaseDoc = page.waitForResponse(
-        '/locales/en-US/OpenMetadata/TestCaseForm.md'
-      );
-      await page.getByTestId('test-case').click();
-      await testCaseDoc;
-      await page.getByTestId('test-case-name').click();
-      await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
-      await expect(page.locator('[data-id="name"]')).toBeVisible();
+  await test.step('Create', async () => {
+    await page.getByTestId('profiler-add-table-test-btn').click();
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
+    await page.getByTestId('test-case').click();
+    await testCaseDoc;
+    await page.getByTestId('test-case-name').click();
+    await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
-      await page.getByTestId('test-case-name').fill(testCase.name);
+    await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.click('[id="root\\/testType"]');
-      await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
+    await page.getByTestId('test-case-name').fill(testCase.name);
 
-      await expect(page.locator('[data-id="testType"]')).toBeVisible();
+    await page.click('[id="root\\/testType"]');
+    await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
 
-      await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.getByTestId('tableRowCountToEqual').click();
-      await page.waitForSelector(`[data-id="tableRowCountToEqual"]`, {
-        state: 'visible',
-      });
+    await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-      await expect(
-        page.locator('[data-id="tableRowCountToEqual"]')
-      ).toBeVisible();
-
-      await page.fill('#testCaseFormV1_params_value', testCase.value);
-
-      const createTestCaseResponse = page.waitForResponse(
-        (response: Response) =>
-          response.url().includes('/api/v1/dataQuality/testCases') &&
-          response.request().method() === 'POST'
-      );
-      await page.getByTestId('create-btn').click();
-      const response = await createTestCaseResponse;
-
-      expect(response.status()).toBe(201);
-
-      const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?*fields=*'
-      );
-      await page.getByRole('tab', { name: 'Data Quality' }).click();
-      await testCaseResponse;
-
-      await expect(page.getByTestId(testCase.name)).toBeVisible();
+    await page.fill('[id="root\\/testType"]', testCase.type);
+    await page.getByTestId('tableRowCountToEqual').click();
+    await page.waitForSelector(`[data-id="tableRowCountToEqual"]`, {
+      state: 'visible',
     });
 
-    await test.step('Edit', async () => {
-      await expect(
-        page.getByTestId(testCase.name).getByRole('link')
-      ).toBeVisible();
+    await expect(
+      page.locator('[data-id="tableRowCountToEqual"]')
+    ).toBeVisible();
 
-      const testCaseDoc = page.waitForResponse(
-        '/locales/en-US/OpenMetadata/TestCaseForm.md'
-      );
-      const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
-      await page.getByTestId(`action-dropdown-${testCase.name}`).click();
-      await page.getByTestId(`edit-${testCase.name}`).click();
-      await testCaseDoc;
-      await testDefinitionResponse;
+    await page.fill('#testCaseFormV1_params_value', testCase.value);
 
-      await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
-        `Edit ${testCase.name}`
-      );
+    const createTestCaseResponse = page.waitForResponse(
+      (response: Response) =>
+        response.url().includes('/api/v1/dataQuality/testCases') &&
+        response.request().method() === 'POST'
+    );
+    await page.getByTestId('create-btn').click();
+    const response = await createTestCaseResponse;
 
-      await page.locator('#tableTestForm_params_value').clear();
-      await page.locator('#tableTestForm_params_value').fill('200');
+    expect(response.status()).toBe(201);
 
-      await clickUpdateButton(page);
-    });
+    const testCaseResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*fields=*'
+    );
+    await page.getByRole('tab', { name: 'Data Quality' }).click();
+    await testCaseResponse;
 
-    await test.step('Delete', async () => {
-      await deleteTestCase(page, testCase.name);
-    });
-  } finally {
-    await table.delete(apiContext);
-    await afterAction();
-  }
+    await expect(page.getByTestId(testCase.name)).toBeVisible();
+  });
+
+  await test.step('Edit', async () => {
+    await expect(
+      page.getByTestId(testCase.name).getByRole('link')
+    ).toBeVisible();
+
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
+    const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
+    await page.getByTestId(`action-dropdown-${testCase.name}`).click();
+    await page.getByTestId(`edit-${testCase.name}`).click();
+    await testCaseDoc;
+    await testDefinitionResponse;
+
+    await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
+      `Edit ${testCase.name}`
+    );
+
+    await page.locator('#tableTestForm_params_value').clear();
+    await page.locator('#tableTestForm_params_value').fill('200');
+
+    await clickUpdateButton(page);
+  });
+
+  await test.step('Delete', async () => {
+    await deleteTestCase(page, testCase.name);
+  });
+
 });
 
 /**
@@ -262,9 +261,7 @@ test('Table Row Count To Equal', async ({ page }) => {
  */
 test('Table Column Count To Be Between', async ({ page }) => {
   await redirectToHomePage(page);
-  const { afterAction, apiContext } = await getApiContext(page);
-  const table = new TableClass();
-  await table.create(apiContext);
+
   const testCase = {
     name: `${table.entity.name}_column_count_between`,
     type: 'tableColumnCountToBeBetween',
@@ -282,97 +279,94 @@ test('Table Column Count To Be Between', async ({ page }) => {
   await profileResponse;
   await page.getByRole('tab', { name: 'Table Profile' }).click();
 
-  try {
-    await test.step('Create', async () => {
-      await page.getByTestId('profiler-add-table-test-btn').click();
-      const testCaseDoc = page.waitForResponse(
-        '/locales/en-US/OpenMetadata/TestCaseForm.md'
-      );
-      await page.getByTestId('test-case').click();
-      await testCaseDoc;
-      await page.getByTestId('test-case-name').click();
-      await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
-      await expect(page.locator('[data-id="name"]')).toBeVisible();
+  await test.step('Create', async () => {
+    await page.getByTestId('profiler-add-table-test-btn').click();
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
+    await page.getByTestId('test-case').click();
+    await testCaseDoc;
+    await page.getByTestId('test-case-name').click();
+    await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
-      await page.getByTestId('test-case-name').fill(testCase.name);
+    await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.click('[id="root\\/testType"]');
-      await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
+    await page.getByTestId('test-case-name').fill(testCase.name);
 
-      await expect(page.locator('[data-id="testType"]')).toBeVisible();
+    await page.click('[id="root\\/testType"]');
+    await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
 
-      await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.getByTestId('tableColumnCountToBeBetween').click();
-      await page.waitForSelector(`[data-id="tableColumnCountToBeBetween"]`, {
-        state: 'visible',
-      });
+    await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-      await expect(
-        page.locator('[data-id="tableColumnCountToBeBetween"]')
-      ).toBeVisible();
-
-      await page.fill(
-        '#testCaseFormV1_params_minColValue',
-        testCase.minColValue
-      );
-      await page.fill(
-        '#testCaseFormV1_params_maxColValue',
-        testCase.maxColValue
-      );
-
-      const createTestCaseResponse = page.waitForResponse(
-        (response: Response) =>
-          response.url().includes('/api/v1/dataQuality/testCases') &&
-          response.request().method() === 'POST'
-      );
-      await page.getByTestId('create-btn').click();
-      const response = await createTestCaseResponse;
-
-      expect(response.status()).toBe(201);
-
-      const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?*fields=*'
-      );
-      await page.getByRole('tab', { name: 'Data Quality' }).click();
-      await testCaseResponse;
-
-      await expect(page.getByTestId(testCase.name)).toBeVisible();
+    await page.fill('[id="root\\/testType"]', testCase.type);
+    await page.getByTestId('tableColumnCountToBeBetween').click();
+    await page.waitForSelector(`[data-id="tableColumnCountToBeBetween"]`, {
+      state: 'visible',
     });
 
-    await test.step('Edit', async () => {
-      await expect(
-        page.getByTestId(testCase.name).getByRole('link')
-      ).toBeVisible();
+    await expect(
+      page.locator('[data-id="tableColumnCountToBeBetween"]')
+    ).toBeVisible();
 
-      const testCaseDoc = page.waitForResponse(
-        '/locales/en-US/OpenMetadata/TestCaseForm.md'
-      );
-      const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
-      await page.getByTestId(`action-dropdown-${testCase.name}`).click();
-      await page.getByTestId(`edit-${testCase.name}`).click();
-      await testCaseDoc;
-      await testDefinitionResponse;
+    await page.fill(
+      '#testCaseFormV1_params_minColValue',
+      testCase.minColValue
+    );
+    await page.fill(
+      '#testCaseFormV1_params_maxColValue',
+      testCase.maxColValue
+    );
 
-      await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
-        `Edit ${testCase.name}`
-      );
+    const createTestCaseResponse = page.waitForResponse(
+      (response: Response) =>
+        response.url().includes('/api/v1/dataQuality/testCases') &&
+        response.request().method() === 'POST'
+    );
+    await page.getByTestId('create-btn').click();
+    const response = await createTestCaseResponse;
 
-      await page.locator('#tableTestForm_params_minColValue').clear();
-      await page.locator('#tableTestForm_params_minColValue').fill('5');
-      await page.locator('#tableTestForm_params_maxColValue').clear();
-      await page.locator('#tableTestForm_params_maxColValue').fill('15');
+    expect(response.status()).toBe(201);
 
-      await clickUpdateButton(page);
-    });
+    const testCaseResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*fields=*'
+    );
+    await page.getByRole('tab', { name: 'Data Quality' }).click();
+    await testCaseResponse;
 
-    await test.step('Delete', async () => {
-      await deleteTestCase(page, testCase.name);
-    });
-  } finally {
-    await table.delete(apiContext);
-    await afterAction();
-  }
+    await expect(page.getByTestId(testCase.name)).toBeVisible();
+  });
+
+  await test.step('Edit', async () => {
+    await expect(
+      page.getByTestId(testCase.name).getByRole('link')
+    ).toBeVisible();
+
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
+    const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
+    await page.getByTestId(`action-dropdown-${testCase.name}`).click();
+    await page.getByTestId(`edit-${testCase.name}`).click();
+    await testCaseDoc;
+    await testDefinitionResponse;
+
+    await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
+      `Edit ${testCase.name}`
+    );
+
+    await page.locator('#tableTestForm_params_minColValue').clear();
+    await page.locator('#tableTestForm_params_minColValue').fill('5');
+    await page.locator('#tableTestForm_params_maxColValue').clear();
+    await page.locator('#tableTestForm_params_maxColValue').fill('15');
+
+    await clickUpdateButton(page);
+  });
+
+  await test.step('Delete', async () => {
+    await deleteTestCase(page, testCase.name);
+  });
+
 });
 
 /**
@@ -386,9 +380,7 @@ test('Table Column Count To Be Between', async ({ page }) => {
  */
 test('Table Column Count To Equal', async ({ page }) => {
   await redirectToHomePage(page);
-  const { afterAction, apiContext } = await getApiContext(page);
-  const table = new TableClass();
-  await table.create(apiContext);
+
   const testCase = {
     name: `${table.entity.name}_column_count_equal`,
     type: 'tableColumnCountToEqual',
@@ -405,91 +397,88 @@ test('Table Column Count To Equal', async ({ page }) => {
   await profileResponse;
   await page.getByRole('tab', { name: 'Table Profile' }).click();
 
-  try {
-    await test.step('Create', async () => {
-      await page.getByTestId('profiler-add-table-test-btn').click();
-      const testCaseDoc = page.waitForResponse(
-        '/locales/en-US/OpenMetadata/TestCaseForm.md'
-      );
-      await page.getByTestId('test-case').click();
-      await testCaseDoc;
-      await page.getByTestId('test-case-name').click();
-      await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
-      await expect(page.locator('[data-id="name"]')).toBeVisible();
+  await test.step('Create', async () => {
+    await page.getByTestId('profiler-add-table-test-btn').click();
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
+    await page.getByTestId('test-case').click();
+    await testCaseDoc;
+    await page.getByTestId('test-case-name').click();
+    await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
-      await page.getByTestId('test-case-name').fill(testCase.name);
+    await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.click('[id="root\\/testType"]');
-      await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
+    await page.getByTestId('test-case-name').fill(testCase.name);
 
-      await expect(page.locator('[data-id="testType"]')).toBeVisible();
+    await page.click('[id="root\\/testType"]');
+    await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
 
-      await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.getByTestId('tableColumnCountToEqual').click();
-      await page.waitForSelector(`[data-id="tableColumnCountToEqual"]`, {
-        state: 'visible',
-      });
+    await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-      await expect(
-        page.locator('[data-id="tableColumnCountToEqual"]')
-      ).toBeVisible();
-
-      await page.fill(
-        '#testCaseFormV1_params_columnCount',
-        testCase.columnCount
-      );
-
-      const createTestCaseResponse = page.waitForResponse(
-        (response: Response) =>
-          response.url().includes('/api/v1/dataQuality/testCases') &&
-          response.request().method() === 'POST'
-      );
-      await page.getByTestId('create-btn').click();
-      const response = await createTestCaseResponse;
-
-      expect(response.status()).toBe(201);
-
-      const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?*fields=*'
-      );
-      await page.getByRole('tab', { name: 'Data Quality' }).click();
-      await testCaseResponse;
-
-      await expect(page.getByTestId(testCase.name)).toBeVisible();
+    await page.fill('[id="root\\/testType"]', testCase.type);
+    await page.getByTestId('tableColumnCountToEqual').click();
+    await page.waitForSelector(`[data-id="tableColumnCountToEqual"]`, {
+      state: 'visible',
     });
 
-    await test.step('Edit', async () => {
-      await expect(
-        page.getByTestId(testCase.name).getByRole('link')
-      ).toBeVisible();
+    await expect(
+      page.locator('[data-id="tableColumnCountToEqual"]')
+    ).toBeVisible();
 
-      const testCaseDoc = page.waitForResponse(
-        '/locales/en-US/OpenMetadata/TestCaseForm.md'
-      );
-      const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
-      await page.getByTestId(`action-dropdown-${testCase.name}`).click();
-      await page.getByTestId(`edit-${testCase.name}`).click();
-      await testCaseDoc;
-      await testDefinitionResponse;
+    await page.fill(
+      '#testCaseFormV1_params_columnCount',
+      testCase.columnCount
+    );
 
-      await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
-        `Edit ${testCase.name}`
-      );
+    const createTestCaseResponse = page.waitForResponse(
+      (response: Response) =>
+        response.url().includes('/api/v1/dataQuality/testCases') &&
+        response.request().method() === 'POST'
+    );
+    await page.getByTestId('create-btn').click();
+    const response = await createTestCaseResponse;
 
-      await page.locator('#tableTestForm_params_columnCount').clear();
-      await page.locator('#tableTestForm_params_columnCount').fill('5');
+    expect(response.status()).toBe(201);
 
-      await clickUpdateButton(page);
-    });
+    const testCaseResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*fields=*'
+    );
+    await page.getByRole('tab', { name: 'Data Quality' }).click();
+    await testCaseResponse;
 
-    await test.step('Delete', async () => {
-      await deleteTestCase(page, testCase.name);
-    });
-  } finally {
-    await table.delete(apiContext);
-    await afterAction();
-  }
+    await expect(page.getByTestId(testCase.name)).toBeVisible();
+  });
+
+  await test.step('Edit', async () => {
+    await expect(
+      page.getByTestId(testCase.name).getByRole('link')
+    ).toBeVisible();
+
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
+    const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
+    await page.getByTestId(`action-dropdown-${testCase.name}`).click();
+    await page.getByTestId(`edit-${testCase.name}`).click();
+    await testCaseDoc;
+    await testDefinitionResponse;
+
+    await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
+      `Edit ${testCase.name}`
+    );
+
+    await page.locator('#tableTestForm_params_columnCount').clear();
+    await page.locator('#tableTestForm_params_columnCount').fill('5');
+
+    await clickUpdateButton(page);
+  });
+
+  await test.step('Delete', async () => {
+    await deleteTestCase(page, testCase.name);
+  });
+
 });
 
 /**
@@ -503,9 +492,7 @@ test('Table Column Count To Equal', async ({ page }) => {
  */
 test('Table Column Name To Exist', async ({ page }) => {
   await redirectToHomePage(page);
-  const { afterAction, apiContext } = await getApiContext(page);
-  const table = new TableClass();
-  await table.create(apiContext);
+
   const testCase = {
     name: `${table.entity.name}_column_name_exist`,
     type: 'tableColumnNameToExist',
@@ -522,90 +509,87 @@ test('Table Column Name To Exist', async ({ page }) => {
   await profileResponse;
   await page.getByRole('tab', { name: 'Table Profile' }).click();
 
-  try {
-    await test.step('Create', async () => {
-      await page.getByTestId('profiler-add-table-test-btn').click();
-      const testCaseDoc = page.waitForResponse(
-        '/locales/en-US/OpenMetadata/TestCaseForm.md'
-      );
-      await page.getByTestId('test-case').click();
-      await testCaseDoc;
-      await page.getByTestId('test-case-name').click();
-      await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
-      await expect(page.locator('[data-id="name"]')).toBeVisible();
+  await test.step('Create', async () => {
+    await page.getByTestId('profiler-add-table-test-btn').click();
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
+    await page.getByTestId('test-case').click();
+    await testCaseDoc;
+    await page.getByTestId('test-case-name').click();
+    await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
-      await page.getByTestId('test-case-name').fill(testCase.name);
+    await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.click('[id="root\\/testType"]');
-      await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
+    await page.getByTestId('test-case-name').fill(testCase.name);
 
-      await expect(page.locator('[data-id="testType"]')).toBeVisible();
+    await page.click('[id="root\\/testType"]');
+    await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
 
-      await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.getByTestId('tableColumnNameToExist').click();
-      await page.waitForSelector(`[data-id="tableColumnNameToExist"]`, {
-        state: 'visible',
-      });
+    await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-      await expect(
-        page.locator('[data-id="tableColumnNameToExist"]')
-      ).toBeVisible();
-
-      await page.fill('#testCaseFormV1_params_columnName', testCase.columnName);
-
-      const createTestCaseResponse = page.waitForResponse(
-        (response: Response) =>
-          response.url().includes('/api/v1/dataQuality/testCases') &&
-          response.request().method() === 'POST'
-      );
-      await page.getByTestId('create-btn').click();
-      const response = await createTestCaseResponse;
-
-      expect(response.status()).toBe(201);
-
-      const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?*fields=*'
-      );
-      await page.getByRole('tab', { name: 'Data Quality' }).click();
-      await testCaseResponse;
-
-      await expect(page.getByTestId(testCase.name)).toBeVisible();
+    await page.fill('[id="root\\/testType"]', testCase.type);
+    await page.getByTestId('tableColumnNameToExist').click();
+    await page.waitForSelector(`[data-id="tableColumnNameToExist"]`, {
+      state: 'visible',
     });
 
-    await test.step('Edit', async () => {
-      await expect(
-        page.getByTestId(testCase.name).getByRole('link')
-      ).toBeVisible();
+    await expect(
+      page.locator('[data-id="tableColumnNameToExist"]')
+    ).toBeVisible();
 
-      const testCaseDoc = page.waitForResponse(
-        '/locales/en-US/OpenMetadata/TestCaseForm.md'
-      );
-      const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
-      await page.getByTestId(`action-dropdown-${testCase.name}`).click();
-      await page.getByTestId(`edit-${testCase.name}`).click();
-      await testCaseDoc;
-      await testDefinitionResponse;
+    await page.fill('#testCaseFormV1_params_columnName', testCase.columnName);
 
-      await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
-        `Edit ${testCase.name}`
-      );
+    const createTestCaseResponse = page.waitForResponse(
+      (response: Response) =>
+        response.url().includes('/api/v1/dataQuality/testCases') &&
+        response.request().method() === 'POST'
+    );
+    await page.getByTestId('create-btn').click();
+    const response = await createTestCaseResponse;
 
-      await page.locator('#tableTestForm_params_columnName').clear();
-      await page
-        .locator('#tableTestForm_params_columnName')
-        .fill(table.entity?.columns[1].name);
+    expect(response.status()).toBe(201);
 
-      await clickUpdateButton(page);
-    });
+    const testCaseResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*fields=*'
+    );
+    await page.getByRole('tab', { name: 'Data Quality' }).click();
+    await testCaseResponse;
 
-    await test.step('Delete', async () => {
-      await deleteTestCase(page, testCase.name);
-    });
-  } finally {
-    await table.delete(apiContext);
-    await afterAction();
-  }
+    await expect(page.getByTestId(testCase.name)).toBeVisible();
+  });
+
+  await test.step('Edit', async () => {
+    await expect(
+      page.getByTestId(testCase.name).getByRole('link')
+    ).toBeVisible();
+
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
+    const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
+    await page.getByTestId(`action-dropdown-${testCase.name}`).click();
+    await page.getByTestId(`edit-${testCase.name}`).click();
+    await testCaseDoc;
+    await testDefinitionResponse;
+
+    await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
+      `Edit ${testCase.name}`
+    );
+
+    await page.locator('#tableTestForm_params_columnName').clear();
+    await page
+      .locator('#tableTestForm_params_columnName')
+      .fill(table.entity?.columns[1].name);
+
+    await clickUpdateButton(page);
+  });
+
+  await test.step('Delete', async () => {
+    await deleteTestCase(page, testCase.name);
+  });
+
 });
 
 /**
@@ -619,9 +603,7 @@ test('Table Column Name To Exist', async ({ page }) => {
  */
 test('Table Column To Match Set', async ({ page }) => {
   await redirectToHomePage(page);
-  const { afterAction, apiContext } = await getApiContext(page);
-  const table = new TableClass();
-  await table.create(apiContext);
+
   const testCase = {
     name: `${table.entity.name}_column_match_set`,
     type: 'tableColumnToMatchSet',
@@ -637,95 +619,92 @@ test('Table Column To Match Set', async ({ page }) => {
   await profileResponse;
   await page.getByRole('tab', { name: 'Table Profile' }).click();
 
-  try {
-    await test.step('Create', async () => {
-      await page.getByTestId('profiler-add-table-test-btn').click();
-      const testCaseDoc = page.waitForResponse(
-        '/locales/en-US/OpenMetadata/TestCaseForm.md'
-      );
-      await page.getByTestId('test-case').click();
-      await testCaseDoc;
-      await page.getByTestId('test-case-name').click();
-      await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
-      await expect(page.locator('[data-id="name"]')).toBeVisible();
+  await test.step('Create', async () => {
+    await page.getByTestId('profiler-add-table-test-btn').click();
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
+    await page.getByTestId('test-case').click();
+    await testCaseDoc;
+    await page.getByTestId('test-case-name').click();
+    await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
-      await page.getByTestId('test-case-name').fill(testCase.name);
+    await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.click('[id="root\\/testType"]');
-      await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
+    await page.getByTestId('test-case-name').fill(testCase.name);
 
-      await expect(page.locator('[data-id="testType"]')).toBeVisible();
+    await page.click('[id="root\\/testType"]');
+    await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
 
-      await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.getByTestId('tableColumnToMatchSet').click();
-      await page.waitForSelector(`[data-id="tableColumnToMatchSet"]`, {
-        state: 'visible',
-      });
+    await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-      await expect(
-        page.locator('[data-id="tableColumnToMatchSet"]')
-      ).toBeVisible();
-
-      await page.fill(
-        '#testCaseFormV1_params_columnNames',
-        `${table.entity?.columns[0].name},${table.entity?.columns[1].name}`
-      );
-
-      const createTestCaseResponse = page.waitForResponse(
-        (response: Response) =>
-          response.url().includes('/api/v1/dataQuality/testCases') &&
-          response.request().method() === 'POST'
-      );
-      await page.getByTestId('create-btn').click();
-      const response = await createTestCaseResponse;
-
-      expect(response.status()).toBe(201);
-
-      const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?*fields=*'
-      );
-      await page.getByRole('tab', { name: 'Data Quality' }).click();
-      await testCaseResponse;
-
-      await expect(page.getByTestId(testCase.name)).toBeVisible();
+    await page.fill('[id="root\\/testType"]', testCase.type);
+    await page.getByTestId('tableColumnToMatchSet').click();
+    await page.waitForSelector(`[data-id="tableColumnToMatchSet"]`, {
+      state: 'visible',
     });
 
-    await test.step('Edit', async () => {
-      await expect(
-        page.getByTestId(testCase.name).getByRole('link')
-      ).toBeVisible();
+    await expect(
+      page.locator('[data-id="tableColumnToMatchSet"]')
+    ).toBeVisible();
 
-      const testCaseDoc = page.waitForResponse(
-        '/locales/en-US/OpenMetadata/TestCaseForm.md'
-      );
-      const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
-      await page.getByTestId(`action-dropdown-${testCase.name}`).click();
-      await page.getByTestId(`edit-${testCase.name}`).click();
-      await testCaseDoc;
-      await testDefinitionResponse;
+    await page.fill(
+      '#testCaseFormV1_params_columnNames',
+      `${table.entity?.columns[0].name},${table.entity?.columns[1].name}`
+    );
 
-      await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
-        `Edit ${testCase.name}`
-      );
+    const createTestCaseResponse = page.waitForResponse(
+      (response: Response) =>
+        response.url().includes('/api/v1/dataQuality/testCases') &&
+        response.request().method() === 'POST'
+    );
+    await page.getByTestId('create-btn').click();
+    const response = await createTestCaseResponse;
 
-      await page.fill(
-        '#tableTestForm_params_columnNames',
-        `,${table.entity?.columns[2].name}`
-      );
+    expect(response.status()).toBe(201);
 
-      await page.click('#tableTestForm_params_ordered');
+    const testCaseResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*fields=*'
+    );
+    await page.getByRole('tab', { name: 'Data Quality' }).click();
+    await testCaseResponse;
 
-      await clickUpdateButton(page);
-    });
+    await expect(page.getByTestId(testCase.name)).toBeVisible();
+  });
 
-    await test.step('Delete', async () => {
-      await deleteTestCase(page, testCase.name);
-    });
-  } finally {
-    await table.delete(apiContext);
-    await afterAction();
-  }
+  await test.step('Edit', async () => {
+    await expect(
+      page.getByTestId(testCase.name).getByRole('link')
+    ).toBeVisible();
+
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
+    const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
+    await page.getByTestId(`action-dropdown-${testCase.name}`).click();
+    await page.getByTestId(`edit-${testCase.name}`).click();
+    await testCaseDoc;
+    await testDefinitionResponse;
+
+    await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
+      `Edit ${testCase.name}`
+    );
+
+    await page.fill(
+      '#tableTestForm_params_columnNames',
+      `,${table.entity?.columns[2].name}`
+    );
+
+    await page.click('#tableTestForm_params_ordered');
+
+    await clickUpdateButton(page);
+  });
+
+  await test.step('Delete', async () => {
+    await deleteTestCase(page, testCase.name);
+  });
+
 });
 
 /**
@@ -761,205 +740,199 @@ test('Table Difference', async ({ page }) => {
   await profileResponse;
   await page.getByRole('tab', { name: 'Table Profile' }).click();
 
-  try {
-    await test.step('Create', async () => {
-      await page.getByTestId('profiler-add-table-test-btn').click();
-      const testCaseDoc = page.waitForResponse(
-        '/locales/en-US/OpenMetadata/TestCaseForm.md'
-      );
-      await page.getByTestId('test-case').click();
-      await testCaseDoc;
-      await page.getByTestId('test-case-name').click();
-      await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
-      await expect(page.locator('[data-id="name"]')).toBeVisible();
+  await test.step('Create', async () => {
+    await page.getByTestId('profiler-add-table-test-btn').click();
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
+    await page.getByTestId('test-case').click();
+    await testCaseDoc;
+    await page.getByTestId('test-case-name').click();
+    await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
-      await page.getByTestId('test-case-name').fill(testCase.name);
+    await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.click('[id="root\\/testType"]');
-      await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
+    await page.getByTestId('test-case-name').fill(testCase.name);
 
-      await expect(page.locator('[data-id="testType"]')).toBeVisible();
+    await page.click('[id="root\\/testType"]');
+    await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
 
-      await page.fill('[id="root\\/testType"]', testCase.type);
-      const tableListSearchResponse = page.waitForResponse(
-        `/api/v1/search/query?q=*index=table_search_index*`
-      );
-      await page.getByTestId('tableDiff').click();
-      await tableListSearchResponse;
+    await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-      const table2KeyColumnsInput = page.locator(
-        '#testCaseFormV1_params_table2\\.keyColumns_0_value'
-      );
+    await page.fill('[id="root\\/testType"]', testCase.type);
+    const tableListSearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*index=table_search_index*`
+    );
+    await page.getByTestId('tableDiff').click();
+    await tableListSearchResponse;
 
-      await expect(table2KeyColumnsInput).toBeDisabled();
+    const table2KeyColumnsInput = page.locator(
+      '#testCaseFormV1_params_table2\\.keyColumns_0_value'
+    );
 
-      await page.click('#testCaseFormV1_params_table2');
-      await page.waitForSelector(`[data-id="tableDiff"]`, {
-        state: 'visible',
-      });
+    await expect(table2KeyColumnsInput).toBeDisabled();
 
-      await expect(page.locator('[data-id="tableDiff"]')).toBeVisible();
+    await page.click('#testCaseFormV1_params_table2');
+    await page.waitForSelector(`[data-id="tableDiff"]`, {
+      state: 'visible',
+    });
 
-      const tableSearchResponse = page.waitForResponse(
-        `/api/v1/search/query?q=*${testCase.table2}*index=table_search_index*`
-      );
-      await page.fill(`#testCaseFormV1_params_table2`, testCase.table2);
-      await tableSearchResponse;
-      await page.waitForLoadState('domcontentloaded');
+    await expect(page.locator('[data-id="tableDiff"]')).toBeVisible();
 
-      await expect(
-        page
-          .getByTitle(table2.entityResponseData?.['fullyQualifiedName'])
-          .locator('div')
-      ).toBeVisible();
+    const tableSearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*${testCase.table2}*index=table_search_index*`
+    );
+    await page.fill(`#testCaseFormV1_params_table2`, testCase.table2);
+    await tableSearchResponse;
+    await page.waitForLoadState('domcontentloaded');
 
-      await page
+    await expect(
+      page
         .getByTitle(table2.entityResponseData?.['fullyQualifiedName'])
         .locator('div')
-        .click();
+    ).toBeVisible();
 
-      await page.fill(
-        `#testCaseFormV1_params_keyColumns_0_value`,
-        table1.entity?.columns[0].name
-      );
-      await page.getByTitle(table1.entity?.columns[0].name).click();
+    await page
+      .getByTitle(table2.entityResponseData?.['fullyQualifiedName'])
+      .locator('div')
+      .click();
 
-      await page.fill(
-        '#testCaseFormV1_params_table2\\.keyColumns_0_value',
-        table2.entity?.columns[0].name
-      );
-      await page.getByTitle(table2.entity?.columns[0].name).click();
+    await page.fill(
+      `#testCaseFormV1_params_keyColumns_0_value`,
+      table1.entity?.columns[0].name
+    );
+    await page.getByTitle(table1.entity?.columns[0].name).click();
 
-      await expect(table2KeyColumnsInput).not.toBeDisabled();
+    await page.fill(
+      '#testCaseFormV1_params_table2\\.keyColumns_0_value',
+      table2.entity?.columns[0].name
+    );
+    await page.getByTitle(table2.entity?.columns[0].name).click();
 
-      await page.fill('#testCaseFormV1_params_threshold', testCase.threshold);
-      await page.fill(
-        '#testCaseFormV1_params_useColumns_0_value',
-        table1.entity?.columns[0].name
-      );
+    await expect(table2KeyColumnsInput).not.toBeDisabled();
 
-      await expect(
-        page.getByTitle(table1.entity?.columns[0].name).nth(2)
-      ).toHaveClass(/ant-select-item-option-disabled/);
+    await page.fill('#testCaseFormV1_params_threshold', testCase.threshold);
+    await page.fill(
+      '#testCaseFormV1_params_useColumns_0_value',
+      table1.entity?.columns[0].name
+    );
 
-      await page.locator('#testCaseFormV1_params_useColumns_0_value').clear();
-      await page.fill(
-        '#testCaseFormV1_params_useColumns_0_value',
-        table1.entity?.columns[1].name
-      );
-      await page.getByTitle(table1.entity?.columns[1].name).click();
+    await expect(
+      page.getByTitle(table1.entity?.columns[0].name).nth(2)
+    ).toHaveClass(/ant-select-item-option-disabled/);
 
-      await page.fill('#testCaseFormV1_params_where', 'test');
-      const createTestCaseResponse = page.waitForResponse(
-        (response: Response) =>
-          response.url().includes('/api/v1/dataQuality/testCases') &&
-          response.request().method() === 'POST'
-      );
-      await page.getByTestId('create-btn').click();
-      const response = await createTestCaseResponse;
+    await page.locator('#testCaseFormV1_params_useColumns_0_value').clear();
+    await page.fill(
+      '#testCaseFormV1_params_useColumns_0_value',
+      table1.entity?.columns[1].name
+    );
+    await page.getByTitle(table1.entity?.columns[1].name).click();
 
-      expect(response.status()).toBe(201);
+    await page.fill('#testCaseFormV1_params_where', 'test');
+    const createTestCaseResponse = page.waitForResponse(
+      (response: Response) =>
+        response.url().includes('/api/v1/dataQuality/testCases') &&
+        response.request().method() === 'POST'
+    );
+    await page.getByTestId('create-btn').click();
+    const response = await createTestCaseResponse;
 
-      const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?*fields=*'
-      );
-      await page.getByRole('tab', { name: 'Data Quality' }).click();
-      await testCaseResponse;
+    expect(response.status()).toBe(201);
 
-      await expect(page.getByTestId(testCase.name)).toBeVisible();
+    const testCaseResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*fields=*'
+    );
+    await page.getByRole('tab', { name: 'Data Quality' }).click();
+    await testCaseResponse;
+
+    await expect(page.getByTestId(testCase.name)).toBeVisible();
+  });
+
+  await test.step('Edit', async () => {
+    await expect(
+      page.getByTestId(testCase.name).getByRole('link')
+    ).toBeVisible();
+
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
+    const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
+    await page.getByTestId(`action-dropdown-${testCase.name}`).click();
+    await page.getByTestId(`edit-${testCase.name}`).click();
+    await testCaseDoc;
+    await testDefinitionResponse;
+
+    await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
+      `Edit ${testCase.name}`
+    );
+
+    await expect(page.getByTestId('edit-test-form')).toBeVisible();
+
+    const table1KeyColumnsEditInput = page.locator(
+      '#tableTestForm_params_keyColumns_0_value'
+    );
+
+    await expect(table1KeyColumnsEditInput).toBeVisible();
+    await expect(table1KeyColumnsEditInput).not.toBeDisabled();
+
+    const columnName = table1.entity?.columns[0].name;
+    const table1Select = page.getByTestId('keyColumns-select');
+
+    await expect(table1Select).toBeVisible();
+    await expect(table1Select.getByText(columnName)).toBeVisible();
+
+    const table2KeyColumnsEditInput = page.locator(
+      '#tableTestForm_params_table2\\.keyColumns_0_value'
+    );
+
+    await expect(table2KeyColumnsEditInput).toBeVisible();
+    await expect(table2KeyColumnsEditInput).not.toBeDisabled();
+
+    const table2ColumnName = table2.entity?.columns[0].name;
+    const table2Select = page.getByTestId('table2.keyColumns-select');
+
+    await expect(table2Select).toBeVisible();
+    await expect(table2Select.getByText(table2ColumnName)).toBeVisible();
+
+    await page
+      .locator('label')
+      .filter({ hasText: "Table 1's key columns" })
+      .getByRole('button')
+      .click();
+    await page.waitForSelector(`[data-id="tableDiff"]`, {
+      state: 'visible',
     });
 
-    await test.step('Edit', async () => {
-      await expect(
-        page.getByTestId(testCase.name).getByRole('link')
-      ).toBeVisible();
+    await expect(page.locator('[data-id="tableDiff"]')).toBeVisible();
 
-      const testCaseDoc = page.waitForResponse(
-        '/locales/en-US/OpenMetadata/TestCaseForm.md'
-      );
-      const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
-      await page.getByTestId(`action-dropdown-${testCase.name}`).click();
-      await page.getByTestId(`edit-${testCase.name}`).click();
-      await testCaseDoc;
-      await testDefinitionResponse;
+    await page.fill(
+      '#tableTestForm_params_keyColumns_1_value',
+      table1.entity?.columns[3].name
+    );
+    await page
+      .getByTitle(table1.entity?.columns[3].name, { exact: true })
+      .click();
 
-      await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
-        `Edit ${testCase.name}`
-      );
+    await page
+      .locator('label')
+      .filter({ hasText: 'Use Columns' })
+      .getByRole('button')
+      .click();
+    await page.fill(
+      '#tableTestForm_params_useColumns_1_value',
+      table1.entity?.columns[2].name
+    );
+    await page
+      .getByTitle(table1.entity?.columns[2].name, { exact: true })
+      .click();
 
-      await expect(page.getByTestId('edit-test-form')).toBeVisible();
+    await clickUpdateButton(page);
+  });
 
-      const table1KeyColumnsEditInput = page.locator(
-        '#tableTestForm_params_keyColumns_0_value'
-      );
-
-      await expect(table1KeyColumnsEditInput).toBeVisible();
-      await expect(table1KeyColumnsEditInput).not.toBeDisabled();
-
-      const columnName = table1.entity?.columns[0].name;
-      const table1Select = page.getByTestId('keyColumns-select');
-
-      await expect(table1Select).toBeVisible();
-      await expect(table1Select.getByText(columnName)).toBeVisible();
-
-      const table2KeyColumnsEditInput = page.locator(
-        '#tableTestForm_params_table2\\.keyColumns_0_value'
-      );
-
-      await expect(table2KeyColumnsEditInput).toBeVisible();
-      await expect(table2KeyColumnsEditInput).not.toBeDisabled();
-
-      const table2ColumnName = table2.entity?.columns[0].name;
-      const table2Select = page.getByTestId('table2.keyColumns-select');
-
-      await expect(table2Select).toBeVisible();
-      await expect(table2Select.getByText(table2ColumnName)).toBeVisible();
-
-      await page
-        .locator('label')
-        .filter({ hasText: "Table 1's key columns" })
-        .getByRole('button')
-        .click();
-      await page.waitForSelector(`[data-id="tableDiff"]`, {
-        state: 'visible',
-      });
-
-      await expect(page.locator('[data-id="tableDiff"]')).toBeVisible();
-
-      await page.fill(
-        '#tableTestForm_params_keyColumns_1_value',
-        table1.entity?.columns[3].name
-      );
-      await page
-        .getByTitle(table1.entity?.columns[3].name, { exact: true })
-        .click();
-
-      await page
-        .locator('label')
-        .filter({ hasText: 'Use Columns' })
-        .getByRole('button')
-        .click();
-      await page.fill(
-        '#tableTestForm_params_useColumns_1_value',
-        table1.entity?.columns[2].name
-      );
-      await page
-        .getByTitle(table1.entity?.columns[2].name, { exact: true })
-        .click();
-
-      await clickUpdateButton(page);
-    });
-
-    await test.step('Delete', async () => {
-      await deleteTestCase(page, testCase.name);
-    });
-  } finally {
-    await table1.delete(apiContext);
-    await table2.delete(apiContext);
-
-    await afterAction();
-  }
+  await test.step('Delete', async () => {
+    await deleteTestCase(page, testCase.name);
+  });
 });
 
 /**
@@ -973,9 +946,7 @@ test('Table Difference', async ({ page }) => {
  */
 test('Custom SQL Query', async ({ page }) => {
   await redirectToHomePage(page);
-  const { afterAction, apiContext } = await getApiContext(page);
-  const table = new TableClass();
-  await table.create(apiContext);
+
   const testCase = {
     name: `${table.entity.name}_test_case`,
     displayName: 'SQL Test Case Display Name',
@@ -993,121 +964,118 @@ test('Custom SQL Query', async ({ page }) => {
   await profileResponse;
   await page.getByRole('tab', { name: 'Table Profile' }).click();
 
-  try {
-    await test.step('Create', async () => {
-      await page.getByTestId('profiler-add-table-test-btn').click();
-      const testCaseDoc = page.waitForResponse(
-        '/locales/en-US/OpenMetadata/TestCaseForm.md'
-      );
-      await page.getByTestId('test-case').click();
-      await testCaseDoc;
-      await page.getByTestId('test-case-name').click();
-      await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
-      await expect(page.locator('[data-id="name"]')).toBeVisible();
+  await test.step('Create', async () => {
+    await page.getByTestId('profiler-add-table-test-btn').click();
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
+    await page.getByTestId('test-case').click();
+    await testCaseDoc;
+    await page.getByTestId('test-case-name').click();
+    await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
-      await page.getByTestId('test-case-name').fill(testCase.name);
+    await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.click('[id="root\\/testType"]');
-      await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
+    await page.getByTestId('test-case-name').fill(testCase.name);
 
-      await expect(page.locator('[data-id="testType"]')).toBeVisible();
+    await page.click('[id="root\\/testType"]');
+    await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
 
-      await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.getByTestId('tableCustomSQLQuery').click();
-      await page.waitForSelector(`[data-id="tableCustomSQLQuery"]`, {
-        state: 'visible',
-      });
+    await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-      await expect(
-        page.locator('[data-id="tableCustomSQLQuery"]')
-      ).toBeVisible();
-
-      await page.click('#testCaseFormV1_params_strategy');
-      await page.locator('.CodeMirror-scroll').click();
-      await page
-        .getByTestId('code-mirror-container')
-        .getByRole('textbox')
-        .fill(testCase.sqlQuery);
-      await page.getByLabel('Strategy').click();
-      await page.getByTitle('ROWS').click();
-      await page.fill('#testCaseFormV1_params_threshold', '23');
-      const createTestCaseResponse = page.waitForResponse(
-        (response: Response) =>
-          response.url().includes('/api/v1/dataQuality/testCases') &&
-          response.request().method() === 'POST'
-      );
-      await page.getByTestId('create-btn').click();
-      await createTestCaseResponse;
-
-      const response = await createTestCaseResponse;
-
-      expect(response.status()).toBe(201);
-
-      const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?*fields=*'
-      );
-      await page.getByRole('tab', { name: 'Data Quality' }).click();
-      await testCaseResponse;
-
-      await expect(page.getByTestId(testCase.name)).toBeVisible();
+    await page.fill('[id="root\\/testType"]', testCase.type);
+    await page.getByTestId('tableCustomSQLQuery').click();
+    await page.waitForSelector(`[data-id="tableCustomSQLQuery"]`, {
+      state: 'visible',
     });
 
-    await test.step('Edit', async () => {
-      await expect(
-        page.getByTestId(testCase.name).getByRole('link')
-      ).toBeVisible();
+    await expect(
+      page.locator('[data-id="tableCustomSQLQuery"]')
+    ).toBeVisible();
 
-      const testCaseDoc = page.waitForResponse(
-        '/locales/en-US/OpenMetadata/TestCaseForm.md'
-      );
-      const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
-      await page.getByTestId(`action-dropdown-${testCase.name}`).click();
-      await page.getByTestId(`edit-${testCase.name}`).click();
-      await testCaseDoc;
-      await testDefinitionResponse;
+    await page.click('#testCaseFormV1_params_strategy');
+    await page.locator('.CodeMirror-scroll').click();
+    await page
+      .getByTestId('code-mirror-container')
+      .getByRole('textbox')
+      .fill(testCase.sqlQuery);
+    await page.getByLabel('Strategy').click();
+    await page.getByTitle('ROWS').click();
+    await page.fill('#testCaseFormV1_params_threshold', '23');
+    const createTestCaseResponse = page.waitForResponse(
+      (response: Response) =>
+        response.url().includes('/api/v1/dataQuality/testCases') &&
+        response.request().method() === 'POST'
+    );
+    await page.getByTestId('create-btn').click();
+    await createTestCaseResponse;
 
-      await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
-        `Edit ${testCase.name}`
-      );
-      await expect(page.locator('[id="root\\/name"]')).toHaveValue(
-        testCase.name
-      );
-      await expect(page.getByTestId('code-mirror-container')).toContainText(
-        testCase.sqlQuery
-      );
+    const response = await createTestCaseResponse;
 
-      await page.locator('[id="root\\/displayName"]').clear();
-      await page.fill('[id="root\\/displayName"]', testCase.displayName);
+    expect(response.status()).toBe(201);
 
-      await page.locator('.CodeMirror-scroll').click();
-      await page
-        .getByTestId('code-mirror-container')
-        .getByRole('textbox')
-        .fill(' update');
-      await page.getByTestId('edit-test-form').getByText('ROWS').click();
-      await page.getByTitle('COUNT').click();
-      await page.waitForSelector(`[data-id="tableCustomSQLQuery"]`, {
-        state: 'visible',
-      });
+    const testCaseResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*fields=*'
+    );
+    await page.getByRole('tab', { name: 'Data Quality' }).click();
+    await testCaseResponse;
 
-      await expect(
-        page.locator('[data-id="tableCustomSQLQuery"]')
-      ).toBeVisible();
+    await expect(page.getByTestId(testCase.name)).toBeVisible();
+  });
 
-      await page.getByPlaceholder('Enter a Threshold').clear();
-      await page.getByPlaceholder('Enter a Threshold').fill('244');
+  await test.step('Edit', async () => {
+    await expect(
+      page.getByTestId(testCase.name).getByRole('link')
+    ).toBeVisible();
 
-      await clickUpdateButton(page);
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
+    const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
+    await page.getByTestId(`action-dropdown-${testCase.name}`).click();
+    await page.getByTestId(`edit-${testCase.name}`).click();
+    await testCaseDoc;
+    await testDefinitionResponse;
+
+    await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
+      `Edit ${testCase.name}`
+    );
+    await expect(page.locator('[id="root\\/name"]')).toHaveValue(
+      testCase.name
+    );
+    await expect(page.getByTestId('code-mirror-container')).toContainText(
+      testCase.sqlQuery
+    );
+
+    await page.locator('[id="root\\/displayName"]').clear();
+    await page.fill('[id="root\\/displayName"]', testCase.displayName);
+
+    await page.locator('.CodeMirror-scroll').click();
+    await page
+      .getByTestId('code-mirror-container')
+      .getByRole('textbox')
+      .fill(' update');
+    await page.getByTestId('edit-test-form').getByText('ROWS').click();
+    await page.getByTitle('COUNT').click();
+    await page.waitForSelector(`[data-id="tableCustomSQLQuery"]`, {
+      state: 'visible',
     });
 
-    await test.step('Delete', async () => {
-      await deleteTestCase(page, testCase.name);
-    });
-  } finally {
-    await table.delete(apiContext);
-    await afterAction();
-  }
+    await expect(
+      page.locator('[data-id="tableCustomSQLQuery"]')
+    ).toBeVisible();
+
+    await page.getByPlaceholder('Enter a Threshold').clear();
+    await page.getByPlaceholder('Enter a Threshold').fill('244');
+
+    await clickUpdateButton(page);
+  });
+
+  await test.step('Delete', async () => {
+    await deleteTestCase(page, testCase.name);
+  });
+
 });
 
 /**
@@ -1121,9 +1089,7 @@ test('Custom SQL Query', async ({ page }) => {
  */
 test('Table Row Inserted Count To Be Between', async ({ page }) => {
   await redirectToHomePage(page);
-  const { afterAction, apiContext } = await getApiContext(page);
-  const table = new TableClass();
-  await table.create(apiContext);
+
   const testCase = {
     name: `${table.entity.name}_row_inserted_between`,
     type: 'tableRowInsertedCountToBeBetween',
@@ -1144,98 +1110,95 @@ test('Table Row Inserted Count To Be Between', async ({ page }) => {
   await profileResponse;
   await page.getByRole('tab', { name: 'Table Profile' }).click();
 
-  try {
-    await test.step('Create', async () => {
-      await page.getByTestId('profiler-add-table-test-btn').click();
-      const testCaseDoc = page.waitForResponse(
-        '/locales/en-US/OpenMetadata/TestCaseForm.md'
-      );
-      await page.getByTestId('test-case').click();
-      await testCaseDoc;
-      await page.getByTestId('test-case-name').click();
-      await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
-      await expect(page.locator('[data-id="name"]')).toBeVisible();
+  await test.step('Create', async () => {
+    await page.getByTestId('profiler-add-table-test-btn').click();
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
+    await page.getByTestId('test-case').click();
+    await testCaseDoc;
+    await page.getByTestId('test-case-name').click();
+    await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
 
-      await page.getByTestId('test-case-name').fill(testCase.name);
+    await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.click('[id="root\\/testType"]');
-      await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
+    await page.getByTestId('test-case-name').fill(testCase.name);
 
-      await expect(page.locator('[data-id="testType"]')).toBeVisible();
+    await page.click('[id="root\\/testType"]');
+    await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
 
-      await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.getByTestId('tableRowInsertedCountToBeBetween').click();
-      await page.waitForSelector(
-        `[data-id="tableRowInsertedCountToBeBetween"]`,
-        {
-          state: 'visible',
-        }
-      );
+    await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-      await expect(
-        page.locator('[data-id="tableRowInsertedCountToBeBetween"]')
-      ).toBeVisible();
+    await page.fill('[id="root\\/testType"]', testCase.type);
+    await page.getByTestId('tableRowInsertedCountToBeBetween').click();
+    await page.waitForSelector(
+      `[data-id="tableRowInsertedCountToBeBetween"]`,
+      {
+        state: 'visible',
+      }
+    );
 
-      await page.fill('#testCaseFormV1_params_min', testCase.minValue);
-      await page.fill('#testCaseFormV1_params_max', testCase.maxValue);
-      await page.fill('#testCaseFormV1_params_rangeType', testCase.rangeType);
-      await page.fill('#testCaseFormV1_params_rangeInterval', testCase.interval);
+    await expect(
+      page.locator('[data-id="tableRowInsertedCountToBeBetween"]')
+    ).toBeVisible();
 
-      await page.click('#testCaseFormV1_params_columnName')
-      await page.waitForSelector(`.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${testCase.columnName}"]`, { state: 'visible' });
-      await page.click(`.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${testCase.columnName}"]`)
+    await page.fill('#testCaseFormV1_params_min', testCase.minValue);
+    await page.fill('#testCaseFormV1_params_max', testCase.maxValue);
+    await page.fill('#testCaseFormV1_params_rangeType', testCase.rangeType);
+    await page.fill('#testCaseFormV1_params_rangeInterval', testCase.interval);
 
-      const createTestCaseResponse = page.waitForResponse(
-        (response: Response) =>
-          response.url().includes('/api/v1/dataQuality/testCases') &&
-          response.request().method() === 'POST'
-      );
-      await page.getByTestId('create-btn').click();
-      const response = await createTestCaseResponse;
+    await page.click('#testCaseFormV1_params_columnName')
+    await page.waitForSelector(`.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${testCase.columnName}"]`, { state: 'visible' });
+    await page.click(`.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${testCase.columnName}"]`)
 
-      expect(response.status()).toBe(201);
+    const createTestCaseResponse = page.waitForResponse(
+      (response: Response) =>
+        response.url().includes('/api/v1/dataQuality/testCases') &&
+        response.request().method() === 'POST'
+    );
+    await page.getByTestId('create-btn').click();
+    const response = await createTestCaseResponse;
 
-      const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?*fields=*'
-      );
-      await page.getByRole('tab', { name: 'Data Quality' }).click();
-      await testCaseResponse;
+    expect(response.status()).toBe(201);
 
-      await expect(page.getByTestId(testCase.name)).toBeVisible();
-    });
+    const testCaseResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*fields=*'
+    );
+    await page.getByRole('tab', { name: 'Data Quality' }).click();
+    await testCaseResponse;
 
-    await test.step('Edit', async () => {
-      await expect(
-        page.getByTestId(testCase.name).getByRole('link')
-      ).toBeVisible();
+    await expect(page.getByTestId(testCase.name)).toBeVisible();
+  });
 
-      const testCaseDoc = page.waitForResponse(
-        '/locales/en-US/OpenMetadata/TestCaseForm.md'
-      );
-      const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
-      await page.getByTestId(`action-dropdown-${testCase.name}`).click();
-      await page.getByTestId(`edit-${testCase.name}`).click();
-      await testCaseDoc;
-      await testDefinitionResponse;
+  await test.step('Edit', async () => {
+    await expect(
+      page.getByTestId(testCase.name).getByRole('link')
+    ).toBeVisible();
 
-      await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
-        `Edit ${testCase.name}`
-      );
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
+    const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
+    await page.getByTestId(`action-dropdown-${testCase.name}`).click();
+    await page.getByTestId(`edit-${testCase.name}`).click();
+    await testCaseDoc;
+    await testDefinitionResponse;
 
-      await page.locator('#tableTestForm_params_min').clear();
-      await page.fill('#tableTestForm_params_min', '10');
-      await page.locator('#tableTestForm_params_max').clear();
-      await page.fill('#tableTestForm_params_max', '1000');
+    await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
+      `Edit ${testCase.name}`
+    );
 
-      await clickUpdateButton(page);
-    });
+    await page.locator('#tableTestForm_params_min').clear();
+    await page.fill('#tableTestForm_params_min', '10');
+    await page.locator('#tableTestForm_params_max').clear();
+    await page.fill('#tableTestForm_params_max', '1000');
 
-    await test.step('Delete', async () => {
-      await deleteTestCase(page, testCase.name);
-    });
-  } finally {
-    await table.delete(apiContext);
-    await afterAction();
-  }
+    await clickUpdateButton(page);
+  });
+
+  await test.step('Delete', async () => {
+    await deleteTestCase(page, testCase.name);
+  });
+
 });
