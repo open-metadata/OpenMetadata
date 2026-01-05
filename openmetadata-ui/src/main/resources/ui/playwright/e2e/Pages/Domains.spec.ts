@@ -1973,4 +1973,50 @@ test.describe('Domain Tree View Functionality', () => {
       await afterAction();
     }
   });
+
+  test('Verify empty state for Data Product listing page', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const testDomain = new Domain();
+
+    try {
+      await testDomain.create(apiContext);
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await test.step('Verify empty state placeholder is visible', async () => {
+        await expect(
+          page.locator('[data-testid="error-placeholder"]')
+        ).toBeVisible();
+
+        await expect(
+          page.locator('[data-testid="error-placeholder"]')
+        ).toContainText('No data products found');
+      });
+
+      await test.step('Verify Add Data Product button in empty state', async () => {
+        const addButton = page.getByTestId('data-product-add-button');
+        await expect(addButton).toBeVisible();
+        await expect(addButton).toContainText('Add Data Product');
+      });
+
+      await test.step('Verify clicking Add button opens form drawer', async () => {
+        await page.getByTestId('data-product-add-button').click();
+        await page.waitForLoadState('networkidle');
+
+        await expect(page.getByText('Add Data Product')).toBeVisible();
+        await expect(
+          page.locator('[data-testid="name"]')
+        ).toBeVisible();
+        await expect(
+          page.locator('[data-testid="displayName"]')
+        ).toBeVisible();
+      });
+    } finally {
+      await testDomain.delete(apiContext);
+      await afterAction();
+    }
+  });
 });
