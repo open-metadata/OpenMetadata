@@ -634,6 +634,8 @@
     "entity-name": "{{entity}} Name",
     "entity-parent": "{{entity}} Parent",
     "entity-plural": "Entities",
+    "entity-port": "Port",
+    "entity-port-plural": "Ports",
     "entity-proportion": "{{entity}} Proportion",
     "entity-record-plural": "{{entity}} Records",
     "entity-reference": "Entity Reference",
