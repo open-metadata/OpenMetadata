@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -273,7 +273,8 @@ export interface ServiceConnection {
  *
  * ServiceNow Connection Config
  *
- * Dremio Connection Config
+ * Dremio Connection Config supporting both Dremio Cloud (SaaS) and Dremio Software
+ * (self-hosted)
  *
  * Kafka Connection Config
  *
@@ -571,8 +572,6 @@ export interface ConfigObject {
      *
      * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
      *
-     * Host and port of the Dremio service.
-     *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
      * bolt://localhost:7687.
      *
@@ -687,8 +686,6 @@ export interface ConfigObject {
      *
      * Password to connect to ServiceNow.
      *
-     * Password to connect to Dremio.
-     *
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
@@ -801,9 +798,6 @@ export interface ConfigObject {
      * Username to connect to ServiceNow. This user should have read access to sys_db_object and
      * sys_dictionary tables.
      *
-     * Username to connect to Dremio. This user should have privileges to read all the metadata
-     * in Dremio.
-     *
      * username to connect to the Amundsen Neo4j Connection.
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
@@ -890,6 +884,8 @@ export interface ConfigObject {
      * Choose between different authentication types for Databricks.
      *
      * Choose Auth Config Type.
+     *
+     * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      *
      * Types of methods used to authenticate to the alation instance
      *
@@ -1077,6 +1073,9 @@ export interface ConfigObject {
     credentials?: GCPCredentials;
     /**
      * Regex to only include/exclude databases that matches the pattern.
+     *
+     * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
+     * Dremio Cloud, namespaces are mapped as databases.
      */
     databaseFilterPattern?: FilterPattern;
     /**
@@ -1088,6 +1087,9 @@ export interface ConfigObject {
      * Regex to only include/exclude schemas that matches the pattern.
      *
      * Regex to include/exclude FHIR resource categories
+     *
+     * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
+     * are mapped as schemas.
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -1117,6 +1119,8 @@ export interface ConfigObject {
      * Regex to only include/exclude tables that matches the pattern.
      *
      * Regex to include/exclude FHIR resource types
+     *
+     * Regex to only include/exclude tables that match the pattern.
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -1176,6 +1180,9 @@ export interface ConfigObject {
      *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
+     *
+     * Optional: Restrict metadata ingestion to a specific namespace (source/space). When left
+     * blank, all namespaces will be ingested.
      */
     database?: string;
     /**
@@ -1349,10 +1356,7 @@ export interface ConfigObject {
      * Custom OpenMetadata Classification name for TimescaleDB policy tags.
      */
     classificationName?: string;
-    /**
-     * SSL Mode for the connection. Dremio supports SSL connections.
-     */
-    sslMode?: boolean | SSLMode;
+    sslMode?:            SSLMode;
     /**
      * Protocol ( Connection Argument ) to connect to Presto.
      */
@@ -1553,10 +1557,6 @@ export interface ConfigObject {
      * admin tables will be fetched.
      */
     includeSystemTables?: boolean;
-    /**
-     * Dremio Project ID. This is optional parameter to connect to a specific project.
-     */
-    projectId?: string;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -2074,6 +2074,14 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to include/exclude FHIR resource types
  *
+ * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
+ * Dremio Cloud, namespaces are mapped as databases.
+ *
+ * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
+ * are mapped as schemas.
+ *
+ * Regex to only include/exclude tables that match the pattern.
+ *
  * Regex to only fetch topics that matches the pattern.
  *
  * Regex to only include/exclude domains that match the pattern.
@@ -2221,6 +2229,14 @@ export enum AuthProvider {
  *
  * Configuration for connecting to DataStax Astra DB in the cloud.
  *
+ * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
+ *
+ * Authentication configuration for Dremio Cloud using Personal Access Token (PAT). Dremio
+ * Cloud is a fully managed SaaS platform.
+ *
+ * Authentication configuration for self-hosted Dremio Software using username and password.
+ * Dremio Software is deployed on-premises or in your own cloud infrastructure.
+ *
  * ThoughtSpot authentication configuration
  *
  * Types of methods used to authenticate to the alation instance
@@ -2243,6 +2259,8 @@ export interface AuthenticationTypeForTableau {
      *
      * Password to connect to source.
      *
+     * Password for the Dremio Software user account.
+     *
      * Elastic Search Password for Login
      *
      * Ranger password to authenticate to the API.
@@ -2250,6 +2268,9 @@ export interface AuthenticationTypeForTableau {
     password?: string;
     /**
      * Username to access the service.
+     *
+     * Username for authenticating with Dremio Software. This user should have appropriate
+     * permissions to access metadata.
      *
      * Elastic Search Username for Login
      *
@@ -2301,6 +2322,26 @@ export interface AuthenticationTypeForTableau {
      * Configuration for connecting to DataStax Astra DB in the cloud.
      */
     cloudConfig?: DataStaxAstraDBConfiguration;
+    /**
+     * Personal Access Token for authenticating with Dremio Cloud. Generate this token from your
+     * Dremio Cloud account settings under Settings -> Personal Access Tokens.
+     */
+    personalAccessToken?: string;
+    /**
+     * Dremio Cloud Project ID (required). This unique identifier can be found in your Dremio
+     * Cloud project URL or project settings.
+     */
+    projectId?: string;
+    /**
+     * Dremio Cloud region where your organization is hosted. Choose 'US' for United States
+     * region or 'EU' for European region.
+     */
+    region?: CloudRegion;
+    /**
+     * URL to your self-hosted Dremio Software instance, including protocol and port (e.g.,
+     * http://localhost:9047 or https://dremio.example.com:9047).
+     */
+    hostPort?: string;
     /**
      * Access Token for the API
      */
@@ -2461,6 +2502,15 @@ export interface DataStaxAstraDBConfiguration {
      */
     token?: string;
     [property: string]: any;
+}
+
+/**
+ * Dremio Cloud region where your organization is hosted. Choose 'US' for United States
+ * region or 'EU' for European region.
+ */
+export enum CloudRegion {
+    Eu = "EU",
+    Us = "US",
 }
 
 /**
@@ -4037,8 +4087,6 @@ export enum ConfigScheme {
     DatabricksConnector = "databricks+connector",
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
-    DremioFlight = "dremio+flight",
-    DremioPyodbc = "dremio+pyodbc",
     Druid = "druid",
     ExaWebsocket = "exa+websocket",
     Hana = "hana",
