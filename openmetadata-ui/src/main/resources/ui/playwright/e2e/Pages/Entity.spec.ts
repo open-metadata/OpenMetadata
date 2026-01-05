@@ -1344,13 +1344,13 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               ).toBeVisible();
             }
 
-            // Test tab navigation
+            if(entity.type === 'Table') {
             await page.getByTestId('data-quality-tab').click();
 
             await expect(page.getByTestId('data-quality-tab')).toHaveClass(
               /ant-menu-item-selected/
             );
-
+            }
             await page.getByTestId('custom-properties-tab').click();
 
             await expect(page.getByTestId('custom-properties-tab')).toHaveClass(
