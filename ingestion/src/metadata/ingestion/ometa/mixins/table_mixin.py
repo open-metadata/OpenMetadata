@@ -92,7 +92,9 @@ class OMetaTableMixin:
                             except Exception as _:
                                 row[col_idx] = f"[binary]{value}"
                         # Handle IPv4 and IPv6 address objects
-                        elif isinstance(value, (ipaddress.IPv4Address, ipaddress.IPv6Address)):
+                        elif isinstance(
+                            value, (ipaddress.IPv4Address, ipaddress.IPv6Address)
+                        ):
                             row[col_idx] = str(value)
 
             try:
