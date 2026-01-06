@@ -187,7 +187,7 @@ export const getDataProductDetailTabs = ({
                       isSummaryPanelOpen={Boolean(previewAsset)}
                       noDataPlaceholder={{
                         message: t('message.no-data-message', {
-                          entity: t('label.data-asset-plural'),
+                          entity: t('label.data-asset-lowercase-plurals'),
                         }),
                       }}
                       permissions={dataProductPermission}
