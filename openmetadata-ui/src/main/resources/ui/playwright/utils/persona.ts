@@ -99,6 +99,9 @@ export const navigateToPersonaWithPagination = async (
   maxPages = 15
 ) => {
   for (let currentPage = 0; currentPage < maxPages; currentPage++) {
+    // Wait for the skeleton card loader to disappear first
+    await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
+
     const locator = page.getByTestId(`persona-details-card-${personaName}`);
 
     // Check if element is visible on current page
@@ -122,9 +125,6 @@ export const navigateToPersonaWithPagination = async (
     const getPersonas = page.waitForResponse('/api/v1/personas*');
     await nextBtn.click();
     await getPersonas;
-
-    await page.waitForLoadState('networkidle');
-    await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
   }
 };
 

@@ -25,13 +25,11 @@ describe('Test FQN', () => {
         expect(this.parts).toHaveLength(actualParts.length);
 
         for (let i = 0; i < this.parts.length; i++) {
-          /* eslint-disable jest/no-conditional-expect */
           if (this.parts[i].includes('.')) {
             expect(Fqn.quoteName(this.parts[i])).toStrictEqual(actualParts[i]);
           } else {
             expect(this.parts[i]).toStrictEqual(actualParts[i]);
           }
-          /* eslint-enable jest/no-conditional-expect */
         }
       }
     }

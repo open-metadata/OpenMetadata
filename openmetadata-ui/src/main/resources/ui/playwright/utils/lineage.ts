@@ -90,6 +90,17 @@ export const verifyColumnLayerInactive = async (page: Page) => {
 
 export const activateColumnLayer = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]');
+
+  const isColumnLayerSelected = await page
+    .locator('[data-testid="lineage-layer-column-btn"]')
+    .evaluate((el) => el.classList.contains('Mui-selected'));
+
+  if (isColumnLayerSelected) {
+    await clickOutside(page);
+
+    return;
+  }
+
   await page.click('[data-testid="lineage-layer-column-btn"]');
   await clickOutside(page);
 };
@@ -259,7 +270,7 @@ export const performExpand = async (
     .getByTestId('plus-icon');
 
   if (newNode) {
-    const expandRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+    const expandRes = page.waitForResponse('/api/v1/lineage/getLineage/*?*');
     await expandBtn.click();
     await expandRes;
     await verifyNodePresent(page, newNode);
@@ -810,5 +821,12 @@ export const toggleLineageFilters = async (page: Page, tableFqn: string) => {
   await page
     .getByTestId(`lineage-node-${tableFqn}`)
     .getByTestId('lineage-filter-button')
+    .click();
+};
+
+export const clickLineageNode = async (page: Page, nodeFqn: string) => {
+  await page
+    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .locator(`[data-testid="entity-header-display-name"]`)
     .click();
 };

@@ -44,7 +44,6 @@ export const getStoredProcedureDetailsPageTabs = ({
   storedProcedure,
   editLineagePermission,
   editCustomAttributePermission,
-  viewAllPermission,
   viewCustomPropertiesPermission,
   getEntityFeedCount,
   fetchStoredProcedureDetails,

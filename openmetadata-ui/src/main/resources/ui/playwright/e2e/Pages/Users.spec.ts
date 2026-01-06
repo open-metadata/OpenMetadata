@@ -159,16 +159,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await dataStewardUser.delete(apiContext);
-  await policy.delete(apiContext);
-  await role.delete(apiContext);
-  await persona1.delete(apiContext);
-  await persona2.delete(apiContext);
-  await afterAction();
-});
-
 test.describe('User with Admin Roles', () => {
   test.slow(true);
 
