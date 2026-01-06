@@ -12,7 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Row } from 'antd';
+import { Button, Col, Row, Typography } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
 import QueryString from 'qs';
@@ -255,6 +256,35 @@ const TestSuitePipelineTab = ({
     [testSuite, testSuiteFQN, createPermission]
   );
 
+  const pipelineTypeColumnObj: ColumnsType<IngestionPipeline> = useMemo(
+    () => [
+      {
+        title: t('label.type'),
+        dataIndex: 'pipelineType',
+        key: 'pipelineType',
+        width: 150,
+        render: () => t('label.test-suite'),
+      },
+      {
+        title: t('label.test-case-plural'),
+        dataIndex: 'testCases',
+        key: 'testCases',
+        width: 120,
+        render: (_: string, record: IngestionPipeline) => {
+          const testCasesCount =
+            record?.sourceConfig?.config?.testCases?.length ?? 0;
+
+          return (
+            <Typography.Text data-testid={`test-case-count-${record.name}`}>
+              {testCasesCount}
+            </Typography.Text>
+          );
+        },
+      },
+    ],
+    [t]
+  );
+
   if (!isAirflowAvailable && !(isLoading || isFetchingStatus)) {
     return <ErrorPlaceHolderIngestion />;
   }
@@ -283,6 +313,7 @@ const TestSuitePipelineTab = ({
           ingestionPagingInfo={pipelinePaging}
           isLoading={isLoading}
           pipelineIdToFetchStatus={pipelineIdToFetchStatus}
+          pipelineTypeColumnObj={pipelineTypeColumnObj}
           serviceCategory={ServiceCategory.DATABASE_SERVICES}
           serviceName={getServiceFromTestSuiteFQN(testSuiteFQN)}
           tableClassName="test-suite-pipeline-tab"

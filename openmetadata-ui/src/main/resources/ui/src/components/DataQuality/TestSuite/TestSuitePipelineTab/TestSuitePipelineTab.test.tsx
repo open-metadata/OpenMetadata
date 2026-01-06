@@ -155,6 +155,7 @@ jest.mock(
     return function MockIngestionListTable({
       ingestionData,
       onPageChange,
+      pipelineTypeColumnObj,
     }: {
       ingestionData: IngestionPipeline[];
       onPageChange: ({
@@ -164,11 +165,25 @@ jest.mock(
         cursorType: string;
         currentPage: number;
       }) => void;
+      pipelineTypeColumnObj?: Array<{
+        title: string;
+        dataIndex: string;
+        key: string;
+        width?: number;
+        render?: (text: string, record: IngestionPipeline) => JSX.Element;
+      }>;
     }) {
       return (
         <div data-testid="test-suite-pipeline-tab">
           {ingestionData.map((pipeline) => (
-            <div key={pipeline.id}>{pipeline.name}</div>
+            <div key={pipeline.id}>
+              <div>{pipeline.name}</div>
+              {pipelineTypeColumnObj && (
+                <div data-testid={`test-case-count-${pipeline.name}`}>
+                  {pipeline?.sourceConfig?.config?.testCases?.length ?? 0}
+                </div>
+              )}
+            </div>
           ))}
           <button
             onClick={() =>
@@ -312,5 +327,20 @@ describe('TestSuite Pipeline component', () => {
     expect(
       screen.queryByTestId('error-placeholder-ingestion')
     ).not.toBeInTheDocument();
+  });
+
+  it('should display test case count for each pipeline', async () => {
+    await act(async () => {
+      render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+    });
+
+    // Check test case counts are displayed correctly
+    const pipeline1Count = screen.getByTestId('test-case-count-pipeline1');
+    const pipeline2Count = screen.getByTestId('test-case-count-pipeline2');
+    const pipeline3Count = screen.getByTestId('test-case-count-pipeline3');
+
+    expect(pipeline1Count).toHaveTextContent('3');
+    expect(pipeline2Count).toHaveTextContent('1');
+    expect(pipeline3Count).toHaveTextContent('0');
   });
 });
