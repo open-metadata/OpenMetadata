@@ -35,14 +35,14 @@ export const tabTheme = (
         },
         "& .MuiTab-root": {
           textTransform: "none" as const,
-          fontSize: BODY_FONT_SIZES.BODY1,
+          fontSize: BODY_FONT_SIZES.BODY2,
           fontWeight: 400,
           color: colors.gray[900],
           textAlign: "center",
           "&.Mui-selected": {
             color: colors.blue?.[700],
             fontWeight: 600,
-            fontSize: BODY_FONT_SIZES.BODY1,
+            fontSize: BODY_FONT_SIZES.BODY2,
           },
           "&.Mui-disabled": {
             color: colors.gray[400],
@@ -69,9 +69,9 @@ export const tabTheme = (
     styleOverrides: {
       root: () => ({
         textTransform: "none" as const,
-        fontSize: BODY_FONT_SIZES.BODY1,
+        fontSize: BODY_FONT_SIZES.BODY2,
         fontWeight: 400,
-        lineHeight: BODY_LINE_HEIGHTS.BODY1,
+        lineHeight: BODY_LINE_HEIGHTS.BODY2,
         color: colors.gray[900],
         textAlign: "center",
         minWidth: "auto",
@@ -79,8 +79,8 @@ export const tabTheme = (
         "&.Mui-selected": {
           color: colors.blue?.[700],
           fontWeight: 600,
-          fontSize: BODY_FONT_SIZES.BODY1,
-          lineHeight: BODY_LINE_HEIGHTS.BODY1,
+          fontSize: BODY_FONT_SIZES.BODY2,
+          lineHeight: BODY_LINE_HEIGHTS.BODY2,
         },
         "&.Mui-disabled": {
           color: colors.gray[400],

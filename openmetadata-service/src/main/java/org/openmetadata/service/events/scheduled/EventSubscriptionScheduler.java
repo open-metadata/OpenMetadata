@@ -45,6 +45,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
+import org.openmetadata.service.audit.AuditLogConsumer;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -641,6 +642,41 @@ public class EventSubscriptionScheduler {
       LOG.error("Failed to convert status to SubscriptionStatus: {}", status, e);
       return null;
     }
+  }
+
+  private static final String AUDIT_LOG_JOB_GROUP = "OMAuditLogJobGroup";
+  private static final String AUDIT_LOG_JOB_ID = "AuditLogConsumerJob";
+  private static final int AUDIT_LOG_POLL_INTERVAL_SECONDS = 5;
+
+  /**
+   * Schedules the audit log consumer to periodically read from change_event table and write to
+   * audit_log table. Uses @DisallowConcurrentExecution to ensure only one instance runs at a time
+   * in multi-server setups.
+   */
+  public void scheduleAuditLogConsumer() throws SchedulerException {
+    JobKey jobKey = new JobKey(AUDIT_LOG_JOB_ID, AUDIT_LOG_JOB_GROUP);
+
+    // Check if already scheduled
+    if (alertsScheduler.checkExists(jobKey)) {
+      LOG.info("Audit log consumer job already scheduled");
+      return;
+    }
+
+    JobDetail jobDetail =
+        JobBuilder.newJob(AuditLogConsumer.class).withIdentity(jobKey).storeDurably().build();
+
+    Trigger trigger =
+        TriggerBuilder.newTrigger()
+            .withIdentity(AUDIT_LOG_JOB_ID, AUDIT_LOG_JOB_GROUP)
+            .withSchedule(
+                SimpleScheduleBuilder.repeatSecondlyForever(AUDIT_LOG_POLL_INTERVAL_SECONDS))
+            .startNow()
+            .build();
+
+    alertsScheduler.scheduleJob(jobDetail, trigger);
+    LOG.info(
+        "Audit log consumer scheduled with poll interval: {} seconds",
+        AUDIT_LOG_POLL_INTERVAL_SECONDS);
   }
 
   public static void shutDown() throws SchedulerException {
