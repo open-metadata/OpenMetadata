@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.bootstrap.SharedEntities.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -799,6 +800,22 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     return JsonUtils.readValue(responseJson, new TypeReference<Map<String, Integer>>() {});
   }
 
+  private List<EntityReference> getEntityReferencesFromSearchIndex(
+      UUID entityId, String indexName, String fieldName) throws Exception {
+    String query = "id:" + entityId.toString();
+    String searchResponse =
+        SdkClients.adminClient().search().query(query).index(indexName).execute();
+
+    JsonNode root = JsonUtils.readTree(searchResponse);
+    JsonNode fieldNode = root.path("hits").path("hits").path(0).path("_source").path(fieldName);
+
+    if (fieldNode.isMissingNode() || !fieldNode.isArray()) {
+      return null;
+    }
+
+    return JsonUtils.readObjects(fieldNode.toString(), EntityReference.class);
+  }
+
   // ===================================================================
   // RENAME + CONSOLIDATION TESTS
   // Tests that verify assets are preserved when:
@@ -1121,8 +1138,40 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     assertEquals(1, tableAfterChange.getDomains().size());
     assertEquals(
         domain2.getId(),
-        tableAfterChange.getDomains().get(0).getId(),
+        tableAfterChange.getDomains().getFirst().getId(),
         "Asset should have been migrated to the new domain");
+
+    long uniqueDomainIds =
+        tableAfterChange.getDomains().stream().map(EntityReference::getId).distinct().count();
+    assertEquals(
+        tableAfterChange.getDomains().size(),
+        uniqueDomainIds,
+        "No duplicate domains should exist in the asset's domains list");
+
+    assertEquals(
+        domain2.getFullyQualifiedName(),
+        tableAfterChange.getDomains().getFirst().getFullyQualifiedName(),
+        "Domain FQN should match the new domain");
+
+    waitForSearchIndexing();
+
+    List<EntityReference> searchIndexDomains =
+        getEntityReferencesFromSearchIndex(table.getId(), "table_search_index", "domains");
+    assertNotNull(searchIndexDomains, "Table should be present in search index with domains");
+    assertEquals(
+        1, searchIndexDomains.size(), "Search index should show exactly 1 domain after migration");
+
+    List<UUID> searchDomainIds = searchIndexDomains.stream().map(EntityReference::getId).toList();
+    long uniqueSearchDomainIds = searchDomainIds.stream().distinct().count();
+    assertEquals(
+        searchDomainIds.size(),
+        uniqueSearchDomainIds,
+        "No duplicate domains should exist in search index (all domain IDs should be unique)");
+
+    assertEquals(
+        domain2.getId(),
+        searchIndexDomains.getFirst().getId(),
+        "Search index should show the migrated domain2");
   }
 
   @Test
@@ -1178,6 +1227,18 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
           domain2.getId(),
           tableAfterChange.getDomains().get(0).getId(),
           "Asset " + table.getName() + " should have been migrated to the new domain");
+
+      long uniqueDomainIds =
+          tableAfterChange.getDomains().stream().map(EntityReference::getId).distinct().count();
+      assertEquals(
+          tableAfterChange.getDomains().size(),
+          uniqueDomainIds,
+          "No duplicate domains should exist for asset " + table.getName());
+
+      assertEquals(
+          domain2.getFullyQualifiedName(),
+          tableAfterChange.getDomains().get(0).getFullyQualifiedName(),
+          "Domain FQN should match the new domain for asset " + table.getName());
     }
   }
 
@@ -1357,6 +1418,43 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     assertEquals(1, assets.getPaging().getTotal());
 
     Table tableAfter = SdkClients.adminClient().tables().get(table.getId().toString(), "domains");
+    assertEquals(1, tableAfter.getDomains().size(), "Asset should have exactly 1 domain");
     assertEquals(domain2.getId(), tableAfter.getDomains().get(0).getId());
+
+    long uniqueDomainIds =
+        tableAfter.getDomains().stream().map(EntityReference::getId).distinct().count();
+    assertEquals(
+        tableAfter.getDomains().size(),
+        uniqueDomainIds,
+        "No duplicate domains should exist after domain change and consolidation");
+
+    assertEquals(
+        domain2.getFullyQualifiedName(),
+        tableAfter.getDomains().get(0).getFullyQualifiedName(),
+        "Domain FQN should match the new domain after consolidation");
+
+    waitForSearchIndexing();
+
+    List<EntityReference> searchIndexDomains =
+        getEntityReferencesFromSearchIndex(table.getId(), "table_search_index", "domains");
+    assertNotNull(
+        searchIndexDomains,
+        "Table should be present in search index with domains after consolidation");
+    assertEquals(
+        1,
+        searchIndexDomains.size(),
+        "Search index should show exactly 1 domain after consolidation");
+
+    List<UUID> searchDomainIds = searchIndexDomains.stream().map(EntityReference::getId).toList();
+    long uniqueSearchDomainIds = searchDomainIds.stream().distinct().count();
+    assertEquals(
+        searchDomainIds.size(),
+        uniqueSearchDomainIds,
+        "No duplicate domains in search index after domain change and consolidation");
+
+    assertEquals(
+        domain2.getId(),
+        searchIndexDomains.get(0).getId(),
+        "Search index should reflect domain2 after consolidation");
   }
 }

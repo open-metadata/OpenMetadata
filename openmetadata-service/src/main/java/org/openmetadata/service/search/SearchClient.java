@@ -115,9 +115,18 @@ public interface SearchClient
         ctx._source.domains.removeIf(domain ->
           domain.containsKey('fullyQualifiedName') &&
           params.oldDomainFqns.contains(domain.fullyQualifiedName));
-        // Add new domains
+        // Add new domains only if they don't already exist (check by ID)
         for (def newDomain : params.newDomains) {
-          ctx._source.domains.add(newDomain);
+          boolean exists = false;
+          for (def existingDomain : ctx._source.domains) {
+            if (existingDomain.containsKey('id') && existingDomain.id == newDomain.id) {
+              exists = true;
+              break;
+            }
+          }
+          if (!exists) {
+            ctx._source.domains.add(newDomain);
+          }
         }
       } else {
         // If domains doesn't exist, create it with new domains
