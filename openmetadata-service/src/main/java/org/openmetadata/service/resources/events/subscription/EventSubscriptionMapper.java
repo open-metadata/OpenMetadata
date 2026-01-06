@@ -12,10 +12,13 @@ import java.util.UUID;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.EVENT_SUBSCRIPTION)
 public class EventSubscriptionMapper
     implements EntityMapper<EventSubscription, CreateEventSubscription> {
   @Override

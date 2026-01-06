@@ -6,7 +6,9 @@ import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.TOPIC)
 public class TopicMapper implements EntityMapper<Topic, CreateTopic> {
   @Override
   public Topic createToEntity(CreateTopic create, String user) {

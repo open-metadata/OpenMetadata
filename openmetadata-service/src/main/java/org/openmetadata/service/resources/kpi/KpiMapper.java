@@ -6,7 +6,9 @@ import org.openmetadata.schema.api.dataInsight.kpi.CreateKpiRequest;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.KPI)
 public class KpiMapper implements EntityMapper<Kpi, CreateKpiRequest> {
   @Override
   public Kpi createToEntity(CreateKpiRequest create, String user) {

@@ -6,8 +6,11 @@ import static org.openmetadata.service.util.EntityUtil.getEntityReference;
 
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.TAG)
 public class TagMapper implements EntityMapper<Tag, CreateTag> {
   @Override
   public Tag createToEntity(CreateTag create, String user) {

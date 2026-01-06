@@ -9,8 +9,10 @@ import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 import org.openmetadata.service.util.EntityUtil;
 
+@Mapper(entityType = Entity.QUERY)
 public class QueryMapper implements EntityMapper<Query, CreateQuery> {
   @Override
   public Query createToEntity(CreateQuery create, String user) {

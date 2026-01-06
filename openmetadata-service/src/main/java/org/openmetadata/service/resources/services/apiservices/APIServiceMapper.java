@@ -2,8 +2,11 @@ package org.openmetadata.service.resources.services.apiservices;
 
 import org.openmetadata.schema.api.services.CreateApiService;
 import org.openmetadata.schema.entity.services.ApiService;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.API_SERVICE)
 public class APIServiceMapper implements EntityMapper<ApiService, CreateApiService> {
   @Override
   public ApiService createToEntity(CreateApiService create, String user) {

@@ -7,7 +7,9 @@ import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.DASHBOARD)
 public class DashboardMapper implements EntityMapper<Dashboard, CreateDashboard> {
   @Override
   public Dashboard createToEntity(CreateDashboard create, String user) {

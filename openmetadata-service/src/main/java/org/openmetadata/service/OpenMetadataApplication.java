@@ -102,6 +102,7 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.mapper.MapperRegistry;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.EventMonitor;
@@ -185,6 +186,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private AuthenticatorHandler authenticatorHandler;
   protected Limits limits;
   protected ServiceRegistry serviceRegistry;
+  protected MapperRegistry mapperRegistry;
 
   protected Jdbi jdbi;
   private Environment environment;
@@ -284,6 +286,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Limits
     registerLimits(catalogConfig);
+
+    // Initialize Mappers
+    mapperRegistry = Entity.initializeMappers();
 
     // Initialize Services after authorizer is created
     serviceRegistry = Entity.initializeServices(authorizer);

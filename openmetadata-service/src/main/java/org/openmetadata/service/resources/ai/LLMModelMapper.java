@@ -6,7 +6,9 @@ import org.openmetadata.schema.api.ai.CreateLLMModel;
 import org.openmetadata.schema.entity.ai.LLMModel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.LLM_MODEL)
 public class LLMModelMapper implements EntityMapper<LLMModel, CreateLLMModel> {
   @Override
   public LLMModel createToEntity(CreateLLMModel create, String user) {

@@ -19,8 +19,10 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 import org.openmetadata.service.util.EntityUtil;
 
+@Mapper(entityType = Entity.APPLICATION)
 public class AppMapper implements EntityMapper<App, CreateApp> {
   @Override
   public App createToEntity(CreateApp createAppRequest, String updatedBy) {

@@ -18,8 +18,10 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 import org.openmetadata.service.util.EntityUtil;
 
+@Mapper(entityType = Entity.DATA_CONTRACT)
 public class DataContractMapper implements EntityMapper<DataContract, CreateDataContract> {
 
   @Override

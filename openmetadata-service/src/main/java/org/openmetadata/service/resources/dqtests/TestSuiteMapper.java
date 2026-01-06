@@ -6,7 +6,9 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.TEST_SUITE)
 public class TestSuiteMapper implements EntityMapper<TestSuite, CreateTestSuite> {
   @Override
   public TestSuite createToEntity(CreateTestSuite create, String user) {

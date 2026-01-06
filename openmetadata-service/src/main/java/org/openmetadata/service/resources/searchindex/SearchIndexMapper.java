@@ -6,7 +6,9 @@ import org.openmetadata.schema.api.data.CreateSearchIndex;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.SEARCH_INDEX)
 public class SearchIndexMapper implements EntityMapper<SearchIndex, CreateSearchIndex> {
   @Override
   public SearchIndex createToEntity(CreateSearchIndex create, String user) {

@@ -4,9 +4,11 @@ import org.openmetadata.schema.api.data.CreateDashboardDataModel;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.util.EntityUtil;
 
+@Mapper(entityType = Entity.DASHBOARD_DATA_MODEL)
 public class DashboardDataModelMapper
     implements EntityMapper<DashboardDataModel, CreateDashboardDataModel> {
   @Override

@@ -6,7 +6,9 @@ import org.openmetadata.schema.api.data.CreateMlModel;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.MLMODEL)
 public class MlModelMapper implements EntityMapper<MlModel, CreateMlModel> {
   @Override
   public MlModel createToEntity(CreateMlModel create, String user) {

@@ -6,7 +6,9 @@ import org.openmetadata.schema.api.data.CreateDirectory;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.DIRECTORY)
 public class DirectoryMapper implements EntityMapper<Directory, CreateDirectory> {
   @Override
   public Directory createToEntity(CreateDirectory create, String user) {

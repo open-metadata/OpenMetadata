@@ -6,7 +6,9 @@ import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.DATABASE)
 public class DatabaseMapper implements EntityMapper<Database, CreateDatabase> {
   @Override
   public Database createToEntity(CreateDatabase create, String user) {

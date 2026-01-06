@@ -6,7 +6,9 @@ import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.METRIC)
 public class MetricMapper implements EntityMapper<Metric, CreateMetric> {
   @Override
   public Metric createToEntity(CreateMetric create, String user) {

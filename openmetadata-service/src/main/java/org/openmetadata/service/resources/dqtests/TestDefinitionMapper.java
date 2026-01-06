@@ -2,8 +2,11 @@ package org.openmetadata.service.resources.dqtests;
 
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.tests.TestDefinition;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.TEST_DEFINITION)
 public class TestDefinitionMapper implements EntityMapper<TestDefinition, CreateTestDefinition> {
   @Override
   public TestDefinition createToEntity(CreateTestDefinition create, String user) {

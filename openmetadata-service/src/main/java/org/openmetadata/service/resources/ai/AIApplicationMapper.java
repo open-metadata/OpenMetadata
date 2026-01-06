@@ -6,7 +6,9 @@ import org.openmetadata.schema.api.ai.CreateAIApplication;
 import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.AI_APPLICATION)
 public class AIApplicationMapper implements EntityMapper<AIApplication, CreateAIApplication> {
   @Override
   public AIApplication createToEntity(CreateAIApplication create, String user) {

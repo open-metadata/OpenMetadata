@@ -2,8 +2,11 @@ package org.openmetadata.service.resources.ai;
 
 import org.openmetadata.schema.api.ai.CreatePromptTemplate;
 import org.openmetadata.schema.entity.ai.PromptTemplate;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.PROMPT_TEMPLATE)
 public class PromptTemplateMapper implements EntityMapper<PromptTemplate, CreatePromptTemplate> {
   @Override
   public PromptTemplate createToEntity(CreatePromptTemplate create, String user) {

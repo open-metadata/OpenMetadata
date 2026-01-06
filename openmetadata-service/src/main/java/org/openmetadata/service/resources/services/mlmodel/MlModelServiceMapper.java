@@ -2,8 +2,11 @@ package org.openmetadata.service.resources.services.mlmodel;
 
 import org.openmetadata.schema.api.services.CreateMlModelService;
 import org.openmetadata.schema.entity.services.MlModelService;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.MLMODEL_SERVICE)
 public class MlModelServiceMapper implements EntityMapper<MlModelService, CreateMlModelService> {
   @Override
   public MlModelService createToEntity(CreateMlModelService create, String user) {

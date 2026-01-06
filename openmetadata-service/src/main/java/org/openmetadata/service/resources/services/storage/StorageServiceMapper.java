@@ -2,8 +2,11 @@ package org.openmetadata.service.resources.services.storage;
 
 import org.openmetadata.schema.api.services.CreateStorageService;
 import org.openmetadata.schema.entity.services.StorageService;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.STORAGE_SERVICE)
 public class StorageServiceMapper implements EntityMapper<StorageService, CreateStorageService> {
   @Override
   public StorageService createToEntity(CreateStorageService create, String user) {

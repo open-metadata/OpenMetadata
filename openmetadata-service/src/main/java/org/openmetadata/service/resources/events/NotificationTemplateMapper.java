@@ -3,8 +3,11 @@ package org.openmetadata.service.resources.events;
 import org.openmetadata.schema.api.events.CreateNotificationTemplate;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.NOTIFICATION_TEMPLATE)
 public class NotificationTemplateMapper
     implements EntityMapper<NotificationTemplate, CreateNotificationTemplate> {
 

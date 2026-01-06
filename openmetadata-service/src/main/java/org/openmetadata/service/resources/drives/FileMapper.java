@@ -6,7 +6,9 @@ import org.openmetadata.schema.api.data.CreateFile;
 import org.openmetadata.schema.entity.data.File;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.FILE)
 public class FileMapper implements EntityMapper<File, CreateFile> {
   @Override
   public File createToEntity(CreateFile create, String user) {

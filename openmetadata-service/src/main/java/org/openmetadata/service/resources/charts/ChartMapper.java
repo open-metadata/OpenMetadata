@@ -6,8 +6,10 @@ import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 import org.openmetadata.service.util.EntityUtil;
 
+@Mapper(entityType = Entity.CHART)
 public class ChartMapper implements EntityMapper<Chart, CreateChart> {
   @Override
   public Chart createToEntity(CreateChart create, String user) {

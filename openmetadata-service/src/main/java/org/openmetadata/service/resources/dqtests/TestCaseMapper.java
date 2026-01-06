@@ -6,8 +6,10 @@ import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
+@Mapper(entityType = Entity.TEST_CASE)
 public class TestCaseMapper implements EntityMapper<TestCase, CreateTestCase> {
   @Override
   public TestCase createToEntity(CreateTestCase create, String user) {

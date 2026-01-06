@@ -6,7 +6,9 @@ import org.openmetadata.schema.api.data.CreateWorksheet;
 import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.WORKSHEET)
 public class WorksheetMapper implements EntityMapper<Worksheet, CreateWorksheet> {
   @Override
   public Worksheet createToEntity(CreateWorksheet create, String user) {

@@ -7,7 +7,9 @@ import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.ROLE)
 public class RoleMapper implements EntityMapper<Role, CreateRole> {
   @Override
   public Role createToEntity(CreateRole create, String user) {

@@ -6,7 +6,9 @@ import org.openmetadata.schema.api.data.CreateStoredProcedure;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.STORED_PROCEDURE)
 public class StoredProcedureMapper implements EntityMapper<StoredProcedure, CreateStoredProcedure> {
   @Override
   public StoredProcedure createToEntity(CreateStoredProcedure create, String user) {

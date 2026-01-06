@@ -2,8 +2,11 @@ package org.openmetadata.service.resources.analytics;
 
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.api.tests.CreateWebAnalyticEvent;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.WEB_ANALYTIC_EVENT)
 public class WebAnalyticEventMapper
     implements EntityMapper<WebAnalyticEvent, CreateWebAnalyticEvent> {
   @Override

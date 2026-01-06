@@ -74,6 +74,9 @@ import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
+import org.openmetadata.service.mapper.MapperRegistry;
 import org.openmetadata.service.resources.EntityBaseService;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
@@ -434,7 +437,7 @@ public final class Entity {
     try {
       return clz.getDeclaredConstructor(
               repository.getClass(), SearchRepository.class, Authorizer.class)
-          .newInstance(repository, searchRepository, authorizer);
+          .newInstance(repository, authorizer);
     } catch (NoSuchMethodException e) {
       LOG.error("Failed to Initialize Services");
       throw new BadRequestException("Failed to Initialize Services");
@@ -452,12 +455,59 @@ public final class Entity {
     }
   }
 
+  public static MapperRegistry initializeMappers() {
+    MapperRegistry mapperRegistry = MapperRegistry.getInstance();
+    List<Class<?>> mapperClasses = getMapperClasses();
+
+    for (Class<?> clz : mapperClasses) {
+      if (Modifier.isAbstract(clz.getModifiers())) {
+        continue;
+      }
+
+      Mapper annotation = clz.getAnnotation(Mapper.class);
+      if (annotation == null) {
+        continue;
+      }
+
+      String entityType = annotation.entityType();
+
+      try {
+        Object mapper = clz.getDeclaredConstructor().newInstance();
+        if (mapper instanceof EntityMapper<?, ?> entityMapper) {
+          mapperRegistry.register(entityType, entityMapper);
+          LOG.info("Registered mapper: {} for entity type: {}", clz.getSimpleName(), entityType);
+        }
+      } catch (NoSuchMethodException e) {
+        LOG.debug(
+            "Mapper {} does not have no-arg constructor, skipping auto-registration",
+            clz.getSimpleName());
+      } catch (Exception e) {
+        LOG.warn("Failed to instantiate mapper: {} - {}", clz.getSimpleName(), e.getMessage());
+      }
+    }
+
+    LOG.info("Initialized {} mappers in MapperRegistry", mapperRegistry.size());
+    return mapperRegistry;
+  }
+
+  private static List<Class<?>> getMapperClasses() {
+    try (ScanResult scanResult =
+        new ClassGraph()
+            .enableAnnotationInfo()
+            .acceptPackages(PACKAGES.toArray(new String[0]))
+            .scan()) {
+      ClassInfoList classList = scanResult.getClassesWithAnnotation(Mapper.class);
+      return classList.loadClasses();
+    }
+  }
+
   public static void cleanup() {
     initializedRepositories = false;
     collectionDAO = null;
     jobDAO = null;
     searchRepository = null;
     ENTITY_REPOSITORY_MAP.clear();
+    MapperRegistry.getInstance().clear();
   }
 
   public static <T extends EntityInterface> void registerEntity(

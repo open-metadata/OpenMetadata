@@ -6,8 +6,10 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 import org.openmetadata.service.util.EntityUtil;
 
+@Mapper(entityType = Entity.USER)
 public class UserMapper implements EntityMapper<User, CreateUser> {
   @Override
   public User createToEntity(CreateUser create, String user) {

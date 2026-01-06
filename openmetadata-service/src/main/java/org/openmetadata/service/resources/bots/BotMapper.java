@@ -15,8 +15,10 @@ import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 import org.openmetadata.service.util.EntityUtil;
 
+@Mapper(entityType = Entity.BOT)
 public class BotMapper implements EntityMapper<Bot, CreateBot> {
   @Override
   public Bot createToEntity(CreateBot create, String user) {

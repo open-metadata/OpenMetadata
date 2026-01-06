@@ -6,7 +6,9 @@ import org.openmetadata.schema.api.data.CreateSpreadsheet;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.SPREADSHEET)
 public class SpreadsheetMapper implements EntityMapper<Spreadsheet, CreateSpreadsheet> {
   @Override
   public Spreadsheet createToEntity(CreateSpreadsheet create, String user) {

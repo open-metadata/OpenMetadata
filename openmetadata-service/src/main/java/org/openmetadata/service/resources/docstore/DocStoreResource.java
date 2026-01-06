@@ -53,10 +53,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.services.ServiceRegistry;
 import org.openmetadata.service.services.docstore.DocStoreService;
 
 @Path("/v1/docStore")
@@ -68,8 +65,8 @@ public class DocStoreResource {
   public static final String COLLECTION_PATH = "/v1/docStore";
   private final DocStoreService service;
 
-  public DocStoreResource(ServiceRegistry serviceRegistry, Authorizer authorizer, Limits limits) {
-    this.service = serviceRegistry.getService(DocStoreService.class);
+  public DocStoreResource(DocStoreService service) {
+    this.service = service;
   }
 
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {

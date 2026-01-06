@@ -6,7 +6,9 @@ import org.openmetadata.schema.api.data.CreateAPIEndpoint;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.API_ENDPOINT)
 public class APIEndpointMapper implements EntityMapper<APIEndpoint, CreateAPIEndpoint> {
   @Override
   public APIEndpoint createToEntity(CreateAPIEndpoint create, String user) {

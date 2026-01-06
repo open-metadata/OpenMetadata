@@ -6,7 +6,9 @@ import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.PIPELINE)
 public class PipelineMapper implements EntityMapper<Pipeline, CreatePipeline> {
   @Override
   public Pipeline createToEntity(CreatePipeline create, String user) {

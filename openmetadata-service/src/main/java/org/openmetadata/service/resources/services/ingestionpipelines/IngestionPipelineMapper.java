@@ -3,10 +3,13 @@ package org.openmetadata.service.resources.services.ingestionpipelines;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
+@Mapper(entityType = Entity.INGESTION_PIPELINE)
 public class IngestionPipelineMapper
     implements EntityMapper<IngestionPipeline, CreateIngestionPipeline> {
   private final OpenMetadataApplicationConfig openMetadataApplicationConfig;

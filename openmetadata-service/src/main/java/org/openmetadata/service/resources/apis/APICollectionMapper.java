@@ -7,7 +7,9 @@ import org.openmetadata.schema.api.data.CreateAPICollection;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.API_COLLECTION)
 public class APICollectionMapper implements EntityMapper<APICollection, CreateAPICollection> {
   @Override
   public APICollection createToEntity(CreateAPICollection create, String user) {

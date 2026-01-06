@@ -2,8 +2,11 @@ package org.openmetadata.service.resources.ai;
 
 import org.openmetadata.schema.api.ai.CreateAIGovernancePolicy;
 import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.AI_GOVERNANCE_POLICY)
 public class AIGovernancePolicyMapper
     implements EntityMapper<AIGovernancePolicy, CreateAIGovernancePolicy> {
   @Override

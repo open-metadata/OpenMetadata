@@ -9,8 +9,10 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 import org.openmetadata.service.util.EntityUtil;
 
+@Mapper(entityType = Entity.DOMAIN)
 public class DomainMapper implements EntityMapper<Domain, CreateDomain> {
   @Override
   public Domain createToEntity(CreateDomain create, String user) {

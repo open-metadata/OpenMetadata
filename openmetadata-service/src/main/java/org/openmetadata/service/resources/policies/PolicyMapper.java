@@ -3,8 +3,11 @@ package org.openmetadata.service.resources.policies;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.POLICY)
 public class PolicyMapper implements EntityMapper<Policy, CreatePolicy> {
   @Override
   public Policy createToEntity(CreatePolicy create, String user) {

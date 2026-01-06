@@ -4,8 +4,10 @@ import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 import org.openmetadata.service.util.EntityUtil;
 
+@Mapper(entityType = Entity.PERSONA)
 public class PersonaMapper implements EntityMapper<Persona, CreatePersona> {
   @Override
   public Persona createToEntity(CreatePersona create, String user) {

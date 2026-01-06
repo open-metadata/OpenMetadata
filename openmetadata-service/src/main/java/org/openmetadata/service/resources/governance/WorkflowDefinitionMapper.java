@@ -3,8 +3,11 @@ package org.openmetadata.service.resources.governance;
 import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.WORKFLOW_DEFINITION)
 public class WorkflowDefinitionMapper
     implements EntityMapper<WorkflowDefinition, CreateWorkflowDefinition> {
   @Override

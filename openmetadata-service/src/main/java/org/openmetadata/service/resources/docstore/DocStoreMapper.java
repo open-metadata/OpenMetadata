@@ -15,8 +15,11 @@ package org.openmetadata.service.resources.docstore;
 
 import org.openmetadata.schema.entities.docStore.CreateDocument;
 import org.openmetadata.schema.entities.docStore.Document;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.DOCUMENT)
 public class DocStoreMapper implements EntityMapper<Document, CreateDocument> {
 
   @Override

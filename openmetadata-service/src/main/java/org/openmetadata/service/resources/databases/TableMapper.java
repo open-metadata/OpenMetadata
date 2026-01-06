@@ -9,7 +9,9 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.TABLE)
 public class TableMapper implements EntityMapper<Table, CreateTable> {
   @Override
   public Table createToEntity(CreateTable create, String user) {

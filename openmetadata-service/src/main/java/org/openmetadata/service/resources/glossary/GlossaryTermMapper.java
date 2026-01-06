@@ -8,7 +8,9 @@ import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.mapper.Mapper;
 
+@Mapper(entityType = Entity.GLOSSARY_TERM)
 public class GlossaryTermMapper implements EntityMapper<GlossaryTerm, CreateGlossaryTerm> {
   @Override
   public GlossaryTerm createToEntity(CreateGlossaryTerm create, String user) {
