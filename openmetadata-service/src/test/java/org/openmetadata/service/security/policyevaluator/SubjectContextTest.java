@@ -358,4 +358,92 @@ public class SubjectContextTest {
     assertFalse(
         subjectContext.isReviewer(reviewers), "User should not be reviewer if no match found");
   }
+
+  @Test
+  void testCircularDependencyInTeamHierarchy() {
+    // Test case 1: Direct circular dependency - team pointing to itself
+    List<Role> circularTeamRoles = getRoles("circularTeam");
+    List<Policy> circularTeamPolicies = getPolicies("circularTeam");
+    Team circularTeam =
+        new Team()
+            .withName("circularTeam")
+            .withId(UUID.randomUUID())
+            .withDefaultRoles(toEntityReferences(circularTeamRoles))
+            .withPolicies(toEntityReferences(circularTeamPolicies));
+    EntityRepository.CACHE_WITH_ID.put(
+        new ImmutablePair<>(Entity.TEAM, circularTeam.getId()), circularTeam);
+
+    // Create circular reference - team points to itself as parent
+    circularTeam.setParents(List.of(circularTeam.getEntityReference()));
+
+    // Test getRolesForTeams - should not cause StackOverflowError
+    List<EntityReference> roles =
+        SubjectContext.getRolesForTeams(List.of(circularTeam.getEntityReference()));
+    assertFalse(roles.isEmpty(), "Should return roles even with circular dependency");
+
+    // Test isInTeam - should not cause infinite loop
+    boolean result = SubjectContext.isInTeam("circularTeam", circularTeam.getEntityReference());
+    assertTrue(result, "Team should be found in its own hierarchy");
+
+    // Test case 2: Indirect circular dependency - teamA -> teamB -> teamA
+    List<Role> teamARoles = getRoles("teamA");
+    List<Policy> teamAPolicies = getPolicies("teamA");
+    Team teamA =
+        new Team()
+            .withName("teamA")
+            .withId(UUID.randomUUID())
+            .withDefaultRoles(toEntityReferences(teamARoles))
+            .withPolicies(toEntityReferences(teamAPolicies));
+    EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.TEAM, teamA.getId()), teamA);
+
+    List<Role> teamBRoles = getRoles("teamB");
+    List<Policy> teamBPolicies = getPolicies("teamB");
+    Team teamB =
+        new Team()
+            .withName("teamB")
+            .withId(UUID.randomUUID())
+            .withDefaultRoles(toEntityReferences(teamBRoles))
+            .withPolicies(toEntityReferences(teamBPolicies));
+    EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.TEAM, teamB.getId()), teamB);
+
+    // Create circular dependency: teamA -> teamB -> teamA
+    teamA.setParents(List.of(teamB.getEntityReference()));
+    teamB.setParents(List.of(teamA.getEntityReference()));
+
+    // Test getRolesForTeams - should not cause StackOverflowError
+    List<EntityReference> rolesA = SubjectContext.getRolesForTeams(List.of(teamA.getEntityReference()));
+    assertFalse(rolesA.isEmpty(), "Should return roles even with circular dependency");
+
+    // Test isInTeam - should not cause infinite loop
+    boolean resultA = SubjectContext.isInTeam("teamA", teamB.getEntityReference());
+    assertTrue(resultA, "Team B should be found in team A hierarchy due to circular dependency");
+
+    // Test hasRole with circular dependency
+    User userWithCircularTeam =
+        new User()
+            .withName("circularUser")
+            .withRoles(new ArrayList<>())
+            .withTeams(List.of(teamA.getEntityReference()));
+    EntityRepository.CACHE_WITH_NAME.put(
+        new ImmutablePair<>(Entity.USER, "circularUser"), userWithCircularTeam);
+
+    // Should not throw StackOverflowError
+    boolean hasRoleResult = SubjectContext.hasRole(userWithCircularTeam, "teamA_role_1");
+    assertTrue(
+        hasRoleResult,
+        "User should have role from team hierarchy even with circular dependency");
+
+    // Test policy iteration with circular dependency - should not cause infinite loop
+    SubjectContext subjectContext = SubjectContext.getSubjectContext("circularUser");
+    Iterator<PolicyContext> policyIterator = subjectContext.getPolicies(null);
+    int policyCount = 0;
+    int maxPolicies = 1000; // Safety limit to prevent infinite loop in test
+    while (policyIterator.hasNext() && policyCount < maxPolicies) {
+      policyIterator.next();
+      policyCount++;
+    }
+    assertTrue(
+        policyCount < maxPolicies,
+        "Policy iteration should terminate without infinite loop with circular dependency");
+  }
 }
