@@ -192,7 +192,7 @@ class BaseTableParameter:
         url = make_url(source_url)
         # remove the driver name from the url because table-diff doesn't support it
         drivername = url.drivername.split("+")[0]
-        _, database, schema, _ = fqn.split(table_fqn)  # pylint: disable=unused-variable
+        _, database, schema, _ = fqn.split(table_fqn)
         # path needs to include the database AND schema in some of the connectors
         if hasattr(db_service.connection.config, "supportsDatabase"):
             if drivername in {Dialects.UnityCatalog, Dialects.Databricks}:
@@ -202,7 +202,7 @@ class BaseTableParameter:
         if drivername in {Dialects.MSSQL, Dialects.Snowflake, Dialects.Trino}:
             url = url.set(drivername=drivername, database=f"{database}/{schema}")
         if drivername in {Dialects.MySQL, Dialects.MariaDB}:
-            url = url.set(drivername=drivername, database={schema})
+            url = url.set(drivername=drivername, database=f"{schema}")
         else:
             url = url.set(drivername=drivername)
         return str(url)
