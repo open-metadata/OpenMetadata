@@ -1,7 +1,6 @@
 """Base class for param setter logic for table data diff"""
 
 from typing import List, Optional, Set, Type, Union
-from urllib.parse import urlparse
 
 from sqlalchemy.engine import make_url
 
@@ -188,21 +187,25 @@ class BaseTableParameter:
             source_url["driver"] = source_url["driver"].split("+")[0]
             return source_url
 
-        url = urlparse(source_url)
+        # Use SQLAlchemy's make_url instead of urlparse to properly handle
+        # special characters in credentials (e.g., ']' in passwords)
+        url = make_url(source_url)
         # remove the driver name from the url because table-diff doesn't support it
-        kwargs = {"scheme": url.scheme.split("+")[0]}
+        drivername = url.drivername.split("+")[0]
         _, database, schema, _ = fqn.split(table_fqn)  # pylint: disable=unused-variable
         # path needs to include the database AND schema in some of the connectors
         if hasattr(db_service.connection.config, "supportsDatabase"):
-            if kwargs["scheme"] in {Dialects.UnityCatalog, Dialects.Databricks}:
-                kwargs["query"] = f"catalog={database}"
+            if drivername in {Dialects.UnityCatalog, Dialects.Databricks}:
+                url = url.set(drivername=drivername, query={"catalog": database})
             else:
-                kwargs["path"] = f"/{database}"
-        if kwargs["scheme"] in {Dialects.MSSQL, Dialects.Snowflake, Dialects.Trino}:
-            kwargs["path"] = f"/{database}/{schema}"
-        if kwargs["scheme"] in {Dialects.MySQL, Dialects.MariaDB}:
-            kwargs["path"] = f"/{schema}"
-        return url._replace(**kwargs).geturl()
+                url = url.set(drivername=drivername, database=database)
+        if drivername in {Dialects.MSSQL, Dialects.Snowflake, Dialects.Trino}:
+            url = url.set(drivername=drivername, database=f"{database}/{schema}")
+        if drivername in {Dialects.MySQL, Dialects.MariaDB}:
+            url = url.set(drivername=drivername, database={schema})
+        else:
+            url = url.set(drivername=drivername)
+        return str(url)
 
     @staticmethod
     def filter_relevant_columns(
