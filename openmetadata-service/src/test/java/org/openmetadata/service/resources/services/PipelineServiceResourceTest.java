@@ -15,9 +15,11 @@ package org.openmetadata.service.resources.services;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.resources.services.DatabaseServiceResourceTest.validateMysqlConnection;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -45,6 +47,7 @@ import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -55,12 +58,15 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource;
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource.PipelineServiceList;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -327,5 +333,55 @@ public class PipelineServiceResourceTest
           JsonUtils.convertValue(actualAirflowConnection.getConnection(), MysqlConnection.class);
       validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection, true);
     }
+  }
+
+  private String buildSecretId(PipelineService service) {
+    return SecretsManagerFactory.getSecretsManager()
+        .buildSecretId(true, ServiceType.PIPELINE.value(), service.getName());
+  }
+
+  private void assertSecretsExist(PipelineService service) {
+    String secretId = buildSecretId(service);
+    assertDoesNotThrow(
+        () -> SecretsManagerFactory.getSecretsManager().getSecret(secretId),
+        "Secrets should exist for service " + service.getName());
+  }
+
+  private void assertSecretsDeleted(PipelineService service) {
+    String secretId = buildSecretId(service);
+    assertThrows(
+        SecretsManagerException.class,
+        () -> SecretsManagerFactory.getSecretsManager().getSecret(secretId),
+        "Secrets should have been deleted for service " + service.getName());
+  }
+
+  @Test
+  void test_hardDeletePipelineService_deletesSecrets(TestInfo test) throws IOException {
+    CreatePipelineService createRequest = createRequest(test).withConnection(AIRFLOW_CONNECTION);
+    PipelineService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    assertSecretsExist(service);
+
+    deleteEntity(service.getId(), false, true, ADMIN_AUTH_HEADERS);
+
+    assertEntityDeleted(service.getId(), true);
+
+    assertSecretsDeleted(service);
+  }
+
+  @Test
+  void test_softDeletePipelineService_preservesSecrets(TestInfo test) throws IOException {
+    CreatePipelineService createRequest = createRequest(test).withConnection(AIRFLOW_CONNECTION);
+    PipelineService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    assertSecretsExist(service);
+
+    deleteEntity(service.getId(), false, false, ADMIN_AUTH_HEADERS);
+
+    PipelineService deletedService =
+        getEntity(service.getId(), Include.DELETED, ADMIN_AUTH_HEADERS);
+    assertTrue(deletedService.getDeleted(), "Service should be marked as deleted");
+
+    assertSecretsExist(service);
   }
 }

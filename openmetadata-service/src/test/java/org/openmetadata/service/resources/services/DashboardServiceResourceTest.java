@@ -15,9 +15,11 @@ package org.openmetadata.service.resources.services;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -47,18 +49,22 @@ import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.services.DashboardService;
+import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DashboardConnection;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.TestUtils;
 
@@ -357,5 +363,71 @@ public class DashboardServiceResourceTest
           new DashboardResourceTest().createEntity(createDashboard1, ADMIN_AUTH_HEADERS);
       DASHBOARD_REFERENCES.add(dashboard1.getFullyQualifiedName());
     }
+  }
+
+  private String buildSecretId(DashboardService service) {
+    return SecretsManagerFactory.getSecretsManager()
+        .buildSecretId(true, ServiceType.DASHBOARD.value(), service.getName());
+  }
+
+  private void assertSecretsExist(DashboardService service) {
+    String secretId = buildSecretId(service);
+    assertDoesNotThrow(
+        () -> SecretsManagerFactory.getSecretsManager().getSecret(secretId),
+        "Secrets should exist for service " + service.getName());
+  }
+
+  private void assertSecretsDeleted(DashboardService service) {
+    String secretId = buildSecretId(service);
+    assertThrows(
+        SecretsManagerException.class,
+        () -> SecretsManagerFactory.getSecretsManager().getSecret(secretId),
+        "Secrets should have been deleted for service " + service.getName());
+  }
+
+  @Test
+  void test_hardDeleteDashboardService_deletesSecrets(TestInfo test)
+      throws IOException, URISyntaxException {
+    MetabaseConnection metabaseConnection =
+        new MetabaseConnection()
+            .withHostPort(new URI("http://localhost:8080"))
+            .withUsername("user")
+            .withPassword("password");
+    DashboardConnection dashboardConnection =
+        new DashboardConnection().withConfig(metabaseConnection);
+    CreateDashboardService createRequest = createRequest(test).withConnection(dashboardConnection);
+    DashboardService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    assertSecretsExist(service);
+
+    deleteEntity(service.getId(), false, true, ADMIN_AUTH_HEADERS);
+
+    assertEntityDeleted(service.getId(), true);
+
+    assertSecretsDeleted(service);
+  }
+
+  @Test
+  void test_softDeleteDashboardService_preservesSecrets(TestInfo test)
+      throws IOException, URISyntaxException {
+    MetabaseConnection metabaseConnection =
+        new MetabaseConnection()
+            .withHostPort(new URI("http://localhost:8080"))
+            .withUsername("user")
+            .withPassword("password");
+    DashboardConnection dashboardConnection =
+        new DashboardConnection().withConfig(metabaseConnection);
+    CreateDashboardService createRequest = createRequest(test).withConnection(dashboardConnection);
+    DashboardService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    assertSecretsExist(service);
+
+    deleteEntity(service.getId(), false, false, ADMIN_AUTH_HEADERS);
+
+    DashboardService deletedService =
+        getEntity(service.getId(), Include.DELETED, ADMIN_AUTH_HEADERS);
+    assertTrue(deletedService.getDeleted(), "Service should be marked as deleted");
+
+    assertSecretsExist(service);
   }
 }
