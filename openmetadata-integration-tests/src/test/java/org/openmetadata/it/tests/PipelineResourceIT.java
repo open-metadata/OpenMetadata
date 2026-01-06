@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -20,9 +22,11 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Task;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for Pipeline entity operations.
@@ -1086,5 +1090,194 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     Pipeline pipeline = createEntity(request);
     assertEquals("Extract Data Task", pipeline.getTasks().get(0).getDisplayName());
     assertEquals("extract_task", pipeline.getTasks().get(0).getName());
+  }
+
+  @Test
+  void test_pipelineStatusDurationFilters_200_OK(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    ObjectMapper mapper = new ObjectMapper();
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_duration_filter"));
+    request.setService(service.getFullyQualifiedName());
+
+    List<Task> tasks = Arrays.asList(new Task().withName("test_task").withDescription("Test task"));
+    request.setTasks(tasks);
+
+    Pipeline pipeline = createEntity(request);
+    assertNotNull(pipeline);
+
+    long baseTimestamp = System.currentTimeMillis();
+
+    org.openmetadata.schema.entity.data.PipelineStatus status5min =
+        createPipelineStatusWithDuration("exec_5min", 300000L, baseTimestamp);
+    org.openmetadata.schema.entity.data.PipelineStatus status10min =
+        createPipelineStatusWithDuration("exec_10min", 600000L, baseTimestamp + 1000);
+    org.openmetadata.schema.entity.data.PipelineStatus status30min =
+        createPipelineStatusWithDuration("exec_30min", 1800000L, baseTimestamp + 2000);
+
+    client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), status5min);
+    client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), status10min);
+    client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), status30min);
+
+    String statusPath =
+        String.format(
+            "/api/v1/pipelines/%s/status?startTs=%d&endTs=%d&minDuration=600000",
+            pipeline.getFullyQualifiedName(), baseTimestamp - 10000, baseTimestamp + 3600000);
+    String jsonResponse = client.getHttpClient().executeForString(HttpMethod.GET, statusPath, null);
+    ResultList<org.openmetadata.schema.entity.data.PipelineStatus> resultWithMin =
+        mapper.readValue(
+            jsonResponse,
+            new TypeReference<ResultList<org.openmetadata.schema.entity.data.PipelineStatus>>() {});
+
+    assertNotNull(resultWithMin);
+    assertEquals(2, resultWithMin.getPaging().getTotal());
+    assertTrue(
+        resultWithMin.getData().stream().anyMatch(s -> "exec_10min".equals(s.getExecutionId())));
+    assertTrue(
+        resultWithMin.getData().stream().anyMatch(s -> "exec_30min".equals(s.getExecutionId())));
+    assertFalse(
+        resultWithMin.getData().stream().anyMatch(s -> "exec_5min".equals(s.getExecutionId())));
+
+    String statusPathMax =
+        String.format(
+            "/api/v1/pipelines/%s/status?startTs=%d&endTs=%d&maxDuration=3600000",
+            pipeline.getFullyQualifiedName(), baseTimestamp - 10000, baseTimestamp + 3600000);
+    String jsonResponseMax =
+        client.getHttpClient().executeForString(HttpMethod.GET, statusPathMax, null);
+    ResultList<org.openmetadata.schema.entity.data.PipelineStatus> resultWithMax =
+        mapper.readValue(
+            jsonResponseMax,
+            new TypeReference<ResultList<org.openmetadata.schema.entity.data.PipelineStatus>>() {});
+
+    assertNotNull(resultWithMax);
+    assertEquals(3, resultWithMax.getPaging().getTotal());
+  }
+
+  @Test
+  void test_pipelineStatusDurationCalculation_200_OK(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    ObjectMapper mapper = new ObjectMapper();
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_calc_duration"));
+    request.setService(service.getFullyQualifiedName());
+
+    List<Task> tasks =
+        Arrays.asList(
+            new Task().withName("task1").withDescription("First task"),
+            new Task().withName("task2").withDescription("Second task"));
+    request.setTasks(tasks);
+
+    Pipeline pipeline = createEntity(request);
+    assertNotNull(pipeline);
+
+    long baseTimestamp = System.currentTimeMillis();
+    org.openmetadata.schema.type.Status t1Status =
+        new org.openmetadata.schema.type.Status()
+            .withName("task1")
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful)
+            .withStartTime(baseTimestamp)
+            .withEndTime(baseTimestamp + 600000);
+
+    org.openmetadata.schema.type.Status t2Status =
+        new org.openmetadata.schema.type.Status()
+            .withName("task2")
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful)
+            .withStartTime(baseTimestamp + 100000)
+            .withEndTime(baseTimestamp + 800000);
+
+    org.openmetadata.schema.entity.data.PipelineStatus pipelineStatus =
+        new org.openmetadata.schema.entity.data.PipelineStatus()
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful)
+            .withTimestamp(baseTimestamp + 800000)
+            .withEndTime(baseTimestamp + 800000)
+            .withExecutionId("multi_task_exec")
+            .withTaskStatus(Arrays.asList(t1Status, t2Status));
+
+    client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), pipelineStatus);
+
+    String statusPath =
+        String.format(
+            "/api/v1/pipelines/%s/status?startTs=%d&endTs=%d&minDuration=700000",
+            pipeline.getFullyQualifiedName(), baseTimestamp - 10000, baseTimestamp + 3600000);
+    String jsonResponse = client.getHttpClient().executeForString(HttpMethod.GET, statusPath, null);
+    ResultList<org.openmetadata.schema.entity.data.PipelineStatus> result =
+        mapper.readValue(
+            jsonResponse,
+            new TypeReference<ResultList<org.openmetadata.schema.entity.data.PipelineStatus>>() {});
+
+    assertNotNull(result);
+    assertEquals(1, result.getPaging().getTotal());
+    assertEquals("multi_task_exec", result.getData().get(0).getExecutionId());
+  }
+
+  @Test
+  void test_pipelineStatusNullDurationHandling_200_OK(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    ObjectMapper mapper = new ObjectMapper();
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_null_duration"));
+    request.setService(service.getFullyQualifiedName());
+
+    List<Task> tasks = Arrays.asList(new Task().withName("task1").withDescription("Task"));
+    request.setTasks(tasks);
+
+    Pipeline pipeline = createEntity(request);
+    assertNotNull(pipeline);
+
+    long baseTimestamp = System.currentTimeMillis();
+
+    org.openmetadata.schema.type.Status taskStatus =
+        new org.openmetadata.schema.type.Status()
+            .withName("task1")
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful);
+
+    org.openmetadata.schema.entity.data.PipelineStatus statusWithoutTiming =
+        new org.openmetadata.schema.entity.data.PipelineStatus()
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful)
+            .withTimestamp(baseTimestamp)
+            .withExecutionId("no_timing_exec")
+            .withTaskStatus(Arrays.asList(taskStatus));
+
+    client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), statusWithoutTiming);
+
+    org.openmetadata.schema.entity.data.PipelineStatus statusWithTiming =
+        createPipelineStatusWithDuration("with_timing_exec", 600000L, baseTimestamp + 1000);
+    client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), statusWithTiming);
+
+    String statusPath =
+        String.format(
+            "/api/v1/pipelines/%s/status?startTs=%d&endTs=%d&minDuration=300000",
+            pipeline.getFullyQualifiedName(), baseTimestamp - 10000, baseTimestamp + 3600000);
+    String jsonResponse = client.getHttpClient().executeForString(HttpMethod.GET, statusPath, null);
+    ResultList<org.openmetadata.schema.entity.data.PipelineStatus> result =
+        mapper.readValue(
+            jsonResponse,
+            new TypeReference<ResultList<org.openmetadata.schema.entity.data.PipelineStatus>>() {});
+
+    assertNotNull(result);
+    assertEquals(1, result.getPaging().getTotal());
+    assertEquals("with_timing_exec", result.getData().get(0).getExecutionId());
+  }
+
+  private org.openmetadata.schema.entity.data.PipelineStatus createPipelineStatusWithDuration(
+      String executionId, long durationMs, long timestamp) {
+    org.openmetadata.schema.type.Status taskStatus =
+        new org.openmetadata.schema.type.Status()
+            .withName("test_task")
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful)
+            .withStartTime(timestamp)
+            .withEndTime(timestamp + durationMs);
+
+    return new org.openmetadata.schema.entity.data.PipelineStatus()
+        .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful)
+        .withTimestamp(timestamp)
+        .withExecutionId(executionId)
+        .withTaskStatus(Arrays.asList(taskStatus));
   }
 }
