@@ -249,6 +249,7 @@ const DataProductsPage = () => {
     setIsFollowingLoading(false);
   }, [isFollowing, unFollowDataProduct, followDataProduct]);
 
+  // Refresh data product without showing loader (for port updates)
   const refreshDataProduct = useCallback(async () => {
     if (!dataProductFqn) {
       return;

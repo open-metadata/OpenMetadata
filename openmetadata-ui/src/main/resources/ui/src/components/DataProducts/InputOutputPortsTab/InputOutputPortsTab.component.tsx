@@ -69,6 +69,7 @@ export const InputOutputPortsTab = forwardRef<
     const inputPortsTabRef = React.useRef<AssetsTabRef>(null);
     const outputPortsTabRef = React.useRef<AssetsTabRef>(null);
 
+    // Create query filters for input/output ports based on their FQNs
     const inputPortsQueryFilter = useMemo(
       () => getInputPortsQueryFilter(inputPorts),
       [inputPorts]
