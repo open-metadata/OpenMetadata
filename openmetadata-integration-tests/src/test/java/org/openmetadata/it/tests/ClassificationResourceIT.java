@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -603,5 +604,113 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
         classification.getFullyQualifiedName(),
         updatedTag.getClassification().getFullyQualifiedName(),
         "Tag's classification reference should have final updated FQN");
+  }
+
+  @Test
+  void test_classificationRename_tagActivityFeedsPreserved(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateClassification classificationRequest = createMinimalRequest(ns);
+    Classification classification = createEntity(classificationRequest);
+    String originalFqn = classification.getFullyQualifiedName();
+
+    org.openmetadata.schema.api.classification.CreateTag tagRequest =
+        new org.openmetadata.schema.api.classification.CreateTag();
+    tagRequest.setName(ns.prefix("tag_feeds_test"));
+    tagRequest.setClassification(classification.getFullyQualifiedName());
+    tagRequest.setDescription("Tag for activity feed test");
+
+    org.openmetadata.schema.entity.classification.Tag tag = client.tags().create(tagRequest);
+    String originalTagFqn = tag.getFullyQualifiedName();
+
+    Thread.sleep(1000);
+
+    String newName = ns.prefix("classification_renamed");
+    classification.setName(newName);
+    Classification renamedClassification =
+        patchEntity(classification.getId().toString(), classification);
+
+    assertNotEquals(originalFqn, renamedClassification.getFullyQualifiedName());
+    assertEquals(newName, renamedClassification.getName());
+
+    Thread.sleep(2000);
+
+    org.openmetadata.schema.entity.classification.Tag fetchedTag =
+        client.tags().get(tag.getId().toString());
+    assertNotEquals(originalTagFqn, fetchedTag.getFullyQualifiedName());
+    assertTrue(fetchedTag.getFullyQualifiedName().startsWith(newName));
+  }
+
+  @Test
+  void test_classificationRename_tagAssetsPreservedInSearch(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateClassification classificationRequest = createMinimalRequest(ns);
+    Classification classification = createEntity(classificationRequest);
+
+    org.openmetadata.schema.api.classification.CreateTag tagRequest =
+        new org.openmetadata.schema.api.classification.CreateTag();
+    tagRequest.setName(ns.prefix("tag_assets_test"));
+    tagRequest.setClassification(classification.getFullyQualifiedName());
+    tagRequest.setDescription("Tag for asset search test");
+
+    org.openmetadata.schema.entity.classification.Tag tag = client.tags().create(tagRequest);
+
+    Thread.sleep(1000);
+
+    String newName = ns.prefix("classification_renamed_assets");
+    classification.setName(newName);
+    Classification renamedClassification =
+        patchEntity(classification.getId().toString(), classification);
+
+    Thread.sleep(3000);
+
+    org.openmetadata.schema.entity.classification.Tag fetchedTag =
+        client.tags().get(tag.getId().toString());
+    assertTrue(fetchedTag.getFullyQualifiedName().startsWith(newName));
+
+    Classification fetchedClassification = getEntity(renamedClassification.getId().toString());
+    assertEquals(newName, fetchedClassification.getName());
+  }
+
+  @Test
+  void test_classificationRename_multipleTagsUpdated(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateClassification classificationRequest = createMinimalRequest(ns);
+    Classification classification = createEntity(classificationRequest);
+    String originalFqn = classification.getFullyQualifiedName();
+
+    org.openmetadata.schema.api.classification.CreateTag tag1Request =
+        new org.openmetadata.schema.api.classification.CreateTag();
+    tag1Request.setName(ns.prefix("tag1"));
+    tag1Request.setClassification(classification.getFullyQualifiedName());
+    tag1Request.setDescription("First tag");
+
+    org.openmetadata.schema.api.classification.CreateTag tag2Request =
+        new org.openmetadata.schema.api.classification.CreateTag();
+    tag2Request.setName(ns.prefix("tag2"));
+    tag2Request.setClassification(classification.getFullyQualifiedName());
+    tag2Request.setDescription("Second tag");
+
+    org.openmetadata.schema.entity.classification.Tag tag1 = client.tags().create(tag1Request);
+    org.openmetadata.schema.entity.classification.Tag tag2 = client.tags().create(tag2Request);
+
+    Thread.sleep(1000);
+
+    String newName = ns.prefix("classification_multi_tags");
+    classification.setName(newName);
+    Classification renamedClassification =
+        patchEntity(classification.getId().toString(), classification);
+
+    Thread.sleep(2000);
+
+    org.openmetadata.schema.entity.classification.Tag fetchedTag1 =
+        client.tags().get(tag1.getId().toString());
+    org.openmetadata.schema.entity.classification.Tag fetchedTag2 =
+        client.tags().get(tag2.getId().toString());
+
+    assertTrue(fetchedTag1.getFullyQualifiedName().startsWith(newName));
+    assertTrue(fetchedTag2.getFullyQualifiedName().startsWith(newName));
   }
 }

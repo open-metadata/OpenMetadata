@@ -269,6 +269,19 @@ public interface EntityManagementClient {
       String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition);
 
   /**
+   * Updates classification tags across all entities by replacing old FQN prefix with new FQN prefix.
+   * This method finds all documents matching the prefix condition and updates classification tags
+   * that start with the old FQN prefix to use the new FQN prefix.
+   *
+   * @param indexName the name of the index
+   * @param oldFqnPrefix the old fully qualified name prefix to be replaced
+   * @param newFqnPrefix the new fully qualified name prefix to replace with
+   * @param prefixFieldCondition the field to match on (e.g., "fullyQualifiedName")
+   */
+  void updateClassificationTagByFqnPrefix(
+      String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition);
+
+  /**
    * Updates data product references in search indexes when a data product is renamed.
    * This method finds all assets that have the data product in their dataProducts array
    * and updates the fullyQualifiedName to the new value.

@@ -768,6 +768,8 @@ public class TagRepository extends EntityRepository<Tag> {
         if (nameChanged) {
           recordChange("name", oldTagName, updated.getName());
         }
+
+        updateEntityLinks(oldFqn, newFqn, updated);
       }
 
       if (classificationChanged) {
@@ -814,6 +816,24 @@ public class TagRepository extends EntityRepository<Tag> {
     private void deleteParentRelationship(Tag term) {
       if (term.getParent() != null) {
         deleteRelationship(term.getParent().getId(), TAG, term.getId(), TAG, Relationship.CONTAINS);
+      }
+    }
+
+    private void updateEntityLinks(String oldFqn, String newFqn, Tag updated) {
+      daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
+
+      MessageParser.EntityLink newAbout = new MessageParser.EntityLink(TAG, newFqn);
+      daoCollection
+          .feedDAO()
+          .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
+
+      List<EntityReference> childTags = findTo(updated.getId(), TAG, Relationship.CONTAINS, TAG);
+
+      for (EntityReference child : childTags) {
+        newAbout = new MessageParser.EntityLink(TAG, child.getFullyQualifiedName());
+        daoCollection
+            .feedDAO()
+            .updateByEntityId(newAbout.getLinkString(), child.getId().toString());
       }
     }
 

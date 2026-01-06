@@ -788,6 +788,13 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public void updateClassificationTagByFqnPrefix(
+      String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
+    entityManager.updateClassificationTagByFqnPrefix(
+        indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
+  }
+
+  @Override
   public void updateDataProductReferences(String oldFqn, String newFqn) {
     entityManager.updateDataProductReferences(oldFqn, newFqn);
   }

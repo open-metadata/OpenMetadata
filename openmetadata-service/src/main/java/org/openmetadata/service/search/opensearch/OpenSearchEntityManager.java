@@ -6,6 +6,7 @@ import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_LINEAGE;
 import static org.openmetadata.service.search.SearchClient.DELETE_COLUMN_LINEAGE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE_WHEN_NULL;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.UPDATE_CLASSIFICATION_TAG_FQN_BY_PREFIX_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_COLUMN_LINEAGE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_DATA_PRODUCT_FQN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_FQN_PREFIX_SCRIPT;
@@ -898,6 +899,57 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
     } catch (Exception e) {
       LOG.error("Error while updating glossary term FQN: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateClassificationTagByFqnPrefix(
+      String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition) {
+    if (!isClientAvailable) {
+      LOG.error(
+          "OpenSearch client is not available. Cannot update classification tag by FQN prefix.");
+      return;
+    }
+
+    try {
+      Query prefixQuery =
+          Query.of(q -> q.prefix(p -> p.field(prefixFieldCondition).value(oldFqnPrefix)));
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldParentFQN", JsonData.of(oldFqnPrefix),
+              "newParentFQN", JsonData.of(newFqnPrefix));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                      .query(prefixQuery)
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless.jsonValue())
+                                          .source(UPDATE_CLASSIFICATION_TAG_FQN_BY_PREFIX_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Successfully updated classification tag FQN for index: {}, updated: {}",
+          indexName,
+          updateResponse.updated());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update classification tag FQN: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while updating classification tag FQN: {}", e.getMessage(), e);
     }
   }
 

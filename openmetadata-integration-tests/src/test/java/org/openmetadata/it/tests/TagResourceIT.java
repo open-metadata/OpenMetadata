@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -754,5 +755,68 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         parentTag.getFullyQualifiedName(),
         fetchedChild.getParent().getFullyQualifiedName(),
         "Child's parent reference should have final updated FQN");
+  }
+
+  @Test
+  void test_tagRename_activityFeedsPreserved(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Classification classification = createClassification(ns);
+
+    CreateTag request = new CreateTag();
+    request.setName(ns.prefix("tag_rename_feeds"));
+    request.setClassification(classification.getFullyQualifiedName());
+    request.setDescription("Tag for testing rename with activity feeds");
+
+    Tag tag = createEntity(request);
+    String originalFqn = tag.getFullyQualifiedName();
+
+    Thread.sleep(1000);
+
+    String newName = ns.prefix("tag_renamed_feeds");
+    tag.setName(newName);
+    Tag renamedTag = patchEntity(tag.getId().toString(), tag);
+
+    assertNotEquals(originalFqn, renamedTag.getFullyQualifiedName());
+    assertTrue(renamedTag.getFullyQualifiedName().contains(newName));
+
+    Thread.sleep(2000);
+
+    Tag fetchedTag = getEntity(renamedTag.getId().toString());
+    assertEquals(renamedTag.getFullyQualifiedName(), fetchedTag.getFullyQualifiedName());
+    assertEquals(newName, fetchedTag.getName());
+  }
+
+  @Test
+  void test_tagRename_childTagsUpdated(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Classification classification = createClassification(ns);
+
+    CreateTag parentRequest = new CreateTag();
+    parentRequest.setName(ns.prefix("parent_rename"));
+    parentRequest.setClassification(classification.getFullyQualifiedName());
+    parentRequest.setDescription("Parent tag for rename test");
+
+    Tag parentTag = createEntity(parentRequest);
+
+    CreateTag childRequest = new CreateTag();
+    childRequest.setName(ns.prefix("child_tag"));
+    childRequest.setClassification(classification.getFullyQualifiedName());
+    childRequest.setParent(parentTag.getFullyQualifiedName());
+    childRequest.setDescription("Child tag");
+
+    Tag childTag = createEntity(childRequest);
+    String originalChildFqn = childTag.getFullyQualifiedName();
+
+    Thread.sleep(1000);
+
+    String newParentName = ns.prefix("parent_renamed");
+    parentTag.setName(newParentName);
+    Tag renamedParent = patchEntity(parentTag.getId().toString(), parentTag);
+
+    Thread.sleep(2000);
+
+    Tag fetchedChild = getEntity(childTag.getId().toString());
+    assertNotEquals(originalChildFqn, fetchedChild.getFullyQualifiedName());
+    assertTrue(fetchedChild.getFullyQualifiedName().contains(newParentName));
   }
 }

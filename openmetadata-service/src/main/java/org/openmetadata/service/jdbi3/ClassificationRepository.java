@@ -15,7 +15,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.search.SearchClient.TAG_SEARCH_INDEX;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -33,7 +34,6 @@ import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
@@ -44,6 +44,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -246,25 +247,16 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   public void entityRelationshipReindex(Classification original, Classification updated) {
     super.entityRelationshipReindex(original, updated);
 
-    // Update search on name , fullyQualifiedName and displayName change
     if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
         || !Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
-      List<Tag> tagsWithUpdatedClassification = getAllTagsByClassification(updated);
-      List<EntityReference> tagsWithOriginalClassification =
-          searchRepository.getEntitiesContainingFQNFromES(
-              original.getFullyQualifiedName(),
-              tagsWithUpdatedClassification.size(),
-              TAG_SEARCH_INDEX);
-      searchRepository
-          .getSearchClient()
-          .reindexAcrossIndices("classification.name", original.getEntityReference());
-      searchRepository
-          .getSearchClient()
-          .reindexAcrossIndices("classification.fullyQualifiedName", original.getEntityReference());
-      for (EntityReference tag : tagsWithOriginalClassification) {
-        searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", tag);
-      }
+      updateAssetIndexes(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
     }
+  }
+
+  private void updateAssetIndexes(String oldFqn, String newFqn) {
+    searchRepository
+        .getSearchClient()
+        .updateClassificationTagByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN);
   }
 
   private List<Tag> getAllTagsByClassification(Classification classification) {
@@ -324,7 +316,29 @@ public class ClassificationRepository extends EntityRepository<Classification> {
           .tagUsageDAO()
           .updateTagPrefix(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
       recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
+
+      updateEntityLinks(oldFqn, newFqn, updated);
+      updateAssetIndexes(oldFqn, newFqn);
+
       invalidateClassification(updated.getId());
+    }
+
+    private void updateEntityLinks(String oldFqn, String newFqn, Classification updated) {
+      daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
+
+      MessageParser.EntityLink newAbout = new MessageParser.EntityLink(CLASSIFICATION, newFqn);
+      daoCollection
+          .feedDAO()
+          .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
+
+      List<Tag> childTags = getAllTagsByClassification(updated);
+
+      for (Tag child : childTags) {
+        newAbout = new MessageParser.EntityLink(TAG, child.getFullyQualifiedName());
+        daoCollection
+            .feedDAO()
+            .updateByEntityId(newAbout.getLinkString(), child.getId().toString());
+      }
     }
 
     private void invalidateClassification(UUID classificationId) {

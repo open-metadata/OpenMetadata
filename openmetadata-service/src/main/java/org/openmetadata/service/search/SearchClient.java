@@ -158,6 +158,20 @@ public interface SearchClient
       }
       """;
 
+  String UPDATE_CLASSIFICATION_TAG_FQN_BY_PREFIX_SCRIPT =
+      """
+      if (ctx._source.containsKey('tags')) {
+        for (int i = 0; i < ctx._source.tags.size(); i++) {
+          if (ctx._source.tags[i].containsKey('tagFQN') &&
+              ctx._source.tags[i].containsKey('source') &&
+              ctx._source.tags[i].source == 'Classification' &&
+              ctx._source.tags[i].tagFQN.startsWith(params.oldParentFQN)) {
+            ctx._source.tags[i].tagFQN = ctx._source.tags[i].tagFQN.replace(params.oldParentFQN, params.newParentFQN);
+          }
+        }
+      }
+      """;
+
   String UPDATE_FQN_PREFIX_SCRIPT =
       """
                   String updatedFQN = ctx._source.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
