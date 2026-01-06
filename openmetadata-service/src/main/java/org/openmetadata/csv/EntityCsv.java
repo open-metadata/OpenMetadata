@@ -1975,7 +1975,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
       try {
         JsonPatch jsonPatch = JsonUtils.getJsonPatch(original, updated);
         tableRepo.patch(null, updated.getId(), importedBy, jsonPatch);
-        boolean isCreated = recordCreateStatusArray[getRecordIndex(csvRecord)];
+        boolean isCreated = false;
+        if (recordCreateStatusArray != null
+            && recordIndex >= 0
+            && recordIndex < recordCreateStatusArray.length) {
+          isCreated = recordCreateStatusArray[recordIndex];
+        }
         String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
         importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
       } catch (Exception ex) {
@@ -1990,7 +1995,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
       if (existing == null) {
         dryRunCreatedEntities.put(updated.getFullyQualifiedName(), (T) updated);
       }
-      boolean isCreated = recordCreateStatusArray[getRecordIndex(csvRecord)];
+      boolean isCreated = false;
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
+        isCreated = recordCreateStatusArray[recordIndex];
+      }
       String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
       importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
     }
