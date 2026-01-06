@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
- 
 module.exports = {
   'g-emoji': jest.fn().mockReturnValue('g-emoji'),
 };
