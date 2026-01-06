@@ -75,6 +75,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -1007,6 +1008,47 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
   }
 
+  private void createChangeEventForUserAndUpdateInES(PutResponse<T> response, String importedBy) {
+    if (!response.getChangeType().equals(EventType.ENTITY_NO_CHANGE)) {
+      T entity = response.getEntity();
+      EntityInterface entityForEvent = entity;
+      if (entity instanceof User user) {
+        User userWithoutAuth =
+            new User()
+                .withId(user.getId())
+                .withName(user.getName())
+                .withFullyQualifiedName(user.getFullyQualifiedName())
+                .withDisplayName(user.getDisplayName())
+                .withDescription(user.getDescription())
+                .withEmail(user.getEmail())
+                .withVersion(user.getVersion())
+                .withUpdatedAt(user.getUpdatedAt())
+                .withUpdatedBy(user.getUpdatedBy())
+                .withHref(user.getHref())
+                .withTimezone(user.getTimezone())
+                .withIsBot(user.getIsBot())
+                .withIsAdmin(user.getIsAdmin())
+                .withTeams(user.getTeams())
+                .withRoles(user.getRoles())
+                .withOwns(user.getOwns())
+                .withFollows(user.getFollows())
+                .withDeleted(user.getDeleted())
+                .withDomains(user.getDomains())
+                .withPersonas(user.getPersonas())
+                .withDefaultPersona(user.getDefaultPersona());
+        entityForEvent = userWithoutAuth;
+      }
+      ChangeEvent changeEvent =
+          FormatterUtil.createChangeEventForEntity(
+              importedBy, response.getChangeType(), entityForEvent);
+      Object eventEntity = changeEvent.getEntity();
+      changeEvent = copyChangeEvent(changeEvent);
+      changeEvent.setEntity(JsonUtils.pojoToMaskedJson(eventEntity));
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+      Entity.getSearchRepository().updateEntity(response.getEntity().getEntityReference());
+    }
+  }
+
   @Transaction
   protected void createUserEntity(CSVPrinter resultsPrinter, CSVRecord csvRecord, T entity)
       throws IOException {
@@ -1050,6 +1092,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
         repository.prepareInternal(entity, update);
         PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
         responseStatus = response.getStatus();
+        AsyncService.getInstance()
+            .getExecutorService()
+            .submit(() -> createChangeEventForUserAndUpdateInES(response, importedBy));
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);
         importResult.setStatus(ApiStatus.FAILURE);
