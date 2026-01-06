@@ -39,7 +39,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -51,6 +50,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
@@ -1026,42 +1026,42 @@ public class UserRepository extends EntityRepository<User> {
               new FieldChange().withName("roles").withNewValue(JsonUtils.pojoToJson(roles)));
         }
       } else {
-        if (!Objects.equals(user.getDisplayName(), displayName)) {
+        if (CommonUtil.isChanged(user.getDisplayName(), displayName)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("displayName")
                   .withOldValue(user.getDisplayName())
                   .withNewValue(displayName));
         }
-        if (!Objects.equals(user.getDescription(), description)) {
+        if (CommonUtil.isChanged(user.getDescription(), description)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("description")
                   .withOldValue(user.getDescription())
                   .withNewValue(description));
         }
-        if (!Objects.equals(user.getTimezone(), timezone)) {
+        if (!CommonUtil.isChanged(user.getTimezone(), timezone)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("timezone")
                   .withOldValue(user.getTimezone())
                   .withNewValue(timezone));
         }
-        if (isAdmin != null && !Objects.equals(user.getIsAdmin(), isAdmin)) {
+        if (isAdmin != null && !CommonUtil.isChanged(user.getIsAdmin(), isAdmin)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("isAdmin")
                   .withOldValue(user.getIsAdmin())
                   .withNewValue(isAdmin));
         }
-        if (!Objects.equals(user.getTeams(), teams)) {
+        if (!CommonUtil.isChanged(user.getTeams(), teams)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("teams")
                   .withOldValue(JsonUtils.pojoToJson(user.getTeams()))
                   .withNewValue(JsonUtils.pojoToJson(teams)));
         }
-        if (!Objects.equals(user.getRoles(), roles)) {
+        if (!CommonUtil.isChanged(user.getRoles(), roles)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("roles")

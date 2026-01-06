@@ -28,13 +28,13 @@ import static org.openmetadata.service.Entity.SPREADSHEET;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.services.DriveService;
@@ -431,63 +431,63 @@ public class DirectoryRepository extends EntityRepository<Directory> {
                   .withNewValue(JsonUtils.pojoToJson(dataProducts)));
         }
       } else {
-        if (!Objects.equals(newDirectory.getDisplayName(), displayName)) {
+        if (!CommonUtil.isChanged(newDirectory.getDisplayName(), displayName)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("displayName")
                   .withOldValue(newDirectory.getDisplayName())
                   .withNewValue(displayName));
         }
-        if (!Objects.equals(newDirectory.getDescription(), description)) {
+        if (!CommonUtil.isChanged(newDirectory.getDescription(), description)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("description")
                   .withOldValue(newDirectory.getDescription())
                   .withNewValue(description));
         }
-        if (!Objects.equals(newDirectory.getParent(), parentRef)) {
+        if (!CommonUtil.isChanged(newDirectory.getParent(), parentRef)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("parent")
                   .withOldValue(JsonUtils.pojoToJson(newDirectory.getParent()))
                   .withNewValue(JsonUtils.pojoToJson(parentRef)));
         }
-        if (!Objects.equals(newDirectory.getPath(), path)) {
+        if (!CommonUtil.isChanged(newDirectory.getPath(), path)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("path")
                   .withOldValue(newDirectory.getPath())
                   .withNewValue(path));
         }
-        if (isShared != null && !Objects.equals(newDirectory.getIsShared(), isShared)) {
+        if (isShared != null && !CommonUtil.isChanged(newDirectory.getIsShared(), isShared)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("isShared")
                   .withOldValue(newDirectory.getIsShared())
                   .withNewValue(isShared));
         }
-        if (!Objects.equals(newDirectory.getOwners(), owners)) {
+        if (!CommonUtil.isChanged(newDirectory.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("owners")
                   .withOldValue(JsonUtils.pojoToJson(newDirectory.getOwners()))
                   .withNewValue(JsonUtils.pojoToJson(owners)));
         }
-        if (!Objects.equals(newDirectory.getTags(), tags)) {
+        if (!CommonUtil.isChanged(newDirectory.getTags(), tags)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
                   .withOldValue(JsonUtils.pojoToJson(newDirectory.getTags()))
                   .withNewValue(JsonUtils.pojoToJson(tags)));
         }
-        if (!Objects.equals(newDirectory.getDomains(), domains)) {
+        if (!CommonUtil.isChanged(newDirectory.getDomains(), domains)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("domains")
                   .withOldValue(JsonUtils.pojoToJson(newDirectory.getDomains()))
                   .withNewValue(JsonUtils.pojoToJson(domains)));
         }
-        if (!Objects.equals(newDirectory.getDataProducts(), dataProducts)) {
+        if (!CommonUtil.isChanged(newDirectory.getDataProducts(), dataProducts)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("dataProducts")

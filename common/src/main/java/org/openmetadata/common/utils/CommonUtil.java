@@ -282,4 +282,49 @@ public final class CommonUtil {
       return result;
     }
   }
+
+  public static boolean isChanged(Object oldValue, Object newValue) {
+    // Handle null and empty string equivalence
+    if (oldValue == null
+        && (newValue == null || (newValue instanceof String && ((String) newValue).isEmpty()))) {
+      return false;
+    }
+    if (newValue == null
+        && (oldValue == null || (oldValue instanceof String && ((String) oldValue).isEmpty()))) {
+      return false;
+    }
+
+    // Handle empty collections
+    if (oldValue == null
+        && newValue instanceof java.util.Collection
+        && ((java.util.Collection<?>) newValue).isEmpty()) {
+      return false;
+    }
+    if (newValue == null
+        && oldValue instanceof java.util.Collection
+        && ((java.util.Collection<?>) oldValue).isEmpty()) {
+      return false;
+    }
+    if (oldValue instanceof java.util.Collection
+        && ((java.util.Collection<?>) oldValue).isEmpty()
+        && newValue instanceof java.util.Collection
+        && ((java.util.Collection<?>) newValue).isEmpty()) {
+      return false;
+    }
+
+    // Handle empty maps
+    if (oldValue == null
+        && newValue instanceof java.util.Map
+        && ((java.util.Map<?, ?>) newValue).isEmpty()) {
+      return false;
+    }
+    if (newValue == null
+        && oldValue instanceof java.util.Map
+        && ((java.util.Map<?, ?>) oldValue).isEmpty()) {
+      return false;
+    }
+
+    // For non-empty values, use regular equals comparison
+    return !Objects.equals(oldValue, newValue);
+  }
 }

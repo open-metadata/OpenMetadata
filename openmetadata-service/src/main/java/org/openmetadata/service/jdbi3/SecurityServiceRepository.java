@@ -27,6 +27,7 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.services.SecurityService;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -170,51 +171,6 @@ public class SecurityServiceRepository
       this.securityService = securityService;
     }
 
-    private boolean isMeaningfulChange(Object oldValue, Object newValue) {
-      // Handle null and empty string equivalence
-      if (oldValue == null
-          && (newValue == null || (newValue instanceof String && ((String) newValue).isEmpty()))) {
-        return false;
-      }
-      if (newValue == null
-          && (oldValue == null || (oldValue instanceof String && ((String) oldValue).isEmpty()))) {
-        return false;
-      }
-
-      // Handle empty collections
-      if (oldValue == null
-          && newValue instanceof java.util.Collection
-          && ((java.util.Collection<?>) newValue).isEmpty()) {
-        return false;
-      }
-      if (newValue == null
-          && oldValue instanceof java.util.Collection
-          && ((java.util.Collection<?>) oldValue).isEmpty()) {
-        return false;
-      }
-      if (oldValue instanceof java.util.Collection
-          && ((java.util.Collection<?>) oldValue).isEmpty()
-          && newValue instanceof java.util.Collection
-          && ((java.util.Collection<?>) newValue).isEmpty()) {
-        return false;
-      }
-
-      // Handle empty maps
-      if (oldValue == null
-          && newValue instanceof java.util.Map
-          && ((java.util.Map<?, ?>) newValue).isEmpty()) {
-        return false;
-      }
-      if (newValue == null
-          && oldValue instanceof java.util.Map
-          && ((java.util.Map<?, ?>) oldValue).isEmpty()) {
-        return false;
-      }
-
-      // For non-empty values, use regular equals comparison
-      return !java.util.Objects.equals(oldValue, newValue);
-    }
-
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
@@ -278,35 +234,43 @@ public class SecurityServiceRepository
         }
       } else {
         // Existing service - use meaningful change detection
-        if (isMeaningfulChange(existingSecurityService.getDisplayName(), serviceDisplayName)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("displayName")
-                  .withOldValue(existingSecurityService.getDisplayName())
-                  .withNewValue(serviceDisplayName));
+        if (CommonUtil.isChanged(
+            existingSecurityService != null ? existingSecurityService.getDisplayName() : null,
+            serviceDisplayName)) {
+          if (existingSecurityService != null) {
+            fieldsUpdated.add(
+                new FieldChange()
+                    .withName("displayName")
+                    .withOldValue(existingSecurityService.getDisplayName())
+                    .withNewValue(serviceDisplayName));
+          }
         }
-        if (isMeaningfulChange(existingSecurityService.getDescription(), serviceDescription)) {
+        if (existingSecurityService != null
+            && CommonUtil.isChanged(existingSecurityService.getDescription(), serviceDescription)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("description")
                   .withOldValue(existingSecurityService.getDescription())
                   .withNewValue(serviceDescription));
         }
-        if (isMeaningfulChange(existingSecurityService.getOwners(), owners)) {
+        if (existingSecurityService != null
+            && CommonUtil.isChanged(existingSecurityService.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("owners")
                   .withOldValue(JsonUtils.pojoToJson(existingSecurityService.getOwners()))
                   .withNewValue(JsonUtils.pojoToJson(owners)));
         }
-        if (isMeaningfulChange(existingSecurityService.getTags(), tagLabels)) {
+        if (existingSecurityService != null
+            && CommonUtil.isChanged(existingSecurityService.getTags(), tagLabels)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
                   .withOldValue(JsonUtils.pojoToJson(existingSecurityService.getTags()))
                   .withNewValue(JsonUtils.pojoToJson(tagLabels)));
         }
-        if (isMeaningfulChange(existingSecurityService.getDomains(), domains)) {
+        if (existingSecurityService != null
+            && CommonUtil.isChanged(existingSecurityService.getDomains(), domains)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("domains")

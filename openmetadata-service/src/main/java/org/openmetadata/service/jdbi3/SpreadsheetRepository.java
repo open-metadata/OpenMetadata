@@ -28,13 +28,13 @@ import static org.openmetadata.service.Entity.WORKSHEET;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.data.CreateSpreadsheet;
 import org.openmetadata.schema.entity.data.Directory;
@@ -408,21 +408,21 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
               new FieldChange().withName("modifiedTime").withNewValue(modifiedTime.toString()));
         }
       } else {
-        if (!Objects.equals(newSpreadsheet.getDisplayName(), displayName)) {
+        if (!CommonUtil.isChanged(newSpreadsheet.getDisplayName(), displayName)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("displayName")
                   .withOldValue(newSpreadsheet.getDisplayName())
                   .withNewValue(displayName));
         }
-        if (!Objects.equals(newSpreadsheet.getDescription(), description)) {
+        if (!CommonUtil.isChanged(newSpreadsheet.getDescription(), description)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("description")
                   .withOldValue(newSpreadsheet.getDescription())
                   .withNewValue(description));
         }
-        if (!Objects.equals(newSpreadsheet.getMimeType(), mimeType)) {
+        if (!CommonUtil.isChanged(newSpreadsheet.getMimeType(), mimeType)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("mimeType")
@@ -432,14 +432,14 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
                           : null)
                   .withNewValue(mimeType != null ? mimeType.toString() : null));
         }
-        if (!Objects.equals(newSpreadsheet.getPath(), path)) {
+        if (!CommonUtil.isChanged(newSpreadsheet.getPath(), path)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("path")
                   .withOldValue(newSpreadsheet.getPath())
                   .withNewValue(path));
         }
-        if (!Objects.equals(newSpreadsheet.getSize(), size)) {
+        if (!CommonUtil.isChanged(newSpreadsheet.getSize(), size)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("size")
@@ -447,42 +447,42 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
                       newSpreadsheet.getSize() != null ? newSpreadsheet.getSize().toString() : null)
                   .withNewValue(size != null ? size.toString() : null));
         }
-        if (!Objects.equals(newSpreadsheet.getFileVersion(), fileVersion)) {
+        if (!CommonUtil.isChanged(newSpreadsheet.getFileVersion(), fileVersion)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("fileVersion")
                   .withOldValue(newSpreadsheet.getFileVersion())
                   .withNewValue(fileVersion));
         }
-        if (!Objects.equals(newSpreadsheet.getOwners(), owners)) {
+        if (!CommonUtil.isChanged(newSpreadsheet.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("owners")
                   .withOldValue(JsonUtils.pojoToJson(newSpreadsheet.getOwners()))
                   .withNewValue(JsonUtils.pojoToJson(owners)));
         }
-        if (!Objects.equals(newSpreadsheet.getTags(), tags)) {
+        if (!CommonUtil.isChanged(newSpreadsheet.getTags(), tags)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
                   .withOldValue(JsonUtils.pojoToJson(newSpreadsheet.getTags()))
                   .withNewValue(JsonUtils.pojoToJson(tags)));
         }
-        if (!Objects.equals(newSpreadsheet.getDomains(), domains)) {
+        if (!CommonUtil.isChanged(newSpreadsheet.getDomains(), domains)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("domains")
                   .withOldValue(JsonUtils.pojoToJson(newSpreadsheet.getDomains()))
                   .withNewValue(JsonUtils.pojoToJson(domains)));
         }
-        if (!Objects.equals(newSpreadsheet.getDataProducts(), dataProducts)) {
+        if (!CommonUtil.isChanged(newSpreadsheet.getDataProducts(), dataProducts)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("dataProducts")
                   .withOldValue(JsonUtils.pojoToJson(newSpreadsheet.getDataProducts()))
                   .withNewValue(JsonUtils.pojoToJson(dataProducts)));
         }
-        if (!Objects.equals(newSpreadsheet.getCreatedTime(), createdTime)) {
+        if (!CommonUtil.isChanged(newSpreadsheet.getCreatedTime(), createdTime)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("createdTime")
@@ -492,7 +492,7 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
                           : null)
                   .withNewValue(createdTime != null ? createdTime.toString() : null));
         }
-        if (!Objects.equals(newSpreadsheet.getModifiedTime(), modifiedTime)) {
+        if (!CommonUtil.isChanged(newSpreadsheet.getModifiedTime(), modifiedTime)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("modifiedTime")

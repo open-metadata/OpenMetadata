@@ -41,6 +41,7 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
@@ -752,7 +753,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       } else {
         // Compare existing values with CSV values to track changes
         String newDisplayName = csvRecord.get(1);
-        if (!Objects.equals(table.getDisplayName(), newDisplayName)) {
+        if (CommonUtil.isChanged(table.getDisplayName(), newDisplayName)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("displayName")
@@ -761,7 +762,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         }
 
         String newDescription = csvRecord.get(2);
-        if (!Objects.equals(table.getDescription(), newDescription)) {
+        if (CommonUtil.isChanged(table.getDescription(), newDescription)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("description")
@@ -769,7 +770,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                   .withNewValue(newDescription));
         }
 
-        if (!Objects.equals(table.getTags(), tagLabels)) {
+        if (CommonUtil.isChanged(table.getTags(), tagLabels)) {
           String oldTagsJson =
               table.getTags() == null ? null : JsonUtils.pojoToJson(table.getTags());
           String newTagsJson = tagLabels == null ? null : JsonUtils.pojoToJson(tagLabels);
@@ -780,7 +781,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                   .withNewValue(newTagsJson));
         }
 
-        if (!Objects.equals(table.getCertification(), certification)) {
+        if (CommonUtil.isChanged(table.getCertification(), certification)) {
           String oldCertJson =
               table.getCertification() == null
                   ? null
@@ -794,7 +795,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         }
 
         String newRetentionPeriod = csvRecord.get(8);
-        if (!Objects.equals(table.getRetentionPeriod(), newRetentionPeriod)) {
+        if (CommonUtil.isChanged(table.getRetentionPeriod(), newRetentionPeriod)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("retentionPeriod")
@@ -803,7 +804,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         }
 
         String newSourceUrl = csvRecord.get(9);
-        if (!Objects.equals(table.getSourceUrl(), newSourceUrl)) {
+        if (CommonUtil.isChanged(table.getSourceUrl(), newSourceUrl)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("sourceUrl")

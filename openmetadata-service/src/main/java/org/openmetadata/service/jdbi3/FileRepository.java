@@ -27,13 +27,13 @@ import static org.openmetadata.service.Entity.FILE;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.File;
@@ -349,21 +349,21 @@ public class FileRepository extends EntityRepository<File> {
                   .withNewValue(JsonUtils.pojoToJson(dataProducts)));
         }
       } else {
-        if (!Objects.equals(newFile.getDisplayName(), displayName)) {
+        if (CommonUtil.isChanged(newFile.getDisplayName(), displayName)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("displayName")
                   .withOldValue(newFile.getDisplayName())
                   .withNewValue(displayName));
         }
-        if (!Objects.equals(newFile.getDescription(), description)) {
+        if (CommonUtil.isChanged(newFile.getDescription(), description)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("description")
                   .withOldValue(newFile.getDescription())
                   .withNewValue(description));
         }
-        if (!Objects.equals(newFile.getFileType(), fileType)) {
+        if (!CommonUtil.isChanged(newFile.getFileType(), fileType)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("fileType")
@@ -371,70 +371,70 @@ public class FileRepository extends EntityRepository<File> {
                       newFile.getFileType() != null ? newFile.getFileType().toString() : null)
                   .withNewValue(fileType != null ? fileType.toString() : null));
         }
-        if (!Objects.equals(newFile.getMimeType(), mimeType)) {
+        if (!CommonUtil.isChanged(newFile.getMimeType(), mimeType)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("mimeType")
                   .withOldValue(newFile.getMimeType())
                   .withNewValue(mimeType));
         }
-        if (!Objects.equals(newFile.getFileExtension(), fileExtension)) {
+        if (!CommonUtil.isChanged(newFile.getFileExtension(), fileExtension)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("fileExtension")
                   .withOldValue(newFile.getFileExtension())
                   .withNewValue(fileExtension));
         }
-        if (!Objects.equals(newFile.getPath(), path)) {
+        if (!CommonUtil.isChanged(newFile.getPath(), path)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("path")
                   .withOldValue(newFile.getPath())
                   .withNewValue(path));
         }
-        if (!Objects.equals(newFile.getSize(), size)) {
+        if (!CommonUtil.isChanged(newFile.getSize(), size)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("size")
                   .withOldValue(newFile.getSize() != null ? newFile.getSize().toString() : null)
                   .withNewValue(size != null ? size.toString() : null));
         }
-        if (!Objects.equals(newFile.getChecksum(), checksum)) {
+        if (!CommonUtil.isChanged(newFile.getChecksum(), checksum)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("checksum")
                   .withOldValue(newFile.getChecksum())
                   .withNewValue(checksum));
         }
-        if (isShared != null && !Objects.equals(newFile.getIsShared(), isShared)) {
+        if (isShared != null && !CommonUtil.isChanged(newFile.getIsShared(), isShared)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("isShared")
                   .withOldValue(newFile.getIsShared())
                   .withNewValue(isShared));
         }
-        if (!Objects.equals(newFile.getOwners(), owners)) {
+        if (!CommonUtil.isChanged(newFile.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("owners")
                   .withOldValue(JsonUtils.pojoToJson(newFile.getOwners()))
                   .withNewValue(JsonUtils.pojoToJson(owners)));
         }
-        if (!Objects.equals(newFile.getTags(), tags)) {
+        if (!CommonUtil.isChanged(newFile.getTags(), tags)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
                   .withOldValue(JsonUtils.pojoToJson(newFile.getTags()))
                   .withNewValue(JsonUtils.pojoToJson(tags)));
         }
-        if (!Objects.equals(newFile.getDomains(), domains)) {
+        if (!CommonUtil.isChanged(newFile.getDomains(), domains)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("domains")
                   .withOldValue(JsonUtils.pojoToJson(newFile.getDomains()))
                   .withNewValue(JsonUtils.pojoToJson(domains)));
         }
-        if (!Objects.equals(newFile.getDataProducts(), dataProducts)) {
+        if (!CommonUtil.isChanged(newFile.getDataProducts(), dataProducts)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("dataProducts")

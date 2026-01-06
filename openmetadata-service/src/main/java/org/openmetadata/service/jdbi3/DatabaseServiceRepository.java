@@ -32,7 +32,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -40,6 +39,7 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.services.DatabaseConnection;
@@ -219,51 +219,6 @@ public class DatabaseServiceRepository
       csvFile.withRecords(records);
     }
 
-    private boolean isMeaningfulChange(Object oldValue, Object newValue) {
-      // Handle null and empty string equivalence
-      if (oldValue == null
-          && (newValue == null || (newValue instanceof String && ((String) newValue).isEmpty()))) {
-        return false;
-      }
-      if (newValue == null
-          && (oldValue == null || (oldValue instanceof String && ((String) oldValue).isEmpty()))) {
-        return false;
-      }
-
-      // Handle empty collections
-      if (oldValue == null
-          && newValue instanceof java.util.Collection
-          && ((java.util.Collection<?>) newValue).isEmpty()) {
-        return false;
-      }
-      if (newValue == null
-          && oldValue instanceof java.util.Collection
-          && ((java.util.Collection<?>) oldValue).isEmpty()) {
-        return false;
-      }
-      if (oldValue instanceof java.util.Collection
-          && ((java.util.Collection<?>) oldValue).isEmpty()
-          && newValue instanceof java.util.Collection
-          && ((java.util.Collection<?>) newValue).isEmpty()) {
-        return false;
-      }
-
-      // Handle empty maps
-      if (oldValue == null
-          && newValue instanceof java.util.Map
-          && ((java.util.Map<?, ?>) newValue).isEmpty()) {
-        return false;
-      }
-      if (newValue == null
-          && oldValue instanceof java.util.Map
-          && ((java.util.Map<?, ?>) oldValue).isEmpty()) {
-        return false;
-      }
-
-      // For non-empty values, use regular equals comparison
-      return !Objects.equals(oldValue, newValue);
-    }
-
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       if (recursive) {
@@ -348,7 +303,7 @@ public class DatabaseServiceRepository
         }
       } else {
         // Use meaningful change detection to avoid false positives
-        if (isMeaningfulChange(database.getDisplayName(), displayName)) {
+        if (CommonUtil.isChanged(database.getDisplayName(), displayName)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("displayName")
@@ -356,7 +311,7 @@ public class DatabaseServiceRepository
                   .withNewValue(displayName));
         }
 
-        if (isMeaningfulChange(database.getDescription(), description)) {
+        if (CommonUtil.isChanged(database.getDescription(), description)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("description")
@@ -364,7 +319,7 @@ public class DatabaseServiceRepository
                   .withNewValue(description));
         }
 
-        if (isMeaningfulChange(database.getTags(), tagLabels)) {
+        if (CommonUtil.isChanged(database.getTags(), tagLabels)) {
           String oldTagsJson =
               database.getTags() == null ? null : JsonUtils.pojoToJson(database.getTags());
           String newTagsJson = tagLabels == null ? null : JsonUtils.pojoToJson(tagLabels);
@@ -375,7 +330,7 @@ public class DatabaseServiceRepository
                   .withNewValue(newTagsJson));
         }
 
-        if (isMeaningfulChange(database.getCertification(), certification)) {
+        if (CommonUtil.isChanged(database.getCertification(), certification)) {
           String oldCertJson =
               database.getCertification() == null
                   ? null
@@ -509,35 +464,35 @@ public class DatabaseServiceRepository
         }
       } else {
         // Existing database - use meaningful change detection
-        if (isMeaningfulChange(existingDatabase.getDisplayName(), displayName)) {
+        if (CommonUtil.isChanged(existingDatabase.getDisplayName(), displayName)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("displayName")
                   .withOldValue(existingDatabase.getDisplayName())
                   .withNewValue(displayName));
         }
-        if (isMeaningfulChange(existingDatabase.getDescription(), description)) {
+        if (CommonUtil.isChanged(existingDatabase.getDescription(), description)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("description")
                   .withOldValue(existingDatabase.getDescription())
                   .withNewValue(description));
         }
-        if (isMeaningfulChange(existingDatabase.getTags(), tagLabels)) {
+        if (CommonUtil.isChanged(existingDatabase.getTags(), tagLabels)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
                   .withOldValue(JsonUtils.pojoToJson(existingDatabase.getTags()))
                   .withNewValue(JsonUtils.pojoToJson(tagLabels)));
         }
-        if (isMeaningfulChange(existingDatabase.getCertification(), certification)) {
+        if (CommonUtil.isChanged(existingDatabase.getCertification(), certification)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("certification")
                   .withOldValue(JsonUtils.pojoToJson(existingDatabase.getCertification()))
                   .withNewValue(JsonUtils.pojoToJson(certification)));
         }
-        if (isMeaningfulChange(existingDatabase.getSourceUrl(), sourceUrl)) {
+        if (CommonUtil.isChanged(existingDatabase.getSourceUrl(), sourceUrl)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("sourceUrl")

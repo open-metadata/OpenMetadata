@@ -1091,49 +1091,49 @@ public class TeamRepository extends EntityRepository<Team> {
               new FieldChange().withName("policies").withNewValue(JsonUtils.pojoToJson(policies)));
         }
       } else {
-        if (!Objects.equals(team.getDisplayName(), displayName)) {
+        if (CommonUtil.isChanged(team.getDisplayName(), displayName)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("displayName")
                   .withOldValue(team.getDisplayName())
                   .withNewValue(displayName));
         }
-        if (!Objects.equals(team.getDescription(), description)) {
+        if (CommonUtil.isChanged(team.getDescription(), description)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("description")
                   .withOldValue(team.getDescription())
                   .withNewValue(description));
         }
-        if (!Objects.equals(team.getTeamType(), teamType)) {
+        if (!CommonUtil.isChanged(team.getTeamType(), teamType)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("teamType")
                   .withOldValue(team.getTeamType().value())
                   .withNewValue(teamType.value()));
         }
-        if (!Objects.equals(team.getOwners(), owners)) {
+        if (!CommonUtil.isChanged(team.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("owners")
                   .withOldValue(JsonUtils.pojoToJson(team.getOwners()))
                   .withNewValue(JsonUtils.pojoToJson(owners)));
         }
-        if (isJoinable != null && !Objects.equals(team.getIsJoinable(), isJoinable)) {
+        if (isJoinable != null && !CommonUtil.isChanged(team.getIsJoinable(), isJoinable)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("isJoinable")
                   .withOldValue(team.getIsJoinable())
                   .withNewValue(isJoinable));
         }
-        if (!Objects.equals(team.getDefaultRoles(), defaultRoles)) {
+        if (!CommonUtil.isChanged(team.getDefaultRoles(), defaultRoles)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("defaultRoles")
                   .withOldValue(JsonUtils.pojoToJson(team.getDefaultRoles()))
                   .withNewValue(JsonUtils.pojoToJson(defaultRoles)));
         }
-        if (!Objects.equals(team.getPolicies(), policies)) {
+        if (!CommonUtil.isChanged(team.getPolicies(), policies)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("policies")
@@ -1162,7 +1162,7 @@ public class TeamRepository extends EntityRepository<Team> {
                     .withNewValue(JsonUtils.pojoToJson(team.getParents())));
           }
         } else {
-          if (!Objects.equals(originalParents, team.getParents())) {
+          if (!CommonUtil.isChanged(originalParents, team.getParents())) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("parents")

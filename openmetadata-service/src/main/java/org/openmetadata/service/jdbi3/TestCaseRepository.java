@@ -37,7 +37,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -50,6 +49,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.jetbrains.annotations.NotNull;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
@@ -1616,28 +1616,28 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           }
         } else {
           // Existing test case - compare and track updates
-          if (!Objects.equals(existingTestCase.getDisplayName(), displayName)) {
+          if (!CommonUtil.isChanged(existingTestCase.getDisplayName(), displayName)) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("displayName")
                     .withOldValue(existingTestCase.getDisplayName())
                     .withNewValue(displayName));
           }
-          if (!Objects.equals(existingTestCase.getDescription(), description)) {
+          if (!CommonUtil.isChanged(existingTestCase.getDescription(), description)) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("description")
                     .withOldValue(existingTestCase.getDescription())
                     .withNewValue(description));
           }
-          if (!Objects.equals(existingTestCase.getTestDefinition(), testDefRef)) {
+          if (!CommonUtil.isChanged(existingTestCase.getTestDefinition(), testDefRef)) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("testDefinition")
                     .withOldValue(JsonUtils.pojoToJson(existingTestCase.getTestDefinition()))
                     .withNewValue(JsonUtils.pojoToJson(testDefRef)));
           }
-          if (!Objects.equals(existingTestCase.getParameterValues(), parameterValues)) {
+          if (!CommonUtil.isChanged(existingTestCase.getParameterValues(), parameterValues)) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("parameterValues")
@@ -1645,7 +1645,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                     .withNewValue(JsonUtils.pojoToJson(parameterValues)));
           }
           if (computePassedFailedRowCount != null
-              && !Objects.equals(
+              && !CommonUtil.isChanged(
                   existingTestCase.getComputePassedFailedRowCount(), computePassedFailedRowCount)) {
             fieldsUpdated.add(
                 new FieldChange()
@@ -1654,21 +1654,22 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                     .withNewValue(computePassedFailedRowCount));
           }
           if (useDynamicAssertion != null
-              && !Objects.equals(existingTestCase.getUseDynamicAssertion(), useDynamicAssertion)) {
+              && !CommonUtil.isChanged(
+                  existingTestCase.getUseDynamicAssertion(), useDynamicAssertion)) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("useDynamicAssertion")
                     .withOldValue(existingTestCase.getUseDynamicAssertion())
                     .withNewValue(useDynamicAssertion));
           }
-          if (!Objects.equals(existingTestCase.getInspectionQuery(), inspectionQuery)) {
+          if (!CommonUtil.isChanged(existingTestCase.getInspectionQuery(), inspectionQuery)) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("inspectionQuery")
                     .withOldValue(existingTestCase.getInspectionQuery())
                     .withNewValue(inspectionQuery));
           }
-          if (!Objects.equals(existingTestCase.getTags(), tagLabels)) {
+          if (!CommonUtil.isChanged(existingTestCase.getTags(), tagLabels)) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("tags")

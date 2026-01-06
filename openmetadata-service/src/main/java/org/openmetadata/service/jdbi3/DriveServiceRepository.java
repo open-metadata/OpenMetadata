@@ -28,13 +28,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Directory;
@@ -234,42 +234,42 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
                   .withNewValue(JsonUtils.pojoToJson(extension)));
         }
       } else {
-        if (!Objects.equals(directory.getDescription(), description)) {
+        if (!CommonUtil.isChanged(directory.getDescription(), description)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("description")
                   .withOldValue(directory.getDescription())
                   .withNewValue(description));
         }
-        if (!Objects.equals(directory.getDisplayName(), displayName)) {
+        if (!CommonUtil.isChanged(directory.getDisplayName(), displayName)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("displayName")
                   .withOldValue(directory.getDisplayName())
                   .withNewValue(displayName));
         }
-        if (!Objects.equals(directory.getOwners(), owners)) {
+        if (!CommonUtil.isChanged(directory.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("owners")
                   .withOldValue(JsonUtils.pojoToJson(directory.getOwners()))
                   .withNewValue(JsonUtils.pojoToJson(owners)));
         }
-        if (!Objects.equals(directory.getTags(), tags)) {
+        if (!CommonUtil.isChanged(directory.getTags(), tags)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
                   .withOldValue(JsonUtils.pojoToJson(directory.getTags()))
                   .withNewValue(JsonUtils.pojoToJson(tags)));
         }
-        if (!Objects.equals(directory.getDomains(), domains)) {
+        if (!CommonUtil.isChanged(directory.getDomains(), domains)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("domains")
                   .withOldValue(JsonUtils.pojoToJson(directory.getDomains()))
                   .withNewValue(JsonUtils.pojoToJson(domains)));
         }
-        if (!Objects.equals(directory.getExtension(), extension)) {
+        if (!CommonUtil.isChanged(directory.getExtension(), extension)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("extension")

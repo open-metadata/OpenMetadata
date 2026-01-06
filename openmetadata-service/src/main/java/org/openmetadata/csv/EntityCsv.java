@@ -1074,7 +1074,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     // Store create status in inherited arrays
     int recordIndex = (int) csvRecord.getRecordNumber() - 1;
-    if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+    if (recordCreateStatusArray != null
+        && recordIndex >= 0
+        && recordIndex < recordCreateStatusArray.length) {
       recordCreateStatusArray[recordIndex] = !schemaExists;
     }
 
@@ -1137,63 +1139,63 @@ public abstract class EntityCsv<T extends EntityInterface> {
             new FieldChange().withName("extension").withNewValue(JsonUtils.pojoToJson(extension)));
       }
     } else {
-      if (isMeaningfulChange(existingSchema.getDisplayName(), displayName)) {
+      if (CommonUtil.isChanged(existingSchema.getDisplayName(), displayName)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("displayName")
                 .withOldValue(existingSchema.getDisplayName())
                 .withNewValue(displayName));
       }
-      if (isMeaningfulChange(existingSchema.getDescription(), description)) {
+      if (CommonUtil.isChanged(existingSchema.getDescription(), description)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("description")
                 .withOldValue(existingSchema.getDescription())
                 .withNewValue(description));
       }
-      if (isMeaningfulChange(existingSchema.getOwners(), owners)) {
+      if (CommonUtil.isChanged(existingSchema.getOwners(), owners)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("owners")
                 .withOldValue(JsonUtils.pojoToJson(existingSchema.getOwners()))
                 .withNewValue(JsonUtils.pojoToJson(owners)));
       }
-      if (isMeaningfulChange(existingSchema.getTags(), tagLabels)) {
+      if (CommonUtil.isChanged(existingSchema.getTags(), tagLabels)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("tags")
                 .withOldValue(JsonUtils.pojoToJson(existingSchema.getTags()))
                 .withNewValue(JsonUtils.pojoToJson(tagLabels)));
       }
-      if (isMeaningfulChange(existingSchema.getCertification(), certification)) {
+      if (CommonUtil.isChanged(existingSchema.getCertification(), certification)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("certification")
                 .withOldValue(JsonUtils.pojoToJson(existingSchema.getCertification()))
                 .withNewValue(JsonUtils.pojoToJson(certification)));
       }
-      if (isMeaningfulChange(existingSchema.getRetentionPeriod(), retentionPeriod)) {
+      if (CommonUtil.isChanged(existingSchema.getRetentionPeriod(), retentionPeriod)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("retentionPeriod")
                 .withOldValue(existingSchema.getRetentionPeriod())
                 .withNewValue(retentionPeriod));
       }
-      if (isMeaningfulChange(existingSchema.getSourceUrl(), sourceUrl)) {
+      if (CommonUtil.isChanged(existingSchema.getSourceUrl(), sourceUrl)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("sourceUrl")
                 .withOldValue(existingSchema.getSourceUrl())
                 .withNewValue(sourceUrl));
       }
-      if (isMeaningfulChange(existingSchema.getDomains(), domains)) {
+      if (CommonUtil.isChanged(existingSchema.getDomains(), domains)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("domains")
                 .withOldValue(JsonUtils.pojoToJson(existingSchema.getDomains()))
                 .withNewValue(JsonUtils.pojoToJson(domains)));
       }
-      if (isMeaningfulChange(existingSchema.getExtension(), extension)) {
+      if (CommonUtil.isChanged(existingSchema.getExtension(), extension)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("extension")
@@ -1209,7 +1211,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (!fieldsUpdated.isEmpty()) {
       changeDescription.setFieldsUpdated(fieldsUpdated);
     }
-    if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+    if (recordFieldChangesArray != null
+        && recordIndex >= 0
+        && recordIndex < recordFieldChangesArray.length) {
       recordFieldChangesArray[recordIndex] = changeDescription;
     }
 
@@ -1231,44 +1235,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (processRecord) {
       createEntityWithChangeDescription(printer, csvRecord, schema, DATABASE_SCHEMA);
     }
-  }
-
-  private boolean isMeaningfulChange(Object oldValue, Object newValue) {
-    if (oldValue == null
-        && (newValue == null || (newValue instanceof String && ((String) newValue).isEmpty()))) {
-      return false;
-    }
-    if (newValue == null
-        && (oldValue == null || (oldValue instanceof String && ((String) oldValue).isEmpty()))) {
-      return false;
-    }
-    if (oldValue == null
-        && newValue instanceof java.util.Collection
-        && ((java.util.Collection<?>) newValue).isEmpty()) {
-      return false;
-    }
-    if (newValue == null
-        && oldValue instanceof java.util.Collection
-        && ((java.util.Collection<?>) oldValue).isEmpty()) {
-      return false;
-    }
-    if (oldValue instanceof java.util.Collection
-        && ((java.util.Collection<?>) oldValue).isEmpty()
-        && newValue instanceof java.util.Collection
-        && ((java.util.Collection<?>) newValue).isEmpty()) {
-      return false;
-    }
-    if (oldValue == null
-        && newValue instanceof java.util.Map
-        && ((java.util.Map<?, ?>) newValue).isEmpty()) {
-      return false;
-    }
-    if (newValue == null
-        && oldValue instanceof java.util.Map
-        && ((java.util.Map<?, ?>) oldValue).isEmpty()) {
-      return false;
-    }
-    return !Objects.equals(oldValue, newValue);
   }
 
   protected void createTableEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
@@ -1332,7 +1298,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 .withDatabaseSchema(schema.getEntityReference());
 
     int recordIndex = (int) csvRecord.getRecordNumber() - 1;
-    if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+    if (recordCreateStatusArray != null
+        && recordIndex >= 0
+        && recordIndex < recordCreateStatusArray.length) {
       recordCreateStatusArray[recordIndex] = !tableExists;
     }
 
@@ -1395,63 +1363,63 @@ public abstract class EntityCsv<T extends EntityInterface> {
             new FieldChange().withName("extension").withNewValue(JsonUtils.pojoToJson(extension)));
       }
     } else {
-      if (isMeaningfulChange(existingTable.getDisplayName(), displayName)) {
+      if (CommonUtil.isChanged(existingTable.getDisplayName(), displayName)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("displayName")
                 .withOldValue(existingTable.getDisplayName())
                 .withNewValue(displayName));
       }
-      if (isMeaningfulChange(existingTable.getDescription(), description)) {
+      if (CommonUtil.isChanged(existingTable.getDescription(), description)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("description")
                 .withOldValue(existingTable.getDescription())
                 .withNewValue(description));
       }
-      if (isMeaningfulChange(existingTable.getOwners(), owners)) {
+      if (CommonUtil.isChanged(existingTable.getOwners(), owners)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("owners")
                 .withOldValue(JsonUtils.pojoToJson(existingTable.getOwners()))
                 .withNewValue(JsonUtils.pojoToJson(owners)));
       }
-      if (isMeaningfulChange(existingTable.getTags(), tagLabels)) {
+      if (CommonUtil.isChanged(existingTable.getTags(), tagLabels)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("tags")
                 .withOldValue(JsonUtils.pojoToJson(existingTable.getTags()))
                 .withNewValue(JsonUtils.pojoToJson(tagLabels)));
       }
-      if (isMeaningfulChange(existingTable.getCertification(), certification)) {
+      if (CommonUtil.isChanged(existingTable.getCertification(), certification)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("certification")
                 .withOldValue(JsonUtils.pojoToJson(existingTable.getCertification()))
                 .withNewValue(JsonUtils.pojoToJson(certification)));
       }
-      if (isMeaningfulChange(existingTable.getRetentionPeriod(), retentionPeriod)) {
+      if (CommonUtil.isChanged(existingTable.getRetentionPeriod(), retentionPeriod)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("retentionPeriod")
                 .withOldValue(existingTable.getRetentionPeriod())
                 .withNewValue(retentionPeriod));
       }
-      if (isMeaningfulChange(existingTable.getSourceUrl(), sourceUrl)) {
+      if (CommonUtil.isChanged(existingTable.getSourceUrl(), sourceUrl)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("sourceUrl")
                 .withOldValue(existingTable.getSourceUrl())
                 .withNewValue(sourceUrl));
       }
-      if (isMeaningfulChange(existingTable.getDomains(), domains)) {
+      if (CommonUtil.isChanged(existingTable.getDomains(), domains)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("domains")
                 .withOldValue(JsonUtils.pojoToJson(existingTable.getDomains()))
                 .withNewValue(JsonUtils.pojoToJson(domains)));
       }
-      if (isMeaningfulChange(existingTable.getExtension(), extension)) {
+      if (CommonUtil.isChanged(existingTable.getExtension(), extension)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("extension")
@@ -1467,7 +1435,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (!fieldsUpdated.isEmpty()) {
       changeDescription.setFieldsUpdated(fieldsUpdated);
     }
-    if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+    if (recordFieldChangesArray != null
+        && recordIndex >= 0
+        && recordIndex < recordFieldChangesArray.length) {
       recordFieldChangesArray[recordIndex] = changeDescription;
     }
 
@@ -1548,7 +1518,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 .withDatabase(schema.getDatabase())
                 .withDatabaseSchema(schema.getEntityReference());
     int recordIndex = (int) csvRecord.getRecordNumber() - 1;
-    if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+    if (recordCreateStatusArray != null
+        && recordIndex >= 0
+        && recordIndex < recordCreateStatusArray.length) {
       recordCreateStatusArray[recordIndex] = !spExists;
     }
 
@@ -1696,7 +1668,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (!fieldsUpdated.isEmpty()) {
       changeDescription.setFieldsUpdated(fieldsUpdated);
     }
-    if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+    if (recordFieldChangesArray != null
+        && recordIndex >= 0
+        && recordIndex < recordFieldChangesArray.length) {
       recordFieldChangesArray[recordIndex] = changeDescription;
     }
 
@@ -1795,7 +1769,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (existingColumn == null) columnExists = false;
 
     int recordIndex = (int) csvRecord.getRecordNumber() - 1;
-    if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+    if (recordCreateStatusArray != null
+        && recordIndex >= 0
+        && recordIndex < recordCreateStatusArray.length) {
       recordCreateStatusArray[recordIndex] = !columnExists;
     }
     columnRecordCreateStatus.put((int) csvRecord.getRecordNumber(), !columnExists);
@@ -1870,21 +1846,21 @@ public abstract class EntityCsv<T extends EntityInterface> {
             new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tagLabels)));
       }
     } else {
-      if (isMeaningfulChange(existingColumn.getDisplayName(), displayName)) {
+      if (CommonUtil.isChanged(existingColumn.getDisplayName(), displayName)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("displayName")
                 .withOldValue(existingColumn.getDisplayName())
                 .withNewValue(displayName));
       }
-      if (isMeaningfulChange(existingColumn.getDescription(), description)) {
+      if (CommonUtil.isChanged(existingColumn.getDescription(), description)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("description")
                 .withOldValue(existingColumn.getDescription())
                 .withNewValue(description));
       }
-      if (isMeaningfulChange(existingColumn.getDataTypeDisplay(), dataTypeDisplay)) {
+      if (CommonUtil.isChanged(existingColumn.getDataTypeDisplay(), dataTypeDisplay)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("dataTypeDisplay")
@@ -1921,7 +1897,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
                         : null)
                 .withNewValue(dataLength != null ? dataLength.toString() : null));
       }
-      if (isMeaningfulChange(existingColumn.getTags(), tagLabels)) {
+      if (CommonUtil.isChanged(existingColumn.getTags(), tagLabels)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("tags")
@@ -1937,7 +1913,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (!fieldsUpdated.isEmpty()) {
       changeDescription.setFieldsUpdated(fieldsUpdated);
     }
-    if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+    if (recordFieldChangesArray != null
+        && recordIndex >= 0
+        && recordIndex < recordFieldChangesArray.length) {
       recordFieldChangesArray[recordIndex] = changeDescription;
     }
 

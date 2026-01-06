@@ -48,6 +48,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
@@ -349,77 +350,77 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
               new FieldChange().withName("style").withNewValue(JsonUtils.pojoToJson(style)));
         }
       } else {
-        if (!Objects.equals(glossaryTerm.getParent(), parent)) {
+        if (!CommonUtil.isChanged(glossaryTerm.getParent(), parent)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("parent")
                   .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getParent()))
                   .withNewValue(JsonUtils.pojoToJson(parent)));
         }
-        if (!Objects.equals(glossaryTerm.getDisplayName(), displayName)) {
+        if (CommonUtil.isChanged(glossaryTerm.getDisplayName(), displayName)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("displayName")
                   .withOldValue(glossaryTerm.getDisplayName())
                   .withNewValue(displayName));
         }
-        if (!Objects.equals(glossaryTerm.getDescription(), description)) {
+        if (CommonUtil.isChanged(glossaryTerm.getDescription(), description)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("description")
                   .withOldValue(glossaryTerm.getDescription())
                   .withNewValue(description));
         }
-        if (!Objects.equals(glossaryTerm.getSynonyms(), synonyms)) {
+        if (!CommonUtil.isChanged(glossaryTerm.getSynonyms(), synonyms)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("synonyms")
                   .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getSynonyms()))
                   .withNewValue(JsonUtils.pojoToJson(synonyms)));
         }
-        if (!Objects.equals(glossaryTerm.getRelatedTerms(), relatedTerms)) {
+        if (!CommonUtil.isChanged(glossaryTerm.getRelatedTerms(), relatedTerms)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("relatedTerms")
                   .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getRelatedTerms()))
                   .withNewValue(JsonUtils.pojoToJson(relatedTerms)));
         }
-        if (!Objects.equals(glossaryTerm.getReferences(), references)) {
+        if (!CommonUtil.isChanged(glossaryTerm.getReferences(), references)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("references")
                   .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getReferences()))
                   .withNewValue(JsonUtils.pojoToJson(references)));
         }
-        if (!Objects.equals(glossaryTerm.getTags(), tags)) {
+        if (!CommonUtil.isChanged(glossaryTerm.getTags(), tags)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
                   .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getTags()))
                   .withNewValue(JsonUtils.pojoToJson(tags)));
         }
-        if (!Objects.equals(glossaryTerm.getReviewers(), reviewers)) {
+        if (!CommonUtil.isChanged(glossaryTerm.getReviewers(), reviewers)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("reviewers")
                   .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getReviewers()))
                   .withNewValue(JsonUtils.pojoToJson(reviewers)));
         }
-        if (!Objects.equals(glossaryTerm.getOwners(), owners)) {
+        if (!CommonUtil.isChanged(glossaryTerm.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("owners")
                   .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getOwners()))
                   .withNewValue(JsonUtils.pojoToJson(owners)));
         }
-        if (status != null && !Objects.equals(glossaryTerm.getEntityStatus(), status)) {
+        if (status != null && !CommonUtil.isChanged(glossaryTerm.getEntityStatus(), status)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("status")
                   .withOldValue(glossaryTerm.getEntityStatus().value())
                   .withNewValue(status.value()));
         }
-        if (!Objects.equals(glossaryTerm.getStyle(), style)) {
+        if (!CommonUtil.isChanged(glossaryTerm.getStyle(), style)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("style")
