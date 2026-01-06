@@ -22,7 +22,9 @@ import AuditLogsPage from './AuditLogsPage';
 jest.mock('../../rest/auditLogAPI', () => ({
   getAuditLogs: jest.fn().mockResolvedValue({
     data: [],
-    paging: {},
+    paging: {
+      total: 0,
+    },
   } as AuditLogListResponse),
 }));
 
@@ -32,6 +34,37 @@ jest.mock('../../components/PageHeader/PageHeader.component', () =>
 
 jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
   jest.fn().mockReturnValue(<div data-testid="next-previous" />)
+);
+
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('../../rest/miscAPI', () => ({
+  searchData: jest.fn().mockResolvedValue({
+    data: {
+      hits: {
+        hits: [],
+        total: { value: 0 },
+      },
+    },
+  }),
+}));
+
+jest.mock('../../rest/userAPI', () => ({
+  getUsers: jest.fn().mockResolvedValue({
+    data: [],
+    paging: { total: 0 },
+  }),
+}));
+
+jest.mock(
+  '../../components/common/SelectableList/SelectableList.component',
+  () => jest.fn().mockReturnValue(<div data-testid="selectable-list" />)
 );
 
 describe('AuditLogsPage', () => {
