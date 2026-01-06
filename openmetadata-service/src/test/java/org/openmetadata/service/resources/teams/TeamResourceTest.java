@@ -81,6 +81,7 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -1036,6 +1037,167 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     CsvImportResult result = importCsv("x111", csv, false);
     String error = TeamCsv.invalidTeam(4, "x111", "x3", "x1");
     assertTrue(result.getImportResultsCsv().contains(error));
+  }
+
+  @Test
+  void test_csvImportCreate() throws IOException {
+    CreateTeam createTeam = createRequest("csvImportCreate").withTeamType(DEPARTMENT);
+    Team team = createEntity(createTeam, ADMIN_AUTH_HEADERS);
+
+    UserResourceTest userTest = new UserResourceTest();
+    CreateUser createUser1 = userTest.createRequest("user1");
+    userTest.createEntity(createUser1, ADMIN_AUTH_HEADERS);
+    CreateUser createUser2 = userTest.createRequest("user2");
+    userTest.createEntity(createUser2, ADMIN_AUTH_HEADERS);
+
+    // Create CSV records for initial import (these should be marked as ENTITY_CREATED)
+    List<String> createRecords =
+        listOf(
+            getRecord("user1", USER, team.getName(), null, true, null, (List<Policy>) null),
+            getRecord("user2", USER, team.getName(), null, true, null, (List<Policy>) null));
+
+    String csv = createCsv(TeamCsv.HEADERS, createRecords, null);
+
+    // Import CSV and verify all records are marked as created
+    CsvImportResult importResult = importCsv(team.getName(), csv, false);
+    assertSummary(importResult, ApiStatus.SUCCESS, 3, 3, 0); // 3 = header + 2 records
+
+    // Verify the result contains "Entity created" status for all records
+    String[] resultLines = importResult.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_CREATED),
+          "Record " + i + " should be marked as created: " + resultLines[i]);
+      // Verify changeDescription is present
+      assertTrue(
+          resultLines[i].contains("fieldsAdded"),
+          "Record " + i + " should have changeDescription: " + resultLines[i]);
+    }
+
+    deleteEntityByName(team.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_csvImportUpdate() throws IOException {
+    CreateTeam createTeam = createRequest("csvImportUpdate").withTeamType(DEPARTMENT);
+    Team team = createEntity(createTeam, ADMIN_AUTH_HEADERS);
+
+    UserResourceTest userTest = new UserResourceTest();
+    CreateUser createUser1 = userTest.createRequest("user1");
+    User user1 = userTest.createEntity(createUser1, ADMIN_AUTH_HEADERS);
+    CreateUser createUser2 = userTest.createRequest("user2");
+    User user2 = userTest.createEntity(createUser2, ADMIN_AUTH_HEADERS);
+
+    // First import to create user metadata in team
+    List<String> createRecords =
+        listOf(
+            getRecord("user1", USER, team.getName(), null, true, null, (List<Policy>) null),
+            getRecord("user2", USER, team.getName(), null, true, null, (List<Policy>) null));
+
+    String createCsv = createCsv(TeamCsv.HEADERS, createRecords, null);
+    importCsv(team.getName(), createCsv, false);
+
+    // Now update the same users (these should be marked as ENTITY_UPDATED)
+    List<String> updateRecords =
+        listOf(
+            getRecord("user1", USER, team.getName(), "Updated description 1", true, null, (List<Policy>) null),
+            getRecord("user2", USER, team.getName(), "Updated description 2", true, null, (List<Policy>) null));
+
+    String updateCsv = createCsv(TeamCsv.HEADERS, updateRecords, null);
+
+    // Import updated CSV and verify all records are marked as updated
+    CsvImportResult importResult = importCsv(team.getName(), updateCsv, false);
+    assertSummary(importResult, ApiStatus.SUCCESS, 3, 3, 0); // 3 = header + 2 records
+
+    // Verify the result contains "Entity updated" status for all records
+    String[] resultLines = importResult.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_UPDATED),
+          "Record " + i + " should be marked as updated: " + resultLines[i]);
+      // Verify changeDescription is present and contains fieldsUpdated
+      assertTrue(
+          resultLines[i].contains("fieldsUpdated"),
+          "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
+    }
+
+    deleteEntityByName(team.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_csvImportRecursiveCreate() throws IOException {
+    CreateTeam createParentTeam = createRequest("csvImportRecCreate").withTeamType(BUSINESS_UNIT);
+    Team parentTeam = createEntity(createParentTeam, ADMIN_AUTH_HEADERS);
+
+    CreateTeam createChildTeam = createRequest("childTeam").withParents(listOf(parentTeam.getId())).withTeamType(DIVISION);
+    Team childTeam = createEntity(createChildTeam, ADMIN_AUTH_HEADERS);
+
+    // Create CSV records for recursive import (these should be marked as ENTITY_CREATED)
+    List<String> createRecords =
+        listOf(
+            getRecord("childTeam", GROUP, parentTeam.getName(), "Description for child", true, null, (List<Policy>) null));
+
+    String csv = createCsv(TeamCsv.HEADERS, createRecords, null);
+
+    // Import CSV recursively and verify all records are marked as created
+    CsvImportResult importResult = importCsvRecursive(parentTeam.getName(), csv, false);
+    assertSummary(importResult, ApiStatus.SUCCESS, 2, 2, 0); // 2 = header + 1 record
+
+    // Verify the result contains "Entity created" status for all records
+    String[] resultLines = importResult.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_CREATED),
+          "Record " + i + " should be marked as created: " + resultLines[i]);
+      // Verify changeDescription is present
+      assertTrue(
+          resultLines[i].contains("fieldsAdded"),
+          "Record " + i + " should have changeDescription: " + resultLines[i]);
+    }
+
+    deleteEntityByName(parentTeam.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_csvImportRecursiveUpdate() throws IOException {
+    CreateTeam createParentTeam = createRequest("csvImportRecUpdate").withTeamType(BUSINESS_UNIT);
+    Team parentTeam = createEntity(createParentTeam, ADMIN_AUTH_HEADERS);
+
+    CreateTeam createChildTeam = createRequest("childTeam").withParents(listOf(parentTeam.getId())).withTeamType(DIVISION);
+    Team childTeam = createEntity(createChildTeam, ADMIN_AUTH_HEADERS);
+
+    // First import to create metadata
+    List<String> createRecords =
+        listOf(
+            getRecord("childTeam", GROUP, parentTeam.getName(), "Initial description", true, null, (List<Policy>) null));
+
+    String createCsv = createCsv(TeamCsv.HEADERS, createRecords, null);
+    importCsvRecursive(parentTeam.getName(), createCsv, false);
+
+    // Now update the same team recursively (these should be marked as ENTITY_UPDATED)
+    List<String> updateRecords =
+        listOf(
+            getRecord("childTeam", GROUP, parentTeam.getName(), "Updated description", true, null, (List<Policy>) null));
+
+    String updateCsv = createCsv(TeamCsv.HEADERS, updateRecords, null);
+
+    // Import updated CSV recursively and verify all records are marked as updated
+    CsvImportResult importResult = importCsvRecursive(parentTeam.getName(), updateCsv, false);
+    assertSummary(importResult, ApiStatus.SUCCESS, 2, 2, 0); // 2 = header + 1 record
+
+    // Verify the result contains "Entity updated" status for all records
+    String[] resultLines = importResult.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_UPDATED),
+          "Record " + i + " should be marked as updated: " + resultLines[i]);
+      // Verify changeDescription is present and contains fieldsUpdated
+      assertTrue(
+          resultLines[i].contains("fieldsUpdated"),
+          "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
+    }
+
+    deleteEntityByName(parentTeam.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
   }
 
   @Test
