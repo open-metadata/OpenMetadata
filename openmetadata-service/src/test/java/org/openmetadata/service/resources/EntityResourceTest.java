@@ -5821,6 +5821,30 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
+  protected EntityHistory getVersionListFiltered(
+      UUID id,
+      Integer limit,
+      Long startTs,
+      Long endTs,
+      String fieldName,
+      Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(id).path("/versionsFiltered");
+    if (limit != null) {
+      target = target.queryParam("limit", limit);
+    }
+    if (startTs != null) {
+      target = target.queryParam("startTs", startTs);
+    }
+    if (endTs != null) {
+      target = target.queryParam("endTs", endTs);
+    }
+    if (fieldName != null) {
+      target = target.queryParam("fieldName", fieldName);
+    }
+    return TestUtils.get(target, EntityHistory.class, authHeaders);
+  }
+
   protected void assertFieldLists(List<FieldChange> expectedList, List<FieldChange> actualList)
       throws IOException {
     expectedList.sort(EntityUtil.compareFieldChange);
@@ -8047,5 +8071,73 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // For each ID, use Tables.find(id).delete().confirm();
 
     // Delete operations handled individually above
+  }
+
+  @Test
+  void test_getFilteredVersions() throws HttpResponseException {
+    // Skip if entity doesn't have version support
+    Assumptions.assumeTrue(supportsFieldsQueryParam);
+
+    // Create an entity
+    T entity =
+        createEntity(
+            createRequest(getEntityName(supportedNameCharacters), "", "", null),
+            ADMIN_AUTH_HEADERS);
+    assertNotNull(entity);
+
+    // Get initial version list
+    EntityHistory allVersions = getVersionList(entity.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(1, allVersions.getVersions().size());
+
+    // Update entity multiple times to create versions
+    ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
+    fieldUpdated(change, "description", "", "Updated description 1");
+    entity =
+        updateEntity(
+            updateRequest(entity, "Updated description 1", UpdateType.MINOR_UPDATE),
+            OK,
+            ADMIN_AUTH_HEADERS);
+
+    change = getChangeDescription(entity, MINOR_UPDATE);
+    fieldUpdated(change, "description", "Updated description 1", "Updated description 2");
+    entity =
+        updateEntity(
+            updateRequest(entity, "Updated description 2", UpdateType.MINOR_UPDATE),
+            OK,
+            ADMIN_AUTH_HEADERS);
+
+    // Now we should have 3 versions
+    allVersions = getVersionList(entity.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(3, allVersions.getVersions().size());
+
+    // Test 1: Limit filter - Get only last 2 versions
+    EntityHistory limitedVersions =
+        getVersionListFiltered(entity.getId(), 2, null, null, null, ADMIN_AUTH_HEADERS);
+    assertEquals(2, limitedVersions.getVersions().size());
+
+    // Test 2: Timestamp filter - Get versions after first update
+    T firstVersion = JsonUtils.readValue((String) allVersions.getVersions().get(2), entityClass);
+    Long afterFirstUpdate = firstVersion.getUpdatedAt() + 1;
+    EntityHistory timeFilteredVersions =
+        getVersionListFiltered(
+            entity.getId(), null, afterFirstUpdate, null, null, ADMIN_AUTH_HEADERS);
+    assertTrue(
+        timeFilteredVersions.getVersions().size() >= 2,
+        "Should have at least 2 versions after first update");
+
+    // Test 3: Field name filter - Get versions where description changed
+    EntityHistory fieldFilteredVersions =
+        getVersionListFiltered(entity.getId(), null, null, null, "description", ADMIN_AUTH_HEADERS);
+    assertTrue(
+        fieldFilteredVersions.getVersions().size() >= 2,
+        "Should have at least 2 versions with description changes");
+
+    // Test 4: Combined filters - Limit and field
+    EntityHistory combinedFilteredVersions =
+        getVersionListFiltered(entity.getId(), 1, null, null, "description", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        1,
+        combinedFilteredVersions.getVersions().size(),
+        "Should return only 1 version with description change");
   }
 }
