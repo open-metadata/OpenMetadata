@@ -42,7 +42,6 @@ export const getApiEndpointDetailsPageTabs = ({
   getEntityFeedCount,
   handleFeedCount,
   editCustomAttributePermission,
-  viewAllPermission,
   viewCustomPropertiesPermission,
   editLineagePermission,
   labelMap,

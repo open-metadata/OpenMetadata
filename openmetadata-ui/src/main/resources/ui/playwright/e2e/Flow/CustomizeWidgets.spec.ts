@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { SearchIndex } from '../../../src/enums/search.enum';
 import { KPI_DATA } from '../../constant/dataInsight';
 import { SidebarItem } from '../../constant/sidebar';
@@ -90,9 +90,7 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const ownerPatchPromises = entitiesToPatch.map(
     async ({ entity, endpoint }) => {
       // Check for the appropriate id property based on entity type
-      const entityId =
-        (entity as any).responseData?.id ||
-        (entity as any).entityResponseData?.id;
+      const entityId = (entity as Domain).responseData?.id;
 
       if (entityId) {
         try {
@@ -226,16 +224,7 @@ test.describe('Widgets', () => {
         await waitForAllLoadersToDisappear(page);
         await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
         // Data Assets widget needs special handling for multiple search indexes
-        const searchIndexes = [
-          SearchIndex.TABLE,
-          SearchIndex.TOPIC,
-          SearchIndex.DASHBOARD,
-          SearchIndex.PIPELINE,
-          SearchIndex.MLMODEL,
-          SearchIndex.CONTAINER,
-          SearchIndex.SEARCH_INDEX,
-          SearchIndex.API_ENDPOINT_INDEX,
-        ];
+        const searchIndex = SearchIndex.DATA_ASSET;
 
         await verifyWidgetEntityNavigation(page, {
           widgetKey,
@@ -243,7 +232,7 @@ test.describe('Widgets', () => {
           urlPattern: '/explore',
           verifyElement: '[data-testid="explore-page"]',
           apiResponseUrl: '/api/v1/search/query',
-          searchQuery: searchIndexes,
+          searchQuery: searchIndex,
         });
       }
     );

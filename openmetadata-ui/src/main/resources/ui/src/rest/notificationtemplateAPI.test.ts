@@ -276,7 +276,7 @@ describe('notificationtemplateAPI', () => {
 
       mockAPIClient.get.mockResolvedValue({ data: mockResponse });
 
-      const params = { limit: 10, offset: 0 };
+      const params = { limit: 10, offset: 0, provider: ProviderType.User };
       await getAllNotificationTemplates(params);
 
       expect(mockAPIClient.get).toHaveBeenCalledWith('/notificationTemplates', {

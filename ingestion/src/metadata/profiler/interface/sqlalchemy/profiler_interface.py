@@ -30,7 +30,6 @@ from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.sql.elements import Label
 
-from ingestion.build.lib.metadata.profiler.metrics.static.count import Count
 from metadata.generated.schema.entity.data.table import (
     CustomMetricProfile,
     SystemProfile,
@@ -51,6 +50,7 @@ from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import HybridMetric, MetricTypes
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.mean import Mean
 from metadata.profiler.metrics.static.stddev import StdDev
 from metadata.profiler.metrics.static.sum import Sum
@@ -446,10 +446,12 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     if metric_func.column is not None:
                         column = metric_func.column.name
                         self.status.scanned(
-                            f"{metric_func.table.__tablename__}.{column}"
+                            f"{metric_func.table.__tablename__}.{column}__{metric_func.metric_type.value}"
                         )
                     else:
-                        self.status.scanned(metric_func.table.__tablename__)
+                        self.status.scanned(
+                            f"{metric_func.table.__tablename__}__{metric_func.metric_type.value}"
+                        )
                         column = None
 
                     return row, column, metric_func.metric_type.value

@@ -160,19 +160,19 @@ test.describe('Listing page and add Metric flow should work', () => {
     }
 
     await expect(
-      page.getByRole('cell', { name: 'Name', exact: true })
+      page.getByRole('columnheader', { name: 'Name', exact: true })
     ).toBeVisible();
     await expect(
-      page.getByRole('cell', { name: 'Description', exact: true })
+      page.getByRole('columnheader', { name: 'Description', exact: true })
     ).toBeVisible();
     await expect(
-      page.getByRole('cell', { name: 'Tags', exact: true })
+      page.getByRole('columnheader', { name: 'Tags', exact: true })
     ).toBeVisible();
     await expect(
-      page.getByRole('cell', { name: 'Glossary Terms', exact: true })
+      page.getByRole('columnheader', { name: 'Glossary Terms', exact: true })
     ).toBeVisible();
     await expect(
-      page.getByRole('cell', { name: 'Owners', exact: true })
+      page.getByRole('columnheader', { name: 'Owners', exact: true })
     ).toBeVisible();
 
     // check for metric entities in table

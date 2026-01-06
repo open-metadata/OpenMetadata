@@ -460,7 +460,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       if (response.statusCode() == 200) {
         JSONObject responseJSON = new JSONObject(response.body());
         String ingestionVersion = responseJSON.getString("version");
-        return Boolean.TRUE.equals(validServerClientVersions(ingestionVersion))
+        return validServerClientVersions(ingestionVersion, SERVER_VERSION)
             ? buildHealthyStatus(ingestionVersion)
             : buildUnhealthyStatus(
                 buildVersionMismatchErrorMessage(ingestionVersion, SERVER_VERSION));

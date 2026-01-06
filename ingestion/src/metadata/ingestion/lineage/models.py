@@ -37,6 +37,9 @@ from metadata.generated.schema.entity.services.connections.database.db2Connectio
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeType,
 )
+from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
+    DorisType,
+)
 from metadata.generated.schema.entity.services.connections.database.exasolConnection import (
     ExasolType,
 )
@@ -147,6 +150,7 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(TrinoType.Trino.value): Dialect.TRINO,
     str(VerticaType.Vertica.value): Dialect.VERTICA,
     str(GreenplumType.Greenplum.value): Dialect.POSTGRES,
+    str(DorisType.Doris.value): Dialect.MYSQL,
 }
 
 

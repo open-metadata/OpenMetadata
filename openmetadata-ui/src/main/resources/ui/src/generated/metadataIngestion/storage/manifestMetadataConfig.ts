@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -50,6 +50,10 @@ export interface ManifestMetadataEntry {
      * What's the schema format for the container, eg. avro, parquet, csv.
      */
     structureFormat?: string;
+    /**
+     * What's the schema formats for the container, eg. avro, parquet, csv.
+     */
+    unstructuredFormats?: string[];
     [property: string]: any;
 }
 

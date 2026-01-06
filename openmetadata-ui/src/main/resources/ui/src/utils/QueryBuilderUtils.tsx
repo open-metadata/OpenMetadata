@@ -19,7 +19,7 @@ import {
   RenderSettings,
 } from '@react-awesome-query-builder/antd';
 import { Button } from 'antd';
-import { isBoolean, isUndefined } from 'lodash';
+import { isBoolean, isEmpty, isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import {
@@ -64,20 +64,20 @@ export const resolveFieldType = (
 
   // Traverse nested subfields if there are more parts
   for (let i = 1; i < fieldParts.length; i++) {
-    if (i === 1 && (currentField as any)?.subfields) {
+    if (i === 1 && (currentField as Field)?.subfields) {
       // Join the remaining parts and check if it exists as a single subfield
       const remainingPath = fieldParts.slice(1).join('.');
-      const remainingField = (currentField as any).subfields[remainingPath];
+      const remainingField = (currentField as Field).subfields[remainingPath];
       if (remainingField?.type) {
         return remainingField.type;
       }
     }
 
     // If no specific path found, continue with normal traversal
-    if (!(currentField as any)?.subfields?.[fieldParts[i]]) {
+    if (!(currentField as Field)?.subfields?.[fieldParts[i]]) {
       return undefined; // Subfield not found
     }
-    currentField = (currentField as any).subfields[
+    currentField = (currentField as Field).subfields[
       fieldParts[i]
     ] as FieldOrGroup;
   }
@@ -834,7 +834,7 @@ export const addEntityTypeFilter = (
         must: [
           {
             term: {
-              entityType: entityType,
+              'entityType.keyword': entityType,
             },
           },
         ],
@@ -858,7 +858,7 @@ export const getEntityTypeAggregationFilter = (
       entityTypes.forEach((entityType) => {
         (firstMustBlock?.bool?.must as QueryFieldInterface[])?.push({
           term: {
-            entityType: entityType,
+            'entityType.keyword': entityType,
           },
         });
       });
@@ -935,3 +935,12 @@ export const getFieldsByKeys = (
 
   return filteredFields;
 };
+
+export const buildExploreUrlParams = (
+  tree: unknown,
+  qFilter?: QueryFilterInterface
+): Record<string, string> => ({
+  ...(!isEmpty(tree) && { queryFilter: JSON.stringify(tree) }),
+  ...(!isEmpty(qFilter) &&
+    qFilter?.query && { quickFilter: JSON.stringify(qFilter) }),
+});

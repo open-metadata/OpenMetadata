@@ -131,21 +131,28 @@ const CustomPropertiesSection = ({
         className="entity-summary-panel-tab-content"
         data-testid="no-data-placeholder">
         <div className="p-x-md p-t-md text-justify no-data-placeholder">
-          <Transi18next
-            i18nKey="message.no-custom-properties-entity"
-            renderElement={
-              <a
-                href={CUSTOM_PROPERTIES_DOCS}
-                rel="noreferrer"
-                target="_blank"
-                title="Custom properties documentation"
+          <ErrorPlaceHolderNew
+            className="text-grey-14"
+            icon={<AddPlaceHolderIcon height={100} width={100} />}
+            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            <div className="p-t-md text-justify no-data-placeholder">
+              <Transi18next
+                i18nKey="message.no-custom-properties-entity"
+                renderElement={
+                  <a
+                    href={CUSTOM_PROPERTIES_DOCS}
+                    rel="noreferrer"
+                    target="_blank"
+                    title="Custom properties documentation"
+                  />
+                }
+                values={{
+                  docs: t('label.doc-plural-lowercase'),
+                  entity: startCase(entityType),
+                }}
               />
-            }
-            values={{
-              docs: t('label.doc-plural-lowercase'),
-              entity: startCase(entityType),
-            }}
-          />
+            </div>
+          </ErrorPlaceHolderNew>
         </div>
       </div>
     );
@@ -153,7 +160,7 @@ const CustomPropertiesSection = ({
 
   return (
     <div className="entity-summary-panel-tab-content">
-      <div className="p-x-md">
+      <div className="p-x-md" data-testid="custom_properties">
         {customProperties.length > 0 && (
           <SearchBarComponent
             containerClassName="searchbar-container"
@@ -171,11 +178,16 @@ const CustomPropertiesSection = ({
                 const value = extensionData[property.name];
 
                 return (
-                  <div className="custom-property-item" key={property.name}>
-                    <Typography.Text className="property-name">
+                  <div
+                    className="custom-property-item"
+                    data-testid={`custom-property-${property.name}-card`}
+                    key={property.name}>
+                    <Typography.Text
+                      className="property-name"
+                      data-testid={`property-${property.name}-name`}>
                       {property.displayName || property.name}
                     </Typography.Text>
-                    <div className="property-value">
+                    <div className="property-value" data-testid="value">
                       <CustomPropertyValueRenderer
                         property={property}
                         value={value}

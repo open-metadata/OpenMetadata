@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,6 +14,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { Box, Tooltip as MUITooltip } from '@mui/material';
 import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { InternalAxiosRequestConfig } from 'axios';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';
 import { Fragment, ReactNode } from 'react';
@@ -44,9 +45,11 @@ import {
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { Domain } from '../generated/entity/domains/domain';
 import { Operation } from '../generated/entity/policies/policy';
 import { EntityReference } from '../generated/entity/type';
+import { useDomainStore } from '../hooks/useDomainStore';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
@@ -62,7 +65,85 @@ import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from './PermissionsUtils';
-import { getDomainPath } from './RouterUtils';
+import { getDomainPath, getPathNameFromWindowLocation } from './RouterUtils';
+
+export const withDomainFilter = (
+  config: InternalAxiosRequestConfig
+): InternalAxiosRequestConfig => {
+  const isGetRequest = config.method === 'get';
+  const activeDomain = useDomainStore.getState().activeDomain;
+  const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
+  const currentPath = getPathNameFromWindowLocation();
+  const shouldNotIntercept = [
+    '/domain',
+    '/auth/logout',
+    '/auth/refresh',
+  ].reduce((prev, curr) => {
+    return prev || currentPath.startsWith(curr);
+  }, false);
+
+  if (shouldNotIntercept) {
+    return config;
+  }
+
+  if (isGetRequest && hasActiveDomain) {
+    if (config.url?.includes('/search/query')) {
+      if (config.params?.index === SearchIndex.TAG) {
+        return config;
+      }
+      let filter: QueryFilterInterface = { query: { bool: {} } };
+      if (config.params?.query_filter) {
+        try {
+          const parsed = JSON.parse(config.params.query_filter as string);
+          filter = parsed?.query ? parsed : { query: { bool: {} } };
+        } catch {
+          filter = { query: { bool: {} } };
+        }
+      }
+
+      const mustArray = Array.isArray(filter.query?.bool?.must)
+        ? filter.query.bool.must
+        : filter.query?.bool?.must
+          ? [filter.query.bool.must]
+          : [];
+
+      filter.query.bool = {
+        ...filter.query?.bool,
+        must: [
+          ...mustArray,
+          {
+            bool: {
+              should: [
+                {
+                  term: {
+                    'domains.fullyQualifiedName': activeDomain,
+                  },
+                },
+                {
+                  prefix: {
+                    'domains.fullyQualifiedName': `${activeDomain}.`,
+                  },
+                },
+              ],
+            },
+          } as QueryFieldInterface,
+        ],
+      };
+
+      config.params = {
+        ...config.params,
+        query_filter: JSON.stringify(filter),
+      };
+    } else {
+      config.params = {
+        ...config.params,
+        domain: activeDomain,
+      };
+    }
+  }
+
+  return config;
+};
 
 export const getOwner = (
   hasPermission: boolean,
@@ -196,9 +277,9 @@ export const domainTypeTooltipDataRender = () => (
     {DOMAIN_TYPE_DATA.map(({ type, description }, index) => (
       <Fragment key={type}>
         <Space direction="vertical" size={0}>
-          <Typography.Text>{`${type} :`}</Typography.Text>
+          <Typography.Text>{`${t(type)} :`}</Typography.Text>
           <Typography.Paragraph className="m-0 text-grey-muted">
-            {description}
+            {t(description)}
           </Typography.Paragraph>
         </Space>
 
@@ -418,13 +499,18 @@ export const getDomainDetailTabs = ({
   feedCount,
   onFeedUpdate,
   onDeleteSubDomain,
+  labelMap,
 }: DomainDetailPageTabProps) => {
   return [
     {
       label: (
         <TabsLabel
           id={EntityTabs.DOCUMENTATION}
-          name={t('label.documentation')}
+          name={get(
+            labelMap,
+            EntityTabs.DOCUMENTATION,
+            t('label.documentation')
+          )}
         />
       ),
       key: EntityTabs.DOCUMENTATION,
@@ -439,7 +525,11 @@ export const getDomainDetailTabs = ({
                 count={subDomainsCount ?? 0}
                 id={EntityTabs.SUBDOMAINS}
                 isActive={activeTab === EntityTabs.SUBDOMAINS}
-                name={t('label.sub-domain-plural')}
+                name={get(
+                  labelMap,
+                  EntityTabs.SUBDOMAINS,
+                  t('label.sub-domain-plural')
+                )}
               />
             ),
             key: EntityTabs.SUBDOMAINS,
@@ -459,7 +549,11 @@ export const getDomainDetailTabs = ({
                 count={dataProductsCount ?? 0}
                 id={EntityTabs.DATA_PRODUCTS}
                 isActive={activeTab === EntityTabs.DATA_PRODUCTS}
-                name={t('label.data-product-plural')}
+                name={get(
+                  labelMap,
+                  EntityTabs.DATA_PRODUCTS,
+                  t('label.data-product-plural')
+                )}
               />
             ),
             key: EntityTabs.DATA_PRODUCTS,
@@ -478,7 +572,11 @@ export const getDomainDetailTabs = ({
                 count={feedCount?.totalCount ?? 0}
                 id={EntityTabs.ACTIVITY_FEED}
                 isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-                name={t('label.activity-feed-and-task-plural')}
+                name={get(
+                  labelMap,
+                  EntityTabs.ACTIVITY_FEED,
+                  t('label.activity-feed-and-task-plural')
+                )}
               />
             ),
             key: EntityTabs.ACTIVITY_FEED,
@@ -502,7 +600,7 @@ export const getDomainDetailTabs = ({
                 count={assetCount ?? 0}
                 id={EntityTabs.ASSETS}
                 isActive={activeTab === EntityTabs.ASSETS}
-                name={t('label.asset-plural')}
+                name={get(labelMap, EntityTabs.ASSETS, t('label.asset-plural'))}
               />
             ),
             key: EntityTabs.ASSETS,
@@ -527,7 +625,7 @@ export const getDomainDetailTabs = ({
                     />
                   ),
                   minWidth: 800,
-                  flex: 0.87,
+                  flex: 0.67,
                 }}
                 hideSecondPanel={!previewAsset}
                 pageTitle={t('label.domain')}
@@ -540,7 +638,7 @@ export const getDomainDetailTabs = ({
                     />
                   ),
                   minWidth: 400,
-                  flex: 0.13,
+                  flex: 0.33,
                   className:
                     'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
                 }}
@@ -551,7 +649,11 @@ export const getDomainDetailTabs = ({
             label: (
               <TabsLabel
                 id={EntityTabs.CUSTOM_PROPERTIES}
-                name={t('label.custom-property-plural')}
+                name={get(
+                  labelMap,
+                  EntityTabs.CUSTOM_PROPERTIES,
+                  t('label.custom-property-plural')
+                )}
               />
             ),
             key: EntityTabs.CUSTOM_PROPERTIES,

@@ -784,7 +784,6 @@ export const getTableDetailPageBaseTabs = ({
   feedCount,
   getEntityFeedCount,
   handleFeedCount,
-  viewAllPermission,
   viewCustomPropertiesPermission,
   editCustomAttributePermission,
   viewSampleDataPermission,

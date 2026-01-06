@@ -12,12 +12,16 @@
  */
 
 @import (reference) '../../../styles/variables.less';
+@import (reference) '../../../styles/components/card.less';
 
 .entity-right-panel-vertical-nav {
-  width: 62px;
-  right: 0px;
+  &.drawer-entity-right-panel-vertical-nav {
+    max-height: calc(100vh - 70px);
+    margin-right: 8px;
+  }
+  width: 80px;
+  right: 2px;
   position: relative;
-  height: 100vh;
   background: @white;
   display: flex;
   flex-direction: column;
@@ -107,7 +111,7 @@
 
       .ant-menu-title-content {
         display: block;
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 400;
         text-align: center;
         line-height: 100%;

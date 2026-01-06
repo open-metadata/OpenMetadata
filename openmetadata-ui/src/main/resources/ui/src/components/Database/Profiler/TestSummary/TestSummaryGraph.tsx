@@ -62,7 +62,7 @@ import {
 } from '../../../../utils/ChartUtils';
 import { prepareChartData } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import {
-  convertMillisecondsToHumanReadableFormat,
+  convertSecondsToHumanReadableFormat,
   formatDateTime,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -179,8 +179,8 @@ function TestSummaryGraph({
   // Todo: need to find better approach to create dynamic scale for graph, need to work with @TeddyCr for the same!
   const formatYAxis = (value: number) => {
     return testDefinitionName === TABLE_DATA_TO_BE_FRESH || isFreshnessTest
-      ? // table freshness will always have output value in seconds, so we need to convert it to milliseconds
-        convertMillisecondsToHumanReadableFormat(value * 1000, 2)
+      ? // table freshness value is in seconds from Python/backend, use dedicated seconds converter
+        convertSecondsToHumanReadableFormat(value, 2)
       : axisTickFormatter(value);
   };
 

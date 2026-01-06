@@ -54,6 +54,7 @@
 .data-quality-tab-content {
   padding-left: 16px;
   height: 100vh;
+  background-color: @white;
 }
 .dotted-row {
   border-bottom: 1px dashed @grey-15;
@@ -96,7 +97,7 @@
     .ant-tabs-nav {
       padding-left: 16px;
       position: sticky;
-      top: 56px;
+      top: 54px;
       z-index: 3;
       background-color: @white;
       .ant-tabs-nav-wrap {
@@ -142,6 +143,7 @@
   .incidents-tab-content {
     padding-left: 16px;
     padding-right: 16px;
+    background-color: @white;
     .incidents-stats-container {
       display: flex;
       border: 1px solid @grey-15;
@@ -193,53 +195,98 @@
 
         &.new-card {
           width: 25%;
+
+          &:hover {
+            border-radius: 6px;
+            .stat-count.new {
+              color: @purple-2;
+            }
+            .stat-label.new {
+              color: @purple-2;
+            }
+          }
           .stat-count.new {
-            color: @purple-2;
+            color: @grey-600;
             font-weight: 600;
           }
 
           .stat-label.new {
-            color: @purple-2;
+            color: @grey-600;
             font-weight: 400;
           }
 
           &.active {
             background-color: @purple-1;
             border-radius: 6px;
+            .stat-count.new {
+              color: @purple-2;
+            }
+            .stat-label.new {
+              color: @purple-2;
+            }
           }
         }
 
         &.ack-card {
           width: 50%;
+          &:hover {
+            border-radius: 6px;
+            .stat-count.ack {
+              color: @blue-3;
+            }
+            .stat-label.ack {
+              color: @blue-3;
+            }
+          }
           .stat-count.ack {
-            color: @blue-3;
+            color: @grey-600;
             font-weight: 600;
           }
 
           .stat-label.ack {
-            color: @blue-3;
+            color: @grey-600;
           }
 
           &.active {
-            background-color: @blue-1;
+            background-color: @blue-22;
             border-radius: 6px;
+            .stat-count.ack {
+              color: @blue-3;
+            }
+            .stat-label.ack {
+              color: @blue-3;
+            }
           }
         }
 
         &.assigned-card {
           width: 25%;
           .stat-count.assigned {
-            color: @yellow-11;
+            color: @grey-600;
             font-weight: 600;
           }
-
+          &:hover {
+            border-radius: 6px;
+            .stat-count.assigned {
+              color: @yellow-11;
+            }
+            .stat-label.assigned {
+              color: @yellow-11;
+            }
+          }
           .stat-label.assigned {
-            color: @yellow-11;
+            color: @grey-600;
           }
 
           &.active {
             background-color: @yellow-10;
             border-radius: 6px;
+            .stat-count.assigned {
+              color: @yellow-11;
+            }
+            .stat-label.assigned {
+              color: @yellow-11;
+            }
           }
         }
       }
@@ -258,18 +305,23 @@
       padding-right: 12px;
       border-bottom-right-radius: 8px;
       border-bottom-left-radius: 8px;
-
-      background-color: @alert-success-bg;
+      background-color: @white;
+      &.active {
+        background-color: @green-9;
+      }
+      &:hover {
+        background-color: @green-9;
+      }
       .resolved-label {
         font-size: 12px;
         font-weight: 400;
-        color: @grey-700;
+        color: @green-600;
       }
 
       .resolved-value {
         font-size: 12px;
         font-weight: 600;
-        color: @grey-900;
+        color: @green-600;
       }
     }
 
@@ -309,7 +361,7 @@
         display: flex;
         background-color: @grey-9;
         justify-content: space-between;
-        align-items: flex-start;
+        align-items: center;
         gap: 24px;
         padding-bottom: 12px;
         .test-case-title-section {
@@ -337,12 +389,24 @@
           .status-badge {
             border-radius: 16px;
             &.failure {
-              font-size: 10px;
-              background-color: #fbf3f0;
-              color: @failed-color;
-              border: 1px solid @white;
+              background-color: @red-9;
+              color: @red-10;
+              border: 1px solid @grey-15;
+            }
+            &.success {
+              background-color: @green-9;
+              color: @green-17;
+              border: 1px solid @grey-15;
+            }
+            &.aborted {
+              background-color: @yellow-10;
+              color: @yellow-11;
+              border: 1px solid @grey-15;
             }
           }
+        }
+        .status-badge.status-badge-v2 {
+          border-color: @grey-15;
         }
       }
 
@@ -410,7 +474,6 @@
   .no-data-placeholder {
     color: @grey-500 !important;
     font-size: 13px;
-    font-weight: 500;
   }
   .searchbar-container {
     margin-bottom: 4px !important;
