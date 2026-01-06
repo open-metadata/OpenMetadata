@@ -370,7 +370,7 @@ public class DirectoryRepository extends EntityRepository<Directory> {
       }
 
       // Store create status with null check
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      int recordIndex = getRecordIndex(csvRecord);
       if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
         recordCreateStatusArray[recordIndex] = !directoryExists;
       }
@@ -431,63 +431,63 @@ public class DirectoryRepository extends EntityRepository<Directory> {
                   .withNewValue(JsonUtils.pojoToJson(dataProducts)));
         }
       } else {
-        if (!CommonUtil.isChanged(newDirectory.getDisplayName(), displayName)) {
+        if (CommonUtil.isChanged(newDirectory.getDisplayName(), displayName)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("displayName")
                   .withOldValue(newDirectory.getDisplayName())
                   .withNewValue(displayName));
         }
-        if (!CommonUtil.isChanged(newDirectory.getDescription(), description)) {
+        if (CommonUtil.isChanged(newDirectory.getDescription(), description)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("description")
                   .withOldValue(newDirectory.getDescription())
                   .withNewValue(description));
         }
-        if (!CommonUtil.isChanged(newDirectory.getParent(), parentRef)) {
+        if (CommonUtil.isChanged(newDirectory.getParent(), parentRef)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("parent")
                   .withOldValue(JsonUtils.pojoToJson(newDirectory.getParent()))
                   .withNewValue(JsonUtils.pojoToJson(parentRef)));
         }
-        if (!CommonUtil.isChanged(newDirectory.getPath(), path)) {
+        if (CommonUtil.isChanged(newDirectory.getPath(), path)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("path")
                   .withOldValue(newDirectory.getPath())
                   .withNewValue(path));
         }
-        if (isShared != null && !CommonUtil.isChanged(newDirectory.getIsShared(), isShared)) {
+        if (isShared != null && CommonUtil.isChanged(newDirectory.getIsShared(), isShared)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("isShared")
                   .withOldValue(newDirectory.getIsShared())
                   .withNewValue(isShared));
         }
-        if (!CommonUtil.isChanged(newDirectory.getOwners(), owners)) {
+        if (CommonUtil.isChanged(newDirectory.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("owners")
                   .withOldValue(JsonUtils.pojoToJson(newDirectory.getOwners()))
                   .withNewValue(JsonUtils.pojoToJson(owners)));
         }
-        if (!CommonUtil.isChanged(newDirectory.getTags(), tags)) {
+        if (CommonUtil.isChanged(newDirectory.getTags(), tags)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
                   .withOldValue(JsonUtils.pojoToJson(newDirectory.getTags()))
                   .withNewValue(JsonUtils.pojoToJson(tags)));
         }
-        if (!CommonUtil.isChanged(newDirectory.getDomains(), domains)) {
+        if (CommonUtil.isChanged(newDirectory.getDomains(), domains)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("domains")
                   .withOldValue(JsonUtils.pojoToJson(newDirectory.getDomains()))
                   .withNewValue(JsonUtils.pojoToJson(domains)));
         }
-        if (!CommonUtil.isChanged(newDirectory.getDataProducts(), dataProducts)) {
+        if (CommonUtil.isChanged(newDirectory.getDataProducts(), dataProducts)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("dataProducts")

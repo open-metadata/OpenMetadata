@@ -1546,7 +1546,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         }
 
         // Store create status with null check
-        int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+        int recordIndex = getRecordIndex(csvRecord);
         if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
           recordCreateStatusArray[recordIndex] = !testCaseExists;
         }
@@ -1616,28 +1616,28 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           }
         } else {
           // Existing test case - compare and track updates
-          if (!CommonUtil.isChanged(existingTestCase.getDisplayName(), displayName)) {
+          if (CommonUtil.isChanged(existingTestCase.getDisplayName(), displayName)) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("displayName")
                     .withOldValue(existingTestCase.getDisplayName())
                     .withNewValue(displayName));
           }
-          if (!CommonUtil.isChanged(existingTestCase.getDescription(), description)) {
+          if (CommonUtil.isChanged(existingTestCase.getDescription(), description)) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("description")
                     .withOldValue(existingTestCase.getDescription())
                     .withNewValue(description));
           }
-          if (!CommonUtil.isChanged(existingTestCase.getTestDefinition(), testDefRef)) {
+          if (CommonUtil.isChanged(existingTestCase.getTestDefinition(), testDefRef)) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("testDefinition")
                     .withOldValue(JsonUtils.pojoToJson(existingTestCase.getTestDefinition()))
                     .withNewValue(JsonUtils.pojoToJson(testDefRef)));
           }
-          if (!CommonUtil.isChanged(existingTestCase.getParameterValues(), parameterValues)) {
+          if (CommonUtil.isChanged(existingTestCase.getParameterValues(), parameterValues)) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("parameterValues")
@@ -1645,7 +1645,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                     .withNewValue(JsonUtils.pojoToJson(parameterValues)));
           }
           if (computePassedFailedRowCount != null
-              && !CommonUtil.isChanged(
+              && CommonUtil.isChanged(
                   existingTestCase.getComputePassedFailedRowCount(), computePassedFailedRowCount)) {
             fieldsUpdated.add(
                 new FieldChange()
@@ -1654,7 +1654,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                     .withNewValue(computePassedFailedRowCount));
           }
           if (useDynamicAssertion != null
-              && !CommonUtil.isChanged(
+              && CommonUtil.isChanged(
                   existingTestCase.getUseDynamicAssertion(), useDynamicAssertion)) {
             fieldsUpdated.add(
                 new FieldChange()
@@ -1662,14 +1662,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                     .withOldValue(existingTestCase.getUseDynamicAssertion())
                     .withNewValue(useDynamicAssertion));
           }
-          if (!CommonUtil.isChanged(existingTestCase.getInspectionQuery(), inspectionQuery)) {
+          if (CommonUtil.isChanged(existingTestCase.getInspectionQuery(), inspectionQuery)) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("inspectionQuery")
                     .withOldValue(existingTestCase.getInspectionQuery())
                     .withNewValue(inspectionQuery));
           }
-          if (!CommonUtil.isChanged(existingTestCase.getTags(), tagLabels)) {
+          if (CommonUtil.isChanged(existingTestCase.getTags(), tagLabels)) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("tags")

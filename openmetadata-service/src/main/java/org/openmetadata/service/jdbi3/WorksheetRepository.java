@@ -397,7 +397,7 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
       }
 
       // Store create status with null check
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      int recordIndex = getRecordIndex(csvRecord);
       if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
         recordCreateStatusArray[recordIndex] = !worksheetExists;
       }
@@ -471,28 +471,28 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
                   .withNewValue(JsonUtils.pojoToJson(dataProducts)));
         }
       } else {
-        if (!CommonUtil.isChanged(newWorksheet.getDisplayName(), displayName)) {
+        if (CommonUtil.isChanged(newWorksheet.getDisplayName(), displayName)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("displayName")
                   .withOldValue(newWorksheet.getDisplayName())
                   .withNewValue(displayName));
         }
-        if (!CommonUtil.isChanged(newWorksheet.getDescription(), description)) {
+        if (CommonUtil.isChanged(newWorksheet.getDescription(), description)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("description")
                   .withOldValue(newWorksheet.getDescription())
                   .withNewValue(description));
         }
-        if (!CommonUtil.isChanged(newWorksheet.getWorksheetId(), worksheetId)) {
+        if (CommonUtil.isChanged(newWorksheet.getWorksheetId(), worksheetId)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("worksheetId")
                   .withOldValue(newWorksheet.getWorksheetId())
                   .withNewValue(worksheetId));
         }
-        if (!CommonUtil.isChanged(newWorksheet.getIndex(), index)) {
+        if (CommonUtil.isChanged(newWorksheet.getIndex(), index)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("index")
@@ -500,7 +500,7 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
                       newWorksheet.getIndex() != null ? newWorksheet.getIndex().toString() : null)
                   .withNewValue(index != null ? index.toString() : null));
         }
-        if (!CommonUtil.isChanged(newWorksheet.getRowCount(), rowCount)) {
+        if (CommonUtil.isChanged(newWorksheet.getRowCount(), rowCount)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("rowCount")
@@ -510,7 +510,7 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
                           : null)
                   .withNewValue(rowCount != null ? rowCount.toString() : null));
         }
-        if (!CommonUtil.isChanged(newWorksheet.getColumnCount(), columnCount)) {
+        if (CommonUtil.isChanged(newWorksheet.getColumnCount(), columnCount)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("columnCount")
@@ -520,42 +520,42 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
                           : null)
                   .withNewValue(columnCount != null ? columnCount.toString() : null));
         }
-        if (isHidden != null && !CommonUtil.isChanged(newWorksheet.getIsHidden(), isHidden)) {
+        if (isHidden != null && CommonUtil.isChanged(newWorksheet.getIsHidden(), isHidden)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("isHidden")
                   .withOldValue(newWorksheet.getIsHidden())
                   .withNewValue(isHidden));
         }
-        if (!CommonUtil.isChanged(newWorksheet.getColumns(), columns)) {
+        if (CommonUtil.isChanged(newWorksheet.getColumns(), columns)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("columns")
                   .withOldValue(JsonUtils.pojoToJson(newWorksheet.getColumns()))
                   .withNewValue(JsonUtils.pojoToJson(columns)));
         }
-        if (!CommonUtil.isChanged(newWorksheet.getOwners(), owners)) {
+        if (CommonUtil.isChanged(newWorksheet.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("owners")
                   .withOldValue(JsonUtils.pojoToJson(newWorksheet.getOwners()))
                   .withNewValue(JsonUtils.pojoToJson(owners)));
         }
-        if (!CommonUtil.isChanged(newWorksheet.getTags(), tags)) {
+        if (CommonUtil.isChanged(newWorksheet.getTags(), tags)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
                   .withOldValue(JsonUtils.pojoToJson(newWorksheet.getTags()))
                   .withNewValue(JsonUtils.pojoToJson(tags)));
         }
-        if (!CommonUtil.isChanged(newWorksheet.getDomains(), domains)) {
+        if (CommonUtil.isChanged(newWorksheet.getDomains(), domains)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("domains")
                   .withOldValue(JsonUtils.pojoToJson(newWorksheet.getDomains()))
                   .withNewValue(JsonUtils.pojoToJson(domains)));
         }
-        if (!CommonUtil.isChanged(newWorksheet.getDataProducts(), dataProducts)) {
+        if (CommonUtil.isChanged(newWorksheet.getDataProducts(), dataProducts)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("dataProducts")

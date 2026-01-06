@@ -1073,7 +1073,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 .withService(database.getService());
 
     // Store create status in inherited arrays
-    int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+    int recordIndex = getRecordIndex(csvRecord);
     if (recordCreateStatusArray != null
         && recordIndex >= 0
         && recordIndex < recordCreateStatusArray.length) {
@@ -1297,7 +1297,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 .withColumns(new ArrayList<>())
                 .withDatabaseSchema(schema.getEntityReference());
 
-    int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+    int recordIndex = getRecordIndex(csvRecord);
     if (recordCreateStatusArray != null
         && recordIndex >= 0
         && recordIndex < recordCreateStatusArray.length) {
@@ -1517,7 +1517,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 .withService(schema.getService())
                 .withDatabase(schema.getDatabase())
                 .withDatabaseSchema(schema.getEntityReference());
-    int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+    int recordIndex = getRecordIndex(csvRecord);
     if (recordCreateStatusArray != null
         && recordIndex >= 0
         && recordIndex < recordCreateStatusArray.length) {
@@ -1768,13 +1768,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
     if (existingColumn == null) columnExists = false;
 
-    int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+    int recordIndex = getRecordIndex(csvRecord);
     if (recordCreateStatusArray != null
         && recordIndex >= 0
         && recordIndex < recordCreateStatusArray.length) {
       recordCreateStatusArray[recordIndex] = !columnExists;
     }
-    columnRecordCreateStatus.put((int) csvRecord.getRecordNumber(), !columnExists);
 
     Column column =
         existingColumn != null ? JsonUtils.deepCopy(existingColumn, Column.class) : null;
@@ -1931,7 +1930,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
     column.withDataLength(dataLength);
     column.withTags(nullOrEmpty(tagLabels) ? null : tagLabels);
-    column.withOrdinalPosition((int) csvRecord.getRecordNumber() - 1);
+    column.withOrdinalPosition(getRecordIndex(csvRecord));
 
     if (!columnExists) {
       String[] parts = FullyQualifiedName.split(columnFqn);
@@ -1970,15 +1969,14 @@ public abstract class EntityCsv<T extends EntityInterface> {
       throws IOException {
 
     TableRepository tableRepo = (TableRepository) Entity.getEntityRepository(TABLE);
-    int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+    int recordIndex = getRecordIndex(csvRecord);
     ChangeDescription changeDescription = getRecordFieldChanges(recordIndex);
 
     if (Boolean.FALSE.equals(importResult.getDryRun())) {
       try {
         JsonPatch jsonPatch = JsonUtils.getJsonPatch(original, updated);
         tableRepo.patch(null, updated.getId(), importedBy, jsonPatch);
-        boolean isCreated =
-            columnRecordCreateStatus.getOrDefault((int) csvRecord.getRecordNumber(), false);
+        boolean isCreated = recordCreateStatusArray[getRecordIndex(csvRecord)];
         String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
         importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
       } catch (Exception ex) {
@@ -1993,11 +1991,15 @@ public abstract class EntityCsv<T extends EntityInterface> {
       if (existing == null) {
         dryRunCreatedEntities.put(updated.getFullyQualifiedName(), (T) updated);
       }
-      boolean isCreated =
-          columnRecordCreateStatus.getOrDefault((int) csvRecord.getRecordNumber(), false);
+      boolean isCreated = recordCreateStatusArray[getRecordIndex(csvRecord)];
       String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
       importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
     }
+  }
+
+  public int getRecordIndex(CSVRecord csvRecord) {
+    int index = (int) csvRecord.getRecordNumber() - 1;
+    return Math.max(0, index);
   }
 
   private Integer parseDataLength(
@@ -2208,7 +2210,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   @Transaction
   protected void createEntityWithChangeDescription(
       CSVPrinter printer, CSVRecord csvRecord, T entity) throws IOException {
-    int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+    int recordIndex = getRecordIndex(csvRecord);
     ChangeDescription changeDescription = getRecordFieldChanges(recordIndex);
 
     if (!Boolean.TRUE.equals(importResult.getDryRun())) {
@@ -2263,7 +2265,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   protected void createEntityWithChangeDescription(
       CSVPrinter printer, CSVRecord csvRecord, EntityInterface entity, String type)
       throws IOException {
-    int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+    int recordIndex = getRecordIndex(csvRecord);
     ChangeDescription changeDescription = getRecordFieldChanges(recordIndex);
 
     if (!Boolean.TRUE.equals(importResult.getDryRun())) {
@@ -2320,7 +2322,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   @Transaction
   protected void createUserEntityWithChangeDescription(
       CSVPrinter printer, CSVRecord csvRecord, T entity) throws IOException {
-    int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+    int recordIndex = getRecordIndex(csvRecord);
     ChangeDescription changeDescription = getRecordFieldChanges(recordIndex);
 
     entity.setId(UUID.randomUUID());
@@ -2367,7 +2369,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
       } catch (Exception ex) {
         importFailure(printer, ex.getMessage(), csvRecord);
         importResult.setStatus(ApiStatus.FAILURE);
-        return;
       }
     } else {
       repository.setFullyQualifiedName(entity);
@@ -2376,13 +2377,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
       importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
     }
-  }
-
-  private boolean getRecordCreateStatus(int recordIndex) {
-    return recordCreateStatusArray != null
-        && recordIndex >= 0
-        && recordIndex < recordCreateStatusArray.length
-        && recordCreateStatusArray[recordIndex];
   }
 
   private ChangeDescription getRecordFieldChanges(int recordIndex) {

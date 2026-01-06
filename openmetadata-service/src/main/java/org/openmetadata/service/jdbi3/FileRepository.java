@@ -275,7 +275,7 @@ public class FileRepository extends EntityRepository<File> {
       }
 
       // Store create status with null check
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      int recordIndex = getRecordIndex(csvRecord);
       if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
         recordCreateStatusArray[recordIndex] = !fileExists;
       }
@@ -363,7 +363,7 @@ public class FileRepository extends EntityRepository<File> {
                   .withOldValue(newFile.getDescription())
                   .withNewValue(description));
         }
-        if (!CommonUtil.isChanged(newFile.getFileType(), fileType)) {
+        if (CommonUtil.isChanged(newFile.getFileType(), fileType)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("fileType")
@@ -371,70 +371,70 @@ public class FileRepository extends EntityRepository<File> {
                       newFile.getFileType() != null ? newFile.getFileType().toString() : null)
                   .withNewValue(fileType != null ? fileType.toString() : null));
         }
-        if (!CommonUtil.isChanged(newFile.getMimeType(), mimeType)) {
+        if (CommonUtil.isChanged(newFile.getMimeType(), mimeType)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("mimeType")
                   .withOldValue(newFile.getMimeType())
                   .withNewValue(mimeType));
         }
-        if (!CommonUtil.isChanged(newFile.getFileExtension(), fileExtension)) {
+        if (CommonUtil.isChanged(newFile.getFileExtension(), fileExtension)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("fileExtension")
                   .withOldValue(newFile.getFileExtension())
                   .withNewValue(fileExtension));
         }
-        if (!CommonUtil.isChanged(newFile.getPath(), path)) {
+        if (CommonUtil.isChanged(newFile.getPath(), path)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("path")
                   .withOldValue(newFile.getPath())
                   .withNewValue(path));
         }
-        if (!CommonUtil.isChanged(newFile.getSize(), size)) {
+        if (CommonUtil.isChanged(newFile.getSize(), size)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("size")
                   .withOldValue(newFile.getSize() != null ? newFile.getSize().toString() : null)
                   .withNewValue(size != null ? size.toString() : null));
         }
-        if (!CommonUtil.isChanged(newFile.getChecksum(), checksum)) {
+        if (CommonUtil.isChanged(newFile.getChecksum(), checksum)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("checksum")
                   .withOldValue(newFile.getChecksum())
                   .withNewValue(checksum));
         }
-        if (isShared != null && !CommonUtil.isChanged(newFile.getIsShared(), isShared)) {
+        if (isShared != null && CommonUtil.isChanged(newFile.getIsShared(), isShared)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("isShared")
                   .withOldValue(newFile.getIsShared())
                   .withNewValue(isShared));
         }
-        if (!CommonUtil.isChanged(newFile.getOwners(), owners)) {
+        if (CommonUtil.isChanged(newFile.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("owners")
                   .withOldValue(JsonUtils.pojoToJson(newFile.getOwners()))
                   .withNewValue(JsonUtils.pojoToJson(owners)));
         }
-        if (!CommonUtil.isChanged(newFile.getTags(), tags)) {
+        if (CommonUtil.isChanged(newFile.getTags(), tags)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
                   .withOldValue(JsonUtils.pojoToJson(newFile.getTags()))
                   .withNewValue(JsonUtils.pojoToJson(tags)));
         }
-        if (!CommonUtil.isChanged(newFile.getDomains(), domains)) {
+        if (CommonUtil.isChanged(newFile.getDomains(), domains)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("domains")
                   .withOldValue(JsonUtils.pojoToJson(newFile.getDomains()))
                   .withNewValue(JsonUtils.pojoToJson(domains)));
         }
-        if (!CommonUtil.isChanged(newFile.getDataProducts(), dataProducts)) {
+        if (CommonUtil.isChanged(newFile.getDataProducts(), dataProducts)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("dataProducts")

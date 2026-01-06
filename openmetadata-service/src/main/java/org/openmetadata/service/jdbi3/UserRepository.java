@@ -988,7 +988,7 @@ public class UserRepository extends EntityRepository<User> {
       }
 
       // Store create status with null check
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      int recordIndex = getRecordIndex(csvRecord);
       if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
         recordCreateStatusArray[recordIndex] = !userExists;
       }
@@ -1040,28 +1040,28 @@ public class UserRepository extends EntityRepository<User> {
                   .withOldValue(user.getDescription())
                   .withNewValue(description));
         }
-        if (!CommonUtil.isChanged(user.getTimezone(), timezone)) {
+        if (CommonUtil.isChanged(user.getTimezone(), timezone)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("timezone")
                   .withOldValue(user.getTimezone())
                   .withNewValue(timezone));
         }
-        if (isAdmin != null && !CommonUtil.isChanged(user.getIsAdmin(), isAdmin)) {
+        if (isAdmin != null && CommonUtil.isChanged(user.getIsAdmin(), isAdmin)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("isAdmin")
                   .withOldValue(user.getIsAdmin())
                   .withNewValue(isAdmin));
         }
-        if (!CommonUtil.isChanged(user.getTeams(), teams)) {
+        if (CommonUtil.isChanged(user.getTeams(), teams)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("teams")
                   .withOldValue(JsonUtils.pojoToJson(user.getTeams()))
                   .withNewValue(JsonUtils.pojoToJson(teams)));
         }
-        if (!CommonUtil.isChanged(user.getRoles(), roles)) {
+        if (CommonUtil.isChanged(user.getRoles(), roles)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("roles")

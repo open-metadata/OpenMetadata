@@ -703,7 +703,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       }
 
       // Store create status with null check
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      int recordIndex = getRecordIndex(csvRecord);
       if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
         recordCreateStatusArray[recordIndex] = !tableExists;
       }
@@ -841,20 +841,18 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           .withExtension(getExtension(printer, csvRecord, 11));
 
       if (processRecord) {
-        createEntityWithChangeDescription(printer, csvRecord, table, TABLE);
+        createEntityWithChangeDescription(printer, csvRecord, table);
       }
     }
 
     private void createEntityWithChangeDescription(
-        CSVPrinter printer, CSVRecord csvRecord, Table table, String entityType)
-        throws IOException {
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+        CSVPrinter printer, CSVRecord csvRecord, Table table) throws IOException {
+      int recordIndex = getRecordIndex(csvRecord);
       boolean isCreated =
           recordCreateStatusArray != null
-                  && recordIndex >= 0
-                  && recordIndex < recordCreateStatusArray.length
-              ? recordCreateStatusArray[recordIndex]
-              : false;
+              && recordIndex >= 0
+              && recordIndex < recordCreateStatusArray.length
+              && recordCreateStatusArray[recordIndex];
       ChangeDescription changeDescription =
           recordFieldChangesArray != null
                   && recordIndex >= 0

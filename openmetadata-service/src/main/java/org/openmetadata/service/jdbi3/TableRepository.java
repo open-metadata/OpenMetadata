@@ -1960,8 +1960,7 @@ public class TableRepository extends EntityRepository<Table> {
       String columnFqn = csvRecord.get(0);
       Column column = findColumn(table.getColumns(), columnFqn);
       boolean columnExists = column != null;
-      // Store create status with null check
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      int recordIndex = getRecordIndex(csvRecord);
       if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
         recordCreateStatusArray[recordIndex] = !columnExists;
       }
@@ -2009,7 +2008,7 @@ public class TableRepository extends EntityRepository<Table> {
         }
 
         String newDataTypeDisplay = csvRecord.get(3);
-        if (!CommonUtil.isChanged(column.getDataTypeDisplay(), newDataTypeDisplay)) {
+        if (CommonUtil.isChanged(column.getDataTypeDisplay(), newDataTypeDisplay)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("dataTypeDisplay")
@@ -2019,7 +2018,7 @@ public class TableRepository extends EntityRepository<Table> {
 
         ColumnDataType newDataType =
             nullOrEmpty(csvRecord.get(4)) ? null : ColumnDataType.fromValue(csvRecord.get(4));
-        if (!CommonUtil.isChanged(column.getDataType(), newDataType)) {
+        if (CommonUtil.isChanged(column.getDataType(), newDataType)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("dataType")
@@ -2030,7 +2029,7 @@ public class TableRepository extends EntityRepository<Table> {
 
         ColumnDataType newArrayDataType =
             nullOrEmpty(csvRecord.get(5)) ? null : ColumnDataType.fromValue(csvRecord.get(5));
-        if (!CommonUtil.isChanged(column.getArrayDataType(), newArrayDataType)) {
+        if (CommonUtil.isChanged(column.getArrayDataType(), newArrayDataType)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("arrayDataType")
@@ -2043,7 +2042,7 @@ public class TableRepository extends EntityRepository<Table> {
 
         Integer newDataLength =
             nullOrEmpty(csvRecord.get(6)) ? null : Integer.parseInt(csvRecord.get(6));
-        if (!CommonUtil.isChanged(column.getDataLength(), newDataLength)) {
+        if (CommonUtil.isChanged(column.getDataLength(), newDataLength)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("dataLength")
@@ -2059,7 +2058,7 @@ public class TableRepository extends EntityRepository<Table> {
                 List.of(
                     Pair.of(7, TagLabel.TagSource.CLASSIFICATION),
                     Pair.of(8, TagLabel.TagSource.GLOSSARY)));
-        if (!CommonUtil.isChanged(column.getTags(), newTagLabels)) {
+        if (CommonUtil.isChanged(column.getTags(), newTagLabels)) {
           // Convert tag lists to JSON for proper storage in FieldChange
           String oldTagsJson =
               column.getTags() == null ? null : JsonUtils.pojoToJson(column.getTags());

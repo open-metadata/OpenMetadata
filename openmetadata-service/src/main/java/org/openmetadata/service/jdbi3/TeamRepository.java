@@ -1045,9 +1045,7 @@ public class TeamRepository extends EntityRepository<Team> {
         team = new Team().withName(teamName);
         teamExists = false;
       }
-
-      // Store create status with null check
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      int recordIndex = getRecordIndex(csvRecord);
       if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
         recordCreateStatusArray[recordIndex] = !teamExists;
       }
@@ -1105,35 +1103,35 @@ public class TeamRepository extends EntityRepository<Team> {
                   .withOldValue(team.getDescription())
                   .withNewValue(description));
         }
-        if (!CommonUtil.isChanged(team.getTeamType(), teamType)) {
+        if (CommonUtil.isChanged(team.getTeamType(), teamType)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("teamType")
                   .withOldValue(team.getTeamType().value())
                   .withNewValue(teamType.value()));
         }
-        if (!CommonUtil.isChanged(team.getOwners(), owners)) {
+        if (CommonUtil.isChanged(team.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("owners")
                   .withOldValue(JsonUtils.pojoToJson(team.getOwners()))
                   .withNewValue(JsonUtils.pojoToJson(owners)));
         }
-        if (isJoinable != null && !CommonUtil.isChanged(team.getIsJoinable(), isJoinable)) {
+        if (isJoinable != null && CommonUtil.isChanged(team.getIsJoinable(), isJoinable)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("isJoinable")
                   .withOldValue(team.getIsJoinable())
                   .withNewValue(isJoinable));
         }
-        if (!CommonUtil.isChanged(team.getDefaultRoles(), defaultRoles)) {
+        if (CommonUtil.isChanged(team.getDefaultRoles(), defaultRoles)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("defaultRoles")
                   .withOldValue(JsonUtils.pojoToJson(team.getDefaultRoles()))
                   .withNewValue(JsonUtils.pojoToJson(defaultRoles)));
         }
-        if (!CommonUtil.isChanged(team.getPolicies(), policies)) {
+        if (CommonUtil.isChanged(team.getPolicies(), policies)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("policies")
@@ -1162,7 +1160,7 @@ public class TeamRepository extends EntityRepository<Team> {
                     .withNewValue(JsonUtils.pojoToJson(team.getParents())));
           }
         } else {
-          if (!CommonUtil.isChanged(originalParents, team.getParents())) {
+          if (CommonUtil.isChanged(originalParents, team.getParents())) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("parents")

@@ -334,7 +334,7 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
       }
 
       // Store create status with null check
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      int recordIndex = getRecordIndex(csvRecord);
       if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
         recordCreateStatusArray[recordIndex] = !spreadsheetExists;
       }
@@ -408,21 +408,21 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
               new FieldChange().withName("modifiedTime").withNewValue(modifiedTime.toString()));
         }
       } else {
-        if (!CommonUtil.isChanged(newSpreadsheet.getDisplayName(), displayName)) {
+        if (CommonUtil.isChanged(newSpreadsheet.getDisplayName(), displayName)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("displayName")
                   .withOldValue(newSpreadsheet.getDisplayName())
                   .withNewValue(displayName));
         }
-        if (!CommonUtil.isChanged(newSpreadsheet.getDescription(), description)) {
+        if (CommonUtil.isChanged(newSpreadsheet.getDescription(), description)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("description")
                   .withOldValue(newSpreadsheet.getDescription())
                   .withNewValue(description));
         }
-        if (!CommonUtil.isChanged(newSpreadsheet.getMimeType(), mimeType)) {
+        if (CommonUtil.isChanged(newSpreadsheet.getMimeType(), mimeType)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("mimeType")
@@ -432,14 +432,14 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
                           : null)
                   .withNewValue(mimeType != null ? mimeType.toString() : null));
         }
-        if (!CommonUtil.isChanged(newSpreadsheet.getPath(), path)) {
+        if (CommonUtil.isChanged(newSpreadsheet.getPath(), path)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("path")
                   .withOldValue(newSpreadsheet.getPath())
                   .withNewValue(path));
         }
-        if (!CommonUtil.isChanged(newSpreadsheet.getSize(), size)) {
+        if (CommonUtil.isChanged(newSpreadsheet.getSize(), size)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("size")
@@ -447,42 +447,42 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
                       newSpreadsheet.getSize() != null ? newSpreadsheet.getSize().toString() : null)
                   .withNewValue(size != null ? size.toString() : null));
         }
-        if (!CommonUtil.isChanged(newSpreadsheet.getFileVersion(), fileVersion)) {
+        if (CommonUtil.isChanged(newSpreadsheet.getFileVersion(), fileVersion)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("fileVersion")
                   .withOldValue(newSpreadsheet.getFileVersion())
                   .withNewValue(fileVersion));
         }
-        if (!CommonUtil.isChanged(newSpreadsheet.getOwners(), owners)) {
+        if (CommonUtil.isChanged(newSpreadsheet.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("owners")
                   .withOldValue(JsonUtils.pojoToJson(newSpreadsheet.getOwners()))
                   .withNewValue(JsonUtils.pojoToJson(owners)));
         }
-        if (!CommonUtil.isChanged(newSpreadsheet.getTags(), tags)) {
+        if (CommonUtil.isChanged(newSpreadsheet.getTags(), tags)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
                   .withOldValue(JsonUtils.pojoToJson(newSpreadsheet.getTags()))
                   .withNewValue(JsonUtils.pojoToJson(tags)));
         }
-        if (!CommonUtil.isChanged(newSpreadsheet.getDomains(), domains)) {
+        if (CommonUtil.isChanged(newSpreadsheet.getDomains(), domains)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("domains")
                   .withOldValue(JsonUtils.pojoToJson(newSpreadsheet.getDomains()))
                   .withNewValue(JsonUtils.pojoToJson(domains)));
         }
-        if (!CommonUtil.isChanged(newSpreadsheet.getDataProducts(), dataProducts)) {
+        if (CommonUtil.isChanged(newSpreadsheet.getDataProducts(), dataProducts)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("dataProducts")
                   .withOldValue(JsonUtils.pojoToJson(newSpreadsheet.getDataProducts()))
                   .withNewValue(JsonUtils.pojoToJson(dataProducts)));
         }
-        if (!CommonUtil.isChanged(newSpreadsheet.getCreatedTime(), createdTime)) {
+        if (CommonUtil.isChanged(newSpreadsheet.getCreatedTime(), createdTime)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("createdTime")
@@ -492,7 +492,7 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
                           : null)
                   .withNewValue(createdTime != null ? createdTime.toString() : null));
         }
-        if (!CommonUtil.isChanged(newSpreadsheet.getModifiedTime(), modifiedTime)) {
+        if (CommonUtil.isChanged(newSpreadsheet.getModifiedTime(), modifiedTime)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("modifiedTime")

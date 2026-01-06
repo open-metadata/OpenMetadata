@@ -258,7 +258,7 @@ public class DatabaseServiceRepository
       }
 
       // Store create status in inherited arrays
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      int recordIndex = getRecordIndex(csvRecord);
       if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
         recordCreateStatusArray[recordIndex] = !databaseExists;
       }
@@ -416,7 +416,7 @@ public class DatabaseServiceRepository
               : new Database().withService(service.getEntityReference());
 
       // Store create status in inherited arrays
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      int recordIndex = getRecordIndex(csvRecord);
       if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
         recordCreateStatusArray[recordIndex] = !databaseExists;
       }

@@ -196,7 +196,7 @@ public class SecurityServiceRepository
               : new SecurityService().withName(serviceName).withFullyQualifiedName(serviceName);
 
       // Store create status in inherited arrays
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      int recordIndex = getRecordIndex(csvRecord);
       if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
         recordCreateStatusArray[recordIndex] = !serviceExists;
       }

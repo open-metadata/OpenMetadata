@@ -279,7 +279,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       }
 
       // Store create status with null check
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      int recordIndex = getRecordIndex(csvRecord);
       if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
         recordCreateStatusArray[recordIndex] = !glossaryTermExists;
       }
@@ -350,7 +350,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
               new FieldChange().withName("style").withNewValue(JsonUtils.pojoToJson(style)));
         }
       } else {
-        if (!CommonUtil.isChanged(glossaryTerm.getParent(), parent)) {
+        if (CommonUtil.isChanged(glossaryTerm.getParent(), parent)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("parent")
@@ -371,56 +371,56 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
                   .withOldValue(glossaryTerm.getDescription())
                   .withNewValue(description));
         }
-        if (!CommonUtil.isChanged(glossaryTerm.getSynonyms(), synonyms)) {
+        if (CommonUtil.isChanged(glossaryTerm.getSynonyms(), synonyms)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("synonyms")
                   .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getSynonyms()))
                   .withNewValue(JsonUtils.pojoToJson(synonyms)));
         }
-        if (!CommonUtil.isChanged(glossaryTerm.getRelatedTerms(), relatedTerms)) {
+        if (CommonUtil.isChanged(glossaryTerm.getRelatedTerms(), relatedTerms)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("relatedTerms")
                   .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getRelatedTerms()))
                   .withNewValue(JsonUtils.pojoToJson(relatedTerms)));
         }
-        if (!CommonUtil.isChanged(glossaryTerm.getReferences(), references)) {
+        if (CommonUtil.isChanged(glossaryTerm.getReferences(), references)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("references")
                   .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getReferences()))
                   .withNewValue(JsonUtils.pojoToJson(references)));
         }
-        if (!CommonUtil.isChanged(glossaryTerm.getTags(), tags)) {
+        if (CommonUtil.isChanged(glossaryTerm.getTags(), tags)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
                   .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getTags()))
                   .withNewValue(JsonUtils.pojoToJson(tags)));
         }
-        if (!CommonUtil.isChanged(glossaryTerm.getReviewers(), reviewers)) {
+        if (CommonUtil.isChanged(glossaryTerm.getReviewers(), reviewers)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("reviewers")
                   .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getReviewers()))
                   .withNewValue(JsonUtils.pojoToJson(reviewers)));
         }
-        if (!CommonUtil.isChanged(glossaryTerm.getOwners(), owners)) {
+        if (CommonUtil.isChanged(glossaryTerm.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("owners")
                   .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getOwners()))
                   .withNewValue(JsonUtils.pojoToJson(owners)));
         }
-        if (status != null && !CommonUtil.isChanged(glossaryTerm.getEntityStatus(), status)) {
+        if (status != null && CommonUtil.isChanged(glossaryTerm.getEntityStatus(), status)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("status")
                   .withOldValue(glossaryTerm.getEntityStatus().value())
                   .withNewValue(status.value()));
         }
-        if (!CommonUtil.isChanged(glossaryTerm.getStyle(), style)) {
+        if (CommonUtil.isChanged(glossaryTerm.getStyle(), style)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("style")
