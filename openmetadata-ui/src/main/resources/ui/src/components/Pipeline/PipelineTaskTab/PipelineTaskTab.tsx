@@ -50,7 +50,6 @@ import { createTagObject } from '../../../utils/TagsUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Table from '../../common/Table/Table';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import { ColumnDetailPanel } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
@@ -62,6 +61,7 @@ export const PipelineTaskTab = () => {
     data: pipelineDetails,
     permissions,
     onUpdate,
+    openColumnDetailPanel,
   } = useGenericContext<Pipeline>();
   const { fqn: pipelineFQN } = useFqn();
   const { t } = useTranslation();
@@ -73,8 +73,6 @@ export const PipelineTaskTab = () => {
     task: Task;
     index: number;
   }>();
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
   const { deleted } = pipelineDetails ?? {};
 
   const {
@@ -135,67 +133,7 @@ export const PipelineTaskTab = () => {
   };
 
   const handleTaskClick = (task: Task) => {
-    setSelectedTask(task);
-    setIsDetailPanelOpen(true);
-  };
-
-  const handleDetailPanelClose = () => {
-    setIsDetailPanelOpen(false);
-    setSelectedTask(null);
-  };
-
-  const handleTaskDescriptionUpdate = async (
-    fqn: string,
-    description: string
-  ): Promise<Task> => {
-    const taskToUpdate = tasksInternal.find(
-      (t) => t.fullyQualifiedName === fqn
-    );
-
-    if (!taskToUpdate) {
-      throw new Error('Task not found');
-    }
-
-    const updatedTask = { ...taskToUpdate, description };
-    const updatedTasks = tasksInternal.map((t) =>
-      t.fullyQualifiedName === fqn ? updatedTask : t
-    );
-
-    const updatedPipeline = { ...pipelineDetails, tasks: updatedTasks };
-    await onUpdate(updatedPipeline);
-
-    return updatedTask;
-  };
-
-  const handleTaskTagsUpdate = async (
-    fqn: string,
-    tags: TagLabel[]
-  ): Promise<Task> => {
-    const taskToUpdate = tasksInternal.find(
-      (t) => t.fullyQualifiedName === fqn
-    );
-
-    if (!taskToUpdate) {
-      throw new Error('Task not found');
-    }
-
-    const updatedTask = { ...taskToUpdate, tags };
-    const updatedTasks = tasksInternal.map((t) =>
-      t.fullyQualifiedName === fqn ? updatedTask : t
-    );
-
-    const updatedPipeline = { ...pipelineDetails, tasks: updatedTasks };
-    await onUpdate(updatedPipeline);
-
-    return updatedTask;
-  };
-
-  const handleTaskDetailUpdate = (updatedTask: Task) => {
-    setSelectedTask(updatedTask);
-  };
-
-  const handleTaskNavigate = (task: Task) => {
-    setSelectedTask(task);
+    openColumnDetailPanel(task);
   };
 
   const onTaskUpdate = async (taskDescription: string) => {
@@ -412,21 +350,6 @@ export const PipelineTaskTab = () => {
           />
         </EntityAttachmentProvider>
       )}
-
-      <ColumnDetailPanel<Task>
-        allColumns={tasksInternal}
-        column={selectedTask}
-        deleted={deleted}
-        entityType={EntityType.PIPELINE}
-        isOpen={isDetailPanelOpen}
-        permissions={permissions}
-        tableFqn={pipelineFQN}
-        updateColumnDescription={handleTaskDescriptionUpdate}
-        updateColumnTags={handleTaskTagsUpdate}
-        onClose={handleDetailPanelClose}
-        onColumnUpdate={handleTaskDetailUpdate}
-        onNavigate={handleTaskNavigate}
-      />
     </div>
   );
 };

@@ -13,6 +13,7 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
+import { cloneDeep } from 'lodash';
 import { EntityTags } from 'Models';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +22,8 @@ import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
-import { Topic } from '../../../generated/entity/data/topic';
+import { Column } from '../../../generated/entity/data/table';
+import { Field, Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Operation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../../generated/system/ui/page';
@@ -47,7 +49,13 @@ import {
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import {
+  findFieldByFQN,
+  getTagsWithoutTier,
+  getTierTags,
+  updateFieldDescription,
+  updateFieldTags,
+} from '../../../utils/TableUtils';
 import {
   createTagObject,
   updateCertificationTag,
@@ -453,6 +461,39 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           />
         </Col>
         <GenericProvider<Topic>
+          columnDetailPanelConfig={{
+            columns: (topicDetails.messageSchema?.schemaFields ?? []).map(
+              (field) => field as unknown as Column
+            ),
+            tableFqn: decodedTopicFQN,
+            entityType: EntityType.TOPIC,
+            onColumnsChange: async (updatedColumns) => {
+              await handleSchemaFieldsUpdate({
+                ...topicDetails.messageSchema,
+                schemaFields: updatedColumns as unknown as Field[],
+              });
+            },
+            onColumnFieldUpdate: async (fqn, update) => {
+              const schema = cloneDeep(topicDetails.messageSchema);
+              if (update.description !== undefined) {
+                updateFieldDescription<Field>(
+                  fqn,
+                  update.description,
+                  schema?.schemaFields
+                );
+              }
+              if (update.tags !== undefined) {
+                updateFieldTags<Field>(fqn, update.tags, schema?.schemaFields);
+              }
+              await handleSchemaFieldsUpdate(schema);
+              const updatedField = findFieldByFQN<Field>(
+                schema?.schemaFields ?? [],
+                fqn
+              );
+
+              return updatedField as unknown as Column;
+            },
+          }}
           customizedPage={customizedPage}
           data={topicDetails}
           isTabExpanded={isTabExpanded}
