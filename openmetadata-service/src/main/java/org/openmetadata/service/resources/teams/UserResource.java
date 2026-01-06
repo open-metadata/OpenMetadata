@@ -153,7 +153,6 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
@@ -811,7 +810,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid GenerateTokenRequest generateTokenRequest) {
-    authorizer.authorizeAdmin(securityContext);
+    // Users with EDIT permission on the bot can generate tokens
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    ResourceContext<?> resourceContext = getResourceContextById(id);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     User user = repository.get(uriInfo, id, repository.getFieldsWithUserAuth("*"));
     JWTAuthMechanism jwtAuthMechanism =
         jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
@@ -836,8 +839,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       operationId = "generateJWTTokenForUser",
       summary = "Generate JWT Token for a User",
       description =
-          "Generate JWT Token for a bot user. Admins can generate tokens for bot users, "
-              + "and users can generate their own personal access tokens.",
+          "Generate JWT Token for a user. Users with EDIT permission can generate tokens for bot users, "
+              + "and users can generate their own tokens. Regular users cannot generate tokens for other regular users.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -867,17 +870,17 @@ public class UserResource extends EntityResource<User, UserRepository> {
     boolean isBotUser = Boolean.TRUE.equals(user.getIsBot());
 
     if (isBotUser) {
-      // For bot users, only admins can generate tokens
-      authorizer.authorizeAdmin(securityContext);
+      // For bot users, users with EDIT permission on the bot can generate tokens
+      OperationContext operationContext =
+          new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+      ResourceContext<?> resourceContext = getResourceContextById(userId);
+      authorizer.authorize(securityContext, operationContext, resourceContext);
     } else if (!isCurrentUser) {
       // For non-bot users, only the user themselves can generate their own token
-      // or an admin can do it
-      SubjectContext subjectContext = SubjectContext.getSubjectContext(currentUserName);
-      if (!subjectContext.isAdmin()) {
-        throw new AuthorizationException(
-            "Users can only generate tokens for themselves. "
-                + "Admins can generate tokens for bot users.");
-      }
+      // No one else can generate tokens for regular users (prevents impersonation)
+      throw new AuthorizationException(
+          "Users can only generate tokens for themselves. "
+              + "Use the bot user API to generate tokens for bots.");
     }
 
     JWTAuthMechanism jwtAuthMechanism =

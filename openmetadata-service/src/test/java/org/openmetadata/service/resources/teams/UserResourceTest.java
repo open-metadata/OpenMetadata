@@ -1577,6 +1577,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     User botUser = createEntity(create, USER_WITH_CREATE_HEADERS);
 
     // Non-admin user should not be able to generate token for bot user
+    // (unless they have EDIT permission on the bot)
     assertResponse(
         () ->
             TestUtils.post(
@@ -1588,7 +1589,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
                 FORBIDDEN.getStatusCode(),
                 TEST_AUTH_HEADERS),
         FORBIDDEN,
-        notAdmin(TEST_USER_NAME));
+        permissionNotAllowed(TEST_USER_NAME, listOf(MetadataOperation.EDIT_ALL)));
   }
 
   @Test
@@ -1604,6 +1605,75 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
                 ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "User ID is required for token generation");
+  }
+
+  @Test
+  void post_generateToken_self_user_200_ok(TestInfo test) throws HttpResponseException {
+    // Test that a user can generate a token for themselves
+    CreateUser create =
+        createRequest(test).withName("self-token-user").withEmail("self-token-user@email.com");
+    User user = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // User generates their own token using their own auth headers
+    Map<String, String> userAuthHeaders = authHeaders("self-token-user@email.com");
+    JWTAuthMechanism jwtAuthMechanism =
+        TestUtils.post(
+            getResource("users/generateToken"),
+            new GenerateTokenRequest()
+                .withId(user.getId())
+                .withJWTTokenExpiry(JWTTokenExpiry.Seven),
+            JWTAuthMechanism.class,
+            OK.getStatusCode(),
+            userAuthHeaders);
+    assertNotNull(jwtAuthMechanism.getJWTToken());
+    DecodedJWT jwt = decodedJWT(jwtAuthMechanism.getJWTToken());
+    assertEquals("self-token-user", jwt.getClaims().get("sub").asString());
+  }
+
+  @Test
+  void post_generateToken_admin_for_regular_user_forbidden() throws HttpResponseException {
+    // Test that admins cannot generate tokens for regular (non-bot) users
+    // This prevents impersonation attacks
+    CreateUser create =
+        createRequest("regular-user-no-impersonate", "", "", null)
+            .withEmail("regular-user-no-impersonate@email.com");
+    User regularUser = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Admin should NOT be able to generate token for regular user
+    assertResponse(
+        () ->
+            TestUtils.post(
+                getResource("users/generateToken"),
+                new GenerateTokenRequest()
+                    .withId(regularUser.getId())
+                    .withJWTTokenExpiry(JWTTokenExpiry.Seven),
+                JWTAuthMechanism.class,
+                FORBIDDEN.getStatusCode(),
+                ADMIN_AUTH_HEADERS),
+        FORBIDDEN,
+        "Users can only generate tokens for themselves. Use the bot user API to generate tokens for bots.");
+  }
+
+  @Test
+  void post_generateToken_non_admin_for_other_user_forbidden() throws HttpResponseException {
+    // Test that non-admin users cannot generate tokens for other users
+    CreateUser create =
+        createRequest("target-user-token", "", "", null).withEmail("target-user-token@email.com");
+    User targetUser = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Non-admin user should NOT be able to generate token for another user
+    assertResponse(
+        () ->
+            TestUtils.post(
+                getResource("users/generateToken"),
+                new GenerateTokenRequest()
+                    .withId(targetUser.getId())
+                    .withJWTTokenExpiry(JWTTokenExpiry.Seven),
+                JWTAuthMechanism.class,
+                FORBIDDEN.getStatusCode(),
+                TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        "Users can only generate tokens for themselves. Use the bot user API to generate tokens for bots.");
   }
 
   @Test
