@@ -466,7 +466,7 @@ const AssetsTabs = forwardRef(
                 width={140}
               />
             }>
-            {searchValue && (
+            {searchValue && type !== AssetsOfEntity.MY_DATA && (
               <div className="gap-4">
                 <Typography.Paragraph>
                   {t('label.no-matching-data-asset')}

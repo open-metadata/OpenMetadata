@@ -595,9 +595,7 @@ test.describe('User with different Roles', () => {
 
       await redirectToUserPage(adminPage);
 
-      await adminPage.getByText('My Data').click();
-
-      await adminPage.waitForLoadState('networkidle');
+      await adminPage.getByTestId('mydata').click();
 
       const assetsSearchBox = adminPage
         .locator('#asset-tab')
@@ -615,9 +613,7 @@ test.describe('User with different Roles', () => {
 
       const assetCard = adminPage.getByText(table.entity.name).first();
 
-      if (await assetCard.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await expect(assetCard).toBeVisible();
-      }
+      await expect(assetCard).toBeVisible();
 
       await assetsSearchBox.clear();
 
@@ -635,9 +631,13 @@ test.describe('User with different Roles', () => {
 
       await expect(incorrectAssetCard).not.toBeVisible();
 
-      await expect(adminPage.getByText('No matching data assets found')).toBeVisible();
+      await expect(
+        adminPage.getByText('No records found')
+      ).toBeVisible();
 
-      const rightPanel = adminPage.getByTestId('entity-summary-panel-container');
+      const rightPanel = adminPage.getByTestId(
+        'entity-summary-panel-container'
+      );
 
       await expect(rightPanel).not.toBeVisible();
     } finally {
