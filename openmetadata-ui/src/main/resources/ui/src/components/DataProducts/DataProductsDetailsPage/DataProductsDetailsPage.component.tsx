@@ -108,6 +108,7 @@ const DataProductsDetailsPage = ({
   isVersionsView = false,
   onUpdate,
   onDelete,
+  onRefresh,
   isFollowing,
   isFollowingLoading,
   handleFollowingClick,
@@ -409,6 +410,8 @@ const DataProductsDetailsPage = ({
   const handleAssetSave = () => {
     fetchDataProductAssets();
     assetTabRef.current?.refreshAssets();
+    // Refresh data product to get updated inputPorts/outputPorts
+    onRefresh?.();
   };
 
   const onNameSave = (obj: { name: string; displayName?: string }) => {

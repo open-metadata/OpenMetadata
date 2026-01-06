@@ -211,11 +211,20 @@ const AssetsTabs = forwardRef(
             )
           );
         case AssetsOfEntity.DATA_PRODUCT:
-        case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
-        case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
           return getTermQuery({
             'dataProducts.fullyQualifiedName': entityFqn ?? '',
           });
+
+        case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
+        case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
+          // Use the provided queryFilter (which filters by specific port FQNs)
+          // Fall back to default data product query if no filter provided
+          return (
+            queryFilter ??
+            getTermQuery({
+              'dataProducts.fullyQualifiedName': entityFqn ?? '',
+            })
+          );
 
         case AssetsOfEntity.TEAM:
         case AssetsOfEntity.MY_DATA:
@@ -231,7 +240,7 @@ const AssetsTabs = forwardRef(
         default:
           return getTagAssetsQueryFilter(encodedFqn);
       }
-    }, [type, entityFqn]);
+    }, [type, entityFqn, queryFilter]);
 
     const fetchAssets = useCallback(
       async ({
@@ -313,6 +322,8 @@ const AssetsTabs = forwardRef(
 
           break;
         case AssetsOfEntity.DATA_PRODUCT:
+        case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
+        case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
           data = await getDataProductByName(fqn, {
             fields: [TabSpecificField.DOMAINS, TabSpecificField.ASSETS],
           });

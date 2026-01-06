@@ -204,6 +204,41 @@ export const getQueryFilterToIncludeDomain = (
   },
 });
 
+/**
+ * Query filter to get all data assets in a domain.
+ * Used for input/output port selection where we want to show all domain assets
+ * without excluding assets already in a data product.
+ */
+export const getQueryFilterForDomainAssets = (domainFqn: string) => ({
+  query: {
+    bool: {
+      must: [
+        {
+          term: {
+            'domains.fullyQualifiedName': domainFqn,
+          },
+        },
+        {
+          bool: {
+            must_not: [
+              {
+                terms: {
+                  entityType: [
+                    EntityType.DATA_PRODUCT,
+                    EntityType.TEST_SUITE,
+                    EntityType.QUERY,
+                    EntityType.TEST_CASE,
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+});
+
 export const getQueryFilterToExcludeDomainTerms = (
   fqn: string,
   parentFqn?: string

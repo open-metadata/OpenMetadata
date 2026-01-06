@@ -120,7 +120,11 @@ export const useAssetSelectionContent = ({
     useState<Map<string, EntityDetailUnion>>();
   const [isLoading, setIsLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState<SearchIndex>(
-    type === AssetsOfEntity.GLOSSARY ? SearchIndex.DATA_ASSET : SearchIndex.ALL
+    type === AssetsOfEntity.GLOSSARY ||
+      type === AssetsOfEntity.DATA_PRODUCT_INPUT_PORT ||
+      type === AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT
+      ? SearchIndex.DATA_ASSET
+      : SearchIndex.ALL
   );
   const [activeEntity, setActiveEntity] = useState<
     Domain | DataProduct | Tag

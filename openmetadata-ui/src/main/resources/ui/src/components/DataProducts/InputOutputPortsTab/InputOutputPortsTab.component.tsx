@@ -24,11 +24,16 @@ import React, {
   forwardRef,
   useCallback,
   useImperativeHandle,
+  useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-records.svg';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import {
+  getInputPortsQueryFilter,
+  getOutputPortsQueryFilter,
+} from '../../../utils/DataProduct/InputOutputPortsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import AssetsTabs, {
@@ -63,6 +68,17 @@ export const InputOutputPortsTab = forwardRef<
     const [isAddingOutputPort, setIsAddingOutputPort] = useState(false);
     const inputPortsTabRef = React.useRef<AssetsTabRef>(null);
     const outputPortsTabRef = React.useRef<AssetsTabRef>(null);
+
+    // Create query filters for input/output ports based on their FQNs
+    const inputPortsQueryFilter = useMemo(
+      () => getInputPortsQueryFilter(inputPorts),
+      [inputPorts]
+    );
+
+    const outputPortsQueryFilter = useMemo(
+      () => getOutputPortsQueryFilter(outputPorts),
+      [outputPorts]
+    );
 
     const refreshPorts = useCallback(() => {
       onPortsUpdate();
@@ -158,6 +174,7 @@ export const InputOutputPortsTab = forwardRef<
                     entityFqn={dataProductFqn}
                     isSummaryPanelOpen={isSummaryPanelOpen}
                     permissions={permissions}
+                    queryFilter={inputPortsQueryFilter}
                     ref={inputPortsTabRef}
                     type={AssetsOfEntity.DATA_PRODUCT_INPUT_PORT}
                     onAddAsset={handleAddInputPort}
@@ -229,6 +246,7 @@ export const InputOutputPortsTab = forwardRef<
                     entityFqn={dataProductFqn}
                     isSummaryPanelOpen={isSummaryPanelOpen}
                     permissions={permissions}
+                    queryFilter={outputPortsQueryFilter}
                     ref={outputPortsTabRef}
                     type={AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT}
                     onAddAsset={handleAddOutputPort}
