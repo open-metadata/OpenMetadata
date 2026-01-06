@@ -28,6 +28,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.security.AuthServeletHandler;
@@ -165,6 +166,10 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
 
       // Update last login time
       Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
+      if (Entity.getAuditLogRepository() != null) {
+        Entity.getAuditLogRepository()
+            .writeAuthEvent(AuditLogRepository.AUTH_EVENT_LOGIN, user.getName(), user.getId());
+      }
 
       // Get stored redirect URI from session
       String redirectUri = (String) req.getSession().getAttribute(SESSION_REDIRECT_URI);
@@ -246,6 +251,18 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     try {
       HttpSession session = req.getSession(false);
       if (session != null) {
+        // Write logout audit event before invalidating session
+        String userId = (String) session.getAttribute(SESSION_USER_ID);
+        String username = (String) session.getAttribute(SESSION_USERNAME);
+        if (userId != null && username != null && Entity.getAuditLogRepository() != null) {
+          try {
+            Entity.getAuditLogRepository()
+                .writeAuthEvent(
+                    AuditLogRepository.AUTH_EVENT_LOGOUT, username, UUID.fromString(userId));
+          } catch (Exception e) {
+            LOG.debug("Could not write logout audit event for user {}", username, e);
+          }
+        }
         // Clear session
         session.invalidate();
       }
