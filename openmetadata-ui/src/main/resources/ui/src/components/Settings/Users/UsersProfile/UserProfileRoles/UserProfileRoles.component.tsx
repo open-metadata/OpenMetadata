@@ -97,6 +97,9 @@ const UserProfileRoles = ({
     setSelectedRoles(defaultUserRoles);
   }, [userRoles, isUserAdmin]);
 
+  const [popoverHeight, setPopoverHeight] = useState<number>(156);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
   const handleRolesSave = async () => {
     setIsLoading(true);
     // filter out the roles , and exclude the admin one
@@ -144,7 +147,7 @@ const UserProfileRoles = ({
   const handleCloseEditRole = useCallback(() => {
     setIsRolesEdit(false);
     setUserRoles();
-  }, [setUserRoles, setIsRolesEdit]);
+  }, [setUserRoles]);
 
   useEffect(() => {
     setUserRoles();
@@ -156,11 +159,11 @@ const UserProfileRoles = ({
     }
   }, [isRolesEdit, roles]);
 
-  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-  const [popoverHeight, setPopoverHeight] = useState<number>(156);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
-
   useEffect(() => {
+    if (!isRolesEdit) {
+      return;
+    }
+
     const observer = new MutationObserver(() => {
       const dropdown = document.querySelector(
         '.roles-custom-dropdown-class'
@@ -181,7 +184,7 @@ const UserProfileRoles = ({
     }
 
     return () => observer.disconnect();
-  }, [isDropdownOpen]);
+  }, [isRolesEdit]);
 
   return (
     <div
@@ -196,6 +199,7 @@ const UserProfileRoles = ({
             {t('label.role-plural')}
           </Typography.Text>
           <Popover
+            destroyTooltipOnHide
             content={
               <div
                 className="user-profile-edit-popover-card relative"
@@ -219,12 +223,14 @@ const UserProfileRoles = ({
                   }}>
                   <Select
                     allowClear
+                    defaultOpen
                     showSearch
                     aria-label="Roles"
                     className="w-full"
                     data-testid="profile-edit-roles-select"
-                    dropdownMatchSelectWidth={false}
+                    dropdownMatchSelectWidth={339}
                     filterOption={handleSearchFilterOption}
+                    key={isRolesEdit ? 'roles-open' : 'roles-closed'}
                     loading={isLoading}
                     maxTagCount={3}
                     maxTagPlaceholder={(omittedValues) => (
@@ -235,16 +241,12 @@ const UserProfileRoles = ({
                       </span>
                     )}
                     mode="multiple"
-                    open={isDropdownOpen}
                     options={useRolesOption}
                     popupClassName="roles-custom-dropdown-class"
                     ref={dropdownRef as any}
                     tagRender={TagRenderer}
                     value={selectedRoles}
                     onChange={setSelectedRoles}
-                    onDropdownVisibleChange={(open) => {
-                      setIsDropdownOpen(open);
-                    }}
                   />
                 </div>
 

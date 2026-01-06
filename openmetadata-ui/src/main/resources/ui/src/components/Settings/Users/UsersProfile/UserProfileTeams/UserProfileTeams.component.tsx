@@ -78,6 +78,14 @@ const UserProfileTeams = ({
     setUserTeams();
   }, [setUserTeams]);
 
+  useEffect(() => {
+    if (isTeamsEdit) {
+      setIsDropdownOpen(true);
+    } else {
+      setIsDropdownOpen(false);
+    }
+  }, [isTeamsEdit]);
+
   const handleDropdownChange = (visible: boolean) => {
     setIsDropdownOpen(visible);
   };
@@ -145,6 +153,7 @@ const UserProfileTeams = ({
                   <TeamsSelectableNew
                     handleDropdownChange={handleDropdownChange}
                     maxValueCount={3}
+                    open={isDropdownOpen}
                     ref={teamsSelectableRef}
                     selectedTeams={selectedTeams}
                     onSelectionChange={setSelectedTeams}

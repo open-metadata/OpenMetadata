@@ -79,6 +79,14 @@ export const PersonaSelectableList = ({
   const dropdownRef = useRef<RefSelectProps | null>(null);
 
   useEffect(() => {
+    if (popupVisible) {
+      setIsDropdownOpen(true);
+    } else {
+      setIsDropdownOpen(false);
+    }
+  }, [popupVisible]);
+
+  useEffect(() => {
     const observer = new MutationObserver(() => {
       const dropdown = document.querySelector(
         '.persona-custom-dropdown-class'
@@ -101,7 +109,7 @@ export const PersonaSelectableList = ({
     }
 
     return () => observer.disconnect();
-  }, [isDropdownOpen]);
+  }, [isDropdownOpen, isDefaultPersona]);
 
   const fetchOptions = async (searchText: string, after?: string) => {
     if (searchText) {
@@ -228,6 +236,7 @@ export const PersonaSelectableList = ({
                 </span>
               )}
               mode={!isDefaultPersona ? 'multiple' : undefined}
+              open={isDropdownOpen}
               options={selectOptions?.map((persona) => ({
                 label: getEntityName(persona),
                 value: persona.fullyQualifiedName,
@@ -244,7 +253,7 @@ export const PersonaSelectableList = ({
             />
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 mt-4">
             <Button
               className="persona-profile-edit-save"
               data-testid={`user-profile${
@@ -252,6 +261,14 @@ export const PersonaSelectableList = ({
               }persona-edit-cancel`}
               icon={<ClosePopoverIcon height={24} />}
               size="small"
+              style={{
+                width: '30px',
+                height: '30px',
+                background: '#0950C5',
+                position: 'absolute',
+                bottom: '0px',
+                right: '38px',
+              }}
               type="primary"
               onClick={handleCloseEditTeam}
             />
@@ -263,6 +280,13 @@ export const PersonaSelectableList = ({
               icon={<SavePopoverIcon height={24} />}
               loading={isSaving}
               size="small"
+              style={{
+                width: '30px',
+                height: '30px',
+                background: '#0950C5',
+                position: 'absolute',
+                bottom: '0px',
+              }}
               type="primary"
               onClick={handlePersonaUpdate}
             />
