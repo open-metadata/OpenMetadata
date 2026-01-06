@@ -32,7 +32,9 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -1485,7 +1487,7 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
       // 2. Add custom property values to table column
       String columnFQN = table.getFullyQualifiedName() + ".name";
       UpdateColumn addValues = new UpdateColumn();
-      java.util.Map<String, Object> extension = new java.util.HashMap<>();
+      Map<String, Object> extension = new HashMap<>();
       extension.put(testPropName + "_string", "test-value");
       extension.put(testPropName + "_int", 42);
       addValues.setExtension(extension);
@@ -1494,15 +1496,14 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
       // Verify custom properties were added (extension may be null on some backends)
       if (columnWithValues.getExtension() != null) {
         @SuppressWarnings("unchecked")
-        java.util.Map<String, Object> addedExt =
-            (java.util.Map<String, Object>) columnWithValues.getExtension();
+        Map<String, Object> addedExt = (Map<String, Object>) columnWithValues.getExtension();
         assertEquals("test-value", addedExt.get(testPropName + "_string"));
         assertEquals(42, addedExt.get(testPropName + "_int"));
       }
 
       // 3. Update custom property values
       UpdateColumn updateValues = new UpdateColumn();
-      java.util.Map<String, Object> updatedExtension = new java.util.HashMap<>();
+      Map<String, Object> updatedExtension = new HashMap<>();
       updatedExtension.put(testPropName + "_string", "updated-value");
       updatedExtension.put(testPropName + "_int", 100);
       updateValues.setExtension(updatedExtension);
@@ -1510,8 +1511,7 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
       Column updatedColumn = updateColumnByFQN(columnFQN, updateValues);
       if (updatedColumn.getExtension() != null) {
         @SuppressWarnings("unchecked")
-        java.util.Map<String, Object> updatedExt =
-            (java.util.Map<String, Object>) updatedColumn.getExtension();
+        Map<String, Object> updatedExt = (Map<String, Object>) updatedColumn.getExtension();
         assertEquals("updated-value", updatedExt.get(testPropName + "_string"));
         assertEquals(100, updatedExt.get(testPropName + "_int"));
       }
@@ -1527,22 +1527,20 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
       // Check if custom properties were persisted
       if (nameColumn.getExtension() != null) {
         @SuppressWarnings("unchecked")
-        java.util.Map<String, Object> persistedExt =
-            (java.util.Map<String, Object>) nameColumn.getExtension();
+        Map<String, Object> persistedExt = (Map<String, Object>) nameColumn.getExtension();
         assertEquals("updated-value", persistedExt.get(testPropName + "_string"));
         assertEquals(100, persistedExt.get(testPropName + "_int"));
       }
 
       // 5. Remove custom property values
       UpdateColumn removeValues = new UpdateColumn();
-      removeValues.setExtension(new java.util.HashMap<>());
+      removeValues.setExtension(new HashMap<>());
       Column columnWithoutValues = updateColumnByFQN(columnFQN, removeValues);
 
       // Verify values are removed
       if (columnWithoutValues.getExtension() != null) {
         @SuppressWarnings("unchecked")
-        java.util.Map<String, Object> removedExt =
-            (java.util.Map<String, Object>) columnWithoutValues.getExtension();
+        Map<String, Object> removedExt = (Map<String, Object>) columnWithoutValues.getExtension();
         assertFalse(removedExt.containsKey(testPropName + "_string"));
         assertFalse(removedExt.containsKey(testPropName + "_int"));
       }
@@ -1580,7 +1578,7 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
       // 2. Add custom property values to dashboard column
       String columnFQN = dashboardDataModel.getFullyQualifiedName() + ".metric1";
       UpdateColumn addValues = new UpdateColumn();
-      java.util.Map<String, Object> extension = new java.util.HashMap<>();
+      Map<String, Object> extension = new HashMap<>();
       extension.put(stringPropName, "dashboard-value");
       extension.put(intPropName, 999);
       addValues.setExtension(extension);
@@ -1588,8 +1586,7 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
       Column columnWithValues = updateColumnByFQN(columnFQN, addValues, DASHBOARD_DATA_MODEL);
       assertNotNull(columnWithValues.getExtension());
       @SuppressWarnings("unchecked")
-      java.util.Map<String, Object> addedExt =
-          (java.util.Map<String, Object>) columnWithValues.getExtension();
+      Map<String, Object> addedExt = (Map<String, Object>) columnWithValues.getExtension();
       assertEquals("dashboard-value", addedExt.get(stringPropName));
       assertEquals(999, addedExt.get(intPropName));
 
@@ -1604,8 +1601,7 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
               .orElseThrow();
       assertNotNull(metricColumn.getExtension());
       @SuppressWarnings("unchecked")
-      java.util.Map<String, Object> persistedExt =
-          (java.util.Map<String, Object>) metricColumn.getExtension();
+      Map<String, Object> persistedExt = (Map<String, Object>) metricColumn.getExtension();
       assertEquals("dashboard-value", persistedExt.get(stringPropName));
       assertEquals(999, persistedExt.get(intPropName));
 
@@ -1625,7 +1621,7 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
       // 1. Test undefined custom property - should fail
       String columnFQN = table.getFullyQualifiedName() + ".name";
       UpdateColumn invalidUpdate = new UpdateColumn();
-      java.util.Map<String, Object> invalidExtension = new java.util.HashMap<>();
+      Map<String, Object> invalidExtension = new HashMap<>();
       invalidExtension.put("undefinedProperty", "should-fail");
       invalidUpdate.setExtension(invalidExtension);
 
@@ -1639,15 +1635,14 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
           TABLE_COLUMN, validPropName, "string", "Valid property for testing");
 
       UpdateColumn validUpdate = new UpdateColumn();
-      java.util.Map<String, Object> validExtension = new java.util.HashMap<>();
+      Map<String, Object> validExtension = new HashMap<>();
       validExtension.put(validPropName, "valid-value");
       validUpdate.setExtension(validExtension);
 
       Column updatedColumn = updateColumnByFQN(columnFQN, validUpdate);
       assertNotNull(updatedColumn.getExtension());
       @SuppressWarnings("unchecked")
-      java.util.Map<String, Object> resultExt =
-          (java.util.Map<String, Object>) updatedColumn.getExtension();
+      Map<String, Object> resultExt = (Map<String, Object>) updatedColumn.getExtension();
       assertEquals("valid-value", resultExt.get(validPropName));
 
     } finally {
@@ -1664,7 +1659,7 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
       // 1. Test undefined custom property - should fail
       String columnFQN = dashboardDataModel.getFullyQualifiedName() + ".dimension1";
       UpdateColumn invalidUpdate = new UpdateColumn();
-      java.util.Map<String, Object> invalidExtension = new java.util.HashMap<>();
+      Map<String, Object> invalidExtension = new HashMap<>();
       invalidExtension.put("undefinedDashProperty", "should-fail");
       invalidUpdate.setExtension(invalidExtension);
 
@@ -1678,15 +1673,14 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
           DASHBOARD_DATA_MODEL_COLUMN, validPropName, "integer", "Valid dashboard property");
 
       UpdateColumn validUpdate = new UpdateColumn();
-      java.util.Map<String, Object> validExtension = new java.util.HashMap<>();
+      Map<String, Object> validExtension = new HashMap<>();
       validExtension.put(validPropName, 123);
       validUpdate.setExtension(validExtension);
 
       Column updatedColumn = updateColumnByFQN(columnFQN, validUpdate, DASHBOARD_DATA_MODEL);
       assertNotNull(updatedColumn.getExtension());
       @SuppressWarnings("unchecked")
-      java.util.Map<String, Object> resultExt =
-          (java.util.Map<String, Object>) updatedColumn.getExtension();
+      Map<String, Object> resultExt = (Map<String, Object>) updatedColumn.getExtension();
       assertEquals(123, resultExt.get(validPropName));
 
     } finally {
@@ -1733,27 +1727,25 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
       // Test 1: Table column accepts string value
       String tableColumnFQN = table.getFullyQualifiedName() + ".email";
       UpdateColumn tableUpdate = new UpdateColumn();
-      java.util.Map<String, Object> tableExtension = new java.util.HashMap<>();
+      Map<String, Object> tableExtension = new HashMap<>();
       tableExtension.put(uniquePropName, "table-string-value");
       tableUpdate.setExtension(tableExtension);
 
       Column updatedTableColumn = updateColumnByFQN(tableColumnFQN, tableUpdate);
       @SuppressWarnings("unchecked")
-      java.util.Map<String, Object> tableExt =
-          (java.util.Map<String, Object>) updatedTableColumn.getExtension();
+      Map<String, Object> tableExt = (Map<String, Object>) updatedTableColumn.getExtension();
       assertEquals("table-string-value", tableExt.get(uniquePropName));
 
       // Test 2: Dashboard column accepts integer value (same property name, different type)
       String dashColumnFQN = dashboardDataModel.getFullyQualifiedName() + ".dimension1";
       UpdateColumn dashUpdate = new UpdateColumn();
-      java.util.Map<String, Object> dashExtension = new java.util.HashMap<>();
+      Map<String, Object> dashExtension = new HashMap<>();
       dashExtension.put(uniquePropName, 456);
       dashUpdate.setExtension(dashExtension);
 
       Column updatedDashColumn = updateColumnByFQN(dashColumnFQN, dashUpdate, DASHBOARD_DATA_MODEL);
       @SuppressWarnings("unchecked")
-      java.util.Map<String, Object> dashExt =
-          (java.util.Map<String, Object>) updatedDashColumn.getExtension();
+      Map<String, Object> dashExt = (Map<String, Object>) updatedDashColumn.getExtension();
       assertEquals(456, dashExt.get(uniquePropName));
 
       // Verify both columns maintain their separate custom property values
@@ -1765,8 +1757,7 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
               .orElseThrow();
       if (verifyTableColumn.getExtension() != null) {
         @SuppressWarnings("unchecked")
-        java.util.Map<String, Object> verifyTableExt =
-            (java.util.Map<String, Object>) verifyTableColumn.getExtension();
+        Map<String, Object> verifyTableExt = (Map<String, Object>) verifyTableColumn.getExtension();
         assertEquals("table-string-value", verifyTableExt.get(uniquePropName));
       }
 
@@ -1780,8 +1771,7 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
               .orElseThrow();
       if (verifyDashColumn.getExtension() != null) {
         @SuppressWarnings("unchecked")
-        java.util.Map<String, Object> verifyDashExt =
-            (java.util.Map<String, Object>) verifyDashColumn.getExtension();
+        Map<String, Object> verifyDashExt = (Map<String, Object>) verifyDashColumn.getExtension();
         assertEquals(456, verifyDashExt.get(uniquePropName));
       }
 
@@ -1826,7 +1816,7 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
       // Test 1: Try to use table property on dashboard column - should fail with detailed error
       String dashColumnFQN = dashboardDataModel.getFullyQualifiedName() + ".metric1";
       UpdateColumn dashUpdate = new UpdateColumn();
-      java.util.Map<String, Object> dashExtension = new java.util.HashMap<>();
+      Map<String, Object> dashExtension = new HashMap<>();
       dashExtension.put(tableOnlyProp, "wrong-entity-type");
       dashUpdate.setExtension(dashExtension);
 
@@ -1838,7 +1828,7 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
       // Test 2: Try to use dashboard property on table column - should fail
       String tableColumnFQN = table.getFullyQualifiedName() + ".id";
       UpdateColumn tableUpdate = new UpdateColumn();
-      java.util.Map<String, Object> tableExtension = new java.util.HashMap<>();
+      Map<String, Object> tableExtension = new HashMap<>();
       tableExtension.put(dashOnlyProp, 123);
       tableUpdate.setExtension(tableExtension);
 
@@ -1877,7 +1867,7 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
 
     // Use the custom property
     UpdateColumn initialUpdate = new UpdateColumn();
-    java.util.Map<String, Object> initialExtension = new java.util.HashMap<>();
+    Map<String, Object> initialExtension = new HashMap<>();
     initialExtension.put(tempPropName, "cached-value");
     initialUpdate.setExtension(initialExtension);
 
@@ -1885,8 +1875,7 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
     // Extension might be null on some backends
     if (columnWithProp.getExtension() != null) {
       @SuppressWarnings("unchecked")
-      java.util.Map<String, Object> resultExt =
-          (java.util.Map<String, Object>) columnWithProp.getExtension();
+      Map<String, Object> resultExt = (Map<String, Object>) columnWithProp.getExtension();
       assertEquals("cached-value", resultExt.get(tempPropName));
     }
 
@@ -1902,7 +1891,7 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
     // Test that invalid properties are properly rejected
     String invalidPropName = "nonExistent_" + UUID.randomUUID().toString().substring(0, 8);
     UpdateColumn invalidUpdate = new UpdateColumn();
-    java.util.Map<String, Object> invalidExtension = new java.util.HashMap<>();
+    Map<String, Object> invalidExtension = new HashMap<>();
     invalidExtension.put(invalidPropName, "should-fail");
     invalidUpdate.setExtension(invalidExtension);
 
@@ -1981,15 +1970,14 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
       // Update nested column with custom property
       String nestedColumnFQN = nestedTable.getFullyQualifiedName() + ".struct_column.nested_field";
       UpdateColumn updateNested = new UpdateColumn();
-      java.util.Map<String, Object> nestedExtension = new java.util.HashMap<>();
+      Map<String, Object> nestedExtension = new HashMap<>();
       nestedExtension.put(nestedPropName, "nested-custom-value");
       updateNested.setExtension(nestedExtension);
 
       Column updatedNestedColumn = updateColumnByFQN(nestedColumnFQN, updateNested);
       if (updatedNestedColumn.getExtension() != null) {
         @SuppressWarnings("unchecked")
-        java.util.Map<String, Object> nestedExt =
-            (java.util.Map<String, Object>) updatedNestedColumn.getExtension();
+        Map<String, Object> nestedExt = (Map<String, Object>) updatedNestedColumn.getExtension();
         assertEquals("nested-custom-value", nestedExt.get(nestedPropName));
       }
 
@@ -2005,8 +1993,7 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
         Column nestedField = structColumn.getChildren().get(0);
         if (nestedField.getExtension() != null) {
           @SuppressWarnings("unchecked")
-          java.util.Map<String, Object> persistedNestedExt =
-              (java.util.Map<String, Object>) nestedField.getExtension();
+          Map<String, Object> persistedNestedExt = (Map<String, Object>) nestedField.getExtension();
           assertEquals("nested-custom-value", persistedNestedExt.get(nestedPropName));
         }
       }

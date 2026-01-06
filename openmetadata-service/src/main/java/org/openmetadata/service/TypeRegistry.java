@@ -20,6 +20,7 @@ import static org.openmetadata.service.resources.types.TypeResource.PROPERTIES_F
 import com.networknt.schema.JsonSchema;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
@@ -95,15 +96,13 @@ public class TypeRegistry {
   }
 
   public void removeType(String typeName) {
-    Type removedType = TYPES.remove(typeName);
+    var removedType = TYPES.remove(typeName);
     LOG.info("Deleted type {}", typeName);
 
-    // Cleanup custom properties for removed type
-    if (removedType != null && removedType.getCustomProperties() != null) {
-      for (CustomProperty property : removedType.getCustomProperties()) {
-        removeCustomProperty(typeName, property.getName());
-      }
-    }
+    // Cleanup custom properties for removed type using Optional for cleaner null handling
+    Optional.ofNullable(removedType).map(Type::getCustomProperties).stream()
+        .flatMap(List::stream)
+        .forEach(property -> removeCustomProperty(typeName, property.getName()));
   }
 
   private void addCustomProperty(
