@@ -212,7 +212,7 @@ const GlossaryHeader = ({
   }, [fqn]);
 
   const handleGlossaryImport = () =>
-    navigate(getEntityImportPath(EntityType.GLOSSARY_TERM, fqn));
+    navigate(getEntityImportPath(EntityType.GLOSSARY, fqn));
 
   const handleVersionClick = async () => {
     let path: string;
@@ -365,7 +365,7 @@ const GlossaryHeader = ({
                   entity: t('label.glossary-term'),
                 })}
                 icon={StyleIcon}
-                id="rename-button"
+                id="edit-style-button"
                 name={t('label.style')}
               />
             ),

@@ -177,12 +177,18 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 
 ### Comments Policy
 - **Do NOT add unnecessary comments** - write self-documenting code
+- **NEVER add single-line comments that describe what the code obviously does**
 - Only include comments for:
     - Complex business logic that isn't obvious
     - Non-obvious algorithms or workarounds
     - Public API JavaDoc documentation
     - TODO/FIXME with ticket references
-- Avoid obvious comments like `// increment counter` or `// create new user`
+- Bad examples (NEVER do this):
+    - `// Create user` before `createUser()`
+    - `// Get client` before `SdkClients.adminClient()`
+    - `// Verify domain is set` before `assertNotNull(entity.getDomain())`
+    - `// User names are lowercased` when the code `toLowerCase()` makes it obvious
+- If the code needs a comment to be understood, refactor the code to be clearer instead
 
 ### Java Code Requirements
 - **Always mention** running `mvn spotless:apply` when generating/modifying .java files

@@ -301,8 +301,8 @@ describe('TaskDescriptionPreviewer', () => {
     render(
       <TaskDescriptionPreviewer
         {...mockProp}
-        markdown={mockShortMarkdown}
         enableSeeMoreVariant
+        markdown={mockShortMarkdown}
       />
     );
 
@@ -324,8 +324,8 @@ describe('TaskDescriptionPreviewer', () => {
     const { rerender } = render(
       <TaskDescriptionPreviewer
         {...mockProp}
-        markdown={mockShortMarkdown}
         enableSeeMoreVariant
+        markdown={mockShortMarkdown}
       />
     );
 
@@ -343,8 +343,8 @@ describe('TaskDescriptionPreviewer', () => {
     rerender(
       <TaskDescriptionPreviewer
         {...mockProp}
-        markdown={mockLongMarkdown}
         enableSeeMoreVariant
+        markdown={mockLongMarkdown}
       />
     );
 

@@ -382,6 +382,7 @@ class MetabaseSource(DashboardServiceSource):
                 else Dialect.ANSI
             ),
         )
+        query_hash = lineage_parser.query_hash
 
         if (
             prefix_database_name
@@ -389,7 +390,7 @@ class MetabaseSource(DashboardServiceSource):
             and prefix_database_name.lower() != database_name.lower()
         ):
             logger.debug(
-                f"Database {database_name} does not match prefix {prefix_database_name}"
+                f"[{query_hash}] Database {database_name} does not match prefix {prefix_database_name}"
             )
             return
 

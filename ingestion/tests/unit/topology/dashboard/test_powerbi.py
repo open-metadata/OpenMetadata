@@ -98,22 +98,34 @@ MOCK_DATABRICKS_NATIVE_EXP = """let
 in
     Source"""
 
-MOCK_DATABRICKS_NATIVE_QUERY_EXP = """let
-    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind="Database"]}[Data], "SELECT * FROM PUBLIC.STG_CUSTOMERS", null, [EnableFolding=true])
-in
-    Source"""
+MOCK_DATABRICKS_NATIVE_QUERY_EXP = """let 
+    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path,  
+        [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]) 
+        {[Name="DEMO_STAGE",Kind="Database"]}[Data],  
+            "select * from PUBLIC.STG_CUSTOMERS", null, [EnableFolding=true]) 
+in 
+    "Source" """
 
 EXPECTED_DATABRICKS_RESULT = [
     {"database": "DEMO_STAGE", "schema": "PUBLIC", "table": "STG_CUSTOMERS"}
 ]
 
+MOCK_DATABRICKS_NATIVE_QUERY_EXP_WITH_EXPRESSION = """let
+    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [   Catalog=   "DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name=DB, Kind=   "Database"]}[Data], "SELECT * FROM PUBLIC.STG_CUSTOMERS", null, [EnableFolding=true])
+in
+    Source"""
+EXPECTED_DATABRICKS_RESULT_WITH_EXPRESSION = [
+    {"database": "MY_DB", "schema": "PUBLIC", "table": "STG_CUSTOMERS"}
+]
+
+
 MOCK_DATABRICKS_NATIVE_INVALID_QUERY_EXP = """let
-    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind="Database"]}[Data], "WITH test as (select) Select test", null, [EnableFolding=true])
+    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind = "Database"]}[Data], "WITH test as (select) Select test", null, [EnableFolding=true])
 in
     Source"""
 
 MOCK_DATABRICKS_NATIVE_INVALID_EXP = """let
-    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind="Database"]}[Data], null, [EnableFolding=true])
+    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind=  "Database"]}[Data], null, [EnableFolding=true])
 in
     Source"""
 
@@ -336,6 +348,11 @@ class PowerBIUnitTest(TestCase):
 
         # Test with valid databricks native source
         result = self.powerbi._parse_databricks_source(
+            MOCK_DATABRICKS_NATIVE_QUERY_EXP_WITH_EXPRESSION, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertEqual(result, EXPECTED_DATABRICKS_RESULT_WITH_EXPRESSION)
+
+        result = self.powerbi._parse_databricks_source(
             MOCK_DATABRICKS_NATIVE_EXP, MOCK_DASHBOARD_DATA_MODEL
         )
         self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
@@ -353,7 +370,8 @@ class PowerBIUnitTest(TestCase):
         result = self.powerbi._parse_databricks_source(
             MOCK_DATABRICKS_NATIVE_INVALID_QUERY_EXP, MOCK_DASHBOARD_DATA_MODEL
         )
-        self.assertIsNone(result)
+        # sqlglot parses this sql and returns empty source list vs sqlfluff raising the error, hence adjusting test
+        self.assertEqual(result, [])
 
         result = self.powerbi._parse_databricks_source(
             MOCK_DATABRICKS_NATIVE_INVALID_EXP, MOCK_DASHBOARD_DATA_MODEL
