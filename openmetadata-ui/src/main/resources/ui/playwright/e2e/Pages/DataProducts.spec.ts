@@ -33,7 +33,6 @@ import {
   selectDataProduct,
 } from '../../utils/domain';
 import {
-  assignGlossaryTerm,
   followEntity,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
@@ -390,33 +389,33 @@ test.describe('Data Products', () => {
   });
 
   test('Empty State - No Data Products', async ({ page }) => {
+    await test.step('Mock API to return empty data products list', async () => {
+      // Mock the search API to simulate empty state without deleting real data
+      await page.route('**/api/v1/search/query*', async (route, request) => {
+        const url = new URL(request.url());
+        const index = url.searchParams.get('index');
+
+        // Only mock data_product_search_index requests
+        if (index === 'data_product_search_index') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              hits: {
+                total: { value: 0 },
+                hits: [],
+              },
+              aggregations: {},
+            }),
+          });
+        } else {
+          await route.continue();
+        }
+      });
+    });
+
     await test.step('Navigate to Data Products page', async () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-    });
-
-    await test.step('Delete all existing data products', async () => {
-      const { apiContext, afterAction } = await performAdminLogin(
-        page.context().browser()!
-      );
-
-      const response = await apiContext.get('/api/v1/dataProducts', {
-        params: { limit: 100 },
-      });
-      const data = await response.json();
-
-      for (const dp of data.data) {
-        await apiContext.delete(`/api/v1/dataProducts/${dp.id}`, {
-          params: { hardDelete: true, recursive: true },
-        });
-      }
-
-      await afterAction();
-    });
-
-    await test.step('Refresh page', async () => {
-      await page.reload();
       await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
     });

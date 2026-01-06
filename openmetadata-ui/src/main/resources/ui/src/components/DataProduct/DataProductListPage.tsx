@@ -15,7 +15,7 @@ import { Box, Paper, TableContainer, useTheme } from '@mui/material';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useSnackbar } from 'notistack';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { DRAWER_HEADER_STYLING } from '../../constants/DomainsListPage.constants';
@@ -188,8 +188,29 @@ const DataProductListPage = () => {
     },
   });
 
+  const hasActiveSearchOrFilter = useCallback(() => {
+    const { searchQuery, filters } = dataProductListing.urlState;
+
+    const hasActiveFilters =
+      filters &&
+      Object.values(filters).some(
+        (values) => Array.isArray(values) && values.length > 0
+      );
+
+    return Boolean(searchQuery) || hasActiveFilters;
+  }, [dataProductListing.urlState]);
+
   const content = useMemo(() => {
     if (!dataProductListing.loading && isEmpty(dataProductListing.entities)) {
+      if (hasActiveSearchOrFilter()) {
+        return (
+          <ErrorPlaceHolder
+            className="border-none"
+            type={ERROR_PLACEHOLDER_TYPE.FILTER}
+          />
+        );
+      }
+
       return (
         <ErrorPlaceHolder
           buttonId="data-product-add-button"
@@ -226,6 +247,7 @@ const DataProductListPage = () => {
   }, [
     dataProductListing.loading,
     dataProductListing.entities,
+    hasActiveSearchOrFilter,
     view,
     dataTable,
     cardView,
