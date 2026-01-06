@@ -221,7 +221,7 @@ class OracleUnitTest(TestCase):
         """
         Test that stored procedure queries have ORDER BY clause to ensure
         lines are returned in correct order from the database.
-        
+
         This is critical because the process_result method concatenates text
         as rows are received without reordering. Without ORDER BY, Oracle can
         return rows in any physical order, causing scrambled code.
