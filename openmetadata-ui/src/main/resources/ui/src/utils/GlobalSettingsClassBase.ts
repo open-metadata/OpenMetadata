@@ -367,6 +367,16 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.PERMISSION_DEBUGGER}`,
             icon: AccessControlIcon,
           },
+          {
+            label: t('label.audit-log-plural'),
+            description: t('message.page-sub-header-for-audit-logs'),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.AUDIT_LOG,
+              permissions
+            ),
+            key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.AUDIT_LOGS}`,
+            icon: ManagementIcon,
+          },
         ],
       },
       {
