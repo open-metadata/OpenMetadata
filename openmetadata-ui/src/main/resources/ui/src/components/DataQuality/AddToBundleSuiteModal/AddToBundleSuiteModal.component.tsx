@@ -28,7 +28,6 @@ import {
 } from '../../../rest/testAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getPopupContainer } from '../../../utils/formUtils';
-import { getTestSuitePath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { AddToBundleSuiteModalProps } from './AddToBundleSuiteModal.interface';
 
