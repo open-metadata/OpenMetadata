@@ -1798,7 +1798,7 @@ test.describe('Glossary tests', () => {
 
   test('Check for duplicate Glossary Term', async ({ browser }) => {
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
-    const glossary1 = new Glossary('PW_TEST_GLOSSARY');
+    const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(
       glossary1,
       undefined,
@@ -1839,7 +1839,6 @@ test.describe('Glossary tests', () => {
         );
       });
     } finally {
-      await glossaryTerm1.delete(apiContext);
       await glossary1.delete(apiContext);
       await afterAction();
     }
@@ -2007,8 +2006,8 @@ test.describe('Glossary tests', () => {
         ).toBeVisible();
       });
     } finally {
-      await glossary.delete(apiContext);
       await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
       await afterAction();
       await reviewerAfterAction();
     }
