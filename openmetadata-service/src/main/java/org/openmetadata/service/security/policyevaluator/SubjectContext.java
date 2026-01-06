@@ -287,7 +287,8 @@ public record SubjectContext(User user, String impersonatedBy) {
           continue;
         }
         visitedTeams.add(currentTeamRef.getId());
-        Team parent = Entity.getEntity(Entity.TEAM, currentTeamRef.getId(), TEAM_FIELDS, NON_DELETED);
+        Team parent =
+            Entity.getEntity(Entity.TEAM, currentTeamRef.getId(), TEAM_FIELDS, NON_DELETED);
         if (hasRole(parent.getDefaultRoles(), role)) {
           return true;
         }

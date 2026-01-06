@@ -411,7 +411,8 @@ public class SubjectContextTest {
     teamB.setParents(List.of(teamA.getEntityReference()));
 
     // Test getRolesForTeams - should not cause StackOverflowError
-    List<EntityReference> rolesA = SubjectContext.getRolesForTeams(List.of(teamA.getEntityReference()));
+    List<EntityReference> rolesA =
+        SubjectContext.getRolesForTeams(List.of(teamA.getEntityReference()));
     assertFalse(rolesA.isEmpty(), "Should return roles even with circular dependency");
 
     // Test isInTeam - should not cause infinite loop
@@ -430,8 +431,7 @@ public class SubjectContextTest {
     // Should not throw StackOverflowError
     boolean hasRoleResult = SubjectContext.hasRole(userWithCircularTeam, "teamA_role_1");
     assertTrue(
-        hasRoleResult,
-        "User should have role from team hierarchy even with circular dependency");
+        hasRoleResult, "User should have role from team hierarchy even with circular dependency");
 
     // Test policy iteration with circular dependency - should not cause infinite loop
     SubjectContext subjectContext = SubjectContext.getSubjectContext("circularUser");
