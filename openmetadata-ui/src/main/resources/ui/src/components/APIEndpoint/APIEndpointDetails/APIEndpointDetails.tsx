@@ -272,7 +272,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   }
 
   return (
-    <PageLayoutV1 pageTitle={entityName}>
+    <PageLayoutV1 pageTitle={getEntityName(apiEndpointDetails)}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader
