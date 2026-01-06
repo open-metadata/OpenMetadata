@@ -597,7 +597,8 @@ test.describe('Glossary P3 Tests', () => {
 
       await sidebarClick(page, SidebarItem.GLOSSARY);
 
-      await glossariesPromise;
+      const response = await glossariesPromise;
+      expect(response.status()).toBe(200);
 
       // Verify page is functional
       await expect(
