@@ -58,7 +58,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
         "OpenLineage API for receiving lineage events from external systems like Spark, Airflow, etc.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "openlineage")
+@Collection(name = "openlineage", entityType = Entity.NONE)
 public class OpenLineageResource {
 
   private static final String DEFAULT_PIPELINE_SERVICE = "openlineage";

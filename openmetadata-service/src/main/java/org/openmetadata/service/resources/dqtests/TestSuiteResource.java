@@ -72,7 +72,7 @@ import org.openmetadata.service.util.RestUtil;
     description = "`TestSuite` is a set of test cases grouped together to capture data quality.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "TestSuites")
+@Collection(name = "TestSuites", entityType = Entity.TEST_SUITE)
 public class TestSuiteResource {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testSuites";
   public static final String BASIC_TEST_SUITE_DELETION_ERROR =

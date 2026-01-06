@@ -42,6 +42,7 @@ import org.openmetadata.schema.api.tests.CreateWebAnalyticEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
 import org.openmetadata.service.resources.Collection;
@@ -52,7 +53,7 @@ import org.openmetadata.service.services.analytics.WebAnalyticEventService;
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "analytics")
+@Collection(name = "analytics", entityType = Entity.WEB_ANALYTIC_EVENT)
 public class WebAnalyticEventResource {
   public static final String COLLECTION_PATH = WebAnalyticEventRepository.COLLECTION_PATH;
   private final WebAnalyticEventService service;

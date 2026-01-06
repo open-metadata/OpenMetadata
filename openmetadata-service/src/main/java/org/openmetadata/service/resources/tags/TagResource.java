@@ -77,7 +77,9 @@ import org.openmetadata.service.services.tags.TagService;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(
     name = "tags",
-    order = 5) // initialize after Classification, and before Glossary and GlossaryTerm
+    order = 5,
+    entityType =
+        Entity.TAG) // initialize after Classification, and before Glossary and GlossaryTerm
 public class TagResource {
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
   private final TagService service;

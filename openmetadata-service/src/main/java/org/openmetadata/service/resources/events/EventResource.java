@@ -46,7 +46,7 @@ import org.openmetadata.service.util.EntityUtil;
         "The `Events` are changes to metadata and are sent when entities are created, modified, or updated. External systems can subscribe to events using event subscription API over Webhooks, Slack, or Microsoft Teams.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "events")
+@Collection(name = "events", entityType = Entity.NONE)
 public class EventResource {
   @Getter private final ChangeEventRepository repository;
 

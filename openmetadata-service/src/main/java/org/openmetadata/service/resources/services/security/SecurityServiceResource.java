@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.serviceentities.SecurityServiceEntityService;
 
@@ -68,7 +69,7 @@ import org.openmetadata.service.services.serviceentities.SecurityServiceEntitySe
     description = "APIs related to Security Service entities, such as Apache Ranger.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "securityServices")
+@Collection(name = "securityServices", entityType = Entity.SECURITY_SERVICE)
 public class SecurityServiceResource {
   public static final String COLLECTION_PATH = "v1/services/securityServices/";
 

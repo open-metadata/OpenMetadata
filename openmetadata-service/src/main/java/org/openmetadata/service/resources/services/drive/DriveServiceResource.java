@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.serviceentities.DriveServiceEntityService;
 
@@ -70,7 +71,7 @@ import org.openmetadata.service.services.serviceentities.DriveServiceEntityServi
             + "SharePoint, Box, or Dropbox where documents, spreadsheets, and other files are stored.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "driveServices")
+@Collection(name = "driveServices", entityType = Entity.DRIVE_SERVICE)
 public class DriveServiceResource {
   public static final String COLLECTION_PATH = "v1/services/driveServices/";
 

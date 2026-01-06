@@ -25,6 +25,8 @@ import io.github.classgraph.ClassInfoList;
 import io.github.classgraph.ScanResult;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.UriInfo;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.util.ArrayList;
@@ -55,6 +57,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ChangeEventRepository;
@@ -74,6 +78,7 @@ import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.mapper.EntityMapper;
 import org.openmetadata.service.mapper.Mapper;
 import org.openmetadata.service.mapper.MapperRegistry;
@@ -290,6 +295,10 @@ public final class Entity {
   public static final String ALL_RESOURCES = "All";
 
   public static final String DOCUMENT = "document";
+
+  // Special constant for non-entity resources
+  public static final String NONE = "none";
+
   // ServiceType - Service Entity name map
   static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP = new EnumMap<>(ServiceType.class);
   // entity type to service entity name map
@@ -388,7 +397,8 @@ public final class Entity {
     }
   }
 
-  public static ServiceRegistry initializeServices(Authorizer authorizer) {
+  public static ServiceRegistry initializeServices(
+      Authorizer authorizer, Limits limits, MapperRegistry mapperRegistry) {
     ServiceRegistry serviceRegistry = new ServiceRegistry();
     List<Class<?>> serviceClasses = getServiceClasses();
 
@@ -406,6 +416,10 @@ public final class Entity {
 
       try {
         EntityRepository<?> repository = ENTITY_REPOSITORY_MAP.get(entityType);
+        EntityMapper<?, ?> mapper = null;
+        if (mapperRegistry.hasMapper(entityType)) {
+          mapper = mapperRegistry.getMapper(entityType);
+        }
         if (repository == null) {
           LOG.warn(
               "No repository found for entity type: {}, skipping service: {}",
@@ -414,7 +428,9 @@ public final class Entity {
           continue;
         }
 
-        Object service = tryInstantiateService(clz, repository, authorizer);
+        Object service =
+            tryInstantiateService(
+                clz, repository, Entity.getSearchRepository(), mapper, authorizer, limits);
         if (service instanceof EntityBaseService<?, ?> entityService) {
           serviceRegistry.register(entityType, entityService);
           LOG.info("Registered service: {} for entity type: {}", clz.getSimpleName(), entityType);
@@ -433,15 +449,37 @@ public final class Entity {
   }
 
   private static Object tryInstantiateService(
-      Class<?> clz, EntityRepository<?> repository, Authorizer authorizer) throws Exception {
-    try {
-      return clz.getDeclaredConstructor(
-              repository.getClass(), SearchRepository.class, Authorizer.class)
-          .newInstance(repository, authorizer);
-    } catch (NoSuchMethodException e) {
-      LOG.error("Failed to Initialize Services");
-      throw new BadRequestException("Failed to Initialize Services");
+      Class<?> clz,
+      EntityRepository<?> repository,
+      SearchRepository searchRepository,
+      EntityMapper<?, ?> mapper,
+      Authorizer authorizer,
+      Limits limits)
+      throws Exception {
+    Service serviceAnnotation = clz.getAnnotation(Service.class);
+    for (Constructor<?> constructor : clz.getDeclaredConstructors()) {
+      // Test Definitions
+      if (Entity.TEST_CONNECTION_DEFINITION.equals(serviceAnnotation.entityType())
+          || Entity.DATA_INSIGHT_CUSTOM_CHART.equals(serviceAnnotation.entityType())
+          || Entity.REPORT.equals(serviceAnnotation.entityType())) {
+        return constructor.newInstance(repository, authorizer, limits);
+      }
+      // Test Suite Resource
+      if (Entity.TEST_SUITE.equals(serviceAnnotation.entityType())) {
+        return constructor.newInstance(repository, searchRepository, authorizer, mapper, limits);
+      }
+
+      if (Entity.INGESTION_PIPELINE.equals(serviceAnnotation.entityType())) {
+        // TODO: Fix This
+        // glossaryTerm
+        // ingestionPipeline
+        // tagService
+      }
+
+      return constructor.newInstance(repository, authorizer, mapper, limits);
     }
+    LOG.error("Failed to Initialize Service: {} - No compatible constructor found", clz.getName());
+    throw new BadRequestException("Failed to Initialize Services");
   }
 
   private static List<Class<?>> getServiceClasses() {
@@ -455,7 +493,7 @@ public final class Entity {
     }
   }
 
-  public static MapperRegistry initializeMappers() {
+  public static MapperRegistry initializeMappers(OpenMetadataApplicationConfig config) {
     MapperRegistry mapperRegistry = MapperRegistry.getInstance();
     List<Class<?>> mapperClasses = getMapperClasses();
 
@@ -478,9 +516,28 @@ public final class Entity {
           LOG.info("Registered mapper: {} for entity type: {}", clz.getSimpleName(), entityType);
         }
       } catch (NoSuchMethodException e) {
-        LOG.debug(
-            "Mapper {} does not have no-arg constructor, skipping auto-registration",
-            clz.getSimpleName());
+        for (Constructor<?> constructor : clz.getDeclaredConstructors()) {
+          Class<?>[] paramTypes = constructor.getParameterTypes();
+          if (paramTypes.length == 1
+              && PipelineServiceClientInterface.class.isAssignableFrom(paramTypes[0])) {
+            try {
+              PipelineServiceClientInterface pipelineServiceClient =
+                  PipelineServiceClientFactory.createPipelineServiceClient(
+                      config.getPipelineServiceClientConfiguration());
+              Object mapper = constructor.newInstance(pipelineServiceClient);
+              if (mapper instanceof EntityMapper<?, ?> entityMapper) {
+                mapperRegistry.register(entityType, entityMapper);
+                LOG.info(
+                    "Registered mapper: {} for entity type: {}", clz.getSimpleName(), entityType);
+              }
+            } catch (InstantiationException
+                | IllegalAccessException
+                | InvocationTargetException ex) {
+              LOG.warn(
+                  "Failed to instantiate mapper: {} - {}", clz.getSimpleName(), ex.getMessage());
+            }
+          }
+        }
       } catch (Exception e) {
         LOG.warn("Failed to instantiate mapper: {} - {}", clz.getSimpleName(), e.getMessage());
       }

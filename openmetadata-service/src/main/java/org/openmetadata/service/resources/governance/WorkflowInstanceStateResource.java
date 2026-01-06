@@ -41,7 +41,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
     description = "A Workflow Instance State is a specific state of a Workflow Instance.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "governanceWorkflows")
+@Collection(name = "governanceWorkflows", entityType = Entity.WORKFLOW_INSTANCE_STATE)
 public class WorkflowInstanceStateResource
     extends EntityTimeSeriesResource<WorkflowInstanceState, WorkflowInstanceStateRepository> {
   public static final String COLLECTION_PATH = "/v1/governance/workflowInstanceStates";

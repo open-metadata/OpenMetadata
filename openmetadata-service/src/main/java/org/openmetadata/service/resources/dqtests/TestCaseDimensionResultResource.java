@@ -45,7 +45,7 @@ import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext
 @Tag(name = "Data Quality", description = "APIs to retrieve dimensional test case results data.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "TestCaseDimensionResults")
+@Collection(name = "TestCaseDimensionResults", entityType = Entity.TEST_CASE_DIMENSION_RESULT)
 public class TestCaseDimensionResultResource
     extends EntityTimeSeriesResource<TestCaseDimensionResult, TestCaseDimensionResultRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/";

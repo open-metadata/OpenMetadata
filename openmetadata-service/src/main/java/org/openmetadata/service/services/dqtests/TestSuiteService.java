@@ -104,8 +104,8 @@ public class TestSuiteService {
       TestSuiteRepository repository,
       SearchRepository searchRepository,
       Authorizer authorizer,
-      Limits limits,
-      TestSuiteMapper mapper) {
+      TestSuiteMapper mapper,
+      Limits limits) {
     this.repository = repository;
     this.searchRepository = searchRepository;
     this.authorizer = authorizer;

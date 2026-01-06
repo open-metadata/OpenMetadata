@@ -288,10 +288,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerLimits(catalogConfig);
 
     // Initialize Mappers
-    mapperRegistry = Entity.initializeMappers();
+    mapperRegistry = Entity.initializeMappers(catalogConfig);
 
     // Initialize Services after authorizer is created
-    serviceRegistry = Entity.initializeServices(authorizer);
+    serviceRegistry = Entity.initializeServices(authorizer, limits, mapperRegistry);
 
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory())

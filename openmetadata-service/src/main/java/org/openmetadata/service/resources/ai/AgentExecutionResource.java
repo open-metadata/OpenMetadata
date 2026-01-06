@@ -24,6 +24,7 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.AgentExecution;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.ai.AgentExecutionService;
@@ -36,7 +37,7 @@ import org.openmetadata.service.services.ai.AgentExecutionService;
         "`Agent Executions` are time-series records of AI agent execution runs, capturing observability metrics, governance checks, and performance data.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "agentExecutions")
+@Collection(name = "agentExecutions", entityType = Entity.AGENT_EXECUTION)
 public class AgentExecutionResource {
   public static final String COLLECTION_PATH = "v1/agentExecutions/";
   private final AgentExecutionService agentExecutionService;

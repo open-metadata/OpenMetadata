@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.serviceentities.DashboardServiceEntityService;
 
@@ -63,7 +64,7 @@ import org.openmetadata.service.services.serviceentities.DashboardServiceEntityS
 @Tag(name = "Dashboard Services")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "dashboardServices")
+@Collection(name = "dashboardServices", entityType = Entity.DASHBOARD_SERVICE)
 public class DashboardServiceResource {
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
 

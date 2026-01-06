@@ -66,6 +66,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -89,7 +90,8 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(
     name = "glossaryTerms",
-    order = 7) // Initialized after Glossary, Classification, and Tags
+    order = 7,
+    entityType = Entity.GLOSSARY_TERM) // Initialized after Glossary, Classification, and Tags
 public class GlossaryTermResource {
   public static final String COLLECTION_PATH = "v1/glossaryTerms/";
   private final GlossaryTermService service;

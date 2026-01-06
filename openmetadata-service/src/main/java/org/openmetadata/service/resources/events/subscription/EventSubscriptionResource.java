@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -76,7 +77,10 @@ import org.quartz.SchedulerException;
         "The `Events` are changes to metadata and are sent when entities are created, modified, or updated. External systems can subscribe to events using event subscription API over Webhooks, Slack, or Microsoft Teams.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "events/subscriptions", order = 7) // needs to initialize before applications
+@Collection(
+    name = "events/subscriptions",
+    order = 7,
+    entityType = Entity.EVENT_SUBSCRIPTION) // needs to initialize before applications
 public class EventSubscriptionResource {
   public static final String COLLECTION_PATH = "/v1/events/subscriptions";
   private final EventSubscriptionService eventSubscriptionService;

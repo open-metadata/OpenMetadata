@@ -51,6 +51,7 @@ import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.teams.PersonaService;
@@ -64,7 +65,7 @@ import org.openmetadata.service.services.teams.PersonaService;
             + " OpenMetadata uses Persona to define customizable experience in the UI.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "personas", order = 2)
+@Collection(name = "personas", order = 2, entityType = Entity.PERSONA)
 public class PersonaResource {
   public static final String COLLECTION_PATH = "/v1/personas";
   private final PersonaService service;

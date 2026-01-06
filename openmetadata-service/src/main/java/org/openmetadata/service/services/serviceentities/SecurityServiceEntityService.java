@@ -42,17 +42,21 @@ public class SecurityServiceEntityService
     extends ServiceEntityResource<SecurityService, SecurityServiceRepository, SecurityConnection> {
   public static final String FIELDS = "owners,domains,followers";
 
-  @Getter private final SecurityServiceMapper mapper = new SecurityServiceMapper();
+  @Getter private final SecurityServiceMapper mapper;
 
   @Inject
   public SecurityServiceEntityService(
-      SecurityServiceRepository repository, Authorizer authorizer, Limits limits) {
+      SecurityServiceRepository repository,
+      Authorizer authorizer,
+      SecurityServiceMapper mapper,
+      Limits limits) {
     super(
         new ServiceEntityInfo<>(
             Entity.SECURITY_SERVICE, ServiceType.SECURITY, SecurityService.class),
         repository,
         authorizer,
         limits);
+    this.mapper = mapper;
   }
 
   @Override

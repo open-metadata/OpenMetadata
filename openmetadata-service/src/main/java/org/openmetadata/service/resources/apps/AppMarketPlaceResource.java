@@ -39,6 +39,7 @@ import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -50,7 +51,7 @@ import org.openmetadata.service.services.apps.AppMarketPlaceService;
     description = "Apps marketplace holds to application available for Open-metadata")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "apps/marketplace", order = 7)
+@Collection(name = "apps/marketplace", order = 7, entityType = Entity.APP_MARKET_PLACE_DEF)
 public class AppMarketPlaceResource {
   public static final String COLLECTION_PATH = "/v1/apps/marketplace/";
   private final AppMarketPlaceService service;

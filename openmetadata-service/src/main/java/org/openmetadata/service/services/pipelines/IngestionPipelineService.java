@@ -85,10 +85,10 @@ public class IngestionPipelineService
   @Inject
   public IngestionPipelineService(
       IngestionPipelineRepository repository,
+      StreamableLogsMetrics streamableLogsMetrics,
       Authorizer authorizer,
       IngestionPipelineMapper mapper,
-      Limits limits,
-      StreamableLogsMetrics streamableLogsMetrics) {
+      Limits limits) {
     super(
         new ResourceEntityInfo<>(Entity.INGESTION_PIPELINE, IngestionPipeline.class),
         repository,

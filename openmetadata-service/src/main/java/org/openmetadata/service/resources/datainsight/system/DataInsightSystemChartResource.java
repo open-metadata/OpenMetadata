@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.datainsight.DataInsightSystemChartService;
@@ -51,7 +52,7 @@ import org.slf4j.LoggerFactory;
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "analytics")
+@Collection(name = "analytics", entityType = Entity.NONE)
 public class DataInsightSystemChartResource {
   public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/system/charts";
   private static final Logger LOG = LoggerFactory.getLogger(DataInsightSystemChartResource.class);

@@ -37,7 +37,7 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Singleton
-@Service(entityType = Entity.GLOSSARY)
+@Service(entityType = Entity.GLOSSARY, order = 9)
 public class GlossaryService extends EntityBaseService<Glossary, GlossaryRepository> {
 
   @Getter private final GlossaryMapper mapper;

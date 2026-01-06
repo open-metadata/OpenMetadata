@@ -55,6 +55,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.searchindex.SearchIndexService;
@@ -66,7 +67,7 @@ import org.openmetadata.service.services.searchindex.SearchIndexService;
         "A `SearchIndex` is a index mapping for indexing documents in a `Search Service`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "searchIndexes")
+@Collection(name = "searchIndexes", entityType = Entity.SEARCH_INDEX)
 public class SearchIndexResource {
   public static final String COLLECTION_PATH = "v1/searchIndexes/";
   private final SearchIndexService service;

@@ -70,7 +70,7 @@ import org.openmetadata.service.util.CSVExportResponse;
         "A `Database Schema` is collection of tables, views, stored procedures, and other database objects.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "databaseSchemas")
+@Collection(name = "databaseSchemas", entityType = Entity.DATABASE_SCHEMA)
 public class DatabaseSchemaResource {
   public static final String COLLECTION_PATH = "v1/databaseSchemas/";
 

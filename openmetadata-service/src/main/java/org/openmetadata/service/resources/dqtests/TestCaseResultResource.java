@@ -74,7 +74,7 @@ import org.openmetadata.service.util.RestUtil;
             + "This resource provides APIs to manage test case results.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "TestCaseResults")
+@Collection(name = "TestCaseResults", entityType = Entity.TEST_CASE_RESULT)
 public class TestCaseResultResource
     extends EntityTimeSeriesResource<TestCaseResult, TestCaseResultRepository> {
   static final String FIELDS = "testCase,testDefinition";

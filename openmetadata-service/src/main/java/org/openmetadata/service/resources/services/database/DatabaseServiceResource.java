@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.serviceentities.DatabaseServiceEntityService;
 import org.openmetadata.service.util.CSVExportResponse;
@@ -70,7 +71,7 @@ import org.openmetadata.service.util.CSVExportResponse;
             + "Postgres, or Snowflake. Alternative terms such as Database Cluster, Database Server instance are also used for database service.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "databaseServices")
+@Collection(name = "databaseServices", entityType = Entity.DATABASE_SERVICE)
 public class DatabaseServiceResource {
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
 

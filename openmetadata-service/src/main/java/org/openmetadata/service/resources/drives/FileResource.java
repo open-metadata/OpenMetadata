@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.drives.FileService;
@@ -62,7 +63,7 @@ import org.openmetadata.service.services.drives.FileService;
 @Tag(name = "Files", description = "A `File` is a document or resource stored in a Drive Service.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "files")
+@Collection(name = "files", entityType = Entity.FILE)
 public class FileResource {
   public static final String COLLECTION_PATH = "v1/drives/files/";
   private final FileService service;

@@ -56,7 +56,7 @@ import org.openmetadata.service.services.reports.ReportService.ReportList;
             + "data in text, table, and visual form.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "reports")
+@Collection(name = "reports", entityType = Entity.REPORT)
 public class ReportResource {
   public static final String COLLECTION_PATH = "/v1/reports/";
   private final ReportService service;

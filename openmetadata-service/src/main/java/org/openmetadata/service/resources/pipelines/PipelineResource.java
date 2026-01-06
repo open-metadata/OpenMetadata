@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.PipelineObservabilityResponse;
 import org.openmetadata.schema.type.PipelineRuntimeTrendList;
 import org.openmetadata.schema.type.PipelineSummary;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -74,7 +75,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
         "A `Pipeline` enables the flow of data from source to destination through a series of processing steps. ETL is a type of pipeline where the series of steps Extract, Transform and Load the data.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "pipelines")
+@Collection(name = "pipelines", entityType = Entity.PIPELINE)
 public class PipelineResource {
   public static final String COLLECTION_PATH = "v1/pipelines/";
   static final String FIELDS = PipelineService.FIELDS;

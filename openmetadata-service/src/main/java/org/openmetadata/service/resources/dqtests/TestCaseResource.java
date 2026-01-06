@@ -80,7 +80,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
             + " columns, and other data assets.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "TestCases")
+@Collection(name = "TestCases", entityType = Entity.TEST_CASE)
 public class TestCaseResource {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
   static final String SEARCH_FIELDS_EXCLUDE =

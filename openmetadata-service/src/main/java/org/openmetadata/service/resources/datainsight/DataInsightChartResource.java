@@ -43,6 +43,7 @@ import org.openmetadata.schema.type.DataReportIndex;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -53,7 +54,7 @@ import org.openmetadata.service.services.datainsight.DataInsightChartService;
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "analytics")
+@Collection(name = "analytics", entityType = Entity.DATA_INSIGHT_CHART)
 public class DataInsightChartResource {
   public static final String COLLECTION_PATH = DataInsightChartRepository.COLLECTION_PATH;
   private final DataInsightChartService service;

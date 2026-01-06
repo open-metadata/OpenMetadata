@@ -32,7 +32,7 @@ import org.openmetadata.service.services.Service;
 
 @Slf4j
 @Singleton
-@Service(entityType = Entity.CLASSIFICATION)
+@Service(entityType = Entity.CLASSIFICATION, order = 9)
 public class ClassificationService
     extends EntityBaseService<Classification, ClassificationRepository> {
   public static final String FIELDS =

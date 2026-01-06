@@ -36,6 +36,7 @@ import jakarta.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.UpdateColumn;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ColumnRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
@@ -50,7 +51,7 @@ import org.openmetadata.service.security.Authorizer;
             + "descriptions, and other properties using the column's fully qualified name.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "columns")
+@Collection(name = "columns", entityType = Entity.NONE)
 public class ColumnResource {
 
   private final ColumnRepository repository;

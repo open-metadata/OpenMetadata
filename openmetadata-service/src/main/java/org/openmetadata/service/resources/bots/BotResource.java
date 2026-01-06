@@ -50,6 +50,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.bots.BotService;
@@ -62,7 +63,7 @@ import org.openmetadata.service.services.bots.BotService;
             + "It performs this task as a special user in the system.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "bots", order = 4, requiredForOps = true)
+@Collection(name = "bots", order = 4, requiredForOps = true, entityType = Entity.BOT)
 public class BotResource {
   public static final String COLLECTION_PATH = "/v1/bots/";
   private final BotService service;

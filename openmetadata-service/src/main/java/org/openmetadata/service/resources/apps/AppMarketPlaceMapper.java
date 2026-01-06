@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.apps;
 
 import jakarta.ws.rs.BadRequestException;
 import java.util.Objects;
+import javax.inject.Inject;
 import javax.validation.ConstraintViolationException;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppType;
@@ -19,6 +20,7 @@ public class AppMarketPlaceMapper
     implements EntityMapper<AppMarketPlaceDefinition, CreateAppMarketPlaceDefinitionReq> {
   private PipelineServiceClientInterface pipelineServiceClient;
 
+  @Inject
   public AppMarketPlaceMapper(PipelineServiceClientInterface pipelineServiceClient) {
     this.pipelineServiceClient = pipelineServiceClient;
   }

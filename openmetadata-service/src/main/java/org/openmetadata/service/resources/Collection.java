@@ -23,6 +23,8 @@ import java.lang.annotation.Target;
 public @interface Collection {
   String name();
 
+  String entityType();
+
   /** Order of initialization of resource starting from 0. Only order from 0 to 9 (inclusive) are allowed */
   int order() default 9;
 

@@ -42,7 +42,7 @@ import org.openmetadata.service.services.databases.QueryCostService;
     description = "APIs to query cost records from usage workflow.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "QueriesCost")
+@Collection(name = "QueriesCost", entityType = Entity.QUERY_COST_RECORD)
 public class QueryCostResource
     extends EntityTimeSeriesResource<QueryCostRecord, QueryCostRepository> {
 

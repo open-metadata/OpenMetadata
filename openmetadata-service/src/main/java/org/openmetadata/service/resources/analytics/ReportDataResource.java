@@ -42,7 +42,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "analytics")
+@Collection(name = "analytics", entityType = Entity.NONE)
 public class ReportDataResource extends EntityTimeSeriesResource<ReportData, ReportDataRepository> {
   public static final String COLLECTION_PATH = "v1/analytics/dataInsights/data";
 

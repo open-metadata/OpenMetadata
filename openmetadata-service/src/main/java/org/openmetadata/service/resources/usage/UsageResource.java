@@ -52,7 +52,7 @@ import org.openmetadata.service.util.RestUtil;
 @Tag(name = "Usage", description = "APIs related usage of data assets.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "usage")
+@Collection(name = "usage", entityType = Entity.NONE)
 public class UsageResource {
   private final UsageRepository dao;
   private final Authorizer authorizer;

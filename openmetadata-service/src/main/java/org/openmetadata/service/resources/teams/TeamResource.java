@@ -86,7 +86,8 @@ import org.openmetadata.service.util.RestUtil;
 @Collection(
     name = "teams",
     order = 2,
-    requiredForOps = true) // Load after roles, and policy resources
+    requiredForOps = true,
+    entityType = Entity.TEAM) // Load after roles, and policy resources
 public class TeamResource {
   public static final String COLLECTION_PATH = "/v1/teams/";
   private final TeamService service;

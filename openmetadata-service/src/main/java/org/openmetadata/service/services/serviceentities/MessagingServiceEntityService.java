@@ -43,17 +43,21 @@ public class MessagingServiceEntityService
         MessagingService, MessagingServiceRepository, MessagingConnection> {
   public static final String FIELDS = "owners,domains,followers";
 
-  @Getter private final MessagingServiceMapper mapper = new MessagingServiceMapper();
+  @Getter private final MessagingServiceMapper mapper;
 
   @Inject
   public MessagingServiceEntityService(
-      MessagingServiceRepository repository, Authorizer authorizer, Limits limits) {
+      MessagingServiceRepository repository,
+      Authorizer authorizer,
+      MessagingServiceMapper mapper,
+      Limits limits) {
     super(
         new ServiceEntityInfo<>(
             Entity.MESSAGING_SERVICE, ServiceType.MESSAGING, MessagingService.class),
         repository,
         authorizer,
         limits);
+    this.mapper = mapper;
   }
 
   @Override

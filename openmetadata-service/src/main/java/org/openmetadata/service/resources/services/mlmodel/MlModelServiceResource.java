@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.serviceentities.MlModelServiceEntityService;
 
@@ -66,7 +67,7 @@ import org.openmetadata.service.services.serviceentities.MlModelServiceEntitySer
 @Tag(name = "ML Model Services")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "mlmodelServices")
+@Collection(name = "mlmodelServices", entityType = Entity.MLMODEL_SERVICE)
 public class MlModelServiceResource {
   public static final String COLLECTION_PATH = "v1/services/mlmodelServices/";
 

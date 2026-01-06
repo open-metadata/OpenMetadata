@@ -53,6 +53,7 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.policies.RoleService;
@@ -70,7 +71,8 @@ import org.openmetadata.service.util.RestUtil;
 @Collection(
     name = "roles",
     order = 1,
-    requiredForOps = true) // Load roles after PolicyResource are loaded at Order 0
+    requiredForOps = true,
+    entityType = Entity.ROLE) // Load roles after PolicyResource are loaded at Order 0
 @Slf4j
 public class RoleResource {
   public static final String COLLECTION_PATH = "/v1/roles/";

@@ -55,6 +55,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.messaging.TopicService;
@@ -67,7 +68,7 @@ import org.openmetadata.service.services.messaging.TopicService;
             + "into which publishers publish messages and consumed by consumers.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "topics")
+@Collection(name = "topics", entityType = Entity.TOPIC)
 public class TopicResource {
   public static final String COLLECTION_PATH = "v1/topics/";
   private final TopicService service;

@@ -87,7 +87,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
         "`Table` organizes data in rows and columns and is defined in a `Database Schema`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "tables")
+@Collection(name = "tables", entityType = Entity.TABLE)
 public class TableResource {
   private final TableService tableService;
   public static final String COLLECTION_PATH = "v1/tables/";

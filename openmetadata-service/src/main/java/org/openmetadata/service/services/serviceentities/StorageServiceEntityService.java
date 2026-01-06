@@ -44,16 +44,20 @@ public class StorageServiceEntityService
     extends ServiceEntityResource<StorageService, StorageServiceRepository, StorageConnection> {
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
 
-  @Getter private final StorageServiceMapper mapper = new StorageServiceMapper();
+  @Getter private final StorageServiceMapper mapper;
 
   @Inject
   public StorageServiceEntityService(
-      StorageServiceRepository repository, Authorizer authorizer, Limits limits) {
+      StorageServiceRepository repository,
+      Authorizer authorizer,
+      StorageServiceMapper mapper,
+      Limits limits) {
     super(
         new ServiceEntityInfo<>(Entity.STORAGE_SERVICE, ServiceType.STORAGE, StorageService.class),
         repository,
         authorizer,
         limits);
+    this.mapper = mapper;
   }
 
   @Override

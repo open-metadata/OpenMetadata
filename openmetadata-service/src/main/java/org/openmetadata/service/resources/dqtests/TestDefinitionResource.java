@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -55,7 +56,7 @@ import org.openmetadata.service.services.dqtests.TestDefinitionService;
             + "that run against data to capture data quality.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "TestDefinitions")
+@Collection(name = "TestDefinitions", entityType = Entity.TEST_DEFINITION)
 public class TestDefinitionResource {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testDefinitions";
   private final TestDefinitionService service;

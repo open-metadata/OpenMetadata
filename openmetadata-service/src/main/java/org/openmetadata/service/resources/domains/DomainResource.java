@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.domains.DomainService;
@@ -67,7 +68,7 @@ import org.openmetadata.service.util.EntityHierarchyList;
         "A `Domain` is a bounded context that is aligned with a Business Unit or a function within an organization.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "domains", order = 4)
+@Collection(name = "domains", order = 4, entityType = Entity.DOMAIN)
 public class DomainResource {
   public static final String COLLECTION_PATH = "/v1/domains/";
   private final DomainService service;

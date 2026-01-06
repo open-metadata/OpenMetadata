@@ -69,7 +69,7 @@ import os.org.opensearch.client.opensearch.core.search.Suggest;
 @Path("/v1/search")
 @Tag(name = "Search", description = "APIs related to search and suggest.")
 @Produces(MediaType.APPLICATION_JSON)
-@Collection(name = "search")
+@Collection(name = "search", entityType = Entity.NONE)
 public class SearchResource {
   private final SearchRepository searchRepository;
   private final Authorizer authorizer;

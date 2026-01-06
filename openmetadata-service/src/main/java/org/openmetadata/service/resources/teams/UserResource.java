@@ -167,7 +167,7 @@ import org.openmetadata.service.util.email.TemplateConstants;
         "A `User` represents a user of OpenMetadata. A user can be part of 0 or more teams. A special type of user called Bot is used for automation. A user can be an owner of zero or more data assets. A user can also follow zero or more data assets.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "users", order = 3, requiredForOps = true)
+@Collection(name = "users", order = 3, requiredForOps = true, entityType = Entity.USER)
 public class UserResource {
   public static final String COLLECTION_PATH = "v1/users/";
   private final UserService service;

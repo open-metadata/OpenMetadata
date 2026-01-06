@@ -39,6 +39,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.ml.LLMModelService;
@@ -50,7 +51,7 @@ import org.openmetadata.service.services.ml.LLMModelService;
         "`LLM Models` are Large Language Model instances such as GPT-4, Claude, Llama, or custom-trained models used for AI applications.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "llmModels")
+@Collection(name = "llmModels", entityType = Entity.LLM_MODEL)
 public class LLMModelResource {
   public static final String COLLECTION_PATH = "v1/llmModels/";
   private final LLMModelService service;

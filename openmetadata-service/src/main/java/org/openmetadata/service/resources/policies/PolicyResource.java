@@ -51,6 +51,7 @@ import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ResourceDescriptor;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.FunctionList;
 import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -66,7 +67,7 @@ import org.openmetadata.service.services.policies.PolicyService;
         "A `Policy` defines control that needs to be applied across different Data Entities.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "policies", order = 0, requiredForOps = true)
+@Collection(name = "policies", order = 0, requiredForOps = true, entityType = Entity.POLICY)
 public class PolicyResource {
   public static final String COLLECTION_PATH = "v1/policies/";
   private final PolicyService service;

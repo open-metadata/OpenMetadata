@@ -22,6 +22,7 @@ import io.github.classgraph.ScanResult;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Path;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
@@ -37,6 +38,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.CollectionDescriptor;
 import org.openmetadata.schema.type.CollectionInfo;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
@@ -164,6 +166,7 @@ public final class CollectionRegistry {
             createResource(
                 jdbi,
                 resourceClass,
+                details.entityType,
                 config,
                 authorizer,
                 authenticatorHandler,
@@ -214,6 +217,7 @@ public final class CollectionRegistry {
           createResource(
               jdbi,
               resourceClass,
+              details.entityType,
               config,
               authorizer,
               authenticatorHandler,
@@ -248,6 +252,7 @@ public final class CollectionRegistry {
   private static CollectionDetails getCollection(Class<?> cl) {
     int order = 0;
     boolean requiredForOps = false;
+    String entityType = Entity.NONE;
     CollectionInfo collectionInfo = new CollectionInfo();
     for (Annotation a : cl.getAnnotations()) {
       if (a instanceof Path path) {
@@ -261,11 +266,12 @@ public final class CollectionRegistry {
         collectionInfo.withName(collection.name());
         order = collection.order();
         requiredForOps = collection.requiredForOps();
+        entityType = collection.entityType();
       }
     }
     CollectionDescriptor cd = new CollectionDescriptor();
     cd.setCollection(collectionInfo);
-    return new CollectionDetails(cd, cl.getCanonicalName(), order, requiredForOps);
+    return new CollectionDetails(cd, cl.getCanonicalName(), entityType, order, requiredForOps);
   }
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Collection} annotation */
@@ -290,6 +296,7 @@ public final class CollectionRegistry {
   private static Object createResource(
       Jdbi jdbi,
       String resourceClass,
+      String entityType,
       OpenMetadataApplicationConfig config,
       Authorizer authorizer,
       AuthenticatorHandler authHandler,
@@ -308,9 +315,15 @@ public final class CollectionRegistry {
     // Try constructors in order of preference (most specific to least specific)
     try {
       // Try ServiceRegistry + Authorizer + Limits (new service-based pattern)
-      resource =
-          clz.getDeclaredConstructor(ServiceRegistry.class, Authorizer.class, Limits.class)
-              .newInstance(serviceRegistry, authorizer, limits);
+      if (!entityType.equals(Entity.NONE)) {
+        for (Constructor<?> constructor : clz.getDeclaredConstructors()) {
+          if (constructor.getParameterCount() == 1) {
+            resource = constructor.newInstance(serviceRegistry.getService(entityType));
+          }
+        }
+      } else {
+        throw new NoSuchMethodException("Entity cannot be registered with Services.");
+      }
     } catch (NoSuchMethodException e) {
       try {
         resource =
@@ -375,17 +388,23 @@ public final class CollectionRegistry {
 
   public static class CollectionDetails {
     @Getter private final String resourceClass;
+    @Getter private final String entityType;
     @Getter @Setter private Object resource;
     private final CollectionDescriptor cd;
     private final int order;
     private final boolean requiredForOps;
 
     CollectionDetails(
-        CollectionDescriptor cd, String resourceClass, int order, boolean requiredForOps) {
+        CollectionDescriptor cd,
+        String resourceClass,
+        String entityType,
+        int order,
+        boolean requiredForOps) {
       this.cd = cd;
       this.resourceClass = resourceClass;
       this.order = order;
       this.requiredForOps = requiredForOps;
+      this.entityType = entityType;
     }
   }
 }

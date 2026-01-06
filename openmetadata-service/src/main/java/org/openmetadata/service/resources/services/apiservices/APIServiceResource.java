@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.serviceentities.APIServiceEntityService;
 
@@ -68,7 +69,7 @@ import org.openmetadata.service.services.serviceentities.APIServiceEntityService
     description = "APIs related `API Service` entities, such as REST or MicroService.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "apiServices")
+@Collection(name = "apiServices", entityType = Entity.API_SERVICE)
 public class APIServiceResource {
   public static final String COLLECTION_PATH = "v1/services/apiServices/";
 

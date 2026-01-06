@@ -33,6 +33,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
 import org.openmetadata.service.resources.Collection;
@@ -45,7 +46,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 @Tag(name = "System", description = "APIs related to System configuration and settings.")
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
-@Collection(name = "config")
+@Collection(name = "config", entityType = Entity.NONE)
 public class ConfigResource {
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private final JWTTokenGenerator jwtTokenGenerator;

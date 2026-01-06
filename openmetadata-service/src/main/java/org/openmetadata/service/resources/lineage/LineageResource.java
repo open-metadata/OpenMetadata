@@ -84,7 +84,7 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
             + "used and the ETL pipeline that created it.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "lineage")
+@Collection(name = "lineage", entityType = Entity.NONE)
 public class LineageResource {
   static final String LINEAGE_FIELD = "lineage";
   private final LineageRepository dao;

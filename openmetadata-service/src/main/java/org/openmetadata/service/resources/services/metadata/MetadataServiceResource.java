@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.serviceentities.MetadataServiceEntityService;
@@ -72,7 +73,7 @@ import org.openmetadata.service.services.serviceentities.MetadataServiceEntitySe
             + "OpenMetadata integrates with such as `Apache Atlas`, `Amundsen`, etc.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "metadataServices", order = 8)
+@Collection(name = "metadataServices", order = 8, entityType = Entity.METADATA_SERVICE)
 public class MetadataServiceResource {
   public static final String OPENMETADATA_SERVICE = "OpenMetadata";
   public static final String COLLECTION_PATH = "v1/services/metadataServices/";

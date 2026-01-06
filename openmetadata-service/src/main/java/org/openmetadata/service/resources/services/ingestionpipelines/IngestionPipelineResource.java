@@ -87,7 +87,7 @@ import org.openmetadata.service.services.pipelines.IngestionPipelineService;
     description = "APIs related pipelines/workflows created by the system to ingest metadata.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "IngestionPipelines")
+@Collection(name = "IngestionPipelines", entityType = Entity.INGESTION_PIPELINE)
 public class IngestionPipelineResource {
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private final IngestionPipelineService service;

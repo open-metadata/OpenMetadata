@@ -35,7 +35,7 @@ import org.openmetadata.service.security.Authorizer;
 @Tag(name = "RDF", description = "APIs for RDF and SPARQL operations")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "rdf", order = 9)
+@Collection(name = "rdf", order = 9, entityType = Entity.NONE)
 @Slf4j
 public class RdfResource {
   public static final String COLLECTION_PATH = "/v1/rdf";

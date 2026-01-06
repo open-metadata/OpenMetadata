@@ -50,6 +50,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.tags.ClassificationService;
@@ -67,7 +68,9 @@ import org.openmetadata.service.services.tags.ClassificationService;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(
     name = "classifications",
-    order = 4) // Initialize before TagResource, Glossary, and GlossaryTerms
+    order = 4,
+    entityType =
+        Entity.CLASSIFICATION) // Initialize before TagResource, Glossary, and GlossaryTerms
 public class ClassificationResource {
   public static final String TAG_COLLECTION_PATH = "/v1/classifications/";
   private final ClassificationService service;

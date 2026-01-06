@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.dashboards.ChartService;
@@ -65,7 +66,7 @@ import org.openmetadata.service.services.dashboards.ChartService;
         "A `Chart` are computed from data presents data visually and can be part of `Dashboards`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "charts")
+@Collection(name = "charts", entityType = Entity.CHART)
 public class ChartResource {
   public static final String COLLECTION_PATH = "v1/charts/";
   private final ChartService service;

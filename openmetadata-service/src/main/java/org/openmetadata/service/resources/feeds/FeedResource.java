@@ -85,7 +85,7 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
     description = "Feeds API supports `Activity Feeds` and `Conversation Threads`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "feeds")
+@Collection(name = "feeds", entityType = Entity.THREAD)
 public class FeedResource {
   public static final String COLLECTION_PATH = "/v1/feed/";
   private final FeedRepository dao;

@@ -51,6 +51,7 @@ import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -60,7 +61,7 @@ import org.openmetadata.service.services.docstore.DocStoreService;
 @Tag(name = "Document Store", description = "A `Document` is an generic entity in OpenMetadata.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "knowledgePanel", order = 2)
+@Collection(name = "knowledgePanel", order = 2, entityType = Entity.DOCUMENT)
 public class DocStoreResource {
   public static final String COLLECTION_PATH = "/v1/docStore";
   private final DocStoreService service;

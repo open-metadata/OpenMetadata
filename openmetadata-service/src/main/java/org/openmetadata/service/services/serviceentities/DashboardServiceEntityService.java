@@ -43,17 +43,21 @@ public class DashboardServiceEntityService
         DashboardService, DashboardServiceRepository, DashboardConnection> {
   public static final String FIELDS = "owners,domains,followers";
 
-  @Getter private final DashboardServiceMapper mapper = new DashboardServiceMapper();
+  @Getter private final DashboardServiceMapper mapper;
 
   @Inject
   public DashboardServiceEntityService(
-      DashboardServiceRepository repository, Authorizer authorizer, Limits limits) {
+      DashboardServiceRepository repository,
+      Authorizer authorizer,
+      DashboardServiceMapper mapper,
+      Limits limits) {
     super(
         new ServiceEntityInfo<>(
             Entity.DASHBOARD_SERVICE, ServiceType.DASHBOARD, DashboardService.class),
         repository,
         authorizer,
         limits);
+    this.mapper = mapper;
   }
 
   @Override

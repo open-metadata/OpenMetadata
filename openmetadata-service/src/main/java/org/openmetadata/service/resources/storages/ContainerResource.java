@@ -41,6 +41,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.storages.ContainerService;
@@ -54,7 +55,7 @@ import org.openmetadata.service.services.storages.ContainerService;
             + "can have a parent and a list of sub-folders, and it can be structured - where it contains structured data, or unstructured where no schema for its data is defined.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "containers")
+@Collection(name = "containers", entityType = Entity.CONTAINER)
 public class ContainerResource {
   public static final String COLLECTION_PATH = "v1/containers/";
   private final ContainerService service;

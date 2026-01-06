@@ -39,6 +39,7 @@ import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -51,7 +52,7 @@ import org.openmetadata.service.services.governance.WorkflowDefinitionService;
         "A `Workflow Definition` is a configured workflow setup for a given governance task.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "governanceWorkflows")
+@Collection(name = "governanceWorkflows", entityType = Entity.WORKFLOW_DEFINITION)
 public class WorkflowDefinitionResource {
   public static final String COLLECTION_PATH = "v1/governance/workflowDefinitions/";
   private final WorkflowDefinitionService service;

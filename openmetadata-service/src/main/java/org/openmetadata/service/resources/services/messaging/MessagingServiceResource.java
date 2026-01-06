@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.serviceentities.MessagingServiceEntityService;
 
@@ -63,7 +64,7 @@ import org.openmetadata.service.services.serviceentities.MessagingServiceEntityS
 @Tag(name = "Messaging Services")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "messagingServices")
+@Collection(name = "messagingServices", entityType = Entity.MESSAGING_SERVICE)
 public class MessagingServiceResource {
   public static final String COLLECTION_PATH = "v1/services/messagingServices/";
 

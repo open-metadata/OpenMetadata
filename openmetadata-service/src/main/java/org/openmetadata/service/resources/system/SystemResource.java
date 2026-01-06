@@ -82,7 +82,7 @@ import org.openmetadata.service.util.email.EmailUtil;
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "system")
+@Collection(name = "system", entityType = Entity.NONE)
 @Slf4j
 public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/system";

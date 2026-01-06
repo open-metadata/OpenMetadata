@@ -69,7 +69,7 @@ import org.openmetadata.service.services.dashboards.DashboardDataModelService;
         "`Data Models` are the schemas used to build dashboards, charts, or other data assets.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "datamodels")
+@Collection(name = "datamodels", entityType = Entity.DASHBOARD_DATA_MODEL)
 public class DashboardDataModelResource {
   public static final String COLLECTION_PATH = "/v1/dashboard/datamodels";
   private final DashboardDataModelService service;

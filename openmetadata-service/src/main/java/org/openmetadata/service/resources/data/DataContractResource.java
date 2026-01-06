@@ -68,7 +68,7 @@ import org.openmetadata.service.services.data.DataContractService;
     description = "`DataContract` defines the schema and quality guarantees for a data asset.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes({MediaType.APPLICATION_JSON, "application/yaml", "text/yaml"})
-@Collection(name = "dataContracts")
+@Collection(name = "dataContracts", entityType = Entity.DATA_CONTRACT)
 public class DataContractResource {
   public static final String COLLECTION_PATH = "v1/dataContracts/";
   private final DataContractService service;

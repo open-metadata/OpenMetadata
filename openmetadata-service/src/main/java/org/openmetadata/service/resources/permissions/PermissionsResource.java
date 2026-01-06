@@ -49,7 +49,7 @@ import org.openmetadata.service.util.EntityUtil;
 @Path("/v1/permissions")
 @Tag(name = "Permissions", description = "APIs related to getting access permission for a User.")
 @Produces(MediaType.APPLICATION_JSON)
-@Collection(name = "permissions")
+@Collection(name = "permissions", entityType = Entity.NONE)
 public class PermissionsResource {
   private final Authorizer authorizer;
   private final PermissionDebugService debugService;

@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.connections.TestConnectionDefinitionService;
@@ -39,7 +40,7 @@ import org.openmetadata.service.services.connections.TestConnectionDefinitionSer
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "TestConnectionDefinitions")
+@Collection(name = "TestConnectionDefinitions", entityType = Entity.TEST_CONNECTION_DEFINITION)
 public class TestConnectionDefinitionResource {
   public static final String COLLECTION_PATH = "/v1/services/testConnectionDefinitions";
   private final TestConnectionDefinitionService service;

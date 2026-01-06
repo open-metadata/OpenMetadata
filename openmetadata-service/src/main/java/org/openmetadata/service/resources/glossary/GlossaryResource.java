@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -70,7 +71,9 @@ import org.openmetadata.service.util.CSVExportResponse;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(
     name = "glossaries",
-    order = 6) // Initialize before GlossaryTerm and after Classification and Tags
+    order = 6,
+    entityType =
+        Entity.GLOSSARY) // Initialize before GlossaryTerm and after Classification and Tags
 public class GlossaryResource {
   public static final String COLLECTION_PATH = "v1/glossaries/";
   private final GlossaryService service;

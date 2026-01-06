@@ -73,7 +73,7 @@ import org.openmetadata.service.services.events.NotificationTemplateService;
 @Tag(
     name = "Notification Templates",
     description = "Notification templates for customizing event notifications")
-@Collection(name = "notificationTemplates")
+@Collection(name = "notificationTemplates", entityType = Entity.NOTIFICATION_TEMPLATE)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class NotificationTemplateResource {

@@ -57,6 +57,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.databases.DatabaseService;
@@ -68,7 +69,7 @@ import org.openmetadata.service.util.CSVExportResponse;
     description = "A `Database` also referred to as `Database Catalog` is a collection of schemas.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "databases")
+@Collection(name = "databases", entityType = Entity.DATABASE)
 public class DatabaseResource {
   public static final String COLLECTION_PATH = "v1/databases/";
 

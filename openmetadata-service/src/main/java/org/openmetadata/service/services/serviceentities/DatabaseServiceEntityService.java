@@ -44,17 +44,21 @@ public class DatabaseServiceEntityService
     extends ServiceEntityResource<DatabaseService, DatabaseServiceRepository, DatabaseConnection> {
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
 
-  @Getter private final DatabaseServiceMapper mapper = new DatabaseServiceMapper();
+  @Getter private final DatabaseServiceMapper mapper;
 
   @Inject
   public DatabaseServiceEntityService(
-      DatabaseServiceRepository repository, Authorizer authorizer, Limits limits) {
+      DatabaseServiceRepository repository,
+      Authorizer authorizer,
+      DatabaseServiceMapper mapper,
+      Limits limits) {
     super(
         new ServiceEntityInfo<>(
             Entity.DATABASE_SERVICE, ServiceType.DATABASE, DatabaseService.class),
         repository,
         authorizer,
         limits);
+    this.mapper = mapper;
   }
 
   @Override

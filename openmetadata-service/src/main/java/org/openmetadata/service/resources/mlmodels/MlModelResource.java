@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.ml.MlModelService;
@@ -65,7 +66,7 @@ import org.openmetadata.service.services.ml.MlModelService;
         "`Machine Learning Models` are algorithms trained on data to find patterns or make predictions.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "mlmodels")
+@Collection(name = "mlmodels", entityType = Entity.MLMODEL)
 public class MlModelResource {
   public static final String COLLECTION_PATH = "v1/mlmodels/";
   private final MlModelService service;

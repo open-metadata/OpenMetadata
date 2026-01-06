@@ -14,6 +14,7 @@ import jakarta.ws.rs.core.UriInfo;
 import javax.validation.constraints.NotEmpty;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.rdf.sql2sparql.SqlToSparqlService;
 import org.openmetadata.service.resources.Collection;
@@ -23,7 +24,7 @@ import org.openmetadata.service.security.Authorizer;
 @Tag(name = "RDF SQL", description = "Execute SQL queries over RDF data")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "rdf-sql", order = 9)
+@Collection(name = "rdf-sql", order = 9, entityType = Entity.NONE)
 @Slf4j
 public class RdfSqlResource {
 

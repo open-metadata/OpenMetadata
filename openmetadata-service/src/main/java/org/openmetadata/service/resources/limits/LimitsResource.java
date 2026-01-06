@@ -19,6 +19,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import org.openmetadata.schema.system.LimitsConfig;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
@@ -27,7 +28,7 @@ import org.openmetadata.service.resources.Collection;
 @Tag(name = "Limits", description = "APIs related to Limits configuration and settings.")
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
-@Collection(name = "limits")
+@Collection(name = "limits", entityType = Entity.NONE)
 public class LimitsResource {
   private final Limits limits;
   private final OpenMetadataApplicationConfig config;

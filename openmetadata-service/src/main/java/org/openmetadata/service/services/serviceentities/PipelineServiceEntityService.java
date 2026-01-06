@@ -44,17 +44,21 @@ public class PipelineServiceEntityService
     extends ServiceEntityResource<PipelineService, PipelineServiceRepository, PipelineConnection> {
   public static final String FIELDS = "pipelines,owners,domains,followers";
 
-  @Getter private final PipelineServiceMapper mapper = new PipelineServiceMapper();
+  @Getter private final PipelineServiceMapper mapper;
 
   @Inject
   public PipelineServiceEntityService(
-      PipelineServiceRepository repository, Authorizer authorizer, Limits limits) {
+      PipelineServiceRepository repository,
+      Authorizer authorizer,
+      PipelineServiceMapper mapper,
+      Limits limits) {
     super(
         new ServiceEntityInfo<>(
             Entity.PIPELINE_SERVICE, ServiceType.PIPELINE, PipelineService.class),
         repository,
         authorizer,
         limits);
+    this.mapper = mapper;
   }
 
   @Override

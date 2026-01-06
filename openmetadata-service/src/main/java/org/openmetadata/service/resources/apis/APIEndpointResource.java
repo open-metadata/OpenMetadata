@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.apis.APIEndpointService;
@@ -65,7 +66,7 @@ import org.openmetadata.service.services.apis.APIEndpointService;
         "A `API Endpoint` is a specific endpoint of an API that is part of an API Collection..")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "apiEndpoints")
+@Collection(name = "apiEndpoints", entityType = Entity.API_ENDPOINT)
 public class APIEndpointResource {
   public static final String COLLECTION_PATH = "v1/apiEndpoints/";
   private final APIEndpointService service;

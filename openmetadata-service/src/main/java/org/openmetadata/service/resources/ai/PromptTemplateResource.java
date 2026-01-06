@@ -39,6 +39,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.ai.PromptTemplateService;
@@ -50,7 +51,7 @@ import org.openmetadata.service.services.ai.PromptTemplateService;
         "`Prompt Templates` are reusable, parameterized templates for LLM interactions that ensure consistent and effective prompting across AI agents.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "promptTemplates")
+@Collection(name = "promptTemplates", entityType = Entity.PROMPT_TEMPLATE)
 public class PromptTemplateResource {
   public static final String COLLECTION_PATH = "v1/promptTemplates/";
   private final PromptTemplateService service;

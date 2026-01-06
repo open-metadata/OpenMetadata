@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.serviceentities.StorageServiceEntityService;
 
@@ -68,7 +69,7 @@ import org.openmetadata.service.services.serviceentities.StorageServiceEntitySer
     description = "APIs related `Object Store Service` entities, such as S3, GCS or AZURE.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "storageServices")
+@Collection(name = "storageServices", entityType = Entity.STORAGE_SERVICE)
 public class StorageServiceResource {
   public static final String COLLECTION_PATH = "v1/services/storageServices/";
 

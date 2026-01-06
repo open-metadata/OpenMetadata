@@ -46,16 +46,20 @@ public class MlModelServiceEntityService
     extends ServiceEntityResource<MlModelService, MlModelServiceRepository, MlModelConnection> {
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
 
-  @Getter private final MlModelServiceMapper mapper = new MlModelServiceMapper();
+  @Getter private final MlModelServiceMapper mapper;
 
   @Inject
   public MlModelServiceEntityService(
-      MlModelServiceRepository repository, Authorizer authorizer, Limits limits) {
+      MlModelServiceRepository repository,
+      Authorizer authorizer,
+      MlModelServiceMapper mapper,
+      Limits limits) {
     super(
         new ServiceEntityInfo<>(Entity.MLMODEL_SERVICE, ServiceType.ML_MODEL, MlModelService.class),
         repository,
         authorizer,
         limits);
+    this.mapper = mapper;
   }
 
   @Override

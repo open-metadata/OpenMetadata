@@ -65,7 +65,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
     description = "APIs to test case incident status from incident manager.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "TestCases")
+@Collection(name = "TestCases", entityType = Entity.TEST_CASE_RESOLUTION_STATUS)
 public class TestCaseResolutionStatusResource {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseIncidentStatus";
   private final TestCaseResolutionStatusService service;

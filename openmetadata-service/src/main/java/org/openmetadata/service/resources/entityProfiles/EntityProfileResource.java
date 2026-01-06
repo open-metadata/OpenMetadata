@@ -52,7 +52,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
     description = "Provides APIs to interact with entity profiles (statistics).")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "EntityProfiles")
+@Collection(name = "EntityProfiles", entityType = Entity.ENTITY_PROFILE)
 @Hidden
 public class EntityProfileResource
     extends EntityTimeSeriesResource<EntityProfile, EntityProfileRepository> {

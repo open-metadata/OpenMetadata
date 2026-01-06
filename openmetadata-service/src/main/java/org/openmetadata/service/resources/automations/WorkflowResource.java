@@ -45,6 +45,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.automations.WorkflowService;
@@ -57,7 +58,7 @@ import org.openmetadata.service.services.automations.WorkflowService;
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "Workflow")
+@Collection(name = "Workflow", entityType = Entity.WORKFLOW)
 public class WorkflowResource {
   public static final String COLLECTION_PATH = "/v1/automations/workflows";
   private final WorkflowService service;

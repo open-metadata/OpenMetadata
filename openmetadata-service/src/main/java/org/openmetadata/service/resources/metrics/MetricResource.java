@@ -55,6 +55,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.metrics.MetricService;
@@ -67,7 +68,7 @@ import org.openmetadata.service.services.metrics.MetricService;
             + "measures used to determine performance against an objective are called KPIs or Key Performance Indicators, such as `User Retention`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "metrics")
+@Collection(name = "metrics", entityType = Entity.METRIC)
 public class MetricResource {
   public static final String COLLECTION_PATH = "v1/metrics/";
   private final MetricService service;

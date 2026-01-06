@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.util.Properties;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.OpenMetadataServerVersion;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.resources.Collection;
 
@@ -30,7 +31,7 @@ import org.openmetadata.service.resources.Collection;
 @Path("/v1/system/version")
 @Tag(name = "System", description = "APIs related to System configuration and settings.")
 @Produces(MediaType.APPLICATION_JSON)
-@Collection(name = "version")
+@Collection(name = "version", entityType = Entity.NONE)
 public class VersionResource {
   private static final OpenMetadataServerVersion OPEN_METADATA_SERVER_VERSION;
 

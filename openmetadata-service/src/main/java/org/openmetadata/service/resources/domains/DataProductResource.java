@@ -70,7 +70,7 @@ import org.openmetadata.service.services.domains.DataProductService;
             + "domain data for analytical or data-intensive use cases made available to data consumers.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "dataProducts", order = 4)
+@Collection(name = "dataProducts", order = 4, entityType = Entity.DATA_PRODUCT)
 public class DataProductResource {
   public static final String COLLECTION_PATH = "/v1/dataProducts/";
   private final DataProductService service;

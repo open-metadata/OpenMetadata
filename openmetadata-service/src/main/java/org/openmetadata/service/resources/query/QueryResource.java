@@ -44,6 +44,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -56,7 +57,7 @@ import org.openmetadata.service.services.databases.QueryService;
         "A `Query` entity represents a SQL query associated with data assets it is run against.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "queries")
+@Collection(name = "queries", entityType = Entity.QUERY)
 public class QueryResource {
   public static final String COLLECTION_PATH = "v1/queries/";
   private final QueryService service;

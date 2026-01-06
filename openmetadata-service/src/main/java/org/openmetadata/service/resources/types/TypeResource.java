@@ -52,6 +52,7 @@ import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -69,7 +70,7 @@ import org.openmetadata.service.util.SchemaFieldExtractor;
             + "only custom properties using existing OpenMetadata data types.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "types")
+@Collection(name = "types", entityType = Entity.TYPE)
 @Slf4j
 public class TypeResource {
   public static final String COLLECTION_PATH = "v1/metadata/types/";

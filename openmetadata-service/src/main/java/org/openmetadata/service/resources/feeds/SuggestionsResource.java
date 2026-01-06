@@ -73,7 +73,7 @@ import org.openmetadata.service.util.RestUtil;
         "Suggestions API supports ability to add suggestion for descriptions or tag labels for Entities.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "suggestions")
+@Collection(name = "suggestions", entityType = Entity.SUGGESTION)
 public class SuggestionsResource {
   public static final String COLLECTION_PATH = "/v1/suggestions/";
   private final SuggestionRepository dao;

@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.services.serviceentities.LLMServiceEntityService;
 
@@ -70,7 +71,7 @@ import org.openmetadata.service.services.serviceentities.LLMServiceEntityService
             + "Anthropic, Azure OpenAI, AWS Bedrock, Google Vertex AI, or custom LLM deployments.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "llmServices")
+@Collection(name = "llmServices", entityType = Entity.LLM_SERVICE)
 public class LLMServiceResource {
   public static final String COLLECTION_PATH = "v1/services/llmServices/";
 

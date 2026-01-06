@@ -41,7 +41,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
     description = "A Workflow Instance is a specific instance of a Workflow Definition.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "governanceWorkflows")
+@Collection(name = "governanceWorkflows", entityType = Entity.WORKFLOW_INSTANCE)
 public class WorkflowInstanceResource
     extends EntityTimeSeriesResource<WorkflowInstance, WorkflowInstanceRepository> {
   public static final String COLLECTION_PATH = "/v1/governance/workflowInstances";
