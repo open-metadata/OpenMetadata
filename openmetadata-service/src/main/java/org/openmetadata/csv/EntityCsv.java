@@ -135,7 +135,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
   protected final CsvImportResult importResult = new CsvImportResult();
   protected boolean processRecord; // When set to false record processing is discontinued
   protected final Map<String, T> dryRunCreatedEntities = new HashMap<>();
-  private final Map<Integer, Boolean> columnRecordCreateStatus = new HashMap<>();
   protected final String importedBy;
   protected int recordIndex = 0;
 
