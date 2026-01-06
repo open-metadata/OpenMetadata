@@ -186,6 +186,10 @@ export interface CollateAIAppConfig {
      */
     activityThreadsRetentionPeriod?: number;
     /**
+     * Enter the retention period for Audit Log entries in days (e.g., 90 for three months).
+     */
+    auditLogRetentionPeriod?: number;
+    /**
      * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
      * one month).
      */
