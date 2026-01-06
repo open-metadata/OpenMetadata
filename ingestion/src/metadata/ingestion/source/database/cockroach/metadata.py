@@ -11,12 +11,14 @@
 """
 Cockroach source module
 """
+import re
 import traceback
 from collections import namedtuple
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect
+from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -69,6 +71,13 @@ logger = ingestion_logger()
 
 PGDialect.ischema_names = ischema_names
 
+# Regex pattern to identify CockroachDB hidden shard columns.
+# These columns are created for hash-sharded indexes with names like
+# 'crdb_internal_id_shard_16'. They are marked as NOT VISIBLE and
+# should be filtered from constraint columns.
+# See: https://www.cockroachlabs.com/docs/stable/hash-sharded-indexes
+HIDDEN_SHARD_COLUMN_PATTERN = re.compile(r"^crdb_internal_.*_shard_\d+$")
+
 
 class CockroachSource(CommonDbSourceService, MultiDBSource):
     """
@@ -106,6 +115,45 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
         Method to fetch the schema description
         """
         return self.schema_desc_map.get((self.context.get().database, schema_name))
+
+    @staticmethod
+    def _is_hidden_shard_column(column_name: str) -> bool:
+        """
+        Check if a column is a CockroachDB hidden shard column.
+
+        CockroachDB creates hidden virtual columns for hash-sharded indexes
+        with names like 'crdb_internal_id_shard_16'. These columns are marked
+        as NOT VISIBLE and are not returned by get_columns(), but they appear
+        in primary key constraints, causing validation errors.
+
+        See: https://www.cockroachlabs.com/docs/stable/hash-sharded-indexes
+        """
+        return bool(HIDDEN_SHARD_COLUMN_PATTERN.match(column_name))
+
+    def _get_columns_with_constraints(
+        self, schema_name: str, table_name: str, inspector: Inspector
+    ) -> Tuple[List, List, List]:
+        """
+        Get columns with constraints, filtering out hidden shard columns
+        from primary key constraints.
+
+        CockroachDB uses hidden virtual columns (NOT VISIBLE) for hash-sharded
+        indexes. These columns appear in primary key constraints but are not
+        included in the column list, causing a mismatch that results in
+        'Invalid column name found in table constraint' errors from the server.
+        """
+        pk_columns, unique_columns, foreign_columns = super()._get_columns_with_constraints(
+            schema_name, table_name, inspector
+        )
+
+        # Filter out hidden shard columns from primary key constraints
+        if pk_columns:
+            filtered_pk_columns = [
+                col for col in pk_columns if not self._is_hidden_shard_column(col)
+            ]
+            pk_columns = filtered_pk_columns
+
+        return pk_columns, unique_columns, foreign_columns
 
     def query_table_names_and_types(
         self, schema_name: str
