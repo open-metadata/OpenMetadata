@@ -1185,7 +1185,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         if (matchesFilters(version, startTs, endTs, fieldName)) {
           filteredVersions.add(versionPair.getEntityJson());
         }
-      } catch (Exception e) {
+      } catch (org.openmetadata.schema.exception.JsonParsingException e) {
         LOG.warn("Failed to parse version {} for entity {}", versionPair.getVersion(), id, e);
       }
     }
