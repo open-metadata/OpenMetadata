@@ -29,10 +29,17 @@
       "description": "Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two months).",
       "type": "integer",
       "default": 1440
+    },
+    "auditLogRetentionPeriod": {
+      "title": "Audit Log Retention Period (days)",
+      "description": "Enter the retention period for Audit Log entries in days (e.g., 90 for three months).",
+      "type": "integer",
+      "default": 90,
+      "minimum": 1
     }
   },
   "required": [
-    "changeEventRetentionPeriod", "activityThreadsRetentionPeriod", "testCaseResultsRetentionPeriod", "profileDataRetentionPeriod"
+    "changeEventRetentionPeriod", "activityThreadsRetentionPeriod", "testCaseResultsRetentionPeriod", "profileDataRetentionPeriod", "auditLogRetentionPeriod"
   ],
   "additionalProperties": false
 }
