@@ -226,73 +226,103 @@ class SQAValidatorMixin:
         metric_expressions: Dict[str, ClauseElement],
         query_type: DataQualityQueryType,
         filter_clause: Optional[ColumnElement] = None,
+        failed_count_builder: Optional[Callable] = None,
     ):
-        """Build SELECT query for dimensional metrics with impact scoring.
-
-        This method constructs identical queries for both top N dimensions and
-        "Others" aggregation, differing only in filter/grouping/limit parameters.
-
-        Args:
-            source: CTE or table to select from (e.g., runner.dataset, value_counts_cte)
-            dimension_expr: Normalized dimension expression
-            metric_expressions: Dict mapping metric names to SQLAlchemy expressions
-                               Must include keys specified by failed_count_key and total_count_key
-            failed_count_key: Key in metric_expressions for failed count
-            total_count_key: Key in metric_expressions for total count
-            filter_clause: Optional WHERE filter (e.g., dimension.notin_(top_n_values))
-            group_by_dimension: True = GROUP BY dimension (top N), False = aggregate all (Others)
-            limit: Optional LIMIT clause (typically N+1 for top dimensions query)
-
-        Returns:
-            Select: SQLAlchemy Select object (not executed)
-        """
-        if DIMENSION_FAILED_COUNT_KEY not in metric_expressions:
-            raise ValueError(
-                f"metric_expressions must contain 'DIMENSION_FAILED_COUNT_KEY' key"
-            )
         if DIMENSION_TOTAL_COUNT_KEY not in metric_expressions:
             raise ValueError(
                 f"metric_expressions must contain 'DIMENSION_TOTAL_COUNT_KEY' key"
             )
+        if (
+            DIMENSION_FAILED_COUNT_KEY not in metric_expressions
+            and failed_count_builder is None
+        ):
+            raise ValueError(
+                f"metric_expressions must contain 'DIMENSION_FAILED_COUNT_KEY' key"
+            )
 
-        select_columns = []
+        # === Level 1: Basic Metrics CTE ===
+        # Compute all metrics from metric_expressions
+        basic_metrics_columns = []
 
         for metric_name, metric_expr in metric_expressions.items():
-            select_columns.append(metric_expr.label(metric_name))
-
-        failed_count_expr = metric_expressions[DIMENSION_FAILED_COUNT_KEY]
-        total_count_expr = metric_expressions[DIMENSION_TOTAL_COUNT_KEY]
-        impact_score_expr = get_impact_score_expression(
-            failed_count_expr, total_count_expr
-        )
-
-        select_columns.append(impact_score_expr.label(DIMENSION_IMPACT_SCORE_KEY))
+            basic_metrics_columns.append(metric_expr.label(metric_name))
 
         match query_type:
             case DataQualityQueryType.DIMENSIONAL:
-                select_columns.append(dimension_expr.label(DIMENSION_VALUE_KEY))
+                basic_metrics_columns.append(dimension_expr.label(DIMENSION_VALUE_KEY))
             case DataQualityQueryType.OTHERS:
-                select_columns.append(
+                basic_metrics_columns.append(
                     literal(DIMENSION_OTHERS_LABEL).label(DIMENSION_VALUE_KEY)
                 )
 
-        query = select(select_columns).select_from(source)
-
-        if query_type == DataQualityQueryType.DIMENSIONAL:
-            query = query.group_by(dimension_expr)
-            query = query.order_by(impact_score_expr.desc(), dimension_expr.asc())
-            query = query.limit(DEFAULT_TOP_DIMENSIONS + 1)
+        query = select(basic_metrics_columns).select_from(source)
 
         if filter_clause is not None:
             query = query.where(filter_clause)
 
-        return query
+        if query_type == DataQualityQueryType.DIMENSIONAL:
+            query = query.group_by(dimension_expr)
+
+        basic_metrics_cte = query.cte("basic_metrics")
+
+        # === Level 2: Final Metrics CTE ===
+        # Compute derived metrics
+        final_metrics_columns = []
+
+        match query_type:
+            case DataQualityQueryType.DIMENSIONAL:
+                final_metrics_columns.append(
+                    getattr(basic_metrics_cte.c, DIMENSION_VALUE_KEY).label(
+                        DIMENSION_VALUE_KEY
+                    )
+                )
+            case DataQualityQueryType.OTHERS:
+                final_metrics_columns.append(
+                    literal(DIMENSION_OTHERS_LABEL).label(DIMENSION_VALUE_KEY)
+                )
+
+        for metric_name in metric_expressions.keys():
+            if metric_name != DIMENSION_FAILED_COUNT_KEY:
+                final_metrics_columns.append(
+                    getattr(basic_metrics_cte.c, metric_name).label(metric_name)
+                )
+
+        total_count_col = getattr(basic_metrics_cte.c, DIMENSION_TOTAL_COUNT_KEY)
+        failed_count_expr = (
+            failed_count_builder(basic_metrics_cte, total_count_col)
+            if failed_count_builder
+            else getattr(basic_metrics_cte.c, DIMENSION_FAILED_COUNT_KEY)
+        )
+
+        impact_score_expr = get_impact_score_expression(
+            failed_count_expr, total_count_col
+        )
+
+        final_metrics_columns.append(
+            failed_count_expr.label(DIMENSION_FAILED_COUNT_KEY)
+        )
+        final_metrics_columns.append(
+            impact_score_expr.label(DIMENSION_IMPACT_SCORE_KEY)
+        )
+
+        final_metrics_cte = select(final_metrics_columns).cte("final_metrics")
+
+        final_query = select([final_metrics_cte])
+
+        if query_type == DataQualityQueryType.DIMENSIONAL:
+            final_query = final_query.order_by(
+                getattr(final_metrics_cte.c, DIMENSION_IMPACT_SCORE_KEY).desc(),
+                getattr(final_metrics_cte.c, DIMENSION_VALUE_KEY).asc(),
+            ).limit(DEFAULT_TOP_DIMENSIONS + 1)
+
+        return final_query
 
     def _run_dimensional_validation_query(
         self: HasValidatorContext,
         source: FromClause,
         dimension_expr: ColumnElement,
         metric_expressions: Dict[str, ClauseElement],
+        failed_count_builder: Optional[Callable] = None,
         others_source_builder: Optional[Callable[[List[str]], FromClause]] = None,
         others_metric_expressions_builder: Optional[
             Callable[[FromClause], Dict[str, ClauseElement]]
@@ -326,6 +356,7 @@ class SQAValidatorMixin:
             dimension_expr=dimension_expr,
             metric_expressions=metric_expressions,
             query_type=DataQualityQueryType.DIMENSIONAL,
+            failed_count_builder=failed_count_builder,
         )
 
         top_n_plus_one_results = self.runner.session.execute(
@@ -359,6 +390,7 @@ class SQAValidatorMixin:
                 dimension_expr=dimension_expr,  # Only used for grouping, not SELECT
                 metric_expressions=others_metrics,
                 query_type=DataQualityQueryType.OTHERS,
+                failed_count_builder=failed_count_builder,
                 filter_clause=others_filter,
             )
 

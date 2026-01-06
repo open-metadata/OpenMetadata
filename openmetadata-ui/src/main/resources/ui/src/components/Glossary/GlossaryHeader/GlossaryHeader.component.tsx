@@ -212,7 +212,7 @@ const GlossaryHeader = ({
   }, [fqn]);
 
   const handleGlossaryImport = () =>
-    navigate(getEntityImportPath(EntityType.GLOSSARY_TERM, fqn));
+    navigate(getEntityImportPath(EntityType.GLOSSARY, fqn));
 
   const handleVersionClick = async () => {
     let path: string;
@@ -453,7 +453,7 @@ const GlossaryHeader = ({
         <>
           {glossaryTermStatus && glossaryTermStatus === EntityStatus.Approved && (
             <Dropdown
-              className="m-l-xs h-10"
+              className="m-l-xs"
               menu={{
                 items: addButtonContent,
               }}

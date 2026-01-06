@@ -438,9 +438,10 @@ export const addMultiOwner = async (data: {
 export const assignTier = async (
   page: Page,
   tier: string,
-  endpoint: string
+  endpoint: string,
+  initiatorId = 'edit-tier'
 ) => {
-  await page.getByTestId('edit-tier').click();
+  await page.getByTestId(initiatorId).click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
   await page.getByTestId(`radio-btn-${tier}`).click();
@@ -479,7 +480,7 @@ export const assignCertification = async (
   endpoint: string
 ) => {
   const certificationResponse = page.waitForResponse(
-    '/api/v1/tags?parent=Certification&limit=50'
+    '/api/v1/tags?*parent=Certification*'
   );
   await page.getByTestId('edit-certification').click();
   await certificationResponse;
@@ -526,7 +527,8 @@ export const removeCertification = async (page: Page, endpoint: string) => {
 export const updateDescription = async (
   page: Page,
   description: string,
-  isModal = false
+  isModal = false,
+  validationContainerTestId = 'asset-description-container'
 ) => {
   await page.getByTestId('edit-description').click();
   await page.locator(descriptionBox).first().click();
@@ -540,16 +542,18 @@ export const updateDescription = async (
     });
   }
 
-  if (isEmpty(description)) {
-    // Check for either "No description" or handle potential UI duplication issue
-    const container = page.getByTestId('asset-description-container');
-    const text = await container.textContent();
+  if (validationContainerTestId) {
+    if (isEmpty(description)) {
+      // Check for either "No description" or handle potential UI duplication issue
+      const container = page.getByTestId(validationContainerTestId);
+      const text = await container.textContent();
 
-    expect(text).toMatch(/No description|Descriptiondescription/);
-  } else {
-    await expect(
-      page.getByTestId('asset-description-container').getByRole('paragraph')
-    ).toContainText(description);
+      expect(text).toMatch(/No description|Descriptiondescription/);
+    } else {
+      await expect(
+        page.getByTestId(validationContainerTestId).getByRole('paragraph')
+      ).toContainText(description);
+    }
   }
 };
 
@@ -584,16 +588,18 @@ export const updateDescriptionForChildren = async (
 
   await page.waitForSelector('[role="dialog"]', { state: 'hidden' });
 
-  isEmpty(description)
-    ? await expect(
-        page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
-      ).toContainText('No Description')
-    : await expect(
-        page
-          .locator(`[${rowSelector}="${rowId}"]`)
-          .getByTestId('viewer-container')
-          .getByRole('paragraph')
-      ).toContainText(description);
+  if (isEmpty(description)) {
+    await expect(
+      page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
+    ).toContainText('No Description');
+  } else {
+    await expect(
+      page
+        .locator(`[${rowSelector}="${rowId}"]`)
+        .getByTestId('viewer-container')
+        .getByRole('paragraph')
+    ).toContainText(description);
+  }
 };
 
 export const assignTag = async (
@@ -1500,9 +1506,11 @@ export const checkForEditActions = async ({
     }
 
     if (elementSelector === '[data-testid="entity-follow-button"]') {
-      deleted
-        ? await expect(page.locator(elementSelector)).not.toBeVisible()
-        : await expect(page.locator(elementSelector)).toBeVisible();
+      if (deleted) {
+        await expect(page.locator(elementSelector)).not.toBeVisible();
+      } else {
+        await expect(page.locator(elementSelector)).toBeVisible();
+      }
 
       continue;
     }
@@ -1982,7 +1990,7 @@ export const checkExploreSearchFilter = async (
   const queryRes = page.waitForResponse(querySearchURL);
   await page.click('[data-testid="update-btn"]');
   await queryRes;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(
     page.getByTestId(

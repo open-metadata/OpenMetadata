@@ -361,6 +361,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                   .id(docId)
                   .refresh(Refresh.True)
                   .scriptedUpsert(true)
+                  .upsert(params)
                   .script(
                       s ->
                           s.inline(
@@ -375,7 +376,20 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
           "Successfully updated entity in ElasticSearch for index: {}, docId: {}",
           indexName,
           docId);
-    } catch (IOException | ElasticsearchException e) {
+    } catch (ElasticsearchException e) {
+      if (e.status() == 404) {
+        LOG.warn(
+            "Document not found during update for index: {}, docId: {}. The document may not have been indexed yet.",
+            indexName,
+            docId);
+      } else {
+        LOG.error(
+            "Failed to update entity in ElasticSearch for index: {}, docId: {}",
+            indexName,
+            docId,
+            e);
+      }
+    } catch (IOException e) {
       LOG.error(
           "Failed to update entity in ElasticSearch for index: {}, docId: {}", indexName, docId, e);
     }
@@ -1052,7 +1066,6 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
 
     if (!fieldsToRemove.isEmpty()) {
       result.put("fieldsToRemove", JsonData.of(fieldsToRemove));
-      LOG.info("Fields to remove from search index: {}", fieldsToRemove);
     }
 
     return result;

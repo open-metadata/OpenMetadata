@@ -41,6 +41,7 @@ export enum SettingType {
     JwtTokenConfiguration = "jwtTokenConfiguration",
     LineageSettings = "lineageSettings",
     LoginConfiguration = "loginConfiguration",
+    OpenLineageSettings = "openLineageSettings",
     OpenMetadataBaseURLConfiguration = "openMetadataBaseUrlConfiguration",
     ProfilerConfiguration = "profilerConfiguration",
     SandboxModeEnabled = "sandboxModeEnabled",
@@ -94,6 +95,9 @@ export enum SettingType {
  * This schema defines the Workflow Settings.
  *
  * Complete security configuration including authentication and authorization
+ *
+ * Settings for OpenLineage HTTP API integration. Configure how OpenMetadata receives and
+ * processes lineage events from external systems like Spark, Airflow, and Flink.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -119,6 +123,8 @@ export interface PipelineServiceClientConfiguration {
      * can set this value to false to not check the Pipeline Service Client component health.
      *
      * Is Task Notification Enabled?
+     *
+     * Enable or disable the OpenLineage HTTP API endpoint.
      */
     enabled?: boolean;
     /**
@@ -449,6 +455,10 @@ export interface PipelineServiceClientConfiguration {
      */
     downstreamDepth?: number;
     /**
+     * Performance configuration for lineage graph builder.
+     */
+    graphPerformanceConfig?: GraphPerformanceConfig;
+    /**
      * Lineage Layer.
      */
     lineageLayer?: LineageLayer;
@@ -469,6 +479,10 @@ export interface PipelineServiceClientConfiguration {
      */
     historyCleanUpConfiguration?: HistoryCleanUpConfiguration;
     /**
+     * Used to set up the History CleanUp Settings.
+     */
+    runTimeCleanUpConfiguration?: RunTimeCleanUpConfiguration;
+    /**
      * Semantics rules defined in the data contract.
      */
     entitySemantics?: SemanticsRule[];
@@ -480,6 +494,27 @@ export interface PipelineServiceClientConfiguration {
      * Authorization configuration
      */
     authorizerConfiguration?: AuthorizerConfiguration;
+    /**
+     * Automatically create Table and Pipeline entities when they are referenced in OpenLineage
+     * events but don't exist in OpenMetadata.
+     */
+    autoCreateEntities?: boolean;
+    /**
+     * Name of the Pipeline Service to use when auto-creating Pipeline entities from OpenLineage
+     * jobs. This service must exist in OpenMetadata.
+     */
+    defaultPipelineService?: string;
+    /**
+     * List of OpenLineage event types to process. Only events matching these types will create
+     * lineage. Default is to only process COMPLETE events.
+     */
+    eventTypeFilter?: EventTypeFilter[];
+    /**
+     * Mapping of OpenLineage dataset namespaces to OpenMetadata Database Service names. Used to
+     * resolve dataset references to existing tables. Example: 'postgresql://prod-db:5432' ->
+     * 'prod-postgres'
+     */
+    namespaceToServiceMapping?: { [key: string]: string };
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -1513,6 +1548,15 @@ export enum ProviderType {
     User = "user",
 }
 
+export enum EventTypeFilter {
+    Abort = "ABORT",
+    Complete = "COMPLETE",
+    Fail = "FAIL",
+    Other = "OTHER",
+    Running = "RUNNING",
+    Start = "START",
+}
+
 /**
  * Used to set up the Workflow Executor Settings.
  */
@@ -1578,13 +1622,87 @@ export interface GlobalSettings {
 }
 
 /**
+ * Performance configuration for lineage graph builder.
+ *
+ * Configuration for lineage graph performance and scalability
+ */
+export interface GraphPerformanceConfig {
+    /**
+     * Cache time-to-live in seconds
+     */
+    cacheTTLSeconds?: number;
+    /**
+     * Enable caching for small/medium graphs
+     */
+    enableCaching?: boolean;
+    /**
+     * Enable progress tracking for long-running queries
+     */
+    enableProgressTracking?: boolean;
+    /**
+     * Batch size for fetching large graph nodes
+     */
+    largeGraphBatchSize?: number;
+    /**
+     * Maximum number of graphs to cache
+     */
+    maxCachedGraphs?: number;
+    /**
+     * Maximum nodes to keep in memory before switching to streaming
+     */
+    maxInMemoryNodes?: number;
+    /**
+     * Batch size for fetching medium graph nodes
+     */
+    mediumGraphBatchSize?: number;
+    /**
+     * Node count threshold for medium graphs (optimized batching)
+     */
+    mediumGraphThreshold?: number;
+    /**
+     * Report progress every N nodes processed
+     */
+    progressReportInterval?: number;
+    /**
+     * Scroll context timeout in minutes
+     */
+    scrollTimeoutMinutes?: number;
+    /**
+     * Batch size for fetching small graph nodes from search backend
+     */
+    smallGraphBatchSize?: number;
+    /**
+     * Node count threshold for small graphs (eligible for caching)
+     */
+    smallGraphThreshold?: number;
+    /**
+     * Batch size for streaming very large graphs
+     */
+    streamingBatchSize?: number;
+    /**
+     * Use Elasticsearch/OpenSearch scroll API for large result sets
+     */
+    useScrollForLargeGraphs?: boolean;
+}
+
+/**
  * Used to set up the History CleanUp Settings.
  */
 export interface HistoryCleanUpConfiguration {
     /**
+     * Batch size used when cleaning up Flowable History data
+     */
+    batchSize?: number;
+    /**
      * Cleans the Workflow Task that were finished, after given number of days.
      */
     cleanAfterNumberOfDays?: number;
+    /**
+     * Cron expression used by Flowable's history cleaning job
+     * (setHistoryCleaningTimeCycleConfig). For example: '0 0 1 * * ?' runs daily at 01:00, '0 *
+     * * ? * *' runs every minute (testing only).
+     */
+    timeCycleConfig?: string;
 }
 
 /**
@@ -2091,6 +2209,16 @@ export interface TitleSection {
 export enum PipelineViewMode {
     Edge = "Edge",
     Node = "Node",
+}
+
+/**
+ * Used to set up the History CleanUp Settings.
+ */
+export interface RunTimeCleanUpConfiguration {
+    /**
+     * Batch size used when cleaning up Flowable Run Time data
+     */
+    batchSize?: number;
 }
 
 /**

@@ -31,6 +31,7 @@ import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getMarketPlaceApplicationList } from '../../rest/applicationMarketPlaceAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import {
   getMarketPlaceAppDetailsPath,
   getSettingPath,
@@ -135,7 +136,15 @@ const MarketPlacePage = () => {
           <Row className="marketplace-header-row" justify="center">
             <Col span={18}>
               <div className="d-flex items-center justify-between h-full">
-                <PageHeader data={PAGE_HEADERS.APPLICATION} />
+                <PageHeader
+                  data={{
+                    header: translateWithNestedKeys(
+                      PAGE_HEADERS.APPLICATION.header,
+                      PAGE_HEADERS.APPLICATION.headerParams
+                    ),
+                    subHeader: t(PAGE_HEADERS.APPLICATION.subHeader),
+                  }}
+                />
                 <HeadingIcon />
               </div>
             </Col>

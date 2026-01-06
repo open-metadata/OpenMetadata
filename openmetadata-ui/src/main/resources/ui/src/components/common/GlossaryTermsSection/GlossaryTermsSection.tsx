@@ -95,7 +95,9 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
           t,
         });
 
-        if (!result.success) {
+        if (result.success && result.data === displayTags) {
+          completeEditing();
+        } else if (!result.success) {
           setIsLoading(false);
         }
       } catch (error) {
@@ -235,8 +237,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
     return glossaryTermsDisplay;
   }, [isLoading, isEditing, loadingState, editingState, glossaryTermsDisplay]);
 
-  const canShowEditButton =
-    showEditButton && hasPermission && !isEditing && !isLoading;
+  const canShowEditButton = showEditButton && hasPermission && !isLoading;
 
   if (!glossaryTerms?.length) {
     return (

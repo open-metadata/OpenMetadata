@@ -36,6 +36,7 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { getApplicationList } from '../../rest/applicationAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -151,7 +152,15 @@ const ApplicationPage = () => {
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
         <Col span={16}>
-          <PageHeader data={PAGE_HEADERS.APPLICATION} />
+          <PageHeader
+            data={{
+              header: translateWithNestedKeys(
+                PAGE_HEADERS.APPLICATION.header,
+                PAGE_HEADERS.APPLICATION.headerParams
+              ),
+              subHeader: t(PAGE_HEADERS.APPLICATION.subHeader),
+            }}
+          />
         </Col>
         <Col className="d-flex justify-end" span={8}>
           <Space size="middle">

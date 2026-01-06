@@ -64,9 +64,9 @@ const validateTourSteps = async (page: Page) => {
   await page.getByTestId('searchBox').fill('dim_a');
   await page.getByTestId('searchBox').press('Enter', { delay: 500 });
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('4');
+  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('4', {
+    timeout: 1000,
+  });
 
   // step 3
   await page.locator('[data-tour-elem="right-arrow"]').click();

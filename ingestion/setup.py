@@ -20,9 +20,9 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==2.10.5",
+    "airflow": "apache-airflow==3.1.5",
     "adlfs": "adlfs>=2023.1.0",
-    "avro": "avro>=1.11.3,<1.12",
+    "avro": "avro>=1.11.4,<1.12",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
@@ -63,7 +63,7 @@ VERSIONS = {
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
-    "pydoris": "pydoris==1.0.2",
+    "pydoris": "pydoris-custom>=1.0.2,<1.5",
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.0",
@@ -72,6 +72,7 @@ VERSIONS = {
     "asammdf": "asammdf~=7.4.5",
     "kafka-connect": "kafka-connect-py==0.10.11",
     "griffe2md": "griffe2md~=1.2",
+    "factory-boy": "factory-boy~=3.3.3",
 }
 
 COMMONS = {
@@ -157,7 +158,7 @@ base_requirements = {
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=1.4.0,<2",
-    "collate-sqllineage~=1.6.0",
+    "collate-sqllineage~=2.0",
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
@@ -303,7 +304,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["giturlparse"],
         "python-liquid",
     },
-    "mlflow": {"mlflow-skinny~=2.22.0"},
+    "mlflow": {"mlflow-skinny~=3.6.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
@@ -377,6 +378,7 @@ plugins: Dict[str, Set[str]] = {
 
 dev = {
     "black==22.3.0",
+    "uvloop==0.21.0",
     "datamodel-code-generator==0.25.6",
     "boto3-stubs",
     "mypy-boto3-glue",
@@ -399,6 +401,7 @@ test_unit = {
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
     # TODO: Remove once no unit test requires testcontainers
     "testcontainers",
+    VERSIONS["factory-boy"],
 }
 
 test = {
@@ -449,7 +452,7 @@ test = {
     *plugins["kafka"],
     "kafka-python==2.0.2",
     *plugins["pii-processor"],
-    "requests==2.31.0",
+    "requests>=2.31.0,<3",
     f"{DATA_DIFF['mysql']}",
     *plugins["deltalake"],
     *plugins["datalake-gcs"],
@@ -470,6 +473,7 @@ test = {
     *plugins["exasol"],
     VERSIONS["opensearch"],
     VERSIONS["kafka-connect"],
+    VERSIONS["factory-boy"],
 }
 
 docs = {
