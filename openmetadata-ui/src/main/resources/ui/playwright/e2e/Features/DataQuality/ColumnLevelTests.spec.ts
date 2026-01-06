@@ -74,10 +74,10 @@ test.describe('Column Level Data Quality Test Cases', { tag: DOMAIN_TAGS.OBSERVA
 
       await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.fill('[data-testid="test-case-name"]', testCase.name);
+      await page.getByTestId('test-case-name').fill(testCase.name);
 
       await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.click(`[data-testid="${testCase.type}"]`);
+      await page.getByTestId(testCase.type).click();
       await page.waitForSelector(`[data-id="${testCase.type}"]`, {
         state: 'visible',
       });
@@ -155,10 +155,10 @@ test.describe('Column Level Data Quality Test Cases', { tag: DOMAIN_TAGS.OBSERVA
 
       await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.fill('[data-testid="test-case-name"]', testCase.name);
+      await page.getByTestId('test-case-name').fill(testCase.name);
 
       await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.click(`[data-testid="${testCase.type}"]`);
+      await page.getByTestId(testCase.type).click();
       await page.waitForSelector(`[data-id="${testCase.type}"]`, {
         state: 'visible',
       });
@@ -235,10 +235,10 @@ test.describe('Column Level Data Quality Test Cases', { tag: DOMAIN_TAGS.OBSERVA
 
       await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.fill('[data-testid="test-case-name"]', testCase.name);
+      await page.getByTestId('test-case-name').fill(testCase.name);
 
       await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.click(`[data-testid="${testCase.type}"]`);
+      await page.getByTestId(testCase.type).click();
       await page.waitForSelector(`[data-id="${testCase.type}"]`, {
         state: 'visible',
       });
@@ -309,10 +309,10 @@ test.describe('Column Level Data Quality Test Cases', { tag: DOMAIN_TAGS.OBSERVA
 
       await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.fill('[data-testid="test-case-name"]', testCase.name);
+      await page.getByTestId('test-case-name').fill(testCase.name);
 
       await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.click(`[data-testid="${testCase.type}"]`);
+      await page.getByTestId(testCase.type).click();
       await page.waitForSelector(`[data-id="${testCase.type}"]`, {
         state: 'visible',
       });
@@ -390,10 +390,10 @@ test.describe('Column Level Data Quality Test Cases', { tag: DOMAIN_TAGS.OBSERVA
 
       await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.fill('[data-testid="test-case-name"]', testCase.name);
+      await page.getByTestId('test-case-name').fill(testCase.name);
 
       await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.click(`[data-testid="${testCase.type}"]`);
+      await page.getByTestId(testCase.type).click();
       await page.waitForSelector(`[data-id="${testCase.type}"]`, {
         state: 'visible',
       });
@@ -471,10 +471,10 @@ test.describe('Column Level Data Quality Test Cases', { tag: DOMAIN_TAGS.OBSERVA
 
       await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.fill('[data-testid="test-case-name"]', testCase.name);
+      await page.getByTestId('test-case-name').fill(testCase.name);
 
       await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.click(`[data-testid="${testCase.type}"]`);
+      await page.getByTestId(testCase.type).click();
       await page.waitForSelector(`[data-id="${testCase.type}"]`, {
         state: 'visible',
       });
@@ -548,10 +548,10 @@ test.describe('Column Level Data Quality Test Cases', { tag: DOMAIN_TAGS.OBSERVA
 
       await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.fill('[data-testid="test-case-name"]', testCase.name);
+      await page.getByTestId('test-case-name').fill(testCase.name);
 
       await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.click(`[data-testid="${testCase.type}"]`);
+      await page.getByTestId(testCase.type).click();
       await page.waitForSelector(`[data-id="${testCase.type}"]`, {
         state: 'visible',
       });
@@ -626,10 +626,10 @@ test.describe('Column Level Data Quality Test Cases', { tag: DOMAIN_TAGS.OBSERVA
 
       await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.fill('[data-testid="test-case-name"]', testCase.name);
+      await page.getByTestId('test-case-name').fill(testCase.name);
 
       await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.click(`[data-testid="${testCase.type}"]`);
+      await page.getByTestId(testCase.type).click();
       await page.waitForSelector(`[data-id="${testCase.type}"]`, {
         state: 'visible',
       });
@@ -717,10 +717,10 @@ test.describe('Column Level Data Quality Test Cases', { tag: DOMAIN_TAGS.OBSERVA
 
       await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.fill('[data-testid="test-case-name"]', testCase.name);
+      await page.getByTestId('test-case-name').fill(testCase.name);
 
       await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.click(`[data-testid="${testCase.type}"]`);
+      await page.getByTestId(testCase.type).click();
       await page.waitForSelector(`[data-id="${testCase.type}"]`, {
         state: 'visible',
       });
@@ -808,10 +808,10 @@ test.describe('Column Level Data Quality Test Cases', { tag: DOMAIN_TAGS.OBSERVA
 
       await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.fill('[data-testid="test-case-name"]', testCase.name);
+      await page.getByTestId('test-case-name').fill(testCase.name);
 
       await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.click(`[data-testid="${testCase.type}"]`);
+      await page.getByTestId(testCase.type).click();
       await page.waitForSelector(`[data-id="${testCase.type}"]`, {
         state: 'visible',
       });
@@ -899,10 +899,10 @@ test.describe('Column Level Data Quality Test Cases', { tag: DOMAIN_TAGS.OBSERVA
 
       await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.fill('[data-testid="test-case-name"]', testCase.name);
+      await page.getByTestId('test-case-name').fill(testCase.name);
 
       await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.click(`[data-testid="${testCase.type}"]`);
+      await page.getByTestId(testCase.type).click();
       await page.waitForSelector(`[data-id="${testCase.type}"]`, {
         state: 'visible',
       });
@@ -994,10 +994,10 @@ test.describe('Column Level Data Quality Test Cases', { tag: DOMAIN_TAGS.OBSERVA
 
       await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.fill('[data-testid="test-case-name"]', testCase.name);
+      await page.getByTestId('test-case-name').fill(testCase.name);
 
       await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.click(`[data-testid="${testCase.type}"]`);
+      await page.getByTestId(testCase.type).click();
       await page.waitForSelector(`[data-id="${testCase.type}"]`, {
         state: 'visible',
       });
@@ -1089,10 +1089,10 @@ test.describe('Column Level Data Quality Test Cases', { tag: DOMAIN_TAGS.OBSERVA
 
       await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.fill('[data-testid="test-case-name"]', testCase.name);
+      await page.getByTestId('test-case-name').fill(testCase.name);
 
       await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.click(`[data-testid="${testCase.type}"]`);
+      await page.getByTestId(testCase.type).click();
       await page.waitForSelector(`[data-id="${testCase.type}"]`, {
         state: 'visible',
       });
@@ -1180,10 +1180,10 @@ test.describe('Column Level Data Quality Test Cases', { tag: DOMAIN_TAGS.OBSERVA
 
       await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.fill('[data-testid="test-case-name"]', testCase.name);
+      await page.getByTestId('test-case-name').fill(testCase.name);
 
       await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.click(`[data-testid="${testCase.type}"]`);
+      await page.getByTestId(testCase.type).click();
       await page.waitForSelector(`[data-id="${testCase.type}"]`, {
         state: 'visible',
       });
@@ -1260,10 +1260,10 @@ test.describe('Column Level Data Quality Test Cases', { tag: DOMAIN_TAGS.OBSERVA
 
       await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.fill('[data-testid="test-case-name"]', testCase.name);
+      await page.getByTestId('test-case-name').fill(testCase.name);
 
       await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.click(`[data-testid="${testCase.type}"]`);
+      await page.getByTestId(testCase.type).click();
       await page.waitForSelector(`[data-id="${testCase.type}"]`, {
         state: 'visible',
       });
@@ -1339,10 +1339,10 @@ test.describe('Column Level Data Quality Test Cases', { tag: DOMAIN_TAGS.OBSERVA
 
       await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-      await page.fill('[data-testid="test-case-name"]', testCase.name);
+      await page.getByTestId('test-case-name').fill(testCase.name);
 
       await page.fill('[id="root\\/testType"]', testCase.type);
-      await page.click(`[data-testid="${testCase.type}"]`);
+      await page.getByTestId(testCase.type).click();
       // Todo: uncomment below assertion after adding docs for columnValuesToBeAtExpectedLocation test case -> @ShaileshParmar11
       // await page.waitForSelector(`[data-id="${testCase.type}"]`, {
       //   state: 'visible',
