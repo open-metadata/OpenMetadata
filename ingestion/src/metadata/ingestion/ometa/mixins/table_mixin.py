@@ -14,6 +14,7 @@ Mixin class containing Table specific methods
 To be used by OpenMetadata class
 """
 import base64
+import ipaddress
 import json
 import traceback
 from typing import Dict, List, Optional, Type, TypeVar
@@ -90,6 +91,9 @@ class OMetaTableMixin:
                                 ] = f"[base64]{base64.b64encode(value).decode('ascii', errors='ignore')}"
                             except Exception as _:
                                 row[col_idx] = f"[binary]{value}"
+                        # Handle IPv4 and IPv6 address objects
+                        elif isinstance(value, (ipaddress.IPv4Address, ipaddress.IPv6Address)):
+                            row[col_idx] = str(value)
 
             try:
                 data = sample_data.model_dump_json()
