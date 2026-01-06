@@ -629,13 +629,13 @@ test.describe('User with different Roles', () => {
 
       await incorrectSearchResponse;
 
-      await adminPage.waitForTimeout(1000);
-
       await expect(assetsSearchBox).toBeVisible();
 
       const incorrectAssetCard = adminPage.getByText(table.entity.name);
 
       await expect(incorrectAssetCard).not.toBeVisible();
+
+      await expect(adminPage.getByText('No matching data assets found')).toBeVisible();
 
       const rightPanel = adminPage.getByTestId('entity-summary-panel-container');
 

@@ -466,6 +466,13 @@ const AssetsTabs = forwardRef(
                 width={140}
               />
             }>
+            {searchValue && (
+              <div className="gap-4">
+                <Typography.Paragraph>
+                  {t('label.no-matching-data-asset')}
+                </Typography.Paragraph>
+              </div>
+            )}
             {isObject(noDataPlaceholder) && (
               <div className="gap-4">
                 <Typography.Paragraph>

@@ -615,11 +615,6 @@ export const getDomainDetailTabs = ({
                       assetCount={assetCount}
                       entityFqn={domain.fullyQualifiedName}
                       isSummaryPanelOpen={false}
-                      noDataPlaceholder={{
-                        message: t('message.no-data-message', {
-                          entity: t('label.data-asset-lowercase-plural'),
-                        }),
-                      }}
                       permissions={domainPermission}
                       queryFilter={queryFilter}
                       ref={assetTabRef}

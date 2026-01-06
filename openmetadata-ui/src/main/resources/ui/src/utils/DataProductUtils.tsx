@@ -185,11 +185,6 @@ export const getDataProductDetailTabs = ({
                       assetCount={assetCount}
                       entityFqn={dataProduct.fullyQualifiedName}
                       isSummaryPanelOpen={Boolean(previewAsset)}
-                      noDataPlaceholder={{
-                        message: t('message.no-data-message', {
-                          entity: t('label.data-asset-lowercase-plural'),
-                        }),
-                      }}
                       permissions={dataProductPermission}
                       ref={assetTabRef}
                       type={AssetsOfEntity.DATA_PRODUCT}

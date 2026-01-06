@@ -249,11 +249,6 @@ const GlossaryTermsV1 = ({
                         assetCount={assetCount}
                         entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
                         isSummaryPanelOpen={Boolean(previewAsset)}
-                        noDataPlaceholder={{
-                          message: t('message.no-data-message', {
-                            entity: t('label.data-asset-lowercase-plural'),
-                          }),
-                        }}
                         permissions={assetPermissions}
                         ref={assetTabRef}
                         onAddAsset={() => setAssetModalVisible(true)}
