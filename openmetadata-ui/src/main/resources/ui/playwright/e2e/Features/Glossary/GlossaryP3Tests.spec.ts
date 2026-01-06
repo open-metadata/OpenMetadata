@@ -589,19 +589,16 @@ test.describe('Glossary P3 Tests', () => {
     try {
       await glossary.create(apiContext);
 
-      // Simulate slow network
-      await page.route('**/*', async (route) => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        await route.continue();
-      });
+      const glossariesPromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/glossaries') &&
+          response.status() === 200,
+        { timeout: 30000 }
+      );
 
       await sidebarClick(page, SidebarItem.GLOSSARY);
 
-      // Page should eventually load despite delays
-      await page.waitForLoadState('networkidle', { timeout: 30000 });
-
-      // Clear route handler
-      await page.unroute('**/*');
+      await glossariesPromise;
 
       // Verify page is functional
       await expect(
