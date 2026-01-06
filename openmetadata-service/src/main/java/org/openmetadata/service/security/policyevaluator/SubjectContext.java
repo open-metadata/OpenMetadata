@@ -20,9 +20,11 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -176,7 +178,7 @@ public record SubjectContext(User user, String impersonatedBy) {
   /** Return true if the team is part of the hierarchy of parentTeam */
   public static boolean isInTeam(String parentTeam, EntityReference team) {
     Deque<EntityReference> stack = new ArrayDeque<>();
-    java.util.Set<UUID> visitedTeams = new java.util.HashSet<>();
+    Set<UUID> visitedTeams = new HashSet<>();
     stack.push(team); // Start with team and see if the parent matches
     while (!stack.isEmpty()) {
       try {
@@ -203,11 +205,11 @@ public record SubjectContext(User user, String impersonatedBy) {
   }
 
   public static List<EntityReference> getRolesForTeams(List<EntityReference> teams) {
-    return getRolesForTeams(teams, new java.util.HashSet<>());
+    return getRolesForTeams(teams, new HashSet<>());
   }
 
   private static List<EntityReference> getRolesForTeams(
-      List<EntityReference> teams, java.util.Set<UUID> visitedTeams) {
+      List<EntityReference> teams, Set<UUID> visitedTeams) {
     List<EntityReference> roles = new ArrayList<>();
     for (EntityReference teamRef : listOrEmpty(teams)) {
       // Skip if we've already visited this team to prevent circular dependencies
@@ -270,7 +272,7 @@ public record SubjectContext(User user, String impersonatedBy) {
   /** Return true if the given user has any roles the list of roles */
   public static boolean hasRole(User user, String role) {
     Deque<EntityReference> stack = new ArrayDeque<>();
-    java.util.Set<UUID> visitedTeams = new java.util.HashSet<>();
+    Set<UUID> visitedTeams = new HashSet<>();
     // If user has one of the roles directly assigned then return true
     if (hasRole(user.getRoles(), role)) {
       return true;
