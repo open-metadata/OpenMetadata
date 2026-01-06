@@ -190,6 +190,7 @@ import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.sdk.exception.ResourceInitializationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
@@ -611,38 +612,62 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * <p>This method needs to be explicitly called, typically from initialize method. See {@link
    * RoleResource#initialize(OpenMetadataApplicationConfig)}
    */
-  public final void initSeedDataFromResources() throws IOException {
-    List<T> entities = getEntitiesFromSeedData();
-    for (T entity : entities) {
-      initializeEntity(entity);
+  public final void initSeedDataFromResources() {
+    try {
+      List<T> entities = getEntitiesFromSeedData();
+      for (T entity : entities) {
+        initializeEntity(entity);
+      }
+    } catch (Exception ex) {
+      LOG.error("Failed in Init Seed Data From Resources.");
+      throw new ResourceInitializationException(
+          entityType, "Failed in Init Seed Data From Resources.", ex);
     }
   }
 
-  public List<T> getEntitiesFromSeedData() throws IOException {
-    return getEntitiesFromSeedData(String.format(".*json/data/%s/.*\\.json$", entityType));
+  public List<T> getEntitiesFromSeedData() {
+    try {
+      return getEntitiesFromSeedData(String.format(".*json/data/%s/.*\\.json$", entityType));
+    } catch (Exception ex) {
+      LOG.error("Failed in Init Seed Data From Resources.");
+      throw new ResourceInitializationException(
+          entityType, "Failed in Init Seed Data From Resources.", ex);
+    }
   }
 
-  public final List<T> getEntitiesFromSeedData(String path) throws IOException {
-    return getEntitiesFromSeedData(entityType, path, entityClass);
+  public final List<T> getEntitiesFromSeedData(String path) {
+    try {
+      return getEntitiesFromSeedData(entityType, path, entityClass);
+    } catch (Exception ex) {
+      LOG.error("Failed in Init Seed Data From Resources.");
+      throw new ResourceInitializationException(
+          entityType, "Failed in Init Seed Data From Resources.", ex);
+    }
   }
 
-  public static <U> List<U> getEntitiesFromSeedData(String entityType, String path, Class<U> clazz)
-      throws IOException {
-    List<U> entities = new ArrayList<>();
-    List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
-    jsonDataFiles.forEach(
-        jsonDataFile -> {
-          try {
-            String json =
-                CommonUtil.getResourceAsStream(
-                    EntityRepository.class.getClassLoader(), jsonDataFile);
-            json = json.replace("<separator>", Entity.SEPARATOR);
-            entities.add(JsonUtils.readValue(json, clazz));
-          } catch (Exception e) {
-            LOG.warn("Failed to initialize the {} from file {}", entityType, jsonDataFile, e);
-          }
-        });
-    return entities;
+  public static <U> List<U> getEntitiesFromSeedData(
+      String entityType, String path, Class<U> clazz) {
+    try {
+      List<U> entities = new ArrayList<>();
+      List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
+      jsonDataFiles.forEach(
+          jsonDataFile -> {
+            try {
+              String json =
+                  CommonUtil.getResourceAsStream(
+                      EntityRepository.class.getClassLoader(), jsonDataFile);
+              json = json.replace("<separator>", Entity.SEPARATOR);
+              entities.add(JsonUtils.readValue(json, clazz));
+            } catch (Exception e) {
+              LOG.warn("Failed to initialize the {} from file {}", entityType, jsonDataFile, e);
+            }
+          });
+      return entities;
+    } catch (Exception ex) {
+      LOG.error("Failed in Init Seed Data From Resources.");
+      throw new ResourceInitializationException(
+          entityType, "Failed in Init Seed Data From Resources.", ex);
+    }
   }
 
   /**

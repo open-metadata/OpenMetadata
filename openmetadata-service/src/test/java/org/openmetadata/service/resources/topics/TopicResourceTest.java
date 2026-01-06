@@ -74,7 +74,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
-import org.openmetadata.service.resources.topics.TopicResource.TopicList;
+import org.openmetadata.service.services.messaging.TopicService;
 import org.openmetadata.service.util.TestUtils;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -99,7 +99,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
       new MessageSchema().withSchemaText(SCHEMA_TEXT).withSchemaType(SchemaType.Avro);
 
   public TopicResourceTest() {
-    super(Entity.TOPIC, Topic.class, TopicList.class, "topics", TopicResource.FIELDS);
+    super(Entity.TOPIC, Topic.class, TopicService.TopicList.class, "topics", TopicService.FIELDS);
     supportsSearchIndex = true;
     supportsBulkAPI = true;
   }
@@ -662,7 +662,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     // Test pagination with fields=tags (should fetch topic-level tags only)
     WebTarget target = getResource("topics").queryParam("fields", "tags").queryParam("limit", "10");
 
-    TopicList topicList = TestUtils.get(target, TopicList.class, ADMIN_AUTH_HEADERS);
+    TopicService.TopicList topicList =
+        TestUtils.get(target, TopicService.TopicList.class, ADMIN_AUTH_HEADERS);
     assertNotNull(topicList.getData());
 
     // Verify at least one of our created topics is in the response
@@ -695,7 +696,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     target =
         getResource("topics").queryParam("fields", "messageSchema,tags").queryParam("limit", "10");
 
-    topicList = TestUtils.get(target, TopicList.class, ADMIN_AUTH_HEADERS);
+    topicList = TestUtils.get(target, TopicService.TopicList.class, ADMIN_AUTH_HEADERS);
     assertNotNull(topicList.getData());
 
     // Verify at least one of our created topics is in the response

@@ -3,7 +3,6 @@ package org.openmetadata.service.migration.utils.v1110;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.util.EntityUtil.hash;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +12,7 @@ import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.classification.LoadTags;
 import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exception.ResourceInitializationException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -43,7 +43,7 @@ public class MigrationUtil {
       loadTagsList =
           EntityRepository.getEntitiesFromSeedData(
               CLASSIFICATION, ".*json/data/tags/piiTagsWithRecognizers.json$", LoadTags.class);
-    } catch (IOException e) {
+    } catch (ResourceInitializationException e) {
       LOG.error("Failed to load tag data");
       return result;
     }

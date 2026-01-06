@@ -37,7 +37,7 @@ import org.openmetadata.schema.entity.ai.PromptTemplate;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.ai.PromptTemplateResource.PromptTemplateList;
+import org.openmetadata.service.services.ai.PromptTemplateService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -49,9 +49,9 @@ public class PromptTemplateResourceTest
     super(
         Entity.PROMPT_TEMPLATE,
         PromptTemplate.class,
-        PromptTemplateList.class,
+        PromptTemplateService.PromptTemplateList.class,
         "promptTemplates",
-        PromptTemplateResource.FIELDS);
+        PromptTemplateService.FIELDS);
   }
 
   @BeforeAll

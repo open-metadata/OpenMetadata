@@ -73,7 +73,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
-import org.openmetadata.service.resources.storages.ContainerResource.ContainerList;
+import org.openmetadata.service.services.storages.ContainerService;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
 
@@ -96,9 +96,9 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     super(
         Entity.CONTAINER,
         Container.class,
-        ContainerList.class,
+        ContainerService.ContainerList.class,
         "containers",
-        ContainerResource.FIELDS);
+        ContainerService.FIELDS);
     supportsSearchIndex = true;
   }
 
@@ -722,7 +722,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     WebTarget target = getResource(String.format("containers/name/%s/children", fqn));
     target = limit != null ? target.queryParam("limit", limit) : target;
     target = offset != null ? target.queryParam("offset", offset) : target;
-    return TestUtils.get(target, ContainerList.class, ADMIN_AUTH_HEADERS);
+    return TestUtils.get(target, ContainerService.ContainerList.class, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -901,7 +901,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     WebTarget target =
         getResource("containers").queryParam("fields", "tags").queryParam("limit", "50");
 
-    ContainerList containerList = TestUtils.get(target, ContainerList.class, ADMIN_AUTH_HEADERS);
+    ContainerService.ContainerList containerList =
+        TestUtils.get(target, ContainerService.ContainerList.class, ADMIN_AUTH_HEADERS);
     assertNotNull(containerList.getData());
 
     // Verify at least one of our created containers is in the response
@@ -936,7 +937,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     target =
         getResource("containers").queryParam("fields", "dataModel,tags").queryParam("limit", "50");
 
-    containerList = TestUtils.get(target, ContainerList.class, ADMIN_AUTH_HEADERS);
+    containerList = TestUtils.get(target, ContainerService.ContainerList.class, ADMIN_AUTH_HEADERS);
     assertNotNull(containerList.getData());
 
     // Verify at least one of our created containers is in the response

@@ -139,6 +139,7 @@ import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.services.glossary.GlossaryTermService;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -157,9 +158,9 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     super(
         Entity.GLOSSARY_TERM,
         GlossaryTerm.class,
-        GlossaryTermResource.GlossaryTermList.class,
+        GlossaryTermService.GlossaryTermList.class,
         "glossaryTerms",
-        GlossaryTermResource.FIELDS);
+        GlossaryTermService.FIELDS);
   }
 
   @Order(0)
@@ -3121,7 +3122,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     for (Map.Entry<String, String> entry : queryParams.entrySet()) {
       target = target.queryParam(entry.getKey(), entry.getValue());
     }
-    return TestUtils.get(target, GlossaryTermResource.GlossaryTermList.class, authHeaders);
+    return TestUtils.get(target, GlossaryTermService.GlossaryTermList.class, authHeaders);
   }
 
   /**

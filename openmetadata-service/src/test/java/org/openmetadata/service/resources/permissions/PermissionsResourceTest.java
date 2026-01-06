@@ -77,7 +77,6 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.permissions.PermissionsResource.ResourcePermissionList;
-import org.openmetadata.service.resources.policies.PolicyResource;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
@@ -87,6 +86,7 @@ import org.openmetadata.service.security.policyevaluator.PermissionDebugInfo;
 import org.openmetadata.service.security.policyevaluator.PermissionEvaluationDebugInfo;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.services.policies.PolicyService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.TestUtils;
 
@@ -135,7 +135,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
 
     Policy orgPolicy =
         policyResourceTest.getEntityByName(
-            ORGANIZATION_POLICY_NAME, null, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
+            ORGANIZATION_POLICY_NAME, null, PolicyService.FIELDS, ADMIN_AUTH_HEADERS);
     List<Rule> orgRules = orgPolicy.getRules();
     // Rules are alphabetically ordered
     ORG_NO_OWNER_RULE = orgRules.get(0);
@@ -143,14 +143,14 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
 
     DATA_STEWARD_POLICY =
         policyResourceTest.getEntityByName(
-            DATA_STEWARD_POLICY_NAME, null, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
+            DATA_STEWARD_POLICY_NAME, null, PolicyService.FIELDS, ADMIN_AUTH_HEADERS);
     DATA_STEWARD_RULES = DATA_STEWARD_POLICY.getRules();
 
     DATA_STEWARD_USER = EntityResourceTest.DATA_STEWARD;
 
     DATA_CONSUMER_POLICY =
         policyResourceTest.getEntityByName(
-            DATA_CONSUMER_POLICY_NAME, null, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
+            DATA_CONSUMER_POLICY_NAME, null, PolicyService.FIELDS, ADMIN_AUTH_HEADERS);
     DATA_CONSUMER_RULES = DATA_CONSUMER_POLICY.getRules();
 
     DATA_CONSUMER_USER = EntityResourceTest.DATA_CONSUMER;

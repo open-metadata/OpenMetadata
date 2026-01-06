@@ -53,6 +53,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.services.apis.APIEndpointService;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
 
@@ -83,9 +84,9 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     super(
         Entity.API_ENDPOINT,
         APIEndpoint.class,
-        APIEndpointResource.APIEndpointList.class,
+        APIEndpointService.APIEndpointList.class,
         "apiEndpoints",
-        APIEndpointResource.FIELDS);
+        APIEndpointService.FIELDS);
     supportsSearchIndex = true;
   }
 
@@ -423,8 +424,8 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     WebTarget target =
         getResource("apiEndpoints").queryParam("fields", "tags").queryParam("limit", "50");
 
-    APIEndpointResource.APIEndpointList endpointList =
-        TestUtils.get(target, APIEndpointResource.APIEndpointList.class, ADMIN_AUTH_HEADERS);
+    APIEndpointService.APIEndpointList endpointList =
+        TestUtils.get(target, APIEndpointService.APIEndpointList.class, ADMIN_AUTH_HEADERS);
     assertNotNull(endpointList.getData());
 
     List<APIEndpoint> ourEndpoints =
@@ -466,7 +467,7 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
             .queryParam("limit", "10");
 
     endpointList =
-        TestUtils.get(target, APIEndpointResource.APIEndpointList.class, ADMIN_AUTH_HEADERS);
+        TestUtils.get(target, APIEndpointService.APIEndpointList.class, ADMIN_AUTH_HEADERS);
     assertNotNull(endpointList.getData());
 
     ourEndpoints =

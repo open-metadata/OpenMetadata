@@ -34,7 +34,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.services.metadata.MetadataServiceResource;
+import org.openmetadata.service.services.serviceentities.MetadataServiceEntityService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -46,9 +46,9 @@ public class MetadataServiceResourceTest
     super(
         Entity.METADATA_SERVICE,
         MetadataService.class,
-        MetadataServiceResource.MetadataServiceList.class,
+        MetadataServiceEntityService.MetadataServiceList.class,
         "services/metadataServices",
-        MetadataServiceResource.FIELDS);
+        MetadataServiceEntityService.FIELDS);
     supportsPatch = false;
   }
 

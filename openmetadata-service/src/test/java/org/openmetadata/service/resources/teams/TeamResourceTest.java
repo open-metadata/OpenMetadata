@@ -119,9 +119,8 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
-import org.openmetadata.service.resources.teams.TeamResource.TeamHierarchyList;
-import org.openmetadata.service.resources.teams.TeamResource.TeamList;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.services.teams.TeamService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.TestUtils;
 
@@ -131,7 +130,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
       new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public TeamResourceTest() {
-    super(TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS);
+    super(TEAM, Team.class, TeamService.TeamList.class, "teams", TeamService.FIELDS);
     supportsSearchIndex = true;
   }
 
@@ -1383,7 +1382,8 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
       throws HttpResponseException {
     WebTarget target = getResource("teams/hierarchy");
     target = target.queryParam("isJoinable", isJoinable);
-    ResultList<TeamHierarchy> result = TestUtils.get(target, TeamHierarchyList.class, authHeaders);
+    ResultList<TeamHierarchy> result =
+        TestUtils.get(target, TeamService.TeamHierarchyList.class, authHeaders);
     return result.getData();
   }
 

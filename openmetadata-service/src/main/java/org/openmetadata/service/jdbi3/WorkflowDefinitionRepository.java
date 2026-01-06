@@ -1,6 +1,5 @@
 package org.openmetadata.service.jdbi3;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +38,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   @Override
-  public List<WorkflowDefinition> getEntitiesFromSeedData() throws IOException {
+  public List<WorkflowDefinition> getEntitiesFromSeedData() {
     return getEntitiesFromSeedData(".*json/data/governance/workflows/.*\\.json$");
   }
 

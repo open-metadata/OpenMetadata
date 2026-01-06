@@ -94,6 +94,7 @@ import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.services.pipelines.IngestionPipelineService;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
 
@@ -113,9 +114,9 @@ public class IngestionPipelineResourceTest
     super(
         Entity.INGESTION_PIPELINE,
         IngestionPipeline.class,
-        IngestionPipelineResource.IngestionPipelineList.class,
+        IngestionPipelineService.IngestionPipelineList.class,
         COLLECTION,
-        IngestionPipelineResource.FIELDS);
+        IngestionPipelineService.FIELDS);
   }
 
   @BeforeAll

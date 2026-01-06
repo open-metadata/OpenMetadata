@@ -50,9 +50,9 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
-import org.openmetadata.service.resources.domains.DataProductResource.DataProductList;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.services.domains.DataProductService;
 import org.openmetadata.service.util.TestUtils;
 
 public class DataProductResourceTest extends EntityResourceTest<DataProduct, CreateDataProduct> {
@@ -60,9 +60,9 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     super(
         Entity.DATA_PRODUCT,
         DataProduct.class,
-        DataProductList.class,
+        DataProductService.DataProductList.class,
         "dataProducts",
-        DataProductResource.FIELDS);
+        DataProductService.FIELDS);
     supportsPatchDomains = false; // we can't change the domain of a data product
   }
 

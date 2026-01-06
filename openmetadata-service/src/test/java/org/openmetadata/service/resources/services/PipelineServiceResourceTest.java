@@ -59,8 +59,7 @@ import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
-import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource;
-import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource.PipelineServiceList;
+import org.openmetadata.service.services.serviceentities.PipelineServiceEntityService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -70,9 +69,9 @@ public class PipelineServiceResourceTest
     super(
         Entity.PIPELINE_SERVICE,
         PipelineService.class,
-        PipelineServiceList.class,
+        PipelineServiceEntityService.PipelineServiceList.class,
         "services/pipelineServices",
-        PipelineServiceResource.FIELDS);
+        PipelineServiceEntityService.FIELDS);
     this.supportsPatch = false;
   }
 

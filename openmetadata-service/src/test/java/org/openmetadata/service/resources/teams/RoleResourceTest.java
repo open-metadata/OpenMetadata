@@ -51,7 +51,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.teams.RoleResource.RoleList;
+import org.openmetadata.service.services.policies.RoleService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.TestUtils;
 
@@ -61,19 +61,19 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     super(
         Entity.ROLE,
         Role.class,
-        RoleList.class,
+        RoleService.RoleList.class,
         "roles",
-        RoleResource.FIELDS,
+        RoleService.FIELDS,
         DATA_CONSUMER_ROLE_NAME);
   }
 
   public void setupRoles(TestInfo test) throws HttpResponseException {
     DATA_CONSUMER_ROLE =
-        getEntityByName(DATA_CONSUMER_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+        getEntityByName(DATA_CONSUMER_ROLE_NAME, null, RoleService.FIELDS, ADMIN_AUTH_HEADERS);
     DATA_CONSUMER_ROLE_REF = DATA_CONSUMER_ROLE.getEntityReference();
 
     DATA_STEWARD_ROLE =
-        getEntityByName(DATA_STEWARD_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+        getEntityByName(DATA_STEWARD_ROLE_NAME, null, RoleService.FIELDS, ADMIN_AUTH_HEADERS);
     DATA_STEWARD_ROLE_REF = DATA_STEWARD_ROLE.getEntityReference();
 
     ROLE1 = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);

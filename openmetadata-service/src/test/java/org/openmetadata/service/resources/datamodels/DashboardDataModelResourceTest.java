@@ -70,6 +70,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
+import org.openmetadata.service.services.dashboards.DashboardDataModelService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -81,9 +82,9 @@ public class DashboardDataModelResourceTest
     super(
         Entity.DASHBOARD_DATA_MODEL,
         DashboardDataModel.class,
-        DashboardDataModelResource.DashboardDataModelList.class,
+        DashboardDataModelService.DashboardDataModelList.class,
         "dashboard/datamodels",
-        DashboardDataModelResource.FIELDS);
+        DashboardDataModelService.FIELDS);
     supportsBulkAPI = true;
   }
 
@@ -399,9 +400,9 @@ public class DashboardDataModelResourceTest
     WebTarget target =
         getResource("dashboard/datamodels").queryParam("fields", "tags").queryParam("limit", "10");
 
-    DashboardDataModelResource.DashboardDataModelList dataModelList =
+    DashboardDataModelService.DashboardDataModelList dataModelList =
         TestUtils.get(
-            target, DashboardDataModelResource.DashboardDataModelList.class, ADMIN_AUTH_HEADERS);
+            target, DashboardDataModelService.DashboardDataModelList.class, ADMIN_AUTH_HEADERS);
     assertNotNull(dataModelList.getData());
 
     // Verify at least one of our created data models is in the response
@@ -437,7 +438,7 @@ public class DashboardDataModelResourceTest
 
     dataModelList =
         TestUtils.get(
-            target, DashboardDataModelResource.DashboardDataModelList.class, ADMIN_AUTH_HEADERS);
+            target, DashboardDataModelService.DashboardDataModelList.class, ADMIN_AUTH_HEADERS);
     assertNotNull(dataModelList.getData());
 
     // Verify at least one of our created data models is in the response
@@ -514,9 +515,9 @@ public class DashboardDataModelResourceTest
     WebTarget target =
         getResource("dashboard/datamodels/" + dataModel.getId() + "/columns")
             .queryParam("include", "all");
-    DashboardDataModelResource.DataModelColumnList response =
+    DashboardDataModelService.DataModelColumnList response =
         TestUtils.get(
-            target, DashboardDataModelResource.DataModelColumnList.class, ADMIN_AUTH_HEADERS);
+            target, DashboardDataModelService.DataModelColumnList.class, ADMIN_AUTH_HEADERS);
     assertEquals(5, response.getData().size());
     assertEquals(5, response.getPaging().getTotal());
 
@@ -529,7 +530,7 @@ public class DashboardDataModelResourceTest
             .queryParam("include", "all");
     response =
         TestUtils.get(
-            target, DashboardDataModelResource.DataModelColumnList.class, ADMIN_AUTH_HEADERS);
+            target, DashboardDataModelService.DataModelColumnList.class, ADMIN_AUTH_HEADERS);
     assertEquals(5, response.getData().size());
     assertEquals(5, response.getPaging().getTotal());
 
@@ -542,7 +543,7 @@ public class DashboardDataModelResourceTest
             .queryParam("include", "all");
     response =
         TestUtils.get(
-            target, DashboardDataModelResource.DataModelColumnList.class, ADMIN_AUTH_HEADERS);
+            target, DashboardDataModelService.DataModelColumnList.class, ADMIN_AUTH_HEADERS);
     assertEquals(5, response.getData().size());
     assertEquals(5, response.getPaging().getTotal());
 
@@ -553,7 +554,7 @@ public class DashboardDataModelResourceTest
         () ->
             TestUtils.get(
                 targetWithoutInclude,
-                DashboardDataModelResource.DataModelColumnList.class,
+                DashboardDataModelService.DataModelColumnList.class,
                 ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         CatalogExceptionMessage.entityNotFound("dashboardDataModel", dataModel.getId()));

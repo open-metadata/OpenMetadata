@@ -75,6 +75,7 @@ import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchAggregationNode;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.services.searchindex.SearchIndexService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -89,9 +90,9 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     super(
         Entity.SEARCH_INDEX,
         SearchIndex.class,
-        SearchIndexResource.SearchIndexList.class,
+        SearchIndexService.SearchIndexList.class,
         "searchIndexes",
-        SearchIndexResource.FIELDS);
+        SearchIndexService.FIELDS);
     supportsSearchIndex = true;
   }
 
@@ -739,7 +740,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     List<SearchIndex> searchIndexList =
         TestUtils.getAllPages(
             target,
-            SearchIndexResource.SearchIndexList.class,
+            SearchIndexService.SearchIndexList.class,
             "after",
             "limit",
             50,
@@ -779,7 +780,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     searchIndexList =
         TestUtils.getAllPages(
             target,
-            SearchIndexResource.SearchIndexList.class,
+            SearchIndexService.SearchIndexList.class,
             "after",
             "limit",
             50,

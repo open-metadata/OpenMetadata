@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DOCUMENT;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -58,7 +57,7 @@ public class DocumentRepository extends EntityRepository<Document> {
   }
 
   @Override
-  public List<Document> getEntitiesFromSeedData() throws IOException {
+  public List<Document> getEntitiesFromSeedData() {
     List<Document> entitiesFromSeedData = new ArrayList<>();
     SmtpSettings emailConfig =
         SettingsCache.getSetting(SettingsType.EMAIL_CONFIGURATION, SmtpSettings.class);

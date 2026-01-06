@@ -75,8 +75,8 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
-import org.openmetadata.service.resources.tags.TagResource.TagList;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.services.tags.TagService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils.UpdateType;
@@ -89,7 +89,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
       new ClassificationResourceTest();
 
   public TagResourceTest() {
-    super(Entity.TAG, Tag.class, TagList.class, "tags", TagResource.FIELDS);
+    super(Entity.TAG, Tag.class, TagService.TagList.class, "tags", TagService.FIELDS);
     supportsSearchIndex = true;
   }
 

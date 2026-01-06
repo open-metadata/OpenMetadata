@@ -26,6 +26,7 @@ import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.services.dqtests.TestDefinitionService;
 import org.openmetadata.service.util.TestUtils;
 
 public class TestDefinitionResourceTest
@@ -34,9 +35,9 @@ public class TestDefinitionResourceTest
     super(
         Entity.TEST_DEFINITION,
         TestDefinition.class,
-        TestDefinitionResource.TestDefinitionList.class,
+        TestDefinitionService.TestDefinitionList.class,
         "dataQuality/testDefinitions",
-        TestDefinitionResource.FIELDS);
+        TestDefinitionService.FIELDS);
   }
 
   public void setupTestDefinitions() throws IOException {

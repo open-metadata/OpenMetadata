@@ -60,6 +60,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DriveServiceResourceTest;
+import org.openmetadata.service.services.drives.FileService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -68,8 +69,7 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
   private static EntityReference DRIVE_SERVICE_REFERENCE;
 
   public FileResourceTest() {
-    super(
-        Entity.FILE, File.class, FileResource.FileList.class, "drives/files", FileResource.FIELDS);
+    super(Entity.FILE, File.class, FileService.FileList.class, "drives/files", FileService.FIELDS);
     supportsSearchIndex = true;
   }
 

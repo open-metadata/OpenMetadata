@@ -41,8 +41,8 @@ import org.openmetadata.schema.entity.services.LLMService;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.ai.LLMModelResource.LLMModelList;
 import org.openmetadata.service.resources.services.llm.LLMServiceResourceTest;
+import org.openmetadata.service.services.ml.LLMModelService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -51,7 +51,11 @@ public class LLMModelResourceTest extends EntityResourceTest<LLMModel, CreateLLM
 
   public LLMModelResourceTest() {
     super(
-        Entity.LLM_MODEL, LLMModel.class, LLMModelList.class, "llmModels", LLMModelResource.FIELDS);
+        Entity.LLM_MODEL,
+        LLMModel.class,
+        LLMModelService.LLMModelList.class,
+        "llmModels",
+        LLMModelService.FIELDS);
   }
 
   @BeforeAll

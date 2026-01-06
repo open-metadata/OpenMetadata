@@ -46,8 +46,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.services.messaging.MessagingServiceResource;
-import org.openmetadata.service.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
+import org.openmetadata.service.services.serviceentities.MessagingServiceEntityService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -60,9 +59,9 @@ public class MessagingServiceResourceTest
     super(
         Entity.MESSAGING_SERVICE,
         MessagingService.class,
-        MessagingServiceList.class,
+        MessagingServiceEntityService.MessagingServiceList.class,
         "services/messagingServices",
-        MessagingServiceResource.FIELDS);
+        MessagingServiceEntityService.FIELDS);
     supportsPatch = false;
   }
 

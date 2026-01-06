@@ -47,7 +47,6 @@ import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
-import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -84,21 +83,12 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Collection(name = "TestCases")
 public class TestCaseResource {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
-  private final TestCaseResultMapper testCaseResultMapper = new TestCaseResultMapper();
   static final String SEARCH_FIELDS_EXCLUDE =
       "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,testCaseType,originEntityFQN,followers";
   private final TestCaseService service;
 
   public TestCaseResource(TestCaseService service) {
     this.service = service;
-  }
-
-  public static class TestCaseList extends ResultList<TestCase> {
-    /* Required for serde */
-  }
-
-  public static class TestCaseResultList extends ResultList<TestCaseResult> {
-    /* Required for serde */
   }
 
   @GET
@@ -118,7 +108,7 @@ public class TestCaseResource {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = TestCaseResource.TestCaseList.class)))
+                    schema = @Schema(implementation = TestCaseService.TestCaseList.class)))
       })
   public ResultList<TestCase> list(
       @Context UriInfo uriInfo,
@@ -256,7 +246,7 @@ public class TestCaseResource {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = TestCaseResource.TestCaseList.class)))
+                    schema = @Schema(implementation = TestCaseService.TestCaseList.class)))
       })
   public ResultList<TestCase> listFromSearch(
       @Context UriInfo uriInfo,

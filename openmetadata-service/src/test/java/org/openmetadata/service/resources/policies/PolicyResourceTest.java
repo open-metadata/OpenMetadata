@@ -79,12 +79,12 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
-import org.openmetadata.service.resources.policies.PolicyResource.PolicyList;
 import org.openmetadata.service.resources.policies.PolicyResource.ResourceDescriptorList;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
+import org.openmetadata.service.services.policies.PolicyService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.TestUtils;
 
@@ -97,9 +97,9 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     super(
         Entity.POLICY,
         Policy.class,
-        PolicyList.class,
+        PolicyService.PolicyList.class,
         "policies",
-        PolicyResource.FIELDS,
+        PolicyService.FIELDS,
         Entity.ORGANIZATION_POLICY_NAME);
   }
 

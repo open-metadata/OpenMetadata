@@ -29,7 +29,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.StorageConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.services.storage.StorageServiceResource;
+import org.openmetadata.service.services.serviceentities.StorageServiceEntityService;
 import org.openmetadata.service.util.TestUtils;
 
 public class StorageServiceResourceTest
@@ -38,9 +38,9 @@ public class StorageServiceResourceTest
     super(
         Entity.STORAGE_SERVICE,
         StorageService.class,
-        StorageServiceResource.StorageServiceList.class,
+        StorageServiceEntityService.StorageServiceList.class,
         "services/storageServices",
-        StorageServiceResource.FIELDS);
+        StorageServiceEntityService.FIELDS);
     this.supportsPatch = false;
   }
 

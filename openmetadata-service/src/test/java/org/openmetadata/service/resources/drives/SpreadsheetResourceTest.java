@@ -61,6 +61,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DriveServiceResourceTest;
+import org.openmetadata.service.services.drives.SpreadsheetService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -72,9 +73,9 @@ class SpreadsheetResourceTest extends EntityResourceTest<Spreadsheet, CreateSpre
     super(
         Entity.SPREADSHEET,
         Spreadsheet.class,
-        SpreadsheetResource.SpreadsheetList.class,
+        SpreadsheetService.SpreadsheetList.class,
         "drives/spreadsheets",
-        SpreadsheetResource.FIELDS);
+        SpreadsheetService.FIELDS);
     supportsSearchIndex = true;
   }
 

@@ -47,7 +47,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.SecurityConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.services.security.SecurityServiceResource;
+import org.openmetadata.service.services.serviceentities.SecurityServiceEntityService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -60,9 +60,9 @@ public class SecurityServiceResourceTest
     super(
         Entity.SECURITY_SERVICE,
         SecurityService.class,
-        SecurityServiceResource.SecurityServiceList.class,
+        SecurityServiceEntityService.SecurityServiceList.class,
         "services/securityServices",
-        SecurityServiceResource.FIELDS);
+        SecurityServiceEntityService.FIELDS);
     this.supportsPatch = false;
   }
 

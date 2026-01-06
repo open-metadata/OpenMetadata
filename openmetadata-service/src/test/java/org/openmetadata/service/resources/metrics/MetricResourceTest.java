@@ -47,6 +47,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.services.metrics.MetricService;
 import org.openmetadata.service.util.TestUtils;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -57,9 +58,9 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
     super(
         Entity.METRIC,
         Metric.class,
-        MetricResource.MetricsList.class,
+        MetricService.MetricsList.class,
         "metrics",
-        MetricResource.FIELDS);
+        MetricService.FIELDS);
     supportsSearchIndex = true;
   }
 

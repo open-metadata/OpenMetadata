@@ -34,9 +34,10 @@ import org.openmetadata.schema.type.DataReportIndex;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
-import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
+import org.openmetadata.service.services.datainsight.DataInsightChartService;
+import org.openmetadata.service.services.policies.RoleService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.TestUtils;
 
@@ -46,9 +47,9 @@ public class DataInsightChartResourceTest
     super(
         DATA_INSIGHT_CHART,
         DataInsightChart.class,
-        DataInsightChartResource.DataInsightChartList.class,
+        DataInsightChartService.DataInsightChartList.class,
         "analytics/dataInsights/charts",
-        DataInsightChartResource.FIELDS);
+        DataInsightChartService.FIELDS);
   }
 
   @Test
@@ -79,7 +80,7 @@ public class DataInsightChartResourceTest
 
     Role dataStewardRole =
         roleResourceTest.getEntityByName(
-            DATA_STEWARD_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+            DATA_STEWARD_ROLE_NAME, null, RoleService.FIELDS, ADMIN_AUTH_HEADERS);
 
     rules.add(
         new Rule()

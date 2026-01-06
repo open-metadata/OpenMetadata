@@ -87,11 +87,10 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatabaseResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
-import org.openmetadata.service.resources.services.database.DatabaseServiceResource;
-import org.openmetadata.service.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
+import org.openmetadata.service.services.serviceentities.DatabaseServiceEntityService;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
 
@@ -102,9 +101,9 @@ public class DatabaseServiceResourceTest
     super(
         Entity.DATABASE_SERVICE,
         DatabaseService.class,
-        DatabaseServiceList.class,
+        DatabaseServiceEntityService.DatabaseServiceList.class,
         "services/databaseServices",
-        DatabaseServiceResource.FIELDS);
+        DatabaseServiceEntityService.FIELDS);
     this.supportsPatch = false;
   }
 

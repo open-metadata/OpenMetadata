@@ -31,7 +31,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.SearchConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.services.searchIndexes.SearchServiceResource;
+import org.openmetadata.service.services.serviceentities.SearchServiceEntityService;
 import org.openmetadata.service.util.TestUtils;
 
 public class SearchServiceResourceTest
@@ -40,9 +40,9 @@ public class SearchServiceResourceTest
     super(
         Entity.SEARCH_SERVICE,
         SearchService.class,
-        SearchServiceResource.SearchServiceList.class,
+        SearchServiceEntityService.SearchServiceList.class,
         "services/searchServices",
-        SearchServiceResource.FIELDS);
+        SearchServiceEntityService.FIELDS);
     this.supportsPatch = false;
   }
 

@@ -76,9 +76,9 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.settings.SettingsCache;
-import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
+import org.openmetadata.service.services.policies.RoleService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -110,7 +110,7 @@ public class OpenLineageResourceTest extends OpenMetadataApplicationTest {
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     Role dataStewardRole =
         roleResourceTest.getEntityByName(
-            DATA_STEWARD_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+            DATA_STEWARD_ROLE_NAME, null, RoleService.FIELDS, ADMIN_AUTH_HEADERS);
     User userWithDataStewardRole =
         userResourceTest.createEntity(
             userResourceTest

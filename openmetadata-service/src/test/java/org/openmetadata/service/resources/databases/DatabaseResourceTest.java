@@ -74,7 +74,6 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.databases.DatabaseResource.DatabaseList;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -86,7 +85,11 @@ import org.openmetadata.service.util.TestUtils;
 public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDatabase> {
   public DatabaseResourceTest() {
     super(
-        Entity.DATABASE, Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS);
+        Entity.DATABASE,
+        Database.class,
+        org.openmetadata.service.services.databases.DatabaseService.DatabaseList.class,
+        "databases",
+        org.openmetadata.service.services.databases.DatabaseService.FIELDS);
     supportsBulkAPI = true;
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
   }

@@ -19,6 +19,7 @@ import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.services.apps.AppMarketPlaceService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -29,9 +30,9 @@ public class AppMarketPlaceResourceTest
     super(
         Entity.APP_MARKET_PLACE_DEF,
         AppMarketPlaceDefinition.class,
-        AppMarketPlaceResource.AppMarketPlaceDefinitionList.class,
+        AppMarketPlaceService.AppMarketPlaceDefinitionList.class,
         "apps/marketplace",
-        AppMarketPlaceResource.FIELDS);
+        AppMarketPlaceService.FIELDS);
     supportsFieldsQueryParam = false;
     supportedNameCharacters = "_-.";
   }

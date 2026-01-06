@@ -57,9 +57,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.charts.ChartResource.ChartList;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
+import org.openmetadata.service.services.dashboards.ChartService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -67,7 +67,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   private final DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
 
   public ChartResourceTest() {
-    super(Entity.CHART, Chart.class, ChartList.class, "charts", ChartResource.FIELDS);
+    super(Entity.CHART, Chart.class, ChartService.ChartList.class, "charts", ChartService.FIELDS);
     supportsBulkAPI = true;
   }
 

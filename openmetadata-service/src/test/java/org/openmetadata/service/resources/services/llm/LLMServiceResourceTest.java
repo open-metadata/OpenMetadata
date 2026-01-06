@@ -44,7 +44,7 @@ import org.openmetadata.schema.type.LLMConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.ServiceResourceTest;
-import org.openmetadata.service.resources.services.llm.LLMServiceResource.LLMServiceList;
+import org.openmetadata.service.services.serviceentities.LLMServiceEntityService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -53,9 +53,9 @@ public class LLMServiceResourceTest extends ServiceResourceTest<LLMService, Crea
     super(
         Entity.LLM_SERVICE,
         LLMService.class,
-        LLMServiceList.class,
+        LLMServiceEntityService.LLMServiceList.class,
         "services/llmServices",
-        LLMServiceResource.FIELDS);
+        LLMServiceEntityService.FIELDS);
     this.supportsPatch = false;
     supportsSearchIndex = true;
   }

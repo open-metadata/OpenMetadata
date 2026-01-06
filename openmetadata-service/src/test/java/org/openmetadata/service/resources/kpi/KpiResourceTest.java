@@ -36,12 +36,13 @@ import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchI
 import org.openmetadata.service.apps.bundles.insights.search.elasticsearch.ElasticSearchDataInsightsClient;
 import org.openmetadata.service.apps.bundles.insights.search.opensearch.OpenSearchDataInsightsClient;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.services.kpi.KpiService;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
 public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   public KpiResourceTest() {
-    super(Entity.KPI, Kpi.class, KpiResource.KpiList.class, "kpi", KpiResource.FIELDS);
+    super(Entity.KPI, Kpi.class, KpiService.KpiList.class, "kpi", KpiService.FIELDS);
     supportsPatch = false;
   }
 
@@ -114,14 +115,14 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   void createUpdate_tests_200() throws IOException {
     CreateKpiRequest create = createRequest("Test" + UUID.randomUUID());
     Kpi createdKpi = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    createdKpi = getEntity(createdKpi.getId(), KpiResource.FIELDS, ADMIN_AUTH_HEADERS);
+    createdKpi = getEntity(createdKpi.getId(), KpiService.FIELDS, ADMIN_AUTH_HEADERS);
     validateCreatedEntity(createdKpi, create, ADMIN_AUTH_HEADERS);
     create.withTargetValue(10d);
     ChangeDescription change = getChangeDescription(createdKpi, MINOR_UPDATE);
     fieldUpdated(change, "targetValue", KPI_TARGET.getValue(), create.getTargetValue().toString());
 
     createdKpi = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    createdKpi = getEntity(createdKpi.getId(), KpiResource.FIELDS, ADMIN_AUTH_HEADERS);
+    createdKpi = getEntity(createdKpi.getId(), KpiService.FIELDS, ADMIN_AUTH_HEADERS);
     validateCreatedEntity(createdKpi, create, ADMIN_AUTH_HEADERS);
   }
 

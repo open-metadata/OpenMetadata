@@ -212,13 +212,13 @@ import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.lineage.LineageResourceTest;
-import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.resources.query.QueryResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
+import org.openmetadata.service.services.databases.QueryService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -3766,7 +3766,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   public List<Query> getTableQueriesData(UUID entityId, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(String.format("queries?entityId=%s&fields=votes", entityId));
-    return TestUtils.get(target, QueryResource.QueryList.class, authHeaders).getData();
+    return TestUtils.get(target, QueryService.QueryList.class, authHeaders).getData();
   }
 
   public Table putTableDataModel(UUID tableId, DataModel dataModel, Map<String, String> authHeaders)

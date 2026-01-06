@@ -40,6 +40,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.services.databases.QueryService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.TestUtils;
 
@@ -51,8 +52,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   private String QUERY_CHECKSUM;
 
   public QueryResourceTest() {
-    super(
-        Entity.QUERY, Query.class, QueryResource.QueryList.class, "queries", QueryResource.FIELDS);
+    super(Entity.QUERY, Query.class, QueryService.QueryList.class, "queries", QueryService.FIELDS);
     supportsSearchIndex = true;
     EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG = false;
   }
@@ -440,6 +440,6 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     if (includeAll) {
       target = target.queryParam("include", "all");
     }
-    return TestUtils.get(target, QueryResource.QueryList.class, authHeaders);
+    return TestUtils.get(target, QueryService.QueryList.class, authHeaders);
   }
 }

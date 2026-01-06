@@ -84,10 +84,10 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.databases.DatabaseSchemaResource.DatabaseSchemaList;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
+import org.openmetadata.service.services.databases.DatabaseSchemaService;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
 
@@ -99,9 +99,9 @@ public class DatabaseSchemaResourceTest
     super(
         Entity.DATABASE_SCHEMA,
         DatabaseSchema.class,
-        DatabaseSchemaList.class,
+        DatabaseSchemaService.DatabaseSchemaList.class,
         "databaseSchemas",
-        DatabaseSchemaResource.FIELDS);
+        DatabaseSchemaService.FIELDS);
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
     supportsBulkAPI = true;
   }

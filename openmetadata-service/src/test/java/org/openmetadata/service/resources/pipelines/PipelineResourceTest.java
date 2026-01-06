@@ -74,7 +74,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.pipelines.PipelineResource.PipelineList;
 import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RdfTestUtils;
@@ -86,7 +85,11 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   public PipelineResourceTest() {
     super(
-        Entity.PIPELINE, Pipeline.class, PipelineList.class, "pipelines", PipelineResource.FIELDS);
+        Entity.PIPELINE,
+        Pipeline.class,
+        org.openmetadata.service.services.pipelines.PipelineService.PipelineList.class,
+        "pipelines",
+        PipelineResource.FIELDS);
     supportsBulkAPI = true;
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
     supportsSearchIndex = true;
@@ -820,7 +823,10 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
       throws HttpResponseException {
     WebTarget target = getResource("pipelines/").path(fqn).path("/status");
     target = target.queryParam("startTs", startTs).queryParam("endTs", endTs);
-    return TestUtils.get(target, PipelineResource.PipelineStatusList.class, authHeaders);
+    return TestUtils.get(
+        target,
+        org.openmetadata.service.services.pipelines.PipelineService.PipelineStatusList.class,
+        authHeaders);
   }
 
   public ResultList<org.openmetadata.schema.type.PipelineSummary> listPipelineSummaries(
@@ -993,7 +999,13 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     WebTarget target = getResource("pipelines").queryParam("fields", "tags");
 
     List<Pipeline> pipelineList =
-        TestUtils.getAllPages(target, PipelineList.class, "after", "limit", 50, ADMIN_AUTH_HEADERS);
+        TestUtils.getAllPages(
+            target,
+            org.openmetadata.service.services.pipelines.PipelineService.PipelineList.class,
+            "after",
+            "limit",
+            50,
+            ADMIN_AUTH_HEADERS);
     assertListNotEmpty(pipelineList);
 
     // Verify at least one of our created pipelines is in the response
@@ -1027,7 +1039,13 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     target = getResource("pipelines").queryParam("fields", "tasks,tags");
 
     pipelineList =
-        TestUtils.getAllPages(target, PipelineList.class, "after", "limit", 50, ADMIN_AUTH_HEADERS);
+        TestUtils.getAllPages(
+            target,
+            org.openmetadata.service.services.pipelines.PipelineService.PipelineList.class,
+            "after",
+            "limit",
+            50,
+            ADMIN_AUTH_HEADERS);
     assertListNotEmpty(pipelineList);
 
     // Verify at least one of our created pipelines is in the response

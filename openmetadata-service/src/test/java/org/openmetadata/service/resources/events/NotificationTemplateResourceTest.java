@@ -81,6 +81,7 @@ import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.services.events.NotificationTemplateService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -92,9 +93,9 @@ public class NotificationTemplateResourceTest
     super(
         Entity.NOTIFICATION_TEMPLATE,
         NotificationTemplate.class,
-        NotificationTemplateResource.NotificationTemplateList.class,
+        NotificationTemplateService.NotificationTemplateList.class,
         "notificationTemplates",
-        NotificationTemplateResource.FIELDS);
+        NotificationTemplateService.FIELDS);
     supportsFieldsQueryParam = false;
   }
 

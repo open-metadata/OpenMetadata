@@ -54,14 +54,19 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
-import org.openmetadata.service.resources.domains.DomainResource.DomainList;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.services.domains.DomainService;
 import org.openmetadata.service.util.EntityHierarchyList;
 import org.openmetadata.service.util.TestUtils;
 
 public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain> {
   public DomainResourceTest() {
-    super(Entity.DOMAIN, Domain.class, DomainList.class, "domains", DomainResource.FIELDS);
+    super(
+        Entity.DOMAIN,
+        Domain.class,
+        DomainService.DomainList.class,
+        "domains",
+        DomainService.FIELDS);
   }
 
   public void setupDomains(TestInfo test) throws IOException {

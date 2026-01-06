@@ -39,6 +39,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
+import org.openmetadata.service.services.databases.StoredProcedureService;
 import org.openmetadata.service.util.*;
 
 @Slf4j
@@ -50,9 +51,9 @@ public class StoredProcedureResourceTest
     super(
         STORED_PROCEDURE,
         StoredProcedure.class,
-        StoredProcedureResource.StoredProcedureList.class,
+        StoredProcedureService.StoredProcedureList.class,
         "storedProcedures",
-        StoredProcedureResource.FIELDS);
+        StoredProcedureService.FIELDS);
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
     supportsSearchIndex = true;
     supportsBulkAPI = true;

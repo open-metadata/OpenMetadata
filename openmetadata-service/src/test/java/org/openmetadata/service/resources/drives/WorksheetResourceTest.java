@@ -61,6 +61,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DriveServiceResourceTest;
+import org.openmetadata.service.services.drives.WorksheetService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -77,9 +78,9 @@ public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateW
     super(
         Entity.WORKSHEET,
         Worksheet.class,
-        WorksheetResource.WorksheetList.class,
+        WorksheetService.WorksheetList.class,
         "drives/worksheets",
-        WorksheetResource.FIELDS);
+        WorksheetService.FIELDS);
     supportsSearchIndex = true;
   }
 

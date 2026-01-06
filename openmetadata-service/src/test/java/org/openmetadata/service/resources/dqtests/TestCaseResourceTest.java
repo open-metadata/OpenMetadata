@@ -40,6 +40,7 @@ import static org.openmetadata.service.jdbi3.TestCaseRepository.FAILED_ROWS_SAMP
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.security.mask.PIIMasker.MASKED_VALUE;
+import static org.openmetadata.service.services.dqtests.TestCaseService.FIELDS;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -163,6 +164,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.services.dqtests.TestCaseService;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
@@ -208,9 +210,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     super(
         Entity.TEST_CASE,
         org.openmetadata.schema.tests.TestCase.class,
-        TestCaseResource.TestCaseList.class,
+        TestCaseService.TestCaseList.class,
         "dataQuality/testCases",
-        TestCaseResource.FIELDS);
+        FIELDS);
     supportsTags = false; // Test cases do not support setting tags directly (inherits from Entity)
     supportsFollowers =
         false; // Test cases do not support setting followers directly (inherits from parent table)
@@ -3695,7 +3697,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     }
     target = limit != null ? target.queryParam("limit", limit) : target;
     target = offset != null ? target.queryParam("offset", offset) : target;
-    return TestUtils.get(target, TestCaseResource.TestCaseList.class, authHeader);
+    return TestUtils.get(target, TestCaseService.TestCaseList.class, authHeader);
   }
 
   protected void validateListTestCaseResultsFromSearchWithPagination(
@@ -3830,7 +3832,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     WebTarget target = getResource(testCaseResultsCollectionName).path("/" + fqn);
     target = target.queryParam("startTs", start);
     target = target.queryParam("endTs", end);
-    return TestUtils.get(target, TestCaseResource.TestCaseResultList.class, authHeaders);
+    return TestUtils.get(target, TestCaseService.TestCaseResultList.class, authHeaders);
   }
 
   public TestCase getTestCase(
@@ -3946,7 +3948,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       }
       target = target.queryParam(entry.getKey(), entry.getValue());
     }
-    return TestUtils.get(target, TestCaseResource.TestCaseList.class, authHeaders);
+    return TestUtils.get(target, TestCaseService.TestCaseList.class, authHeaders);
   }
 
   private void patchTestCaseResult(String testCaseFqn, Long timestamp, JsonNode patch)

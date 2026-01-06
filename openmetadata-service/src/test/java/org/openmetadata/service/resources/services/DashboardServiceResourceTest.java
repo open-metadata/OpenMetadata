@@ -57,9 +57,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
-import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource;
-import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
+import org.openmetadata.service.services.serviceentities.DashboardServiceEntityService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -69,9 +68,9 @@ public class DashboardServiceResourceTest
     super(
         Entity.DASHBOARD_SERVICE,
         DashboardService.class,
-        DashboardServiceList.class,
+        DashboardServiceEntityService.DashboardServiceList.class,
         "services/dashboardServices",
-        DashboardServiceResource.FIELDS);
+        DashboardServiceEntityService.FIELDS);
     this.supportsPatch = false;
   }
 

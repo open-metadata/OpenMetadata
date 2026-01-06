@@ -75,7 +75,6 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
-import org.openmetadata.service.resources.mlmodels.MlModelResource.MlModelList;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
 import org.openmetadata.service.util.TestUtils;
 
@@ -125,7 +124,12 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
           new MlHyperParameter().withName("random").withValue("hello"));
 
   public MlModelResourceTest() {
-    super(Entity.MLMODEL, MlModel.class, MlModelList.class, "mlmodels", MlModelResource.FIELDS);
+    super(
+        Entity.MLMODEL,
+        MlModel.class,
+        org.openmetadata.service.services.ml.MlModelService.MlModelList.class,
+        "mlmodels",
+        org.openmetadata.service.services.ml.MlModelService.FIELDS);
   }
 
   @BeforeAll

@@ -56,7 +56,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.tags.ClassificationResource.ClassificationList;
+import org.openmetadata.service.services.tags.ClassificationService;
 import org.openmetadata.service.util.TestUtils;
 
 /** Tests not covered here: Classification and Tag usage counts are covered in TableResourceTest */
@@ -68,9 +68,9 @@ public class ClassificationResourceTest
     super(
         Entity.CLASSIFICATION,
         Classification.class,
-        ClassificationList.class,
+        ClassificationService.ClassificationList.class,
         "classifications",
-        ClassificationResource.FIELDS);
+        ClassificationService.FIELDS);
   }
 
   @Test

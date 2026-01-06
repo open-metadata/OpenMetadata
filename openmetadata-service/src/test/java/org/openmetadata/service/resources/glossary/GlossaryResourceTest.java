@@ -112,6 +112,7 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
+import org.openmetadata.service.services.glossary.GlossaryService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.TestUtils;
 
@@ -124,9 +125,9 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     super(
         Entity.GLOSSARY,
         Glossary.class,
-        GlossaryResource.GlossaryList.class,
+        GlossaryService.GlossaryList.class,
         "glossaries",
-        GlossaryResource.FIELDS);
+        GlossaryService.FIELDS);
     supportsSearchIndex = true;
   }
 

@@ -52,6 +52,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DriveServiceResourceTest;
+import org.openmetadata.service.services.drives.DirectoryService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -60,9 +61,9 @@ class DirectoryResourceTest extends EntityResourceTest<Directory, CreateDirector
     super(
         Entity.DIRECTORY,
         Directory.class,
-        DirectoryResource.DirectoryList.class,
+        DirectoryService.DirectoryList.class,
         "drives/directories",
-        DirectoryResource.FIELDS);
+        DirectoryService.FIELDS);
     supportsSearchIndex = true;
   }
 

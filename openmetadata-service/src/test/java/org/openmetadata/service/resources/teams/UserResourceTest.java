@@ -48,8 +48,8 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.operati
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.jdbi3.RoleRepository.DEFAULT_BOT_ROLE;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
-import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
+import static org.openmetadata.service.services.teams.UserService.USER_PROTECTED_FIELDS;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -154,12 +154,12 @@ import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
-import org.openmetadata.service.resources.teams.UserResource.UserList;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.services.teams.UserService;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.EntityUtil;
@@ -177,7 +177,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   private final RoleRepository roleRepository;
 
   public UserResourceTest() {
-    super(USER, User.class, UserList.class, "users", UserResource.FIELDS);
+    super(USER, User.class, UserService.UserList.class, "users", UserService.FIELDS);
     supportedNameCharacters = "_-.";
     supportsSearchIndex = true;
     roleRepository = Entity.getRoleRepository();
@@ -2247,7 +2247,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   void test_listOnlineUsers() throws HttpResponseException {
     WebTarget target = getCollection().path("/online");
     assertResponse(
-        () -> TestUtils.get(target, UserList.class, TEST_AUTH_HEADERS),
+        () -> TestUtils.get(target, UserService.UserList.class, TEST_AUTH_HEADERS),
         FORBIDDEN,
         notAdmin(TEST_USER_NAME));
     User user1 = createEntity(createRequest("onlineUser1"), ADMIN_AUTH_HEADERS);
@@ -2264,7 +2264,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Also test with lastActivityTime - user3 has recent activity despite old login
     userRepository.updateUserLastActivityTime(user3.getName(), currentTime - (2 * 60 * 1000L));
 
-    UserList onlineUsers5Min = TestUtils.get(target, UserList.class, ADMIN_AUTH_HEADERS);
+    UserService.UserList onlineUsers5Min =
+        TestUtils.get(target, UserService.UserList.class, ADMIN_AUTH_HEADERS);
 
     assertEquals(
         2,
@@ -2277,7 +2278,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             .anyMatch(u -> u.getName().equals("onlineuser3"))); // user3 has recent activity
 
     WebTarget target15Min = target.queryParam("timeWindow", 15);
-    UserList onlineUsers15Min = TestUtils.get(target15Min, UserList.class, ADMIN_AUTH_HEADERS);
+    UserService.UserList onlineUsers15Min =
+        TestUtils.get(target15Min, UserService.UserList.class, ADMIN_AUTH_HEADERS);
     assertEquals(
         3,
         onlineUsers15Min.getData().stream()
@@ -2293,7 +2295,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Test with 180 minute (3 hours) window - should return all three users
     WebTarget target180Min = target.queryParam("timeWindow", 180);
-    UserList onlineUsers180Min = TestUtils.get(target180Min, UserList.class, ADMIN_AUTH_HEADERS);
+    UserService.UserList onlineUsers180Min =
+        TestUtils.get(target180Min, UserService.UserList.class, ADMIN_AUTH_HEADERS);
     assertEquals(
         3,
         onlineUsers180Min.getData().stream()
@@ -2302,7 +2305,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Test pagination
     WebTarget targetWithLimit = target.queryParam("limit", 1);
-    UserList limitedUsers = TestUtils.get(targetWithLimit, UserList.class, ADMIN_AUTH_HEADERS);
+    UserService.UserList limitedUsers =
+        TestUtils.get(targetWithLimit, UserService.UserList.class, ADMIN_AUTH_HEADERS);
     assertEquals(1, limitedUsers.getData().size());
 
     // Clean up
@@ -2340,7 +2344,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Check online users with 5 minute window (default)
     WebTarget onlineTarget = getCollection().path("/online");
-    UserList onlineUsers = TestUtils.get(onlineTarget, UserList.class, ADMIN_AUTH_HEADERS);
+    UserService.UserList onlineUsers =
+        TestUtils.get(onlineTarget, UserService.UserList.class, ADMIN_AUTH_HEADERS);
 
     // Debug output
     System.out.println("Online users count: " + onlineUsers.getData().size());
@@ -2383,7 +2388,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Check online users - bot should NOT show up
     WebTarget onlineTarget = getCollection().path("/online");
-    UserList onlineUsers = TestUtils.get(onlineTarget, UserList.class, ADMIN_AUTH_HEADERS);
+    UserService.UserList onlineUsers =
+        TestUtils.get(onlineTarget, UserService.UserList.class, ADMIN_AUTH_HEADERS);
 
     // Bot user should not be in the online list
     assertFalse(
@@ -2413,7 +2419,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Test 1 minute window - should only include veryRecentUser
     WebTarget target1Min = onlineTarget.queryParam("timeWindow", 1);
-    UserList onlineUsers1Min = TestUtils.get(target1Min, UserList.class, ADMIN_AUTH_HEADERS);
+    UserService.UserList onlineUsers1Min =
+        TestUtils.get(target1Min, UserService.UserList.class, ADMIN_AUTH_HEADERS);
     assertEquals(
         1,
         onlineUsers1Min.getData().stream()
@@ -2427,7 +2434,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         onlineUsers1Min.getData().stream().anyMatch(u -> u.getName().equals("veryrecentuser")));
 
     // Test 5 minute window (default) - should include veryRecentUser and recentUser
-    UserList onlineUsers5Min = TestUtils.get(onlineTarget, UserList.class, ADMIN_AUTH_HEADERS);
+    UserService.UserList onlineUsers5Min =
+        TestUtils.get(onlineTarget, UserService.UserList.class, ADMIN_AUTH_HEADERS);
     assertEquals(
         2,
         onlineUsers5Min.getData().stream()
@@ -2440,7 +2448,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Test 60 minute window - should include all three
     WebTarget target60Min = onlineTarget.queryParam("timeWindow", 60);
-    UserList onlineUsers60Min = TestUtils.get(target60Min, UserList.class, ADMIN_AUTH_HEADERS);
+    UserService.UserList onlineUsers60Min =
+        TestUtils.get(target60Min, UserService.UserList.class, ADMIN_AUTH_HEADERS);
     assertEquals(
         3,
         onlineUsers60Min.getData().stream()
@@ -2463,18 +2472,19 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Test that non-admin users cannot access online users
     assertResponse(
-        () -> TestUtils.get(onlineTarget, UserList.class, TEST_AUTH_HEADERS),
+        () -> TestUtils.get(onlineTarget, UserService.UserList.class, TEST_AUTH_HEADERS),
         FORBIDDEN,
         notAdmin(TEST_USER_NAME));
 
     // Test that users with CREATE permission cannot access online users
     assertResponse(
-        () -> TestUtils.get(onlineTarget, UserList.class, USER_WITH_CREATE_HEADERS),
+        () -> TestUtils.get(onlineTarget, UserService.UserList.class, USER_WITH_CREATE_HEADERS),
         FORBIDDEN,
         notAdmin(USER_WITH_CREATE_PERMISSION_NAME.toLowerCase()));
 
     // Test that admin users can access online users
-    UserList onlineUsers = TestUtils.get(onlineTarget, UserList.class, ADMIN_AUTH_HEADERS);
+    UserService.UserList onlineUsers =
+        TestUtils.get(onlineTarget, UserService.UserList.class, ADMIN_AUTH_HEADERS);
     assertNotNull(onlineUsers);
     assertNotNull(onlineUsers.getData());
   }

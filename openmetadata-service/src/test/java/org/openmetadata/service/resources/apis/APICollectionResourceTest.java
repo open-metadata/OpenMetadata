@@ -30,6 +30,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.services.apis.APICollectionService;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
 
@@ -40,9 +41,9 @@ public class APICollectionResourceTest
     super(
         Entity.API_COLLECTION,
         APICollection.class,
-        APICollectionResource.APICollectionList.class,
+        APICollectionService.APICollectionList.class,
         "apiCollections",
-        APICollectionResource.FIELDS);
+        APICollectionService.FIELDS);
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
   }
 

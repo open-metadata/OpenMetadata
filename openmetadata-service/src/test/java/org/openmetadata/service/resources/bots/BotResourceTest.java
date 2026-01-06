@@ -32,8 +32,8 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.apps.AppsResourceTest;
-import org.openmetadata.service.resources.bots.BotResource.BotList;
 import org.openmetadata.service.resources.teams.UserResourceTest;
+import org.openmetadata.service.services.bots.BotService;
 import org.openmetadata.service.util.DeleteEntityMessage;
 import org.openmetadata.service.util.TestUtils;
 
@@ -42,7 +42,7 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   public static User botUser;
 
   public BotResourceTest() {
-    super(Entity.BOT, Bot.class, BotList.class, "bots", "", INGESTION_BOT);
+    super(Entity.BOT, Bot.class, BotService.BotList.class, "bots", "", INGESTION_BOT);
     supportsFieldsQueryParam = false;
     supportedNameCharacters = "_-.";
   }

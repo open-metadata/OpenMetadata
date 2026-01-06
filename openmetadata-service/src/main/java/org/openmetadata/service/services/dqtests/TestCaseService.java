@@ -28,6 +28,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -190,6 +191,10 @@ public class TestCaseService extends EntityBaseService<TestCase, TestCaseReposit
   }
 
   public static class TestCaseList extends ResultList<TestCase> {
+    /* Required for serde */
+  }
+
+  public static class TestCaseResultList extends ResultList<TestCaseResult> {
     /* Required for serde */
   }
 }

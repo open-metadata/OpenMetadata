@@ -38,7 +38,8 @@ import org.openmetadata.schema.entity.ai.PolicyType;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.ai.AIGovernancePolicyResource.AIGovernancePolicyList;
+import org.openmetadata.service.services.ai.AIGovernancePolicyService;
+import org.openmetadata.service.services.ai.AIGovernancePolicyService.AIGovernancePolicyList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -52,7 +53,7 @@ public class AIGovernancePolicyResourceTest
         AIGovernancePolicy.class,
         AIGovernancePolicyList.class,
         "aiGovernancePolicies",
-        AIGovernancePolicyResource.FIELDS);
+        AIGovernancePolicyService.FIELDS);
   }
 
   @BeforeAll

@@ -49,6 +49,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.services.docstore.DocStoreService;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -57,7 +58,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
   private static final String EMAIL_TEMPLATE = "EmailTemplate";
 
   public DocStoreResourceTest() {
-    super(DOCUMENT, Document.class, DocStoreResource.DocumentList.class, "docStore", "");
+    super(DOCUMENT, Document.class, DocStoreService.DocumentList.class, "docStore", "");
     supportsSearchIndex = false;
     supportsFieldsQueryParam = false;
   }

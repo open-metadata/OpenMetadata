@@ -184,7 +184,7 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
   }
 
   @Override
-  public List<NotificationTemplate> getEntitiesFromSeedData() throws IOException {
+  public List<NotificationTemplate> getEntitiesFromSeedData() {
     // Use ResourcePathResolver to get the path, enabling commercial versions to override
     String seedPath =
         ResourcePathResolver.getResourcePath(NotificationTemplateResourcePathProvider.class);

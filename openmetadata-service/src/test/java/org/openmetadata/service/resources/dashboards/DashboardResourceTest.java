@@ -67,7 +67,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.charts.ChartResourceTest;
-import org.openmetadata.service.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RdfTestUtils;
@@ -82,9 +81,9 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     super(
         Entity.DASHBOARD,
         Dashboard.class,
-        DashboardList.class,
+        org.openmetadata.service.services.dashboards.DashboardService.DashboardList.class,
         "dashboards",
-        DashboardResource.FIELDS);
+        org.openmetadata.service.services.dashboards.DashboardService.FIELDS);
     supportsSearchIndex = true;
     supportsBulkAPI = true;
   }

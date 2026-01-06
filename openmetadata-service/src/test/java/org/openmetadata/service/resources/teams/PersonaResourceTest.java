@@ -44,6 +44,7 @@ import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.services.teams.PersonaService;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -52,9 +53,9 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     super(
         PERSONA,
         Persona.class,
-        PersonaResource.PersonaList.class,
+        PersonaService.PersonaList.class,
         "personas",
-        PersonaResource.FIELDS);
+        PersonaService.FIELDS);
     supportsSearchIndex = false;
     supportsOwners = false;
     supportsAdminOnly = true;

@@ -77,9 +77,9 @@ import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
-import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
+import org.openmetadata.service.services.events.EventSubscriptionService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.TestUtils;
 
@@ -96,9 +96,9 @@ public class EventSubscriptionResourceTest
     super(
         Entity.EVENT_SUBSCRIPTION,
         EventSubscription.class,
-        EventSubscriptionResource.EventSubscriptionList.class,
+        EventSubscriptionService.EventSubscriptionList.class,
         "events/subscriptions",
-        EventSubscriptionResource.FIELDS);
+        EventSubscriptionService.FIELDS);
     supportedNameCharacters = supportedNameCharacters.replace(" ", ""); // Space not supported
     supportsFieldsQueryParam = false;
     supportsEtag = false;
