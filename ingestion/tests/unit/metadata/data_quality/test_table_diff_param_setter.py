@@ -111,6 +111,44 @@ SERVICE_CONNECTION_CONFIG = MysqlConnection(
             ),
             "snowflake://test:test@sf-account/database/schema?account=sf-account&warehouse=SF_DH",
         ),
+        pytest.param(
+            DatabaseService(
+                id="85811038-099a-11ed-861d-0242ac120002",
+                name="postgres_special_chars",
+                connection=DatabaseConnection(
+                    config=PostgresConnection(
+                        username="test",
+                        authType=BasicAuth(
+                            password="pass]word[test",
+                        ),
+                        hostPort="localhost:5432",
+                        database="dvdrental",
+                    )
+                ),
+                serviceType=DatabaseServiceType.Postgres,
+            ),
+            "postgresql://test:pass]word[test@localhost:5432/database",
+            id="postgres_special_chars_in_password",
+        ),
+        pytest.param(
+            DatabaseService(
+                id="85811038-099a-11ed-861d-0242ac120002",
+                name="mysql_special_chars",
+                connection=DatabaseConnection(
+                    config=MysqlConnection(
+                        username="test",
+                        authType=BasicAuth(
+                            password="p@ss]w#rd!",
+                        ),
+                        hostPort="localhost:3306",
+                        databaseSchema="mysql_db",
+                    )
+                ),
+                serviceType=DatabaseServiceType.Mysql,
+            ),
+            "mysql://test:p%40ss]w#rd!@localhost:3306/mysql_db",
+            id="mysql_special_chars_in_password",
+        ),
     ],
 )
 def test_get_data_diff_url(input, expected):
