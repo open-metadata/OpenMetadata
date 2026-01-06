@@ -19,7 +19,6 @@ import {
   groupBy,
   isEmpty,
   isUndefined,
-  omit,
   sortBy,
   toLower,
   uniqBy,
@@ -75,12 +74,10 @@ import {
 const SearchIndexFieldsTable = ({
   searchIndexFields,
   onUpdate,
-  viewAllPermission,
   hasDescriptionEditAccess,
   hasTagEditAccess,
   hasGlossaryTermEditAccess,
   isReadOnly = false,
-  hasCustomPropertiesViewAccess,
   entityFqn,
   fieldAllRowKeys,
 }: SearchIndexFieldsTableProps) => {
@@ -180,11 +177,7 @@ const SearchIndexFieldsTable = ({
 
   const handleColumnUpdate = useCallback(
     (updatedColumn: Column) => {
-      const cleanColumn = isEmpty(updatedColumn.children)
-        ? omit(updatedColumn, 'children')
-        : updatedColumn;
-
-      const field = cleanColumn as unknown as SearchIndexField;
+      const field = updatedColumn as unknown as SearchIndexField;
       const fields = cloneDeep(searchIndexFields);
       updateFieldDescription<SearchIndexField>(
         field.fullyQualifiedName ?? '',
@@ -197,7 +190,7 @@ const SearchIndexFieldsTable = ({
         fields
       );
       onUpdate(fields);
-      setSelectedColumn(cleanColumn);
+      setSelectedColumn(updatedColumn);
     },
     [searchIndexFields, onUpdate]
   );
@@ -471,10 +464,8 @@ const SearchIndexFieldsTable = ({
           tags: hasTagEditAccess,
           glossaryTerms: hasGlossaryTermEditAccess,
           description: hasDescriptionEditAccess,
-          viewAllPermission: viewAllPermission,
-        }}
-        hasViewPermission={{
-          customProperties: hasCustomPropertiesViewAccess,
+          viewAllPermission: false,
+          customProperties: false,
         }}
         isOpen={isColumnDetailOpen}
         tableFqn={entityFqn}
