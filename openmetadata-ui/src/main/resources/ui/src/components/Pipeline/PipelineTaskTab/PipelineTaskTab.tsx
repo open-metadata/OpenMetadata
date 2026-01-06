@@ -81,7 +81,6 @@ export const PipelineTaskTab = () => {
     editDescriptionPermission,
     editTagsPermission,
     editGlossaryTermsPermission,
-    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editDescriptionPermission:
@@ -417,16 +416,10 @@ export const PipelineTaskTab = () => {
       <ColumnDetailPanel<Task>
         allColumns={tasksInternal}
         column={selectedTask}
+        deleted={deleted}
         entityType={EntityType.PIPELINE}
-        hasEditPermission={{
-          tags: editTagsPermission,
-          glossaryTerms: editGlossaryTermsPermission,
-          description: editDescriptionPermission,
-        }}
-        hasViewPermission={{
-          customProperties: viewCustomPropertiesPermission,
-        }}
         isOpen={isDetailPanelOpen}
+        permissions={permissions}
         tableFqn={pipelineFQN}
         updateColumnDescription={handleTaskDescriptionUpdate}
         updateColumnTags={handleTaskTagsUpdate}

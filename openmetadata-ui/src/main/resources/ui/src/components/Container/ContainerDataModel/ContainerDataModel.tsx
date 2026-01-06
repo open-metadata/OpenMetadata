@@ -345,11 +345,12 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       <ColumnDetailPanel
         allColumns={schema}
         column={selectedColumn}
+        deleted={isReadOnly}
         entityType={EntityType.CONTAINER}
         hasEditPermission={{
-          tags: hasTagEditAccess,
-          glossaryTerms: hasGlossaryTermEditAccess,
-          description: hasDescriptionEditAccess,
+          tags: hasTagEditAccess && !isReadOnly,
+          glossaryTerms: hasGlossaryTermEditAccess && !isReadOnly,
+          description: hasDescriptionEditAccess && !isReadOnly,
           viewAllPermission: false,
         }}
         hasViewPermission={{

@@ -59,11 +59,6 @@ const MlModelFeaturesList = () => {
     [permissions]
   );
 
-  const hasViewCustomPropertiesPermission = useMemo(
-    () => permissions.ViewCustomFields || permissions.ViewAll,
-    [permissions]
-  );
-
   const handleFeaturesUpdate = useCallback(
     async (features: MlFeature[]) => {
       await onUpdate({ ...data, mlFeatures: features });
@@ -330,17 +325,10 @@ const MlModelFeaturesList = () => {
             (feature) => feature as unknown as Column
           )}
           column={selectedColumn}
+          deleted={isDeleted}
           entityType={EntityType.MLMODEL}
-          hasEditPermission={{
-            tags: hasEditPermission,
-            glossaryTerms: hasEditGlossaryTermPermission,
-            description: permissions.EditAll || permissions.EditDescription,
-            viewAllPermission: permissions.ViewAll,
-          }}
-          hasViewPermission={{
-            customProperties: hasViewCustomPropertiesPermission,
-          }}
           isOpen={isColumnDetailOpen}
+          permissions={permissions}
           tableFqn={entityFqn}
           updateColumnDescription={async (fqn, description) => {
             const updatedFeatures =
@@ -355,7 +343,6 @@ const MlModelFeaturesList = () => {
                 }
               }) ?? [];
             await handleFeaturesUpdate(updatedFeatures);
-            // Find and return the updated feature
             const updatedFeature = updatedFeatures.find(
               (f) => f.fullyQualifiedName === fqn
             );
@@ -375,7 +362,6 @@ const MlModelFeaturesList = () => {
                 }
               }) ?? [];
             await handleFeaturesUpdate(updatedFeatures);
-            // Find and return the updated feature
             const updatedFeature = updatedFeatures.find(
               (f) => f.fullyQualifiedName === fqn
             );

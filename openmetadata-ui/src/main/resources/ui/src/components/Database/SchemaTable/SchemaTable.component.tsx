@@ -161,9 +161,7 @@ const SchemaTable = () => {
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
-    viewCustomPropertiesPermission,
     editDisplayNamePermission,
-    viewAllPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -174,22 +172,6 @@ const SchemaTable = () => {
       editGlossaryTermsPermission:
         (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
         !deleted,
-      viewCustomPropertiesPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewCustomFields,
-      editAllPermission: tablePermissions.EditAll && !deleted,
-      editLineagePermission:
-        (tablePermissions.EditAll || tablePermissions.EditLineage) && !deleted,
-      viewSampleDataPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewSampleData,
-      viewQueriesPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewQueries,
-      viewProfilerPermission:
-        tablePermissions.ViewAll ||
-        tablePermissions.ViewDataProfile ||
-        tablePermissions.ViewTests,
-      viewAllPermission: tablePermissions.ViewAll,
-      viewBasicPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewBasic,
       editDisplayNamePermission:
         (tablePermissions.EditDisplayName || tablePermissions.EditAll) &&
         !deleted,
@@ -832,16 +814,9 @@ const SchemaTable = () => {
       <ColumnDetailPanel
         allColumns={tableColumns}
         column={selectedColumn}
-        hasEditPermission={{
-          tags: editTagsPermission,
-          glossaryTerms: editGlossaryTermsPermission,
-          description: editDescriptionPermission,
-          viewAllPermission: viewAllPermission,
-        }}
-        hasViewPermission={{
-          customProperties: viewCustomPropertiesPermission,
-        }}
+        deleted={deleted}
         isOpen={isColumnDetailOpen}
+        permissions={tablePermissions}
         tableConstraints={table?.tableConstraints}
         tableFqn={tableFqn}
         onClose={handleCloseColumnDetail}

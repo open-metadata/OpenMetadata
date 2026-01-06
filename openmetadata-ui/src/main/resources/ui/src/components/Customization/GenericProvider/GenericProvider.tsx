@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { once } from 'lodash';
+import { isEmpty, omit, once } from 'lodash';
 import {
   createContext,
   useCallback,
@@ -29,8 +29,9 @@ import {
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { DataAssetRuleValidation } from '../../../context/RuleEnforcementProvider/RuleEnforcementProvider.interface';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
-import { EntityTabs } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
+import { Column, TableConstraint } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { Page } from '../../../generated/system/ui/page';
@@ -41,10 +42,28 @@ import {
   getLayoutFromCustomizedPage,
   updateWidgetHeightRecursively,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
+import { updateColumnInNestedStructure } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { ColumnDetailPanel } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
+import {
+  ColumnFieldUpdate,
+  ColumnOrTask,
+} from '../../Database/ColumnDetailPanel/ColumnDetailPanel.interface';
+
+export interface ColumnDetailPanelConfig<C extends ColumnOrTask = Column> {
+  columns: C[];
+  tableFqn?: string;
+  tableConstraints?: TableConstraint[];
+  entityType?: EntityType;
+  onColumnsChange?: (columns: C[]) => void;
+  onColumnFieldUpdate?: (
+    fqn: string,
+    update: ColumnFieldUpdate
+  ) => Promise<C | undefined>;
+}
 
 interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   children?: React.ReactNode;
@@ -57,6 +76,7 @@ interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   isTabExpanded?: boolean;
   customizedPage?: Page | null;
   muiTags?: boolean;
+  columnDetailPanelConfig?: ColumnDetailPanelConfig;
 }
 
 interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
@@ -70,11 +90,14 @@ interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   layout: WidgetConfig[];
   filterWidgets?: (widgets: string[]) => void;
   updateWidgetHeight: (widgetId: string, height: number) => void;
-  // Props to control the dropdown state of Tag/Glossary from the Generic Provider
   activeTagDropdownKey: string | null;
   updateActiveTagDropdownKey: (key: string | null) => void;
   muiTags: boolean;
   entityRules: DataAssetRuleValidation;
+  selectedColumn: ColumnOrTask | null;
+  isColumnDetailOpen: boolean;
+  openColumnDetailPanel: (column: ColumnOrTask) => void;
+  closeColumnDetailPanel: () => void;
 }
 
 const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>
@@ -92,6 +115,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   isTabExpanded = false,
   customizedPage,
   muiTags = false,
+  columnDetailPanelConfig,
 }: GenericProviderProps<T>) => {
   const GenericContext = createGenericContext<T>();
   const [threadLink, setThreadLink] = useState<string>('');
@@ -110,6 +134,11 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const [activeTagDropdownKey, setActiveTagDropdownKey] = useState<
     string | null
   >(null);
+
+  const [selectedColumn, setSelectedColumn] = useState<ColumnOrTask | null>(
+    null
+  );
+  const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
 
   const { entityRules } = useEntityRules(type);
 
@@ -162,6 +191,45 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const updateWidgetHeight = useCallback((widgetId: string, height: number) => {
     setLayout((prev) => updateWidgetHeightRecursively(widgetId, height, prev));
   }, []);
+
+  const openColumnDetailPanel = useCallback((column: ColumnOrTask) => {
+    setSelectedColumn(column);
+    setIsColumnDetailOpen(true);
+  }, []);
+
+  const closeColumnDetailPanel = useCallback(() => {
+    setIsColumnDetailOpen(false);
+    setSelectedColumn(null);
+  }, []);
+
+  const handleColumnUpdate = useCallback(
+    (updatedColumn: ColumnOrTask) => {
+      const cleanColumn = isEmpty((updatedColumn as Column).children)
+        ? omit(updatedColumn, 'children')
+        : updatedColumn;
+
+      if (columnDetailPanelConfig?.onColumnsChange) {
+        const updatedColumns = updateColumnInNestedStructure(
+          columnDetailPanelConfig.columns as Column[],
+          updatedColumn.fullyQualifiedName ?? '',
+          cleanColumn as Partial<Column>
+        );
+        columnDetailPanelConfig.onColumnsChange(updatedColumns);
+      }
+
+      setSelectedColumn(cleanColumn as ColumnOrTask);
+    },
+    [columnDetailPanelConfig]
+  );
+
+  const handleColumnNavigate = useCallback((column: ColumnOrTask) => {
+    setSelectedColumn(column);
+  }, []);
+
+  const deleted = useMemo(
+    () => (data as { deleted?: boolean }).deleted,
+    [data]
+  );
 
   // store the left side panel widget
   const leftPanelWidget = useMemo(() => {
@@ -240,6 +308,10 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       activeTagDropdownKey,
       updateActiveTagDropdownKey,
       muiTags,
+      selectedColumn,
+      isColumnDetailOpen,
+      openColumnDetailPanel,
+      closeColumnDetailPanel,
     }),
     [
       data,
@@ -256,6 +328,10 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       activeTagDropdownKey,
       updateActiveTagDropdownKey,
       muiTags,
+      selectedColumn,
+      isColumnDetailOpen,
+      openColumnDetailPanel,
+      closeColumnDetailPanel,
     ]
   );
 
@@ -274,6 +350,22 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
           onCancel={onThreadPanelClose}
         />
       ) : null}
+      {columnDetailPanelConfig && (
+        <ColumnDetailPanel
+          allColumns={columnDetailPanelConfig.columns}
+          column={selectedColumn as Column}
+          deleted={deleted}
+          entityType={columnDetailPanelConfig.entityType}
+          isOpen={isColumnDetailOpen}
+          permissions={permissions}
+          tableConstraints={columnDetailPanelConfig.tableConstraints}
+          tableFqn={columnDetailPanelConfig.tableFqn}
+          onClose={closeColumnDetailPanel}
+          onColumnFieldUpdate={columnDetailPanelConfig.onColumnFieldUpdate}
+          onColumnUpdate={handleColumnUpdate}
+          onNavigate={handleColumnNavigate}
+        />
+      )}
     </GenericContext.Provider>
   );
 };

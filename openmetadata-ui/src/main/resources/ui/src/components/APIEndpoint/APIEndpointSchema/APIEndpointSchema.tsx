@@ -527,17 +527,10 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           (field) => field as unknown as Column
         )}
         column={selectedColumn}
+        deleted={Boolean(apiEndpointDetails.deleted) || isVersionView}
         entityType={EntityType.API_ENDPOINT}
-        hasEditPermission={{
-          tags: permissions.EditTags || permissions.EditAll,
-          glossaryTerms: permissions.EditGlossaryTerms || permissions.EditAll,
-          description: permissions.EditDescription || permissions.EditAll,
-          viewAllPermission: permissions.ViewAll,
-        }}
-        hasViewPermission={{
-          customProperties: permissions.ViewCustomFields || permissions.ViewAll,
-        }}
         isOpen={isColumnDetailOpen}
+        permissions={permissions}
         tableFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
         updateColumnDescription={async (fqn, description) => {
           if (!isUndefined(onApiEndpointUpdate)) {
@@ -554,7 +547,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
               },
               activeSchemaKey
             );
-            // Find and return the updated field
             const updatedField = findFieldByFQN<Field>(
               schema?.schemaFields ?? [],
               fqn
@@ -576,7 +568,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
               },
               activeSchemaKey
             );
-            // Find and return the updated field
             const updatedField = findFieldByFQN<Field>(
               schema?.schemaFields ?? [],
               fqn

@@ -147,7 +147,6 @@ const ModelTab = () => {
     hasEditTagsPermission,
     hasEditGlossaryTermPermission,
     editDisplayNamePermission,
-    viewCustomPropertiesPermission,
   } = useMemo(() => {
     return {
       hasEditDescriptionPermission:
@@ -157,8 +156,6 @@ const ModelTab = () => {
         permissions.EditAll || permissions.EditGlossaryTerms,
       editDisplayNamePermission:
         (permissions.EditDisplayName || permissions.EditAll) && !deleted,
-      viewCustomPropertiesPermission:
-        permissions.ViewAll || permissions.ViewCustomFields,
     };
   }, [permissions]);
 
@@ -496,17 +493,10 @@ const ModelTab = () => {
       <ColumnDetailPanel
         allColumns={paginatedColumns}
         column={selectedColumn}
+        deleted={deleted}
         entityType={EntityType.DASHBOARD_DATA_MODEL}
-        hasEditPermission={{
-          tags: hasEditTagsPermission,
-          glossaryTerms: hasEditGlossaryTermPermission,
-          description: hasEditDescriptionPermission,
-          viewAllPermission: permissions.ViewAll,
-        }}
-        hasViewPermission={{
-          customProperties: viewCustomPropertiesPermission,
-        }}
         isOpen={isColumnDetailOpen}
+        permissions={permissions}
         tableFqn={entityFqn ?? ''}
         updateColumnDescription={async (fqn, description) => {
           const response = await updateDataModelColumn(fqn, { description });

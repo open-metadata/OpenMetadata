@@ -122,7 +122,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     hasDescriptionEditAccess,
     hasTagEditAccess,
     hasGlossaryTermEditAccess,
-    hasCustomPropertiesViewAccess,
   } = useMemo(
     () => ({
       hasDescriptionEditAccess:
@@ -534,17 +533,10 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           ) as Column[]
         }
         column={selectedColumn}
+        deleted={isReadOnly}
         entityType={EntityType.TOPIC}
-        hasEditPermission={{
-          tags: hasTagEditAccess,
-          glossaryTerms: hasGlossaryTermEditAccess,
-          description: hasDescriptionEditAccess,
-          viewAllPermission: permissions.ViewAll,
-        }}
-        hasViewPermission={{
-          customProperties: hasCustomPropertiesViewAccess,
-        }}
         isOpen={isColumnDetailOpen}
+        permissions={permissions}
         tableFqn={entityFqn}
         updateColumnDescription={async (fqn, description) => {
           if (!isUndefined(onUpdate)) {
@@ -555,7 +547,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
               schema?.schemaFields
             );
             await onUpdate({ ...topicDetails, messageSchema: schema });
-            // Find and return the updated field
             const updatedField = findFieldByFQN<Field>(
               schema?.schemaFields ?? [],
               fqn
@@ -571,7 +562,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             const schema = cloneDeep(messageSchema);
             updateFieldTags<Field>(fqn, tags ?? [], schema?.schemaFields);
             await onUpdate({ ...topicDetails, messageSchema: schema });
-            // Find and return the updated field
             const updatedField = findFieldByFQN<Field>(
               schema?.schemaFields ?? [],
               fqn

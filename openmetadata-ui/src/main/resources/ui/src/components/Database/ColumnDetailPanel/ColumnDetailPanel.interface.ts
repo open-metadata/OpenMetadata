@@ -10,12 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { Task } from '../../../generated/entity/data/pipeline';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
 import { TagLabel } from '../../../generated/type/tagLabel';
 
 export type ColumnOrTask = Column | Task;
+
+export interface ColumnEditPermission {
+  tags?: boolean;
+  glossaryTerms?: boolean;
+  description?: boolean;
+  viewAllPermission?: boolean;
+  customProperties?: boolean;
+}
+
+export interface ColumnViewPermission {
+  customProperties?: boolean;
+}
+
+export interface ColumnFieldUpdate {
+  description?: string;
+  tags?: TagLabel[];
+}
 
 export interface ColumnDetailPanelProps<T extends ColumnOrTask = Column> {
   column: T | null;
@@ -25,16 +43,14 @@ export interface ColumnDetailPanelProps<T extends ColumnOrTask = Column> {
   onColumnUpdate?: (updatedColumn: T) => void;
   updateColumnDescription?: (fqn: string, description: string) => Promise<T>;
   updateColumnTags?: (fqn: string, tags: TagLabel[]) => Promise<T>;
-  hasEditPermission?: {
-    tags?: boolean;
-    glossaryTerms?: boolean;
-    description?: boolean;
-    viewAllPermission?: boolean;
-    customProperties?: boolean;
-  };
-  hasViewPermission?: {
-    customProperties?: boolean;
-  };
+  onColumnFieldUpdate?: (
+    fqn: string,
+    update: ColumnFieldUpdate
+  ) => Promise<T | undefined>;
+  hasEditPermission?: ColumnEditPermission;
+  hasViewPermission?: ColumnViewPermission;
+  permissions?: OperationPermission;
+  deleted?: boolean;
   allColumns?: T[];
   onNavigate?: (column: T, index?: number) => void;
   tableConstraints?: TableConstraint[];

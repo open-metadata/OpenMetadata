@@ -466,11 +466,12 @@ const SearchIndexFieldsTable = ({
           (field) => field as unknown as Column
         )}
         column={selectedColumn}
+        deleted={isReadOnly}
         entityType={EntityType.SEARCH_INDEX}
         hasEditPermission={{
-          tags: hasTagEditAccess,
-          glossaryTerms: hasGlossaryTermEditAccess,
-          description: hasDescriptionEditAccess,
+          tags: hasTagEditAccess && !isReadOnly,
+          glossaryTerms: hasGlossaryTermEditAccess && !isReadOnly,
+          description: hasDescriptionEditAccess && !isReadOnly,
           viewAllPermission: viewAllPermission,
         }}
         hasViewPermission={{

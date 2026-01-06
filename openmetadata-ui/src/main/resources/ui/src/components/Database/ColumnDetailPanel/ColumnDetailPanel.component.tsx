@@ -69,8 +69,11 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   onColumnUpdate,
   updateColumnDescription,
   updateColumnTags,
-  hasEditPermission = {},
-  hasViewPermission = {},
+  onColumnFieldUpdate,
+  hasEditPermission: hasEditPermissionProp = {},
+  hasViewPermission: hasViewPermissionProp = {},
+  permissions,
+  deleted = false,
   allColumns = [],
   onNavigate,
   tableConstraints = [],
@@ -80,6 +83,31 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   const theme = useTheme();
   const [isDescriptionLoading, setIsDescriptionLoading] = useState(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
+
+  const hasEditPermission = useMemo(() => {
+    if (permissions) {
+      return {
+        tags: (permissions.EditTags || permissions.EditAll) && !deleted,
+        glossaryTerms:
+          (permissions.EditGlossaryTerms || permissions.EditAll) && !deleted,
+        description:
+          (permissions.EditDescription || permissions.EditAll) && !deleted,
+        viewAllPermission: permissions.ViewAll,
+      };
+    }
+
+    return hasEditPermissionProp;
+  }, [permissions, deleted, hasEditPermissionProp]);
+
+  const hasViewPermission = useMemo(() => {
+    if (permissions) {
+      return {
+        customProperties: permissions.ViewAll || permissions.ViewCustomFields,
+      };
+    }
+
+    return hasViewPermissionProp;
+  }, [permissions, hasViewPermissionProp]);
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
     EntityRightPanelTab.OVERVIEW
   );
@@ -194,16 +222,22 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       try {
         setIsDescriptionLoading(true);
 
-        // Use provided update function or fall back to default table API
-        const updateFn =
-          updateColumnDescription ||
-          ((fqn: string, description: string) =>
-            updateTableColumn(fqn, { description }));
+        let response: T | undefined;
 
-        const response = await updateFn(
-          column.fullyQualifiedName,
-          newDescription
-        );
+        if (onColumnFieldUpdate) {
+          response = await onColumnFieldUpdate(column.fullyQualifiedName, {
+            description: newDescription,
+          });
+        } else if (updateColumnDescription) {
+          response = await updateColumnDescription(
+            column.fullyQualifiedName,
+            newDescription
+          );
+        } else {
+          response = (await updateTableColumn(column.fullyQualifiedName, {
+            description: newDescription,
+          })) as T;
+        }
 
         showSuccessToast(
           t('server.update-entity-success', {
@@ -211,8 +245,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           })
         );
 
-        if (onColumnUpdate) {
-          onColumnUpdate(response as T);
+        if (onColumnUpdate && response) {
+          onColumnUpdate(response);
         }
       } catch (error) {
         showErrorToast(
@@ -225,7 +259,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         setIsDescriptionLoading(false);
       }
     },
-    [column, t, onColumnUpdate, updateColumnDescription]
+    [column, t, onColumnUpdate, updateColumnDescription, onColumnFieldUpdate]
   );
 
   const handleTagsUpdate = useCallback(
@@ -235,19 +269,24 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       }
 
       try {
-        // Preserve glossary terms when updating classification tags
         const allTags = mergeTagsWithGlossary(column.tags, updatedTags);
 
-        // Use provided update function or fall back to default table API
-        const updateFn =
-          updateColumnTags ||
-          ((fqn: string, tags: TagLabel[]) =>
-            updateTableColumn(fqn, { tags }) as Promise<T>);
+        let response: T | undefined;
 
-        const response = await updateFn(
-          column.fullyQualifiedName,
-          allTags ?? []
-        );
+        if (onColumnFieldUpdate) {
+          response = await onColumnFieldUpdate(column.fullyQualifiedName, {
+            tags: allTags ?? [],
+          });
+        } else if (updateColumnTags) {
+          response = await updateColumnTags(
+            column.fullyQualifiedName,
+            allTags ?? []
+          );
+        } else {
+          response = (await updateTableColumn(column.fullyQualifiedName, {
+            tags: allTags ?? [],
+          })) as T;
+        }
 
         showSuccessToast(
           t('server.update-entity-success', {
@@ -255,11 +294,11 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           })
         );
 
-        if (onColumnUpdate) {
+        if (onColumnUpdate && response) {
           onColumnUpdate(response);
         }
 
-        return response.tags;
+        return response?.tags;
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -271,7 +310,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         throw error;
       }
     },
-    [column, t, onColumnUpdate, updateColumnTags]
+    [column, t, onColumnUpdate, updateColumnTags, onColumnFieldUpdate]
   );
 
   const handleGlossaryTermsUpdate = useCallback(
@@ -286,16 +325,22 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           updatedGlossaryTerms
         );
 
-        // Use provided update function or fall back to default table API
-        const updateFn =
-          updateColumnTags ||
-          ((fqn: string, tags: TagLabel[]) =>
-            updateTableColumn(fqn, { tags }) as Promise<T>);
+        let response: T | undefined;
 
-        const response = await updateFn(
-          column.fullyQualifiedName,
-          allTags ?? []
-        );
+        if (onColumnFieldUpdate) {
+          response = await onColumnFieldUpdate(column.fullyQualifiedName, {
+            tags: allTags ?? [],
+          });
+        } else if (updateColumnTags) {
+          response = await updateColumnTags(
+            column.fullyQualifiedName,
+            allTags ?? []
+          );
+        } else {
+          response = (await updateTableColumn(column.fullyQualifiedName, {
+            tags: allTags ?? [],
+          })) as T;
+        }
 
         showSuccessToast(
           t('server.update-entity-success', {
@@ -303,11 +348,11 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           })
         );
 
-        if (onColumnUpdate) {
+        if (onColumnUpdate && response) {
           onColumnUpdate(response);
         }
 
-        return response.tags;
+        return response?.tags;
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -319,7 +364,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         throw error;
       }
     },
-    [column, t, onColumnUpdate, updateColumnTags]
+    [column, t, onColumnUpdate, updateColumnTags, onColumnFieldUpdate]
   );
 
   useEffect(() => {
