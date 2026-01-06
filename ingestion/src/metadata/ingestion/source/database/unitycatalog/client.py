@@ -80,6 +80,9 @@ class UnityCatalogClient(DatabricksClient):
                 "table_name": table_name,
             }
 
+            logger.debug(
+                f"Fetching table lineage from Databricks API for: {table_name}"
+            )
             response = self.client.get(
                 f"{self.base_url}{TABLE_LINEAGE_PATH}",
                 headers=self.headers,
@@ -90,8 +93,10 @@ class UnityCatalogClient(DatabricksClient):
                 return LineageTableStreams(**response)
 
         except Exception as exc:
+            logger.error(
+                f"Unexpected error while fetching table lineage for {table_name}: {exc}"
+            )
             logger.debug(traceback.format_exc())
-            logger.error(exc)
 
         return LineageTableStreams()
 
@@ -99,7 +104,7 @@ class UnityCatalogClient(DatabricksClient):
         self, table_name: str, column_name: str
     ) -> LineageColumnStreams:
         """
-        Method returns table lineage details
+        Method returns column lineage details
         """
         try:
             data = {
@@ -107,6 +112,9 @@ class UnityCatalogClient(DatabricksClient):
                 "column_name": column_name,
             }
 
+            logger.debug(
+                f"Fetching column lineage from Databricks API for: {table_name}.{column_name}"
+            )
             response = self.client.get(
                 f"{self.base_url}{COLUMN_LINEAGE_PATH}",
                 headers=self.headers,
@@ -118,8 +126,10 @@ class UnityCatalogClient(DatabricksClient):
                 return LineageColumnStreams(**response)
 
         except Exception as exc:
+            logger.error(
+                f"Unexpected error while fetching column lineage for {table_name}.{column_name}: {exc}"
+            )
             logger.debug(traceback.format_exc())
-            logger.error(exc)
 
         return LineageColumnStreams()
 
@@ -128,6 +138,9 @@ class UnityCatalogClient(DatabricksClient):
         get owner info from tables API
         """
         try:
+            logger.debug(
+                f"Fetching owner info from Databricks API for: {full_table_name}"
+            )
             response = self.client.get(
                 f"{self.base_url}{TABLES_PATH}/{full_table_name}",
                 headers=self.headers,
@@ -137,6 +150,9 @@ class UnityCatalogClient(DatabricksClient):
                 raise HTTPError(response.text)
             return response.json().get("owner")
         except Exception as exc:
+            logger.error(
+                f"Unexpected error while fetching owner info for table {full_table_name}: {exc}"
+            )
             logger.debug(traceback.format_exc())
-            logger.error(exc)
+
         return

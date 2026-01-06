@@ -65,6 +65,7 @@
         "DeleteScim",
         "ViewScim",
         "Impersonate",
+        "AuditLogs"
         "ViewTestDefinitionLibrary",
         "EditTestDefinitionLibrary"
       ]

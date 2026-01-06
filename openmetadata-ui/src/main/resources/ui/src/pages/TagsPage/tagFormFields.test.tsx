@@ -120,6 +120,7 @@ describe('tagFormFields', () => {
         name: 'name',
         id: 'root/name',
         label: 'label.name',
+        muiLabel: 'label.name',
         required: true,
         placeholder: 'label.name',
         type: FieldTypes.TEXT_MUI,
@@ -165,6 +166,7 @@ describe('tagFormFields', () => {
         name: 'displayName',
         id: 'root/displayName',
         label: 'label.display-name',
+        muiLabel: 'label.display-name',
         required: false,
         placeholder: 'label.display-name',
         type: FieldTypes.TEXT_MUI,
@@ -202,6 +204,7 @@ describe('tagFormFields', () => {
         id: 'root/owner',
         required: false,
         label: 'label.owner-plural',
+        muiLabel: 'label.owner-plural',
         type: FieldTypes.USER_TEAM_SELECT_MUI,
         props: {
           multipleUser: false,
@@ -256,6 +259,7 @@ describe('tagFormFields', () => {
         id: 'root/domains',
         required: false,
         label: 'label.domain-plural',
+        muiLabel: 'label.domain-plural',
         type: FieldTypes.DOMAIN_SELECT_MUI,
         props: {
           'data-testid': 'domain-select',
@@ -352,6 +356,7 @@ describe('tagFormFields', () => {
         name: 'disabled',
         required: false,
         label: 'label.disable-tag',
+        muiLabel: 'label.disable-tag',
         id: 'root/disabled',
         type: FieldTypes.SWITCH_MUI,
         formItemLayout: FormItemLayout.HORIZONTAL,
@@ -403,6 +408,7 @@ describe('tagFormFields', () => {
       expect(result).toEqual({
         name: 'mutuallyExclusive',
         label: 'label.mutually-exclusive',
+        muiLabel: 'label.mutually-exclusive',
         type: FieldTypes.SWITCH_MUI,
         required: false,
         props: {
