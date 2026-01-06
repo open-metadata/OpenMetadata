@@ -120,9 +120,7 @@ class DomoClient:
             f"metadataOverrides,owners,problems,properties,slicers,subscriptions&includeFiltered=true"
         )
         try:
-            response = self.client._request(  # pylint: disable=protected-access
-                method="GET", path=url, headers=HEADERS
-            )
+            response = self.client.get(path=url, headers=HEADERS)
 
             if isinstance(response, list) and len(response) > 0:
                 return DomoChartDetails(
@@ -142,9 +140,7 @@ class DomoClient:
 
     def get_pipelines(self):
         try:
-            response = self.client._request(  # pylint: disable=protected-access
-                method="GET", path=WORKFLOW_URL, headers=HEADERS
-            )
+            response = self.client.get(path=WORKFLOW_URL, headers=HEADERS)
             return response
         except Exception as exc:
             logger.warning(f"Error while getting pipelines - {exc}")
@@ -154,9 +150,7 @@ class DomoClient:
     def get_runs(self, workflow_id):
         try:
             url = f"dataprocessing/v1/dataflows/{workflow_id}/executions?limit=100&offset=0"
-            response = self.client._request(  # pylint: disable=protected-access
-                method="GET", path=url, headers=HEADERS
-            )
+            response = self.client.get(path=url, headers=HEADERS)
             return response
         except Exception as exc:
             logger.warning(
@@ -172,9 +166,7 @@ class DomoClient:
         This helps us validate that the provided Access Token is correct for Domo Dashboard.
         """
         try:
-            self.client._request(  # pylint: disable=protected-access
-                method="GET", path="content/v1/cards", headers=HEADERS
-            )
+            self.client.get(path="content/v1/cards", headers=HEADERS)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error listing cards due to [{exc}]")
