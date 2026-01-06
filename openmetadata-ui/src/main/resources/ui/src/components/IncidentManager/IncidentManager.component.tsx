@@ -752,7 +752,9 @@ const IncidentManager = ({
                   updateFilters({ testCaseResolutionStatusType: value })
                 }>
                 {Object.values(TestCaseResolutionStatusTypes).map((value) => (
-                  <Select.Option key={value}>{startCase(value)}</Select.Option>
+                  <Select.Option key={value}>
+                    {t(`label.${value.toLowerCase()}`)}
+                  </Select.Option>
                 ))}
               </Select>
             </Form.Item>

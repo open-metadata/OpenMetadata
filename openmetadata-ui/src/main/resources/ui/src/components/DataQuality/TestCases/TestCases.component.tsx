@@ -462,10 +462,28 @@ export const TestCases = () => {
   const filterMenu: ItemType[] = useMemo(() => {
     return entries(TEST_CASE_FILTERS).map(([name, filter]) => ({
       key: filter,
-      label: startCase(name),
+      label: t(`label.${name}`),
       value: filter,
     }));
-  }, []);
+  }, [t]);
+
+  const translatedDimensionsOption = useMemo(() => {
+    const dimensionKeyMap: Record<string, string> = {
+      Accuracy: 'accuracy',
+      Completeness: 'completeness',
+      Consistency: 'consistency',
+      Integrity: 'integrity',
+      NoDimension: 'no-dimension',
+      SQL: 'sql-uppercase',
+      Uniqueness: 'uniqueness',
+      Validity: 'validity',
+    };
+    
+    return TEST_CASE_DIMENSIONS_OPTION.map((option) => ({
+      ...option,
+      label: t(`label.${dimensionKeyMap[option.value] || option.value.toLowerCase()}`),
+    }));
+  }, [t]);
 
   const debounceFetchTableData = useCallback(debounce(fetchTableData, 1000), [
     fetchTableData,
@@ -686,7 +704,7 @@ export const TestCases = () => {
                   showSearch
                   data-testid="dimension-select-filter"
                   getPopupContainer={getPopupContainer}
-                  options={TEST_CASE_DIMENSIONS_OPTION}
+                  options={translatedDimensionsOption}
                   placeholder={t('label.dimension')}
                 />
               </Form.Item>
