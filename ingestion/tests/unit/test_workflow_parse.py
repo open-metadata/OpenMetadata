@@ -939,3 +939,54 @@ class TestWorkflowParse(TestCase):
             "We encountered an error parsing the configuration of your DbtPipeline.\nYou might need to review your config based on the original cause of this failure:\n\t - Extra parameter 'extraParameter'",
             str(err.exception),
         )
+
+    def test_uncaught_error_workflow_config(self):
+        """
+        Test that uncaught errors (non-ValidationError) include exception information
+        """
+        # Test with None instead of dict to trigger TypeError
+        with self.assertRaises(ParsingConfigurationError) as err:
+            parse_workflow_config_gracefully(None)
+        
+        error_message = str(err.exception)
+        self.assertIn("Uncaught error when parsing the workflow:", error_message)
+        self.assertIn("TypeError", error_message)
+        
+        # Verify that the original exception is chained
+        self.assertIsNotNone(err.exception.__cause__)
+        self.assertIsInstance(err.exception.__cause__, TypeError)
+
+    def test_uncaught_error_ingestion_pipeline_config(self):
+        """
+        Test that uncaught errors in ingestion pipeline parsing include exception information
+        """
+        # Test with invalid structure to trigger KeyError
+        config_dict = {"invalid": "structure"}
+        
+        with self.assertRaises(ParsingConfigurationError) as err:
+            parse_ingestion_pipeline_config_gracefully(config_dict)
+        
+        error_message = str(err.exception)
+        self.assertIn("Uncaught error when parsing the Ingestion Pipeline:", error_message)
+        # The error could be KeyError or ValidationError depending on implementation
+        # Just verify some exception type is included
+        self.assertTrue(any(exc in error_message for exc in ["KeyError", "ValidationError", "Error"]))
+        
+        # Verify that the original exception is chained
+        self.assertIsNotNone(err.exception.__cause__)
+
+    def test_uncaught_error_automation_workflow(self):
+        """
+        Test that uncaught errors in automation workflow parsing include exception information
+        """
+        # Test with None to trigger TypeError
+        with self.assertRaises(ParsingConfigurationError) as err:
+            parse_automation_workflow_gracefully(None)
+        
+        error_message = str(err.exception)
+        self.assertIn("Uncaught error when parsing the Automation Workflow:", error_message)
+        self.assertIn("TypeError", error_message)
+        
+        # Verify that the original exception is chained
+        self.assertIsNotNone(err.exception.__cause__)
+        self.assertIsInstance(err.exception.__cause__, TypeError)

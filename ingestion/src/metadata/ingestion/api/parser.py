@@ -514,7 +514,10 @@ def parse_workflow_config_gracefully(
                 f"{_parse_validation_err(original_error)}"
             )
 
-    raise ParsingConfigurationError("Uncaught error when parsing the workflow!")
+    except Exception as uncaught_error:
+        raise ParsingConfigurationError(
+            f"Uncaught error when parsing the workflow: {type(uncaught_error).__name__}: {uncaught_error}"
+        ) from uncaught_error
 
 
 def parse_ingestion_pipeline_config_gracefully(
@@ -547,9 +550,10 @@ def parse_ingestion_pipeline_config_gracefully(
             message="Error parsing the source config",
         )
 
-    raise ParsingConfigurationError(
-        "Uncaught error when parsing the Ingestion Pipeline!"
-    )
+    except Exception as uncaught_error:
+        raise ParsingConfigurationError(
+            f"Uncaught error when parsing the Ingestion Pipeline: {type(uncaught_error).__name__}: {uncaught_error}"
+        ) from uncaught_error
 
 
 def parse_automation_workflow_gracefully(
@@ -595,7 +599,7 @@ def parse_automation_workflow_gracefully(
             message="Error parsing the service connection",
         )
 
-    #
-    raise ParsingConfigurationError(
-        "Uncaught error when parsing the Ingestion Pipeline!"
-    )
+    except Exception as uncaught_error:
+        raise ParsingConfigurationError(
+            f"Uncaught error when parsing the Automation Workflow: {type(uncaught_error).__name__}: {uncaught_error}"
+        ) from uncaught_error
