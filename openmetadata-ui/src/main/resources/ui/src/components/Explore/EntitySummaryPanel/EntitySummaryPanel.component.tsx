@@ -677,7 +677,8 @@ export default function EntitySummaryPanel({
         explore: panelPath === 'explore',
         lineage: panelPath === 'lineage',
         'glossary-term-assets-tab': panelPath === 'glossary-term-assets-tab',
-      })}>
+      })}
+      data-testid="entity-summary-panel-container">
       {isSideDrawer && (
         <div className="d-flex items-center justify-between">
           <EntityTitleSection
