@@ -1144,6 +1144,119 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new EntityHistory().withEntityType(entityType).withVersions(allVersions);
   }
 
+  /**
+   * Get entity versions with filters for timestamp range and field changes
+   *
+   * @param id Entity ID
+   * @param limit Maximum number of versions to return (if null, returns all)
+   * @param startTs Start timestamp in milliseconds (inclusive, if null no lower bound)
+   * @param endTs End timestamp in milliseconds (inclusive, if null no upper bound)
+   * @param fieldName Field name to filter by (if null, no field filtering)
+   * @return Entity history with filtered versions
+   */
+  public final EntityHistory listVersionsWithFilters(
+      UUID id, Integer limit, Long startTs, Long endTs, String fieldName) {
+    T latest = setFieldsInternal(find(id, ALL), putFields);
+    setInheritedFields(latest, putFields);
+    String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
+    List<ExtensionRecord> records =
+        daoCollection.entityExtensionDAO().getExtensions(id, extensionPrefix);
+    List<EntityVersionPair> oldVersions = new ArrayList<>();
+    records.forEach(r -> oldVersions.add(new EntityVersionPair(r)));
+    oldVersions.sort(EntityUtil.compareVersion.reversed());
+
+    final List<Object> filteredVersions = new ArrayList<>();
+
+    // Add latest version if it matches filters
+    if (matchesFilters(latest, startTs, endTs, fieldName)) {
+      filteredVersions.add(JsonUtils.pojoToJson(latest));
+    }
+
+    // Filter old versions
+    for (EntityVersionPair versionPair : oldVersions) {
+      if (limit != null && filteredVersions.size() >= limit) {
+        break;
+      }
+      try {
+        T version = JsonUtils.readValue(versionPair.getEntityJson(), entityClass);
+        if (matchesFilters(version, startTs, endTs, fieldName)) {
+          filteredVersions.add(versionPair.getEntityJson());
+        }
+      } catch (Exception e) {
+        LOG.warn("Failed to parse version {} for entity {}", versionPair.getVersion(), id, e);
+      }
+    }
+
+    return new EntityHistory().withEntityType(entityType).withVersions(filteredVersions);
+  }
+
+  /**
+   * Check if an entity version matches the provided filters
+   *
+   * @param entity Entity version to check
+   * @param startTs Start timestamp filter (nullable)
+   * @param endTs End timestamp filter (nullable)
+   * @param fieldName Field name filter (nullable)
+   * @return true if entity matches all provided filters
+   */
+  private boolean matchesFilters(T entity, Long startTs, Long endTs, String fieldName) {
+    // Check timestamp filters
+    if (startTs != null && entity.getUpdatedAt() != null && entity.getUpdatedAt() < startTs) {
+      return false;
+    }
+    if (endTs != null && entity.getUpdatedAt() != null && entity.getUpdatedAt() > endTs) {
+      return false;
+    }
+
+    // Check field name filter
+    if (fieldName != null && !nullOrEmpty(fieldName)) {
+      ChangeDescription changeDesc = entity.getChangeDescription();
+      if (changeDesc == null) {
+        return false;
+      }
+
+      boolean hasFieldChange = false;
+
+      // Check if fieldName is in any of the change lists
+      if (changeDesc.getFieldsAdded() != null) {
+        hasFieldChange =
+            changeDesc.getFieldsAdded().stream()
+                .anyMatch(
+                    fc -> fieldName.equals(fc.getName()) || isNestedField(fc.getName(), fieldName));
+      }
+
+      if (!hasFieldChange && changeDesc.getFieldsUpdated() != null) {
+        hasFieldChange =
+            changeDesc.getFieldsUpdated().stream()
+                .anyMatch(
+                    fc -> fieldName.equals(fc.getName()) || isNestedField(fc.getName(), fieldName));
+      }
+
+      if (!hasFieldChange && changeDesc.getFieldsDeleted() != null) {
+        hasFieldChange =
+            changeDesc.getFieldsDeleted().stream()
+                .anyMatch(
+                    fc -> fieldName.equals(fc.getName()) || isNestedField(fc.getName(), fieldName));
+      }
+
+      return hasFieldChange;
+    }
+
+    return true;
+  }
+
+  /**
+   * Check if a field change name matches or is nested under the target field
+   * For example: "columns" matches "columns", "columns.description", "columns[0].description"
+   */
+  private boolean isNestedField(String changeFieldName, String targetField) {
+    if (changeFieldName == null || targetField == null) {
+      return false;
+    }
+    return changeFieldName.startsWith(targetField + ".")
+        || changeFieldName.startsWith(targetField + "[");
+  }
+
   public final List<T> createMany(UriInfo uriInfo, List<T> entities) {
     for (T e : entities) {
       prepareInternal(e, false);
