@@ -80,7 +80,7 @@ export class MetricClass extends EntityClass {
 
     this.entityResponseData = await response.json();
 
-    return await response.json();
+    return this.entityResponseData;
   }
 
   get() {
