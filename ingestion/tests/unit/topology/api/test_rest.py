@@ -960,3 +960,421 @@ class RESTTest(TestCase):
         assert result.dataType == DataTypeTopic.ARRAY
         # When no items key exists, children is None
         assert result.children is None
+
+    @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
+    @patch("metadata.ingestion.source.api.rest.metadata.RestSource.yield_api_endpoint")
+    def test_endpoint_filter_pattern_include_only(
+        self, mock_yield_endpoint, test_connection
+    ):
+        """Test API endpoint filtering with include pattern only"""
+        test_connection.return_value = False
+
+        # Create config with include pattern for endpoints starting with /pet
+        include_config = deepcopy(mock_rest_config)
+        include_config["source"]["sourceConfig"]["config"][
+            "apiEndpointFilterPattern"
+        ] = {"includes": ["/pet/.*"]}
+
+        rest_source_include = RestSource.create(
+            include_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+        # Mock endpoints for testing
+
+        mock_endpoints = [
+            RESTEndpoint(
+                name="/pet/findByStatus",
+                display_name="/pet/findByStatus",
+                description=Markdown(root="Find pets by status"),
+                url=None,
+                operationId="findPetsByStatus",
+            ),
+            RESTEndpoint(
+                name="/pet/{petId}",
+                display_name="/pet/{petId}",
+                description=Markdown(root="Find pet by ID"),
+                url=None,
+                operationId="getPetById",
+            ),
+            RESTEndpoint(
+                name="/store/inventory",
+                display_name="/store/inventory",
+                description=Markdown(root="Returns pet inventories"),
+                url=None,
+                operationId="getInventory",
+            ),
+            RESTEndpoint(
+                name="/user/login",
+                display_name="/user/login",
+                description=Markdown(root="Logs user into system"),
+                url=None,
+                operationId="loginUser",
+            ),
+        ]
+
+        # Process endpoints through the filtering logic
+        filtered_count = 0
+        for endpoint in mock_endpoints:
+            endpoint_name = (
+                endpoint.name.root if hasattr(endpoint.name, "root") else endpoint.name
+            )
+            from metadata.utils.filters import filter_by_api_endpoint
+
+            if not filter_by_api_endpoint(
+                rest_source_include.source_config.apiEndpointFilterPattern,
+                endpoint_name,
+            ):
+                filtered_count += 1
+
+        # Only endpoints starting with /pet should pass the filter
+        assert filtered_count == 2
+
+    @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
+    @patch("metadata.ingestion.source.api.rest.metadata.RestSource.yield_api_endpoint")
+    def test_endpoint_filter_pattern_exclude_only(
+        self, mock_yield_endpoint, test_connection
+    ):
+        """Test API endpoint filtering with exclude pattern only"""
+        test_connection.return_value = False
+
+        # Create config with exclude pattern for endpoints containing 'user'
+        exclude_config = deepcopy(mock_rest_config)
+        exclude_config["source"]["sourceConfig"]["config"][
+            "apiEndpointFilterPattern"
+        ] = {"excludes": [".*/user/.*"]}
+
+        rest_source_exclude = RestSource.create(
+            exclude_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+        mock_endpoints = [
+            "/pet/findByStatus",
+            "/store/inventory",
+            "/user/login",
+            "/user/logout",
+            "/pet/{petId}",
+        ]
+
+        # Process endpoints through the filtering logic
+        filtered_endpoints = []
+        for endpoint_name in mock_endpoints:
+            from metadata.utils.filters import filter_by_api_endpoint
+
+            if not filter_by_api_endpoint(
+                rest_source_exclude.source_config.apiEndpointFilterPattern,
+                endpoint_name,
+            ):
+                filtered_endpoints.append(endpoint_name)
+
+        # All endpoints except those with /user/ should pass
+        assert len(filtered_endpoints) == 3
+        assert "/user/login" not in filtered_endpoints
+        assert "/user/logout" not in filtered_endpoints
+        assert "/pet/findByStatus" in filtered_endpoints
+        assert "/store/inventory" in filtered_endpoints
+
+    @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
+    def test_endpoint_filter_pattern_include_and_exclude(self, test_connection):
+        """Test API endpoint filtering with both include and exclude patterns"""
+        test_connection.return_value = False
+
+        # Include all /pet and /store endpoints, but exclude any with 'delete' in the name
+        both_config = deepcopy(mock_rest_config)
+        both_config["source"]["sourceConfig"]["config"]["apiEndpointFilterPattern"] = {
+            "includes": ["/(pet|store)/.*"],
+            "excludes": [".*/delete.*"],
+        }
+
+        rest_source_both = RestSource.create(
+            both_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+        mock_endpoints = [
+            "/pet/findByStatus",  # Should pass (matches include, not exclude)
+            "/pet/{petId}/delete",  # Should be filtered (matches exclude)
+            "/store/inventory",  # Should pass (matches include, not exclude)
+            "/store/order/{orderId}/delete",  # Should be filtered (matches exclude)
+            "/user/login",  # Should be filtered (doesn't match include)
+        ]
+
+        from metadata.utils.filters import filter_by_api_endpoint
+
+        filtered_endpoints = []
+        for endpoint_name in mock_endpoints:
+            if not filter_by_api_endpoint(
+                rest_source_both.source_config.apiEndpointFilterPattern,
+                endpoint_name,
+            ):
+                filtered_endpoints.append(endpoint_name)
+
+        # Only pet and store endpoints without 'delete' should pass
+        assert len(filtered_endpoints) == 2
+        assert "/pet/findByStatus" in filtered_endpoints
+        assert "/store/inventory" in filtered_endpoints
+        assert "/pet/{petId}/delete" not in filtered_endpoints
+        assert "/store/order/{orderId}/delete" not in filtered_endpoints
+        assert "/user/login" not in filtered_endpoints
+
+    @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
+    def test_endpoint_filter_pattern_regex_variations(self, test_connection):
+        """Test API endpoint filtering with various regex patterns"""
+        test_connection.return_value = False
+
+        # Test with exact match pattern
+        exact_config = deepcopy(mock_rest_config)
+        exact_config["source"]["sourceConfig"]["config"]["apiEndpointFilterPattern"] = {
+            "includes": ["^/pet/findByStatus$"]
+        }
+
+        rest_source_exact = RestSource.create(
+            exact_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+        from metadata.utils.filters import filter_by_api_endpoint
+
+        # Should match exactly
+        assert not filter_by_api_endpoint(
+            rest_source_exact.source_config.apiEndpointFilterPattern,
+            "/pet/findByStatus",
+        )
+
+        # Should not match (has more characters)
+        assert filter_by_api_endpoint(
+            rest_source_exact.source_config.apiEndpointFilterPattern,
+            "/pet/findByStatus/extra",
+        )
+
+        # Test with wildcard pattern
+        wildcard_config = deepcopy(mock_rest_config)
+        wildcard_config["source"]["sourceConfig"]["config"][
+            "apiEndpointFilterPattern"
+        ] = {"includes": ["/pet/.*"]}
+
+        rest_source_wildcard = RestSource.create(
+            wildcard_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+        # All pet endpoints should match
+        assert not filter_by_api_endpoint(
+            rest_source_wildcard.source_config.apiEndpointFilterPattern,
+            "/pet/findByStatus",
+        )
+        assert not filter_by_api_endpoint(
+            rest_source_wildcard.source_config.apiEndpointFilterPattern,
+            "/pet/{petId}",
+        )
+        assert not filter_by_api_endpoint(
+            rest_source_wildcard.source_config.apiEndpointFilterPattern,
+            "/pet/findByTags",
+        )
+
+    @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
+    def test_endpoint_filter_pattern_case_insensitive(self, test_connection):
+        """Test API endpoint filtering is case insensitive"""
+        test_connection.return_value = False
+
+        case_config = deepcopy(mock_rest_config)
+        case_config["source"]["sourceConfig"]["config"]["apiEndpointFilterPattern"] = {
+            "includes": ["/PET/.*"]
+        }
+
+        rest_source_case = RestSource.create(
+            case_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+        from metadata.utils.filters import filter_by_api_endpoint
+
+        # Should match despite case difference
+        assert not filter_by_api_endpoint(
+            rest_source_case.source_config.apiEndpointFilterPattern, "/pet/findByStatus"
+        )
+        assert not filter_by_api_endpoint(
+            rest_source_case.source_config.apiEndpointFilterPattern, "/Pet/findByStatus"
+        )
+        assert not filter_by_api_endpoint(
+            rest_source_case.source_config.apiEndpointFilterPattern, "/PET/findByStatus"
+        )
+
+    @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
+    def test_endpoint_filter_pattern_empty_patterns(self, test_connection):
+        """Test API endpoint filtering with empty/None patterns"""
+        test_connection.return_value = False
+
+        # Test with None filter pattern
+        none_config = deepcopy(mock_rest_config)
+        none_config["source"]["sourceConfig"]["config"][
+            "apiEndpointFilterPattern"
+        ] = None
+
+        rest_source_none = RestSource.create(
+            none_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+        from metadata.utils.filters import filter_by_api_endpoint
+
+        # No filtering should occur, all endpoints should pass
+        assert not filter_by_api_endpoint(
+            rest_source_none.source_config.apiEndpointFilterPattern,
+            "/pet/findByStatus",
+        )
+        assert not filter_by_api_endpoint(
+            rest_source_none.source_config.apiEndpointFilterPattern, "/user/login"
+        )
+
+    @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
+    def test_endpoint_filter_pattern_multiple_includes(self, test_connection):
+        """Test API endpoint filtering with multiple include patterns"""
+        test_connection.return_value = False
+
+        multi_include_config = deepcopy(mock_rest_config)
+        multi_include_config["source"]["sourceConfig"]["config"][
+            "apiEndpointFilterPattern"
+        ] = {"includes": ["/pet/.*", "/store/.*", "/v1/.*"]}
+
+        rest_source_multi = RestSource.create(
+            multi_include_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+        from metadata.utils.filters import filter_by_api_endpoint
+
+        # Endpoints matching any include pattern should pass
+        assert not filter_by_api_endpoint(
+            rest_source_multi.source_config.apiEndpointFilterPattern,
+            "/pet/findByStatus",
+        )
+        assert not filter_by_api_endpoint(
+            rest_source_multi.source_config.apiEndpointFilterPattern, "/store/inventory"
+        )
+        assert not filter_by_api_endpoint(
+            rest_source_multi.source_config.apiEndpointFilterPattern, "/v1/users"
+        )
+
+        # Endpoints not matching any pattern should be filtered
+        assert filter_by_api_endpoint(
+            rest_source_multi.source_config.apiEndpointFilterPattern, "/user/login"
+        )
+        assert filter_by_api_endpoint(
+            rest_source_multi.source_config.apiEndpointFilterPattern, "/v2/admin"
+        )
+
+    @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
+    def test_endpoint_filter_pattern_multiple_excludes(self, test_connection):
+        """Test API endpoint filtering with multiple exclude patterns"""
+        test_connection.return_value = False
+
+        multi_exclude_config = deepcopy(mock_rest_config)
+        multi_exclude_config["source"]["sourceConfig"]["config"][
+            "apiEndpointFilterPattern"
+        ] = {"excludes": [".*/delete.*", ".*/deprecated.*", ".*/test.*"]}
+
+        rest_source_multi = RestSource.create(
+            multi_exclude_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+        from metadata.utils.filters import filter_by_api_endpoint
+
+        # Endpoints not matching any exclude pattern should pass
+        assert not filter_by_api_endpoint(
+            rest_source_multi.source_config.apiEndpointFilterPattern,
+            "/pet/findByStatus",
+        )
+        assert not filter_by_api_endpoint(
+            rest_source_multi.source_config.apiEndpointFilterPattern, "/store/inventory"
+        )
+
+        # Endpoints matching any exclude pattern should be filtered
+        assert filter_by_api_endpoint(
+            rest_source_multi.source_config.apiEndpointFilterPattern,
+            "/pet/{petId}/delete",
+        )
+        assert filter_by_api_endpoint(
+            rest_source_multi.source_config.apiEndpointFilterPattern,
+            "/store/deprecated/order",
+        )
+        assert filter_by_api_endpoint(
+            rest_source_multi.source_config.apiEndpointFilterPattern, "/user/test/login"
+        )
+
+    @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
+    def test_endpoint_filter_pattern_special_characters(self, test_connection):
+        """Test API endpoint filtering with special characters in endpoint names"""
+        test_connection.return_value = False
+
+        special_config = deepcopy(mock_rest_config)
+        special_config["source"]["sourceConfig"]["config"][
+            "apiEndpointFilterPattern"
+        ] = {"includes": [r"/api/v\d+/.*"]}
+
+        rest_source_special = RestSource.create(
+            special_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+        from metadata.utils.filters import filter_by_api_endpoint
+
+        # Should match versioned API endpoints
+        assert not filter_by_api_endpoint(
+            rest_source_special.source_config.apiEndpointFilterPattern,
+            "/api/v1/users",
+        )
+        assert not filter_by_api_endpoint(
+            rest_source_special.source_config.apiEndpointFilterPattern,
+            "/api/v2/products",
+        )
+        assert not filter_by_api_endpoint(
+            rest_source_special.source_config.apiEndpointFilterPattern,
+            "/api/v10/orders",
+        )
+
+        # Should not match non-versioned endpoints
+        assert filter_by_api_endpoint(
+            rest_source_special.source_config.apiEndpointFilterPattern, "/api/users"
+        )
+        assert filter_by_api_endpoint(
+            rest_source_special.source_config.apiEndpointFilterPattern,
+            "/api/vX/products",
+        )
+
+    @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
+    def test_endpoint_filter_pattern_with_path_parameters(self, test_connection):
+        """Test API endpoint filtering with path parameters in endpoint names"""
+        test_connection.return_value = False
+
+        param_config = deepcopy(mock_rest_config)
+        param_config["source"]["sourceConfig"]["config"]["apiEndpointFilterPattern"] = {
+            "includes": [r"/pet/\{.*\}.*"]
+        }
+
+        rest_source_param = RestSource.create(
+            param_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+        from metadata.utils.filters import filter_by_api_endpoint
+
+        # Should match endpoints with path parameters
+        assert not filter_by_api_endpoint(
+            rest_source_param.source_config.apiEndpointFilterPattern, "/pet/{petId}"
+        )
+        assert not filter_by_api_endpoint(
+            rest_source_param.source_config.apiEndpointFilterPattern,
+            "/pet/{petId}/uploadImage",
+        )
+
+        # Should not match endpoints without path parameters
+        assert filter_by_api_endpoint(
+            rest_source_param.source_config.apiEndpointFilterPattern,
+            "/pet/findByStatus",
+        )
+        assert filter_by_api_endpoint(
+            rest_source_param.source_config.apiEndpointFilterPattern, "/pet/findByTags"
+        )
