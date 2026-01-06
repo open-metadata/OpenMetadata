@@ -1961,7 +1961,9 @@ public class TableRepository extends EntityRepository<Table> {
       Column column = findColumn(table.getColumns(), columnFqn);
       boolean columnExists = column != null;
       int recordIndex = getRecordIndex(csvRecord);
-      if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
         recordCreateStatusArray[recordIndex] = !columnExists;
       }
 

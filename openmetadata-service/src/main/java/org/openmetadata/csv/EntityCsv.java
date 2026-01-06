@@ -1595,63 +1595,63 @@ public abstract class EntityCsv<T extends EntityInterface> {
             new FieldChange().withName("extension").withNewValue(JsonUtils.pojoToJson(extension)));
       }
     } else {
-      if (!Objects.equals(existingSP.getDisplayName(), displayName)) {
+      if (CommonUtil.isChanged(existingSP.getDisplayName(), displayName)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("displayName")
                 .withOldValue(existingSP.getDisplayName())
                 .withNewValue(displayName));
       }
-      if (!Objects.equals(existingSP.getDescription(), description)) {
+      if (CommonUtil.isChanged(existingSP.getDescription(), description)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("description")
                 .withOldValue(existingSP.getDescription())
                 .withNewValue(description));
       }
-      if (!Objects.equals(existingSP.getOwners(), owners)) {
+      if (CommonUtil.isChanged(existingSP.getOwners(), owners)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("owners")
                 .withOldValue(JsonUtils.pojoToJson(existingSP.getOwners()))
                 .withNewValue(JsonUtils.pojoToJson(owners)));
       }
-      if (!Objects.equals(existingSP.getTags(), tagLabels)) {
+      if (CommonUtil.isChanged(existingSP.getTags(), tagLabels)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("tags")
                 .withOldValue(JsonUtils.pojoToJson(existingSP.getTags()))
                 .withNewValue(JsonUtils.pojoToJson(tagLabels)));
       }
-      if (!Objects.equals(existingSP.getCertification(), certification)) {
+      if (CommonUtil.isChanged(existingSP.getCertification(), certification)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("certification")
                 .withOldValue(JsonUtils.pojoToJson(existingSP.getCertification()))
                 .withNewValue(JsonUtils.pojoToJson(certification)));
       }
-      if (!Objects.equals(existingSP.getSourceUrl(), sourceUrl)) {
+      if (CommonUtil.isChanged(existingSP.getSourceUrl(), sourceUrl)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("sourceUrl")
                 .withOldValue(existingSP.getSourceUrl())
                 .withNewValue(sourceUrl));
       }
-      if (!Objects.equals(existingSP.getDomains(), domains)) {
+      if (CommonUtil.isChanged(existingSP.getDomains(), domains)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("domains")
                 .withOldValue(JsonUtils.pojoToJson(existingSP.getDomains()))
                 .withNewValue(JsonUtils.pojoToJson(domains)));
       }
-      if (!Objects.equals(existingSP.getStoredProcedureCode(), storedProcedureCode)) {
+      if (CommonUtil.isChanged(existingSP.getStoredProcedureCode(), storedProcedureCode)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("storedProcedureCode")
                 .withOldValue(JsonUtils.pojoToJson(existingSP.getStoredProcedureCode()))
                 .withNewValue(JsonUtils.pojoToJson(storedProcedureCode)));
       }
-      if (!Objects.equals(existingSP.getExtension(), extension)) {
+      if (CommonUtil.isChanged(existingSP.getExtension(), extension)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("extension")
@@ -1865,7 +1865,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 .withOldValue(existingColumn.getDataTypeDisplay())
                 .withNewValue(dataTypeDisplay));
       }
-      if (!Objects.equals(existingColumn.getDataType(), dataType)) {
+      if (CommonUtil.isChanged(existingColumn.getDataType(), dataType)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("dataType")
@@ -1875,7 +1875,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
                         : null)
                 .withNewValue(dataType.toString()));
       }
-      if (!Objects.equals(existingColumn.getArrayDataType(), arrayDataType)) {
+      if (CommonUtil.isChanged(existingColumn.getArrayDataType(), arrayDataType)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("arrayDataType")
@@ -1885,7 +1885,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
                         : null)
                 .withNewValue(arrayDataType != null ? arrayDataType.toString() : null));
       }
-      if (!Objects.equals(existingColumn.getDataLength(), dataLength)) {
+      if (CommonUtil.isChanged(existingColumn.getDataLength(), dataLength)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("dataLength")

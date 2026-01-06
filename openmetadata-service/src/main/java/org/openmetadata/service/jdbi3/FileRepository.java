@@ -276,7 +276,9 @@ public class FileRepository extends EntityRepository<File> {
 
       // Store create status with null check
       int recordIndex = getRecordIndex(csvRecord);
-      if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
         recordCreateStatusArray[recordIndex] = !fileExists;
       }
 

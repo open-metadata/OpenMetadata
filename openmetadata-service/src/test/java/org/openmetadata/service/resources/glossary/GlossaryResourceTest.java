@@ -71,6 +71,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.data.CreateGlossary;
@@ -1072,6 +1073,89 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
     // Reset poll Interval to allow Status change from workflow
     eventSubscriptionResourceTest.updateEventSubscriptionPollInterval("WorkflowEventConsumer", 10);
+  }
+
+  @Test
+  void test_csvImportCreate() throws IOException {
+    CreateGlossary createGlossary = createRequest("csvImportCreate");
+    Glossary glossary = createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create glossary terms
+    GlossaryTermResourceTest termTest = new GlossaryTermResourceTest();
+    createGlossaryTerm(termTest, glossary, null, "term1");
+    createGlossaryTerm(termTest, glossary, null, "term2");
+
+    // Create CSV records for initial import (these should be marked as ENTITY_CREATED)
+    List<String> createRecords =
+        listOf(
+            ",term1,Display Term 1,Description for term1,,,,,,,,,,",
+            ",term2,Display Term 2,Description for term2,,,,,,,,,,");
+
+    String csv = createCsv(GlossaryCsv.HEADERS, createRecords, null);
+
+    // Import CSV and verify all records are marked as created
+    CsvImportResult result = importCsv(glossary.getName(), csv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 3, 3, 0); // 3 = header + 2 records
+
+    // Verify the result contains "Entity created" status for all records
+    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_CREATED),
+          "Record " + i + " should be marked as created: " + resultLines[i]);
+      // Verify changeDescription is present
+      assertTrue(
+          resultLines[i].contains("fieldsAdded"),
+          "Record " + i + " should have changeDescription: " + resultLines[i]);
+    }
+
+    deleteEntityByName(glossary.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_csvImportUpdate() throws IOException {
+    CreateGlossary createGlossary = createRequest("csvImportUpdate");
+    Glossary glossary = createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create glossary terms
+    GlossaryTermResourceTest termTest = new GlossaryTermResourceTest();
+    createGlossaryTerm(termTest, glossary, null, "term1");
+    createGlossaryTerm(termTest, glossary, null, "term2");
+
+    // First import to create term metadata
+    List<String> createRecords =
+        listOf(
+            ",term1,Display Term 1,Initial description 1,,,,,,,,,,",
+            ",term2,Display Term 2,Initial description 2,,,,,,,,,,");
+
+    String createCsv = createCsv(GlossaryCsv.HEADERS, createRecords, null);
+    importCsv(glossary.getName(), createCsv, false);
+
+    // Now update the same terms (these should be marked as ENTITY_UPDATED)
+    List<String> updateRecords =
+        listOf(
+            ",term1,Updated Display 1,Updated description 1,,,,,,,,,,",
+            ",term2,Updated Display 2,Updated description 2,,,,,,,,,,");
+
+    String updateCsv = createCsv(GlossaryCsv.HEADERS, updateRecords, null);
+
+    // Import updated CSV and verify all records are marked as updated
+    CsvImportResult result = importCsv(glossary.getName(), updateCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 3, 3, 0); // 3 = header + 2 records
+
+    // Verify the result contains "Entity updated" status for all records
+    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_UPDATED),
+          "Record " + i + " should be marked as updated: " + resultLines[i]);
+      // Verify changeDescription is present and contains fieldsUpdated
+      assertTrue(
+          resultLines[i].contains("fieldsUpdated"),
+          "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
+    }
+
+    deleteEntityByName(glossary.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
   }
 
   @Test
