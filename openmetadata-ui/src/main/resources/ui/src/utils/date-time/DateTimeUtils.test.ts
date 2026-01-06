@@ -468,7 +468,6 @@ describe('convertSecondsToHumanReadableFormat', () => {
           if (dayMatch) {
             const days = parseInt(dayMatch[1]);
 
-            // eslint-disable-next-line jest/no-conditional-expect
             expect(days).toBeLessThanOrEqual(30);
           }
         });
@@ -501,7 +500,6 @@ describe('convertSecondsToHumanReadableFormat', () => {
         if (monthMatch) {
           const months = parseInt(monthMatch[1]);
 
-          // eslint-disable-next-line jest/no-conditional-expect
           expect(months).toBeLessThan(12);
         }
 
@@ -510,7 +508,6 @@ describe('convertSecondsToHumanReadableFormat', () => {
         if (dayMatch) {
           const daysValue = parseInt(dayMatch[1]);
 
-          // eslint-disable-next-line jest/no-conditional-expect
           expect(daysValue).toBeLessThanOrEqual(30);
         }
 

@@ -50,7 +50,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.util.Collections;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Objects;
 import javax.naming.ConfigurationException;
 import lombok.SneakyThrows;
@@ -73,11 +75,14 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.audit.AuditLogEventPublisher;
+import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
@@ -111,6 +116,7 @@ import org.openmetadata.service.monitoring.JettyMetricsIntegration;
 import org.openmetadata.service.monitoring.UserMetricsServlet;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
+import org.openmetadata.service.resources.audit.AuditLogResource;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.filters.ETagRequestFilter;
 import org.openmetadata.service.resources.filters.ETagResponseFilter;
@@ -188,6 +194,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   protected Jdbi jdbi;
   private Environment environment;
+  private AuditLogRepository auditLogRepository;
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
@@ -237,6 +244,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
     // as first step register all the repositories
     Entity.initializeRepositories(catalogConfig, jdbi);
+    auditLogRepository = new AuditLogRepository(Entity.getCollectionDAO());
+    Entity.setAuditLogRepository(auditLogRepository);
+    ResourceRegistry.addResource(
+        Entity.AUDIT_LOG, List.of(MetadataOperation.AUDIT_LOGS), Collections.emptySet());
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
@@ -865,6 +876,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
 
+    EventPubSub.addEventHandler(new AuditLogEventPublisher(auditLogRepository));
+
     if (openMetadataApplicationConfig.getEventMonitorConfiguration() != null) {
       final EventMonitor eventMonitor =
           EventMonitorFactory.createEventMonitor(
@@ -888,6 +901,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             authorizer,
             SecurityConfigurationManager.getInstance().getAuthenticatorHandler(),
             limits);
+    environment.jersey().register(new AuditLogResource(authorizer, auditLogRepository));
     environment.jersey().register(new JsonPatchProvider());
     environment.jersey().register(new JsonPatchMessageBodyReader());
 
