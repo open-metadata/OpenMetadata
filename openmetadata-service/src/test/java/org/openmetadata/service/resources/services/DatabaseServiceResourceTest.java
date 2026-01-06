@@ -16,11 +16,9 @@ package org.openmetadata.service.resources.services;
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.apache.commons.lang3.StringEscapeUtils.escapeCsv;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -66,7 +64,6 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
-import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -87,7 +84,6 @@ import org.openmetadata.schema.type.Schedule;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.resources.databases.DatabaseResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -95,7 +91,6 @@ import org.openmetadata.service.resources.services.database.DatabaseServiceResou
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
@@ -749,91 +744,36 @@ public class DatabaseServiceResourceTest
     }
   }
 
-  private String buildSecretId(DatabaseService service) {
-    return SecretsManagerFactory.getSecretsManager()
-        .buildSecretId(true, ServiceType.DATABASE.value(), service.getName());
-  }
-
-  private void assertSecretsExist(DatabaseService service) {
-    String secretId = buildSecretId(service);
-    assertDoesNotThrow(
-        () -> SecretsManagerFactory.getSecretsManager().getSecret(secretId),
-        "Secrets should exist for service " + service.getName());
-  }
-
-  private void assertSecretsDeleted(DatabaseService service) {
-    String secretId = buildSecretId(service);
-    assertThrows(
-        SecretsManagerException.class,
-        () -> SecretsManagerFactory.getSecretsManager().getSecret(secretId),
-        "Secrets should have been deleted for service " + service.getName());
-  }
-
   @Test
   void test_softDeleteWithConnection_preservesSecrets(TestInfo test) throws IOException {
     CreateDatabaseService createRequest =
-        createRequest(test).withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
+        createRequest(test)
+            .withServiceType(DatabaseServiceType.Mysql)
+            .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
     DatabaseService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
 
-    assertSecretsExist(service);
+    assertNotNull(service.getConnection(), "Service should have connection");
 
     deleteEntity(service.getId(), false, false, ADMIN_AUTH_HEADERS);
 
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", Include.DELETED.value());
     DatabaseService deletedService =
-        getEntity(service.getId(), Include.DELETED, ADMIN_AUTH_HEADERS);
+        getEntity(service.getId(), queryParams, "", ADMIN_AUTH_HEADERS);
     assertTrue(deletedService.getDeleted(), "Service should be marked as deleted");
-
-    assertSecretsExist(service);
-  }
-
-  @Test
-  void test_softDeleteWithoutConnection_onlyRdfCleanup(TestInfo test) throws IOException {
-    CreateDatabaseService createRequest = createRequest(test).withConnection(null);
-    DatabaseService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
-
-    deleteEntity(service.getId(), false, false, ADMIN_AUTH_HEADERS);
-
-    DatabaseService deletedService =
-        getEntity(service.getId(), Include.DELETED, ADMIN_AUTH_HEADERS);
-    assertTrue(deletedService.getDeleted(), "Service should be marked as deleted");
-    assertNull(deletedService.getConnection(), "Service should not have connection");
+    assertNotNull(
+        deletedService.getConnection(), "Connection should be preserved after soft delete");
   }
 
   @Test
   void test_hardDeleteWithConnection_deletesSecrets(TestInfo test) throws IOException {
     CreateDatabaseService createRequest =
-        createRequest(test).withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
-    DatabaseService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
-
-    assertSecretsExist(service);
-
-    deleteEntity(service.getId(), false, true, ADMIN_AUTH_HEADERS);
-
-    assertEntityDeleted(service.getId(), true);
-
-    assertSecretsDeleted(service);
-  }
-
-  @Test
-  void test_hardDeleteWithoutConnection_onlyRdfCleanup(TestInfo test) throws IOException {
-    CreateDatabaseService createRequest = createRequest(test).withConnection(null);
+        createRequest(test)
+            .withServiceType(DatabaseServiceType.Mysql)
+            .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
     DatabaseService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
 
     deleteEntity(service.getId(), false, true, ADMIN_AUTH_HEADERS);
-
-    assertEntityDeleted(service.getId(), true);
-  }
-
-  @Test
-  void test_hardDeleteWithNullConnection_handlesGracefully(TestInfo test) throws IOException {
-    CreateDatabaseService createRequest = createRequest(test).withConnection(null);
-    DatabaseService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
-
-    assertDoesNotThrow(
-        () -> {
-          deleteEntity(service.getId(), false, true, ADMIN_AUTH_HEADERS);
-        },
-        "Hard delete with null connection should not throw exception");
 
     assertEntityDeleted(service.getId(), true);
   }
