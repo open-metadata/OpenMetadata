@@ -47,13 +47,6 @@ SAML (Security Assertion Markup Language) SSO enables users to log in using SAML
   - Include the BEGIN/END lines
   - Can be multi-line
 
-### <span data-id="authorityUrl">Authority URL</span>
-
-- **Definition:** URL to redirect users to the Sign In page.
-- **Example:** https://yourapp.company.com/api/v1/auth/login
-- **Why it matters:** Used for user-initiated sign-in flows.
-- **Note:** Optional, used for direct IdP-initiated logins
-
 ### <span data-id="nameId">Name ID Format</span>
 
 - **Definition:** Format of the SAML NameID element that identifies users.
