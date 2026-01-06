@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.TAG_SEARCH_INDEX;
 import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 
 import java.sql.ResultSet;
@@ -257,6 +258,9 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     searchRepository
         .getSearchClient()
         .updateClassificationTagByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN);
+    searchRepository
+        .getSearchClient()
+        .updateByFqnPrefix(TAG_SEARCH_INDEX, oldFqn, newFqn, "fullyQualifiedName");
   }
 
   private List<Tag> getAllTagsByClassification(Classification classification) {

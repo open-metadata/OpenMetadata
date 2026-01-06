@@ -183,6 +183,14 @@ public interface SearchClient
                       ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN);
                     }
                   }
+                  if (ctx._source.containsKey('classification')) {
+                    if (ctx._source.classification.containsKey('fullyQualifiedName')) {
+                      ctx._source.classification.fullyQualifiedName = ctx._source.classification.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
+                    }
+                    if (ctx._source.classification.containsKey('name')) {
+                      ctx._source.classification.name = params.newParentFQN;
+                    }
+                  }
                   if (ctx._source.containsKey('tags')) {
                     for (int i = 0; i < ctx._source.tags.size(); i++) {
                       if (ctx._source.tags[i].containsKey('tagFQN')) {

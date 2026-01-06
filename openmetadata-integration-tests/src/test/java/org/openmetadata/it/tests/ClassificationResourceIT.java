@@ -18,10 +18,13 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.classification.AutoClassificationConfig;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
@@ -645,20 +648,34 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
   void test_classificationRename_tagAssetsPreservedInSearch(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateClassification classificationRequest = createMinimalRequest(ns);
+    CreateClassification classificationRequest = new CreateClassification();
+    classificationRequest.setName(ns.prefix("cls"));
+    classificationRequest.setDescription("Test classification");
     Classification classification = createEntity(classificationRequest);
 
     org.openmetadata.schema.api.classification.CreateTag tagRequest =
         new org.openmetadata.schema.api.classification.CreateTag();
-    tagRequest.setName(ns.prefix("tag_assets_test"));
+    tagRequest.setName(ns.prefix("tag1"));
     tagRequest.setClassification(classification.getFullyQualifiedName());
     tagRequest.setDescription("Tag for asset search test");
 
     org.openmetadata.schema.entity.classification.Tag tag = client.tags().create(tagRequest);
+    String originalTagFqn = tag.getFullyQualifiedName();
+
+    TableResourceIT tableResourceIT = new TableResourceIT();
+    CreateTable createTableRequest =
+        tableResourceIT.createRequest(ns.prefix("tbl1"), ns).withTags(null);
+    Table table = tableResourceIT.createEntity(createTableRequest);
+
+    List<TagLabel> tagsToAdd = List.of(new TagLabel().withTagFQN(originalTagFqn));
+    table.setTags(tagsToAdd);
+    table = tableResourceIT.patchEntity(table.getId().toString(), table);
+    assertNotNull(table.getTags());
+    assertEquals(1, table.getTags().size());
 
     Thread.sleep(1000);
 
-    String newName = ns.prefix("classification_renamed_assets");
+    String newName = ns.prefix("cls_renamed");
     classification.setName(newName);
     Classification renamedClassification =
         patchEntity(classification.getId().toString(), classification);
@@ -668,6 +685,21 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
     org.openmetadata.schema.entity.classification.Tag fetchedTag =
         client.tags().get(tag.getId().toString());
     assertTrue(fetchedTag.getFullyQualifiedName().startsWith(newName));
+    String newTagFqn = fetchedTag.getFullyQualifiedName();
+
+    // Apply the renamed tag to a new entity - this verifies tag_search_index is updated correctly.
+    // If tag's classification reference in search index is not updated, this would fail with
+    // "tag does not exist" error because tag lookup queries tag_search_index.
+    CreateTable createTableRequest2 =
+        tableResourceIT.createRequest(ns.prefix("tbl2"), ns).withTags(null);
+    Table table2 = tableResourceIT.createEntity(createTableRequest2);
+
+    List<TagLabel> tagsToAddAfterRename = List.of(new TagLabel().withTagFQN(newTagFqn));
+    table2.setTags(tagsToAddAfterRename);
+    table2 = tableResourceIT.patchEntity(table2.getId().toString(), table2);
+    assertNotNull(table2.getTags());
+    assertEquals(1, table2.getTags().size());
+    assertEquals(newTagFqn, table2.getTags().get(0).getTagFQN());
 
     Classification fetchedClassification = getEntity(renamedClassification.getId().toString());
     assertEquals(newName, fetchedClassification.getName());
