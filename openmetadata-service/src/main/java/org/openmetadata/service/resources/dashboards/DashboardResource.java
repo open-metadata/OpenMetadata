@@ -185,6 +185,53 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   }
 
   @GET
+  @Path("/{id}/versionsFiltered")
+  @Operation(
+      operationId = "listFilteredDashboardVersions",
+      summary = "List dashboard versions with filters",
+      description =
+          "Get a filtered list of versions of a dashboard identified by `Id`. "
+              + "Supports filtering by limit, timestamp range, and field changes.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of filtered dashboard versions",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
+      })
+  public EntityHistory listVersionsFiltered(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Dashboard Id", schema = @Schema(type = "string")) @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Maximum number of versions to return",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          Integer limit,
+      @Parameter(
+              description = "Start timestamp (in milliseconds) for filtering versions",
+              schema = @Schema(type = "long"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "End timestamp (in milliseconds) for filtering versions",
+              schema = @Schema(type = "long"))
+          @QueryParam("endTs")
+          Long endTs,
+      @Parameter(
+              description =
+                  "Field name to filter versions by changes (e.g., 'tier', 'tags', 'description')",
+              schema = @Schema(type = "string"))
+          @QueryParam("fieldName")
+          String fieldName) {
+    return super.listVersionsWithFiltersInternal(
+        securityContext, id, limit, startTs, endTs, fieldName);
+  }
+
+  @GET
   @Path("/{id}")
   @Operation(
       operationId = "getDashboardByID",

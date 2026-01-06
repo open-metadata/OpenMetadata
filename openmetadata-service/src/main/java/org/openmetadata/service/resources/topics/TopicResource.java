@@ -182,6 +182,53 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   }
 
   @GET
+  @Path("/{id}/versionsFiltered")
+  @Operation(
+      operationId = "listFilteredTopicVersions",
+      summary = "List topic versions with filters",
+      description =
+          "Get a filtered list of versions of a topic identified by `Id`. "
+              + "Supports filtering by limit, timestamp range, and field changes.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of filtered topic versions",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
+      })
+  public EntityHistory listVersionsFiltered(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Topic Id", schema = @Schema(type = "string")) @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Maximum number of versions to return",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          Integer limit,
+      @Parameter(
+              description = "Start timestamp (in milliseconds) for filtering versions",
+              schema = @Schema(type = "long"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "End timestamp (in milliseconds) for filtering versions",
+              schema = @Schema(type = "long"))
+          @QueryParam("endTs")
+          Long endTs,
+      @Parameter(
+              description =
+                  "Field name to filter versions by changes (e.g., 'tier', 'tags', 'messageSchema')",
+              schema = @Schema(type = "string"))
+          @QueryParam("fieldName")
+          String fieldName) {
+    return super.listVersionsWithFiltersInternal(
+        securityContext, id, limit, startTs, endTs, fieldName);
+  }
+
+  @GET
   @Path("/{id}")
   @Operation(
       summary = "Get a topic by id",
