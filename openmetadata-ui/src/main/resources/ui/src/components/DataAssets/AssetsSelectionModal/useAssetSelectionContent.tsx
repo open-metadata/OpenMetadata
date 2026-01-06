@@ -37,7 +37,11 @@ import {
   PAGE_SIZE_MEDIUM,
   SOCKET_EVENTS,
 } from '../../../constants/constants';
+import {
+  INITIAL_SORT_FIELD,
+} from '../../../constants/explore.constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
+import { SORT_ORDER } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -156,6 +160,8 @@ export const useAssetSelectionContent = ({
           query: searchText,
           queryFilter: updatedQueryFilter,
           includeDeleted: false,
+          sortField: searchText ? '_score' : INITIAL_SORT_FIELD,
+          sortOrder: SORT_ORDER.DESC,
         });
         const hits = res.hits.hits as SearchedDataProps['data'];
         setTotalCount(res.hits.total.value ?? 0);
