@@ -1933,13 +1933,17 @@ class SampleDataSource(
                         if pipeline:
                             pipeline_obs = PipelineObservability(
                                 pipeline=EntityReference(
-                                    id=pipeline.id.root
-                                    if hasattr(pipeline.id, "root")
-                                    else pipeline.id,
+                                    id=(
+                                        pipeline.id.root
+                                        if hasattr(pipeline.id, "root")
+                                        else pipeline.id
+                                    ),
                                     type="pipeline",
-                                    fullyQualifiedName=pipeline.fullyQualifiedName.root
-                                    if hasattr(pipeline.fullyQualifiedName, "root")
-                                    else str(pipeline.fullyQualifiedName),
+                                    fullyQualifiedName=(
+                                        pipeline.fullyQualifiedName.root
+                                        if hasattr(pipeline.fullyQualifiedName, "root")
+                                        else str(pipeline.fullyQualifiedName)
+                                    ),
                                 ),
                                 scheduleInterval=obs_data.get("scheduleInterval"),
                                 startTime=obs_data.get("startTime"),
@@ -2262,7 +2266,11 @@ class SampleDataSource(
                         ],
                     ),
                 )
-                yield Either(right=table_profile)
+                try:
+                    yield Either(right=table_profile)
+                except Exception as exc:
+                    logger.error(f"Error ingesting table profile {table_profile}: {exc}")
+                    logger.error(traceback.format_exc())
 
     def ingest_test_suite(self) -> Iterable[Either[OMetaTestSuiteSample]]:
         """Iterate over all the testSuite and testCase and ingest them"""
