@@ -49,7 +49,6 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DatabaseSchemaProfilerConfig;
@@ -843,51 +842,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       if (processRecord) {
         createEntityWithChangeDescription(printer, csvRecord, table);
       }
-    }
-
-    private void createEntityWithChangeDescription(
-        CSVPrinter printer, CSVRecord csvRecord, Table table) throws IOException {
-      int recordIndex = getRecordIndex(csvRecord);
-      boolean isCreated =
-          recordCreateStatusArray != null
-              && recordIndex >= 0
-              && recordIndex < recordCreateStatusArray.length
-              && recordCreateStatusArray[recordIndex];
-      ChangeDescription changeDescription =
-          recordFieldChangesArray != null
-                  && recordIndex >= 0
-                  && recordIndex < recordFieldChangesArray.length
-                  && recordFieldChangesArray[recordIndex] != null
-              ? recordFieldChangesArray[recordIndex]
-              : new ChangeDescription();
-
-      String status;
-      if (isCreated) {
-        status = ENTITY_CREATED;
-      } else {
-        status = ENTITY_UPDATED;
-      }
-
-      // Create or update the entity through the repository if not in dry run mode
-      if (!Boolean.TRUE.equals(importResult.getDryRun())) {
-        try {
-          table.setId(UUID.randomUUID());
-          table.setUpdatedBy(importedBy);
-          table.setUpdatedAt(System.currentTimeMillis());
-          EntityRepository<Table> repository =
-              (EntityRepository<Table>) Entity.getEntityRepository(TABLE);
-          boolean update = repository.isUpdateForImport(table);
-          repository.prepareInternal(table, update);
-          repository.createOrUpdateForImport(null, table, importedBy);
-        } catch (Exception ex) {
-          importFailure(printer, ex.getMessage(), csvRecord);
-          importResult.setStatus(ApiStatus.FAILURE);
-          return;
-        }
-      }
-
-      // Print success message with change description
-      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
     }
 
     protected void createEntityWithRecursion(CSVPrinter printer, List<CSVRecord> csvRecords)

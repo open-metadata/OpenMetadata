@@ -2231,8 +2231,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
         boolean update = repository.isUpdateForImport(entity);
         repository.prepareInternal(entity, update);
         PutResponse<T> response = repository.createOrUpdateForImport(null, entity, importedBy);
-
-        // Use the actual response status to determine if entity was created or updated
         String status =
             response.getStatus() == Response.Status.CREATED ? ENTITY_CREATED : ENTITY_UPDATED;
 
@@ -2244,7 +2242,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
       } catch (Exception ex) {
         importFailure(printer, ex.getMessage(), csvRecord);
         importResult.setStatus(ApiStatus.FAILURE);
-        return;
       }
     } else {
       // For dry run, we need to determine if it would be created or updated
