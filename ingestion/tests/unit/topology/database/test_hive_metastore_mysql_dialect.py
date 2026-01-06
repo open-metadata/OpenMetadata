@@ -13,7 +13,7 @@ Test Hive MySQL Metastore Dialect
 """
 
 from unittest import TestCase
-from unittest.mock import Mock, MagicMock
+from unittest.mock import MagicMock, Mock
 
 from metadata.ingestion.source.database.hive.metastore_dialects.mysql.dialect import (
     HiveMysqlMetaStoreDialect,
