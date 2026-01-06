@@ -364,12 +364,12 @@ class S3Source(StorageServiceSource):
                 for key in candidate_keys:
                     metadata_entry_copy = deepcopy(metadata_entry)
                     metadata_entry_copy.dataPath = key.strip(KEY_SEPARATOR)
-                    structured_container: Optional[S3ContainerDetails] = (
-                        self._generate_container_details(
-                            bucket_response=bucket_response,
-                            metadata_entry=metadata_entry_copy,
-                            parent=parent,
-                        )
+                    structured_container: Optional[
+                        S3ContainerDetails
+                    ] = self._generate_container_details(
+                        bucket_response=bucket_response,
+                        metadata_entry=metadata_entry_copy,
+                        parent=parent,
                     )
                     if structured_container:
                         yield structured_container
@@ -391,12 +391,12 @@ class S3Source(StorageServiceSource):
                 f"and generating structured container"
             )
             if metadata_entry.depth == 0:
-                structured_container: Optional[S3ContainerDetails] = (
-                    self._generate_container_details(
-                        bucket_response=bucket_response,
-                        metadata_entry=metadata_entry,
-                        parent=parent,
-                    )
+                structured_container: Optional[
+                    S3ContainerDetails
+                ] = self._generate_container_details(
+                    bucket_response=bucket_response,
+                    metadata_entry=metadata_entry,
+                    parent=parent,
                 )
                 if structured_container:
                     yield structured_container
