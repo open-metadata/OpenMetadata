@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmptyMutable;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -71,7 +70,6 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -1017,14 +1015,6 @@ public class TeamRepository extends EntityRepository<Team> {
       this.team = team;
     }
 
-    private boolean[] recordCreateStatusArray;
-    private ChangeDescription[] recordFieldChangesArray;
-
-    private void initializeArrays(int csvRecordCount) {
-      recordCreateStatusArray = new boolean[csvRecordCount];
-      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
-    }
-
     @Override
     public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
       if (records != null && !records.isEmpty()) {
@@ -1199,61 +1189,6 @@ public class TeamRepository extends EntityRepository<Team> {
       }
     }
 
-    private void createEntityWithChangeDescription(
-        CSVPrinter printer, CSVRecord csvRecord, Team team) throws IOException {
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
-      boolean isCreated =
-          recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length
-              ? recordCreateStatusArray[recordIndex]
-              : false;
-      ChangeDescription changeDescription =
-          recordFieldChangesArray != null
-                  && recordIndex < recordFieldChangesArray.length
-                  && recordFieldChangesArray[recordIndex] != null
-              ? recordFieldChangesArray[recordIndex]
-              : new ChangeDescription();
-
-      String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
-
-      if (!Boolean.TRUE.equals(importResult.getDryRun())) {
-        try {
-          team.setId(UUID.randomUUID());
-          team.setUpdatedBy(importedBy);
-          team.setUpdatedAt(System.currentTimeMillis());
-          EntityRepository<Team> repository =
-              (EntityRepository<Team>) Entity.getEntityRepository(TEAM);
-          boolean update = repository.isUpdateForImport(team);
-          repository.prepareInternal(team, update);
-          repository.createOrUpdateForImport(null, team, importedBy);
-        } catch (Exception ex) {
-          importFailure(printer, ex.getMessage(), csvRecord);
-          importResult.setStatus(ApiStatus.FAILURE);
-          return;
-        }
-      }
-      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
-    }
-
-    private void importSuccessWithChangeDescription(
-        CSVPrinter printer,
-        CSVRecord inputRecord,
-        String successDetails,
-        ChangeDescription changeDescription)
-        throws IOException {
-      List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
-      recordList.addAll(inputRecord.toList());
-
-      if (changeDescription != null) {
-        recordList.add(JsonUtils.pojoToJson(changeDescription));
-      } else {
-        recordList.add("");
-      }
-
-      printer.printRecord(recordList);
-      importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
-      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
-    }
-
     @Override
     protected void addRecord(CsvFile csvFile, Team entity) {
       List<String> recordList = new ArrayList<>();
@@ -1283,7 +1218,7 @@ public class TeamRepository extends EntityRepository<Team> {
           continue; // Parent is same as the team to which CSV is being imported, then it is in the
           // same hierarchy
         }
-        if (dryRunCreatedEntities.get(parentRef.getName()) != null) {
+        if (dryRunCreatedEntities.get(parentRef.getFullyQualifiedName()) != null) {
           continue; // Parent is being created by CSV import
         }
         // Else the parent should already exist

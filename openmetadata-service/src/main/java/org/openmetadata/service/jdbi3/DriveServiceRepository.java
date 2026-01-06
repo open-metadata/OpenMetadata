@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addExtension;
@@ -30,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -42,7 +40,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.entity.services.ServiceType;
-import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DriveConnection;
 import org.openmetadata.schema.type.EntityReference;
@@ -115,14 +112,6 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
       this.DOCUMENTATION = getCsvDocumentation(DRIVE_SERVICE, recursive);
       this.HEADERS = DOCUMENTATION.getHeaders();
       this.recursive = recursive;
-    }
-
-    private boolean[] recordCreateStatusArray;
-    private ChangeDescription[] recordFieldChangesArray;
-
-    private void initializeArrays(int csvRecordCount) {
-      recordCreateStatusArray = new boolean[csvRecordCount];
-      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
     }
 
     @Override
@@ -310,62 +299,8 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
           .withExtension(extension);
 
       if (processRecord) {
-        createEntityWithChangeDescription(printer, csvRecord, directory);
+        createEntityWithChangeDescription(printer, csvRecord, directory, DIRECTORY);
       }
-    }
-
-    private void createEntityWithChangeDescription(
-        CSVPrinter printer, CSVRecord csvRecord, Directory directory) throws IOException {
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
-      boolean isCreated =
-          (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length)
-              ? recordCreateStatusArray[recordIndex]
-              : false;
-      ChangeDescription changeDescription =
-          (recordFieldChangesArray != null
-                  && recordIndex < recordFieldChangesArray.length
-                  && recordFieldChangesArray[recordIndex] != null)
-              ? recordFieldChangesArray[recordIndex]
-              : new ChangeDescription();
-
-      String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
-
-      if (!Boolean.TRUE.equals(importResult.getDryRun())) {
-        try {
-          directory.setId(UUID.randomUUID());
-          directory.setUpdatedBy(importedBy);
-          directory.setUpdatedAt(System.currentTimeMillis());
-          EntityRepository<Directory> repository =
-              (EntityRepository<Directory>) Entity.getEntityRepository(DIRECTORY);
-          boolean update = repository.isUpdateForImport(directory);
-          repository.prepareInternal(directory, update);
-          repository.createOrUpdateForImport(null, directory, importedBy);
-        } catch (Exception ex) {
-          importFailure(printer, ex.getMessage(), csvRecord);
-          importResult.setStatus(ApiStatus.FAILURE);
-          return;
-        }
-      }
-      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
-    }
-
-    private void importSuccessWithChangeDescription(
-        CSVPrinter printer,
-        CSVRecord inputRecord,
-        String successDetails,
-        ChangeDescription changeDescription)
-        throws IOException {
-      List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
-
-      if (changeDescription != null) {
-        recordList.add(JsonUtils.pojoToJson(changeDescription));
-      } else {
-        recordList.add("");
-      }
-
-      printer.printRecord(recordList);
-      importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
-      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
 
     protected void addEntityToCSV(CsvFile csvFile, EntityInterface entity, String entityType) {

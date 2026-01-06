@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addExtension;
@@ -48,7 +47,6 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
-import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
@@ -116,8 +114,6 @@ public class DatabaseServiceRepository
     public final List<CsvHeader> HEADERS;
     private final DatabaseService service;
     private final boolean recursive;
-    private boolean[] recordCreateStatusArray;
-    private ChangeDescription[] recordFieldChangesArray;
 
     public DatabaseServiceCsv(DatabaseService service, String user, boolean recursive) {
       super(DATABASE, getCsvDocumentation(DATABASE_SERVICE, recursive).getHeaders(), user);
@@ -125,11 +121,6 @@ public class DatabaseServiceRepository
       this.DOCUMENTATION = getCsvDocumentation(DATABASE_SERVICE, recursive);
       this.HEADERS = DOCUMENTATION.getHeaders();
       this.recursive = recursive;
-    }
-
-    private void initializeArrays(int csvRecordCount) {
-      recordCreateStatusArray = new boolean[csvRecordCount];
-      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
     }
 
     @Override
@@ -247,41 +238,7 @@ public class DatabaseServiceRepository
       Database database = processRecordFromCsv(printer, csvRecord);
 
       if (database != null && processRecord) {
-        if (!Boolean.TRUE.equals(importResult.getDryRun())) {
-          try {
-            database.setId(UUID.randomUUID());
-            database.setUpdatedBy(importedBy);
-            database.setUpdatedAt(System.currentTimeMillis());
-            EntityRepository<Database> repository =
-                (EntityRepository<Database>) Entity.getEntityRepository(DATABASE);
-            boolean update = repository.isUpdateForImport(database);
-            repository.prepareInternal(database, update);
-            repository.createOrUpdateForImport(null, database, importedBy);
-          } catch (Exception ex) {
-            importFailure(printer, ex.getMessage(), csvRecord);
-            importResult.setStatus(ApiStatus.FAILURE);
-            return;
-          }
-        }
-
-        int recordIndex = (int) csvRecord.getRecordNumber() - 1;
-        boolean isCreated =
-            recordCreateStatusArray != null
-                    && recordIndex >= 0
-                    && recordIndex < recordCreateStatusArray.length
-                ? recordCreateStatusArray[recordIndex]
-                : false;
-        ChangeDescription changeDescription =
-            recordFieldChangesArray != null
-                    && recordIndex >= 0
-                    && recordIndex < recordFieldChangesArray.length
-                    && recordFieldChangesArray[recordIndex] != null
-                ? recordFieldChangesArray[recordIndex]
-                : new ChangeDescription();
-
-        String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
-
-        importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+        createEntityWithChangeDescription(printer, csvRecord, database, DATABASE);
       }
     }
 
@@ -300,7 +257,7 @@ public class DatabaseServiceRepository
         databaseExists = false;
       }
 
-      // Store create status with null check
+      // Store create status in inherited arrays
       int recordIndex = (int) csvRecord.getRecordNumber() - 1;
       if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
         recordCreateStatusArray[recordIndex] = !databaseExists;
@@ -394,7 +351,7 @@ public class DatabaseServiceRepository
       if (!fieldsUpdated.isEmpty()) {
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
-      // Store change description with null check
+      // Store change description in inherited arrays
       if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
         recordFieldChangesArray[recordIndex] = changeDescription;
       }
@@ -411,27 +368,6 @@ public class DatabaseServiceRepository
           .withExtension(getExtension(printer, csvRecord, 9));
 
       return database;
-    }
-
-    private void importSuccessWithChangeDescription(
-        CSVPrinter printer,
-        CSVRecord inputRecord,
-        String successDetails,
-        ChangeDescription changeDescription)
-        throws IOException {
-      List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
-      recordList.addAll(inputRecord.toList());
-
-      // Add structured change description as JSON at the end
-      if (changeDescription != null) {
-        recordList.add(JsonUtils.pojoToJson(changeDescription));
-      } else {
-        recordList.add("");
-      }
-
-      printer.printRecord(recordList);
-      importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
-      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
 
     protected void createEntityWithRecursion(CSVPrinter printer, List<CSVRecord> csvRecords)

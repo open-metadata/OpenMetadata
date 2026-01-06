@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmptyMutable;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -60,7 +59,6 @@ import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
-import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
@@ -958,14 +956,6 @@ public class UserRepository extends EntityRepository<User> {
       this.team = importingTeam;
     }
 
-    private boolean[] recordCreateStatusArray;
-    private ChangeDescription[] recordFieldChangesArray;
-
-    private void initializeArrays(int csvRecordCount) {
-      recordCreateStatusArray = new boolean[csvRecordCount];
-      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
-    }
-
     @Override
     public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
       if (records != null && !records.isEmpty()) {
@@ -1100,63 +1090,8 @@ public class UserRepository extends EntityRepository<User> {
           .withRoles(roles);
 
       if (processRecord) {
-        createEntityWithChangeDescription(printer, csvRecord, user);
+        createUserEntityWithChangeDescription(printer, csvRecord, user);
       }
-    }
-
-    private void createEntityWithChangeDescription(
-        CSVPrinter printer, CSVRecord csvRecord, User user) throws IOException {
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
-      boolean isCreated =
-          recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length
-              ? recordCreateStatusArray[recordIndex]
-              : false;
-      ChangeDescription changeDescription =
-          recordFieldChangesArray != null
-                  && recordIndex < recordFieldChangesArray.length
-                  && recordFieldChangesArray[recordIndex] != null
-              ? recordFieldChangesArray[recordIndex]
-              : new ChangeDescription();
-
-      String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
-
-      if (!Boolean.TRUE.equals(importResult.getDryRun())) {
-        try {
-          user.setId(UUID.randomUUID());
-          user.setUpdatedBy(importedBy);
-          user.setUpdatedAt(System.currentTimeMillis());
-          EntityRepository<User> repository =
-              (EntityRepository<User>) Entity.getEntityRepository(USER);
-          boolean update = repository.isUpdateForImport(user);
-          repository.prepareInternal(user, update);
-          repository.createOrUpdateForImport(null, user, importedBy);
-        } catch (Exception ex) {
-          importFailure(printer, ex.getMessage(), csvRecord);
-          importResult.setStatus(ApiStatus.FAILURE);
-          return;
-        }
-      }
-      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
-    }
-
-    private void importSuccessWithChangeDescription(
-        CSVPrinter printer,
-        CSVRecord inputRecord,
-        String successDetails,
-        ChangeDescription changeDescription)
-        throws IOException {
-      List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
-      recordList.addAll(inputRecord.toList());
-
-      if (changeDescription != null) {
-        recordList.add(JsonUtils.pojoToJson(changeDescription));
-      } else {
-        recordList.add("");
-      }
-
-      printer.printRecord(recordList);
-      importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
-      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
 
     @Override

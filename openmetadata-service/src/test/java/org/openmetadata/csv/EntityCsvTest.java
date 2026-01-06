@@ -1,7 +1,9 @@
 package org.openmetadata.csv;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.LINE_SEPARATOR;
 import static org.openmetadata.csv.CsvUtil.recordToString;
@@ -9,8 +11,11 @@ import static org.openmetadata.csv.EntityCsv.ENTITY_CREATED;
 import static org.openmetadata.csv.EntityCsv.ENTITY_UPDATED;
 
 import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.StringEscapeUtils;
@@ -83,18 +88,96 @@ public class EntityCsvTest {
         importResult.getImportResultsCsv());
   }
 
-  public static void assertRows(CsvImportResult importResult, String... expectedRows) {
-    String[] resultRecords = importResult.getImportResultsCsv().split(LINE_SEPARATOR);
-    assertEquals(expectedRows.length, resultRecords.length);
-    for (int i = 0; i < resultRecords.length; i++) {
-      assertEquals(expectedRows[i], resultRecords[i], "Row number is " + i);
+  //  public static void assertRows(CsvImportResult importResult, String... expectedRows) {
+  //    String[] resultRecords = importResult.getImportResultsCsv().split(LINE_SEPARATOR);
+  //    assertEquals(expectedRows.length, resultRecords.length);
+  //    for (int i = 0; i < resultRecords.length; i++) {
+  //      assertEquals(expectedRows[i], resultRecords[i], "Row number is " + i);
+  //    }
+  //  }
+
+  public static void assertRows(
+      CsvImportResult importResult, String... expectedRowsWithoutChangeDesc) {
+    try (Reader reader = new StringReader(importResult.getImportResultsCsv())) {
+      List<CSVRecord> resultRecords = CSVFormat.DEFAULT.parse(reader).getRecords();
+      assertEquals(
+          expectedRowsWithoutChangeDesc.length,
+          resultRecords.size(),
+          "Number of rows in the import result does not match expected");
+
+      for (int i = 0; i < resultRecords.size(); i++) {
+        CSVRecord expectedRecord;
+        try (Reader er = new StringReader(expectedRowsWithoutChangeDesc[i])) {
+          List<CSVRecord> parsedExpected = CSVFormat.DEFAULT.parse(er).getRecords();
+          if (parsedExpected.isEmpty()) {
+            // Handle case where expected row is empty
+            expectedRecord = null;
+          } else {
+            expectedRecord = parsedExpected.get(0);
+          }
+        }
+        CSVRecord actualRecord = resultRecords.get(i);
+
+        if (expectedRecord == null) {
+          assertTrue(
+              actualRecord.toList().stream().allMatch(String::isEmpty),
+              "Expected an empty row, but actual row has data: " + actualRecord);
+          continue;
+        }
+
+        // In case of failure, the change description column is not added.
+        // In case of success, the change description column is added.
+        if (actualRecord.get(0).equals(EntityCsv.IMPORT_FAILED)) {
+          assertEquals(
+              expectedRecord.size(),
+              actualRecord.size(),
+              "For failed records, expected and actual column count should be same for row " + i);
+        } else {
+          assertTrue(
+              actualRecord.size() >= expectedRecord.size(),
+              "Row " + i + " should have at least as many columns as expected");
+        }
+
+        for (int j = 0; j < expectedRecord.size(); j++) {
+          assertEquals(
+              expectedRecord.get(j),
+              actualRecord.get(j),
+              "Row " + i + ", column " + j + " mismatch");
+        }
+
+        // If there is an extra column, it should be a valid changeDescription
+        if (actualRecord.size() > expectedRecord.size()) {
+          assertEquals(
+              expectedRecord.size() + 1,
+              actualRecord.size(),
+              "Only one extra column for changeDescription is expected for row " + i);
+          String changeDesc = actualRecord.get(actualRecord.size() - 1);
+          assertValidChangeDescription(changeDesc, "Row " + i + " changeDescription");
+        }
+      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 
+  private static void assertValidChangeDescription(String changeDescription, String message) {
+    assertFalse(changeDescription.trim().isEmpty(), message + " is empty");
+
+    assertTrue(changeDescription.startsWith("{"), message + " does not start with '{'");
+    assertTrue(changeDescription.endsWith("}"), message + " does not end with '}'");
+
+    assertTrue(changeDescription.contains("\"fieldsAdded\""), message + " missing fieldsAdded key");
+    assertTrue(
+        changeDescription.contains("\"fieldsUpdated\""), message + " missing fieldsUpdated key");
+    assertTrue(
+        changeDescription.contains("\"fieldsDeleted\""), message + " missing fieldsDeleted key");
+    assertTrue(
+        changeDescription.contains("\"previousVersion\""),
+        message + " missing previousVersion key");
+  }
+
   public static String getSuccessRecord(String record, String successDetails) {
-    return String.format(
-        "%s,%s,%s,\"{\"\"fieldsAdded\"\":[],\"\"fieldsUpdated\"\":[],\"\"fieldsDeleted\"\":[],\"\"previousVersion\"\":0.1}\"",
-        EntityCsv.IMPORT_SUCCESS, successDetails, record);
+    return String.format("%s,%s,%s", EntityCsv.IMPORT_SUCCESS, successDetails, record);
   }
 
   public static String getFailedRecord(String record, String errorDetails) {

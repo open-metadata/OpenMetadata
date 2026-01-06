@@ -1849,7 +1849,8 @@ public class TableRepository extends EntityRepository<Table> {
       this.table = table;
     }
 
-    private void initializeArrays(int csvRecordCount) {
+    @Override
+    protected void initializeArrays(int csvRecordCount) {
       recordCreateStatusArray = new boolean[csvRecordCount];
       recordFieldChangesArray = new ChangeDescription[csvRecordCount];
     }
@@ -1935,8 +1936,8 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
 
-    // Enhanced import success that includes ChangeDescription
-    private void importSuccessWithChangeDescription(
+    @Override
+    protected void importSuccessWithChangeDescription(
         CSVPrinter printer,
         CSVRecord inputRecord,
         String successDetails,
@@ -1945,7 +1946,6 @@ public class TableRepository extends EntityRepository<Table> {
       List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
       recordList.addAll(inputRecord.toList());
 
-      // Add structured change description as JSON at the end
       if (changeDescription != null) {
         recordList.add(JsonUtils.pojoToJson(changeDescription));
       } else {

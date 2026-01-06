@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.LINE_SEPARATOR;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.schema.type.TaskType.RequestDescription;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
@@ -6514,34 +6515,45 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     String csv = EntityCsvTest.createCsv(csvHeaders, createRecords, updateRecords);
 
+    // Dry run
     CsvImportResult dryRunResultAsync =
         JsonUtils.readValue(
             receiveCsvImportViaSocketIO(entityName, csv, true), CsvImportResult.class);
     CsvImportResult dryRunResultSync = importCsv(entityName, csv, true);
 
-    // Validate the imported result summary - it should include both created and updated records
     int totalRows = 1 + createRecords.size() + updateRecords.size();
     assertSummary(dryRunResultSync, ApiStatus.SUCCESS, totalRows, totalRows, 0);
     assertSummary(dryRunResultAsync, ApiStatus.SUCCESS, totalRows, totalRows, 0);
+
     String expectedResultsCsv =
         EntityCsvTest.createCsvResult(csvHeaders, createRecords, updateRecords);
-    assertEquals(expectedResultsCsv, dryRunResultSync.getImportResultsCsv());
-    assertEquals(expectedResultsCsv, dryRunResultAsync.getImportResultsCsv());
+    EntityCsvTest.assertRows(dryRunResultSync, expectedResultsCsv.split(LINE_SEPARATOR));
+    EntityCsvTest.assertRows(dryRunResultAsync, expectedResultsCsv.split(LINE_SEPARATOR));
 
+    // Final run
     CsvImportResult finalResultAsync =
         JsonUtils.readValue(
             receiveCsvImportViaSocketIO(entityName, csv, false), CsvImportResult.class);
     CsvImportResult finalResultSync = importCsv(entityName, csv, false);
 
-    assertEquals(dryRunResultAsync.withDryRun(false), finalResultAsync);
-    // entities have created in the earlier sync import (dryRun=false) so the next import agan will
-    // have entities updated
-    assertEquals(
-        dryRunResultSync
-            .withImportResultsCsv(
-                dryRunResultSync.getImportResultsCsv().replace("Entity created", "Entity updated"))
-            .withDryRun(false),
-        finalResultSync);
+    // Assertions for Async final run
+    assertSummary(finalResultAsync, ApiStatus.SUCCESS, totalRows, totalRows, 0);
+    EntityCsvTest.assertRows(finalResultAsync, expectedResultsCsv.split(LINE_SEPARATOR));
+
+    // Assertions for Sync final run
+    // In final sync run, all createRecords will become updateRecords
+    List<String> allUpdateRecords = new ArrayList<>();
+    if (!nullOrEmpty(createRecords)) {
+      allUpdateRecords.addAll(createRecords);
+    }
+    if (!nullOrEmpty(updateRecords)) {
+      allUpdateRecords.addAll(updateRecords);
+    }
+    String expectedFinalResultsCsv =
+        EntityCsvTest.createCsvResult(csvHeaders, null, allUpdateRecords);
+
+    assertSummary(finalResultSync, ApiStatus.SUCCESS, totalRows, totalRows, 0);
+    EntityCsvTest.assertRows(finalResultSync, expectedFinalResultsCsv.split(LINE_SEPARATOR));
 
     // Finally, export CSV and ensure the exported CSV is the same as imported CSV
     String exportedCsvAsync = receiveCsvViaSocketIO(entityName);

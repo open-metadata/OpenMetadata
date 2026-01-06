@@ -16,7 +16,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
 import static org.openmetadata.csv.CsvUtil.addEntityReference;
@@ -56,7 +55,6 @@ import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.type.Style;
-import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
@@ -237,14 +235,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     GlossaryCsv(Glossary glossary, String user) {
       super(GLOSSARY_TERM, HEADERS, user);
       this.glossary = glossary;
-    }
-
-    private boolean[] recordCreateStatusArray;
-    private ChangeDescription[] recordFieldChangesArray;
-
-    private void initializeArrays(int csvRecordCount) {
-      recordCreateStatusArray = new boolean[csvRecordCount];
-      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
     }
 
     @Override
@@ -477,63 +467,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       }
 
       if (processRecord) {
-        createEntityWithChangeDescription(printer, csvRecord, glossaryTerm);
+        createEntityWithChangeDescription(printer, csvRecord, glossaryTerm, GLOSSARY_TERM);
       }
-    }
-
-    private void createEntityWithChangeDescription(
-        CSVPrinter printer, CSVRecord csvRecord, GlossaryTerm glossaryTerm) throws IOException {
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
-      boolean isCreated =
-          recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length
-              ? recordCreateStatusArray[recordIndex]
-              : false;
-      ChangeDescription changeDescription =
-          recordFieldChangesArray != null
-                  && recordIndex < recordFieldChangesArray.length
-                  && recordFieldChangesArray[recordIndex] != null
-              ? recordFieldChangesArray[recordIndex]
-              : new ChangeDescription();
-
-      String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
-
-      if (!Boolean.TRUE.equals(importResult.getDryRun())) {
-        try {
-          glossaryTerm.setId(UUID.randomUUID());
-          glossaryTerm.setUpdatedBy(importedBy);
-          glossaryTerm.setUpdatedAt(System.currentTimeMillis());
-          EntityRepository<GlossaryTerm> repository =
-              (EntityRepository<GlossaryTerm>) Entity.getEntityRepository(GLOSSARY_TERM);
-          boolean update = repository.isUpdateForImport(glossaryTerm);
-          repository.prepareInternal(glossaryTerm, update);
-          repository.createOrUpdateForImport(null, glossaryTerm, importedBy);
-        } catch (Exception ex) {
-          importFailure(printer, ex.getMessage(), csvRecord);
-          importResult.setStatus(ApiStatus.FAILURE);
-          return;
-        }
-      }
-      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
-    }
-
-    private void importSuccessWithChangeDescription(
-        CSVPrinter printer,
-        CSVRecord inputRecord,
-        String successDetails,
-        ChangeDescription changeDescription)
-        throws IOException {
-      List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
-      recordList.addAll(inputRecord.toList());
-
-      if (changeDescription != null) {
-        recordList.add(JsonUtils.pojoToJson(changeDescription));
-      } else {
-        recordList.add("");
-      }
-
-      printer.printRecord(recordList);
-      importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
-      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
 
     private List<TermReference> getTermReferences(CSVPrinter printer, CSVRecord csvRecord)

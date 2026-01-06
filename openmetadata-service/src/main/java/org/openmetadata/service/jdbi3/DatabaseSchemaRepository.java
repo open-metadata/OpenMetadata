@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addExtension;
@@ -574,8 +573,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     public final List<CsvHeader> HEADERS;
     private final DatabaseSchema schema;
     private final boolean recursive;
-    private boolean[] recordCreateStatusArray;
-    private ChangeDescription[] recordFieldChangesArray;
 
     public DatabaseSchemaCsv(DatabaseSchema schema, String user, boolean recursive) {
       super(TABLE, getCsvDocumentation(Entity.DATABASE_SCHEMA, recursive).getHeaders(), user);
@@ -583,11 +580,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       this.DOCUMENTATION = getCsvDocumentation(Entity.DATABASE_SCHEMA, recursive);
       this.HEADERS = DOCUMENTATION.getHeaders();
       this.recursive = recursive;
-    }
-
-    private void initializeArrays(int csvRecordCount) {
-      recordCreateStatusArray = new boolean[csvRecordCount];
-      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
     }
 
     @Override
@@ -897,27 +889,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
       // Print success message with change description
       importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
-    }
-
-    private void importSuccessWithChangeDescription(
-        CSVPrinter printer,
-        CSVRecord inputRecord,
-        String successDetails,
-        ChangeDescription changeDescription)
-        throws IOException {
-      List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
-      recordList.addAll(inputRecord.toList());
-
-      // Add structured change description as JSON at the end
-      if (changeDescription != null) {
-        recordList.add(JsonUtils.pojoToJson(changeDescription));
-      } else {
-        recordList.add("");
-      }
-
-      printer.printRecord(recordList);
-      importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
-      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
 
     protected void createEntityWithRecursion(CSVPrinter printer, List<CSVRecord> csvRecords)

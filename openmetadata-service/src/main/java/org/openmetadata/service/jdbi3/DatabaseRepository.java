@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addExtension;
@@ -50,7 +49,6 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
-import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DatabaseProfilerConfig;
@@ -480,8 +478,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     public final List<CsvHeader> HEADERS;
     private final Database database;
     private final boolean recursive;
-    private boolean[] recordCreateStatusArray;
-    private ChangeDescription[] recordFieldChangesArray;
 
     public DatabaseCsv(Database database, String user, boolean recursive) {
       super(DATABASE_SCHEMA, getCsvDocumentation(Entity.DATABASE, recursive).getHeaders(), user);
@@ -489,11 +485,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
       this.DOCUMENTATION = getCsvDocumentation(Entity.DATABASE, recursive);
       this.HEADERS = DOCUMENTATION.getHeaders();
       this.recursive = recursive;
-    }
-
-    private void initializeArrays(int csvRecordCount) {
-      recordCreateStatusArray = new boolean[csvRecordCount];
-      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
     }
 
     @Override
@@ -797,74 +788,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
           .withDomains(getDomains(printer, csvRecord, 10))
           .withExtension(getExtension(printer, csvRecord, 11));
       if (processRecord) {
-        createEntityWithChangeDescription(printer, csvRecord, schema);
+        createEntityWithChangeDescription(printer, csvRecord, schema, DATABASE_SCHEMA);
       }
-    }
-
-    private void createEntityWithChangeDescription(
-        CSVPrinter printer, CSVRecord csvRecord, DatabaseSchema schema) throws IOException {
-      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
-      boolean isCreated =
-          recordCreateStatusArray != null
-              && recordIndex >= 0
-              && recordIndex < recordCreateStatusArray.length
-              && recordCreateStatusArray[recordIndex];
-      ChangeDescription changeDescription =
-          recordFieldChangesArray != null
-                  && recordIndex >= 0
-                  && recordIndex < recordFieldChangesArray.length
-                  && recordFieldChangesArray[recordIndex] != null
-              ? recordFieldChangesArray[recordIndex]
-              : new ChangeDescription();
-
-      String status;
-      if (isCreated) {
-        status = ENTITY_CREATED;
-      } else {
-        status = ENTITY_UPDATED;
-      }
-
-      // Create or update the entity through the repository if not in dry run mode
-      if (!Boolean.TRUE.equals(importResult.getDryRun())) {
-        try {
-          schema.setId(UUID.randomUUID());
-          schema.setUpdatedBy(importedBy);
-          schema.setUpdatedAt(System.currentTimeMillis());
-          EntityRepository<DatabaseSchema> repository =
-              (EntityRepository<DatabaseSchema>) Entity.getEntityRepository(DATABASE_SCHEMA);
-          boolean update = repository.isUpdateForImport(schema);
-          repository.prepareInternal(schema, update);
-          repository.createOrUpdateForImport(null, schema, importedBy);
-        } catch (Exception ex) {
-          importFailure(printer, ex.getMessage(), csvRecord);
-          importResult.setStatus(ApiStatus.FAILURE);
-          return;
-        }
-      }
-
-      // Print success message with change description
-      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
-    }
-
-    private void importSuccessWithChangeDescription(
-        CSVPrinter printer,
-        CSVRecord inputRecord,
-        String successDetails,
-        ChangeDescription changeDescription)
-        throws IOException {
-      List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
-      recordList.addAll(inputRecord.toList());
-
-      // Add structured change description as JSON at the end
-      if (changeDescription != null) {
-        recordList.add(JsonUtils.pojoToJson(changeDescription));
-      } else {
-        recordList.add("");
-      }
-
-      printer.printRecord(recordList);
-      importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
-      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
 
     @Override
