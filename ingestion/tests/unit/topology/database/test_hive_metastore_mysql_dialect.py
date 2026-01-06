@@ -37,7 +37,7 @@ class TestHiveMySQLMetastoreDialect(TestCase):
         # Mock connection
         mock_connection = Mock()
         mock_result = MagicMock()
-        
+
         # Mock result data: regular columns and partition columns
         mock_result.fetchall.return_value = [
             ("col1", "string", "First column"),
@@ -53,30 +53,30 @@ class TestHiveMySQLMetastoreDialect(TestCase):
 
         # Verify connection.execute was called
         self.assertTrue(mock_connection.execute.called)
-        
+
         # Get the query that was executed
         executed_query = mock_connection.execute.call_args[0][0]
-        
+
         # Verify the query does NOT contain WITH clause (CTE)
         self.assertNotIn("WITH", executed_query.upper())
         self.assertNotIn("WITH regular_columns AS", executed_query)
         self.assertNotIn("WITH partition_columns AS", executed_query)
-        
+
         # Verify the query contains UNION ALL (the alternative approach)
         self.assertIn("UNION ALL", executed_query.upper())
-        
+
         # Verify the query contains required table names
         self.assertIn("COLUMNS_V2", executed_query)
         self.assertIn("PARTITION_KEYS", executed_query)
         self.assertIn("TBLS", executed_query)
-        
+
         # Verify the query includes the table name
         self.assertIn("test_table", executed_query)
-        
+
         # Verify the query includes the schema join
         self.assertIn("test_schema", executed_query)
         self.assertIn("DBS", executed_query)
-        
+
         # Verify the result
         self.assertEqual(len(result), 3)
         self.assertEqual(result[0], ("col1", "string", "First column"))
@@ -90,7 +90,7 @@ class TestHiveMySQLMetastoreDialect(TestCase):
         # Mock connection
         mock_connection = Mock()
         mock_result = MagicMock()
-        
+
         # Mock result data
         mock_result.fetchall.return_value = [
             ("col1", "string", None),
@@ -98,22 +98,20 @@ class TestHiveMySQLMetastoreDialect(TestCase):
         mock_connection.execute.return_value = mock_result
 
         # Call the method without schema
-        result = self.dialect._get_table_columns(
-            mock_connection, "test_table", None
-        )
+        result = self.dialect._get_table_columns(mock_connection, "test_table", None)
 
         # Verify connection.execute was called
         self.assertTrue(mock_connection.execute.called)
-        
+
         # Get the query that was executed
         executed_query = mock_connection.execute.call_args[0][0]
-        
+
         # Verify no CTE syntax
         self.assertNotIn("WITH", executed_query.upper())
-        
+
         # Verify UNION ALL is present
         self.assertIn("UNION ALL", executed_query.upper())
-        
+
         # Verify the result
         self.assertEqual(len(result), 1)
 
@@ -128,27 +126,25 @@ class TestHiveMySQLMetastoreDialect(TestCase):
         mock_connection.execute.return_value = mock_result
 
         # Call the method
-        self.dialect._get_table_columns(
-            mock_connection, "test_table", "test_schema"
-        )
+        self.dialect._get_table_columns(mock_connection, "test_table", "test_schema")
 
         # Get the executed query
         executed_query = mock_connection.execute.call_args[0][0]
-        
+
         # Verify SELECT statements are present
         select_count = executed_query.upper().count("SELECT")
         self.assertEqual(select_count, 2)  # Two SELECT statements joined by UNION ALL
-        
+
         # Verify the first SELECT (regular columns)
         self.assertIn("COLUMN_NAME", executed_query)
         self.assertIn("TYPE_NAME", executed_query)
         self.assertIn("COMMENT", executed_query)
-        
+
         # Verify the second SELECT (partition columns)
         self.assertIn("PKEY_NAME", executed_query)
         self.assertIn("PKEY_TYPE", executed_query)
         self.assertIn("PKEY_COMMENT", executed_query)
-        
+
         # Verify JOINs are present in both parts
         join_count = executed_query.upper().count("JOIN")
         self.assertGreaterEqual(join_count, 6)  # At least 6 JOINs in total
@@ -165,13 +161,11 @@ class TestHiveMySQLMetastoreDialect(TestCase):
         mock_connection.execute.return_value = mock_result
 
         # Call the method
-        self.dialect._get_table_columns(
-            mock_connection, "test_table", "test_schema"
-        )
+        self.dialect._get_table_columns(mock_connection, "test_table", "test_schema")
 
         # Get the executed query
         executed_query = mock_connection.execute.call_args[0][0]
-        
+
         # List of MySQL 8.0+ features that should NOT be present
         mysql_80_features = [
             "WITH",  # Common Table Expressions
@@ -181,10 +175,10 @@ class TestHiveMySQLMetastoreDialect(TestCase):
             "RANK()",  # Ranking function
             "DENSE_RANK()",  # Dense ranking function
         ]
-        
+
         for feature in mysql_80_features:
             self.assertNotIn(
                 feature,
                 executed_query.upper(),
-                f"Query should not contain MySQL 8.0+ feature: {feature}"
+                f"Query should not contain MySQL 8.0+ feature: {feature}",
             )
