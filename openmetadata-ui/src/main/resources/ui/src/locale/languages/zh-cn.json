@@ -513,7 +513,7 @@
     "details": "Details",
     "developed-by-developer": "Developed by {{developer}}",
     "diagnostic-info": "诊断信息",
-    "dimension": "Dimension",
+    "dimension": "维度",
     "dimension-entity": "维度 ({{entity}})",
     "dimension-plural": "维度",
     "dimension-value": "维度值",

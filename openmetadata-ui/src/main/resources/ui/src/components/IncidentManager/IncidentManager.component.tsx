@@ -15,15 +15,7 @@ import { Form, Select } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import {
-  isEqual,
-  isString,
-  isUndefined,
-  omit,
-  parseInt,
-  pick,
-  startCase,
-} from 'lodash';
+import { isEqual, isString, isUndefined, omit, parseInt, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -35,6 +27,7 @@ import {
   PAGE_SIZE_BASE,
 } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
+import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -753,7 +746,7 @@ const IncidentManager = ({
                 }>
                 {Object.values(TestCaseResolutionStatusTypes).map((value) => (
                   <Select.Option key={value}>
-                    {t(`label.${value.toLowerCase()}`)}
+                    {TEST_CASE_RESOLUTION_STATUS_LABELS[value]}
                   </Select.Option>
                 ))}
               </Select>

@@ -513,7 +513,7 @@
     "details": "Details",
     "developed-by-developer": "พัฒนาโดย {{developer}}",
     "diagnostic-info": "ข้อมูลการวินิจฉัย",
-    "dimension": "Dimension",
+    "dimension": "มิติ",
     "dimension-entity": "มิติ ({{entity}})",
     "dimension-plural": "มิติ",
     "dimension-value": "ค่ามิติ",

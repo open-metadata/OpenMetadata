@@ -26,14 +26,7 @@ import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import {
-  debounce,
-  entries,
-  isEmpty,
-  isUndefined,
-  startCase,
-  uniq,
-} from 'lodash';
+import { debounce, entries, isEmpty, isUndefined, uniq } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -49,6 +42,7 @@ import {
   DEFAULT_SORT_ORDER,
   TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
+  TEST_CASE_FILTERS_LABELS,
   TEST_CASE_PLATFORM_OPTION,
   TEST_CASE_STATUS_OPTION,
   TEST_CASE_TYPE_OPTION,
@@ -462,28 +456,10 @@ export const TestCases = () => {
   const filterMenu: ItemType[] = useMemo(() => {
     return entries(TEST_CASE_FILTERS).map(([name, filter]) => ({
       key: filter,
-      label: t(`label.${name}`),
+      label: TEST_CASE_FILTERS_LABELS[name],
       value: filter,
     }));
-  }, [t]);
-
-  const translatedDimensionsOption = useMemo(() => {
-    const dimensionKeyMap: Record<string, string> = {
-      Accuracy: 'accuracy',
-      Completeness: 'completeness',
-      Consistency: 'consistency',
-      Integrity: 'integrity',
-      NoDimension: 'no-dimension',
-      SQL: 'sql-uppercase',
-      Uniqueness: 'uniqueness',
-      Validity: 'validity',
-    };
-    
-    return TEST_CASE_DIMENSIONS_OPTION.map((option) => ({
-      ...option,
-      label: t(`label.${dimensionKeyMap[option.value] || option.value.toLowerCase()}`),
-    }));
-  }, [t]);
+  }, []);
 
   const debounceFetchTableData = useCallback(debounce(fetchTableData, 1000), [
     fetchTableData,
@@ -704,7 +680,7 @@ export const TestCases = () => {
                   showSearch
                   data-testid="dimension-select-filter"
                   getPopupContainer={getPopupContainer}
-                  options={translatedDimensionsOption}
+                  options={TEST_CASE_DIMENSIONS_OPTION}
                   placeholder={t('label.dimension')}
                 />
               </Form.Item>

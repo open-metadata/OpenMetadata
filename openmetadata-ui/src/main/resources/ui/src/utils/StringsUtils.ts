@@ -14,7 +14,7 @@
 import { AxiosError } from 'axios';
 import parse from 'html-react-parser';
 import { get, isString } from 'lodash';
-import { t } from './i18next/LocalUtil';
+import i18n from './i18next/LocalUtil';
 
 export const stringToSlug = (dataString: string, slugString = '') => {
   return dataString.toLowerCase().replace(/ /g, slugString);
@@ -59,7 +59,7 @@ export const ordinalize = (num: number): string => {
     ordinalSuffixKey = 'ordinal-suffix-th';
   }
 
-  return num + t(`label.${ordinalSuffixKey}`);
+  return num + i18n.t(`label.${ordinalSuffixKey}`);
 };
 
 export const getJSONFromString = (data: string): string | null => {
