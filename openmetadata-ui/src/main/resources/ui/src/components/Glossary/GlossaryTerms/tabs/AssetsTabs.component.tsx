@@ -211,6 +211,8 @@ const AssetsTabs = forwardRef(
             )
           );
         case AssetsOfEntity.DATA_PRODUCT:
+        case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
+        case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
           return getTermQuery({
             'dataProducts.fullyQualifiedName': entityFqn ?? '',
           });
