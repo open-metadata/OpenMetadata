@@ -1798,7 +1798,7 @@ test.describe('Glossary tests', () => {
 
   test('Check for duplicate Glossary Term', async ({ browser }) => {
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
-    const glossary1 = new Glossary();
+    const glossary1 = new Glossary('PW_TEST_GLOSSARY');
     const glossaryTerm1 = new GlossaryTerm(
       glossary1,
       undefined,
