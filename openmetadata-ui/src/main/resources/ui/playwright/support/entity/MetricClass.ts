@@ -34,10 +34,10 @@ export class MetricClass extends EntityClass {
 
   entityResponseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor() {
+  constructor(name?: string) {
     super(EntityTypeEndpoint.METRIC);
 
-    this.metricName = `playwright-metric-${uuid()}`;
+    this.metricName = name ?? `playwright-metric-${uuid()}`;
 
     this.entity = {
       name: this.metricName,
@@ -65,6 +65,22 @@ export class MetricClass extends EntityClass {
     return {
       entity: entityResponse.body,
     };
+  }
+
+  async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
+    const response = await apiContext.patch(
+      `/api/v1/metrics/${this.entityResponseData.id}`,
+      {
+        data,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    this.entityResponseData = await response.json();
+
+    return await response.json();
   }
 
   get() {
