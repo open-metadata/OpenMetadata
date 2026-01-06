@@ -30,6 +30,9 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.services.SecurityService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.SecurityConnection;
 import org.openmetadata.schema.type.TagLabel;
@@ -37,6 +40,7 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.services.security.SecurityServiceResource;
@@ -166,6 +170,51 @@ public class SecurityServiceRepository
       this.securityService = securityService;
     }
 
+    private boolean isMeaningfulChange(Object oldValue, Object newValue) {
+      // Handle null and empty string equivalence
+      if (oldValue == null
+          && (newValue == null || (newValue instanceof String && ((String) newValue).isEmpty()))) {
+        return false;
+      }
+      if (newValue == null
+          && (oldValue == null || (oldValue instanceof String && ((String) oldValue).isEmpty()))) {
+        return false;
+      }
+
+      // Handle empty collections
+      if (oldValue == null
+          && newValue instanceof java.util.Collection
+          && ((java.util.Collection<?>) newValue).isEmpty()) {
+        return false;
+      }
+      if (newValue == null
+          && oldValue instanceof java.util.Collection
+          && ((java.util.Collection<?>) oldValue).isEmpty()) {
+        return false;
+      }
+      if (oldValue instanceof java.util.Collection
+          && ((java.util.Collection<?>) oldValue).isEmpty()
+          && newValue instanceof java.util.Collection
+          && ((java.util.Collection<?>) newValue).isEmpty()) {
+        return false;
+      }
+
+      // Handle empty maps
+      if (oldValue == null
+          && newValue instanceof java.util.Map
+          && ((java.util.Map<?, ?>) newValue).isEmpty()) {
+        return false;
+      }
+      if (newValue == null
+          && oldValue instanceof java.util.Map
+          && ((java.util.Map<?, ?>) oldValue).isEmpty()) {
+        return false;
+      }
+
+      // For non-empty values, use regular equals comparison
+      return !java.util.Objects.equals(oldValue, newValue);
+    }
+
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
@@ -175,28 +224,120 @@ public class SecurityServiceRepository
       String serviceDescription = csvRecord.get(2);
       String serviceTypeStr = csvRecord.get(3);
 
-      SecurityService newSecurityService;
+      SecurityService existingSecurityService = null;
+      boolean serviceExists = false;
       try {
-        newSecurityService =
+        existingSecurityService =
             Entity.getEntityByName(Entity.SECURITY_SERVICE, serviceName, "*", Include.NON_DELETED);
+        serviceExists = true;
       } catch (EntityNotFoundException ex) {
         // SecurityService not found, it will be created with Import
-        newSecurityService =
-            new SecurityService().withName(serviceName).withFullyQualifiedName(serviceName);
+      }
+
+      SecurityService newSecurityService =
+          existingSecurityService != null
+              ? existingSecurityService
+              : new SecurityService().withName(serviceName).withFullyQualifiedName(serviceName);
+
+      // Store create status in inherited arrays
+      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !serviceExists;
+      }
+
+      // Track field changes using meaningful change detection
+      List<FieldChange> fieldsAdded = new ArrayList<>();
+      List<FieldChange> fieldsUpdated = new ArrayList<>();
+
+      List<TagLabel> tagLabels =
+          getTagLabels(printer, csvRecord, List.of(Pair.of(5, TagLabel.TagSource.CLASSIFICATION)));
+      List<EntityReference> owners = getOwners(printer, csvRecord, 4);
+      List<EntityReference> domains = getDomains(printer, csvRecord, 6);
+
+      if (!serviceExists) {
+        // New service - add all non-empty fields to fieldsAdded
+        if (!nullOrEmpty(serviceDisplayName)) {
+          fieldsAdded.add(
+              new FieldChange().withName("displayName").withNewValue(serviceDisplayName));
+        }
+        if (!nullOrEmpty(serviceDescription)) {
+          fieldsAdded.add(
+              new FieldChange().withName("description").withNewValue(serviceDescription));
+        }
+        if (!nullOrEmpty(owners)) {
+          fieldsAdded.add(
+              new FieldChange().withName("owners").withNewValue(JsonUtils.pojoToJson(owners)));
+        }
+        if (!nullOrEmpty(tagLabels)) {
+          fieldsAdded.add(
+              new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tagLabels)));
+        }
+        if (!nullOrEmpty(domains)) {
+          fieldsAdded.add(
+              new FieldChange().withName("domains").withNewValue(JsonUtils.pojoToJson(domains)));
+        }
+      } else {
+        // Existing service - use meaningful change detection
+        if (isMeaningfulChange(existingSecurityService.getDisplayName(), serviceDisplayName)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("displayName")
+                  .withOldValue(existingSecurityService.getDisplayName())
+                  .withNewValue(serviceDisplayName));
+        }
+        if (isMeaningfulChange(existingSecurityService.getDescription(), serviceDescription)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("description")
+                  .withOldValue(existingSecurityService.getDescription())
+                  .withNewValue(serviceDescription));
+        }
+        if (isMeaningfulChange(existingSecurityService.getOwners(), owners)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("owners")
+                  .withOldValue(JsonUtils.pojoToJson(existingSecurityService.getOwners()))
+                  .withNewValue(JsonUtils.pojoToJson(owners)));
+        }
+        if (isMeaningfulChange(existingSecurityService.getTags(), tagLabels)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("tags")
+                  .withOldValue(JsonUtils.pojoToJson(existingSecurityService.getTags()))
+                  .withNewValue(JsonUtils.pojoToJson(tagLabels)));
+        }
+        if (isMeaningfulChange(existingSecurityService.getDomains(), domains)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("domains")
+                  .withOldValue(JsonUtils.pojoToJson(existingSecurityService.getDomains()))
+                  .withNewValue(JsonUtils.pojoToJson(domains)));
+        }
+      }
+
+      // Create ChangeDescription and store it
+      ChangeDescription changeDescription = new ChangeDescription();
+      if (!fieldsAdded.isEmpty()) {
+        changeDescription.setFieldsAdded(fieldsAdded);
+      }
+      if (!fieldsUpdated.isEmpty()) {
+        changeDescription.setFieldsUpdated(fieldsUpdated);
+      }
+      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
       }
 
       // Update security service fields from CSV
       newSecurityService
           .withDisplayName(nullOrEmpty(serviceDisplayName) ? null : serviceDisplayName)
           .withDescription(nullOrEmpty(serviceDescription) ? null : serviceDescription)
-          .withOwners(getOwners(printer, csvRecord, 4))
-          .withTags(
-              getTagLabels(
-                  printer, csvRecord, List.of(Pair.of(5, TagLabel.TagSource.CLASSIFICATION))))
-          .withDomains(getDomains(printer, csvRecord, 6));
+          .withOwners(owners)
+          .withTags(tagLabels)
+          .withDomains(domains);
 
       if (processRecord) {
-        createEntity(printer, csvRecord, newSecurityService, Entity.SECURITY_SERVICE);
+        createEntityWithChangeDescription(
+            printer, csvRecord, newSecurityService, Entity.SECURITY_SERVICE);
       }
     }
 

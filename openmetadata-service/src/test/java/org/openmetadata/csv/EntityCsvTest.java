@@ -241,7 +241,7 @@ public class EntityCsvTest {
         throws IOException {
       CSVRecord csvRecord = getNextRecord(resultsPrinter, records);
       Table entity = new Table();
-      createEntity(resultsPrinter, csvRecord, entity);
+      createEntityWithChangeDescription(resultsPrinter, csvRecord, entity);
     }
 
     @Override

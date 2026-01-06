@@ -56,6 +56,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -84,6 +85,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.StoredProcedureLanguage;
 import org.openmetadata.schema.type.TagLabel;
@@ -99,7 +101,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
-import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.util.AsyncService;
@@ -882,100 +883,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return getNextRecord(resultsPrinter, csvHeaders, csvRecords);
   }
 
-  @Transaction
-  protected void createEntity(CSVPrinter resultsPrinter, CSVRecord csvRecord, T entity)
-      throws IOException {
-    entity.setId(UUID.randomUUID());
-    entity.setUpdatedBy(importedBy);
-    entity.setUpdatedAt(System.currentTimeMillis());
-    EntityRepository<T> repository = (EntityRepository<T>) Entity.getEntityRepository(entityType);
-    Response.Status responseStatus;
-    String violations = ValidatorUtil.validate(entity);
-    if (violations != null) {
-      // JSON schema based validation failed for the entity
-      importFailure(resultsPrinter, violations, csvRecord);
-      return;
-    }
-    if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
-      try {
-        // In case of updating entity , prepareInternal as update=True
-        boolean update = repository.isUpdateForImport(entity);
-        repository.prepareInternal(entity, update);
-        PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
-        responseStatus = response.getStatus();
-        AsyncService.getInstance()
-            .getExecutorService()
-            .submit(() -> createChangeEventAndUpdateInES(response, importedBy));
-      } catch (Exception ex) {
-        importFailure(resultsPrinter, ex.getMessage(), csvRecord);
-        importResult.setStatus(ApiStatus.FAILURE);
-        return;
-      }
-    } else { // Dry run don't create the entity
-      repository.setFullyQualifiedName(entity);
-      boolean exists = repository.isUpdateForImport(entity);
-      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
-      // Track the dryRun created entities, as they may be referred by other entities being created
-      // during import
-      dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
-    }
-
-    if (Response.Status.CREATED.equals(responseStatus)) {
-      importSuccess(resultsPrinter, csvRecord, ENTITY_CREATED);
-    } else {
-      importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
-    }
-  }
-
-  @Transaction
-  protected void createEntity(
-      CSVPrinter resultsPrinter, CSVRecord csvRecord, EntityInterface entity, String type)
-      throws IOException {
-
-    entity.setId(UUID.randomUUID());
-    entity.setUpdatedBy(importedBy);
-    entity.setUpdatedAt(System.currentTimeMillis());
-
-    EntityRepository<EntityInterface> repository =
-        (EntityRepository<EntityInterface>) Entity.getEntityRepository(type);
-
-    String violations = ValidatorUtil.validate(entity);
-    if (violations != null) {
-      importFailure(resultsPrinter, violations, csvRecord);
-      return;
-    }
-
-    Response.Status responseStatus;
-    if (Boolean.FALSE.equals(importResult.getDryRun())) {
-      try {
-        // In case of updating entity , prepareInternal as update=True
-        boolean update = repository.isUpdateForImport(entity);
-        repository.prepareInternal(entity, update);
-        PutResponse<EntityInterface> response =
-            repository.createOrUpdateForImport(null, entity, importedBy);
-        responseStatus = response.getStatus();
-        AsyncService.getInstance()
-            .getExecutorService()
-            .submit(() -> createChangeEventAndUpdateInESForGenericEntity(response, importedBy));
-      } catch (Exception ex) {
-        importFailure(resultsPrinter, ex.getMessage(), csvRecord);
-        importResult.setStatus(ApiStatus.FAILURE);
-        return;
-      }
-    } else {
-      repository.setFullyQualifiedName(entity);
-      boolean exists = repository.isUpdateForImport(entity);
-      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
-      dryRunCreatedEntities.put(entity.getFullyQualifiedName(), (T) entity);
-    }
-
-    if (Response.Status.CREATED.equals(responseStatus)) {
-      importSuccess(resultsPrinter, csvRecord, ENTITY_CREATED);
-    } else {
-      importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
-    }
-  }
-
   private void createChangeEventAndUpdateInES(PutResponse<T> response, String importedBy) {
     if (!response.getChangeType().equals(EventType.ENTITY_NO_CHANGE)) {
       ChangeEvent changeEvent =
@@ -1143,23 +1050,32 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     }
 
-    DatabaseSchema schema;
-    DatabaseSchemaRepository databaseSchemaRepository =
-        (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
+    DatabaseSchema existingSchema = null;
+    boolean schemaExists = false;
     String schemaFqn = FullyQualifiedName.add(dbFQN, csvRecord.get(0));
     try {
-      schema =
+      existingSchema =
           Entity.getEntityByNameWithExcludedFields(
               DATABASE_SCHEMA,
               schemaFqn,
               "name,displayName,description,owners,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,updatedAt,updatedBy",
               Include.NON_DELETED);
+      schemaExists = true;
     } catch (Exception ex) {
       LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
-      schema =
-          new DatabaseSchema()
-              .withDatabase(database.getEntityReference())
-              .withService(database.getService());
+    }
+
+    DatabaseSchema schema =
+        existingSchema != null
+            ? existingSchema
+            : new DatabaseSchema()
+                .withDatabase(database.getEntityReference())
+                .withService(database.getService());
+
+    // Store create status in inherited arrays
+    int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+    if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+      recordCreateStatusArray[recordIndex] = !schemaExists;
     }
 
     // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
@@ -1173,25 +1089,186 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 Pair.of(5, TagSource.GLOSSARY),
                 Pair.of(6, TagSource.CLASSIFICATION)));
     AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+    List<FieldChange> fieldsAdded = new ArrayList<>();
+    List<FieldChange> fieldsUpdated = new ArrayList<>();
+
+    String displayName = csvRecord.get(1);
+    String description = csvRecord.get(2);
+    List<EntityReference> owners = getOwners(printer, csvRecord, 3);
+    String retentionPeriod = csvRecord.get(8);
+    String sourceUrl = csvRecord.get(9);
+    List<EntityReference> domains = getDomains(printer, csvRecord, 10);
+    Map<String, Object> extension = getExtension(printer, csvRecord, 11);
+
+    if (!schemaExists) {
+      if (!nullOrEmpty(displayName)) {
+        fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
+      }
+      if (!nullOrEmpty(description)) {
+        fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
+      }
+      if (!nullOrEmpty(owners)) {
+        fieldsAdded.add(
+            new FieldChange().withName("owners").withNewValue(JsonUtils.pojoToJson(owners)));
+      }
+      if (!nullOrEmpty(tagLabels)) {
+        fieldsAdded.add(
+            new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tagLabels)));
+      }
+      if (certification != null && certification.getTagLabel() != null) {
+        fieldsAdded.add(
+            new FieldChange()
+                .withName("certification")
+                .withNewValue(JsonUtils.pojoToJson(certification)));
+      }
+      if (!nullOrEmpty(retentionPeriod)) {
+        fieldsAdded.add(
+            new FieldChange().withName("retentionPeriod").withNewValue(retentionPeriod));
+      }
+      if (!nullOrEmpty(sourceUrl)) {
+        fieldsAdded.add(new FieldChange().withName("sourceUrl").withNewValue(sourceUrl));
+      }
+      if (!nullOrEmpty(domains)) {
+        fieldsAdded.add(
+            new FieldChange().withName("domains").withNewValue(JsonUtils.pojoToJson(domains)));
+      }
+      if (extension != null && !extension.isEmpty()) {
+        fieldsAdded.add(
+            new FieldChange().withName("extension").withNewValue(JsonUtils.pojoToJson(extension)));
+      }
+    } else {
+      if (isMeaningfulChange(existingSchema.getDisplayName(), displayName)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("displayName")
+                .withOldValue(existingSchema.getDisplayName())
+                .withNewValue(displayName));
+      }
+      if (isMeaningfulChange(existingSchema.getDescription(), description)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("description")
+                .withOldValue(existingSchema.getDescription())
+                .withNewValue(description));
+      }
+      if (isMeaningfulChange(existingSchema.getOwners(), owners)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("owners")
+                .withOldValue(JsonUtils.pojoToJson(existingSchema.getOwners()))
+                .withNewValue(JsonUtils.pojoToJson(owners)));
+      }
+      if (isMeaningfulChange(existingSchema.getTags(), tagLabels)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("tags")
+                .withOldValue(JsonUtils.pojoToJson(existingSchema.getTags()))
+                .withNewValue(JsonUtils.pojoToJson(tagLabels)));
+      }
+      if (isMeaningfulChange(existingSchema.getCertification(), certification)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("certification")
+                .withOldValue(JsonUtils.pojoToJson(existingSchema.getCertification()))
+                .withNewValue(JsonUtils.pojoToJson(certification)));
+      }
+      if (isMeaningfulChange(existingSchema.getRetentionPeriod(), retentionPeriod)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("retentionPeriod")
+                .withOldValue(existingSchema.getRetentionPeriod())
+                .withNewValue(retentionPeriod));
+      }
+      if (isMeaningfulChange(existingSchema.getSourceUrl(), sourceUrl)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("sourceUrl")
+                .withOldValue(existingSchema.getSourceUrl())
+                .withNewValue(sourceUrl));
+      }
+      if (isMeaningfulChange(existingSchema.getDomains(), domains)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("domains")
+                .withOldValue(JsonUtils.pojoToJson(existingSchema.getDomains()))
+                .withNewValue(JsonUtils.pojoToJson(domains)));
+      }
+      if (isMeaningfulChange(existingSchema.getExtension(), extension)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("extension")
+                .withOldValue(JsonUtils.pojoToJson(existingSchema.getExtension()))
+                .withNewValue(JsonUtils.pojoToJson(extension)));
+      }
+    }
+
+    ChangeDescription changeDescription = new ChangeDescription();
+    if (!fieldsAdded.isEmpty()) {
+      changeDescription.setFieldsAdded(fieldsAdded);
+    }
+    if (!fieldsUpdated.isEmpty()) {
+      changeDescription.setFieldsUpdated(fieldsUpdated);
+    }
+    if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+      recordFieldChangesArray[recordIndex] = changeDescription;
+    }
 
     schema
         .withId(UUID.randomUUID())
         .withName(csvRecord.get(0))
-        .withDisplayName(csvRecord.get(1))
+        .withDisplayName(displayName)
         .withFullyQualifiedName(schemaFqn)
-        .withDescription(csvRecord.get(2))
-        .withOwners(getOwners(printer, csvRecord, 3))
+        .withDescription(description)
+        .withOwners(owners)
         .withTags(tagLabels)
         .withCertification(certification)
-        .withRetentionPeriod(csvRecord.get(8))
-        .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
-        .withExtension(getExtension(printer, csvRecord, 11))
+        .withRetentionPeriod(retentionPeriod)
+        .withSourceUrl(sourceUrl)
+        .withDomains(domains)
+        .withExtension(extension)
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
     if (processRecord) {
-      createEntity(printer, csvRecord, schema, DATABASE_SCHEMA);
+      createEntityWithChangeDescription(printer, csvRecord, schema, DATABASE_SCHEMA);
     }
+  }
+
+  private boolean isMeaningfulChange(Object oldValue, Object newValue) {
+    if (oldValue == null
+        && (newValue == null || (newValue instanceof String && ((String) newValue).isEmpty()))) {
+      return false;
+    }
+    if (newValue == null
+        && (oldValue == null || (oldValue instanceof String && ((String) oldValue).isEmpty()))) {
+      return false;
+    }
+    if (oldValue == null
+        && newValue instanceof java.util.Collection
+        && ((java.util.Collection<?>) newValue).isEmpty()) {
+      return false;
+    }
+    if (newValue == null
+        && oldValue instanceof java.util.Collection
+        && ((java.util.Collection<?>) oldValue).isEmpty()) {
+      return false;
+    }
+    if (oldValue instanceof java.util.Collection
+        && ((java.util.Collection<?>) oldValue).isEmpty()
+        && newValue instanceof java.util.Collection
+        && ((java.util.Collection<?>) newValue).isEmpty()) {
+      return false;
+    }
+    if (oldValue == null
+        && newValue instanceof java.util.Map
+        && ((java.util.Map<?, ?>) newValue).isEmpty()) {
+      return false;
+    }
+    if (newValue == null
+        && oldValue instanceof java.util.Map
+        && ((java.util.Map<?, ?>) oldValue).isEmpty()) {
+      return false;
+    }
+    return !Objects.equals(oldValue, newValue);
   }
 
   protected void createTableEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
@@ -1227,28 +1304,36 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     String tableFqn = FullyQualifiedName.add(schemaFQN, csvRecord.get(0));
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
-    Table table;
+    Table existingTable = null;
+    boolean tableExists = false;
 
     try {
-      table =
+      existingTable =
           Entity.getEntityByNameWithExcludedFields(
               TABLE,
               tableFqn,
               "name,displayName,description,owners,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,updatedAt,updatedBy",
               Include.NON_DELETED);
+      tableExists = true;
     } catch (EntityNotFoundException ex) {
-      // Table not found, create a new one
-
       LOG.warn("Table not found: {}, it will be created with Import.", tableFqn);
-      table =
-          new Table()
-              .withId(UUID.randomUUID())
-              .withName(csvRecord.get(0))
-              .withFullyQualifiedName(tableFqn)
-              .withService(schema.getService())
-              .withDatabase(schema.getDatabase())
-              .withColumns(new ArrayList<>())
-              .withDatabaseSchema(schema.getEntityReference());
+    }
+
+    Table table =
+        existingTable != null
+            ? existingTable
+            : new Table()
+                .withId(UUID.randomUUID())
+                .withName(csvRecord.get(0))
+                .withFullyQualifiedName(tableFqn)
+                .withService(schema.getService())
+                .withDatabase(schema.getDatabase())
+                .withColumns(new ArrayList<>())
+                .withDatabaseSchema(schema.getEntityReference());
+
+    int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+    if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+      recordCreateStatusArray[recordIndex] = !tableExists;
     }
 
     // Extract and process tag labels
@@ -1262,21 +1347,145 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 Pair.of(6, TagSource.CLASSIFICATION)));
     AssetCertification certification = getCertificationLabels(csvRecord.get(7));
 
+    List<FieldChange> fieldsAdded = new ArrayList<>();
+    List<FieldChange> fieldsUpdated = new ArrayList<>();
+
+    String displayName = csvRecord.get(1);
+    String description = csvRecord.get(2);
+    List<EntityReference> owners = getOwners(printer, csvRecord, 3);
+    String retentionPeriod = csvRecord.get(8);
+    String sourceUrl = csvRecord.get(9);
+    List<EntityReference> domains = getDomains(printer, csvRecord, 10);
+    Map<String, Object> extension = getExtension(printer, csvRecord, 11);
+
+    if (!tableExists) {
+      if (!nullOrEmpty(displayName)) {
+        fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
+      }
+      if (!nullOrEmpty(description)) {
+        fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
+      }
+      if (!nullOrEmpty(owners)) {
+        fieldsAdded.add(
+            new FieldChange().withName("owners").withNewValue(JsonUtils.pojoToJson(owners)));
+      }
+      if (!nullOrEmpty(tagLabels)) {
+        fieldsAdded.add(
+            new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tagLabels)));
+      }
+      if (certification != null && certification.getTagLabel() != null) {
+        fieldsAdded.add(
+            new FieldChange()
+                .withName("certification")
+                .withNewValue(JsonUtils.pojoToJson(certification)));
+      }
+      if (!nullOrEmpty(retentionPeriod)) {
+        fieldsAdded.add(
+            new FieldChange().withName("retentionPeriod").withNewValue(retentionPeriod));
+      }
+      if (!nullOrEmpty(sourceUrl)) {
+        fieldsAdded.add(new FieldChange().withName("sourceUrl").withNewValue(sourceUrl));
+      }
+      if (!nullOrEmpty(domains)) {
+        fieldsAdded.add(
+            new FieldChange().withName("domains").withNewValue(JsonUtils.pojoToJson(domains)));
+      }
+      if (extension != null && !extension.isEmpty()) {
+        fieldsAdded.add(
+            new FieldChange().withName("extension").withNewValue(JsonUtils.pojoToJson(extension)));
+      }
+    } else {
+      if (isMeaningfulChange(existingTable.getDisplayName(), displayName)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("displayName")
+                .withOldValue(existingTable.getDisplayName())
+                .withNewValue(displayName));
+      }
+      if (isMeaningfulChange(existingTable.getDescription(), description)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("description")
+                .withOldValue(existingTable.getDescription())
+                .withNewValue(description));
+      }
+      if (isMeaningfulChange(existingTable.getOwners(), owners)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("owners")
+                .withOldValue(JsonUtils.pojoToJson(existingTable.getOwners()))
+                .withNewValue(JsonUtils.pojoToJson(owners)));
+      }
+      if (isMeaningfulChange(existingTable.getTags(), tagLabels)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("tags")
+                .withOldValue(JsonUtils.pojoToJson(existingTable.getTags()))
+                .withNewValue(JsonUtils.pojoToJson(tagLabels)));
+      }
+      if (isMeaningfulChange(existingTable.getCertification(), certification)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("certification")
+                .withOldValue(JsonUtils.pojoToJson(existingTable.getCertification()))
+                .withNewValue(JsonUtils.pojoToJson(certification)));
+      }
+      if (isMeaningfulChange(existingTable.getRetentionPeriod(), retentionPeriod)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("retentionPeriod")
+                .withOldValue(existingTable.getRetentionPeriod())
+                .withNewValue(retentionPeriod));
+      }
+      if (isMeaningfulChange(existingTable.getSourceUrl(), sourceUrl)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("sourceUrl")
+                .withOldValue(existingTable.getSourceUrl())
+                .withNewValue(sourceUrl));
+      }
+      if (isMeaningfulChange(existingTable.getDomains(), domains)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("domains")
+                .withOldValue(JsonUtils.pojoToJson(existingTable.getDomains()))
+                .withNewValue(JsonUtils.pojoToJson(domains)));
+      }
+      if (isMeaningfulChange(existingTable.getExtension(), extension)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("extension")
+                .withOldValue(JsonUtils.pojoToJson(existingTable.getExtension()))
+                .withNewValue(JsonUtils.pojoToJson(extension)));
+      }
+    }
+
+    ChangeDescription changeDescription = new ChangeDescription();
+    if (!fieldsAdded.isEmpty()) {
+      changeDescription.setFieldsAdded(fieldsAdded);
+    }
+    if (!fieldsUpdated.isEmpty()) {
+      changeDescription.setFieldsUpdated(fieldsUpdated);
+    }
+    if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+      recordFieldChangesArray[recordIndex] = changeDescription;
+    }
+
     // Populate table attributes
     table
-        .withDisplayName(csvRecord.get(1))
-        .withDescription(csvRecord.get(2))
-        .withOwners(getOwners(printer, csvRecord, 3))
+        .withDisplayName(displayName)
+        .withDescription(description)
+        .withOwners(owners)
         .withTags(tagLabels)
         .withCertification(certification)
-        .withRetentionPeriod(csvRecord.get(8))
-        .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
-        .withExtension(getExtension(printer, csvRecord, 11))
+        .withRetentionPeriod(retentionPeriod)
+        .withSourceUrl(sourceUrl)
+        .withDomains(domains)
+        .withExtension(extension)
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
     if (processRecord) {
-      createEntity(printer, csvRecord, table, TABLE);
+      createEntityWithChangeDescription(printer, csvRecord, table, TABLE);
     }
   }
 
@@ -1316,22 +1525,31 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     }
 
-    StoredProcedure sp;
+    StoredProcedure existingSP = null;
+    boolean spExists = false;
     try {
-      sp =
+      existingSP =
           Entity.getEntityByName(
               STORED_PROCEDURE,
               entityFQN,
-              "name,displayName,fullyQualifiedName",
+              "name,displayName,description,owners,tags,glossaryTerms,tiers,certification,sourceUrl,domains,extension,storedProcedureCode",
               Include.NON_DELETED);
+      spExists = true;
     } catch (Exception ex) {
       LOG.warn("Stored procedure not found: {}, it will be created with Import.", entityFQN);
-      sp =
-          new StoredProcedure()
-              .withName(spName)
-              .withService(schema.getService())
-              .withDatabase(schema.getDatabase())
-              .withDatabaseSchema(schema.getEntityReference());
+    }
+
+    StoredProcedure sp =
+        existingSP != null
+            ? existingSP
+            : new StoredProcedure()
+                .withName(spName)
+                .withService(schema.getService())
+                .withDatabase(schema.getDatabase())
+                .withDatabaseSchema(schema.getEntityReference());
+    int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+    if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+      recordCreateStatusArray[recordIndex] = !spExists;
     }
 
     List<TagLabel> tagLabels =
@@ -1357,19 +1575,144 @@ public abstract class EntityCsv<T extends EntityInterface> {
     StoredProcedureCode storedProcedureCode =
         new StoredProcedureCode().withCode(csvRecord.get(18)).withLanguage(language);
 
-    sp.withDisplayName(csvRecord.get(1))
-        .withDescription(csvRecord.get(2))
-        .withOwners(getOwners(printer, csvRecord, 3))
+    List<FieldChange> fieldsAdded = new ArrayList<>();
+    List<FieldChange> fieldsUpdated = new ArrayList<>();
+
+    String displayName = csvRecord.get(1);
+    String description = csvRecord.get(2);
+    List<EntityReference> owners = getOwners(printer, csvRecord, 3);
+    String sourceUrl = csvRecord.get(9);
+    List<EntityReference> domains = getDomains(printer, csvRecord, 10);
+    Map<String, Object> extension = getExtension(printer, csvRecord, 11);
+
+    if (!spExists) {
+      if (!nullOrEmpty(displayName)) {
+        fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
+      }
+      if (!nullOrEmpty(description)) {
+        fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
+      }
+      if (!nullOrEmpty(owners)) {
+        fieldsAdded.add(
+            new FieldChange().withName("owners").withNewValue(JsonUtils.pojoToJson(owners)));
+      }
+      if (!nullOrEmpty(tagLabels)) {
+        fieldsAdded.add(
+            new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tagLabels)));
+      }
+      if (certification != null && certification.getTagLabel() != null) {
+        fieldsAdded.add(
+            new FieldChange()
+                .withName("certification")
+                .withNewValue(JsonUtils.pojoToJson(certification)));
+      }
+      if (!nullOrEmpty(sourceUrl)) {
+        fieldsAdded.add(new FieldChange().withName("sourceUrl").withNewValue(sourceUrl));
+      }
+      if (!nullOrEmpty(domains)) {
+        fieldsAdded.add(
+            new FieldChange().withName("domains").withNewValue(JsonUtils.pojoToJson(domains)));
+      }
+      if (storedProcedureCode != null) {
+        fieldsAdded.add(
+            new FieldChange()
+                .withName("storedProcedureCode")
+                .withNewValue(JsonUtils.pojoToJson(storedProcedureCode)));
+      }
+      if (extension != null && !extension.isEmpty()) {
+        fieldsAdded.add(
+            new FieldChange().withName("extension").withNewValue(JsonUtils.pojoToJson(extension)));
+      }
+    } else {
+      if (!Objects.equals(existingSP.getDisplayName(), displayName)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("displayName")
+                .withOldValue(existingSP.getDisplayName())
+                .withNewValue(displayName));
+      }
+      if (!Objects.equals(existingSP.getDescription(), description)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("description")
+                .withOldValue(existingSP.getDescription())
+                .withNewValue(description));
+      }
+      if (!Objects.equals(existingSP.getOwners(), owners)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("owners")
+                .withOldValue(JsonUtils.pojoToJson(existingSP.getOwners()))
+                .withNewValue(JsonUtils.pojoToJson(owners)));
+      }
+      if (!Objects.equals(existingSP.getTags(), tagLabels)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("tags")
+                .withOldValue(JsonUtils.pojoToJson(existingSP.getTags()))
+                .withNewValue(JsonUtils.pojoToJson(tagLabels)));
+      }
+      if (!Objects.equals(existingSP.getCertification(), certification)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("certification")
+                .withOldValue(JsonUtils.pojoToJson(existingSP.getCertification()))
+                .withNewValue(JsonUtils.pojoToJson(certification)));
+      }
+      if (!Objects.equals(existingSP.getSourceUrl(), sourceUrl)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("sourceUrl")
+                .withOldValue(existingSP.getSourceUrl())
+                .withNewValue(sourceUrl));
+      }
+      if (!Objects.equals(existingSP.getDomains(), domains)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("domains")
+                .withOldValue(JsonUtils.pojoToJson(existingSP.getDomains()))
+                .withNewValue(JsonUtils.pojoToJson(domains)));
+      }
+      if (!Objects.equals(existingSP.getStoredProcedureCode(), storedProcedureCode)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("storedProcedureCode")
+                .withOldValue(JsonUtils.pojoToJson(existingSP.getStoredProcedureCode()))
+                .withNewValue(JsonUtils.pojoToJson(storedProcedureCode)));
+      }
+      if (!Objects.equals(existingSP.getExtension(), extension)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("extension")
+                .withOldValue(JsonUtils.pojoToJson(existingSP.getExtension()))
+                .withNewValue(JsonUtils.pojoToJson(extension)));
+      }
+    }
+
+    ChangeDescription changeDescription = new ChangeDescription();
+    if (!fieldsAdded.isEmpty()) {
+      changeDescription.setFieldsAdded(fieldsAdded);
+    }
+    if (!fieldsUpdated.isEmpty()) {
+      changeDescription.setFieldsUpdated(fieldsUpdated);
+    }
+    if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+      recordFieldChangesArray[recordIndex] = changeDescription;
+    }
+
+    sp.withDisplayName(displayName)
+        .withDescription(description)
+        .withOwners(owners)
         .withTags(tagLabels)
         .withCertification(certification)
-        .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
+        .withSourceUrl(sourceUrl)
+        .withDomains(domains)
         .withStoredProcedureCode(storedProcedureCode)
-        .withExtension(getExtension(printer, csvRecord, 11));
+        .withExtension(extension);
 
     if (processRecord) {
       // Only create the stored procedure if the schema actually exists
-      createEntity(printer, csvRecord, sp, STORED_PROCEDURE);
+      createEntityWithChangeDescription(printer, csvRecord, sp, STORED_PROCEDURE);
     }
   }
 
@@ -1441,16 +1784,24 @@ public abstract class EntityCsv<T extends EntityInterface> {
       throws IOException {
     String columnFqn = csvRecord.get(0);
     String columnFullyQualifiedName = csvRecord.get(13);
-    Column column = null;
+    Column existingColumn = null;
     boolean columnExists = false;
     try {
-      column = findColumnWithChildren(table.getColumns(), columnFullyQualifiedName);
+      existingColumn = findColumnWithChildren(table.getColumns(), columnFullyQualifiedName);
       columnExists = true;
     } catch (Exception e) {
       LOG.warn("column not found, will be created");
     }
-    if (column == null) columnExists = false;
+    if (existingColumn == null) columnExists = false;
+
+    int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+    if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+      recordCreateStatusArray[recordIndex] = !columnExists;
+    }
     columnRecordCreateStatus.put((int) csvRecord.getRecordNumber(), !columnExists);
+
+    Column column =
+        existingColumn != null ? JsonUtils.deepCopy(existingColumn, Column.class) : null;
     if (!columnExists) {
       column =
           new Column()
@@ -1458,42 +1809,149 @@ public abstract class EntityCsv<T extends EntityInterface> {
               .withFullyQualifiedName(table.getFullyQualifiedName() + Entity.SEPARATOR + columnFqn);
     }
 
-    column.withDisplayName(csvRecord.get(1));
-    column.withDescription(csvRecord.get(2));
-    column.withDataTypeDisplay(csvRecord.get(14));
+    List<FieldChange> fieldsAdded = new ArrayList<>();
+    List<FieldChange> fieldsUpdated = new ArrayList<>();
+
+    String displayName = csvRecord.get(1);
+    String description = csvRecord.get(2);
+    String dataTypeDisplay = csvRecord.get(14);
     String dataTypeStr = csvRecord.get(15);
     if (nullOrEmpty(dataTypeStr)) {
       throw new IllegalArgumentException(
           "Column dataType is mandatory for column: " + csvRecord.get(0));
     }
 
+    ColumnDataType dataType;
     try {
-      column.withDataType(ColumnDataType.fromValue(dataTypeStr));
+      dataType = ColumnDataType.fromValue(dataTypeStr);
     } catch (IllegalArgumentException e) {
       throw new IllegalArgumentException(
           "Invalid dataType '" + dataTypeStr + "' for column: " + csvRecord.get(0));
     }
 
-    if (column.getDataType() == ColumnDataType.ARRAY) {
+    ColumnDataType arrayDataType = null;
+    if (dataType == ColumnDataType.ARRAY) {
       if (nullOrEmpty(csvRecord.get(16))) {
         throw new IllegalArgumentException(
             "Array data type is mandatory for ARRAY columns: " + csvRecord.get(0));
       }
-      column.withArrayDataType(ColumnDataType.fromValue(csvRecord.get(16)));
+      arrayDataType = ColumnDataType.fromValue(csvRecord.get(16));
     }
 
-    if (column.getDataType() == ColumnDataType.STRUCT && column.getChildren() == null) {
-      column.withChildren(new ArrayList<>());
-    }
-
-    column.withDataLength(
-        parseDataLength(csvRecord.get(17), column.getDataType(), column.getName()));
-
+    Integer dataLength = parseDataLength(csvRecord.get(17), dataType, csvRecord.get(0));
     List<TagLabel> tagLabels =
         getTagLabels(
             printer,
             csvRecord,
             List.of(Pair.of(4, TagSource.CLASSIFICATION), Pair.of(5, TagSource.GLOSSARY)));
+
+    if (!columnExists) {
+      if (!nullOrEmpty(displayName)) {
+        fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
+      }
+      if (!nullOrEmpty(description)) {
+        fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
+      }
+      if (!nullOrEmpty(dataTypeDisplay)) {
+        fieldsAdded.add(
+            new FieldChange().withName("dataTypeDisplay").withNewValue(dataTypeDisplay));
+      }
+      fieldsAdded.add(new FieldChange().withName("dataType").withNewValue(dataType.toString()));
+      if (arrayDataType != null) {
+        fieldsAdded.add(
+            new FieldChange().withName("arrayDataType").withNewValue(arrayDataType.toString()));
+      }
+      if (dataLength != null) {
+        fieldsAdded.add(
+            new FieldChange().withName("dataLength").withNewValue(dataLength.toString()));
+      }
+      if (!nullOrEmpty(tagLabels)) {
+        fieldsAdded.add(
+            new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tagLabels)));
+      }
+    } else {
+      if (isMeaningfulChange(existingColumn.getDisplayName(), displayName)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("displayName")
+                .withOldValue(existingColumn.getDisplayName())
+                .withNewValue(displayName));
+      }
+      if (isMeaningfulChange(existingColumn.getDescription(), description)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("description")
+                .withOldValue(existingColumn.getDescription())
+                .withNewValue(description));
+      }
+      if (isMeaningfulChange(existingColumn.getDataTypeDisplay(), dataTypeDisplay)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("dataTypeDisplay")
+                .withOldValue(existingColumn.getDataTypeDisplay())
+                .withNewValue(dataTypeDisplay));
+      }
+      if (!Objects.equals(existingColumn.getDataType(), dataType)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("dataType")
+                .withOldValue(
+                    existingColumn.getDataType() != null
+                        ? existingColumn.getDataType().toString()
+                        : null)
+                .withNewValue(dataType.toString()));
+      }
+      if (!Objects.equals(existingColumn.getArrayDataType(), arrayDataType)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("arrayDataType")
+                .withOldValue(
+                    existingColumn.getArrayDataType() != null
+                        ? existingColumn.getArrayDataType().toString()
+                        : null)
+                .withNewValue(arrayDataType != null ? arrayDataType.toString() : null));
+      }
+      if (!Objects.equals(existingColumn.getDataLength(), dataLength)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("dataLength")
+                .withOldValue(
+                    existingColumn.getDataLength() != null
+                        ? existingColumn.getDataLength().toString()
+                        : null)
+                .withNewValue(dataLength != null ? dataLength.toString() : null));
+      }
+      if (isMeaningfulChange(existingColumn.getTags(), tagLabels)) {
+        fieldsUpdated.add(
+            new FieldChange()
+                .withName("tags")
+                .withOldValue(JsonUtils.pojoToJson(existingColumn.getTags()))
+                .withNewValue(JsonUtils.pojoToJson(tagLabels)));
+      }
+    }
+
+    ChangeDescription changeDescription = new ChangeDescription();
+    if (!fieldsAdded.isEmpty()) {
+      changeDescription.setFieldsAdded(fieldsAdded);
+    }
+    if (!fieldsUpdated.isEmpty()) {
+      changeDescription.setFieldsUpdated(fieldsUpdated);
+    }
+    if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+      recordFieldChangesArray[recordIndex] = changeDescription;
+    }
+
+    column.withDisplayName(displayName);
+    column.withDescription(description);
+    column.withDataTypeDisplay(dataTypeDisplay);
+    column.withDataType(dataType);
+    if (arrayDataType != null) {
+      column.withArrayDataType(arrayDataType);
+    }
+    if (dataType == ColumnDataType.STRUCT && column.getChildren() == null) {
+      column.withChildren(new ArrayList<>());
+    }
+    column.withDataLength(dataLength);
     column.withTags(nullOrEmpty(tagLabels) ? null : tagLabels);
     column.withOrdinalPosition((int) csvRecord.getRecordNumber() - 1);
 
@@ -1534,34 +1992,33 @@ public abstract class EntityCsv<T extends EntityInterface> {
       throws IOException {
 
     TableRepository tableRepo = (TableRepository) Entity.getEntityRepository(TABLE);
+    int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+    ChangeDescription changeDescription = getRecordFieldChanges(recordIndex);
 
     if (Boolean.FALSE.equals(importResult.getDryRun())) {
-      // Actual patch logic
       try {
         JsonPatch jsonPatch = JsonUtils.getJsonPatch(original, updated);
         tableRepo.patch(null, updated.getId(), importedBy, jsonPatch);
         boolean isCreated =
             columnRecordCreateStatus.getOrDefault((int) csvRecord.getRecordNumber(), false);
         String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
-        importSuccess(printer, csvRecord, status);
+        importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
       } catch (Exception ex) {
         importFailure(printer, ex.getMessage(), csvRecord);
         importResult.setStatus(ApiStatus.FAILURE);
       }
     } else {
-      // Dry run mode: simulate patch and add to dryRunCreatedEntities
       tableRepo.setFullyQualifiedName(updated);
       Table existing =
           tableRepo.findByNameOrNull(updated.getFullyQualifiedName(), Include.NON_DELETED);
 
-      // Track dry run entity if it doesn't already exist
       if (existing == null) {
         dryRunCreatedEntities.put(updated.getFullyQualifiedName(), (T) updated);
       }
       boolean isCreated =
           columnRecordCreateStatus.getOrDefault((int) csvRecord.getRecordNumber(), false);
       String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
-      importSuccess(printer, csvRecord, status);
+      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
     }
   }
 

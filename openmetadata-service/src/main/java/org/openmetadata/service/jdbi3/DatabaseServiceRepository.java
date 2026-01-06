@@ -219,6 +219,51 @@ public class DatabaseServiceRepository
       csvFile.withRecords(records);
     }
 
+    private boolean isMeaningfulChange(Object oldValue, Object newValue) {
+      // Handle null and empty string equivalence
+      if (oldValue == null
+          && (newValue == null || (newValue instanceof String && ((String) newValue).isEmpty()))) {
+        return false;
+      }
+      if (newValue == null
+          && (oldValue == null || (oldValue instanceof String && ((String) oldValue).isEmpty()))) {
+        return false;
+      }
+
+      // Handle empty collections
+      if (oldValue == null
+          && newValue instanceof java.util.Collection
+          && ((java.util.Collection<?>) newValue).isEmpty()) {
+        return false;
+      }
+      if (newValue == null
+          && oldValue instanceof java.util.Collection
+          && ((java.util.Collection<?>) oldValue).isEmpty()) {
+        return false;
+      }
+      if (oldValue instanceof java.util.Collection
+          && ((java.util.Collection<?>) oldValue).isEmpty()
+          && newValue instanceof java.util.Collection
+          && ((java.util.Collection<?>) newValue).isEmpty()) {
+        return false;
+      }
+
+      // Handle empty maps
+      if (oldValue == null
+          && newValue instanceof java.util.Map
+          && ((java.util.Map<?, ?>) newValue).isEmpty()) {
+        return false;
+      }
+      if (newValue == null
+          && oldValue instanceof java.util.Map
+          && ((java.util.Map<?, ?>) oldValue).isEmpty()) {
+        return false;
+      }
+
+      // For non-empty values, use regular equals comparison
+      return !Objects.equals(oldValue, newValue);
+    }
+
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       if (recursive) {
@@ -280,13 +325,16 @@ public class DatabaseServiceRepository
 
       AssetCertification certification = getCertificationLabels(csvRecord.get(7));
 
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+
       if (!databaseExists) {
         // For new databases, all non-null fields are "added"
-        if (!nullOrEmpty(csvRecord.get(1))) {
-          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(csvRecord.get(1)));
+        if (!nullOrEmpty(displayName)) {
+          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
         }
-        if (!nullOrEmpty(csvRecord.get(2))) {
-          fieldsAdded.add(new FieldChange().withName("description").withNewValue(csvRecord.get(2)));
+        if (!nullOrEmpty(description)) {
+          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
         }
         if (tagLabels != null && !tagLabels.isEmpty()) {
           fieldsAdded.add(
@@ -299,26 +347,24 @@ public class DatabaseServiceRepository
                   .withNewValue(JsonUtils.pojoToJson(certification)));
         }
       } else {
-        // Compare existing values with CSV values to track changes
-        String newDisplayName = csvRecord.get(1);
-        if (!Objects.equals(database.getDisplayName(), newDisplayName)) {
+        // Use meaningful change detection to avoid false positives
+        if (isMeaningfulChange(database.getDisplayName(), displayName)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("displayName")
                   .withOldValue(database.getDisplayName())
-                  .withNewValue(newDisplayName));
+                  .withNewValue(displayName));
         }
 
-        String newDescription = csvRecord.get(2);
-        if (!Objects.equals(database.getDescription(), newDescription)) {
+        if (isMeaningfulChange(database.getDescription(), description)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("description")
                   .withOldValue(database.getDescription())
-                  .withNewValue(newDescription));
+                  .withNewValue(description));
         }
 
-        if (!Objects.equals(database.getTags(), tagLabels)) {
+        if (isMeaningfulChange(database.getTags(), tagLabels)) {
           String oldTagsJson =
               database.getTags() == null ? null : JsonUtils.pojoToJson(database.getTags());
           String newTagsJson = tagLabels == null ? null : JsonUtils.pojoToJson(tagLabels);
@@ -329,7 +375,7 @@ public class DatabaseServiceRepository
                   .withNewValue(newTagsJson));
         }
 
-        if (!Objects.equals(database.getCertification(), certification)) {
+        if (isMeaningfulChange(database.getCertification(), certification)) {
           String oldCertJson =
               database.getCertification() == null
                   ? null
@@ -359,8 +405,8 @@ public class DatabaseServiceRepository
       database
           .withName(csvRecord.get(0))
           .withFullyQualifiedName(databaseFqn)
-          .withDisplayName(csvRecord.get(1))
-          .withDescription(csvRecord.get(2))
+          .withDisplayName(displayName)
+          .withDescription(description)
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
           .withCertification(certification)
@@ -400,15 +446,32 @@ public class DatabaseServiceRepository
               ? entityFQN
               : FullyQualifiedName.add(service.getFullyQualifiedName(), csvRecord.get(0));
 
-      Database database;
+      Database existingDatabase = null;
+      boolean databaseExists = false;
       try {
-        database = Entity.getEntityByName(DATABASE, databaseFqn, "*", Include.NON_DELETED);
+        existingDatabase = Entity.getEntityByName(DATABASE, databaseFqn, "*", Include.NON_DELETED);
+        databaseExists = true;
       } catch (EntityNotFoundException ex) {
         LOG.warn("Database not found: {}, it will be created with Import.", databaseFqn);
-        database = new Database().withService(service.getEntityReference());
       }
 
-      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, domain
+      Database database =
+          existingDatabase != null
+              ? existingDatabase
+              : new Database().withService(service.getEntityReference());
+
+      // Store create status in inherited arrays
+      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !databaseExists;
+      }
+
+      // Track field changes using meaningful change detection
+      List<FieldChange> fieldsAdded = new ArrayList<>();
+      List<FieldChange> fieldsUpdated = new ArrayList<>();
+
+      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, certification,
+      // retentionPeriod, sourceUrl, domain, extension
       List<TagLabel> tagLabels =
           getTagLabels(
               printer,
@@ -418,19 +481,96 @@ public class DatabaseServiceRepository
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
       AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      String sourceUrl = csvRecord.get(9);
+
+      if (!databaseExists) {
+        // New database - add all non-empty fields to fieldsAdded
+        if (!nullOrEmpty(displayName)) {
+          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
+        }
+        if (!nullOrEmpty(description)) {
+          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
+        }
+        if (!nullOrEmpty(tagLabels)) {
+          fieldsAdded.add(
+              new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tagLabels)));
+        }
+        if (certification != null && certification.getTagLabel() != null) {
+          fieldsAdded.add(
+              new FieldChange()
+                  .withName("certification")
+                  .withNewValue(JsonUtils.pojoToJson(certification)));
+        }
+        if (!nullOrEmpty(sourceUrl)) {
+          fieldsAdded.add(new FieldChange().withName("sourceUrl").withNewValue(sourceUrl));
+        }
+      } else {
+        // Existing database - use meaningful change detection
+        if (isMeaningfulChange(existingDatabase.getDisplayName(), displayName)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("displayName")
+                  .withOldValue(existingDatabase.getDisplayName())
+                  .withNewValue(displayName));
+        }
+        if (isMeaningfulChange(existingDatabase.getDescription(), description)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("description")
+                  .withOldValue(existingDatabase.getDescription())
+                  .withNewValue(description));
+        }
+        if (isMeaningfulChange(existingDatabase.getTags(), tagLabels)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("tags")
+                  .withOldValue(JsonUtils.pojoToJson(existingDatabase.getTags()))
+                  .withNewValue(JsonUtils.pojoToJson(tagLabels)));
+        }
+        if (isMeaningfulChange(existingDatabase.getCertification(), certification)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("certification")
+                  .withOldValue(JsonUtils.pojoToJson(existingDatabase.getCertification()))
+                  .withNewValue(JsonUtils.pojoToJson(certification)));
+        }
+        if (isMeaningfulChange(existingDatabase.getSourceUrl(), sourceUrl)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("sourceUrl")
+                  .withOldValue(existingDatabase.getSourceUrl())
+                  .withNewValue(sourceUrl));
+        }
+      }
+
+      // Create ChangeDescription and store it
+      ChangeDescription changeDescription = new ChangeDescription();
+      if (!fieldsAdded.isEmpty()) {
+        changeDescription.setFieldsAdded(fieldsAdded);
+      }
+      if (!fieldsUpdated.isEmpty()) {
+        changeDescription.setFieldsUpdated(fieldsUpdated);
+      }
+      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
+
       database
           .withName(csvRecord.get(0))
-          .withDisplayName(csvRecord.get(1))
-          .withDescription(csvRecord.get(2))
+          .withDisplayName(displayName)
+          .withDescription(description)
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
           .withCertification(certification)
-          .withSourceUrl(csvRecord.get(9))
+          .withSourceUrl(sourceUrl)
           .withDomains(getDomains(printer, csvRecord, 10))
           .withExtension(getExtension(printer, csvRecord, 11));
 
       if (processRecord) {
-        createEntity(printer, csvRecord, database, DATABASE);
+        createEntityWithChangeDescription(printer, csvRecord, database, DATABASE);
       }
     }
 
@@ -502,7 +642,7 @@ public class DatabaseServiceRepository
           .withUpdatedAt(System.currentTimeMillis())
           .withUpdatedBy(importedBy);
       if (processRecord) {
-        createEntity(printer, csvRecord, schema, DATABASE_SCHEMA);
+        createEntityWithChangeDescription(printer, csvRecord, schema, DATABASE_SCHEMA);
       }
     }
 
