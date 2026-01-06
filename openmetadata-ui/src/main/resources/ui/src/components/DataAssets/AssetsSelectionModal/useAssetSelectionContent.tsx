@@ -53,6 +53,8 @@ import { Aggregations } from '../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import {
   addAssetsToDataProduct,
+  addInputPortsToDataProduct,
+  addOutputPortsToDataProduct,
   getDataProductByName,
 } from '../../../rest/dataProductAPI';
 import { addAssetsToDomain, getDomainByName } from '../../../rest/domainAPI';
@@ -179,6 +181,8 @@ export const useAssetSelectionContent = ({
         break;
 
       case AssetsOfEntity.DATA_PRODUCT:
+      case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
+      case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
         data = await getDataProductByName(entityFqn, {
           fields: [TabSpecificField.DOMAINS, TabSpecificField.ASSETS],
         });
@@ -291,6 +295,23 @@ export const useAssetSelectionContent = ({
           );
 
           break;
+
+        case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
+          res = await addInputPortsToDataProduct(
+            activeEntity.fullyQualifiedName ?? '',
+            entities
+          );
+
+          break;
+
+        case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
+          res = await addOutputPortsToDataProduct(
+            activeEntity.fullyQualifiedName ?? '',
+            entities
+          );
+
+          break;
+
         case AssetsOfEntity.GLOSSARY:
           res = await addAssetsToGlossaryTerm(
             activeEntity as GlossaryTerm,

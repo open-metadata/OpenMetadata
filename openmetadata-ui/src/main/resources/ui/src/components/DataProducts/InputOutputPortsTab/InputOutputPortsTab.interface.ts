@@ -12,14 +12,9 @@
  */
 
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityReference } from '../../../generated/entity/type/entityReference';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
-
-export enum PortType {
-  INPUT = 'INPUT',
-  OUTPUT = 'OUTPUT',
-}
 
 export interface InputOutputPortsTabProps {
   dataProductFqn: string;

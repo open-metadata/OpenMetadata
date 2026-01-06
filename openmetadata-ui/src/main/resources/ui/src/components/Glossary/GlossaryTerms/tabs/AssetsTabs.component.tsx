@@ -58,6 +58,8 @@ import { QueryFilterInterface } from '../../../../pages/ExplorePage/ExplorePage.
 import {
   getDataProductByName,
   removeAssetsFromDataProduct,
+  removeInputPortsFromDataProduct,
+  removeOutputPortsFromDataProduct,
 } from '../../../../rest/dataProductAPI';
 import {
   getDomainByName,
@@ -150,6 +152,8 @@ const AssetsTabs = forwardRef(
       () =>
         [
           AssetsOfEntity.DATA_PRODUCT,
+          AssetsOfEntity.DATA_PRODUCT_INPUT_PORT,
+          AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT,
           AssetsOfEntity.DOMAIN,
           AssetsOfEntity.GLOSSARY,
           AssetsOfEntity.TAG,
@@ -207,6 +211,8 @@ const AssetsTabs = forwardRef(
             )
           );
         case AssetsOfEntity.DATA_PRODUCT:
+        case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
+        case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
           return getTermQuery({
             'dataProducts.fullyQualifiedName': entityFqn ?? '',
           });
@@ -390,6 +396,22 @@ const AssetsTabs = forwardRef(
 
               break;
 
+            case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
+              await removeInputPortsFromDataProduct(
+                activeEntity.fullyQualifiedName ?? '',
+                entities
+              );
+
+              break;
+
+            case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
+              await removeOutputPortsFromDataProduct(
+                activeEntity.fullyQualifiedName ?? '',
+                entities
+              );
+
+              break;
+
             case AssetsOfEntity.GLOSSARY:
               await removeAssetsFromGlossaryTerm(
                 activeEntity as GlossaryTerm,
@@ -411,7 +433,6 @@ const AssetsTabs = forwardRef(
 
               break;
             default:
-              // Handle other entity types here
               break;
           }
 

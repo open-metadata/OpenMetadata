@@ -188,12 +188,12 @@ export const addInputPortsToDataProduct = async (
   dataProductFqn: string,
   ports: EntityReference[]
 ) => {
-  const data: { inputPorts: EntityReference[] } = {
-    inputPorts: ports,
+  const data: { assets: EntityReference[] } = {
+    assets: ports,
   };
 
   const response = await APIClient.put<
-    { inputPorts: EntityReference[] },
+    { assets: EntityReference[] },
     AxiosResponse<DataProduct>
   >(`${BASE_URL}/${getEncodedFqn(dataProductFqn)}/inputPorts/add`, data);
 
@@ -204,12 +204,12 @@ export const removeInputPortsFromDataProduct = async (
   dataProductFqn: string,
   ports: EntityReference[]
 ) => {
-  const data: { inputPorts: EntityReference[] } = {
-    inputPorts: ports,
+  const data: { assets: EntityReference[] } = {
+    assets: ports,
   };
 
   const response = await APIClient.put<
-    { inputPorts: EntityReference[] },
+    { assets: EntityReference[] },
     AxiosResponse<DataProduct>
   >(`${BASE_URL}/${getEncodedFqn(dataProductFqn)}/inputPorts/remove`, data);
 
@@ -220,12 +220,12 @@ export const addOutputPortsToDataProduct = async (
   dataProductFqn: string,
   ports: EntityReference[]
 ) => {
-  const data: { outputPorts: EntityReference[] } = {
-    outputPorts: ports,
+  const data: { assets: EntityReference[] } = {
+    assets: ports,
   };
 
   const response = await APIClient.put<
-    { outputPorts: EntityReference[] },
+    { assets: EntityReference[] },
     AxiosResponse<DataProduct>
   >(`${BASE_URL}/${getEncodedFqn(dataProductFqn)}/outputPorts/add`, data);
 
@@ -236,12 +236,12 @@ export const removeOutputPortsFromDataProduct = async (
   dataProductFqn: string,
   ports: EntityReference[]
 ) => {
-  const data: { outputPorts: EntityReference[] } = {
-    outputPorts: ports,
+  const data: { assets: EntityReference[] } = {
+    assets: ports,
   };
 
   const response = await APIClient.put<
-    { outputPorts: EntityReference[] },
+    { assets: EntityReference[] },
     AxiosResponse<DataProduct>
   >(`${BASE_URL}/${getEncodedFqn(dataProductFqn)}/outputPorts/remove`, data);
 
