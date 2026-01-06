@@ -15,6 +15,8 @@ import { AxiosError } from 'axios';
 import { debounce, isArray, isString } from 'lodash';
 import { FC, useCallback, useMemo, useRef, useState } from 'react';
 import { PAGE_SIZE } from '../../../constants/constants';
+import { INITIAL_SORT_FIELD } from '../../../constants/explore.constants';
+import { SORT_ORDER } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
@@ -70,6 +72,8 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
         queryFilter: queryFilter ?? {
           query: { bool: { must_not: [{ match: { isBot: true } }] } },
         },
+        sortField: searchQueryParam ? '_score' : INITIAL_SORT_FIELD,
+        sortOrder: SORT_ORDER.DESC,
       });
 
       const hits = dataAssetsResponse.hits.hits;
