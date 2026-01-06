@@ -592,8 +592,7 @@ test.describe('Glossary P3 Tests', () => {
       const glossariesPromise = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/glossaries') &&
-          response.status() === 200,
-        { timeout: 30000 }
+          response.status() === 200
       );
 
       await sidebarClick(page, SidebarItem.GLOSSARY);
