@@ -2217,24 +2217,16 @@ class SampleDataSource(
                 fqn=table_profile["fqn"],
             )
             for days, profile in enumerate(table_profile["profile"]):
-                table_profile = OMetaTableProfileSampleData(
-                    table=table,
-                    profile=CreateTableProfileRequest(
-                        tableProfile=TableProfile(
-                            columnCount=profile["columnCount"],
-                            rowCount=profile["rowCount"],
-                            createDateTime=profile.get("createDateTime"),
-                            sizeInByte=profile.get("sizeInByte"),
-                            customMetrics=profile.get("customMetrics"),
-                            timestamp=Timestamp(
-                                int(
-                                    (datetime.now() - timedelta(days=days)).timestamp()
-                                    * 1000
-                                )
-                            ),
-                        ),
-                        columnProfile=[
-                            ColumnProfile(
+                try:
+                    table_profile = OMetaTableProfileSampleData(
+                        table=table,
+                        profile=CreateTableProfileRequest(
+                            tableProfile=TableProfile(
+                                columnCount=profile["columnCount"],
+                                rowCount=profile["rowCount"],
+                                createDateTime=profile.get("createDateTime"),
+                                sizeInByte=profile.get("sizeInByte"),
+                                customMetrics=profile.get("customMetrics"),
                                 timestamp=Timestamp(
                                     int(
                                         (
@@ -2243,34 +2235,45 @@ class SampleDataSource(
                                         * 1000
                                     )
                                 ),
-                                **col_profile,
-                            )
-                            for col_profile in profile["columnProfile"]
-                        ],
-                        systemProfile=[
-                            SystemProfile(
-                                timestamp=Timestamp(
-                                    int(
-                                        (
-                                            datetime.now()
-                                            - timedelta(
-                                                days=days, hours=random.randint(0, 24)
-                                            )
-                                        ).timestamp()
-                                        * 1000
-                                    )
-                                ),
-                                **system_profile,
-                            )
-                            for system_profile in profile["systemProfile"]
-                        ],
-                    ),
-                )
-                try:
+                            ),
+                            columnProfile=[
+                                ColumnProfile(
+                                    timestamp=Timestamp(
+                                        int(
+                                            (
+                                                datetime.now() - timedelta(days=days)
+                                            ).timestamp()
+                                            * 1000
+                                        )
+                                    ),
+                                    **col_profile,
+                                )
+                                for col_profile in profile["columnProfile"]
+                            ],
+                            systemProfile=[
+                                SystemProfile(
+                                    timestamp=Timestamp(
+                                        int(
+                                            (
+                                                datetime.now()
+                                                - timedelta(
+                                                    days=days,
+                                                    hours=random.randint(0, 24),
+                                                )
+                                            ).timestamp()
+                                            * 1000
+                                        )
+                                    ),
+                                    **system_profile,
+                                )
+                                for system_profile in profile["systemProfile"]
+                            ],
+                        ),
+                    )
                     yield Either(right=table_profile)
                 except Exception as exc:
-                    logger.error(f"Error ingesting table profile {table_profile}: {exc}")
-                    logger.error(traceback.format_exc())
+                    logger.debug(traceback.format_exc())
+                    logger.warning(f"Error ingesting Profiles [{table_profile}]: {exc}")
 
     def ingest_test_suite(self) -> Iterable[Either[OMetaTestSuiteSample]]:
         """Iterate over all the testSuite and testCase and ingest them"""
