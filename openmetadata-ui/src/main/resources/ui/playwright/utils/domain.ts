@@ -649,6 +649,40 @@ export const createDataProduct = async (
   await saveRes;
 };
 
+export const createDataProductFromListPage = async (
+  page: Page,
+  dataProduct: DataProduct['data'],
+  domain: Domain['data']
+) => {
+  await page.getByTestId('add-entity-button').click();
+
+  await expect(page.getByTestId('form-heading')).toContainText(
+    'Add Data Product'
+  );
+
+  await fillCommonFormItems(page, dataProduct);
+
+  // Fill domain field (required when creating from list page)
+  const domainInput = page.getByTestId('domain-select');
+  await domainInput.scrollIntoViewIfNeeded();
+  await domainInput.waitFor({ state: 'visible' });
+  await domainInput.click();
+
+  const searchDomain = page.waitForResponse(
+    `/api/v1/search/query?q=*index=domain_search_index*`
+  );
+  await domainInput.fill(domain.displayName);
+  await searchDomain;
+
+  const domainOption = page.getByText(domain.displayName);
+  await domainOption.waitFor({ state: 'visible', timeout: 5000 });
+  await domainOption.click();
+
+  const saveRes = page.waitForResponse('/api/v1/dataProducts');
+  await page.getByTestId('save-btn').click();
+  await saveRes;
+};
+
 export const verifyDataProductAssetsAfterDelete = async (
   page: Page,
   {
