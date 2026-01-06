@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -43,9 +43,17 @@ export interface CreateDataProduct {
      */
     fullyQualifiedName?: string;
     /**
+     * Input ports - data assets consumed by this data product.
+     */
+    inputPorts?: EntityReference[];
+    /**
      * A unique name of the DataProduct
      */
     name: string;
+    /**
+     * Output ports - data assets produced/exposed by this data product.
+     */
+    outputPorts?: EntityReference[];
     /**
      * Owners of this DataProduct.
      */

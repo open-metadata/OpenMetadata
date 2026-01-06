@@ -306,21 +306,22 @@ class REST:
         return None
 
     @calculate_execution_time(context="GET")
-    def get(self, path, data=None):
+    def get(self, path, data=None, headers=None):
         """
         GET method
 
         Parameters:
             path (str):
             data ():
+            headers (dict): Optional custom headers to override default headers
 
         Returns:
             Response
         """
-        return self._request("GET", path, data)
+        return self._request("GET", path, data, headers=headers)
 
     @calculate_execution_time(context="POST")
-    def post(self, path, data=None, json=None):
+    def post(self, path, data=None, json=None, headers=None):
         """
         POST method
 
@@ -328,11 +329,12 @@ class REST:
             path (str):
             data ():
             json ():
+            headers (dict): Optional custom headers to override default headers
 
         Returns:
             Response
         """
-        return self._request("POST", path, data, json)
+        return self._request("POST", path, data, json, headers=headers)
 
     @calculate_execution_time(context="PUT")
     def put(self, path, data=None, json=None, headers=None):
@@ -342,6 +344,8 @@ class REST:
         Parameters:
             path (str):
             data ():
+            json ():
+            headers (dict): Optional custom headers to override default headers
 
         Returns:
             Response
@@ -368,18 +372,19 @@ class REST:
         )
 
     @calculate_execution_time(context="DELETE")
-    def delete(self, path, data=None):
+    def delete(self, path, data=None, headers=None):
         """
         DELETE method
 
         Parameters:
             path (str):
             data ():
+            headers (dict): Optional custom headers to override default headers
 
         Returns:
             Response
         """
-        return self._request("DELETE", path, data)
+        return self._request("DELETE", path, data, headers=headers)
 
     def __enter__(self):
         return self
