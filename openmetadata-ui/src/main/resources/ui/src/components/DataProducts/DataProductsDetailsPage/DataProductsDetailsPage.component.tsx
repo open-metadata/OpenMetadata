@@ -410,7 +410,6 @@ const DataProductsDetailsPage = ({
   const handleAssetSave = () => {
     fetchDataProductAssets();
     assetTabRef.current?.refreshAssets();
-    // Refresh data product to get updated inputPorts/outputPorts
     onRefresh?.();
   };
 

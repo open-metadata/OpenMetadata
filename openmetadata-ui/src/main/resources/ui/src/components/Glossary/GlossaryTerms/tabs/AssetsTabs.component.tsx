@@ -217,8 +217,6 @@ const AssetsTabs = forwardRef(
 
         case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
         case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
-          // Use the provided queryFilter (which filters by specific port FQNs)
-          // Fall back to default data product query if no filter provided
           return (
             queryFilter ??
             getTermQuery({
