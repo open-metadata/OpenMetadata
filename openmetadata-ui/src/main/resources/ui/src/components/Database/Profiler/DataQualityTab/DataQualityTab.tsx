@@ -21,7 +21,7 @@ import {
   Typography as MuiTypography,
   useTheme,
 } from '@mui/material';
-import { Typography } from 'antd';
+import { Button, Checkbox, Space, Typography } from 'antd';
 import { ColumnsType, TablePaginationConfig } from 'antd/lib/table';
 import { FilterValue, SorterResult } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
@@ -66,6 +66,7 @@ import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../../common/Table/Table';
 import EditTestCaseModalV1 from '../../../DataQuality/AddDataQualityTest/components/EditTestCaseModalV1';
+import { AddToBundleSuiteModal } from '../../../DataQuality/AddToBundleSuiteModal/AddToBundleSuiteModal.component';
 import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import {
@@ -90,6 +91,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   isEditAllowed,
   tableHeader,
   removeTableBorder = false,
+  enableBulkActions = false,
 }: DataQualityTabProps) => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -108,6 +110,13 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [activeRecordId, setActiveRecordId] = useState<string | null>(null);
   const isApiSortingEnabled = useRef(false);
+
+  // Bulk selection state
+  const [selectedTestCaseIds, setSelectedTestCaseIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [isAddToBundleSuiteModalVisible, setIsAddToBundleSuiteModalVisible] =
+    useState(false);
 
   const sortedData = useMemo(
     () =>
@@ -188,8 +197,83 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     });
   };
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allIds = new Set(
+        testCases.map((tc) => tc.id).filter((id): id is string => Boolean(id))
+      );
+      setSelectedTestCaseIds(allIds);
+    } else {
+      setSelectedTestCaseIds(new Set());
+    }
+  };
+
+  const handleSelectTestCase = (testCaseId: string, checked: boolean) => {
+    setSelectedTestCaseIds((prev) => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(testCaseId);
+      } else {
+        newSet.delete(testCaseId);
+      }
+
+      return newSet;
+    });
+  };
+
+  const handleAddToBundleSuite = () => {
+    setIsAddToBundleSuiteModalVisible(true);
+  };
+
+  const handleAddToBundleSuiteSuccess = () => {
+    setIsAddToBundleSuiteModalVisible(false);
+    setSelectedTestCaseIds(new Set());
+    afterDeleteAction?.();
+  };
+
+  const selectedTestCaseObjects = useMemo(() => {
+    return testCases.filter(
+      (tc) => tc.id && selectedTestCaseIds.has(tc.id)
+    );
+  }, [testCases, selectedTestCaseIds]);
+
   const columns = useMemo(() => {
     const data: ColumnsType<TestCase> = [
+      ...(enableBulkActions
+        ? [
+            {
+              title: (
+                <Checkbox
+                  checked={
+                    selectedTestCaseIds.size > 0 &&
+                    selectedTestCaseIds.size === testCases.length
+                  }
+                  data-testid="select-all-test-cases"
+                  indeterminate={
+                    selectedTestCaseIds.size > 0 &&
+                    selectedTestCaseIds.size < testCases.length
+                  }
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                />
+              ),
+              dataIndex: 'selection',
+              key: 'selection',
+              width: 50,
+              render: (_: unknown, record: TestCase) => (
+                <Checkbox
+                  checked={
+                    record.id ? selectedTestCaseIds.has(record.id) : false
+                  }
+                  data-testid={`checkbox-${record.name}`}
+                  onChange={(e) =>
+                    record.id &&
+                    handleSelectTestCase(record.id, e.target.checked)
+                  }
+                />
+              ),
+            },
+          ]
+        : []),
       {
         title: t('label.status'),
         dataIndex: 'testCaseResult',
@@ -532,6 +616,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
     return data;
   }, [
+    enableBulkActions,
+    selectedTestCaseIds,
     testCases,
     testCaseStatus,
     isStatusLoading,
@@ -644,6 +730,30 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       {tableHeader && (
         <div className="data-quality-table-header">{tableHeader}</div>
       )}
+      {enableBulkActions && selectedTestCaseIds.size > 0 && (
+        <div className="p-md bg-white border rounded-4 m-b-md">
+          <Space>
+            <Typography.Text strong>
+              {selectedTestCaseIds.size} {t('label.selected-lowercase')}
+            </Typography.Text>
+            <Button
+              data-testid="add-to-bundle-suite-btn"
+              type="primary"
+              onClick={handleAddToBundleSuite}>
+              {t('label.add-entity', {
+                entity: t('label.bundle-suite'),
+              })}
+            </Button>
+            <Button
+              data-testid="clear-selection-btn"
+              onClick={() => setSelectedTestCaseIds(new Set())}>
+              {t('label.clear-entity', {
+                entity: t('label.selection'),
+              })}
+            </Button>
+          </Space>
+        </div>
+      )}
       <Table
         columns={columns}
         containerClassName={classNames('test-case-table-container', {
@@ -724,6 +834,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           entityType={EntityType.TEST_CASE}
           visible={selectedTestCase?.action === 'DELETE'}
           onCancel={handleCancel}
+        />
+      )}
+      {enableBulkActions && (
+        <AddToBundleSuiteModal
+          testCases={selectedTestCaseObjects}
+          visible={isAddToBundleSuiteModalVisible}
+          onCancel={() => setIsAddToBundleSuiteModalVisible(false)}
+          onSuccess={handleAddToBundleSuiteSuccess}
         />
       )}
     </div>
