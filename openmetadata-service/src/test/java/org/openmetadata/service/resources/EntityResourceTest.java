@@ -8116,8 +8116,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(2, limitedVersions.getVersions().size());
 
     // Test 2: Timestamp filter - Get versions after first update
-    T firstVersion = JsonUtils.readValue((String) allVersions.getVersions().get(2), entityClass);
-    Long afterFirstUpdate = firstVersion.getUpdatedAt() + 1;
+    // Find the oldest version (version 0.1) by checking all versions
+    T oldestVersion = null;
+    for (Object versionObj : allVersions.getVersions()) {
+      T version = JsonUtils.readValue((String) versionObj, entityClass);
+      if (oldestVersion == null || version.getVersion() < oldestVersion.getVersion()) {
+        oldestVersion = version;
+      }
+    }
+    assertNotNull(oldestVersion, "Should find oldest version");
+    Long afterFirstUpdate = oldestVersion.getUpdatedAt() + 1;
     EntityHistory timeFilteredVersions =
         getVersionListFiltered(
             entity.getId(), null, afterFirstUpdate, null, null, ADMIN_AUTH_HEADERS);

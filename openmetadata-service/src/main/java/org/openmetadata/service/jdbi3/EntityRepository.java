@@ -1170,6 +1170,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Add latest version if it matches filters
     if (matchesFilters(latest, startTs, endTs, fieldName)) {
       filteredVersions.add(JsonUtils.pojoToJson(latest));
+      if (limit != null && filteredVersions.size() >= limit) {
+        return new EntityHistory().withEntityType(entityType).withVersions(filteredVersions);
+      }
     }
 
     // Filter old versions
