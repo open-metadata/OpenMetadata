@@ -57,9 +57,15 @@ export const getAllTags = (data: TagsData[]) => {
 };
 
 export const searchTagInData = (
-  tagToSearch: React.Key | boolean,
+  tagToSearch: React.Key | boolean | React.Key[],
   data: TagsData
 ) => {
+  // Handle array of tags - check if ANY tag matches
+  if (Array.isArray(tagToSearch)) {
+    return tagToSearch.some((tag) => searchTagInData(tag, data));
+  }
+
+  // Original single tag logic
   if (data.tags && data.tags.some((tag) => tag.tagFQN === tagToSearch)) {
     return true;
   }

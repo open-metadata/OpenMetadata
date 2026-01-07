@@ -123,6 +123,13 @@ const SchemaTable = () => {
   // Pagination state for columns
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true); // Start with loading state
+  const [activeTagFilters, setActiveTagFilters] = useState<{
+    Classification: React.Key[];
+    Glossary: React.Key[];
+  }>({ Classification: [], Glossary: [] });
+  const [allColumnsForFilters, setAllColumnsForFilters] = useState<Column[]>(
+    []
+  );
 
   const { fqn: decodedEntityFqn } = useFqn();
 
@@ -192,31 +199,68 @@ const SchemaTable = () => {
 
   // Function to fetch paginated columns or search results
   const fetchPaginatedColumns = useCallback(
-    async (page = 1, searchQuery?: string) => {
+    async (page = 1, searchQuery?: string, tagFilters?: typeof activeTagFilters) => {
       if (!tableFqn) {
         return;
       }
 
       setColumnsLoading(true);
       try {
-        const offset = (page - 1) * pageSize;
+        const hasActiveFilters =
+          tagFilters &&
+          (tagFilters.Classification.length > 0 ||
+            tagFilters.Glossary.length > 0);
+
+        // If tag filters are active, fetch all columns for client-side filtering
+        // Otherwise use normal pagination
+        const limit = hasActiveFilters ? 10000 : pageSize;
+        const offset = hasActiveFilters ? 0 : (page - 1) * pageSize;
 
         // Use search API if there's a search query, otherwise use regular pagination
         const response = searchQuery
           ? await searchTableColumnsByFQN(tableFqn, {
               q: searchQuery,
-              limit: pageSize,
+              limit: limit,
               offset: offset,
               fields: 'tags,customMetrics',
             })
           : await getTableColumnsByFQN(tableFqn, {
-              limit: pageSize,
+              limit: limit,
               offset: offset,
               fields: 'tags,customMetrics',
             });
 
-        setTableColumns(pruneEmptyChildren(response.data) || []);
-        handlePagingChange(response.paging);
+        let prunedColumns = pruneEmptyChildren(response.data) || [];
+
+        // Apply client-side tag filtering if filters are active
+        if (hasActiveFilters) {
+          const filterTags = [
+            ...tagFilters.Classification,
+            ...tagFilters.Glossary,
+          ];
+          if (filterTags.length > 0) {
+            prunedColumns = prunedColumns.filter((col) =>
+              searchTagInData(filterTags, col)
+            );
+          }
+
+          // Manually paginate filtered results
+          const total = prunedColumns.length;
+          const startIndex = (page - 1) * pageSize;
+          const endIndex = Math.min(startIndex + pageSize, total);
+          const paginatedColumns = prunedColumns.slice(startIndex, endIndex);
+
+          setTableColumns(paginatedColumns);
+          handlePagingChange({
+            total: total,
+            after:
+              endIndex < total ? String(endIndex) : undefined,
+            before: startIndex > 0 ? String(Math.max(0, startIndex - pageSize)) : undefined,
+          });
+        } else {
+          setTableColumns(prunedColumns);
+          handlePagingChange(response.paging);
+        }
       } catch {
         // Set empty state if API fails
         setTableColumns([]);
@@ -228,15 +272,15 @@ const SchemaTable = () => {
       }
       setColumnsLoading(false);
     },
-    [decodedEntityFqn, pageSize]
+    [tableFqn, pageSize]
   );
 
   const handleColumnsPageChange = useCallback(
     ({ currentPage }: PagingHandlerParams) => {
-      fetchPaginatedColumns(currentPage, searchText);
+      fetchPaginatedColumns(currentPage, searchText, activeTagFilters);
       handlePageChange(currentPage);
     },
-    [paging, fetchPaginatedColumns, searchText]
+    [paging, fetchPaginatedColumns, searchText, activeTagFilters]
   );
 
   const fetchTestCaseSummary = async () => {
@@ -252,13 +296,35 @@ const SchemaTable = () => {
     fetchTestCaseSummary();
   }, [tableFqn]);
 
-  // Fetch columns when search changes
+  // Fetch all columns for building filter options (do this once on load)
+  useEffect(() => {
+    const fetchAllColumnsForFilters = async () => {
+      if (!tableFqn) {
+        return;
+      }
+      try {
+        const response = await getTableColumnsByFQN(tableFqn, {
+          limit: 10000, // Fetch all columns
+          offset: 0,
+          fields: 'tags',
+        });
+        setAllColumnsForFilters(pruneEmptyChildren(response.data) || []);
+      } catch {
+        setAllColumnsForFilters([]);
+      }
+    };
+
+    fetchAllColumnsForFilters();
+  }, [tableFqn]);
+
+  // Fetch columns when search or filters change
   useEffect(() => {
     if (tableFqn) {
-      // Reset to first page when search changes
-      fetchPaginatedColumns(1, searchText || undefined);
+      // Reset to first page when search or filters change
+      fetchPaginatedColumns(1, searchText || undefined, activeTagFilters);
+      handlePageChange(1);
     }
-  }, [tableFqn, searchText, fetchPaginatedColumns, pageSize]);
+  }, [tableFqn, searchText, activeTagFilters, fetchPaginatedColumns, pageSize]);
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {
@@ -475,13 +541,14 @@ const SchemaTable = () => {
   };
 
   const tagFilter = useMemo(() => {
-    const tags = getAllTags(tableColumns);
+    // Use all columns (not just current page) to build filter options
+    const tags = getAllTags(allColumnsForFilters);
 
     return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
       TagSource,
       TagFilterOptions[]
     >;
-  }, [tableColumns]);
+  }, [allColumnsForFilters]);
 
   const columns: ColumnsType<Column> = useMemo(
     () => [
@@ -579,7 +646,8 @@ const SchemaTable = () => {
         ),
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: activeTagFilters.Classification,
+        onFilter: () => true, // Filtering is handled via state
       },
       {
         title: t('label.glossary-term-plural'),
@@ -602,7 +670,8 @@ const SchemaTable = () => {
         ),
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: activeTagFilters.Glossary,
+        onFilter: () => true, // Filtering is handled via state
       },
       {
         title: t('label.data-quality'),
@@ -755,6 +824,13 @@ const SchemaTable = () => {
           searchProps={searchProps}
           size="middle"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+          onChange={(_, filters) => {
+            // Update active filters when user changes them
+            setActiveTagFilters({
+              Classification: (filters[TABLE_COLUMNS_KEYS.TAGS] as React.Key[]) || [],
+              Glossary: (filters[TABLE_COLUMNS_KEYS.GLOSSARY] as React.Key[]) || [],
+            });
+          }}
         />
       </Col>
       {editColumn && (
