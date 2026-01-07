@@ -1168,6 +1168,13 @@ export const createDataProductForSubDomain = async (
       domains: [subDomain.responseData.fullyQualifiedName],
     },
   });
+
+  if (!response.ok()) {
+    throw new Error(
+      `Failed to create data product for subdomain: ${response.status()} ${await response.text()}`
+    );
+  }
+
   const responseData = await response.json();
 
   return {
