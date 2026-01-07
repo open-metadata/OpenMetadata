@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -65,6 +65,11 @@ export interface TestDefinition {
     parameterDefinition?: TestCaseParameterDefinition[];
     provider?:            ProviderType;
     supportedDataTypes?:  DataType[];
+    /**
+     * List of services that this test definition supports. When empty, it implies all services
+     * are supported.
+     */
+    supportedServices?: string[];
     /**
      * When `true` indicates the test case supports dynamic assertions.
      */
@@ -162,6 +167,7 @@ export enum DataQualityDimensions {
     Completeness = "Completeness",
     Consistency = "Consistency",
     Integrity = "Integrity",
+    NoDimension = "NoDimension",
     SQL = "SQL",
     Uniqueness = "Uniqueness",
     Validity = "Validity",

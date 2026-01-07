@@ -228,7 +228,18 @@ public class LineageResource {
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("1000")
           @QueryParam("size")
-          int size)
+          int size,
+      @Parameter(
+              description =
+                  "Column-level lineage filter. Supports filtering by column names, tags, or glossary terms (e.g., 'columnName:customer_id', 'tag:PII', 'glossary:BusinessTerm')")
+          @QueryParam("columnFilter")
+          String columnFilter,
+      @Parameter(
+              description =
+                  "When true, preserves all nodes in the path to filtered results. When false, only returns nodes matching the filter. Default is true.")
+          @QueryParam("preservePaths")
+          @DefaultValue("true")
+          Boolean preservePaths)
       throws IOException {
     return Entity.getSearchRepository()
         .searchLineage(
@@ -241,7 +252,9 @@ public class LineageResource {
                 .withIsConnectedVia(isConnectedVia(entityType))
                 .withLayerFrom(from)
                 .withLayerSize(size)
-                .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields)));
+                .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields))
+                .withColumnFilter(columnFilter)
+                .withPreservePaths(preservePaths));
   }
 
   @GET
@@ -276,12 +289,6 @@ public class LineageResource {
           @QueryParam("includeDeleted")
           boolean deleted)
       throws IOException {
-    if (Entity.getSearchRepository().getIndexMapping(view) != null) {
-      view =
-          Entity.getSearchRepository()
-              .getIndexMapping(view)
-              .getIndexName(Entity.getSearchRepository().getClusterAlias());
-    }
     return Entity.getSearchRepository().searchPlatformLineage(view, queryFilter, deleted);
   }
 
@@ -329,7 +336,18 @@ public class LineageResource {
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("1000")
           @QueryParam("size")
-          int size)
+          int size,
+      @Parameter(
+              description =
+                  "Column-level lineage filter. Supports filtering by column names, tags, or glossary terms (e.g., 'columnName:customer_id', 'tag:PII', 'glossary:BusinessTerm')")
+          @QueryParam("columnFilter")
+          String columnFilter,
+      @Parameter(
+              description =
+                  "When true, preserves all nodes in the path to filtered results. When false, only returns nodes matching the filter. Default is true.")
+          @QueryParam("preservePaths")
+          @DefaultValue("true")
+          Boolean preservePaths)
       throws IOException {
     return Entity.getSearchRepository()
         .searchLineageWithDirection(
@@ -343,7 +361,9 @@ public class LineageResource {
                 .withDirection(direction)
                 .withLayerFrom(from)
                 .withLayerSize(size)
-                .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields)));
+                .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields))
+                .withColumnFilter(columnFilter)
+                .withPreservePaths(preservePaths));
   }
 
   @GET

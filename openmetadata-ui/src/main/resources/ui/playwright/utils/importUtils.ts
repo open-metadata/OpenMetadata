@@ -335,7 +335,9 @@ const editGlossaryCustomProperty = async (
     await page.locator('[data-testid="update-table-type-property"]').click();
 
     await expect(
-      page.getByTestId(propertyName).getByRole('cell', { name: columns[0] })
+      page
+        .getByTestId(propertyName)
+        .getByRole('columnheader', { name: columns[0] })
     ).toBeVisible();
 
     await expect(
@@ -368,6 +370,45 @@ export const fillCustomPropertyDetails = async (
   await page.click(RDG_ACTIVE_CELL_SELECTOR);
 };
 
+export const fillExtensionDetails = async (
+  page: Page,
+  propertyListName: Record<string, string>
+) => {
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Enter', { delay: 100 });
+
+  await page.waitForSelector('[data-testid="custom-property-editor"]', {
+    state: 'attached',
+  });
+
+  // Verify header text
+  await expect(page.getByTestId('header')).toContainText('Edit CustomProperty');
+
+  // Verify save and cancel buttons are visible
+  await expect(page.getByTestId('save')).toBeVisible();
+  await expect(page.getByTestId('cancel')).toBeVisible();
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  // Wait for skeleton loader to disappear
+  await page.waitForSelector('.ant-skeleton', { state: 'detached' });
+
+  for (const propertyName of Object.values(CUSTOM_PROPERTIES_TYPES)) {
+    await editEntityCustomProperty(
+      page,
+      propertyListName[propertyName],
+      propertyName
+    );
+  }
+
+  await page.getByTestId('save').click();
+
+  await page.waitForSelector('[data-testid="custom-property-editor"]', {
+    state: 'detached',
+  });
+
+  await page.click(RDG_ACTIVE_CELL_SELECTOR);
+};
+
 export const fillGlossaryRowDetails = async (
   row: {
     name: string;
@@ -384,13 +425,20 @@ export const fillGlossaryRowDetails = async (
     owners: string[];
   },
   page: Page,
-  propertyListName?: Record<string, string>
+  propertyListName?: Record<string, string>,
+  isBulkEdit?: boolean
 ) => {
   await page
     .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
-  await fillTextInputDetails(page, row.name);
+  if (isBulkEdit) {
+    await expect(
+      page.locator('.rdg-cell[aria-selected="true"][aria-readonly="true"]')
+    ).toContainText(row.name);
+  } else {
+    await fillTextInputDetails(page, row.name);
+  }
 
   await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('ArrowRight');
 
@@ -459,7 +507,7 @@ export const fillGlossaryRowDetails = async (
     .press('ArrowRight', { delay: 100 });
 
   if (propertyListName) {
-    await fillCustomPropertyDetails(page, propertyListName);
+    await fillExtensionDetails(page, propertyListName);
   }
 };
 
@@ -660,21 +708,28 @@ export const fillRowDetails = async (
   },
   page: Page,
   customPropertyRecord?: Record<string, string>,
-  isFirstCellClick?: boolean
+  isFirstCellClick?: boolean,
+  isBulkEdit?: boolean
 ) => {
   if (!isFirstCellClick) {
     await page.locator('.rdg-cell-name').last().click();
   }
 
-  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
-  const isActive = await activeCell.isVisible();
-
-  if (isActive) {
-    await fillTextInputDetails(page, row.name);
+  if (isBulkEdit) {
+    await expect(
+      page.locator('.rdg-cell[aria-selected="true"][aria-readonly="true"]')
+    ).toContainText(row.name);
   } else {
-    // Click the name cell again
-    await page.locator('.rdg-cell-name').last().click();
-    await fillTextInputDetails(page, row.name);
+    const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
+    const isActive = await activeCell.isVisible();
+
+    if (isActive) {
+      await fillTextInputDetails(page, row.name);
+    } else {
+      // Click the name cell again
+      await page.locator('.rdg-cell-name').last().click();
+      await fillTextInputDetails(page, row.name);
+    }
   }
 
   await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('ArrowRight');
@@ -884,6 +939,10 @@ export const createCustomPropertiesForEntity = async (
       break;
     case GlobalSettingOptions.TABLES:
       entity = CUSTOM_PROPERTIES_ENTITIES.entity_table;
+
+      break;
+    case GlobalSettingOptions.GLOSSARY_TERM:
+      entity = CUSTOM_PROPERTIES_ENTITIES.entity_glossaryTerm;
 
       break;
     default:

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,6 +49,7 @@ import { useApplicationStore } from '../hooks/useApplicationStore';
 import { FeedCounts } from '../interface/feed.interface';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getFeedCount } from '../rest/feedsAPI';
+import brandClassBase from './BrandData/BrandClassBase';
 import { getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
 import i18n, { t } from './i18next/LocalUtil';
@@ -667,6 +667,7 @@ export const getEntityDeleteMessage = (entity: string, dependents: string) => {
     return t('message.permanently-delete-metadata-and-dependents', {
       entityName: entity,
       dependents,
+      brandName: brandClassBase.getPageTitle(),
     });
   } else {
     return (
@@ -677,6 +678,7 @@ export const getEntityDeleteMessage = (entity: string, dependents: string) => {
         }
         values={{
           entityName: entity,
+          brandName: brandClassBase.getPageTitle(),
         }}
       />
     );
@@ -835,21 +837,6 @@ export const removeOuterEscapes = (input: string) => {
 };
 
 /**
- * Generate a color with decreasing opacity after the first 24 colors.
- * @param index - The index of the label
- * @returns {string} - RGBA color string
- */
-export const entityChartColor = (index: number): string => {
-  const baseColor = BASE_COLORS[index % BASE_COLORS.length]; // Cycle through base colors
-  const opacity =
-    index < BASE_COLORS.length
-      ? 1 // Full opacity for the first 24 labels
-      : Math.max(1 - Math.floor(index / BASE_COLORS.length) * 0.1, 0.1); // Decrease opacity for subsequent labels
-
-  return hexToRgba(baseColor, opacity);
-};
-
-/**
  * Convert hex color to RGBA
  * @param hex - Hex color string
  * @param opacity - Opacity value (0-1)
@@ -862,6 +849,21 @@ const hexToRgba = (hex: string, opacity: number): string => {
   const b = bigint & 255;
 
   return `rgba(${r}, ${g}, ${b}, ${opacity.toFixed(2)})`;
+};
+
+/**
+ * Generate a color with decreasing opacity after the first 24 colors.
+ * @param index - The index of the label
+ * @returns {string} - RGBA color string
+ */
+export const entityChartColor = (index: number): string => {
+  const baseColor = BASE_COLORS[index % BASE_COLORS.length]; // Cycle through base colors
+  const opacity =
+    index < BASE_COLORS.length
+      ? 1 // Full opacity for the first 24 labels
+      : Math.max(1 - Math.floor(index / BASE_COLORS.length) * 0.1, 0.1); // Decrease opacity for subsequent labels
+
+  return hexToRgba(baseColor, opacity);
 };
 
 /**

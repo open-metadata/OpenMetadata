@@ -16,8 +16,6 @@ package org.openmetadata.service.events.scheduled;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_INFO_KEY;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_OFFSET_KEY;
 import static org.openmetadata.service.events.subscription.AlertUtil.getStartingOffset;
-import static org.quartz.impl.StdSchedulerFactory.PROP_SCHED_INSTANCE_NAME;
-import static org.quartz.impl.StdSchedulerFactory.PROP_THREAD_POOL_PREFIX;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
@@ -27,6 +25,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -46,6 +45,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
+import org.openmetadata.service.audit.AuditLogConsumer;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -74,24 +74,9 @@ public class EventSubscriptionScheduler {
   public static final String ALERT_TRIGGER_GROUP = "OMAlertJobGroup";
   private static EventSubscriptionScheduler instance;
   private static volatile boolean initialized = false;
-  private static final Scheduler alertsScheduler;
-  private static final String SCHEDULER_NAME = "OpenMetadataEventSubscriptionScheduler";
-  private static final int SCHEDULER_THREAD_COUNT = 5;
-
-  static {
-    Properties properties = new Properties();
-    properties.setProperty(PROP_SCHED_INSTANCE_NAME, SCHEDULER_NAME);
-    properties.setProperty(
-        PROP_THREAD_POOL_PREFIX + ".threadCount", String.valueOf(SCHEDULER_THREAD_COUNT));
-
-    try {
-      StdSchedulerFactory factory = new StdSchedulerFactory();
-      factory.initialize(properties);
-      alertsScheduler = factory.getScheduler();
-    } catch (SchedulerException e) {
-      throw new ExceptionInInitializerError("Failed to initialize scheduler: " + e.getMessage());
-    }
-  }
+  @Getter private final Scheduler alertsScheduler;
+  private static final String SCHEDULER_NAME = "OMEventSubScheduler";
+  private static final int SCHEDULER_THREAD_COUNT = 10;
 
   private record CustomJobFactory(DIContainer di) implements JobFactory {
 
@@ -109,14 +94,30 @@ public class EventSubscriptionScheduler {
   }
 
   private EventSubscriptionScheduler(
+      OpenMetadataApplicationConfig config,
       PipelineServiceClientInterface pipelineServiceClient,
       OpenMetadataConnectionBuilder openMetadataConnectionBuilder)
       throws SchedulerException {
+
+    Properties properties = new Properties();
+    properties.put("org.quartz.scheduler.instanceName", SCHEDULER_NAME);
+    properties.put("org.quartz.scheduler.instanceId", "AUTO");
+    properties.put("org.quartz.threadPool.threadCount", String.valueOf(SCHEDULER_THREAD_COUNT));
+    properties.put("org.quartz.jobStore.class", "org.quartz.simpl.RAMJobStore");
+
+    StdSchedulerFactory factory = new StdSchedulerFactory();
+    factory.initialize(properties);
+    this.alertsScheduler = factory.getScheduler();
+
     DIContainer di = new DIContainer();
     di.registerResource(PipelineServiceClientInterface.class, pipelineServiceClient);
     di.registerResource(OpenMetadataConnectionBuilder.class, openMetadataConnectionBuilder);
     this.alertsScheduler.setJobFactory(new CustomJobFactory(di));
+
     this.alertsScheduler.start();
+    LOG.info(
+        "Event Subscription Scheduler started. Instance ID: {}",
+        this.alertsScheduler.getSchedulerInstanceId());
   }
 
   @SneakyThrows
@@ -132,13 +133,16 @@ public class EventSubscriptionScheduler {
       try {
         instance =
             new EventSubscriptionScheduler(
+                openMetadataApplicationConfig,
                 PipelineServiceClientFactory.createPipelineServiceClient(
                     openMetadataApplicationConfig.getPipelineServiceClientConfiguration()),
                 new OpenMetadataConnectionBuilder(openMetadataApplicationConfig));
+        initialized = true;
+        LOG.info("Event Subscription Scheduler initialized");
       } catch (SchedulerException e) {
+        LOG.error("Failed to initialize Event Subscription Scheduler", e);
         throw new RuntimeException("Failed to initialize Event Subscription Scheduler", e);
       }
-      initialized = true;
     } else {
       LOG.info("Event Subscription Scheduler is already initialized");
     }
@@ -158,15 +162,12 @@ public class EventSubscriptionScheduler {
                 Optional.ofNullable(eventSubscription.getClassName())
                     .orElse(defaultClass.getCanonicalName()))
             .asSubclass(AbstractEventConsumer.class);
-    // we can use an empty dependency container here because when initializing
-    // the consumer because it does need to access any state
     AbstractEventConsumer publisher =
         clazz.getDeclaredConstructor(DIContainer.class).newInstance(new DIContainer());
     if (reinstall && isSubscriptionRegistered(eventSubscription)) {
       deleteEventSubscriptionPublisher(eventSubscription);
     }
-    if (Boolean.FALSE.equals(
-        eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing events
+    if (Boolean.FALSE.equals(eventSubscription.getEnabled())) {
       eventSubscription
           .getDestinations()
           .forEach(
@@ -190,8 +191,6 @@ public class EventSubscriptionScheduler {
               eventSubscription,
               String.format("%s", eventSubscription.getId().toString()));
       Trigger trigger = trigger(eventSubscription);
-
-      // Schedule the Job
       alertsScheduler.scheduleJob(jobDetail, trigger);
 
       LOG.info(
@@ -214,7 +213,8 @@ public class EventSubscriptionScheduler {
       AbstractEventConsumer publisher, EventSubscription eventSubscription, String jobIdentity) {
     JobDataMap dataMap = new JobDataMap();
     dataMap.put(ALERT_INFO_KEY, eventSubscription);
-    dataMap.put(ALERT_OFFSET_KEY, getStartingOffset(eventSubscription.getId()));
+    EventSubscriptionOffset startingOffset = getStartingOffset(eventSubscription.getId());
+    dataMap.put(ALERT_OFFSET_KEY, startingOffset);
     JobBuilder jobBuilder =
         JobBuilder.newJob(publisher.getClass())
             .withIdentity(jobIdentity, ALERT_JOB_GROUP)
@@ -238,7 +238,6 @@ public class EventSubscriptionScheduler {
   @Transaction
   @SneakyThrows
   public void updateEventSubscription(EventSubscription eventSubscription) {
-    // Remove Existing Subscription Publisher
     deleteEventSubscriptionPublisher(eventSubscription);
     if (Boolean.TRUE.equals(eventSubscription.getEnabled())) {
       addSubscriptionPublisher(eventSubscription, true);
@@ -272,18 +271,21 @@ public class EventSubscriptionScheduler {
         getEventSubscriptionFromScheduledJob(subscriptionId);
 
     if (eventSubscriptionOpt.isPresent()) {
-      return (SubscriptionStatus)
+      // Find the destination and get its status
+      Optional<SubscriptionDestination> destinationOpt =
           eventSubscriptionOpt.get().getDestinations().stream()
               .filter(destination -> destination.getId().equals(destinationId))
-              .map(SubscriptionDestination::getStatusDetails)
-              .findFirst()
-              .orElse(null);
+              .findFirst();
+      if (destinationOpt.isPresent()) {
+        Object status = destinationOpt.get().getStatusDetails();
+        return convertToSubscriptionStatus(status);
+      }
+      return null;
     }
 
     EntityRepository<? extends EntityInterface> subscriptionRepository =
         Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
 
-    // If the event subscription was not found in the scheduled job, check the repository
     Optional<EventSubscription> subscriptionOpt =
         Optional.ofNullable(
             (EventSubscription)
@@ -301,7 +303,6 @@ public class EventSubscriptionScheduler {
     Optional<EventSubscription> eventSubscriptionOpt =
         getEventSubscriptionFromScheduledJob(subscriptionId);
 
-    // If the EventSubscription is not found in the scheduled job, retrieve it from the repository
     EventSubscription eventSubscription =
         eventSubscriptionOpt.orElseGet(
             () -> {
@@ -543,28 +544,50 @@ public class EventSubscriptionScheduler {
       JobDetail jobDetail =
           alertsScheduler.getJobDetail(new JobKey(id.toString(), ALERT_JOB_GROUP));
 
-      return Optional.ofNullable(jobDetail)
-          .map(detail -> (EventSubscription) detail.getJobDataMap().get(ALERT_INFO_KEY));
-
+      if (jobDetail != null) {
+        Object alertInfoValue = jobDetail.getJobDataMap().get(ALERT_INFO_KEY);
+        if (alertInfoValue instanceof String subscriptionJson) {
+          EventSubscription eventSubscription =
+              JsonUtils.readValue(subscriptionJson, EventSubscription.class);
+          return Optional.ofNullable(eventSubscription);
+        } else if (alertInfoValue instanceof EventSubscription eventSubscription) {
+          return Optional.of(eventSubscription);
+        }
+      }
     } catch (SchedulerException ex) {
       LOG.error("Failed to get Event Subscription from Job, Subscription Id : {}", id, ex);
+    } catch (Exception ex) {
+      LOG.error("Failed to deserialize Event Subscription, Subscription Id : {}", id, ex);
     }
 
     return Optional.empty();
   }
 
   public Optional<EventSubscriptionOffset> getEventSubscriptionOffset(UUID subscriptionID) {
+    EventSubscriptionOffset offset = getStartingOffset(subscriptionID);
+    if (offset != null && offset.getCurrentOffset() != null) {
+      return Optional.of(offset);
+    }
+
     try {
       JobDetail jobDetail =
           alertsScheduler.getJobDetail(new JobKey(subscriptionID.toString(), ALERT_JOB_GROUP));
       if (jobDetail != null) {
-        return Optional.ofNullable(
-            (EventSubscriptionOffset) jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY));
+        Object offsetValue = jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
+        if (offsetValue instanceof String offsetJson) {
+          EventSubscriptionOffset jobOffset =
+              JsonUtils.readValue(offsetJson, EventSubscriptionOffset.class);
+          if (jobOffset != null) {
+            return Optional.of(jobOffset);
+          }
+        } else if (offsetValue instanceof EventSubscriptionOffset jobOffset) {
+          return Optional.of(jobOffset);
+        }
       }
     } catch (Exception ex) {
       LOG.error(
-          "Failed to get Event Subscription from Job, Subscription Id : {}, Exception: ",
-          subscriptionID.toString(),
+          "Failed to get Event Subscription offset from Job, Subscription Id : {}",
+          subscriptionID,
           ex);
     }
     return Optional.empty();
@@ -598,6 +621,62 @@ public class EventSubscriptionScheduler {
 
   private static JobKey getJobKey(UUID subscriptionId) {
     return new JobKey(subscriptionId.toString(), ALERT_JOB_GROUP);
+  }
+
+  /**
+   * Converts a status object to SubscriptionStatus. After JSON deserialization, the statusDetails
+   * field (typed as Object in SubscriptionDestination) may be deserialized as a LinkedHashMap
+   * instead of SubscriptionStatus. This method handles the conversion.
+   */
+  private SubscriptionStatus convertToSubscriptionStatus(Object status) {
+    if (status == null) {
+      return null;
+    }
+    if (status instanceof SubscriptionStatus subscriptionStatus) {
+      return subscriptionStatus;
+    }
+    try {
+      String json = JsonUtils.pojoToJson(status);
+      return JsonUtils.readValue(json, SubscriptionStatus.class);
+    } catch (Exception e) {
+      LOG.error("Failed to convert status to SubscriptionStatus: {}", status, e);
+      return null;
+    }
+  }
+
+  private static final String AUDIT_LOG_JOB_GROUP = "OMAuditLogJobGroup";
+  private static final String AUDIT_LOG_JOB_ID = "AuditLogConsumerJob";
+  private static final int AUDIT_LOG_POLL_INTERVAL_SECONDS = 5;
+
+  /**
+   * Schedules the audit log consumer to periodically read from change_event table and write to
+   * audit_log table. Uses @DisallowConcurrentExecution to ensure only one instance runs at a time
+   * in multi-server setups.
+   */
+  public void scheduleAuditLogConsumer() throws SchedulerException {
+    JobKey jobKey = new JobKey(AUDIT_LOG_JOB_ID, AUDIT_LOG_JOB_GROUP);
+
+    // Check if already scheduled
+    if (alertsScheduler.checkExists(jobKey)) {
+      LOG.info("Audit log consumer job already scheduled");
+      return;
+    }
+
+    JobDetail jobDetail =
+        JobBuilder.newJob(AuditLogConsumer.class).withIdentity(jobKey).storeDurably().build();
+
+    Trigger trigger =
+        TriggerBuilder.newTrigger()
+            .withIdentity(AUDIT_LOG_JOB_ID, AUDIT_LOG_JOB_GROUP)
+            .withSchedule(
+                SimpleScheduleBuilder.repeatSecondlyForever(AUDIT_LOG_POLL_INTERVAL_SECONDS))
+            .startNow()
+            .build();
+
+    alertsScheduler.scheduleJob(jobDetail, trigger);
+    LOG.info(
+        "Audit log consumer scheduled with poll interval: {} seconds",
+        AUDIT_LOG_POLL_INTERVAL_SECONDS);
   }
 
   public static void shutDown() throws SchedulerException {

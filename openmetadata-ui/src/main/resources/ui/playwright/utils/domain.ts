@@ -39,13 +39,6 @@ import {
 import { addOwner, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
-const waitForAssetModalInitialLoad = async (page: Page) => {
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-    timeout: 10000,
-  });
-};
-
 const waitForSearchDebounce = async (page: Page) => {
   // Wait for loader to appear and disappear after search
   // This ensures search debounce completed and results are stable
@@ -434,9 +427,9 @@ export const addAssetsToDomain = async (
   );
 
   await page.getByTestId('domain-details-add-button').click();
+  const assetRes = page.waitForResponse('/api/v1/search/query?q=&index=all&*');
   await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
-
-  await waitForAssetModalInitialLoad(page);
+  await assetRes;
 
   for (const asset of assets) {
     const name = get(asset, 'entityResponseData.name');
@@ -445,7 +438,9 @@ export const addAssetsToDomain = async (
     const visibleName = entityDisplayName ?? name;
 
     const searchRes = page.waitForResponse(
-      `/api/v1/search/query?q=${visibleName}&index=all&from=0&size=25&*`
+      `/api/v1/search/query?q=${encodeURIComponent(
+        visibleName
+      )}&index=all&from=0&size=25&*`
     );
     await page
       .getByTestId('asset-selection-modal')
@@ -496,9 +491,10 @@ export const addServicesToDomain = async (
   await goToAssetsTab(page, domain);
 
   await page.getByTestId('domain-details-add-button').click();
-  await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
 
-  await waitForAssetModalInitialLoad(page);
+  const assetRes = page.waitForResponse('/api/v1/search/query?q=&index=all&*');
+  await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
+  await assetRes;
 
   for (const asset of assets) {
     const name = get(asset, 'name');
@@ -537,9 +533,9 @@ export const addAssetsToDataProduct = async (
     "Looks like you haven't added any data assets yet."
   );
 
+  const assetRes = page.waitForResponse('/api/v1/search/query?q=&index=all&*');
   await page.getByTestId('data-product-details-add-button').click();
-
-  await waitForAssetModalInitialLoad(page);
+  await assetRes;
 
   for (const asset of assets) {
     const name = get(asset, 'entityResponseData.name');
@@ -648,6 +644,40 @@ export const createDataProduct = async (
   );
 
   await fillCommonFormItems(page, dataProduct);
+  const saveRes = page.waitForResponse('/api/v1/dataProducts');
+  await page.getByTestId('save-btn').click();
+  await saveRes;
+};
+
+export const createDataProductFromListPage = async (
+  page: Page,
+  dataProduct: DataProduct['data'],
+  domain: Domain['data']
+) => {
+  await page.getByTestId('add-entity-button').click();
+
+  await expect(page.getByTestId('form-heading')).toContainText(
+    'Add Data Product'
+  );
+
+  await fillCommonFormItems(page, dataProduct);
+
+  // Fill domain field (required when creating from list page)
+  const domainInput = page.getByTestId('domain-select');
+  await domainInput.scrollIntoViewIfNeeded();
+  await domainInput.waitFor({ state: 'visible' });
+  await domainInput.click();
+
+  const searchDomain = page.waitForResponse(
+    `/api/v1/search/query?q=*index=domain_search_index*`
+  );
+  await domainInput.fill(domain.displayName);
+  await searchDomain;
+
+  const domainOption = page.getByText(domain.displayName);
+  await domainOption.waitFor({ state: 'visible', timeout: 5000 });
+  await domainOption.click();
+
   const saveRes = page.waitForResponse('/api/v1/dataProducts');
   await page.getByTestId('save-btn').click();
   await saveRes;

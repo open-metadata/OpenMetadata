@@ -10,16 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
+import { redirectToExplorePage } from './common';
 
 export const openEntitySummaryPanel = async (
   page: Page,
   entityName: string
 ) => {
-  const searchResponse = page.waitForResponse('/api/v1/search/query*');
+  const searchResponsePromise = page.waitForResponse((response) =>
+    response.url().includes('/api/v1/search/query')
+  );
 
   await page.getByTestId('searchBox').fill(entityName);
-  await searchResponse;
+
+  const searchResponse = await searchResponsePromise;
+  expect(searchResponse.status()).toBe(200);
 
   await page.getByTestId('searchBox').press('Enter');
   await page.waitForSelector('[data-testid="loader"]', {
@@ -31,19 +36,27 @@ export const openEntitySummaryPanel = async (
     .locator('[data-testid="table-data-card"]')
     .filter({ hasText: entityName })
     .first();
-  if (await entityCard.isVisible()) {
+
+  // Only click if the card is visible (search results may be on explore page)
+  const isCardVisible = await entityCard.isVisible().catch(() => false);
+  if (isCardVisible) {
     await entityCard.click();
     await page.waitForLoadState('networkidle');
   }
 };
 
 export const waitForPatchResponse = async (page: Page) => {
-  return page.waitForResponse(
+  const responsePromise = page.waitForResponse(
     (resp) =>
       resp.url().includes('/api/v1/') &&
       resp.request().method() === 'PATCH' &&
       !resp.url().includes('/api/v1/analytics')
   );
+
+  const response = await responsePromise;
+  expect(response.status()).toBe(200);
+
+  return response;
 };
 
 export const navigateToEntityPanelTab = async (page: Page, tabName: string) => {
@@ -58,133 +71,10 @@ export const navigateToEntityPanelTab = async (page: Page, tabName: string) => {
   });
 };
 
-export const editDescription = async (page: Page, descriptionText: string) => {
-  const summaryPanel = page.locator('.entity-summary-panel-container');
-  const descriptionSection = summaryPanel.locator('.description-section');
-
-  const editButton = descriptionSection.getByTestId('edit-description');
-  await editButton.waitFor({ state: 'visible' });
-  await editButton.click();
-
-  const editor = page.locator('.ProseMirror[contenteditable="true"]').first();
-  await editor.click();
-  await editor.fill(descriptionText);
-
-  const patchResp = waitForPatchResponse(page);
-  await page.getByTestId('save').click();
-  await patchResp;
-};
-
-export const editOwners = async (
-  page: Page,
-  ownerNames: string[],
-  ownerType: 'Users' | 'Teams' = 'Users'
-) => {
-  const summaryPanel = page.locator('.entity-summary-panel-container');
-  const ownersSection = summaryPanel.locator('.owners-section');
-
-  const editButton = ownersSection.getByTestId('edit-owners');
-  await editButton.waitFor({ state: 'visible' });
-  if (await editButton.isVisible()) {
-    await editButton.click();
-
-    const popover = page.getByTestId('select-owner-tabs');
-    await popover.waitFor({ state: 'visible' });
-
-    await page.getByRole('tab', { name: ownerType }).click();
-
-    for (const ownerName of ownerNames) {
-      const searchBarTestId =
-        ownerType === 'Users'
-          ? 'owner-select-users-search-bar'
-          : 'owner-select-teams-search-bar';
-
-      const searchIndex =
-        ownerType === 'Users' ? 'user_search_index' : 'team_search_index';
-
-      const searchResponse = page.waitForResponse(
-        `/api/v1/search/query?q=*${ownerName}*index=${searchIndex}*`
-      );
-
-      const searchBar = await page.waitForSelector(
-        `[data-testid="${searchBarTestId}"]`
-      );
-      await searchBar.fill(ownerName);
-      await searchResponse;
-
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      const ownerToAssign = page.getByRole('listitem', {
-        name: ownerName,
-        exact: true,
-      });
-
-      if (await ownerToAssign.isVisible()) {
-        await ownerToAssign.click();
-
-        const updateBtn = page.getByRole('button', { name: 'Update' });
-        if (await updateBtn.isVisible()) {
-          const patchResp = waitForPatchResponse(page);
-          await updateBtn.click();
-          await patchResp;
-        }
-
-        break;
-      }
-    }
-  }
-};
-
-export const editTier = async (page: Page, tierName: string) => {
-  const summaryPanel = page.locator('.entity-summary-panel-container');
-  const tierSection = summaryPanel.locator('.tier-section');
-
-  await page.locator('[data-testid="edit-icon-tier"]').scrollIntoViewIfNeeded();
-
-  await page.locator('[data-testid="edit-icon-tier"]').click();
-
-  await page.locator('[data-testid="cards"]').scrollIntoViewIfNeeded();
-
-  const tierRadio = page.getByTestId(`radio-btn-${tierName}`);
-  await tierRadio.click();
-  await page.waitForSelector('[data-testid="update-tier-card"]', {
-    state: 'visible',
-  });
-  await page.getByTestId('update-tier-card').click();
-  const patchResp = waitForPatchResponse(page);
-  await patchResp;
-};
-
 export const editTags = async (
   page: Page,
-  tagName: string,
-  clearExisting = false
-) => {
-  await page.locator('[data-testid="edit-icon-tags"]').scrollIntoViewIfNeeded();
-
+  tagName: string) => {
   await page.locator('[data-testid="edit-icon-tags"]').click();
-
-  if (clearExisting) {
-    const clearAllButton = page.locator('[data-testid="clear-all-button"]');
-    if (await clearAllButton.isVisible()) {
-      await clearAllButton.click();
-      const updateButton = page.getByRole('button', {
-        name: 'Update',
-      });
-      await updateButton.click();
-      await waitForPatchResponse(page);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      await page
-        .locator('[data-testid="edit-icon-tags"]')
-        .scrollIntoViewIfNeeded();
-      await page.locator('[data-testid="edit-icon-tags"]').click();
-    }
-  }
 
   await page
     .locator('[data-testid="selectable-list"]')
@@ -194,33 +84,38 @@ export const editTags = async (
     .locator('[data-testid="selectable-list"]')
     .scrollIntoViewIfNeeded();
 
-  const searchTagResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${tagName}*index=tag_search_index*`
+  const searchTagResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(`q=`) &&
+      response.url().includes('index=tag_search_index')
   );
   const searchBar = page.locator('[data-testid="tag-select-search-bar"]');
   await searchBar.fill(tagName);
-  await searchTagResponse;
+
+  const searchTagResponse = await searchTagResponsePromise;
+  expect(searchTagResponse.status()).toBe(200);
+
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
 
   const tagOption = page.getByTitle(tagName);
-  if (await tagOption.isVisible()) {
-    await tagOption.click();
+  // Wait for tag option to be visible before clicking
+  await tagOption.waitFor({ state: 'visible'});
+  await tagOption.click();
 
-    const updateBtn = page.getByRole('button', { name: 'Update' });
-    if (await updateBtn.isVisible()) {
-      await updateBtn.click();
-      await waitForPatchResponse(page);
-    }
-  }
+  const updateBtn = page.getByRole('button', { name: 'Update' });
+  await updateBtn.waitFor({ state: 'visible' });
+  await updateBtn.click();
+  await waitForPatchResponse(page);
+
+  await expect(page.getByText(/Tags updated successfully/i)).toBeVisible();
 };
 
 export const editGlossaryTerms = async (
   page: Page,
-  termName?: string,
-  clearExisting = false
-) => {
+  termName?: string) => {
   await page
     .locator('[data-testid="edit-glossary-terms"]')
     .scrollIntoViewIfNeeded();
@@ -230,28 +125,6 @@ export const editGlossaryTerms = async (
 
   await page.locator('[data-testid="edit-glossary-terms"]').click();
 
-  if (clearExisting) {
-    const clearAllButton = page.locator('[data-testid="clear-all-button"]');
-    if (await clearAllButton.isVisible()) {
-      await clearAllButton.click();
-      const updateButton = page.getByRole('button', {
-        name: 'Update',
-      });
-      await updateButton.click();
-      await waitForPatchResponse(page);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      await page
-        .locator('[data-testid="edit-glossary-terms"]')
-        .scrollIntoViewIfNeeded();
-      await page.waitForSelector('[data-testid="edit-glossary-terms"]', {
-        state: 'visible',
-      });
-      await page.locator('[data-testid="edit-glossary-terms"]').click();
-    }
-  }
 
   await page
     .locator('[data-testid="selectable-list"]')
@@ -281,33 +154,6 @@ export const editGlossaryTerms = async (
   await patchResp;
 };
 
-export const clearAndAddGlossaryTerms = async (
-  page: Page,
-  termName?: string
-) => {
-  const glossaryTermItems = page.locator('.selected-glossary-term-chip');
-  const glossaryTermsCount = await glossaryTermItems.count();
-
-  if (glossaryTermsCount >= 1) {
-    const editGlossaryTermsButton = page.locator(
-      '[data-testid="edit-glossary-terms"]'
-    );
-    await editGlossaryTermsButton.click();
-    const clearAllButton = page.locator('[data-testid="clear-all-button"]');
-    await clearAllButton.click();
-
-    const updateButton = page.getByRole('button', {
-      name: 'Update',
-    });
-    await updateButton.click();
-    await waitForPatchResponse(page);
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-  }
-
-  await editGlossaryTerms(page, termName);
-};
 
 export const editDomain = async (page: Page, domainName: string) => {
   const summaryPanel = page.locator('.entity-summary-panel-container');
@@ -324,8 +170,10 @@ export const editDomain = async (page: Page, domainName: string) => {
 
   await tree.waitFor({ state: 'visible' });
 
-  const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${domainName}*`
+  const searchDomainPromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(`q=`)
   );
 
   await page
@@ -333,51 +181,27 @@ export const editDomain = async (page: Page, domainName: string) => {
     .getByTestId('searchbar')
     .fill(domainName);
 
-  await searchDomain;
+  const searchDomainResponse = await searchDomainPromise;
+  expect(searchDomainResponse.status()).toBe(200);
 
   const tagSelector = page.getByTestId(`tag-${domainName}`);
   await tagSelector.waitFor({ state: 'visible' });
 
-  const patchReq = page.waitForResponse(
+  const patchReqPromise = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
   await tagSelector.click();
 
-  await patchReq;
+  const patchResponse = await patchReqPromise;
+  expect(patchResponse.status()).toBe(200);
+
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
 };
 
-export const clearDataProducts = async (page: Page) => {
-  const dataProductItems = page.locator('[data-testid="data-product-item"]');
-  const dataProductCount = await dataProductItems.count();
 
-  if (dataProductCount >= 1) {
-    const editDataProductsButton = page.locator(
-      '[data-testid="edit-data-products"]'
-    );
-    if (await editDataProductsButton.isVisible()) {
-      await editDataProductsButton.click();
-      await page.waitForTimeout(500);
-
-      const clearAllButton = page.locator('[data-testid="clear-all-button"]');
-      if (await clearAllButton.isVisible()) {
-        await clearAllButton.click();
-
-        const updateButton = page.getByRole('button', {
-          name: 'Update',
-        });
-        await updateButton.click();
-        await waitForPatchResponse(page);
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-      }
-    }
-  }
-};
 
 export const verifyDeletedEntityNotVisible = async (
   page: Page,
@@ -389,17 +213,21 @@ export const verifyDeletedEntityNotVisible = async (
     user: 'user_search_index',
     team: 'team_search_index',
     tag: 'tag_search_index',
-    glossaryTerm: 'glossaryTerm_search_index',
+    glossaryTerm: 'glossary_term_search_index',
   };
 
   const searchBar = await page.waitForSelector(
     `[data-testid="${searchBarTestId}"]`
   );
-  const searchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${entityName}*index=${searchIndexMap[searchIndexType]}*`
+  const searchResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(`index=${searchIndexMap[searchIndexType]}`)
   );
   await searchBar.fill(entityName);
-  await searchResponse;
+
+  const searchResponse = await searchResponsePromise;
+  expect(searchResponse.status()).toBe(200);
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -437,3 +265,23 @@ export const navigateToIncidentsTab = async (page: Page) => {
     });
   }
 };
+
+export async function navigateToExploreAndSelectTable(
+  page: Page,
+  entityName: string
+) {
+  await redirectToExplorePage(page);
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  const permissionsResponsePromise = page.waitForResponse((response) =>
+    response.url().includes('/permissions')
+  );
+
+  await openEntitySummaryPanel(page, entityName);
+
+  const permissionsResponse = await permissionsResponsePromise;
+  expect(permissionsResponse.status()).toBe(200);
+}

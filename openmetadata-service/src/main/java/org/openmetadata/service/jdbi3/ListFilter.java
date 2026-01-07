@@ -112,7 +112,7 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getEntityLinkCondition() {
     String entityLinkStr = queryParams.get("entityLink");
-    return entityLinkStr == null ? "" : String.format("entityLink = '%s'", entityLinkStr);
+    return entityLinkStr == null ? "" : "entityLink = :entityLink";
   }
 
   private String getAgentTypeCondition() {
@@ -153,9 +153,9 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     } else {
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-        return String.format("JSON_EXTRACT(json, '$.alertType') = '%s'", alertType);
+        return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.alertType')) = :alertType";
       } else {
-        return String.format("json->>'alertType' = '%s'", alertType);
+        return "json->>'alertType' = :alertType";
       }
     }
   }
@@ -166,10 +166,9 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     } else {
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-        return String.format(
-            "JSON_EXTRACT(json, '$.notificationTemplate.id') = '%s'", notificationTemplate);
+        return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.notificationTemplate.id')) = :notificationTemplate";
       } else {
-        return String.format("json->'notificationTemplate'->>'id' = '%s'", notificationTemplate);
+        return "json->'notificationTemplate'->>'id' = :notificationTemplate";
       }
     }
   }

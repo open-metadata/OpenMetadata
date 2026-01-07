@@ -17,13 +17,13 @@ swagger:
 
 assets:
   resourcePath: /assets/
-  uriPath: ${BASE_PATH:-/}
+  uriPath: /
 
 basePath: ${BASE_PATH:-/}
 
 server:
   applicationContextPath: ${BASE_PATH:-/}
-  rootPath: ${BASE_PATH:-/}api/*
+  rootPath: /api/*
   applicationConnectors:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
@@ -291,6 +291,7 @@ authenticationConfiguration:
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
   jwtPrincipalClaimsMapping: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING:-[]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
+  enableAutoRedirect: ${AUTHENTICATION_ENABLE_AUTO_REDIRECT:-false}
   # Force secure flag on session cookies even when not using HTTPS directly.
   # Enable this when running behind a proxy/load balancer that handles SSL termination.
   # Default: false (secure flag only set when HTTPS is detected)

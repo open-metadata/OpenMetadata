@@ -68,14 +68,7 @@ const DataAssetsWidget = ({
       const sortField = getSortField(selectedSortBy);
       const sortOrder = getSortOrder(selectedSortBy);
       const res = await searchData('', 0, 0, '', sortField, sortOrder, [
-        SearchIndex.TABLE,
-        SearchIndex.TOPIC,
-        SearchIndex.DASHBOARD,
-        SearchIndex.PIPELINE,
-        SearchIndex.MLMODEL,
-        SearchIndex.CONTAINER,
-        SearchIndex.SEARCH_INDEX,
-        SearchIndex.API_ENDPOINT_INDEX,
+        SearchIndex.DATA_ASSET,
       ]);
       setServices(res?.data.aggregations?.['sterms#serviceType'].buckets);
     } catch (error) {

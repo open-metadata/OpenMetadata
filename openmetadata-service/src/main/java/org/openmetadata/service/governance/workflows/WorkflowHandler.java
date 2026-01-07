@@ -131,10 +131,13 @@ public class WorkflowHandler {
 
     // Setting History CleanUp
     processEngineConfiguration
+        .setAsyncHistoryEnabled(true)
         .setEnableHistoryCleaning(true)
         .setCleanInstancesEndedAfter(
             Duration.ofDays(
-                workflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays()));
+                workflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays()))
+        .setHistoryCleaningTimeCycleConfig(
+            workflowSettings.getHistoryCleanUpConfiguration().getTimeCycleConfig());
 
     // Add Expression Manager
     processEngineConfiguration.setExpressionManager(new DefaultExpressionManager(expressionMap));
@@ -270,44 +273,6 @@ public class WorkflowHandler {
             "Error cancelling old timer jobs for workflow {}: {}",
             triggerWorkflowKey,
             e.getMessage());
-      }
-
-      // Step 3: Delete old deployments to prevent confusion with old process definitions
-      // This is critical for periodicBatchEntity triggers that may have changed format
-      try {
-        // Delete ALL trigger deployments that start with the trigger key
-        // This includes both the base trigger (e.g., "SetTierForMLModelTrigger") and
-        // any entity-specific variants (e.g., "SetTierForMLModelTrigger-dashboard",
-        // "SetTierForMLModelTrigger-table")
-        List<ProcessDefinition> oldTriggerDefinitions =
-            repositoryService
-                .createProcessDefinitionQuery()
-                .processDefinitionKeyLike(triggerWorkflowKey + "%")
-                .list();
-
-        for (ProcessDefinition pd : oldTriggerDefinitions) {
-          LOG.info(
-              "Removing old trigger deployment: {} (version: {})", pd.getKey(), pd.getVersion());
-          repositoryService.deleteDeployment(pd.getDeploymentId(), true);
-        }
-
-        // Delete old main workflow deployments
-        List<ProcessDefinition> oldMainDefinitions =
-            repositoryService
-                .createProcessDefinitionQuery()
-                .processDefinitionKey(workflowName)
-                .list();
-
-        for (ProcessDefinition pd : oldMainDefinitions) {
-          LOG.info(
-              "Removing old main workflow deployment: {} (version: {})",
-              pd.getKey(),
-              pd.getVersion());
-          repositoryService.deleteDeployment(pd.getDeploymentId(), true);
-        }
-      } catch (Exception e) {
-        LOG.warn(
-            "Error removing old deployments for workflow {}: {}", workflowName, e.getMessage());
       }
     }
 
@@ -568,11 +533,11 @@ public class WorkflowHandler {
     return namespacedVariables;
   }
 
-  public void resolveTask(UUID taskId) {
-    resolveTask(taskId, null);
+  public boolean resolveTask(UUID taskId) {
+    return resolveTask(taskId, null);
   }
 
-  public void resolveTask(UUID customTaskId, Map<String, Object> variables) {
+  public boolean resolveTask(UUID customTaskId, Map<String, Object> variables) {
     TaskService taskService = processEngine.getTaskService();
     LOG.debug("[WorkflowTask] RESOLVE: customTaskId='{}' variables={}", customTaskId, variables);
     try {
@@ -624,18 +589,21 @@ public class WorkflowHandler {
                   });
           LOG.debug("[WorkflowTask] SUCCESS: Task '{}' resolved", customTaskId);
         }
+        return true;
       } else {
         LOG.warn("[WorkflowTask] NOT_FOUND: No Flowable task for customTaskId='{}'", customTaskId);
+        return false;
       }
     } catch (FlowableObjectNotFoundException ex) {
       LOG.error(
           "[WorkflowTask] ERROR: Flowable task not found for customTaskId='{}': {}",
           customTaskId,
           ex.getMessage());
+      return false;
     } catch (Exception e) {
       LOG.error(
           "[WorkflowTask] ERROR: Failed to resolve task '{}': {}", customTaskId, e.getMessage(), e);
-      throw e;
+      return false;
     }
   }
 
@@ -1274,7 +1242,6 @@ public class WorkflowHandler {
               handle -> {
                 try {
                   // Terminate both trigger and main workflow instances
-                  getInstance().terminateWorkflow(mainWorkflowDefinitionName);
 
                   // Now terminate the main workflow instances that contain the user tasks
                   for (WorkflowInstance instance : conflictingInstances) {
