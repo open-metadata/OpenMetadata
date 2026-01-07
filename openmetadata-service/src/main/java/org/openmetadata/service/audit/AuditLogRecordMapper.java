@@ -2,6 +2,7 @@ package org.openmetadata.service.audit;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
@@ -14,7 +15,7 @@ public class AuditLogRecordMapper implements RowMapper<AuditLogRecord> {
   public AuditLogRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
     return AuditLogRecord.builder()
         .id(rs.getLong("id"))
-        .changeEventId(rs.getString("change_event_id"))
+        .changeEventId(UUID.fromString(rs.getString("change_event_id")))
         .eventTs(rs.getLong("event_ts"))
         .eventType(rs.getString("event_type"))
         .userName(rs.getString("user_name"))
@@ -22,7 +23,7 @@ public class AuditLogRecordMapper implements RowMapper<AuditLogRecord> {
         .impersonatedBy(rs.getString("impersonated_by"))
         .serviceName(rs.getString("service_name"))
         .entityType(rs.getString("entity_type"))
-        .entityId(rs.getString("entity_id"))
+        .entityId(UUID.fromString(rs.getString("entity_id")))
         .entityFQN(rs.getString("entity_fqn"))
         .entityFQNHash(rs.getString("entity_fqn_hash"))
         .eventJson(rs.getString("event_json"))
