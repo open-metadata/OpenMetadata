@@ -74,10 +74,10 @@ test.describe('Table pagination sorting search scenarios ', () => {
   test('Table search with sorting should work', async ({
     dataConsumerPage: page,
   }) => {
-    await sidebarClick(page, SidebarItem.DATA_QUALITY);
     const listTestCasesResponse = page.waitForResponse(
       '/api/v1/dataQuality/testCases/search/list?*'
     );
+    await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
     await page.click('[data-testid="test-cases"]');
 
@@ -108,10 +108,10 @@ test.describe('Table pagination sorting search scenarios ', () => {
   test('Table filter with sorting should work', async ({
     dataConsumerPage: page,
   }) => {
-    await sidebarClick(page, SidebarItem.DATA_QUALITY);
     const listTestCasesResponse = page.waitForResponse(
       '/api/v1/dataQuality/testCases/search/list?*'
     );
+    await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
     await page.click('[data-testid="test-cases"]');
 
