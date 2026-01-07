@@ -28,8 +28,9 @@ The connector primarily uses PostgreSQL's system catalog tables and views to ext
 - `pg_attrdef` - Column default values
 - `pg_proc` - Stored procedures and functions
 - `pg_user` - User information
+- `pg_stat_statements` - Query statistics (for usage and lineage)
 
-**No special grants are required** to read from these system catalogs as they are readable by any connected user by default.
+**No special grants are required** to read from most of these system catalogs as they are readable by any connected user by default. **Exception**: `pg_stat_statements` requires the `pg_read_all_stats` role for access (see [Usage and Lineage](#usage-and-lineage) section below).
 
 #### INFORMATION_SCHEMA Views
 
