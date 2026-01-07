@@ -23,7 +23,7 @@ import {
   Task,
   TaskStatus,
 } from '../generated/entity/data/pipeline';
-import { formatDateTime } from './date-time/DateTimeUtils';
+import { formatDateTime, formatDuration } from './date-time/DateTimeUtils';
 import { getStatusBadgeIcon } from './PipelineDetailsUtils';
 
 interface StatusIndicatorInterface {
@@ -37,6 +37,9 @@ export interface ViewDataInterface {
   executionStatus?: StatusType;
   type?: string;
   key: number;
+  startTime?: number;
+  endTime?: number;
+  duration?: string;
 }
 
 export const StatusIndicator = ({ status }: StatusIndicatorInterface) => (
@@ -77,6 +80,11 @@ export const getTableViewData = (
   const viewData: Array<ViewDataInterface> = [];
   executions?.map((execution) => {
     execution.taskStatus?.map((execute: TaskStatus) => {
+      const startTime = execute.startTime;
+      const endTime = execute.endTime;
+      const duration =
+        startTime && endTime ? formatDuration(endTime - startTime) : '--';
+
       viewData.push({
         name: execute.name,
         status: execute.executionStatus,
@@ -84,6 +92,9 @@ export const getTableViewData = (
         executionStatus: execute.executionStatus,
         type: '--',
         key: execution.timestamp,
+        startTime,
+        endTime,
+        duration,
       });
     });
   });
@@ -200,6 +211,15 @@ export const getTreeData = (
                     <Space direction="vertical">
                       <div>{status.timestamp}</div>
                       <div>{status.executionStatus}</div>
+                      {status.startTime && (
+                        <div>Start: {formatDateTime(status.startTime)}</div>
+                      )}
+                      {status.endTime && (
+                        <div>End: {formatDateTime(status.endTime)}</div>
+                      )}
+                      {status.duration && status.duration !== '--' && (
+                        <div>Duration: {status.duration}</div>
+                      )}
                     </Space>
                   }>
                   <Icon

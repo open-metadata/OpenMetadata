@@ -17,6 +17,7 @@ import {
   PipelineStatus,
   StatusType,
 } from '../../../../generated/entity/data/pipeline';
+import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import {
   getTableViewData,
   StatusIndicator,
@@ -74,6 +75,25 @@ const ListView = ({
         title: t('label.date-and-time'),
         dataIndex: 'timestamp',
         key: 'timestamp',
+      },
+      {
+        title: t('label.start-entity', { entity: t('label.time') }),
+        dataIndex: 'startTime',
+        key: 'startTime',
+        render: (startTime: number) =>
+          startTime ? formatDateTime(startTime) : '--',
+      },
+      {
+        title: t('label.end-entity', { entity: t('label.time') }),
+        dataIndex: 'endTime',
+        key: 'endTime',
+        render: (endTime: number) =>
+          endTime ? formatDateTime(endTime) : '--',
+      },
+      {
+        title: t('label.duration'),
+        dataIndex: 'duration',
+        key: 'duration',
       },
     ],
     []
