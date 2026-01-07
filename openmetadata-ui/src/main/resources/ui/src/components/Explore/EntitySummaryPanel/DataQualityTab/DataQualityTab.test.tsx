@@ -19,6 +19,16 @@ import {
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import DataQualityTab from './DataQualityTab';
 
+// Mock react-router-dom
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  Link: jest.fn().mockImplementation(({ children, to, ...props }) => (
+    <a data-testid="router-link" href={to} {...props}>
+      {children}
+    </a>
+  )),
+}));
+
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
