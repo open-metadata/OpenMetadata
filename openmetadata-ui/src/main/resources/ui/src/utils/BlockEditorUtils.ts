@@ -191,7 +191,10 @@ export const isHTMLString = (content: string) => {
 
     // If it has markdown syntax but also parsed as HTML, prefer markdown interpretation
     return hasHtmlElements && !hasMarkdownSyntax;
-  } catch {
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('Error parsing content to check HTML string:', e);
+
     return false;
   }
 };
@@ -294,8 +297,27 @@ export const setEditorContent = (editor: Editor, newContent: string) => {
  * @returns Whether the content is empty or not
  */
 export const isDescriptionContentEmpty = (content: string) => {
-  // Check if the content is empty or has only empty paragraph tags
-  return isEmpty(content) || content === '<p></p>';
+  // Treat null/undefined/empty string as empty
+  if (isEmpty(content)) {
+    return true;
+  }
+
+  // Trim the content
+  const trimmedContent = content.trim();
+
+  // Check if it's an empty string after trimming
+  if (trimmedContent === '') {
+    return true;
+  }
+
+  // Match a single <p>...</p> where the inner content is only common whitespace
+  // (space, tab, newline, carriage return) and non-breaking space (\u00A0)
+  // Note: We intentionally do NOT match other unicode whitespace like em space (\u2003)
+  // or thin space (\u2009) as those are considered content
+  const emptyPRegex =
+    /^[ \t\r\n]*<p(?:\s[^>]*)?>[ \t\r\n\u00A0]*<\/p>[ \t\r\n]*$/i;
+
+  return emptyPRegex.test(trimmedContent);
 };
 
 /**

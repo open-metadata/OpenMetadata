@@ -184,6 +184,14 @@ export const exportGlossaryInCSVFormat = async (glossaryName: string) => {
   return response.data;
 };
 
+export const exportGlossaryTermsInCSVFormat = async (glossaryName: string) => {
+  const response = await APIClient.get<CSVExportResponse>(
+    `/glossaryTerms/name/${getEncodedFqn(glossaryName)}/exportAsync`
+  );
+
+  return response.data;
+};
+
 export const getGlossaryVersionsList = async (id: string) => {
   const url = `/glossaries/${id}/versions`;
 

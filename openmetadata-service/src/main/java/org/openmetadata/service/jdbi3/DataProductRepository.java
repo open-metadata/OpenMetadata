@@ -19,6 +19,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.TEAM;
@@ -60,6 +61,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
@@ -73,6 +75,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.LineageUtil;
@@ -81,7 +84,8 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class DataProductRepository extends EntityRepository<DataProduct> {
-  private static final String UPDATE_FIELDS = "experts"; // Domain field can't be updated
+  private static final String UPDATE_FIELDS =
+      "experts,inputPorts,outputPorts"; // Domain field can't be updated
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
@@ -108,6 +112,18 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   public void setFields(DataProduct entity, Fields fields) {
     // Assets field is not exposed via API - use dedicated paginated API:
     // GET /v1/dataProducts/{id}/assets
+    entity.setInputPorts(
+        fields.contains("inputPorts") ? getInputPorts(entity) : entity.getInputPorts());
+    entity.setOutputPorts(
+        fields.contains("outputPorts") ? getOutputPorts(entity) : entity.getOutputPorts());
+  }
+
+  private List<EntityReference> getInputPorts(DataProduct dataProduct) {
+    return findTo(dataProduct.getId(), Entity.DATA_PRODUCT, Relationship.INPUT_PORT, null);
+  }
+
+  private List<EntityReference> getOutputPorts(DataProduct dataProduct) {
+    return findTo(dataProduct.getId(), Entity.DATA_PRODUCT, Relationship.OUTPUT_PORT, null);
   }
 
   @Override
@@ -130,6 +146,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   public void clearFields(DataProduct entity, Fields fields) {
     // Assets field is deprecated - use GET /v1/dataProducts/{id}/assets API
     entity.setAssets(null);
+    entity.setInputPorts(fields.contains("inputPorts") ? entity.getInputPorts() : null);
+    entity.setOutputPorts(fields.contains("outputPorts") ? entity.getOutputPorts() : null);
   }
 
   @Override
@@ -139,7 +157,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   @Override
   public void storeEntity(DataProduct entity, boolean update) {
+    // Ports are stored as relationships, not in JSON
+    List<EntityReference> inputPorts = entity.getInputPorts();
+    List<EntityReference> outputPorts = entity.getOutputPorts();
+    entity.withInputPorts(null).withOutputPorts(null);
     store(entity, update);
+    entity.withInputPorts(inputPorts).withOutputPorts(outputPorts);
   }
 
   @Override
@@ -155,6 +178,23 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     for (EntityReference expert : listOrEmpty(entity.getExperts())) {
       addRelationship(
           entity.getId(), expert.getId(), Entity.DATA_PRODUCT, Entity.USER, Relationship.EXPERT);
+    }
+    // Store input/output port relationships
+    for (EntityReference port : listOrEmpty(entity.getInputPorts())) {
+      addRelationship(
+          entity.getId(),
+          port.getId(),
+          Entity.DATA_PRODUCT,
+          port.getType(),
+          Relationship.INPUT_PORT);
+    }
+    for (EntityReference port : listOrEmpty(entity.getOutputPorts())) {
+      addRelationship(
+          entity.getId(),
+          port.getId(),
+          Entity.DATA_PRODUCT,
+          port.getType(),
+          Relationship.OUTPUT_PORT);
     }
     // Assets cannot be added via create/PUT/PATCH - use bulk API:
     // PUT /v1/dataProducts/{name}/assets/add
@@ -219,6 +259,77 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
             ref.getId(), ref.getType(), List.of(dataProduct.getEntityReference()));
       }
     }
+    return result;
+  }
+
+  public BulkOperationResult bulkAddInputPorts(String dataProductName, BulkAssets request) {
+    return bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, true);
+  }
+
+  public BulkOperationResult bulkRemoveInputPorts(String dataProductName, BulkAssets request) {
+    return bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, false);
+  }
+
+  public BulkOperationResult bulkAddOutputPorts(String dataProductName, BulkAssets request) {
+    return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, true);
+  }
+
+  public BulkOperationResult bulkRemoveOutputPorts(String dataProductName, BulkAssets request) {
+    return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, false);
+  }
+
+  @Transaction
+  private BulkOperationResult bulkPortsOperation(
+      String dataProductName, BulkAssets request, Relationship relationship, boolean isAdd) {
+    DataProduct dataProduct = getByName(null, dataProductName, getFields("id"));
+    BulkOperationResult result =
+        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+    List<BulkResponse> success = new ArrayList<>();
+
+    // Validate and populate entity references - create mutable copy for sorting
+    List<EntityReference> assets = new ArrayList<>(listOrEmpty(request.getAssets()));
+    EntityUtil.populateEntityReferences(assets);
+
+    String fieldName = relationship == Relationship.INPUT_PORT ? "inputPorts" : "outputPorts";
+
+    for (EntityReference ref : assets) {
+      // Update Result Processed
+      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+
+      if (isAdd) {
+        addRelationship(
+            dataProduct.getId(), ref.getId(), DATA_PRODUCT, ref.getType(), relationship);
+      } else {
+        deleteRelationship(
+            dataProduct.getId(), DATA_PRODUCT, ref.getId(), ref.getType(), relationship);
+      }
+
+      success.add(new BulkResponse().withRequest(ref));
+      result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+
+      // Update ES for the data product
+      EntityLifecycleEventDispatcher.getInstance()
+          .onEntityUpdated(dataProduct.getEntityReference(), null);
+    }
+
+    result.withSuccessRequest(success);
+
+    // Create a Change Event on successful addition/removal of ports
+    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+      ChangeDescription change =
+          addBulkAddRemoveChangeDescription(dataProduct.getVersion(), isAdd, assets, null);
+      // Update field name from default "assets" to the port field name
+      if (!change.getFieldsAdded().isEmpty()) {
+        change.getFieldsAdded().get(0).setName(fieldName);
+      }
+      if (!change.getFieldsDeleted().isEmpty()) {
+        change.getFieldsDeleted().get(0).setName(fieldName);
+      }
+      ChangeEvent changeEvent =
+          getChangeEvent(dataProduct, change, DATA_PRODUCT, dataProduct.getVersion());
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    }
+
     return result;
   }
 
@@ -476,6 +587,34 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       // Assets cannot be updated via PUT/PATCH - use bulk APIs:
       // PUT /v1/dataProducts/{name}/assets/add
       // PUT /v1/dataProducts/{name}/assets/remove
+
+      // Track and update input/output port changes (stored as relationships)
+      updatePorts("inputPorts", Relationship.INPUT_PORT);
+      updatePorts("outputPorts", Relationship.OUTPUT_PORT);
+    }
+
+    private void updatePorts(String fieldName, Relationship relationship) {
+      List<EntityReference> origPorts =
+          fieldName.equals("inputPorts") ? original.getInputPorts() : original.getOutputPorts();
+      List<EntityReference> updatedPorts =
+          fieldName.equals("inputPorts") ? updated.getInputPorts() : updated.getOutputPorts();
+
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+      recordListChange(
+          fieldName, origPorts, updatedPorts, added, deleted, EntityUtil.entityReferenceMatch);
+
+      // Update relationships for deleted ports
+      for (EntityReference port : deleted) {
+        deleteRelationship(
+            original.getId(), Entity.DATA_PRODUCT, port.getId(), port.getType(), relationship);
+      }
+
+      // Update relationships for added ports
+      for (EntityReference port : added) {
+        addRelationship(
+            updated.getId(), port.getId(), Entity.DATA_PRODUCT, port.getType(), relationship);
+      }
     }
   }
 
@@ -538,8 +677,19 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
       variables.put(UPDATED_BY_VARIABLE, user);
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-      workflowHandler.resolveTask(
-          taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+      boolean workflowSuccess =
+          workflowHandler.resolveTask(
+              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+
+      // If workflow failed (corrupted Flowable task), apply the status directly
+      if (!workflowSuccess) {
+        LOG.warn(
+            "[GlossaryTerm] Workflow failed for taskId='{}', applying status directly", taskId);
+        Boolean approved = (Boolean) variables.get(RESULT_VARIABLE);
+        String entityStatus = (approved != null && approved) ? "Approved" : "Rejected";
+        EntityFieldUtils.setEntityField(
+            dataProduct, DATA_PRODUCT, user, FIELD_ENTITY_STATUS, entityStatus, true);
+      }
 
       return dataProduct;
     }

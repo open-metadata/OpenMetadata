@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TAG;
 
 import java.util.ArrayList;
@@ -8,6 +9,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.type.RecognizerException;
 import org.openmetadata.schema.type.RecognizerFeedback;
@@ -145,7 +148,21 @@ public class RecognizerFeedbackRepository {
 
       List<TagLabel> tagsToCheck = null;
 
-      if (arrayFieldName != null && fieldName != null) {
+      if (Entity.TABLE.equals(entityType) && Entity.FIELD_COLUMNS.equals(fieldName)) {
+        TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+        List<Column> results =
+            tableRepository
+                .getTableColumnsByFQN(
+                    entity.getFullyQualifiedName(), Integer.MAX_VALUE, 0, "tags", null, null, null)
+                .getData();
+
+        for (Column column : results) {
+          if (column.getName().equals(arrayFieldName)) {
+            tagsToCheck = column.getTags();
+            break;
+          }
+        }
+      } else if (arrayFieldName != null && fieldName != null) {
         String entityJson = JsonUtils.pojoToJson(entity);
         com.fasterxml.jackson.databind.JsonNode rootNode = JsonUtils.readTree(entityJson);
 
@@ -176,7 +193,7 @@ public class RecognizerFeedbackRepository {
                 .anyMatch(
                     tag ->
                         tag.getTagFQN().equals(tagFQN)
-                            && tag.getLabelType() == TagLabel.LabelType.AUTOMATED);
+                            && tag.getLabelType() == TagLabel.LabelType.GENERATED);
 
         if (!isAutoApplied) {
           throw new IllegalArgumentException(
@@ -218,8 +235,38 @@ public class RecognizerFeedbackRepository {
 
       boolean entityModified = false;
 
-      if (arrayFieldName != null) {
-        // Tag is on a nested field (columns, schemaFields, requestSchema, responseSchema, etc.)
+      if (Entity.TABLE.equals(entityType) && Entity.FIELD_COLUMNS.equals(fieldName)) {
+        TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+        List<Column> results =
+            tableRepository
+                .getTableColumnsByFQN(
+                    entity.getFullyQualifiedName(), Integer.MAX_VALUE, 0, "tags", null, null, null)
+                .getData();
+
+        originalEntity =
+            ((Table) originalEntity)
+                .withColumns(
+                    results.stream()
+                        .map(c -> JsonUtils.readValue(JsonUtils.pojoToJson(c), c.getClass()))
+                        .collect(Collectors.toList()));
+
+        for (Column column : results) {
+          if (column.getName().equals(arrayFieldName)) {
+            entityModified =
+                column
+                    .getTags()
+                    .removeIf(
+                        tag ->
+                            tag.getTagFQN().equals(tagFQN)
+                                && tag.getLabelType() == TagLabel.LabelType.GENERATED);
+            break;
+          }
+        }
+
+        entity = ((Table) entity).withColumns(results);
+
+      } else if (arrayFieldName != null) {
+        // Tag is on a nested field (schemaFields, requestSchema, responseSchema, etc.)
         // We need to handle this through JSON manipulation since we don't know the specific
         // structure
 
@@ -283,7 +330,7 @@ public class RecognizerFeedbackRepository {
                   .removeIf(
                       tag ->
                           tag.getTagFQN().equals(tagFQN)
-                              && tag.getLabelType() == TagLabel.LabelType.AUTOMATED);
+                              && tag.getLabelType() == TagLabel.LabelType.GENERATED);
         }
       }
 

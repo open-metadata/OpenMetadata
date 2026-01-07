@@ -158,6 +158,8 @@ import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.audit.AuditLogRecord;
+import org.openmetadata.service.audit.AuditLogRecordMapper;
 import org.openmetadata.service.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
@@ -454,6 +456,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   LLMServiceDAO llmServiceDAO();
+
+  @CreateSqlObject
+  AuditLogDAO auditLogDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -2202,7 +2207,10 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     void updateTaskId();
 
-    @SqlQuery("SELECT id FROM task_sequence LIMIT 1")
+    @ConnectionAwareSqlQuery(value = "SELECT LAST_INSERT_ID()", connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT id FROM task_sequence LIMIT 1",
+        connectionType = POSTGRES)
     int getTaskId();
 
     @SqlQuery("SELECT json FROM thread_entity WHERE taskId = :id")
@@ -4466,128 +4474,67 @@ public interface CollectionDAO {
       return "fqnHash";
     }
 
-    @Override
-    default int listCount(ListFilter filter) {
+    private Pair<String, String> buildTagQueryConditions(ListFilter filter) {
       String parent = filter.getQueryParam("parent");
+      boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
 
-      // If parent parameter is provided, filter tags by parent classification FQN
+      String baseJoin =
+          String.format(
+              "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s' "
+                  + "INNER JOIN classification c ON er.fromId=c.id",
+              CONTAINS.ordinal(), Entity.CLASSIFICATION);
+
+      StringBuilder mySqlCondition = new StringBuilder(baseJoin);
+      StringBuilder postgresCondition = new StringBuilder(baseJoin);
+
       if (parent != null) {
         String parentFqnHash = FullyQualifiedName.buildHash(parent);
         filter.queryParams.put("parentFqnPrefix", parentFqnHash + ".%");
-        String condition = filter.getCondition("tag");
-        if (!condition.isEmpty()) {
-          condition = String.format("%s AND fqnHash LIKE :parentFqnPrefix", condition);
-        } else {
-          condition = "WHERE fqnHash LIKE :parentFqnPrefix";
-        }
-        return listCount(
-            getTableName(), getNameHashColumn(), filter.getQueryParams(), condition, condition);
+        mySqlCondition.append(" AND tag.fqnHash LIKE :parentFqnPrefix");
+        postgresCondition.append(" AND tag.fqnHash LIKE :parentFqnPrefix");
       }
-
-      // Original behavior for classification.disabled parameter
-      boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
-      String condition =
-          String.format(
-              "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s'  "
-                  + "INNER JOIN classification c on er.fromId=c.id",
-              CONTAINS.ordinal(), Entity.CLASSIFICATION);
-      String mySqlCondition = condition;
-      String postgresCondition = condition;
 
       if (disabled) {
-        mySqlCondition =
-            String.format(
-                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = TRUE)",
-                mySqlCondition);
-        postgresCondition =
-            String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = TRUE)",
-                postgresCondition);
-      } else {
-        mySqlCondition =
-            String.format(
-                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = FALSE)",
-                mySqlCondition);
-        postgresCondition =
-            String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = FALSE)",
-                postgresCondition);
+        mySqlCondition.append(
+            " AND (JSON_EXTRACT(c.json, '$.disabled') = TRUE OR JSON_EXTRACT(tag.json, '$.disabled') = TRUE)");
+        postgresCondition.append(
+            " AND (COALESCE((c.json#>'{disabled}')::boolean, FALSE) = TRUE OR COALESCE((tag.json#>'{disabled}')::boolean, FALSE) = TRUE)");
+      } else if (filter.getQueryParam("classification.disabled") != null) {
+        mySqlCondition.append(
+            " AND (JSON_EXTRACT(c.json, '$.disabled') = FALSE AND JSON_EXTRACT(tag.json, '$.disabled') = FALSE)");
+        postgresCondition.append(
+            " AND (COALESCE((c.json#>'{disabled}')::boolean, FALSE) = FALSE AND COALESCE((tag.json#>'{disabled}')::boolean, FALSE) = FALSE)");
       }
 
-      mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
-      postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
+      String tagCondition = filter.getCondition("tag");
+      if (!tagCondition.isEmpty()) {
+        mySqlCondition.append(" ").append(tagCondition);
+        postgresCondition.append(" ").append(tagCondition);
+      }
+
+      return Pair.of(mySqlCondition.toString(), postgresCondition.toString());
+    }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      Pair<String, String> conditions = buildTagQueryConditions(filter);
       return listCount(
           getTableName(),
           getNameHashColumn(),
           filter.getQueryParams(),
-          mySqlCondition,
-          postgresCondition);
+          conditions.getLeft(),
+          conditions.getRight());
     }
 
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
-      String parent = filter.getQueryParam("parent");
-
-      // If parent parameter is provided, filter tags by parent classification FQN
-      if (parent != null) {
-        String parentFqnHash = FullyQualifiedName.buildHash(parent);
-        filter.queryParams.put("parentFqnPrefix", parentFqnHash + ".%");
-        String condition = filter.getCondition("tag");
-        if (!condition.isEmpty()) {
-          condition = String.format("%s AND fqnHash LIKE :parentFqnPrefix", condition);
-        } else {
-          condition = "WHERE fqnHash LIKE :parentFqnPrefix";
-        }
-        return listBefore(
-            getTableName(),
-            filter.getQueryParams(),
-            condition,
-            condition,
-            limit,
-            beforeName,
-            beforeId);
-      }
-
-      // Original behavior for classification.disabled parameter
-      boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
-      String condition =
-          String.format(
-              "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s'  "
-                  + "INNER JOIN classification c on er.fromId=c.id",
-              CONTAINS.ordinal(), Entity.CLASSIFICATION);
-
-      String mySqlCondition = condition;
-      String postgresCondition = condition;
-
-      if (disabled) {
-        mySqlCondition =
-            String.format(
-                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = TRUE)",
-                mySqlCondition);
-        postgresCondition =
-            String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean) = TRUE)",
-                postgresCondition);
-      } else {
-        mySqlCondition =
-            String.format(
-                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = FALSE)",
-                mySqlCondition);
-        postgresCondition =
-            String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = FALSE)",
-                postgresCondition);
-      }
-
-      mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
-      postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
-
+      Pair<String, String> conditions = buildTagQueryConditions(filter);
       return listBefore(
           getTableName(),
           filter.getQueryParams(),
-          mySqlCondition,
-          postgresCondition,
+          conditions.getLeft(),
+          conditions.getRight(),
           limit,
           beforeName,
           beforeId);
@@ -4595,66 +4542,12 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
-      String parent = filter.getQueryParam("parent");
-
-      // If parent parameter is provided, filter tags by parent classification FQN
-      if (parent != null) {
-        String parentFqnHash = FullyQualifiedName.buildHash(parent);
-        filter.queryParams.put("parentFqnPrefix", parentFqnHash + ".%");
-        String condition = filter.getCondition("tag");
-        if (!condition.isEmpty()) {
-          condition = String.format("%s AND fqnHash LIKE :parentFqnPrefix", condition);
-        } else {
-          condition = "WHERE fqnHash LIKE :parentFqnPrefix";
-        }
-        return listAfter(
-            getTableName(),
-            filter.getQueryParams(),
-            condition,
-            condition,
-            limit,
-            afterName,
-            afterId);
-      }
-
-      // Original behavior for classification.disabled parameter
-      boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
-      String condition =
-          String.format(
-              "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s'  "
-                  + "INNER JOIN classification c on er.fromId=c.id",
-              CONTAINS.ordinal(), Entity.CLASSIFICATION);
-
-      String mySqlCondition = condition;
-      String postgresCondition = condition;
-
-      if (disabled) {
-        mySqlCondition =
-            String.format(
-                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = TRUE)",
-                mySqlCondition);
-        postgresCondition =
-            String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean) = TRUE)",
-                postgresCondition);
-      } else {
-        mySqlCondition =
-            String.format(
-                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = FALSE)",
-                mySqlCondition);
-        postgresCondition =
-            String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = FALSE)",
-                postgresCondition);
-      }
-
-      mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
-      postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
+      Pair<String, String> conditions = buildTagQueryConditions(filter);
       return listAfter(
           getTableName(),
           filter.getQueryParams(),
-          mySqlCondition,
-          postgresCondition,
+          conditions.getLeft(),
+          conditions.getRight(),
           limit,
           afterName,
           afterId);
@@ -5157,11 +5050,15 @@ public interface CollectionDAO {
     @Transaction
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason)",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason) "
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason) "
+                + "ON DUPLICATE KEY UPDATE labelType = VALUES(labelType), state = VALUES(state), reason = VALUES(reason)",
         connectionType = MYSQL)
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason) ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason) "
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason) "
+                + "ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
         connectionType = POSTGRES)
     void applyTagsBatchInternal(
         @Bind("source") List<Integer> sources,
@@ -6246,6 +6143,30 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT count(*) FROM change_event")
     long listCount();
+
+    /** Record holding change event offset and JSON for cursor-based pagination. */
+    record ChangeEventRecord(long offset, String json) {}
+
+    /** Returns change events with their offset values for accurate cursor tracking. */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT `offset`, json FROM change_event WHERE `offset` > :afterOffset ORDER BY `offset` ASC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT \"offset\", json FROM change_event WHERE \"offset\" > :afterOffset ORDER BY \"offset\" ASC LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ChangeEventRecordMapper.class)
+    List<ChangeEventRecord> listWithOffset(
+        @Bind("limit") int limit, @Bind("afterOffset") long afterOffset);
+  }
+
+  class ChangeEventRecordMapper implements RowMapper<ChangeEventDAO.ChangeEventRecord> {
+    @Override
+    public ChangeEventDAO.ChangeEventRecord map(ResultSet rs, StatementContext ctx)
+        throws SQLException {
+      return new ChangeEventDAO.ChangeEventRecord(rs.getLong("offset"), rs.getString("json"));
+    }
   }
 
   class FailedEventResponseMapper implements RowMapper<FailedEventResponse> {
@@ -8889,5 +8810,78 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
+  }
+
+  @RegisterRowMapper(AuditLogRecordMapper.class)
+  interface AuditLogDAO {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO audit_log_event(change_event_id, event_ts, event_type, user_name, "
+                + "actor_type, impersonated_by, service_name, "
+                + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, created_at) "
+                + "VALUES (:changeEventId, :eventTs, :eventType, :userName, "
+                + ":actorType, :impersonatedBy, :serviceName, "
+                + ":entityType, :entityId, :entityFQN, :entityFQNHash, :eventJson, :createdAt) "
+                + "ON CONFLICT (change_event_id) DO NOTHING",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT IGNORE INTO audit_log_event(change_event_id, event_ts, event_type, user_name, "
+                + "actor_type, impersonated_by, service_name, "
+                + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, created_at) "
+                + "VALUES (:changeEventId, :eventTs, :eventType, :userName, "
+                + ":actorType, :impersonatedBy, :serviceName, "
+                + ":entityType, :entityId, :entityFQN, :entityFQNHash, :eventJson, :createdAt)",
+        connectionType = MYSQL)
+    void insert(@BindBean AuditLogRecord record);
+
+    @SqlQuery(
+        "SELECT id, change_event_id, event_ts, event_type, user_name, "
+            + "actor_type, impersonated_by, service_name, "
+            + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, created_at "
+            + "FROM audit_log_event <condition> <orderClause> LIMIT :limit")
+    List<AuditLogRecord> list(
+        @Define("condition") String condition,
+        @Define("orderClause") String orderClause,
+        @Bind("userName") String userName,
+        @Bind("actorType") String actorType,
+        @Bind("serviceName") String serviceName,
+        @Bind("entityType") String entityType,
+        @Bind("entityFQN") String entityFQN,
+        @Bind("entityFQNHASH") String entityFqnHash,
+        @Bind("eventType") String eventType,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs,
+        @Bind("afterEventTs") Long afterEventTs,
+        @Bind("afterId") Long afterId,
+        @Bind("limit") int limit);
+
+    @SqlQuery("SELECT COUNT(id) FROM audit_log_event <condition>")
+    int count(
+        @Define("condition") String condition,
+        @Bind("userName") String userName,
+        @Bind("actorType") String actorType,
+        @Bind("serviceName") String serviceName,
+        @Bind("entityType") String entityType,
+        @Bind("entityFQN") String entityFQN,
+        @Bind("entityFQNHASH") String entityFqnHash,
+        @Bind("eventType") String eventType,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM audit_log_event "
+                + "WHERE created_at < :cutoffTs ORDER BY created_at LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM audit_log_event "
+                + "WHERE ctid IN ( "
+                + "  SELECT ctid FROM audit_log_event "
+                + "  WHERE created_at < :cutoffTs ORDER BY created_at LIMIT :limit "
+                + ")",
+        connectionType = POSTGRES)
+    int deleteInBatches(@Bind("cutoffTs") long cutoffTs, @Bind("limit") int limit);
   }
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,6 +14,11 @@
  * Request schema for getting lineage with entity count based pagination
  */
 export interface EntityCountLineageRequest {
+    /**
+     * Filter lineage by specific column names. Use comma-separated list (e.g., 'col1,col2') to
+     * filter columns.
+     */
+    columnFilter?: string;
     /**
      * Direction of lineage traversal (upstream or downstream)
      */
@@ -47,6 +52,11 @@ export interface EntityCountLineageRequest {
      * -2), positive for downstream (1, 2), 0 for root entity
      */
     nodeDepth?: number;
+    /**
+     * Preserve all paths when applying node-level filters. When true, intermediate nodes that
+     * don't match filters are kept if they're part of a path to matching nodes.
+     */
+    preservePaths?: boolean;
     /**
      * Query Filter
      */

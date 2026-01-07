@@ -90,6 +90,17 @@ export const verifyColumnLayerInactive = async (page: Page) => {
 
 export const activateColumnLayer = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]');
+
+  const isColumnLayerSelected = await page
+    .locator('[data-testid="lineage-layer-column-btn"]')
+    .evaluate((el) => el.classList.contains('Mui-selected'));
+
+  if (isColumnLayerSelected) {
+    await clickOutside(page);
+
+    return;
+  }
+
   await page.click('[data-testid="lineage-layer-column-btn"]');
   await clickOutside(page);
 };
@@ -129,12 +140,12 @@ export const deleteEdge = async (
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
   await page
-    .locator(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`)
+    .getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`)
     .dispatchEvent('click');
 
-  await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
+  await page.getByTestId('add-pipeline').dispatchEvent('click');
 
-  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
+  await expect(page.getByRole('dialog').first()).toBeVisible();
 
   await page
     .locator(
@@ -259,7 +270,7 @@ export const performExpand = async (
     .getByTestId('plus-icon');
 
   if (newNode) {
-    const expandRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+    const expandRes = page.waitForResponse('/api/v1/lineage/getLineage/*?*');
     await expandBtn.click();
     await expandRes;
     await verifyNodePresent(page, newNode);
@@ -419,10 +430,9 @@ export const applyPipelineFromModal = async (
   );
 
   await page
-    .locator(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`)
-    .click({ force: true });
-
-  await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
+    .getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`)
+    .dispatchEvent('click');
+  await page.getByTestId('add-pipeline').dispatchEvent('click');
 
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*`
@@ -808,12 +818,15 @@ export const connectEdgeBetweenNodesViaAPI = (
 };
 
 export const toggleLineageFilters = async (page: Page, tableFqn: string) => {
-  const tableNode = page.locator(`[data-testid="lineage-node-${tableFqn}"]`);
+  await page
+    .getByTestId(`lineage-node-${tableFqn}`)
+    .getByTestId('lineage-filter-button')
+    .click();
+};
 
-  const tableFilterButton = tableNode.locator(
-    '[data-testid="lineage-filter-button"]'
-  );
-  await tableFilterButton.click();
-
-  await page.waitForTimeout(300);
+export const clickLineageNode = async (page: Page, nodeFqn: string) => {
+  await page
+    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .locator(`[data-testid="entity-header-display-name"]`)
+    .click();
 };

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -55,6 +55,7 @@ export enum Effect {
  */
 export enum Operation {
     All = "All",
+    AuditLogs = "AuditLogs",
     BulkCreate = "BulkCreate",
     BulkUpdate = "BulkUpdate",
     Create = "Create",

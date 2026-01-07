@@ -1081,6 +1081,43 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   };
 
+  const updateNodeData = useCallback(
+    (entityId: string, updatedEntity: Partial<SourceType>) => {
+      setNodes((prevNodes) =>
+        prevNodes.map((node) => {
+          if (node.id !== entityId) {
+            return node;
+          }
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              node: { ...node.data.node, ...updatedEntity },
+            },
+          };
+        })
+      );
+    },
+    [setNodes]
+  );
+
+  const handleEntityUpdate = useCallback(
+    (updatedEntity: Partial<SourceType>) => {
+      setSelectedNode((prev) => {
+        if (!prev?.id) {
+          return prev;
+        }
+
+        const entityId = updatedEntity.id ?? prev.id;
+        updateNodeData(entityId, updatedEntity);
+
+        return { ...prev, ...updatedEntity };
+      });
+    },
+    [updateNodeData]
+  );
+
   const onNodeClick = useCallback(
     (node: Node) => {
       if (!node) {
@@ -1122,12 +1159,23 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, []);
 
   const onLineageEditClick = useCallback(() => {
+    const hasColumnLayer = activeLayer.includes(
+      LineageLayer.ColumnLevelLineage
+    );
+
+    if (!isEditMode && !hasColumnLayer) {
+      setActiveLayer((pre) => uniq([LineageLayer.ColumnLevelLineage, ...pre]));
+    } else if (isEditMode) {
+      setTracedNodes([]);
+      setTracedColumns([]);
+    }
+
     setIsEditMode((pre) => !pre);
     setActiveNode(undefined);
     setSelectedNode({} as SourceType);
     setSelectedEdge(undefined);
     setIsDrawerOpen(false);
-  }, []);
+  }, [isEditMode, activeLayer]);
 
   const onInitReactFlow = (reactFlowInstance: ReactFlowInstance) => {
     setReactFlowInstance(reactFlowInstance);
@@ -2029,6 +2077,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               panelPath="lineage"
               pipelineViewMode={lineageConfig.pipelineViewMode}
               upstreamDepth={lineageConfig.upstreamDepth}
+              onEntityUpdate={handleEntityUpdate}
             />
           </Drawer>
         )}

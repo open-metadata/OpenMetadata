@@ -1,4 +1,3 @@
-/* eslint-disable no-case-declarations */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import {
   Button,
   Checkbox,
@@ -265,7 +263,11 @@ const AssetsTabs = forwardRef(
           if (assetCount === undefined) {
             setTotalAssetCount(res.hits.total.value ?? 0);
           }
-          hits[0] && setSelectedCard(hits[0]._source);
+          if (hits[0]) {
+            setSelectedCard(hits[0]._source);
+          } else {
+            setSelectedCard(undefined);
+          }
         } catch {
           // Nothing here
         } finally {
@@ -464,6 +466,13 @@ const AssetsTabs = forwardRef(
                 width={140}
               />
             }>
+            {searchValue && type !== AssetsOfEntity.MY_DATA && (
+              <div className="gap-4">
+                <Typography.Paragraph>
+                  {t('label.no-matching-data-asset')}
+                </Typography.Paragraph>
+              </div>
+            )}
             {isObject(noDataPlaceholder) && (
               <div className="gap-4">
                 <Typography.Paragraph>
@@ -731,12 +740,13 @@ const AssetsTabs = forwardRef(
 
         // If current page is already 1 it won't trigger fetchAssets from useEffect
         // Hence need to manually trigger it for this case
-        currentPage === 1 &&
+        if (currentPage === 1) {
           fetchAssets({
             index: [SearchIndex.ALL],
             page: 1,
             queryFilter: quickFilterQuery,
           });
+        }
       },
       closeSummaryPanel() {
         setSelectedCard(undefined);
@@ -774,9 +784,9 @@ const AssetsTabs = forwardRef(
               'h-full': totalAssetCount === 0,
             })}
             gutter={[0, 20]}>
-            {totalAssetCount > 0 && (
+            {(type === AssetsOfEntity.MY_DATA || totalAssetCount > 0) && (
               <>
-                <Col className="d-flex items-center gap-3" span={24}>
+                <Col className="d-flex gap-3" span={24}>
                   <Dropdown
                     menu={{
                       items: filterMenu,
