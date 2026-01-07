@@ -501,29 +501,37 @@ class DatalakeUnitTest(TestCase):
         )
         exp_df_obj = pd.DataFrame.from_records([sample_dict])
 
-        actual_df_1 = JSONDataFrameReader.read_from_json(
-            key="file.json", json_text=EXAMPLE_JSON_TEST_1, decode=True
-        )[0][0]
-        actual_df_2 = JSONDataFrameReader.read_from_json(
-            key="file.json", json_text=EXAMPLE_JSON_TEST_2, decode=True
-        )[0][0]
+        actual_df_1 = list(
+            JSONDataFrameReader.read_from_json(
+                key="file.json", json_text=EXAMPLE_JSON_TEST_1, decode=True
+            )[0]
+        )[0]
+        actual_df_2 = list(
+            JSONDataFrameReader.read_from_json(
+                key="file.json", json_text=EXAMPLE_JSON_TEST_2, decode=True
+            )[0]
+        )[0]
 
         assert actual_df_1.compare(exp_df_list).empty
         assert actual_df_2.compare(exp_df_obj).empty
 
         Column.__eq__ = custom_column_compare
 
-        actual_df_3 = JSONDataFrameReader.read_from_json(
-            key="file.json", json_text=EXAMPLE_JSON_TEST_3, decode=True
-        )[0][0]
+        actual_df_3 = list(
+            JSONDataFrameReader.read_from_json(
+                key="file.json", json_text=EXAMPLE_JSON_TEST_3, decode=True
+            )[0]
+        )[0]
         actual_cols_3 = GenericDataFrameColumnParser._get_columns(
             actual_df_3
         )  # pylint: disable=protected-access
         assert actual_cols_3 == EXAMPLE_JSON_COL_3
 
-        actual_df_4 = JSONDataFrameReader.read_from_json(
-            key="file.json", json_text=EXAMPLE_JSON_TEST_4, decode=True
-        )[0][0]
+        actual_df_4 = list(
+            JSONDataFrameReader.read_from_json(
+                key="file.json", json_text=EXAMPLE_JSON_TEST_4, decode=True
+            )[0]
+        )[0]
         actual_cols_4 = GenericDataFrameColumnParser._get_columns(
             actual_df_4
         )  # pylint: disable=protected-access
@@ -532,7 +540,7 @@ class DatalakeUnitTest(TestCase):
         actual_df_5, raw_data = JSONDataFrameReader.read_from_json(
             key="file.json", json_text=EXAMPLE_JSON_TEST_5, decode=True
         )
-        json_parser = JsonDataFrameColumnParser(actual_df_5[0], raw_data=raw_data)
+        json_parser = JsonDataFrameColumnParser(list(actual_df_5)[0], raw_data=raw_data)
         actual_cols_5 = json_parser.get_columns()
         assert actual_cols_5 == EXAMPLE_JSON_COL_5
 
