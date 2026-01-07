@@ -36,7 +36,7 @@ import {
   getEpochMillisForPastDays,
   getStartOfDayInMillis,
 } from '../utils/date-time/DateTimeUtils';
-import i18n, { t } from '../utils/i18next/LocalUtil';
+import { t } from '../utils/i18next/LocalUtil';
 import { BLUE_50, BLUE_500, BLUE_800, YELLOW_3 } from './Color.constants';
 
 export const PROFILER_METRIC = [
@@ -404,15 +404,15 @@ export const TEST_CASE_FILTERS_LABELS: Record<
   keyof typeof TEST_CASE_FILTERS,
   string
 > = {
-  table: i18n.t('label.table'),
-  platform: i18n.t('label.platform'),
-  type: i18n.t('label.type'),
-  status: i18n.t('label.status'),
-  lastRun: i18n.t('label.last-run'),
-  tier: i18n.t('label.tier'),
-  tags: i18n.t('label.tag-plural'),
-  service: i18n.t('label.service'),
-  dimension: i18n.t('label.dimension'),
+  table: t('label.table'),
+  platform: t('label.platform'),
+  type: t('label.type'),
+  status: t('label.status'),
+  lastRun: t('label.last-run'),
+  tier: t('label.tier'),
+  tags: t('label.tag-plural'),
+  service: t('label.service'),
+  dimension: t('label.dimension'),
 };
 
 export const TEST_CASE_PLATFORM_OPTION = values(TestPlatform).map((value) => ({
@@ -422,21 +422,21 @@ export const TEST_CASE_PLATFORM_OPTION = values(TestPlatform).map((value) => ({
 
 export const TEST_CASE_DIMENSION_LABELS: Record<DataQualityDimensions, string> =
   {
-    [DataQualityDimensions.Accuracy]: i18n.t('label.accuracy'),
-    [DataQualityDimensions.Completeness]: i18n.t('label.completeness'),
-    [DataQualityDimensions.Consistency]: i18n.t('label.consistency'),
-    [DataQualityDimensions.Integrity]: i18n.t('label.integrity'),
-    [DataQualityDimensions.NoDimension]: i18n.t('label.no-dimension'),
-    [DataQualityDimensions.SQL]: i18n.t('label.sql-uppercase'),
-    [DataQualityDimensions.Uniqueness]: i18n.t('label.uniqueness'),
-    [DataQualityDimensions.Validity]: i18n.t('label.validity'),
+    [DataQualityDimensions.Accuracy]: t('label.accuracy'),
+    [DataQualityDimensions.Completeness]: t('label.completeness'),
+    [DataQualityDimensions.Consistency]: t('label.consistency'),
+    [DataQualityDimensions.Integrity]: t('label.integrity'),
+    [DataQualityDimensions.NoDimension]: t('label.no-dimension'),
+    [DataQualityDimensions.SQL]: t('label.sql-uppercase'),
+    [DataQualityDimensions.Uniqueness]: t('label.uniqueness'),
+    [DataQualityDimensions.Validity]: t('label.validity'),
   };
 
 export const TEST_CASE_STATUS_LABELS: Record<TestCaseStatus, string> = {
-  [TestCaseStatus.Aborted]: i18n.t('label.aborted'),
-  [TestCaseStatus.Failed]: i18n.t('label.failed'),
-  [TestCaseStatus.Queued]: i18n.t('label.queued'),
-  [TestCaseStatus.Success]: i18n.t('label.success'),
+  [TestCaseStatus.Aborted]: t('label.aborted'),
+  [TestCaseStatus.Failed]: t('label.failed'),
+  [TestCaseStatus.Queued]: t('label.queued'),
+  [TestCaseStatus.Success]: t('label.success'),
 };
 
 export const TEST_CASE_DIMENSIONS_OPTION = values(DataQualityDimensions).map(
