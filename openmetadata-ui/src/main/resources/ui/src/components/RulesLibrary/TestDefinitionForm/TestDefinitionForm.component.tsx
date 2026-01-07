@@ -32,6 +32,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { CreateTestDefinition } from '../../../generated/api/tests/createTestDefinition';
 import {
@@ -117,6 +118,27 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
     <Drawer
       destroyOnClose
       open
+      closable={false}
+      extra={
+        <Button
+          className="drawer-close-icon flex-center"
+          icon={<CloseIcon />}
+          type="link"
+          onClick={onCancel}
+        />
+      }
+      footer={
+        <Space className="w-full justify-end">
+          <Button onClick={onCancel}>{t('label.cancel')}</Button>
+          <Button
+            data-testid="save-test-definition"
+            loading={isSubmitting}
+            type="primary"
+            onClick={handleSubmit}>
+            {t('label.save')}
+          </Button>
+        </Space>
+      }
       title={
         isEditMode
           ? t('label.edit-entity', { entity: t('label.test-definition') })
@@ -243,7 +265,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
               value: platform,
             }))}
             placeholder={t('label.select-field', {
-              field: t('label.test-platform'),
+              field: t('label.test-platform-plural'),
             })}
           />
         </Form.Item>
@@ -379,17 +401,6 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
             <Switch />
           </Form.Item>
         )}
-
-        <Space className="w-full justify-end m-t-lg">
-          <Button onClick={onCancel}>{t('label.cancel')}</Button>
-          <Button
-            data-testid="save-test-definition"
-            loading={isSubmitting}
-            type="primary"
-            onClick={handleSubmit}>
-            {t('label.save')}
-          </Button>
-        </Space>
       </Form>
     </Drawer>
   );

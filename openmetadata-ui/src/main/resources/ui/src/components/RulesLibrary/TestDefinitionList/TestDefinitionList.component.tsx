@@ -69,6 +69,7 @@ const TestDefinitionList = () => {
     handlePagingChange,
     handlePageChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
 
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
@@ -180,8 +181,14 @@ const TestDefinitionList = () => {
   );
 
   useEffect(() => {
-    fetchTestDefinitions();
-  }, []);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchTestDefinitions({ [cursorType]: cursorValue });
+    } else {
+      fetchTestDefinitions();
+    }
+  }, [pageSize, pagingCursor]);
 
   const handleEnableToggle = async (
     record: TestDefinition,
@@ -391,7 +398,7 @@ const TestDefinitionList = () => {
     cursorType,
     currentPage,
   }: PagingHandlerParams) => {
-    if (cursorType) {
+    if (cursorType && paging) {
       fetchTestDefinitions({
         [cursorType]: paging[cursorType],
         total: paging.total,
