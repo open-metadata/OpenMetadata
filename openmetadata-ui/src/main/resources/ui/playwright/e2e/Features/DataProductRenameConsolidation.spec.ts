@@ -21,6 +21,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
+  getApiContext,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
@@ -63,6 +64,10 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     await EntityDataClass.postRequisitesForTests(apiContext);
     await adminUser.delete(apiContext);
     await afterAction();
+  });
+
+  test.beforeEach('Navigate to home page', async ({ page }) => {
+    await redirectToHomePage(page);
   });
 
   /**
@@ -121,10 +126,10 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     await page.waitForLoadState('networkidle');
   }
 
-  test('Rename then update description - assets should be preserved', async ({ page, browser }) => {
+  test('Rename then update description - assets should be preserved', async ({ page }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await getApiContext(page);
 
     const testDataProduct = new DataProduct(
       [domain],
@@ -149,8 +154,6 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     let currentName = testDataProduct.responseData.name;
 
     try {
-      await redirectToHomePage(page);
-
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, testDataProduct.responseData);
 
@@ -214,10 +217,10 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     }
   });
 
-  test('Rename then add tags - assets should be preserved', async ({ page, browser }) => {
+  test('Rename then add tags - assets should be preserved', async ({ page }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await getApiContext(page);
 
     const testDataProduct = new DataProduct(
       [domain],
@@ -242,8 +245,6 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     let currentName = testDataProduct.responseData.name;
 
     try {
-      await redirectToHomePage(page);
-
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, testDataProduct.responseData);
 
@@ -307,10 +308,10 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     }
   });
 
-  test('Rename then change owner - assets should be preserved', async ({ page, browser }) => {
+  test('Rename then change owner - assets should be preserved', async ({ page }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await getApiContext(page);
 
     const testDataProduct = new DataProduct(
       [domain],
@@ -337,8 +338,6 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     let currentName = testDataProduct.responseData.name;
 
     try {
-      await redirectToHomePage(page);
-
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, testDataProduct.responseData);
 
@@ -423,10 +422,10 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     }
   });
 
-  test('Multiple rename + update cycles - assets should be preserved', async ({ page, browser }) => {
+  test('Multiple rename + update cycles - assets should be preserved', async ({ page }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await getApiContext(page);
 
     const testDataProduct = new DataProduct(
       [domain],
@@ -451,8 +450,6 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     let currentName = testDataProduct.responseData.name;
 
     try {
-      await redirectToHomePage(page);
-
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, testDataProduct.responseData);
 
