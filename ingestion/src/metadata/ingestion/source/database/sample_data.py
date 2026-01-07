@@ -62,6 +62,7 @@ from metadata.generated.schema.api.data.createTableProfile import (
 )
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.data.createWorksheet import CreateWorksheetRequest
+from metadata.generated.schema.api.docStore.createDocument import CreateDocumentRequest
 from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -111,6 +112,7 @@ from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.datacontract.dataContractResult import (
     DataContractResult,
 )
+from metadata.generated.schema.entity.docStore.document import Document
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
@@ -820,6 +822,28 @@ class SampleDataSource(
             logger.debug(f"Traceback: {traceback.format_exc()}")
             self.has_drive_data = False
 
+        # Load Knowledge Center sample articles (panels)
+        try:
+            logger.info(f"Loading knowledge panels from {sample_data_folder}/docStore/")
+            self.knowledge_panels = json.load(
+                open(
+                    sample_data_folder + "/docStore/knowledgePanels.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+            logger.info(
+                f"Successfully loaded {len(self.knowledge_panels.get('documents', []))} knowledge panel documents"
+            )
+        except FileNotFoundError:
+            logger.warning("Knowledge panel sample data file not found, skipping...")
+            self.knowledge_panels = {"documents": []}
+        except Exception as exc:
+            logger.warning(f"Failed to load knowledge panels: {exc}")
+            logger.debug(f"Traceback: {traceback.format_exc()}")
+            self.knowledge_panels = {"documents": []}
+
+
     @classmethod
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
@@ -841,6 +865,7 @@ class SampleDataSource(
         yield from self.ingest_teams()
         yield from self.ingest_users()
         yield from self.ingest_drives()
+        yield from self.ingest_knowledge_panels()
         yield from self.ingest_tables()
         self.ingest_tables_sample_data()
         yield from self.ingest_glue()
@@ -1247,6 +1272,30 @@ class SampleDataSource(
                 logger.warning(
                     f"Failed to create worksheet {worksheet_data['name']}: {e}"
                 )
+
+    def ingest_knowledge_panels(self) -> Iterable[Either[Entity]]:
+        """Ingest Knowledge Center for tables"""
+        for doc in self.knowledge_panels.get("documents", []):
+            try:
+                document_request = CreateDocumentRequest(
+                    name=doc["name"],
+                    fullyQualifiedName=doc["fullyQualifiedName"],
+                    displayName=doc.get("displayName"),
+                    entityType=doc["entityType"],
+                    description=doc.get("description"),
+                    data=doc.get("data", {})
+                )
+
+                yield Either(right=document_request)
+
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error creating knowledge panel {doc.get('name')}: {exc}")
+                yield Either(left=StackTraceError(
+                    name=doc.get("name", "unknown"),
+                    error=f"Failed to create knowledge panel: {exc}",
+                    stackTrace=traceback.format_exc()
+                ))
 
     def ingest_mysql(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Data for mysql database source including ER diagrams metadata"""
