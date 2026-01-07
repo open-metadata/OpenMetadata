@@ -616,11 +616,11 @@ test.describe('Multiple Subdomains Tests', () => {
       await subDomain2.create(apiContext);
 
       // Create data product under subdomain1
-      const dp1 = new DataProduct([], `PW-DP-Sub1-${uuid()}`, [subDomain1]);
+      const dp1 = new DataProduct([], undefined, [subDomain1]);
       await dp1.create(apiContext);
 
       // Create data product under subdomain2
-      const dp2 = new DataProduct([], `PW-DP-Sub2-${uuid()}`, [subDomain2]);
+      const dp2 = new DataProduct([], undefined, [subDomain2]);
       await dp2.create(apiContext);
 
       // Verify dp1 shows subdomain1
@@ -707,7 +707,7 @@ test.describe('Multiple Subdomains Tests', () => {
       await subDomain.create(apiContext);
 
       // Create data product under subdomain
-      const dp = new DataProduct([], `PW-DP-Delete-${uuid()}`, [subDomain]);
+      const dp = new DataProduct([], undefined, [subDomain]);
       await dp.create(apiContext);
 
       // Navigate to subdomain
@@ -797,10 +797,10 @@ test.describe('Data Product Search and Filter', () => {
       await domain1.create(apiContext);
       await domain2.create(apiContext);
 
-      const dp1 = new DataProduct([domain1], `DP-Domain1-${uuid()}`);
+      const dp1 = new DataProduct([domain1]);
       await dp1.create(apiContext);
 
-      const dp2 = new DataProduct([domain2], `DP-Domain2-${uuid()}`);
+      const dp2 = new DataProduct([domain2]);
       await dp2.create(apiContext);
 
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);

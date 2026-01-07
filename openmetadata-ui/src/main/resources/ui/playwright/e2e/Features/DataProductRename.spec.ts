@@ -383,14 +383,8 @@ test.describe('Data Product Rename', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     // Create two data products for this test
-    const dataProduct1 = new DataProduct(
-      [domain],
-      `PW_DP_DuplicateTest1_${uuid()}`
-    );
-    const dataProduct2 = new DataProduct(
-      [domain],
-      `PW_DP_DuplicateTest2_${uuid()}`
-    );
+    const dataProduct1 = new DataProduct([domain]);
+    const dataProduct2 = new DataProduct([domain]);
 
     await dataProduct1.create(apiContext);
     await dataProduct2.create(apiContext);
