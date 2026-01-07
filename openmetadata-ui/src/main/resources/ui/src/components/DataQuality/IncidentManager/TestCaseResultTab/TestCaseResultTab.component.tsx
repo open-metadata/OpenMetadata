@@ -455,16 +455,18 @@ const TestCaseResultTab = () => {
           </Col>
 
           {!isUndefined(withSqlParams) && !isVersionPage ? (
-            <Col>
+            <Col span={24}>
               {withSqlParams.map((param) => (
-                <Row
+                <div
                   className="sql-expression-container"
                   data-testid="sql-expression-container"
-                  gutter={[8, 8]}
                   key={param.name}>
-                  <Col span={24}>
+                  <Space
+                    direction="vertical"
+                    size="small"
+                    style={{ width: '100%' }}>
                     <Space align="center" size={8}>
-                      <Typography.Text className="right-panel-label">
+                      <Typography.Text className="parameter-title">
                         {startCase(param.name)}
                       </Typography.Text>
                       {hasEditPermission && (
@@ -479,8 +481,6 @@ const TestCaseResultTab = () => {
                         />
                       )}
                     </Space>
-                  </Col>
-                  <Col span={24}>
                     <SchemaEditor
                       className="custom-code-mirror-theme query-editor-min-h-60"
                       editorClass="table-query-editor"
@@ -491,8 +491,8 @@ const TestCaseResultTab = () => {
                       }}
                       value={param.value ?? ''}
                     />
-                  </Col>
-                </Row>
+                  </Space>
+                </div>
               ))}
             </Col>
           ) : null}
