@@ -839,6 +839,7 @@ export const fillColumnDetails = async (
   await fillTagDetails(page, row.tag);
 
   await page.keyboard.press('ArrowRight', { delay: 100 });
+
   await fillGlossaryTermDetails(page, row.glossary);
 };
 

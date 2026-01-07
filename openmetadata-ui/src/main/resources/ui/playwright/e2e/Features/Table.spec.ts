@@ -145,7 +145,9 @@ test.describe('Table pagination sorting search scenarios ', () => {
   }) => {
     await table1.visitEntityPage(page);
 
-    await expect(page.getByRole('tab', { name: 'Columns' })).toContainText('4');
+    const count = table1.entity.columns.length;
+
+    await expect(page.getByRole('tab', { name: 'Columns' })).toContainText(`${count}`);
   });
 
   test('should persist current page', async ({ dataConsumerPage: page }) => {
