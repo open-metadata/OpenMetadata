@@ -1192,11 +1192,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     int count =
         daoCollection
             .glossaryTermDAO()
-            .getGlossaryTermCountIgnoreCase(entity.getGlossary().getName(), entity.getName());
+            .getGlossaryTermCountIgnoreCase(
+                entity.getGlossary().getFullyQualifiedName(), entity.getName());
     if (count > 0) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.duplicateGlossaryTerm(
-              entity.getName(), entity.getGlossary().getName()));
+              entity.getName(), entity.getGlossary().getFullyQualifiedName()));
     }
   }
 
@@ -1206,11 +1207,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           daoCollection
               .glossaryTermDAO()
               .getGlossaryTermCountIgnoreCaseExcludingId(
-                  updated.getGlossary().getName(), updated.getName(), original.getId().toString());
+                  updated.getGlossary().getFullyQualifiedName(),
+                  updated.getName(),
+                  original.getId().toString());
       if (count > 0) {
         throw new IllegalArgumentException(
             CatalogExceptionMessage.duplicateGlossaryTerm(
-                updated.getName(), updated.getGlossary().getName()));
+                updated.getName(), updated.getGlossary().getFullyQualifiedName()));
       }
     }
   }
