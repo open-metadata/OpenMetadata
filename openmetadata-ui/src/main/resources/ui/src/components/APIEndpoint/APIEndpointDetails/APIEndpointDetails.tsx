@@ -318,8 +318,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
                   ({ ...field, tags: field.tags ?? [] } as unknown as Column)
               ),
             ],
-            tableFqn: apiEndpointDetails.fullyQualifiedName ?? '',
-            entityType: EntityType.API_ENDPOINT,
             onColumnsChange: async (updatedColumns) => {
               // Determine which schema the updated columns belong to
               const requestFields = updatedColumns.filter((col) =>

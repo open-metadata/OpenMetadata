@@ -280,8 +280,6 @@ const DataModelDetails = ({
                   tags: column.tags ?? [],
                 } as unknown as TableColumn)
             ),
-            tableFqn: dataModelData?.fullyQualifiedName ?? '',
-            entityType: EntityType.DASHBOARD_DATA_MODEL,
             onColumnsChange: async (updatedColumns) => {
               const updatedDataModel: DashboardDataModel = {
                 ...dataModelData,

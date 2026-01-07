@@ -465,8 +465,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             columns: (topicDetails.messageSchema?.schemaFields ?? []).map(
               (field) => field as unknown as Column
             ),
-            tableFqn: decodedTopicFQN,
-            entityType: EntityType.TOPIC,
             onColumnsChange: async (updatedColumns) => {
               await handleSchemaFieldsUpdate({
                 ...topicDetails.messageSchema,

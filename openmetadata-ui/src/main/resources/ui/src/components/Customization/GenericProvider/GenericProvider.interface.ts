@@ -13,8 +13,7 @@
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { DataAssetRuleValidation } from '../../../context/RuleEnforcementProvider/RuleEnforcementProvider.interface';
-import { EntityType } from '../../../enums/entity.enum';
-import { Column, TableConstraint } from '../../../generated/entity/data/table';
+import { Column } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { Page } from '../../../generated/system/ui/page';
@@ -26,9 +25,6 @@ import {
 
 export interface ColumnDetailPanelConfig<C extends ColumnOrTask = Column> {
   columns: C[];
-  tableFqn?: string;
-  tableConstraints?: TableConstraint[];
-  entityType?: EntityType;
   onColumnsChange?: (columns: C[]) => void;
   onColumnFieldUpdate?: (
     fqn: string,

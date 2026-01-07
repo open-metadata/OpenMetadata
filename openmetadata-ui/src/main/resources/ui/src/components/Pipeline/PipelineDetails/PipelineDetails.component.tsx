@@ -401,8 +401,6 @@ const PipelineDetails = ({
               (task) =>
                 ({ ...task, tags: task.tags ?? [] } as unknown as Column)
             ),
-            tableFqn: pipelineDetails.fullyQualifiedName ?? '',
-            entityType: EntityType.PIPELINE,
             onColumnsChange: async (updatedColumns) => {
               await settingsUpdateHandler({
                 ...pipelineDetails,

@@ -854,9 +854,6 @@ const TableDetailsPageV1: React.FC = () => {
           columns: (tableDetails?.columns ?? []).map(
             (column) => ({ ...column, tags: column.tags ?? [] } as Column)
           ),
-          tableFqn: tableFqn ?? '',
-          tableConstraints: tableDetails?.tableConstraints,
-          entityType: EntityType.TABLE,
           onColumnsChange: async (updatedColumns) => {
             const updatedTable: Table = {
               ...tableDetails,

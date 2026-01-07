@@ -655,8 +655,6 @@ const ContainerPage = () => {
                   tags: column.tags ?? [],
                 } as unknown as TableColumn)
             ),
-            tableFqn: containerData?.fullyQualifiedName ?? '',
-            entityType: EntityType.CONTAINER,
             onColumnsChange: async (updatedColumns) => {
               const updatedContainer: Container = {
                 ...containerData,

@@ -24,9 +24,9 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
-import { EntityTabs } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
-import { Column } from '../../../generated/entity/data/table';
+import { Column, Table } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { useEntityRules } from '../../../hooks/useEntityRules';
@@ -303,11 +303,15 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
           allColumns={columnDetailPanelConfig.columns}
           column={selectedColumn as Column}
           deleted={deleted}
-          entityType={columnDetailPanelConfig.entityType}
+          entityType={type}
           isOpen={isColumnDetailOpen}
           permissions={permissions}
-          tableConstraints={columnDetailPanelConfig.tableConstraints}
-          tableFqn={columnDetailPanelConfig.tableFqn}
+          tableConstraints={
+            type === EntityType.TABLE
+              ? (data as unknown as Table).tableConstraints
+              : undefined
+          }
+          tableFqn={data.fullyQualifiedName}
           onClose={closeColumnDetailPanel}
           onColumnFieldUpdate={columnDetailPanelConfig.onColumnFieldUpdate}
           onColumnUpdate={handleColumnUpdate}

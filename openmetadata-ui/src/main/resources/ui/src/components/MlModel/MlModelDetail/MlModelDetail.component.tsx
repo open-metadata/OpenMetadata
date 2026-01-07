@@ -449,8 +449,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             columns: (mlModelDetail.mlFeatures ?? []).map(
               (feature) => feature as unknown as Column
             ),
-            tableFqn: decodedMlModelFqn,
-            entityType: EntityType.MLMODEL,
             onColumnsChange: async (updatedColumns) => {
               await onMlModelUpdate({
                 ...mlModelDetail,

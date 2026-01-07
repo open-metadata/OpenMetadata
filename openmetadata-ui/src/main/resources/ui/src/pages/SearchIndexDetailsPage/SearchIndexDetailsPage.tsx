@@ -627,8 +627,6 @@ function SearchIndexDetailsPage() {
               (field) =>
                 ({ ...field, tags: field.tags ?? [] } as unknown as Column)
             ),
-            tableFqn: searchIndexDetails.fullyQualifiedName ?? '',
-            entityType: EntityType.SEARCH_INDEX,
             onColumnsChange: async (updatedColumns) => {
               const updatedSearchIndex = {
                 ...searchIndexDetails,
