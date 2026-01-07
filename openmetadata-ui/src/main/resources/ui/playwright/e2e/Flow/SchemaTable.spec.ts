@@ -175,3 +175,34 @@ test('Schema Table Pagination should work Properly', async ({ page }) => {
 
   await expect(page.getByTestId('page-indicator')).toContainText('1');
 });
+
+test('Copy column link button should copy the column URL to clipboard', async ({
+  page,
+  context,
+}) => {
+  // Grant clipboard permissions
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
+  await table.visitEntityPage(page);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  // Wait for the schema table to load
+  await expect(page.getByTestId('entity-table')).toBeVisible();
+
+  // Find the first copy column link button
+  const copyButton = page.getByTestId('copy-column-link-button').first();
+  await expect(copyButton).toBeVisible();
+
+  // Click the copy button
+  await copyButton.click();
+
+  // Verify the clipboard contains the correct URL
+  const clipboardText = await page.evaluate(() =>
+    navigator.clipboard.readText()
+  );
+
+  // The clipboard should contain a URL with the column's FQN
+  expect(clipboardText).toContain('/table/');
+  expect(clipboardText).toContain(table.entity.fullyQualifiedName);
+});

@@ -21,6 +21,7 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
@@ -70,6 +71,7 @@ import {
   highlightSearchText,
 } from '../../../utils/EntityUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -109,6 +111,7 @@ const SchemaTable = () => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
   const [editColumn, setEditColumn] = useState<Column>();
+  const [copiedColumnFqn, setCopiedColumnFqn] = useState<string>();
 
   const {
     currentPage,
@@ -445,6 +448,37 @@ const SchemaTable = () => {
     setEditColumnDisplayName(record);
   };
 
+  const getColumnLink = useCallback((columnFqn: string) => {
+    const columnPath = getEntityDetailsPath(EntityType.TABLE, columnFqn);
+
+    return `${window.location.origin}${columnPath}`;
+  }, []);
+
+  const handleCopyColumnLink = useCallback(
+    async (columnFqn: string) => {
+      const columnLink = getColumnLink(columnFqn);
+      try {
+        await navigator.clipboard.writeText(columnLink);
+        setCopiedColumnFqn(columnFqn);
+        setTimeout(() => setCopiedColumnFqn(undefined), 2000);
+      } catch {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = columnLink;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        setCopiedColumnFqn(columnFqn);
+        setTimeout(() => setCopiedColumnFqn(undefined), 2000);
+      }
+    },
+    [getColumnLink]
+  );
+
   const handleEditColumnData = async (data: EntityName) => {
     const { displayName, constraint } = data as EntityNameWithAdditionFields;
     if (
@@ -540,6 +574,31 @@ const SchemaTable = () => {
                   </Button>
                 </Tooltip>
               )}
+
+              <Tooltip
+                placement="right"
+                title={
+                  copiedColumnFqn === record.fullyQualifiedName
+                    ? t('message.link-copy-to-clipboard')
+                    : t('label.copy-item', { item: t('label.url-uppercase') })
+                }>
+                <Button
+                  className="cursor-pointer hover-cell-icon w-fit-content"
+                  data-testid="copy-column-link-button"
+                  style={{
+                    color: DE_ACTIVE_COLOR,
+                    padding: 0,
+                    border: 'none',
+                    background: 'transparent',
+                  }}
+                  onClick={() =>
+                    handleCopyColumnLink(record.fullyQualifiedName ?? '')
+                  }>
+                  <ShareIcon
+                    style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                  />
+                </Button>
+              </Tooltip>
             </div>
           );
         },
@@ -629,8 +688,11 @@ const SchemaTable = () => {
       tableConstraints,
       editTagsPermission,
       editGlossaryTermsPermission,
+      editDisplayNamePermission,
       handleUpdate,
       handleTagSelection,
+      handleCopyColumnLink,
+      copiedColumnFqn,
       renderDataTypeDisplay,
       renderDescription,
       handleTagSelection,
