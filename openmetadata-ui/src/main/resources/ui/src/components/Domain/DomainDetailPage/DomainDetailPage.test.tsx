@@ -15,6 +15,7 @@ import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { DOMAINS_LIST } from '../../../mocks/Domains.mock';
 import { getDomainByName } from '../../../rest/domainAPI';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DomainDetailPage from './DomainDetailPage.component';
 
 // Mock i18n to prevent 'add' method error
@@ -50,6 +51,10 @@ jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn(() => ({ fqn: 'test-domain' })),
 }));
 
+jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
 const mockGetDomainByName = getDomainByName as jest.MockedFunction<
   typeof getDomainByName
 >;
@@ -62,7 +67,7 @@ describe('DomainDetailPage', () => {
   it('should render domain detail page', async () => {
     const { container } = render(
       <MemoryRouter>
-        <DomainDetailPage pageTitle="Domains" />
+        <DomainDetailPage />
       </MemoryRouter>
     );
 
@@ -85,11 +90,30 @@ describe('DomainDetailPage', () => {
 
     const { container } = render(
       <MemoryRouter>
-        <DomainDetailPage pageTitle="Domains" />
+        <DomainDetailPage />
       </MemoryRouter>
     );
 
     // Component should render even without FQN (it may redirect or show error)
     expect(container).toBeInTheDocument();
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    render(
+      <MemoryRouter>
+        <DomainDetailPage />
+      </MemoryRouter>
+    );
+
+    // Wait for the domain to be fetched
+    expect(mockGetDomainByName).toHaveBeenCalled();
+
+    // Verify pageTitle is passed
+    expect(PageLayoutV1).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageTitle: DOMAINS_LIST[0].name,
+      }),
+      expect.anything()
+    );
   });
 });
