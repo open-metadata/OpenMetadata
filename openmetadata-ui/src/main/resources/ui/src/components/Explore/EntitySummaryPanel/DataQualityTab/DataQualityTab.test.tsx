@@ -25,6 +25,17 @@ import { DataQualityTest } from '../../../common/DataQualitySection/DataQualityS
 import DataQualityTab from './DataQualityTab';
 import { MockTabItem, TranslationOptions } from './DataQualityTab.interface';
 
+// Mock react-router-dom
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  Link: jest.fn().mockImplementation(({ children, to, ...props }) => (
+    <a data-testid="router-link" href={to} {...props}>
+      {children}
+    </a>
+  )),
+}));
+
+// Mock react-i18next
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
     t: (key: string, options?: TranslationOptions) => {

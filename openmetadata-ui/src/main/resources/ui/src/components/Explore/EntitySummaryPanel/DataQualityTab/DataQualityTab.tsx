@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Divider, Link } from '@mui/material';
+import { Divider } from '@mui/material';
 import { Card, Col, Row, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -216,10 +217,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
             <Link
               className="test-case-name"
               data-testid={`test-case-${testCaseName}`}
-              href={getTestCaseDetailPagePath(
-                testCase.fullyQualifiedName ?? ''
-              )}
-              target="_blank">
+              to={getTestCaseDetailPagePath(testCase.fullyQualifiedName ?? '')}>
               {testCaseName}
             </Link>
           </div>

@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Box, Link, useTheme } from '@mui/material';
+import { Box, useTheme } from '@mui/material';
 import { Tooltip } from 'antd';
+import { Link } from 'react-router-dom';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -85,8 +86,7 @@ export const EntityTitleSection = ({
             </Box>
             <Link
               data-testid={testId}
-              href={linkHref}
-              sx={{
+              style={{
                 flex: 1,
                 minWidth: 0,
                 overflow: 'hidden',
@@ -98,11 +98,8 @@ export const EntityTitleSection = ({
                 textDecoration: 'none',
                 color: theme.palette.allShades.blue[700],
                 display: 'block',
-                '& .text-highlighter': {
-                  color: theme.palette.allShades.blue[700],
-                },
               }}
-              underline="hover">
+              to={linkHref}>
               {stringToHTML(entityName)}
             </Link>
           </Box>

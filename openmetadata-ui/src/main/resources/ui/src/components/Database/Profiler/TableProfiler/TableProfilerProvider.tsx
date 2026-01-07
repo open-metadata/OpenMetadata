@@ -172,14 +172,14 @@ export const TableProfilerProvider = ({
               .toLocaleString(DateTime.DATE_MED)
           : '--',
         extra: profile?.timestamp
-          ? `Last updated: ${DateTime.fromJSDate(
+          ? `${t('label.last-updated')}: ${DateTime.fromJSDate(
               new Date(profile?.timestamp)
             ).toLocaleString(DateTime.DATETIME_MED)}`
           : undefined,
         icon: CreatedDateIcon,
       },
     ];
-  }, [tableProfiler]);
+  }, [tableProfiler, t]);
 
   const handleOpenTestCaseDrawer = (type: TestLevel) => {
     setIsTestCaseDrawerOpen(true);

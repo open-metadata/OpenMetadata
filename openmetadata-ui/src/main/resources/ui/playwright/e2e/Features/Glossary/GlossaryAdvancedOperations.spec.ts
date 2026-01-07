@@ -19,10 +19,12 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import {
+  assignSingleSelectDomain,
   clickOutside,
   descriptionBox,
   getApiContext,
   redirectToHomePage,
+  removeSingleSelectDomain,
 } from '../../../utils/common';
 import { addMultiOwner } from '../../../utils/entity';
 import {
@@ -341,80 +343,8 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      // Add domain via UI first
-      await page.getByTestId('add-domain').click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      const searchDomain = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes(encodeURIComponent(domain.responseData.name))
-      );
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .fill(domain.responseData.name);
-      await searchDomain;
-
-      const domainTag = page.getByTestId(
-        `tag-${domain.responseData.fullyQualifiedName}`
-      );
-
-      await expect(domainTag).toBeVisible();
-
-      const addPatchReq = page.waitForResponse(
-        (req) => req.request().method() === 'PATCH'
-      );
-      await domainTag.click();
-      await addPatchReq;
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      // Verify domain is visible
-      await expect(page.getByTestId('domain-link')).toContainText(
-        domain.data.displayName
-      );
-
-      // Click on domain to edit/remove
-      await page.getByTestId('add-domain').click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
-        state: 'visible',
-      });
-
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .fill(domain.responseData.name);
-        
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      // Click on the selected domain again to deselect/remove it
-      const removePatchReq = page.waitForResponse(
-        (req) => req.request().method() === 'PATCH'
-      );
-      // The domain is already selected (highlighted), clicking it again removes it
-      const selectedDomainTag = page.getByTestId(
-        `tag-${domain.responseData.fullyQualifiedName}`
-      );
-      await expect(selectedDomainTag).toBeVisible();
-      await selectedDomainTag.click();
-      await removePatchReq;
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      // Verify domain is removed - "No Domains" text should be visible
-      await expect(page.getByTestId('no-domain-text')).toContainText(
-        'No Domains'
-      );
+      await assignSingleSelectDomain(page, domain.responseData);
+      await removeSingleSelectDomain(page, domain.responseData, false);
     } finally {
       await glossary.delete(apiContext);
       await domain.delete(apiContext);
