@@ -63,10 +63,9 @@ class ParquetDataFrameReader(DataFrameReader):
             parquet_file: PyArrow ParquetFile or similar object
             batch_size: Number of rows to read per batch
 
-        Returns:
-            List of DataFrame chunks
+        Yields:
+            DataFrame chunks
         """
-        chunks = []
         batch_count = 0
 
         try:
@@ -78,13 +77,13 @@ class ParquetDataFrameReader(DataFrameReader):
                 for batch in parquet_file.iter_batches(batch_size=batch_size):
                     df_batch = batch.to_pandas()
                     if not df_batch.empty:
-                        chunks.extend(dataframe_to_chunks(df_batch))
+                        yield from dataframe_to_chunks(df_batch)
                         batch_count += 1
 
                 logger.info(
                     f"Successfully processed {batch_count} batches from large parquet file"
                 )
-                return chunks
+                return
 
             # Method 2: Row group reading (PyArrow >= 0.15.0)
             elif hasattr(parquet_file, "num_row_groups") and hasattr(
@@ -101,26 +100,25 @@ class ParquetDataFrameReader(DataFrameReader):
                         if not df_chunk.empty:
                             # Further chunk if row group is still too large
                             if len(df_chunk) > batch_size:
-                                chunks.extend(dataframe_to_chunks(df_chunk))
+                                yield from dataframe_to_chunks(df_chunk)
                             else:
-                                chunks.append(df_chunk)
+                                yield df_chunk
                             batch_count += 1
                     except Exception as row_exc:
                         logger.warning(f"Failed to read row group {i}: {row_exc}")
                         continue
 
-                if chunks:
-                    logger.info(
-                        f"Successfully processed {batch_count} row groups from large parquet file"
-                    )
-                    return chunks
+                logger.info(
+                    f"Successfully processed {batch_count} row groups from large parquet file"
+                )
+                return
 
             # Method 3: Regular reading (final fallback)
             logger.warning(
                 "No chunking methods available, falling back to regular reading"
             )
             df = parquet_file.read().to_pandas()
-            chunks.extend(dataframe_to_chunks(df))
+            yield from dataframe_to_chunks(df)
 
         except Exception as exc:
             # If all chunking fails, try regular reading as final fallback
@@ -129,12 +127,10 @@ class ParquetDataFrameReader(DataFrameReader):
             )
             try:
                 df = parquet_file.read().to_pandas()
-                chunks.extend(dataframe_to_chunks(df))
+                yield from dataframe_to_chunks(df)
             except Exception as fallback_exc:
                 logger.error(f"Failed to read parquet file: {fallback_exc}")
                 raise fallback_exc
-
-        return chunks
 
     @singledispatchmethod
     def _read_parquet_dispatch(
@@ -247,7 +243,8 @@ class ParquetDataFrameReader(DataFrameReader):
     @_read_parquet_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         import pandas as pd  # pylint: disable=import-outside-toplevel
-        import pyarrow.fs as fs
+        from adlfs import AzureBlobFileSystem
+        from pyarrow.fs import FSSpecHandler, PyFileSystem
         from pyarrow.parquet import ParquetFile
 
         storage_options = return_azure_storage_options(self.config_source)
@@ -259,18 +256,19 @@ class ParquetDataFrameReader(DataFrameReader):
 
         # Check file size to determine reading strategy
         try:
-            # Try to get file size from Azure
-            azure_fs = fs.SubTreeFileSystem(
-                account_url, fs.AzureFileSystem(**storage_options)
+            # Use adlfs (fsspec-based) filesystem which supports service principal auth
+            adlfs_fs = AzureBlobFileSystem(
+                account_name=self.config_source.securityConfig.accountName,
+                **storage_options,
             )
-            file_info = azure_fs.get_file_info("/")
-            file_size = file_info.size if hasattr(file_info, "size") else 0
+            file_path = f"{bucket_name}/{key}"
+            file_info = adlfs_fs.info(file_path)
+            file_size = file_info.get("size", 0)
 
             if self._should_use_chunking(file_size):
-                # Use PyArrow ParquetFile for batched reading of large files
-                parquet_file = ParquetFile(
-                    account_url, filesystem=fs.AzureFileSystem(**storage_options)
-                )
+                # Wrap adlfs filesystem for PyArrow compatibility
+                arrow_fs = PyFileSystem(FSSpecHandler(adlfs_fs))
+                parquet_file = ParquetFile(file_path, filesystem=arrow_fs)
                 return self._read_parquet_in_batches(parquet_file)
             else:
                 # Use pandas for regular reading of smaller files

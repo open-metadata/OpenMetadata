@@ -315,14 +315,14 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             ),
             fetch_raw_data=True,
         )
-        columns = []
-        column_parser = DataFrameColumnParser.create(
-            data_structure_details,
-            SupportedTypes(metadata_entry.structureFormat),
-            raw_data=raw_data,
-        )
-        columns = column_parser.get_columns()
-        return columns
+        if data_structure_details:
+            column_parser = DataFrameColumnParser.create(
+                data_structure_details,
+                SupportedTypes(metadata_entry.structureFormat),
+                raw_data=raw_data,
+            )
+            return column_parser.get_columns()
+        return []
 
     def _get_columns(
         self,

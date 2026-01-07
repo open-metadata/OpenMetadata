@@ -13,7 +13,6 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-import random
 from typing import cast
 
 from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
@@ -94,6 +93,5 @@ class PandasInterfaceMixin:
             ),
         )
         if data:
-            random.shuffle(data)
             return data
         raise TypeError(f"Couldn't fetch {table.name.root}")

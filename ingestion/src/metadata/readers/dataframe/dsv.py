@@ -65,19 +65,19 @@ class DSVDataFrameReader(DataFrameReader):
         if compression is None and path.endswith(".gz"):
             compression = "gzip"
 
-        chunk_list = []
-        with pd.read_csv(
-            path,
-            sep=self.separator,
-            chunksize=CHUNKSIZE,
-            storage_options=storage_options,
-            compression=compression,
-            encoding_errors="ignore",
-        ) as reader:
-            for chunks in reader:
-                chunk_list.append(chunks)
+        def chunk_generator():
+            with pd.read_csv(
+                path,
+                sep=self.separator,
+                chunksize=CHUNKSIZE,
+                storage_options=storage_options,
+                compression=compression,
+                encoding_errors="ignore",
+            ) as reader:
+                for chunks in reader:
+                    yield chunks
 
-        return DatalakeColumnWrapper(dataframes=chunk_list)
+        return DatalakeColumnWrapper(dataframes=chunk_generator())
 
     @singledispatchmethod
     def _read_dsv_dispatch(
@@ -111,18 +111,17 @@ class DSVDataFrameReader(DataFrameReader):
         response = self.client.get_object(Bucket=bucket_name, Key=key)
         file_content = response["Body"]
 
-        # Read the CSV data directly from the StreamingBody
-        chunk_list = []
-        with pd.read_csv(
-            file_content,
-            sep=self.separator,
-            chunksize=CHUNKSIZE,
-            compression=compression,
-        ) as reader:
-            for chunks in reader:
-                chunk_list.append(chunks)
+        def chunk_generator():
+            with pd.read_csv(
+                file_content,
+                sep=self.separator,
+                chunksize=CHUNKSIZE,
+                compression=compression,
+            ) as reader:
+                for chunks in reader:
+                    yield chunks
 
-        return DatalakeColumnWrapper(dataframes=chunk_list)
+        return DatalakeColumnWrapper(dataframes=chunk_generator())
 
     @_read_dsv_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:

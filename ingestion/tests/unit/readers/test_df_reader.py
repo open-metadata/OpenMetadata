@@ -12,6 +12,7 @@
 """
 Validate factory and logic to read dataframes from local.
 """
+from collections.abc import Iterator
 from pathlib import Path
 from unittest import TestCase
 
@@ -34,7 +35,7 @@ class TestDataFrameReader(TestCase):
     def test_dsv_no_extension_reader(self):
         key = ROOT_PATH / "transactions_1"
 
-        df_list = fetch_dataframe(
+        df_iter = fetch_dataframe(
             config_source=LocalConfig(),
             client=None,
             file_fqn=DatalakeTableSchemaWrapper(
@@ -42,7 +43,8 @@ class TestDataFrameReader(TestCase):
             ),
         )
 
-        self.assertIsNotNone(df_list)
+        self.assertIsNotNone(df_iter)
+        df_list = list(df_iter) if isinstance(df_iter, Iterator) else df_iter
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (5, 2))
@@ -53,13 +55,14 @@ class TestDataFrameReader(TestCase):
     def test_dsv_reader(self):
         key = ROOT_PATH / "transactions_1.csv"
 
-        df_list = fetch_dataframe(
+        df_iter = fetch_dataframe(
             config_source=LocalConfig(),
             client=None,
             file_fqn=DatalakeTableSchemaWrapper(key=str(key), bucket_name="unused"),
         )
 
-        self.assertIsNotNone(df_list)
+        self.assertIsNotNone(df_iter)
+        df_list = list(df_iter) if isinstance(df_iter, Iterator) else df_iter
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (5, 2))
@@ -70,7 +73,7 @@ class TestDataFrameReader(TestCase):
     def test_dsv_reader_with_separator(self):
         key = ROOT_PATH / "transactions_separator.csv"
 
-        df_list = fetch_dataframe(
+        df_iter = fetch_dataframe(
             config_source=LocalConfig(),
             client=None,
             file_fqn=DatalakeTableSchemaWrapper(
@@ -78,7 +81,8 @@ class TestDataFrameReader(TestCase):
             ),
         )
 
-        self.assertIsNotNone(df_list)
+        self.assertIsNotNone(df_iter)
+        df_list = list(df_iter) if isinstance(df_iter, Iterator) else df_iter
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (5, 2))
@@ -89,13 +93,14 @@ class TestDataFrameReader(TestCase):
     def test_json_reader(self):
         key = ROOT_PATH / "employees.json"
 
-        df_list = fetch_dataframe(
+        df_iter = fetch_dataframe(
             config_source=LocalConfig(),
             client=None,
             file_fqn=DatalakeTableSchemaWrapper(key=str(key), bucket_name="unused"),
         )
 
-        self.assertIsNotNone(df_list)
+        self.assertIsNotNone(df_iter)
+        df_list = list(df_iter) if isinstance(df_iter, Iterator) else df_iter
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (4, 4))
@@ -107,13 +112,14 @@ class TestDataFrameReader(TestCase):
     def test_jsonl_reader(self):
         key = ROOT_PATH / "employees.jsonl"
 
-        df_list = fetch_dataframe(
+        df_iter = fetch_dataframe(
             config_source=LocalConfig(),
             client=None,
             file_fqn=DatalakeTableSchemaWrapper(key=str(key), bucket_name="unused"),
         )
 
-        self.assertIsNotNone(df_list)
+        self.assertIsNotNone(df_iter)
+        df_list = list(df_iter) if isinstance(df_iter, Iterator) else df_iter
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (4, 4))
@@ -125,13 +131,14 @@ class TestDataFrameReader(TestCase):
     def test_avro_reader(self):
         key = ROOT_PATH / "example.avro"
 
-        df_list = fetch_dataframe(
+        df_iter = fetch_dataframe(
             config_source=LocalConfig(),
             client=None,
             file_fqn=DatalakeTableSchemaWrapper(key=str(key), bucket_name="unused"),
         )
 
-        self.assertIsNotNone(df_list)
+        self.assertIsNotNone(df_iter)
+        df_list = list(df_iter) if isinstance(df_iter, Iterator) else df_iter
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (4, 8))

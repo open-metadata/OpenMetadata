@@ -288,7 +288,7 @@ class DatalakeSource(DatabaseServiceSource):
             )
             if data_frame:
                 column_parser = DataFrameColumnParser.create(
-                    data_frame[0], table_extension, raw_data=raw_data
+                    data_frame, table_extension, raw_data=raw_data
                 )
                 columns = column_parser.get_columns()
             else:

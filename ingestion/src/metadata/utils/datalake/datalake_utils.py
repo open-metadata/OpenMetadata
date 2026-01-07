@@ -156,7 +156,14 @@ class DataFrameColumnParser:
         data_frame: Union[List["DataFrame"], "DataFrame"], sample: bool, shuffle: bool
     ):
         """Return the dataframe to use for parsing"""
+        from collections.abc import Iterator
+
         import pandas as pd
+
+        if isinstance(data_frame, Iterator):
+            if sample:
+                return next(data_frame)
+            data_frame = list(data_frame)
 
         if not isinstance(data_frame, list):
             return data_frame
