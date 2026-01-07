@@ -28,9 +28,9 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
             ("OPENMETADATA__connection__securityConfig__jwtToken", OM_JWT),
         ],
         [
-            ("OPENMETADATA__CONNECTION_HOSTPORT", "http://localhost:8585/api"),
-            ("OPENMETADATA__CONNECTION_AUTH_PROVIDER", "openmetadata"),
-            ("OPENMETADATA__CONNECTION_SECURITY_CONFIG__JWT_TOKEN", OM_JWT),
+            ("OPENMETADATA__CONNECTION__HOSTPORT", "http://localhost:8585/api"),
+            ("OPENMETADATA__CONNECTION__AUTHPROVIDER", "openmetadata"),
+            ("OPENMETADATA__CONNECTION__SECURITYCONFIG__JWTTOKEN", OM_JWT),
         ],
     ],
 )
