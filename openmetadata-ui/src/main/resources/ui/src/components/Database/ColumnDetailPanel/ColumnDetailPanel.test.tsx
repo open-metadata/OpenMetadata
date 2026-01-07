@@ -437,6 +437,27 @@ jest.mock('../../../utils/TableUtils', () => ({
 
       return [column];
     }),
+  normalizeTags: jest
+    .fn()
+    .mockImplementation((tags: Array<{ source: TagSource }> | undefined) => {
+      if (!tags || tags.length === 0) {
+        return [];
+      }
+
+      // Remove style property from glossary terms
+      return tags.map((tag) => {
+        if (tag.source === TagSource.Glossary) {
+          const { style: _style, ...tagWithoutStyle } = tag as {
+            source: TagSource;
+            style?: unknown;
+          };
+
+          return tagWithoutStyle;
+        }
+
+        return tag;
+      });
+    }),
 }));
 
 describe('ColumnDetailPanel', () => {
