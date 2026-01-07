@@ -1829,7 +1829,7 @@ test.describe(
         const searchInput = page
           .getByTestId('search-entity-select')
           .locator('.ant-select-selection-search-input');
-          
+
         const searchResponse = page.waitForResponse((response) =>
           response.url().includes('/api/v1/search/query')
         );
