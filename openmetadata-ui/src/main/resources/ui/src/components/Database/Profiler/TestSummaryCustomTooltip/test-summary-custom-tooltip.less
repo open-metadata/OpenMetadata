@@ -10,7 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) '../../../../styles/variables.less';
+
 .test-summary-tooltip-container {
   max-height: 150px;
   overflow: auto;
+
+  .tooltip-date-time {
+    font-size: 14px;
+    font-weight: 500;
+    color: @grey-900;
+    margin-bottom: 8px;
+  }
+
+  .tooltip-separator {
+    margin: 8px 0;
+    border-top: 1px dashed @grey-300;
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+  }
 }

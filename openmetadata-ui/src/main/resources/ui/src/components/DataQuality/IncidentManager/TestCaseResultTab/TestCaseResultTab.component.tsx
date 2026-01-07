@@ -16,7 +16,7 @@ import { Col, Divider, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase, toString } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -258,49 +258,150 @@ const TestCaseResultTab = () => {
     isVersionPage,
   ]);
 
-  const testCaseParams = useMemo(() => {
+  const parameterItems = useMemo(() => {
+    const items: Array<{ label: string; value: string | React.ReactNode }> = [];
+
     if (isVersionPage) {
-      return getParameterValueDiffDisplay(
-        testCaseData?.changeDescription as ChangeDescription,
-        testCaseData?.parameterValues
-      );
+      // For version page, we'll handle it differently
+      return null;
     }
 
     if (testCaseData?.useDynamicAssertion) {
-      return (
-        <label
-          className="d-inline-flex items-center gap-2 text-grey-muted parameter-value-container"
-          data-testid="dynamic-assertion">
-          <Icon component={StarIcon} /> {t('label.dynamic-assertion')}
-        </label>
-      );
+      items.push({
+        label: t('label.dynamic-assertion'),
+        value: (
+          <label
+            className="d-inline-flex items-center gap-2 parameter-value-text"
+            data-testid="dynamic-assertion">
+            <Icon component={StarIcon} /> {t('label.dynamic-assertion')}
+          </label>
+        ),
+      });
     } else if (!isEmpty(withoutSqlParams)) {
+      withoutSqlParams.forEach((param) => {
+        items.push({
+          label: param.name ?? '',
+          value: param.value ?? '',
+        });
+      });
+    }
+
+    // Add compute row count to parameters if it should be shown
+    if (showComputeRowCount) {
+      items.push({
+        label: t('label.compute-row-count'),
+        value: computeRowCountDisplay,
+      });
+    }
+
+    return items.length > 0 ? items : null;
+  }, [
+    withoutSqlParams,
+    testCaseData,
+    showComputeRowCount,
+    computeRowCountDisplay,
+    isVersionPage,
+  ]);
+
+  const renderParameterRows = (
+    items: Array<{ label: string; value: string | React.ReactNode }>
+  ) => {
+    if (items.length === 0) {
       return (
-        <Space
-          wrap
-          className="parameter-value-container parameter-value"
-          size={6}>
-          {withoutSqlParams.map((param, index) => (
-            <Space key={param.name} size={4}>
-              <Typography.Text className="text-grey-muted">
-                {`${param.name}:`}
-              </Typography.Text>
-              <Typography.Text>{param.value}</Typography.Text>
-              {withoutSqlParams.length - 1 !== index && (
-                <Divider type="vertical" />
-              )}
-            </Space>
-          ))}
-        </Space>
+        <Typography.Text type="secondary">
+          {t('label.no-parameter-available')}
+        </Typography.Text>
       );
     }
 
+    // Group items into rows of 2
+    const rows: Array<
+      Array<{ label: string; value: string | React.ReactNode }>
+    > = [];
+    for (let i = 0; i < items.length; i += 2) {
+      rows.push(items.slice(i, i + 2));
+    }
+
     return (
-      <Typography.Text type="secondary">
-        {t('label.no-parameter-available')}
-      </Typography.Text>
+      <div className="parameter-rows-container">
+        {rows.map((row, rowIndex) => (
+          <div key={rowIndex}>
+            <Row className="parameter-row" gutter={[16, 0]}>
+              {row.map((item, itemIndex) => (
+                <Col key={itemIndex} span={row.length === 1 ? 16 : 12}>
+                  <Space align="start" size={4}>
+                    <Typography.Text className="parameter-label">
+                      {`${item.label}:`}
+                    </Typography.Text>
+                    {typeof item.value === 'string' ? (
+                      <Typography.Text className="parameter-value-text">
+                        {item.value}
+                      </Typography.Text>
+                    ) : (
+                      item.value
+                    )}
+                  </Space>
+                </Col>
+              ))}
+            </Row>
+            {rowIndex < rows.length - 1 && (
+              <Divider className="parameter-row-divider" />
+            )}
+          </div>
+        ))}
+      </div>
     );
-  }, [withoutSqlParams, testCaseData]);
+  };
+
+  const testCaseParams = useMemo(() => {
+    if (isVersionPage) {
+      // For version page, get the diff display and add compute row count
+      const versionParams = getParameterValueDiffDisplay(
+        testCaseData?.changeDescription as ChangeDescription,
+        testCaseData?.parameterValues
+      );
+
+      // Add compute row count to version page if it should be shown
+      if (showComputeRowCount) {
+        const computeRowCountItem: Array<{
+          label: string;
+          value: string | React.ReactNode;
+        }> = [
+          {
+            label: t('label.compute-row-count'),
+            value: computeRowCountDisplay,
+          },
+        ];
+
+        return (
+          <div>
+            {versionParams}
+            <Divider className="parameter-row-divider" />
+            {renderParameterRows(computeRowCountItem)}
+          </div>
+        );
+      }
+
+      return versionParams;
+    }
+
+    if (!parameterItems || parameterItems.length === 0) {
+      return (
+        <Typography.Text type="secondary">
+          {t('label.no-parameter-available')}
+        </Typography.Text>
+      );
+    }
+
+    return renderParameterRows(parameterItems);
+  }, [
+    parameterItems,
+    testCaseData,
+    isVersionPage,
+    showComputeRowCount,
+    computeRowCountDisplay,
+    t,
+  ]);
 
   return (
     <Row
@@ -321,54 +422,37 @@ const TestCaseResultTab = () => {
           </Col>
 
           <Col data-testid="parameter-container" span={24}>
-            <Space direction="vertical" size="small">
-              <Space align="center" size={8}>
-                <Typography.Text className="right-panel-label">
-                  {t('label.parameter-plural')}
-                </Typography.Text>
-                {hasEditPermission &&
-                  Boolean(
-                    testCaseData?.parameterValues?.length ||
-                      testCaseData?.useDynamicAssertion
-                  ) && (
-                    <EditIconButton
-                      newLook
-                      data-testid="edit-parameter-icon"
-                      size="small"
-                      title={t('label.edit-entity', {
-                        entity: t('label.parameter'),
-                      })}
-                      onClick={() => setIsParameterEdit(true)}
-                    />
-                  )}
-              </Space>
-
-              {testCaseParams}
-            </Space>
-          </Col>
-          {showComputeRowCount && (
-            <Col data-testid="computed-row-count-container" span={24}>
-              <Space direction="vertical" size="small">
+            <div className="parameter-container">
+              <Space
+                direction="vertical"
+                size="small"
+                style={{ width: '100%' }}>
                 <Space align="center" size={8}>
-                  <Typography.Text className="right-panel-label">
-                    {t('label.compute-row-count')}
+                  <Typography.Text className="parameter-title">
+                    {t('label.parameter')}
                   </Typography.Text>
-                  {hasEditPermission && !isVersionPage && (
-                    <EditIconButton
-                      newLook
-                      data-testid="edit-compute-row-count-icon"
-                      size="small"
-                      title={t('label.edit-entity', {
-                        entity: t('label.compute-row-count'),
-                      })}
-                      onClick={() => setIsParameterEdit(true)}
-                    />
-                  )}
+                  {hasEditPermission &&
+                    Boolean(
+                      testCaseData?.parameterValues?.length ||
+                        testCaseData?.useDynamicAssertion ||
+                        showComputeRowCount
+                    ) && (
+                      <EditIconButton
+                        newLook
+                        data-testid="edit-parameter-icon"
+                        size="small"
+                        title={t('label.edit-entity', {
+                          entity: t('label.parameter'),
+                        })}
+                        onClick={() => setIsParameterEdit(true)}
+                      />
+                    )}
                 </Space>
-                <Typography.Text>{computeRowCountDisplay}</Typography.Text>
+
+                {testCaseParams}
               </Space>
-            </Col>
-          )}
+            </div>
+          </Col>
 
           {!isUndefined(withSqlParams) && !isVersionPage ? (
             <Col>

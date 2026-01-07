@@ -42,7 +42,6 @@ import {
 } from '../../../../constants/Color.constants';
 import {
   DEFAULT_CHART_OPACITY,
-  GRAPH_BACKGROUND_COLOR,
   HOVER_CHART_OPACITY,
 } from '../../../../constants/constants';
 import {
@@ -253,19 +252,23 @@ function TestSummaryGraph({
         data={chartData.data}
         margin={{
           top: 16,
-          bottom: 16,
+          bottom: 100,
           right: 40,
+          left: 16,
         }}
         ref={chartRef}
         onMouseMove={(e) => {
           setChartMouseEvent(e);
         }}>
-        <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
+        <CartesianGrid stroke="transparent" />
         <XAxis
+          angle={-45}
           dataKey="name"
           domain={['auto', 'auto']}
           padding={{ left: 8, right: 8 }}
           scale="time"
+          textAnchor="end"
+          tick={{ fontSize: 12 }}
           tickFormatter={formatDateTime}
           type="number"
         />
@@ -285,6 +288,7 @@ function TestSummaryGraph({
         {referenceArea}
         <Legend
           payload={customLegendPayLoad}
+          wrapperStyle={{ bottom: 2 }}
           onClick={handleLegendClick}
           onMouseEnter={handleLegendMouseEnter}
           onMouseLeave={handleLegendMouseLeave}

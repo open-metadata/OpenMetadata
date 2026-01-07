@@ -1273,10 +1273,12 @@ export const getParameterValueDiffDisplay = (
         ) : (
           otherParamDiffs.map((diff, index) => (
             <Space data-testid={diff.name} key={diff.name} size={4}>
-              <Typography.Text className="text-grey-muted">
+              <Typography.Text className="parameter-label">
                 {`${diff.name}:`}
               </Typography.Text>
-              <Typography.Text>{getDiffDisplayValue(diff)}</Typography.Text>
+              <Typography.Text className="parameter-value-text">
+                {getDiffDisplayValue(diff)}
+              </Typography.Text>
               {otherParamDiffs.length - 1 !== index && (
                 <Divider type="vertical" />
               )}
