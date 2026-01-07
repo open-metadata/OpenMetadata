@@ -71,6 +71,10 @@ const test = base.extend<{
   },
 });
 
+test.use({
+  trace: 'retain-on-failure',
+});
+
 test.beforeAll('Setup Customize tests', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
 

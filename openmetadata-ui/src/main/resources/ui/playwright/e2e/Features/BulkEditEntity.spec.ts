@@ -77,6 +77,10 @@ const columnDetails1 = {
   glossary: glossaryDetails,
 };
 
+test.use({
+  trace: 'retain-on-failure',
+});
+
 test.describe('Bulk Edit Entity', () => {
   test.beforeAll('setup pre-test', async ({ browser }) => {
     test.slow();
