@@ -216,7 +216,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         assert connection_args.root is not None
 
         if connection.verify:
-            connection_args.root["verify"] = {"verify": connection.verify}
+            connection_args.root["verify"] = connection.verify
 
         if connection.proxies:
             session = Session()

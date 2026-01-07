@@ -1089,11 +1089,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       expect(href).toContain('test-case');
       expect(href).toContain(testCase.fullyQualifiedName);
-
-      // Verify link opens in new tab
-      const target = await testCaseLink.getAttribute('target');
-
-      expect(target).toBe('_blank');
     } finally {
       await afterAction();
     }

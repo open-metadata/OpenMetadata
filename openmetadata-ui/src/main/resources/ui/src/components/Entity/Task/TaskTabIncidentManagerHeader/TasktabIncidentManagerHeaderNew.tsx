@@ -20,7 +20,10 @@ import { ReactComponent as FailureReasonIcon } from '../../../../assets/svg/ic-f
 import { ReactComponent as SeverityIcon } from '../../../../assets/svg/ic-severity.svg';
 import { ReactComponent as UserIcon } from '../../../../assets/svg/ic-user-profile.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
-import { TEST_CASE_STATUS } from '../../../../constants/TestSuite.constant';
+import {
+  TEST_CASE_RESOLUTION_STATUS_LABELS,
+  TEST_CASE_STATUS,
+} from '../../../../constants/TestSuite.constant';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
@@ -60,7 +63,9 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         case TestCaseResolutionStatusTypes.ACK:
           details = status.updatedBy ? (
             <Typography.Text className="text-grey-muted text-xss">
-              {`By ${getEntityName(status.updatedBy)} on `}
+              {`${t('label.by-entity', {
+                entity: getEntityName(status.updatedBy),
+              })} ${t('label.on-lowercase')} `}
             </Typography.Text>
           ) : null;
 
@@ -68,9 +73,9 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         case TestCaseResolutionStatusTypes.Assigned:
           details = status.testCaseResolutionStatusDetails?.assignee ? (
             <Typography.Text className="text-grey-muted text-xss">
-              {`To ${getEntityName(
+              {`${t('label.to-lowercase')} ${getEntityName(
                 status.testCaseResolutionStatusDetails?.assignee
-              )} on `}
+              )} ${t('label.on-lowercase')} `}
             </Typography.Text>
           ) : null;
 
@@ -78,9 +83,11 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         case TestCaseResolutionStatusTypes.Resolved:
           details = status.testCaseResolutionStatusDetails?.resolvedBy ? (
             <Typography.Text className="text-grey-muted text-xss">
-              {`By ${getEntityName(
-                status.testCaseResolutionStatusDetails.resolvedBy
-              )} on `}
+              {`${t('label.by-entity', {
+                entity: getEntityName(
+                  status.testCaseResolutionStatusDetails.resolvedBy
+                ),
+              })} ${t('label.on-lowercase')} `}
             </Typography.Text>
           ) : null;
 
@@ -95,7 +102,11 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         title: (
           <div className="incident-title">
             <Typography.Paragraph className="m-b-0">
-              {status.testCaseResolutionStatusType}
+              {
+                TEST_CASE_RESOLUTION_STATUS_LABELS[
+                  status.testCaseResolutionStatusType
+                ]
+              }
             </Typography.Paragraph>
             <Typography.Paragraph className="m-b-0 incident-details">
               {details}
@@ -110,7 +121,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         key: status.testCaseResolutionStatusType,
       };
     });
-  }, [testCaseResolutionStatus]);
+  }, [testCaseResolutionStatus, t]);
 
   const latestTestCaseResolutionStatus = useMemo(
     () => last(testCaseResolutionStatus),
