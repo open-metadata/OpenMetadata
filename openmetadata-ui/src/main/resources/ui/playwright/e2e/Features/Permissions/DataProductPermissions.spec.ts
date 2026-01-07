@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
-import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { UserClass } from '../../../support/user/UserClass';
+import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
 import { addCustomPropertiesForEntity } from '../../../utils/customProperty';
 import { selectDataProduct } from '../../../utils/domain';
@@ -32,6 +32,9 @@ import {
 
 const adminUser = new UserClass();
 const testUser = new UserClass();
+const domain = new Domain();
+const dataProduct = new DataProduct([domain]);
+const customPropertyName = `pwDataProductCustomProperty${uuid()}`;
 
 const test = base.extend<{
   page: Page;
@@ -57,36 +60,25 @@ const test = base.extend<{
   },
 });
 
-test.beforeAll('Setup pre-requests', async ({ page }) => {
-  const { apiContext, afterAction } = await getApiContext(page);
+test.beforeAll('Setup pre-requests', async ({ browser }) => {
+  test.slow(true);
+  const { page, apiContext, afterAction } = await performAdminLogin(browser);
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
   await testUser.create(apiContext);
+  await domain.create(apiContext);
+  await dataProduct.create(apiContext);
+
+  await redirectToHomePage(page);
+  await settingClick(page, 'dataProducts' as SettingOptionsType, true);
+  await addCustomPropertiesForEntity({
+    page,
+    propertyName: customPropertyName,
+    customPropertyData: { description: 'Test data product custom property' },
+    customType: 'String',
+  });
   await afterAction();
 });
-
-const domain = new Domain();
-const dataProduct = new DataProduct([domain]);
-const customPropertyName = `pwDataProductCustomProperty${uuid()}`;
-
-test.beforeAll(
-  'Setup domain, data product and custom property',
-  async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    await EntityDataClass.preRequisitesForTests(apiContext);
-    await domain.create(apiContext);
-    await dataProduct.create(apiContext);
-
-    await settingClick(page, 'dataProducts' as SettingOptionsType, true);
-    await addCustomPropertiesForEntity({
-      page,
-      propertyName: customPropertyName,
-      customPropertyData: { description: 'Test data product custom property' },
-      customType: 'String',
-    });
-    await afterAction();
-  }
-);
 
 test.describe('Data Product Permissions', () => {
   test('Data Product allow operations', async ({ testUserPage, page }) => {
@@ -250,19 +242,4 @@ test.describe('Data Product Permissions', () => {
       await afterAction();
     }
   });
-});
-
-test.afterAll('Cleanup data product and domain', async ({ page }) => {
-  const { apiContext, afterAction } = await getApiContext(page);
-  await dataProduct.delete(apiContext);
-  await domain.delete(apiContext);
-  await EntityDataClass.postRequisitesForTests(apiContext);
-  await afterAction();
-});
-
-test.afterAll('Cleanup users', async ({ page }) => {
-  const { apiContext, afterAction } = await getApiContext(page);
-  await adminUser.delete(apiContext);
-  await testUser.delete(apiContext);
-  await afterAction();
 });

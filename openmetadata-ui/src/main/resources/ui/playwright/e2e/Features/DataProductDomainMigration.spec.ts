@@ -15,9 +15,13 @@ import { expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
-import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import {
   checkAssetsCount,
   goToAssetsTab,
@@ -36,11 +40,8 @@ test.describe('Data Product Domain Migration', () => {
   let table1: TableClass;
   let table2: TableClass;
 
-  test.beforeAll('Setup entities', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-
-    await EntityDataClass.preRequisitesForTests(apiContext);
-
+  test.beforeAll('Setup entities', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
     shortId = uuid();
     sourceDomain = new Domain({
       name: `source_domain_${shortId}`,
@@ -104,15 +105,13 @@ test.describe('Data Product Domain Migration', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
     await dataProduct.delete(apiContext);
     await table1.delete(apiContext);
     await table2.delete(apiContext);
     await sourceDomain.delete(apiContext);
     await targetDomain.delete(apiContext);
-    await EntityDataClass.postRequisitesForTests(apiContext);
     await afterAction();
   });
 

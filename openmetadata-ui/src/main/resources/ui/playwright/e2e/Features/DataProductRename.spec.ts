@@ -387,8 +387,7 @@ test.describe('Data Product Rename', () => {
       const patchResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/dataProducts/') &&
-          response.request().method() === 'PATCH' &&
-          response.status() >= 400
+          response.request().method() === 'PATCH'
       );
       await page.getByTestId('save-button').click();
       const response = await patchResponse;

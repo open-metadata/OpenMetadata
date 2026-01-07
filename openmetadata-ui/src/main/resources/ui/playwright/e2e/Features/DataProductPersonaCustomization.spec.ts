@@ -12,17 +12,17 @@
  */
 import {
   APIRequestContext,
+  test as base,
   expect,
   Page,
-  test as base,
 } from '@playwright/test';
 import { ECustomizedGovernance } from '../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
 import {
-  createNewPage,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -58,7 +58,7 @@ const test = base.extend<{
 test.beforeAll(
   'Setup Data Product Persona Customization tests',
   async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
