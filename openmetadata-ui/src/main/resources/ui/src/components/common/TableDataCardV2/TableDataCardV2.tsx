@@ -184,7 +184,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
             <span className="text-grey-muted">{`${t('label.matches')}:`}</span>
             {matches.map((data, i) => (
               <span className="m-t-xs" key={i}>
-                {`${data.value} in ${startCase(data.key)}${
+                {`${data.value} ${t('label.in-lowercase')} ${startCase(data.key)}${
                   i !== matches.length - 1 ? ',' : ''
                 }`}
               </span>
