@@ -84,7 +84,7 @@ import { getTopicByFqn, patchTopicDetails } from '../../rest/topicsAPI';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import { getServiceCategoryFromEntityType } from '../../utils/ServiceUtils';
 import { t } from '../i18next/LocalUtil';
-import { getTermQuery } from '../SearchUtils';
+import { getTermsQuery } from '../SearchUtils';
 
 export const getAPIfromSource = (
   source: keyof MapPatchAPIResponse
@@ -293,15 +293,11 @@ export function getEntityTypeString(type: string) {
 
 /**
  * Creates a query filter to search for entities by their fully qualified names.
- * Uses a 'should' query with minimum_should_match: 1 to match any of the provided FQNs.
+ * Uses Elasticsearch 'terms' query for efficient matching of multiple FQNs.
  *
  * @param fqns - Array of fully qualified names to filter by
  * @returns Query filter object or undefined if no FQNs provided
  */
 export const getEntityFqnQueryFilter = (fqns: string[]) => {
-  if (fqns.length === 0) {
-    return undefined;
-  }
-
-  return getTermQuery({ fullyQualifiedName: fqns }, 'should', 1);
+  return getTermsQuery('fullyQualifiedName', fqns);
 };

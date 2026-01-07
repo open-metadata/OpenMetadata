@@ -111,7 +111,7 @@ export const InputOutputPortsTab = forwardRef<
       <Box
         className="input-output-ports-tab"
         data-testid="input-output-ports-tab"
-        sx={{ p: 2 }}>
+        sx={{ p: 2, height: '100%', overflowY: 'auto' }}>
         <Grid container spacing={2}>
           <Grid size={12}>
             <Card

@@ -476,3 +476,25 @@ export const getTermQuery = (
     },
   };
 };
+
+/**
+ * @param field - The field name to match against
+ * @param values - Array of values to match (OR logic - matches if any value matches)
+ * @returns Query filter object or undefined if no values provided
+ * @example
+ * // Returns: { query: { bool: { filter: [{ terms: { fullyQualifiedName: ['fqn1', 'fqn2'] } }] } } }
+ * getTermsQuery('fullyQualifiedName', ['fqn1', 'fqn2']);
+ */
+export const getTermsQuery = (field: string, values: string[]) => {
+  if (values.length === 0) {
+    return undefined;
+  }
+
+  return {
+    query: {
+      bool: {
+        filter: [{ terms: { [field]: values } }],
+      },
+    },
+  };
+};
