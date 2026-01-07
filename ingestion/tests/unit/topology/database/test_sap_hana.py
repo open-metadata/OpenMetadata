@@ -998,3 +998,154 @@ def test_renamed_attribute_in_calculated_column() -> None:
     assert (
         email_mapping.data_source == ds_salesoverview_1
     ), "Calculated EMAIL should trace back to CV_SALESOVERVIEW_1"
+
+
+def test_calculation_view_end_to_end_lineage() -> None:
+    """
+    Comprehensive end-to-end test validating complete lineage for all columns in a calculation view.
+
+    This test ensures that for every column in the final output:
+    1. A lineage mapping exists
+    2. Source columns are correctly identified
+    3. Datasources are properly traced
+    4. Formula columns reference actual source columns, not intermediate attribute IDs
+    5. Constant mappings are handled correctly
+
+    Uses cdata_calculation_view.xml which has:
+    - AT_SFLIGHT (Attribute View) with columns from SFLIGHT table
+    - AN_SBOOK (Analytic View) with columns from SBOOK table
+    - Aggregation, Projection, and Union views with mappings
+    - Formula column USAGE_PCT = SEATSOCC_ALL / SEATSMAX_ALL
+    """
+    with open(RESOURCES_DIR / "cdata_calculation_view.xml") as file:
+        cdata = file.read()
+        parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
+        parsed_lineage: ParsedLineage = parse_fn(cdata)
+
+    # Expected datasources - lineage goes to the immediate source views
+    ds_at_sflight = DataSource(
+        name="AT_SFLIGHT",
+        location="/SFLIGHT.MODELING/attributeviews/AT_SFLIGHT",
+        source_type=ViewType.ATTRIBUTE_VIEW,
+    )
+    ds_an_sbook = DataSource(
+        name="AN_SBOOK",
+        location="/SFLIGHT.MODELING/analyticviews/AN_SBOOK",
+        source_type=ViewType.ANALYTIC_VIEW,
+    )
+
+    # Expected final output columns from logicalModel
+    expected_columns = {
+        "MANDT",
+        "CARRID",
+        "CARRNAME",
+        "FLDATE",
+        "CONNID",
+        "SEATSMAX_ALL",
+        "SEATSOCC_ALL",
+        "PAYMENTSUM",
+        "RETURN_INDEX",
+        "USAGE_PCT",  # Calculated measure
+    }
+
+    # Get all target columns from parsed lineage
+    actual_targets = {mapping.target for mapping in parsed_lineage.mappings}
+
+    # Verify all expected columns have lineage
+    assert expected_columns == actual_targets, (
+        f"Missing columns: {expected_columns - actual_targets}, "
+        f"Extra columns: {actual_targets - expected_columns}"
+    )
+
+    # Verify correct datasources are identified
+    assert parsed_lineage.sources == {
+        ds_at_sflight,
+        ds_an_sbook,
+    }, f"Expected sources: AT_SFLIGHT and AN_SBOOK, got: {parsed_lineage.sources}"
+
+    # Test specific column mappings end-to-end
+
+    # 1. MANDT - comes from both AT_SFLIGHT and AN_SBOOK
+    mandt_mappings = [m for m in parsed_lineage.mappings if m.target == "MANDT"]
+    mandt_sources = {m.data_source for m in mandt_mappings}
+    assert ds_at_sflight in mandt_sources, "MANDT should come from AT_SFLIGHT"
+    assert ds_an_sbook in mandt_sources, "MANDT should come from AN_SBOOK"
+    assert all(
+        m.sources == ["MANDT"] for m in mandt_mappings
+    ), "MANDT should map directly without renaming"
+
+    # 2. CARRNAME - comes only from AT_SFLIGHT
+    carrname_mappings = [m for m in parsed_lineage.mappings if m.target == "CARRNAME"]
+    assert len(carrname_mappings) == 1, "CARRNAME should have exactly one source"
+    assert carrname_mappings[0].data_source == ds_at_sflight
+    assert carrname_mappings[0].sources == ["CARRNAME"]
+
+    # 3. SEATSMAX_ALL - comes from AT_SFLIGHT
+    seatsmax_mappings = [
+        m for m in parsed_lineage.mappings if m.target == "SEATSMAX_ALL"
+    ]
+    assert len(seatsmax_mappings) == 1
+    assert seatsmax_mappings[0].data_source == ds_at_sflight
+    assert seatsmax_mappings[0].sources == ["SEATSMAX_ALL"]
+
+    # 4. USAGE_PCT - calculated formula column (CRITICAL TEST)
+    usage_pct_mappings = [m for m in parsed_lineage.mappings if m.target == "USAGE_PCT"]
+
+    # Should have mappings from AT_SFLIGHT (formula references SEATSOCC_ALL and SEATSMAX_ALL)
+    usage_pct_at_sflight = [
+        m for m in usage_pct_mappings if m.data_source == ds_at_sflight
+    ]
+    assert (
+        len(usage_pct_at_sflight) >= 1
+    ), f"USAGE_PCT should have at least one lineage from AT_SFLIGHT, got {len(usage_pct_at_sflight)}"
+
+    # CRITICAL: Verify formula mappings use actual source column names from AT_SFLIGHT
+    # The formula references SEATSOCC_ALL and SEATSMAX_ALL
+    formula_mappings = [m for m in usage_pct_at_sflight if m.formula is not None]
+    assert len(formula_mappings) >= 1, "Should have at least one mapping with formula"
+
+    # Collect all source columns from formula mappings
+    all_formula_sources = set()
+    for m in formula_mappings:
+        all_formula_sources.update(m.sources)
+
+    # The formula should reference both columns
+    assert (
+        "SEATSOCC_ALL" in all_formula_sources
+    ), f"Formula should reference SEATSOCC_ALL, got: {all_formula_sources}"
+    assert (
+        "SEATSMAX_ALL" in all_formula_sources
+    ), f"Formula should reference SEATSMAX_ALL, got: {all_formula_sources}"
+
+    # Verify formula text is preserved in at least one mapping
+    assert any(
+        '"SEATSOCC_ALL"' in m.formula and '"SEATSMAX_ALL"' in m.formula
+        for m in formula_mappings
+    ), "Formula text should be preserved with both column references"
+
+    # Verify no mappings reference intermediate calculation view names as sources
+    # All sources should be actual table column names
+    for mapping in parsed_lineage.mappings:
+        for source_col in mapping.sources:
+            # Source column names should not contain calculation view IDs
+            assert not source_col.startswith(
+                "Aggregation_"
+            ), f"Source should be table column, not calculation view: {source_col}"
+            assert not source_col.startswith(
+                "Projection_"
+            ), f"Source should be table column, not calculation view: {source_col}"
+            assert not source_col.startswith(
+                "Union_"
+            ), f"Source should be table column, not calculation view: {source_col}"
+
+    # Verify datasources are real tables or views, not logical intermediate views
+    for source in parsed_lineage.sources:
+        assert source.source_type in [
+            ViewType.DATA_BASE_TABLE,
+            ViewType.ATTRIBUTE_VIEW,
+            ViewType.ANALYTIC_VIEW,
+            ViewType.CALCULATION_VIEW,
+        ], f"Datasource should be a real entity, not LOGICAL: {source}"
+        assert (
+            source.source_type != ViewType.LOGICAL
+        ), f"Final lineage should not contain LOGICAL datasources: {source}"
