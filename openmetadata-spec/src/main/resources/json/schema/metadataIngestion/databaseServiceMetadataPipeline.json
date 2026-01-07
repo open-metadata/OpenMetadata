@@ -96,6 +96,11 @@
       "type": "boolean",
       "default": false
     },
+    "ownerConfig": {
+      "title": "Hierarchical Owner Configuration",
+      "description": "Advanced configuration for managing owners at multiple hierarchy levels (Service, Database, Schema, Table) with custom mappings and inheritance rules.",
+      "$ref": "../type/ownerConfig.json"
+    },
     "includeStoredProcedures": {
       "description": "Optional configuration to toggle the Stored Procedures ingestion.",
       "type": "boolean",
@@ -111,6 +116,12 @@
     "overrideMetadata":{
       "title": "Override Metadata",
       "description": "Set the 'Override Metadata' toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source. If the toggle is set to true, the metadata fetched from the source will override the existing metadata in the OpenMetadata server. If the toggle is set to false, the metadata fetched from the source will not override the existing metadata in the OpenMetadata server. This is applicable for fields like description, tags, owner and displayName",
+      "type": "boolean",
+      "default": false
+    },
+    "overrideLineage":{
+      "title": "Override Lineage",
+      "description": "Set the 'Override Lineage' toggle to control whether to override the existing lineage.",
       "type": "boolean",
       "default": false
     },

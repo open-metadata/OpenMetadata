@@ -69,6 +69,57 @@ public final class Teams {
     return getClient().teams().create(request);
   }
 
+  // ==================== Direct Access Methods ====================
+
+  public static Team get(String id) {
+    return getClient().teams().get(id);
+  }
+
+  public static Team get(String id, String fields) {
+    return getClient().teams().get(id, fields);
+  }
+
+  public static Team get(String id, String fields, String include) {
+    return getClient().teams().get(id, fields, include);
+  }
+
+  public static Team getByName(String fqn) {
+    return getClient().teams().getByName(fqn);
+  }
+
+  public static Team getByName(String fqn, String fields) {
+    return getClient().teams().getByName(fqn, fields);
+  }
+
+  public static Team update(String id, Team entity) {
+    return getClient().teams().update(id, entity);
+  }
+
+  public static void delete(String id) {
+    getClient().teams().delete(id);
+  }
+
+  public static void delete(String id, java.util.Map<String, String> params) {
+    getClient().teams().delete(id, params);
+  }
+
+  public static void restore(String id) {
+    getClient().teams().restore(id);
+  }
+
+  public static org.openmetadata.sdk.models.ListResponse<Team> list(
+      org.openmetadata.sdk.models.ListParams params) {
+    return getClient().teams().list(params);
+  }
+
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(java.util.UUID id) {
+    return getClient().teams().getVersionList(id);
+  }
+
+  public static Team getVersion(String id, Double version) {
+    return getClient().teams().getVersion(id, version);
+  }
+
   // ==================== Finding/Retrieval ====================
 
   public static TeamFinder find(String id) {

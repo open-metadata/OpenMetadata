@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,11 +19,6 @@ export interface NotificationTemplate {
      * Change that lead to this version of the template.
      */
     changeDescription?: ChangeDescription;
-    /**
-     * Checksum of the default template to detect if updates are available. Only applicable to
-     * system templates.
-     */
-    defaultTemplateChecksum?: string;
     /**
      * When `true` indicates the template has been soft deleted.
      */
@@ -48,6 +43,10 @@ export interface NotificationTemplate {
      * Unique identifier of this template instance.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -74,7 +73,7 @@ export interface NotificationTemplate {
     /**
      * Handlebars template for the email subject line with placeholders.
      */
-    templateSubject?: string;
+    templateSubject: string;
     /**
      * Last update time corresponding to the new version of the template.
      */

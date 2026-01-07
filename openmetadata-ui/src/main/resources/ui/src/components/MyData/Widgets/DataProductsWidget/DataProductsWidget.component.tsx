@@ -37,6 +37,7 @@ import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import { getAllDataProductsWithAssetsCount } from '../../../../rest/dataProductAPI';
 import { searchData } from '../../../../rest/miscAPI';
 import { getEntityTypeExploreQueryFilter } from '../../../../utils/CommonUtils';
 import { getDataProductIconByUrl } from '../../../../utils/DataProductUtils';
@@ -67,6 +68,7 @@ const DataProductsWidget = ({
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [assetsCounts, setAssetsCounts] = useState<Record<string, number>>({});
 
   const fetchDataProducts = useCallback(async () => {
     setLoading(true);
@@ -75,19 +77,23 @@ const DataProductsWidget = ({
       const sortField = getSortField(selectedSortBy);
       const sortOrder = getSortOrder(selectedSortBy);
 
-      const res = await searchData(
-        '',
-        INITIAL_PAGING_VALUE,
-        PAGE_SIZE_MEDIUM,
-        '',
-        sortField,
-        sortOrder,
-        SearchIndex.DATA_PRODUCT
-      );
+      const [res, counts] = await Promise.all([
+        searchData(
+          '',
+          INITIAL_PAGING_VALUE,
+          PAGE_SIZE_MEDIUM,
+          '',
+          sortField,
+          sortOrder,
+          SearchIndex.DATA_PRODUCT
+        ),
+        getAllDataProductsWithAssetsCount(),
+      ]);
 
       const dataProducts = res?.data?.hits?.hits.map((hit) => hit._source);
       const sortedDataProducts = applySortToData(dataProducts, selectedSortBy);
       setDataProducts(sortedDataProducts as DataProduct[]);
+      setAssetsCounts(counts);
     } catch {
       setError(t('message.fetch-data-product-list-error'));
       setDataProducts([]);
@@ -182,7 +188,8 @@ const DataProductsWidget = ({
                       <span
                         className="data-product-card-full-count"
                         data-testid="data-product-asset-count">
-                        {dataProduct.assets?.length || 0}
+                        {assetsCounts[dataProduct.fullyQualifiedName ?? ''] ??
+                          0}
                       </span>
                     </div>
                   </div>
@@ -208,7 +215,7 @@ const DataProductsWidget = ({
                     <span
                       className="data-product-card-count"
                       data-testid="data-product-asset-count">
-                      {dataProduct.assets?.length || 0}
+                      {assetsCounts[dataProduct.fullyQualifiedName ?? ''] ?? 0}
                     </span>
                   </div>
                 </div>
@@ -259,7 +266,6 @@ const DataProductsWidget = ({
         sortOptions={DATA_PRODUCTS_SORT_BY_OPTIONS}
         title={t('label.data-product-plural')}
         widgetKey={widgetKey}
-        widgetWidth={2}
         onSortChange={handleSortByClick}
         onTitleClick={handleTitleClick}
       />

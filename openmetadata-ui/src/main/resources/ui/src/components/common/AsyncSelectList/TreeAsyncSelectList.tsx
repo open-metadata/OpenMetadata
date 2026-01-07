@@ -123,9 +123,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       const { data } = await getGlossariesList({
         limit: PAGE_SIZE_LARGE,
       });
-      setGlossaries((prev) =>
-        filterTreeNodeOptions([...prev, ...data], filterOptions)
-      );
+      setGlossaries(filterTreeNodeOptions(data, filterOptions));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -409,7 +407,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       showSearch
       {...(isMultiSelect
         ? { treeCheckable: true, treeCheckStrictly: true }
-        : {})}
+        : { allowClear: true })}
       autoFocus={open}
       className={classNames('async-select-list', {
         'new-chip-style': newLook,
@@ -456,7 +454,10 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       treeDefaultExpandAll={false}
       treeExpandedKeys={isEmpty(searchOptions) ? undefined : expandedRowKeys}
       onChange={handleChange}
-      onDropdownVisibleChange={handleDropdownVisibleChange}
+      // In single select dropdown should not close when dropdownButtons/dropdownRender
+      {...(hasNoActionButtons
+        ? { onDropdownVisibleChange: handleDropdownVisibleChange }
+        : {})}
       onSearch={onSearch}
       onTreeExpand={setExpandedRowKeys}
       {...props}

@@ -24,6 +24,7 @@ import React from 'react';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
+import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
@@ -58,7 +59,7 @@ import { t } from './i18next/LocalUtil';
 import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
 import searchClassBase from './SearchClassBase';
 
-export const getDropDownItems = (index: string) => {
+export const getDropDownItems = (index: string): ExploreQuickFilterField[] => {
   return searchClassBase.getDropDownItems(index);
 };
 
@@ -87,10 +88,7 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
     return (
       <Icon
         className="action action--DELETE"
-        component={
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          CloseCircleOutlined as React.ForwardRefExoticComponent<any>
-        }
+        component={CloseCircleOutlined as React.ForwardRefExoticComponent<any>}
         data-testid="advanced-search-delete-rule"
         onClick={props?.onClick}
       />

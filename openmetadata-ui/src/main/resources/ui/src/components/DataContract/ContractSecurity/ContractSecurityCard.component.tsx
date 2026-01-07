@@ -133,13 +133,15 @@ const ContractSecurityCard: React.FC<{
         </Card>
       </Col>
 
-      <Col span={24}>
-        <Typography.Text className="contract-security-policy-label">
-          {t('label.policy-plural')}
-        </Typography.Text>
+      {!isEmpty(security?.policies) && (
+        <Col data-testid="contract-security-policy-container" span={24}>
+          <Typography.Text className="contract-security-policy-label">
+            {t('label.policy-plural')}
+          </Typography.Text>
 
-        {renderSecurityPolicies}
-      </Col>
+          {renderSecurityPolicies}
+        </Col>
+      )}
     </Row>
   );
 };

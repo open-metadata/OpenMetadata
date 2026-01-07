@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -105,6 +105,10 @@ export interface Table {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
@@ -132,6 +136,11 @@ export interface Table {
      * Owners of this table.
      */
     owners?: EntityReference[];
+    /**
+     * Pipeline observability information for the table. Multiple pipelines can process the same
+     * table.
+     */
+    pipelineObservability?: PipelineObservability[];
     /**
      * Processed lineage for the table
      */
@@ -317,9 +326,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -632,6 +663,8 @@ export interface CustomMetric {
  *
  * Reference to the Location that contains this table.
  *
+ * Reference to the pipeline that processes this data asset.
+ *
  * Link to Database service this table is hosted in.
  *
  * Executable test suite associated with this table
@@ -812,6 +845,11 @@ export interface ColumnProfile {
  */
 export interface CardinalityDistribution {
     /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
+    /**
      * List of category names including 'Others'.
      */
     categories?: string[];
@@ -974,6 +1012,7 @@ export enum FileFormat {
     Jsonl = "jsonl",
     JsonlGz = "jsonl.gz",
     JsonlZip = "jsonl.zip",
+    Mf4 = "MF4",
     Parq = "parq",
     Parquet = "parquet",
     ParquetSnappy = "parquet.snappy",
@@ -1063,6 +1102,83 @@ export interface AccessDetails {
      * Timestamp of data asset accessed for creation, update, read.
      */
     timestamp: number;
+}
+
+/**
+ * This schema defines pipeline observability data that can be associated with data assets
+ * to track pipeline execution information.
+ */
+export interface PipelineObservability {
+    /**
+     * End time of the pipeline schedule.
+     */
+    endTime?: number;
+    /**
+     * Status of the last pipeline execution.
+     */
+    lastRunStatus?: LastRunStatus;
+    /**
+     * Timestamp of the last pipeline execution.
+     */
+    lastRunTime?: number;
+    /**
+     * Reference to the pipeline that processes this data asset.
+     */
+    pipeline: EntityReference;
+    /**
+     * Schedule interval for the pipeline in cron format.
+     */
+    scheduleInterval?: null | string;
+    /**
+     * Type of pipeline service
+     */
+    serviceType?: PipelineServiceType;
+    /**
+     * Start time of the pipeline schedule.
+     */
+    startTime?: number;
+}
+
+/**
+ * Status of the last pipeline execution.
+ */
+export enum LastRunStatus {
+    Failed = "Failed",
+    Pending = "Pending",
+    Running = "Running",
+    Skipped = "Skipped",
+    Successful = "Successful",
+}
+
+/**
+ * Type of pipeline service
+ *
+ * Type of pipeline service - Airflow or Prefect.
+ */
+export enum PipelineServiceType {
+    Airbyte = "Airbyte",
+    Airflow = "Airflow",
+    CustomPipeline = "CustomPipeline",
+    DBTCloud = "DBTCloud",
+    Dagster = "Dagster",
+    DataFactory = "DataFactory",
+    DatabricksPipeline = "DatabricksPipeline",
+    DomoPipeline = "DomoPipeline",
+    Fivetran = "Fivetran",
+    Flink = "Flink",
+    GluePipeline = "GluePipeline",
+    KafkaConnect = "KafkaConnect",
+    KinesisFirehose = "KinesisFirehose",
+    Matillion = "Matillion",
+    Mulesoft = "Mulesoft",
+    Nifi = "Nifi",
+    OpenLineage = "OpenLineage",
+    Snowplow = "Snowplow",
+    Spark = "Spark",
+    Spline = "Spline",
+    Ssis = "SSIS",
+    Stitch = "Stitch",
+    Wherescape = "Wherescape",
 }
 
 /**

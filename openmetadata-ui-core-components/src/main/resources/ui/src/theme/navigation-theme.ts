@@ -11,85 +11,9 @@
  *  limitations under the License.
  */
 import type { Components, Theme } from '@mui/material/styles';
+import { BODY_FONT_SIZES } from './typography-constants';
 
 export const navigationTheme = (colors: any): Components<Theme> => ({
-  MuiTabs: {
-    styleOverrides: {
-      root: {
-        width: '100%',
-      },
-
-      scroller: {
-        margin: 0,
-        padding: '0 20px',
-        height: '48px',
-        backgroundColor: colors.white,
-        borderRadius: '12px',
-        border: `1px solid ${colors.gray[200]}`,
-      },
-
-      indicator: {
-        bottom: '6px',
-        height: '2px',
-        backgroundColor: colors.brand[600],
-      },
-      flexContainer: {
-        borderBottom: 'none',
-        height: '100%',
-        alignItems: 'center',
-      },
-    },
-  },
-  MuiTab: {
-    styleOverrides: {
-      root: {
-        padding: '8px 12px',
-        position: 'relative' as const,
-        color: colors.gray[600],
-        backgroundColor: 'transparent',
-        border: 'none',
-        borderRadius: 0,
-        minHeight: 'auto',
-        textTransform: 'none' as const,
-        fontSize: '0.875rem',
-        fontWeight: 500,
-
-        '&:not(:first-of-type)': {
-          marginLeft: '14px',
-        },
-
-        '&:hover': {
-          backgroundColor: 'transparent',
-          color: colors.gray[700],
-        },
-
-        '&:focus-visible': {
-          outline: `2px solid ${colors.brand[600]} !important`,
-          outlineOffset: '2px',
-        },
-
-        '&.Mui-selected': {
-          color: colors.brand[600],
-          fontWeight: 600,
-          backgroundColor: 'transparent',
-
-          '&:hover': {
-            color: colors.brand[600],
-            backgroundColor: 'transparent',
-          },
-        },
-
-        '&.Mui-disabled': {
-          cursor: 'not-allowed',
-          color: colors.gray[300],
-          '&:hover': {
-            backgroundColor: 'transparent',
-            color: colors.gray[300],
-          },
-        },
-      },
-    },
-  },
   MuiBreadcrumbs: {
     styleOverrides: {
       root: {
@@ -105,7 +29,7 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
       },
       separator: {
         fontFamily: 'Poppins, -apple-system, BlinkMacSystemFont, sans-serif',
-        fontSize: '12px',
+        fontSize: BODY_FONT_SIZES.CAPTION,
         fontWeight: 400,
         lineHeight: '18px',
         color: 'rgba(120, 116, 134, 1)',
@@ -118,7 +42,7 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
       root: {
         fontFamily:
           'var(--font-inter, "Inter"), -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
-        fontSize: '14px',
+        fontSize: BODY_FONT_SIZES.BODY2,
         fontWeight: 400,
         lineHeight: '20px',
         textDecoration: 'none',
@@ -169,7 +93,7 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
         alignItems: 'center',
         justifyContent: 'center',
         padding: '12px',
-        fontSize: '0.875rem',
+        fontSize: BODY_FONT_SIZES.BODY2,
         fontWeight: 500,
         color: colors.gray[500],
         backgroundColor: 'transparent',
@@ -275,7 +199,7 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
         cursor: 'pointer' as const,
         margin: '1px 6px',
         padding: '8px 10px',
-        fontSize: '0.875rem',
+        fontSize: BODY_FONT_SIZES.BODY2,
         fontWeight: 600,
         color: colors.gray[700],
         backgroundColor: 'transparent',
@@ -328,15 +252,15 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
         minHeight: '56px',
       },
       selectLabel: {
-        fontSize: '0.875rem',
+        fontSize: BODY_FONT_SIZES.BODY2,
         color: colors.gray[600],
       },
       displayedRows: {
-        fontSize: '0.875rem',
+        fontSize: BODY_FONT_SIZES.BODY2,
         color: colors.gray[600],
       },
       select: {
-        fontSize: '0.875rem',
+        fontSize: BODY_FONT_SIZES.BODY2,
       },
       actions: {
         marginLeft: '20px',

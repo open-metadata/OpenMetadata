@@ -15,7 +15,6 @@ import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
 import {
   forwardRef,
@@ -83,6 +82,7 @@ const ClassificationDetails = forwardRef(
       handleAddNewTagClick,
       disableEditButton,
       isVersionView = false,
+      handleToggleDisable,
     }: Readonly<ClassificationDetailsProps>,
     ref
   ) => {
@@ -97,6 +97,7 @@ const ClassificationDetails = forwardRef(
       currentPage,
       paging,
       pageSize,
+      pagingCursor,
       handlePageChange,
       handlePageSizeChange,
       handlePagingChange,
@@ -111,7 +112,7 @@ const ClassificationDetails = forwardRef(
       setTags([]);
       try {
         const { data, paging: tagPaging } = await getTags({
-          fields: TabSpecificField.USAGE_COUNT,
+          fields: `${TabSpecificField.USAGE_COUNT},${TabSpecificField.OWNERS},${TabSpecificField.DOMAINS}`,
           parent: currentClassificationName,
           after: paging?.after,
           before: paging?.before,
@@ -142,8 +143,12 @@ const ClassificationDetails = forwardRef(
             [cursorType]: paging[cursorType],
           }
         );
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
       }
-      handlePageChange(currentPage);
     };
 
     const {
@@ -154,20 +159,23 @@ const ClassificationDetails = forwardRef(
       description,
       isTier,
       isSystemClassification,
+      isClassificationDeleted,
     } = useMemo(
       () => getClassificationInfo(currentClassification, isVersionView),
       [currentClassification, isVersionView]
     );
 
     const versionHandler = useCallback(() => {
-      isVersionView
-        ? navigate(getClassificationDetailsPath(tagCategoryName))
-        : navigate(
-            getClassificationVersionsPath(
-              tagCategoryName,
-              toString(currentVersion)
-            )
-          );
+      if (isVersionView) {
+        navigate(getClassificationDetailsPath(tagCategoryName));
+      } else {
+        navigate(
+          getClassificationVersionsPath(
+            tagCategoryName,
+            toString(currentVersion)
+          )
+        );
+      }
     }, [currentVersion, tagCategoryName]);
 
     const {
@@ -176,8 +184,12 @@ const ClassificationDetails = forwardRef(
       createPermission,
       deletePermission,
       editDisplayNamePermission,
-    } = useMemo(
-      () => ({
+      editOwnerPermission,
+      editDomainPermission,
+    } = useMemo(() => {
+      const isEditable = !isClassificationDisabled && !isClassificationDeleted;
+
+      return {
         editClassificationPermission: classificationPermissions.EditAll,
         editDescriptionPermission:
           !isVersionView &&
@@ -193,20 +205,26 @@ const ClassificationDetails = forwardRef(
         editDisplayNamePermission:
           classificationPermissions.EditAll ||
           classificationPermissions.EditDisplayName,
-      }),
-      [
-        permissions,
-        classificationPermissions,
-        isVersionView,
-        isClassificationDisabled,
-        isSystemClassification,
-      ]
-    );
+        editOwnerPermission:
+          isEditable &&
+          (classificationPermissions.EditAll ||
+            classificationPermissions.EditOwners),
+        editDomainPermission: isEditable && classificationPermissions.EditAll,
+      };
+    }, [
+      permissions,
+      classificationPermissions,
+      isVersionView,
+      isClassificationDisabled,
+      isSystemClassification,
+      isClassificationDeleted,
+    ]);
 
     const headerBadge = useMemo(
       () =>
         isSystemClassification ? (
           <AppBadge
+            className="whitespace-nowrap"
             icon={<LockIcon height={12} />}
             label={capitalize(currentClassification?.provider)}
           />
@@ -286,6 +304,7 @@ const ClassificationDetails = forwardRef(
           handleEditTagClick,
           handleActionDeleteTag,
           isVersionView,
+          handleToggleDisable,
         }),
       [
         isClassificationDisabled,
@@ -295,6 +314,7 @@ const ClassificationDetails = forwardRef(
         handleEditTagClick,
         handleActionDeleteTag,
         isVersionView,
+        handleToggleDisable,
       ]
     );
 
@@ -314,9 +334,20 @@ const ClassificationDetails = forwardRef(
 
     useEffect(() => {
       if (currentClassification?.fullyQualifiedName && !isAddingTag) {
-        fetchClassificationChildren(currentClassification.fullyQualifiedName);
+        const { cursorType, cursorValue } = pagingCursor ?? {};
+
+        if (cursorType && cursorValue) {
+          fetchClassificationChildren(
+            currentClassification.fullyQualifiedName,
+            {
+              [cursorType]: cursorValue,
+            }
+          );
+        } else {
+          fetchClassificationChildren(currentClassification.fullyQualifiedName);
+        }
       }
-    }, [currentClassification?.fullyQualifiedName, pageSize]);
+    }, [currentClassification?.fullyQualifiedName, pageSize, pagingCursor]);
 
     useImperativeHandle(ref, () => ({
       refreshClassificationTags() {
@@ -339,15 +370,14 @@ const ClassificationDetails = forwardRef(
                       <div data-testid="mutually-exclusive-container">
                         <AppBadge
                           bgColor={theme.primaryColor}
+                          className="whitespace-nowrap"
                           label={t('label.mutually-exclusive')}
                         />
                       </div>
                     )}
                   </div>
                 }
-                className={classNames({
-                  'opacity-60': isClassificationDisabled,
-                })}
+                className="flex-wrap"
                 displayName={displayName}
                 icon={
                   <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />
@@ -363,7 +393,6 @@ const ClassificationDetails = forwardRef(
                 {createPermission && (
                   <Tooltip title={addTagButtonToolTip}>
                     <Button
-                      className="h-10"
                       data-testid="add-new-tag-button"
                       disabled={isClassificationDisabled}
                       type="primary"
@@ -431,9 +460,6 @@ const ClassificationDetails = forwardRef(
                 <div className="m-b-sm" data-testid="description-container">
                   <DescriptionV1
                     wrapInCard
-                    className={classNames({
-                      'opacity-60': isClassificationDisabled,
-                    })}
                     description={description}
                     entityName={getEntityName(currentClassification)}
                     entityType={EntityType.CLASSIFICATION}
@@ -445,9 +471,6 @@ const ClassificationDetails = forwardRef(
                 </div>
 
                 <Table
-                  className={classNames({
-                    'opacity-60': isClassificationDisabled,
-                  })}
                   columns={tableColumn}
                   customPaginationProps={{
                     currentPage,
@@ -470,9 +493,6 @@ const ClassificationDetails = forwardRef(
                     ),
                   }}
                   pagination={false}
-                  rowClassName={(record) =>
-                    record.disabled ? 'opacity-60' : ''
-                  }
                   rowKey="id"
                   scroll={{ x: true }}
                   size="small"
@@ -481,8 +501,15 @@ const ClassificationDetails = forwardRef(
             </Col>
             <Col span={6}>
               <div className="d-flex flex-column gap-5">
-                <DomainLabelV2 multiple showDomainHeading />
-                <OwnerLabelV2 dataTestId="classification-owner-name" />
+                <DomainLabelV2
+                  multiple
+                  showDomainHeading
+                  hasPermission={editDomainPermission}
+                />
+                <OwnerLabelV2
+                  dataTestId="classification-owner-name"
+                  hasPermission={editOwnerPermission}
+                />
               </div>
             </Col>
           </Row>

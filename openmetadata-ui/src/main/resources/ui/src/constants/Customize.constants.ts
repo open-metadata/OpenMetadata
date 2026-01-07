@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TFunctionKeys } from 'i18next';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 
-export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
+export const TAB_LABEL_MAP = {
   [EntityTabs.OVERVIEW]: 'label.overview',
   [EntityTabs.GLOSSARY_TERMS]: 'label.glossary-term-plural',
   [EntityTabs.ASSETS]: 'label.asset-plural',
@@ -60,13 +61,16 @@ export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
   [EntityTabs.CONTRACT]: 'label.contract',
   [EntityTabs.DIRECTORIES]: 'label.directory-plural',
   [EntityTabs.WORKSHEETS]: 'label.worksheet-plural',
-} as const;
+  [EntityTabs.FILES]: 'label.file-plural',
+  [EntityTabs.SPREADSHEETS]: 'label.spreadsheet-plural',
+} as Record<EntityTabs, TFunctionKeys>;
 
 export type CustomizeEntityType =
   | EntityType.TABLE
   | EntityType.DASHBOARD
   | EntityType.DATABASE
   | EntityType.DATABASE_SCHEMA
+  | EntityType.TAG
   | EntityType.TOPIC
   | EntityType.PIPELINE
   | EntityType.STORED_PROCEDURE
@@ -76,6 +80,7 @@ export type CustomizeEntityType =
   | EntityType.MLMODEL
   | EntityType.DASHBOARD_DATA_MODEL
   | EntityType.DOMAIN
+  | EntityType.DATA_PRODUCT
   | EntityType.GLOSSARY
   | EntityType.GLOSSARY_TERM
   | EntityType.CONTAINER
@@ -91,6 +96,7 @@ export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.DASHBOARD]: PageType.Dashboard,
   [EntityType.DATABASE]: PageType.Database,
   [EntityType.DATABASE_SCHEMA]: PageType.DatabaseSchema,
+  [EntityType.TAG]: PageType.Tag,
   [EntityType.TOPIC]: PageType.Topic,
   [EntityType.PIPELINE]: PageType.Pipeline,
   [EntityType.STORED_PROCEDURE]: PageType.StoredProcedure,
@@ -100,6 +106,7 @@ export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.MLMODEL]: PageType.MlModel,
   [EntityType.DASHBOARD_DATA_MODEL]: PageType.DashboardDataModel,
   [EntityType.DOMAIN]: PageType.Domain,
+  [EntityType.DATA_PRODUCT]: PageType.DataProduct,
   [EntityType.GLOSSARY]: PageType.Glossary,
   [EntityType.GLOSSARY_TERM]: PageType.GlossaryTerm,
   [EntityType.CONTAINER]: PageType.Container,

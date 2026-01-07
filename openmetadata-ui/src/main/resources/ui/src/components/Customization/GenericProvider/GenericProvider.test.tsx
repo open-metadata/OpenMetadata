@@ -35,6 +35,15 @@ jest.mock('../../../hooks/useCustomPages', () => ({
   })),
 }));
 
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
+
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ tab: EntityTabs.SCHEMA })),
 }));

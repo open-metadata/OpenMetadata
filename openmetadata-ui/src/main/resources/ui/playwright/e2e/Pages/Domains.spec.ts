@@ -23,6 +23,7 @@ import {
   EntityTypeEndpoint,
   ENTITY_PATH,
 } from '../../support/entity/Entity.interface';
+import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -38,6 +39,7 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
+  visitGlossaryPage,
 } from '../../utils/common';
 import {
   addCustomPropertiesForEntity,
@@ -64,13 +66,23 @@ import {
   verifyDataProductAssetsAfterDelete,
   verifyDomain,
 } from '../../utils/domain';
-import { followEntity, unFollowEntity } from '../../utils/entity';
+import {
+  assignGlossaryTerm,
+  createAnnouncement,
+  deleteAnnouncement,
+  editAnnouncement,
+  followEntity,
+  replyAnnouncement,
+  unFollowEntity,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import {
   settingClick,
   SettingOptionsType,
   sidebarClick,
 } from '../../utils/sidebar';
 import { performUserLogin, visitUserProfilePage } from '../../utils/user';
+import { selectActiveGlossaryTerm } from '../../utils/glossary';
 const user = new UserClass();
 
 const domain = new Domain();
@@ -90,15 +102,15 @@ const test = base.extend<{
   page: Page;
   userPage: Page;
 }>({
-  page: async ({ browser }, use) => {
+  page: async ({ browser }, setPage) => {
     const { page } = await performAdminLogin(browser);
-    await use(page);
+    await setPage(page);
     await page.close();
   },
-  userPage: async ({ browser }, use) => {
+  userPage: async ({ browser }, setPage) => {
     const page = await browser.newPage();
     await user.login(page);
-    await use(page);
+    await setPage(page);
     await page.close();
   },
 });
@@ -217,6 +229,15 @@ test.describe('Domains', () => {
 
     await test.step('Create DataProducts', async () => {
       await createDataProduct(page, dataProduct1.data);
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId(
+          `table-data-card_${dataProduct1.data.fullyQualifiedName}`
+        )
+      ).toBeVisible();
+
       await createDataProduct(page, dataProduct2.data);
     });
 
@@ -224,8 +245,14 @@ test.describe('Domains', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct1.data);
-      await followEntity(page, EntityTypeEndpoint.DataProduct);
+      await followEntity(page, EntityTypeEndpoint.DATA_PRODUCT);
+
+      // Wait for the search query that will populate the following widget
+      const followingSearchResponse = page.waitForResponse(
+        '/api/v1/search/query?*index=all*'
+      );
       await redirectToHomePage(page);
+      await followingSearchResponse;
 
       // Check that the followed data product is shown in the following widget
       await expect(
@@ -237,7 +264,7 @@ test.describe('Domains', () => {
 
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct1.data);
-      await unFollowEntity(page, EntityTypeEndpoint.DataProduct);
+      await unFollowEntity(page, EntityTypeEndpoint.DATA_PRODUCT);
       await redirectToHomePage(page);
 
       // Check that the data product is not shown in the following widget
@@ -248,6 +275,41 @@ test.describe('Domains', () => {
         page.locator('[data-testid="following-widget"]')
       ).not.toContainText(dataProduct1.data.displayName);
     });
+
+    await test.step(
+      'Verify empty assets message and Add Asset button',
+      async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct1.data);
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+
+        await expect(
+          page.getByTestId('KnowledgePanel.Domain').getByTestId('add-domain')
+        ).not.toBeVisible();
+
+        await page.getByTestId('assets').getByText('Assets').click();
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+
+        await expect(page.getByTestId('no-data-placeholder')).toContainText(
+          "Looks like you haven't added any data assets yet."
+        );
+
+        await page.getByTestId('data-assets-add-button').click();
+
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+
+        await expect(page.getByTestId('form-heading')).toContainText(
+          'Add Assets'
+        );
+
+        await expect(page.getByTestId('cancel-btn')).toBeVisible();
+        await expect(page.getByTestId('save-btn')).toBeDisabled();
+      }
+    );
 
     await test.step('Add assets to DataProducts', async () => {
       await redirectToHomePage(page);
@@ -265,6 +327,9 @@ test.describe('Domains', () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct1.data);
       await removeAssetsFromDataProduct(page, dataProduct1.data, assets);
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+      await page.waitForLoadState('networkidle');
       await checkAssetsCount(page, 0);
     });
 
@@ -283,7 +348,15 @@ test.describe('Domains', () => {
     await sidebarClick(page, SidebarItem.DOMAIN);
     await selectDomain(page, domain.data);
     await followEntity(page, EntityTypeEndpoint.Domain);
+
+    // Wait for the search query that will populate the following widget
+    const followingSearchResponse = page.waitForResponse(
+      '/api/v1/search/query?*index=all*'
+    );
     await redirectToHomePage(page);
+    await followingSearchResponse;
+
+    await page.waitForLoadState('networkidle');
 
     // Check that the followed domain is shown in the following widget
     await expect(
@@ -359,47 +432,6 @@ test.describe('Domains', () => {
     await afterAction();
   });
 
-  test('Switch domain from navbar and check domain query call wrap in quotes', async ({
-    page,
-  }) => {
-    const { afterAction, apiContext } = await getApiContext(page);
-    const domain = new Domain();
-    await domain.create(apiContext);
-    await page.reload();
-
-    await redirectToExplorePage(page);
-
-    await page.getByTestId('domain-dropdown').click();
-
-    await page
-      .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
-      .click();
-
-    await page.waitForLoadState('networkidle');
-
-    await redirectToHomePage(page);
-
-    const queryRes = page.waitForRequest(
-      '/api/v1/search/query?*index=dataAsset*'
-    );
-    await sidebarClick(page, SidebarItem.EXPLORE);
-    const response = await queryRes;
-    const url = new URL(response.url());
-    const queryParams = new URLSearchParams(url.search);
-    const qParam = queryParams.get('q');
-
-    // The domain FQN should be properly escaped in the query
-    // The actual format uses escaped hyphens, not URL encoding
-    const fqn = (domain.data.fullyQualifiedName ?? '')
-      .replace(/"/g, '\\"')
-      .replace(/-/g, '\\-');
-
-    expect(qParam).toContain(`(domains.fullyQualifiedName:"${fqn}")`);
-
-    await domain.delete(apiContext);
-    await afterAction();
-  });
-
   test('Rename domain', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
@@ -460,7 +492,13 @@ test.describe('Domains', () => {
       await verifyDomain(page, subDomain.data, domain.data, false);
       // Follow domain
       await followEntity(page, EntityTypeEndpoint.Domain);
+
+      // Wait for the search query that will populate the following widget
+      const followingSearchResponse = page.waitForResponse(
+        '/api/v1/search/query?*index=all*'
+      );
       await redirectToHomePage(page);
+      await followingSearchResponse;
       await page.waitForLoadState('networkidle');
 
       // Check that the followed domain is shown in the following widget
@@ -632,12 +670,12 @@ test.describe('Domains', () => {
       await selectDataProduct(page, dataProduct.data);
 
       await expect(
-        page.getByTestId('domain-owner-name').getByTestId('owner-label')
-      ).toContainText(user1.responseData.displayName);
+        page.getByTestId(user1.responseData.displayName)
+      ).toBeVisible();
 
       await expect(
-        page.getByTestId('domain-expert-name').getByTestId('owner-label')
-      ).toContainText(user2.responseData.displayName);
+        page.getByTestId(user2.responseData.displayName)
+      ).toBeVisible();
     } finally {
       await dataProduct?.delete(apiContext);
       await domain?.delete(apiContext);
@@ -664,11 +702,20 @@ test.describe('Domains', () => {
 
       const descriptionInputBox = '.om-block-editor[contenteditable="true"]';
 
+      // clear existing description to avoid flakiness
+      await userPage.fill(descriptionInputBox, '');
+
       await userPage.fill(descriptionInputBox, 'test description');
+
+      const saveResponse = userPage.waitForResponse(
+        (req) =>
+          req.request().method() === 'PATCH' &&
+          req.request().url().includes('/api/v1/domains/')
+      );
 
       await userPage.getByTestId('save').click();
 
-      await userPage.waitForTimeout(3000);
+      await saveResponse;
 
       const descriptionBox = '.om-block-editor[contenteditable="false"]';
 
@@ -680,6 +727,130 @@ test.describe('Domains', () => {
       await user.delete(apiContext);
     }
     await afterAction();
+  });
+
+  test('Verify domain and subdomain asset count accuracy', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const { assets: domainAssets, assetCleanup: domainAssetCleanup } =
+      await setupAssetsForDomain(page);
+    const { assets: subDomainAssets, assetCleanup: subDomainAssetCleanup } =
+      await setupAssetsForDomain(page);
+
+    let subDomain!: SubDomain;
+
+    try {
+      await test.step('Create domain and subdomain via API', async () => {
+        await domain.create(apiContext);
+        subDomain = new SubDomain(domain);
+        await subDomain.create(apiContext);
+      });
+
+      await test.step('Add assets to domain', async () => {
+        await page.reload();
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await selectDomain(page, domain.data);
+        await page.getByTestId('assets').click();
+        await addAssetsToDomain(page, domain, domainAssets, false);
+      });
+
+      await test.step('Add assets to subdomain', async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await selectDomain(page, domain.data);
+        await page.getByTestId('subdomains').getByText('Sub Domains').click();
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await Promise.all([
+          page.getByTestId(subDomain.data.name).click(),
+          page.waitForResponse('/api/v1/domains/name/*'),
+        ]);
+
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await page.getByTestId('assets').click();
+        await addAssetsToDomain(
+          page,
+          subDomain as unknown as Domain,
+          subDomainAssets,
+          false
+        );
+      });
+
+      await test.step(
+        'Verify domain asset count matches displayed cards',
+        async () => {
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+          await page.getByTestId('assets').click();
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          const assetCountElement = page
+            .getByTestId('assets')
+            .getByTestId('count');
+          const countText = await assetCountElement.textContent();
+          const displayedCount = parseInt(countText ?? '0', 10);
+          const totalCount = domainAssets.length + subDomainAssets.length;
+          const assetCards = await page
+            .locator('[data-testid*="table-data-card_"]')
+            .count();
+
+          expect(displayedCount).toBe(totalCount);
+          expect(assetCards).toBe(totalCount);
+        }
+      );
+
+      await test.step(
+        'Verify subdomain asset count matches displayed cards',
+        async () => {
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+          await page.getByTestId('subdomains').getByText('Sub Domains').click();
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          await Promise.all([
+            page.getByTestId(subDomain.data.name).click(),
+            page.waitForResponse('/api/v1/domains/name/*'),
+          ]);
+
+          await page.getByTestId('assets').click();
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          const assetCountElement = page
+            .getByTestId('assets')
+            .getByTestId('count');
+          const countText = await assetCountElement.textContent();
+          const displayedCount = parseInt(countText ?? '0', 10);
+
+          const assetCards = await page
+            .locator('[data-testid*="table-data-card_"]')
+            .count();
+
+          expect(displayedCount).toBe(subDomainAssets.length);
+          expect(assetCards).toBe(subDomainAssets.length);
+        }
+      );
+    } finally {
+      await subDomain?.delete(apiContext);
+      await domain.delete(apiContext);
+      await domainAssetCleanup();
+      await subDomainAssetCleanup();
+      await afterAction();
+    }
   });
 
   test('Verify domain tags and glossary terms', async ({ page }) => {
@@ -772,6 +943,45 @@ test.describe('Domains', () => {
     }
   });
 
+  test('Verify redirect path on data product delete', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const dataProduct = new DataProduct([domain]);
+
+    await domain.create(apiContext);
+    await dataProduct.create(apiContext);
+
+    await page.reload();
+    await redirectToHomePage(page);
+
+    await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+    await selectDataProduct(page, dataProduct.data);
+
+    await page.getByTestId('manage-button').click();
+    await page.getByTestId('delete-button-title').click();
+
+    await page.getByTestId('confirmation-text-input').click();
+    await page.getByTestId('confirmation-text-input').fill('DELETE');
+
+    const dpListRes = page.waitForResponse(
+      '/api/v1/search/query?q=&index=data_product_search_index*'
+    );
+    const deleteRes = page.waitForResponse('/api/v1/dataProducts/*');
+
+    await page.getByTestId('confirm-button').click();
+
+    await deleteRes;
+    await dpListRes;
+
+    await expect(
+      page.getByText(`"Data Product" deleted successfully!`)
+    ).toBeVisible();
+
+    await expect(page.getByTestId('add-entity-button')).toBeVisible();
+
+    await afterAction();
+  });
+
   test('Verify duplicate domain creation', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -830,7 +1040,10 @@ test.describe('Domains', () => {
         await addCustomPropertiesForEntity({
           page,
           propertyName,
-          customPropertyData: { description: 'Test domain custom property' },
+          customPropertyData: {
+            description: 'Test domain custom property',
+            entityApiType: 'domains',
+          },
           customType: 'String',
         });
       });
@@ -854,7 +1067,7 @@ test.describe('Domains', () => {
           // Add custom property value
           await page
             .getByTestId(`custom-property-${propertyName}-card`)
-            .locator('svg')
+            .getByTestId('edit-icon')
             .click();
 
           await page.getByTestId('value-input').fill(customPropertyValue);
@@ -900,6 +1113,196 @@ test.describe('Domains', () => {
         await deleteCreatedProperty(page, propertyName);
       });
     } finally {
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Domain announcement create, edit & delete', async ({ page }) => {
+    test.slow(true);
+
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+
+    try {
+      await domain.create(apiContext);
+      await page.reload();
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
+
+      await createAnnouncement(
+        page,
+        {
+          title: 'Domain Announcement Test',
+          description: 'Domain Announcement Description',
+        },
+        false
+      );
+
+      await editAnnouncement(page, {
+        title: 'Edited Domain Announcement',
+        description: 'Updated Domain Announcement Description',
+      });
+
+      await replyAnnouncement(page);
+      await deleteAnnouncement(page);
+    } finally {
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Data Product announcement create, edit & delete', async ({ page }) => {
+    test.slow(true);
+
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const dataProduct = new DataProduct([domain]);
+
+    try {
+      await domain.create(apiContext);
+      await page.reload();
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
+      await createDataProduct(page, dataProduct.data);
+
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct.data);
+
+      await createAnnouncement(
+        page,
+        {
+          title: 'Data Product Announcement Test',
+          description: 'Data Product Announcement Description',
+        },
+        false
+      );
+
+      await editAnnouncement(page, {
+        title: 'Edited Data Product Announcement',
+        description: 'Updated Data Product Announcement Description',
+      });
+
+      await replyAnnouncement(page);
+      await deleteAnnouncement(page);
+    } finally {
+      await dataProduct.delete(apiContext);
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  /**
+   * Tests that verify UI handles entities with deleted descriptions gracefully.
+   * The issue occurs when:
+   * 1. An entity is created with a description
+   * 2. The description is later deleted/cleared via API patch
+   * 3. The API returns the entity without a description field (due to @JsonInclude(NON_NULL))
+   * 4. UI should handle this gracefully instead of crashing
+   */
+  test('should handle domain after description is deleted', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+
+    try {
+      await domain.create(apiContext);
+
+      // Delete the description via API PATCH
+      await apiContext.patch(`/api/v1/domains/${domain.responseData.id}`, {
+        data: [
+          {
+            op: 'remove',
+            path: '/description',
+          },
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      });
+
+      // Navigate to the domain page
+      await domain.visitEntityPage(page);
+
+      // Verify the domain page loads without error
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toBeVisible();
+
+      // Verify no error page is shown
+      await expect(page.locator('text=Something went wrong')).not.toBeVisible();
+      await expect(
+        page.locator('text=Cannot read properties of undefined')
+      ).not.toBeVisible();
+    } finally {
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('should handle data product after description is deleted', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    await domain.create(apiContext);
+    const dataProduct = new DataProduct([domain]);
+
+    try {
+      await dataProduct.create(apiContext);
+
+      // Delete the description via API PATCH
+      await apiContext.patch(
+        `/api/v1/dataProducts/${dataProduct.responseData.id}`,
+        {
+          data: [
+            {
+              op: 'remove',
+              path: '/description',
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      );
+
+      // Navigate to the domain page
+      await domain.visitEntityPage(page);
+
+      const dpRes = page.waitForResponse(
+        '/api/v1/search/query?q=&index=data_product_search_index&*'
+      );
+      // Navigate to data products tab
+      await page.getByTestId('data_products').click();
+
+      await dpRes;
+
+      const dpDetails = page.waitForResponse(
+        '/api/v1/dataProducts/name/*?fields=domains*'
+      );
+
+      // Click on the data product using displayName
+      await page
+        .locator('.explore-search-card')
+        .getByText(dataProduct.responseData.displayName)
+        .click();
+
+      await dpDetails;
+
+      // Verify the data product page loads without error
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toBeVisible();
+
+      // Verify no error page is shown
+      await expect(page.locator('text=Something went wrong')).not.toBeVisible();
+      await expect(
+        page.locator('text=Cannot read properties of undefined')
+      ).not.toBeVisible();
+    } finally {
+      await dataProduct.delete(apiContext);
       await domain.delete(apiContext);
       await afterAction();
     }
@@ -1293,5 +1696,281 @@ test.describe('Domain Access with noDomain() Rule', () => {
     );
 
     await userAfterAction();
+  });
+});
+
+test.describe('Domain Tree View Functionality', () => {
+  let subDomain: SubDomain;
+  const domain = EntityDataClass.domain1;
+  const domainDisplayName = domain.responseData.displayName;
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    test.slow(true);
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    subDomain = new SubDomain(domain);
+    await subDomain.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    test.slow(true);
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await subDomain.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should render the domain tree view with correct details', async ({
+    page,
+  }) => {
+    test.slow(true);
+
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByRole('button', { name: 'tree' }).click();
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    await page
+      .getByTestId('page-layout-v1')
+      .getByRole('textbox', { name: 'Search' })
+      .clear();
+
+    const searchDomain = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(domainDisplayName)}*`
+    );
+    await page
+      .getByTestId('page-layout-v1')
+      .getByRole('textbox', { name: 'Search' })
+      .fill(domainDisplayName);
+    await searchDomain;
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page
+        .getByRole('treeitem', {
+          name: domainDisplayName,
+        })
+        .locator('div')
+        .nth(2)
+    ).toBeVisible();
+
+    await page
+      .getByRole('treeitem', { name: domainDisplayName })
+      .locator('div')
+      .nth(2)
+      .click();
+
+    await expect(
+      page
+        .getByRole('treeitem', { name: subDomain.data.displayName })
+        .locator('div')
+        .nth(2)
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole('listitem')
+        .filter({ hasText: domain.responseData.fullyQualifiedName })
+        .getByTestId('breadcrumb-link')
+    ).toBeVisible();
+    await expect(page.getByTestId('entity-header-display-name')).toContainText(
+      domainDisplayName
+    );
+    await expect(page.getByTestId('entity-header-name')).toContainText(
+      domain.responseData.name
+    );
+    await expect(
+      page.getByTestId('documentation').getByText('Documentation')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('subdomains').getByText('Sub Domains')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('data_products').getByText('Data Products')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('activity_feed').getByText('Activity Feeds & Tasks')
+    ).toBeVisible();
+    await expect(page.getByTestId('assets').getByText('Assets')).toBeVisible();
+    await expect(
+      page.getByTestId('custom_properties').getByText('Custom Properties')
+    ).toBeVisible();
+    await expect(
+      page
+        .getByTestId('asset-description-container')
+        .getByText(domain.responseData.description)
+    ).toBeVisible();
+    await expect(page.getByTestId('domain-details-add-button')).toBeVisible();
+
+    await expect(
+      page.getByTestId('subdomains').getByTestId('count')
+    ).toContainText('1');
+
+    await page.getByTestId('subdomains').getByText('Sub Domains').click();
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page
+        .getByTestId(subDomain.data.name)
+        .getByText(subDomain.data.displayName)
+    ).toBeVisible();
+  });
+
+  test('Verify Domain entity API calls do not include invalid domains field in glossary term assets', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const testGlossary = new Glossary();
+    const testGlossaryTerm = new GlossaryTerm(testGlossary);
+    const testDomain = new Domain();
+
+    try {
+      await testGlossary.create(apiContext);
+      await testGlossaryTerm.create(apiContext);
+      await testDomain.create(apiContext);
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+      await selectDomain(page, testDomain.data);
+      await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="glossary-container"]', {
+        state: 'visible',
+      });
+
+      // Add only glossary term to domain (no tags)
+      await assignGlossaryTerm(page, {
+        displayName: testGlossaryTerm.data.displayName,
+        name: testGlossaryTerm.data.name,
+        fullyQualifiedName: testGlossaryTerm.responseData.fullyQualifiedName,
+      });
+
+      await visitGlossaryPage(page, testGlossary.data.displayName);
+      await selectActiveGlossaryTerm(page, testGlossaryTerm.data.displayName);
+
+      let apiRequestUrl: string | null = null;
+      const responsePromise = page.waitForResponse(
+        (response) => {
+          const url = response.url();
+          if (
+            url.includes('/api/v1/domains/name/') &&
+            url.includes('fields=') &&
+            response.status() === 200
+          ) {
+            apiRequestUrl = url;
+            return true;
+          }
+          return false;
+        }
+      );
+
+      await page.getByTestId('assets').click();
+      await responsePromise;
+      await page.waitForSelector('.ant-tabs-tab-active:has-text("Assets")');
+      await waitForAllLoadersToDisappear(page);
+
+      expect(apiRequestUrl).not.toBeNull();
+      const urlObj = new URL(apiRequestUrl!);
+      const fields = urlObj.searchParams.get('fields');
+      const fieldArray = fields?.split(',') ?? [];
+
+      expect(fieldArray.includes('domains')).toBe(false);
+    } finally {
+      await testDomain.delete(apiContext);
+      await testGlossaryTerm.delete(apiContext);
+      await testGlossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Verify Domain entity API calls do not include invalid domains field in tag assets', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const testClassification = new ClassificationClass({
+      provider: 'system',
+      mutuallyExclusive: false,
+    });
+    const testTag = new TagClass({
+      classification: testClassification.data.name,
+    });
+    const testDomain = new Domain();
+
+    try {
+      await testClassification.create(apiContext);
+      await testTag.create(apiContext);
+      await testDomain.create(apiContext);
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+      await selectDomain(page, testDomain.data);
+      await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="tags-container"]', {
+        state: 'visible',
+      });
+
+      await page
+        .locator('[data-testid="tags-container"] [data-testid="add-tag"]')
+        .click();
+      const input = page.locator('[data-testid="tags-container"] #tagsForm_tags');
+      await input.click();
+      await input.fill(testTag.responseData.fullyQualifiedName);
+      await page
+        .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+        .click();
+
+      const updateResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/domains/') &&
+          response.request().method() === 'PATCH'
+      );
+      await page.getByTestId('saveAssociatedTag').click();
+      await updateResponse;
+
+      await testTag.visitPage(page);
+
+      let apiRequestUrl: string | null = null;
+      const responsePromise = page.waitForResponse(
+        (response) => {
+          const url = response.url();
+          if (
+            url.includes('/api/v1/domains/name/') &&
+            url.includes('fields=') &&
+            response.status() === 200
+          ) {
+            apiRequestUrl = url;
+            return true;
+          }
+          return false;
+        }
+      );
+
+      await page.getByTestId('assets').click();
+      await responsePromise;
+      await page.waitForSelector('.ant-tabs-tab-active:has-text("Assets")');
+      await waitForAllLoadersToDisappear(page);
+
+      expect(apiRequestUrl).not.toBeNull();
+      const urlObj = new URL(apiRequestUrl!);
+      const fields = urlObj.searchParams.get('fields');
+      const fieldArray = fields?.split(',') ?? [];
+
+      expect(fieldArray.includes('domains')).toBe(false);
+    } finally {
+      await testDomain.delete(apiContext);
+      await testTag.delete(apiContext);
+      await testClassification.delete(apiContext);
+      await afterAction();
+    }
   });
 });

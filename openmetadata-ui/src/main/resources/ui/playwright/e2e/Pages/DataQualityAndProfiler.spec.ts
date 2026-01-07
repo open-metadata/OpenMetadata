@@ -21,7 +21,7 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignDomain,
+  assignSingleSelectDomain,
   clickOutside,
   descriptionBox,
   getApiContext,
@@ -33,7 +33,11 @@ import {
 import { getCurrentMillis } from '../../utils/dateTime';
 import { visitEntityPage } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
-import { deleteTestCase, visitDataQualityTab } from '../../utils/testCases';
+import {
+  deleteTestCase,
+  verifyIncidentBreadcrumbsFromTablePageRedirect,
+  visitDataQualityTab,
+} from '../../utils/testCases';
 import { test } from '../fixtures/pages';
 
 const table1 = new TableClass();
@@ -118,6 +122,35 @@ test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });
 
+/**
+ * Data Quality & Profiler — Comprehensive Coverage
+ * @description Validates test case creation, editing, deletion, and tagging across table and column levels.
+ * Covers Data Quality tab interactions, incident navigation, domain assignment, and profiler configuration.
+ *
+ * Preconditions
+ * - Admin-authenticated session.
+ * - Two tables created; table2 has a pre-existing test case with results.
+ * - Classifications, tags, and glossary terms are provisioned.
+ *
+ * Coverage
+ * - Test Cases: Create/Edit/Delete at table and column levels with tags and glossary terms.
+ * - Data Quality Tab: Navigation, test case list, filtering, and sorting.
+ * - Incidents: Breadcrumb navigation from test case to incident page.
+ * - Domains: Assignment and filtering.
+ * - Profiler: Configuration and results visualization.
+ *
+ * API Interactions
+ * - POST `/api/v1/dataQuality/testCases*` for test case creation/updates.
+ * - GET `/api/v1/dataQuality/testCases*` for fetching test cases.
+ * - GET/POST for tag and glossary term search and assignment.
+ * - Ingestion pipeline endpoints for test case deployment.
+ */
+
+/**
+ * Table test case
+ * @description Creates, edits, and deletes a table-level test case with tags and glossary terms.
+ * Verifies incident breadcrumb navigation and test case property changes.
+ */
 test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   test.slow();
 
@@ -131,13 +164,18 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   await visitDataQualityTab(page, table1);
 
   await page.click('[data-testid="profiler-add-table-test-btn"]');
-  await page.click('[data-testid="table"]');
+  await page.getByRole('menuitem', { name: 'Test case' }).click();
 
+  /**
+   * Step: Create table test case
+   * @description Creates a table-level test case with name, type, parameters, tags, and glossary terms.
+   * Deploys the test case via ingestion pipeline.
+   */
   await test.step('Create', async () => {
     await page.fill('[data-testid="test-case-name"]', NEW_TABLE_TEST_CASE.name);
     await page.click('[id="root\\/testType"]');
     await page.waitForSelector(`text=${NEW_TABLE_TEST_CASE.label}`);
-    await page.click(`text=${NEW_TABLE_TEST_CASE.label}`);
+    await page.click(`[data-testid="${NEW_TABLE_TEST_CASE.type}"]`);
     await page.fill(
       '#testCaseFormV1_params_columnName',
       NEW_TABLE_TEST_CASE.field
@@ -158,7 +196,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       .getByTestId(`tag-${testTag1.responseData.fullyQualifiedName}`)
       .click();
 
-    await clickOutside(page);
+    await page.getByRole('heading', { name: 'Tags' }).click();
     // Add glossary terms to test case
     await page.click('[data-testid="glossary-terms-selector"] input');
     const glossarySearchResponse = page.waitForResponse(
@@ -173,7 +211,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       .getByTestId(`tag-${testGlossaryTerm1.responseData.fullyQualifiedName}`)
       .click();
 
-    await clickOutside(page);
+    await page.getByRole('heading', { name: 'Glossary Terms' }).click();
     const ingestionPipelines = page.waitForResponse(
       '/api/v1/services/ingestionPipelines'
     );
@@ -190,7 +228,14 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await expect(page.getByTestId(NEW_TABLE_TEST_CASE.name)).toBeVisible();
   });
 
+  /**
+   * Step: Edit test case
+   * @description Modifies test case parameters, replaces tags and glossary terms, and verifies updates persist.
+   */
   await test.step('Edit', async () => {
+    await page
+      .getByTestId(`action-dropdown-${NEW_TABLE_TEST_CASE.name}`)
+      .click();
     await page.click(`[data-testid="edit-${NEW_TABLE_TEST_CASE.name}"]`);
 
     await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
@@ -215,7 +260,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       .getByTestId(`tag-${testTag2.responseData.fullyQualifiedName}`)
       .click();
 
-    await clickOutside(page);
+    await page.getByRole('heading', { name: 'Tags' }).click();
 
     // Remove existing glossary term and add new one
     await page.click(
@@ -234,7 +279,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       .getByTestId(`tag-${testGlossaryTerm2.responseData.fullyQualifiedName}`)
       .click();
 
-    await clickOutside(page);
+    await page.getByRole('heading', { name: 'Glossary Terms' }).click();
 
     const updateTestCaseResponse = page.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
@@ -246,6 +291,10 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await page.waitForSelector('[data-testid="alert-bar"]', {
       state: 'detached',
     });
+
+    await page
+      .getByTestId(`action-dropdown-${NEW_TABLE_TEST_CASE.name}`)
+      .click();
 
     const testDefinitionResponse = page.waitForResponse(
       '/api/v1/dataQuality/testDefinitions/*'
@@ -262,11 +311,35 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await page.getByRole('button', { name: 'Cancel' }).click();
   });
 
+  /**
+   * Step: Incident page redirect
+   * @description Navigates to incident page via test case menu and verifies breadcrumb navigation.
+   */
+  await test.step(
+    'Redirect to IncidentPage and verify breadcrumb',
+    async () => {
+      await verifyIncidentBreadcrumbsFromTablePageRedirect(
+        page,
+        table1,
+        NEW_TABLE_TEST_CASE.name
+      );
+    }
+  );
+
+  /**
+   * Step: Delete test case
+   * @description Removes the test case and confirms deletion.
+   */
   await test.step('Delete', async () => {
     await deleteTestCase(page, NEW_TABLE_TEST_CASE.name);
   });
 });
 
+/**
+ * Column test case
+ * @description Creates, edits, and deletes a column-level test case with tags and glossary terms.
+ * Validates parameter changes and property persistence.
+ */
 test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   test.slow();
 
@@ -282,8 +355,14 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
   await visitDataQualityTab(page, table1);
   await page.click('[data-testid="profiler-add-table-test-btn"]');
-  await page.click('[data-testid="column"]');
+  await page.getByRole('menuitem', { name: 'Test case' }).click();
+  await page.getByTestId('select-table-card').getByText('Column Level').click();
 
+  /**
+   * Step: Create column test case
+   * @description Creates a column-level test case by selecting a column, configuring test parameters,
+   * and adding tags and glossary terms.
+   */
   await test.step('Create', async () => {
     const testDefinitionResponse = page.waitForResponse(
       '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR'
@@ -322,7 +401,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       .getByTestId(`tag-${testTag1.responseData.fullyQualifiedName}`)
       .click();
 
-    await clickOutside(page);
+    await page.getByRole('heading', { name: 'Tags' }).click();
 
     // Add glossary terms to column test case
     await page.click('[data-testid="glossary-terms-selector"] input');
@@ -338,7 +417,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       .getByTestId(`tag-${testGlossaryTerm1.responseData.fullyQualifiedName}`)
       .click();
 
-    await clickOutside(page);
+    await page.getByRole('heading', { name: 'Glossary Terms' }).click();
 
     await page.click('[data-testid="create-btn"]');
     await toastNotification(page, 'Test case created successfully.');
@@ -351,6 +430,9 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   });
 
   await test.step('Edit', async () => {
+    await page
+      .getByTestId(`action-dropdown-${NEW_COLUMN_TEST_CASE.name}`)
+      .click();
     await page.click(`[data-testid="edit-${NEW_COLUMN_TEST_CASE.name}"]`);
     await page.waitForSelector('#tableTestForm_params_minLength');
     await page.locator('#tableTestForm_params_minLength').clear();
@@ -370,7 +452,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       .getByTestId(`tag-${testTag2.responseData.fullyQualifiedName}`)
       .click();
 
-    await clickOutside(page);
+    await page.getByRole('heading', { name: 'Tags' }).click();
 
     // Remove existing glossary term and add new one for column test case
     await page.click(
@@ -389,7 +471,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       .getByTestId(`tag-${testGlossaryTerm2.responseData.fullyQualifiedName}`)
       .click();
 
-    await clickOutside(page);
+    await page.getByRole('heading', { name: 'Glossary Terms' }).click();
 
     const updateTestCaseResponse = page.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
@@ -398,6 +480,10 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await page.getByTestId('update-btn').click();
     await updateTestCaseResponse;
     await toastNotification(page, 'Test case updated successfully.');
+
+    await page
+      .getByTestId(`action-dropdown-${NEW_COLUMN_TEST_CASE.name}`)
+      .click();
 
     const testDefinitionResponse = page.waitForResponse(
       '/api/v1/dataQuality/testDefinitions/*'
@@ -414,11 +500,35 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await page.locator('button').getByText('Cancel').click();
   });
 
+  /**
+   * Step: Incident page redirect
+   * @description Navigates to incident page for the column test case and verifies breadcrumb.
+   */
+  await test.step(
+    'Redirect to IncidentPage and verify breadcrumb',
+    async () => {
+      await verifyIncidentBreadcrumbsFromTablePageRedirect(
+        page,
+        table1,
+        NEW_COLUMN_TEST_CASE.name
+      );
+    }
+  );
+
+  /**
+   * Step: Delete column test case
+   * @description Removes the column test case.
+   */
   await test.step('Delete', async () => {
     await deleteTestCase(page, NEW_COLUMN_TEST_CASE.name);
   });
 });
 
+/**
+ * Profiler matrix and test case visibility for roles
+ * @description Validates profiler matrix and test case graph visibility for admin, data consumer, and data steward roles.
+ * Verifies table profile data, test case results, and filtering.
+ */
 test(
   'Profiler matrix and test case graph should visible for admin, data consumer and data steward',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
@@ -459,7 +569,7 @@ test(
         '/api/v1/tables/name/*/columns?*'
       );
       await page
-        .getByRole('menuitem', {
+        .getByRole('tab', {
           name: 'Column Profile',
         })
         .click();
@@ -530,6 +640,9 @@ test(
         await expect(
           page.locator(`[data-testid="${testCaseName}"]`)
         ).toBeVisible();
+
+        await page.getByTestId(`action-dropdown-${testCaseName}`).click();
+
         await expect(
           page.locator(`[data-testid="edit-${testCaseName}"]`)
         ).toBeVisible();
@@ -588,6 +701,8 @@ test(
         ])
       );
 
+      await page.getByTestId(`action-dropdown-${testCaseName}`).click();
+
       // Edit test case description
       const testDefinitionResponse = page.waitForResponse(
         '/api/v1/dataQuality/testDefinitions/*'
@@ -617,6 +732,8 @@ test(
           },
         ])
       );
+
+      await page.getByTestId(`action-dropdown-${testCaseName}`).click();
 
       // Edit test case parameter values
       const testDefinitionResponse3 = page.waitForResponse(
@@ -668,6 +785,8 @@ test(
           state: 'detached',
         });
 
+        await page.getByTestId(`action-dropdown-${testCaseName}`).click();
+
         await page.click(`[data-testid="edit-${testCaseName}"]`);
 
         await expect(
@@ -709,17 +828,14 @@ test(
 
     await table1.visitEntityPage(page);
     await page.getByTestId('profiler').click();
-    await page
-      .getByTestId('profiler-tab-left-panel')
-      .getByText('Data Quality')
-      .click();
+    await page.getByRole('tab', { name: 'Data Quality' }).click();
 
     await page.reload();
     await page.waitForLoadState('networkidle');
 
     await test.step('Update profiler setting', async () => {
       await page.click('[data-testid="profiler-setting-btn"]');
-      await page.waitForSelector('.ant-modal-body');
+      await page.waitForSelector('[data-testid="profiler-settings-modal"]');
 
       await page.locator('[data-testid="slider-input"]').clear();
       await page
@@ -795,7 +911,7 @@ test(
 
     await test.step('Reset profile sample type', async () => {
       await page.click('[data-testid="profiler-setting-btn"]');
-      await page.waitForSelector('.ant-modal-body');
+      await page.waitForSelector('[data-testid="profiler-settings-modal"]');
 
       await expect(
         page.locator('[data-testid="profile-sample"]')
@@ -832,13 +948,13 @@ test(
         })
       );
 
-      await page.waitForSelector('.ant-modal-body', {
+      await page.waitForSelector('[data-testid="profiler-settings-modal"]', {
         state: 'detached',
       });
 
       // Validate the profiler setting is updated
       await page.click('[data-testid="profiler-setting-btn"]');
-      await page.waitForSelector('.ant-modal-body');
+      await page.waitForSelector('[data-testid="profiler-settings-modal"]');
 
       await expect(
         page.locator('[data-testid="profile-sample"]')
@@ -872,7 +988,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
   // Add domain to table
   await filterTable1.visitEntityPage(page);
-  await assignDomain(page, domain.responseData);
+  await assignSingleSelectDomain(page, domain.responseData);
   const testCases = [
     `pw_first_table_column_count_to_be_between_${uuid()}`,
     `pw_second_table_column_count_to_be_between_${uuid()}`,
@@ -1164,7 +1280,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
     // Test case filter by platform
     const testCasePlatformByDBT = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/search/list?*testPlatforms=DBT*`
+      `/api/v1/dataQuality/testCases/search/list?*testPlatforms=dbt*`
     );
     await page.getByTestId('platform-select-filter').click();
     await page.getByTitle('DBT').click();
@@ -1208,6 +1324,25 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
     // Apply domain globally
     await page.getByTestId('domain-dropdown').click();
+
+    // Wait for the domain select dropdown to be visible
+    await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+      state: 'visible',
+    });
+
+    // Search for the domain and wait for API response
+    const domainSearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        domain.responseData.name
+      )}*&index=domain_search_index*`
+    );
+
+    await page
+      .getByTestId('domain-selectable-tree')
+      .getByTestId('searchbar')
+      .fill(domain.responseData.name);
+
+    await domainSearchResponse;
 
     await page
       .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)

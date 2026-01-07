@@ -24,6 +24,7 @@ import { debounce, isEmpty, sortBy, toLower } from 'lodash';
 import { CustomPropertyEnumConfig } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
   LIST_VALUE_OPERATORS,
+  MULTISELECT_FIELD_OPERATORS,
   NULL_CHECK_OPERATORS,
   RANGE_FIELD_OPERATORS,
   SEARCH_INDICES_WITH_COLUMNS_FIELD,
@@ -33,7 +34,6 @@ import {
 import {
   EntityFields,
   EntityReferenceFields,
-  EntitySourceFields,
   SuggestionField,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -167,21 +167,23 @@ class AdvancedSearchClassBase {
     searchIndex: SearchIndex | SearchIndex[];
     entityField: EntityFields | EntityReferenceFields;
     suggestField?: SuggestionField;
-    isCaseInsensitive?: boolean;
+    sourceFields?: string;
+    sourceFieldOptionType?: {
+      label: string;
+      value: string;
+    };
     q?: string;
   }) => SelectFieldSettings['asyncFetch'] = ({
     searchIndex,
     entityField,
-    isCaseInsensitive = false,
     q = '',
+    sourceFields,
+    sourceFieldOptionType,
   }) => {
-    let pendingResolve: // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ((result: { values: any[]; hasMore: boolean }) => void) | null = null;
+    let pendingResolve:
+      | ((result: { values: any[]; hasMore: boolean }) => void)
+      | null = null;
     const debouncedFetch = debounce((search: string) => {
-      const sourceFields = isCaseInsensitive
-        ? EntitySourceFields?.[entityField as EntityFields]?.join(',')
-        : undefined;
-
       getAggregateFieldOptions(
         searchIndex,
         entityField,
@@ -193,7 +195,11 @@ class AdvancedSearchClassBase {
           const buckets =
             response.data.aggregations[`sterms#${entityField}`].buckets;
 
-          const bucketsData = parseBucketsData(buckets, sourceFields);
+          const bucketsData = parseBucketsData(
+            buckets,
+            sourceFields,
+            sourceFieldOptionType
+          );
 
           if (pendingResolve) {
             pendingResolve({
@@ -802,7 +808,7 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: entitySearchIndex,
             entityField: EntityFields.NAME_KEYWORD,
-            isCaseInsensitive: true,
+            sourceFields: 'name',
           }),
           useAsyncSearch: true,
         },
@@ -1244,9 +1250,9 @@ class AdvancedSearchClassBase {
         return {
           subfieldsKey: field.name,
           dataObject: {
-            type: 'select',
+            type: 'multiselect',
             label,
-            operators: LIST_VALUE_OPERATORS,
+            operators: MULTISELECT_FIELD_OPERATORS,
             fieldSettings: {
               listValues: getCustomPropertyAdvanceSearchEnumOptions(
                 (field.customPropertyConfig?.config as CustomPropertyEnumConfig)

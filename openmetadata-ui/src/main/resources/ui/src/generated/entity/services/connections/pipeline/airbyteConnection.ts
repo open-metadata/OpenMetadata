@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,13 +19,14 @@ export interface AirbyteConnection {
      */
     apiVersion?: string;
     /**
+     * Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials
+     * (for Airbyte Cloud)
+     */
+    auth?: Authentication;
+    /**
      * Pipeline Service Management/UI URL.
      */
     hostPort: string;
-    /**
-     * Password to connect to Airbyte.
-     */
-    password?: string;
     /**
      * Regex exclude pipelines.
      */
@@ -35,10 +36,33 @@ export interface AirbyteConnection {
      * Service Type
      */
     type?: AirbyteType;
+}
+
+/**
+ * Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials
+ * (for Airbyte Cloud)
+ *
+ * Username and password authentication
+ *
+ * OAuth 2.0 client credentials authentication for Airbyte Cloud
+ */
+export interface Authentication {
+    /**
+     * Password to connect to Airbyte.
+     */
+    password?: string;
     /**
      * Username to connect to Airbyte.
      */
     username?: string;
+    /**
+     * Client ID for the application registered in Airbyte.
+     */
+    clientId?: string;
+    /**
+     * Client Secret for the application registered in Airbyte.
+     */
+    clientSecret?: string;
 }
 
 /**

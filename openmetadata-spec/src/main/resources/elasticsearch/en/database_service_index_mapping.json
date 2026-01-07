@@ -205,6 +205,14 @@
           }
         }
       },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "tags": {
         "properties": {
           "tagFQN": {
@@ -287,6 +295,9 @@
             "type": "text"
           }
         }
+      },
+      "followers": {
+        "type": "keyword"
       },
       "href": {
         "type": "text"

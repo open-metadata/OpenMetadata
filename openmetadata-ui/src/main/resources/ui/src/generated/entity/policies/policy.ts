@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -63,6 +63,10 @@ export interface Policy {
      * Unique identifier that identifies this Policy.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -296,9 +300,13 @@ export enum Effect {
  */
 export enum Operation {
     All = "All",
+    AuditLogs = "AuditLogs",
+    BulkCreate = "BulkCreate",
+    BulkUpdate = "BulkUpdate",
     Create = "Create",
     CreateIngestionPipelineAutomator = "CreateIngestionPipelineAutomator",
     CreateScim = "CreateScim",
+    CreateTests = "CreateTests",
     Delete = "Delete",
     DeleteScim = "DeleteScim",
     DeleteTestCaseFailedRowsSample = "DeleteTestCaseFailedRowsSample",
@@ -329,12 +337,15 @@ export enum Operation {
     EditTests = "EditTests",
     EditTier = "EditTier",
     EditUsage = "EditUsage",
+    EditUserNotificationTemplate = "EditUserNotificationTemplate",
     EditUsers = "EditUsers",
     GenerateToken = "GenerateToken",
+    Impersonate = "Impersonate",
     Kill = "Kill",
     Trigger = "Trigger",
     ViewAll = "ViewAll",
     ViewBasic = "ViewBasic",
+    ViewCustomFields = "ViewCustomFields",
     ViewDataProfile = "ViewDataProfile",
     ViewProfilerGlobalConfiguration = "ViewProfilerGlobalConfiguration",
     ViewQueries = "ViewQueries",

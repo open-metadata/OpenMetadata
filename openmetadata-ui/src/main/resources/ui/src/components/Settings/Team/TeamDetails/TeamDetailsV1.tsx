@@ -74,10 +74,8 @@ import {
   getSettingsPathWithFqn,
   getTeamsWithFqnPath,
 } from '../../../../utils/RouterUtils';
-import {
-  filterChildTeams,
-  getDeleteMessagePostFix,
-} from '../../../../utils/TeamUtils';
+import { getTermQuery } from '../../../../utils/SearchUtils';
+import { getDeleteMessagePostFix } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -126,6 +124,7 @@ const TeamDetailsV1 = ({
   entityPermissions,
   isFetchingAdvancedDetails,
   isFetchingAllTeamAdvancedDetails,
+  isTeamBasicDataLoading,
 }: TeamDetailsProp) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -163,6 +162,7 @@ const TeamDetailsV1 = ({
   }>(DELETE_USER_INITIAL_STATE);
   const [searchTerm, setSearchTerm] = useState('');
   const [childTeamList, setChildTeamList] = useState<Team[]>([]);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
   const [slashedTeamName, setSlashedTeamName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -199,8 +199,8 @@ const TeamDetailsV1 = ({
   );
 
   const teamCount = useMemo(
-    () => currentTeam.childrenCount ?? childTeamList.length,
-    [childTeamList, currentTeam.childrenCount]
+    () => (isTeamBasicDataLoading ? 0 : childTeamList.length),
+    [childTeamList, isTeamBasicDataLoading]
   );
   const updateActiveTab = (key: string) => {
     navigate({ search: Qs.stringify({ activeTab: key }) });
@@ -255,6 +255,7 @@ const TeamDetailsV1 = ({
   );
 
   const searchTeams = async (text: string) => {
+    setIsSearchLoading(true);
     try {
       const res = await searchQuery({
         query: `*${text}*`,
@@ -274,6 +275,7 @@ const TeamDetailsV1 = ({
           },
         },
         searchIndex: SearchIndex.TEAM,
+        includeDeleted: showDeletedTeam,
       });
 
       const data = res.hits.hits.map((value) => value._source as Team);
@@ -290,6 +292,8 @@ const TeamDetailsV1 = ({
       );
     } catch {
       setChildTeamList([]);
+    } finally {
+      setIsSearchLoading(false);
     }
   };
 
@@ -360,7 +364,7 @@ const TeamDetailsV1 = ({
     if (value) {
       searchTeams(value);
     } else {
-      setChildTeamList(filterChildTeams(childTeams ?? [], showDeletedTeam));
+      setChildTeamList(childTeams);
     }
   };
 
@@ -447,7 +451,7 @@ const TeamDetailsV1 = ({
           ? parentTeams.map((parent) => ({
               name: getEntityName(parent),
               url: getTeamsWithFqnPath(
-                parent.name ?? parent.fullyQualifiedName ?? ''
+                parent.fullyQualifiedName ?? parent.name ?? ''
               ),
             }))
           : [];
@@ -463,7 +467,7 @@ const TeamDetailsV1 = ({
   }, [currentTeam, parentTeams, showDeletedTeam]);
 
   useEffect(() => {
-    setChildTeamList(filterChildTeams(childTeams ?? [], showDeletedTeam));
+    setChildTeamList(childTeams);
     setSearchTerm('');
   }, [childTeams, showDeletedTeam]);
 
@@ -664,6 +668,8 @@ const TeamDetailsV1 = ({
         handleAddTeamButtonClick={handleAddTeamButtonClick}
         handleTeamSearch={handleTeamSearch}
         isFetchingAllTeamAdvancedDetails={isFetchingAllTeamAdvancedDetails}
+        isSearchLoading={isSearchLoading}
+        isTeamBasicDataLoading={isTeamBasicDataLoading}
         isTeamDeleted={isTeamDeleted}
         searchTerm={searchTerm}
         showDeletedTeam={showDeletedTeam}
@@ -679,6 +685,7 @@ const TeamDetailsV1 = ({
     showDeletedTeam,
     entityPermissions.Create,
     isFetchingAllTeamAdvancedDetails,
+    isSearchLoading,
     onTeamExpand,
     handleAddTeamButtonClick,
     handleTeamSearch,
@@ -711,6 +718,7 @@ const TeamDetailsV1 = ({
         isEntityDeleted={isTeamDeleted}
         noDataPlaceholder={t('message.adding-new-asset-to-team')}
         permissions={entityPermissions}
+        queryFilter={getTermQuery({ 'owners.id': currentTeam.id })}
         type={AssetsOfEntity.TEAM}
         onAddAsset={() => navigate(ROUTES.EXPLORE)}
         onAssetClick={setPreviewAsset}
@@ -1064,7 +1072,8 @@ const TeamDetailsV1 = ({
         isGroupType,
         isOrganization,
         teamCount,
-        assetsCount
+        assetsCount,
+        isTeamBasicDataLoading
       ).map((tab) => ({
         ...tab,
         label: (
@@ -1072,6 +1081,7 @@ const TeamDetailsV1 = ({
             count={tab.count}
             id={tab.key}
             isActive={currentTab === tab.key}
+            isLoading={tab?.isLoading}
             name={tab.name}
           />
         ),
@@ -1086,6 +1096,7 @@ const TeamDetailsV1 = ({
       assetsCount,
       getTabChildren,
       tabsChildrenRender,
+      isTeamBasicDataLoading,
     ]
   );
 

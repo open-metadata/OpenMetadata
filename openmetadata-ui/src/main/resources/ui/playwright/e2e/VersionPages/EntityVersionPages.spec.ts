@@ -13,9 +13,21 @@
 import { expect, Page, test as base } from '@playwright/test';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
+import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
+import { ContainerClass } from '../../support/entity/ContainerClass';
+import { DashboardClass } from '../../support/entity/DashboardClass';
+import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DirectoryClass } from '../../support/entity/DirectoryClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
+import { FileClass } from '../../support/entity/FileClass';
+import { MlModelClass } from '../../support/entity/MlModelClass';
+import { PipelineClass } from '../../support/entity/PipelineClass';
+import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
+import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
+import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -27,39 +39,21 @@ import {
 } from '../../utils/common';
 import { getEntityDataTypeDisplayPatch } from '../../utils/entity';
 
-const entityCreationConfig: EntityDataClassCreationConfig = {
-  apiEndpoint: true,
-  table: true,
-  storedProcedure: true,
-  dashboard: true,
-  pipeline: true,
-  topic: true,
-  mlModel: true,
-  container: true,
-  searchIndex: true,
-  dashboardDataModel: true,
-  entityDetails: true,
-  directory: true,
-  file: true,
-  spreadsheet: true,
-  worksheet: true,
-};
-
 const entities = [
-  EntityDataClass.apiEndpoint1,
-  EntityDataClass.table1,
-  EntityDataClass.storedProcedure1,
-  EntityDataClass.dashboard1,
-  EntityDataClass.pipeline1,
-  EntityDataClass.topic1,
-  EntityDataClass.mlModel1,
-  EntityDataClass.container1,
-  EntityDataClass.searchIndex1,
-  EntityDataClass.dashboardDataModel1,
-  EntityDataClass.directory1,
-  EntityDataClass.file1,
-  EntityDataClass.spreadsheet1,
-  EntityDataClass.worksheet1,
+  new ApiEndpointClass(),
+  new TableClass(),
+  new StoredProcedureClass(),
+  new DashboardClass(),
+  new PipelineClass(),
+  new TopicClass(),
+  new MlModelClass(),
+  new ContainerClass(),
+  new SearchIndexClass(),
+  new DashboardDataModelClass(),
+  new DirectoryClass(),
+  new FileClass(),
+  new SpreadsheetClass(),
+  new WorksheetClass(),
 ];
 
 // use the admin user to login
@@ -82,13 +76,10 @@ test.describe('Entity Version pages', () => {
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
 
-    await EntityDataClass.preRequisitesForTests(
-      apiContext,
-      entityCreationConfig
-    );
     const domain = EntityDataClass.domain1.responseData;
 
     for (const entity of entities) {
+      await entity.create(apiContext);
       const dataTypeDisplayPath = getEntityDataTypeDisplayPatch(entity);
       await entity.patch({
         apiContext,
@@ -154,10 +145,6 @@ test.describe('Entity Version pages', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.delete(apiContext);
 
-    await EntityDataClass.postRequisitesForTests(
-      apiContext,
-      entityCreationConfig
-    );
     await afterAction();
   });
 

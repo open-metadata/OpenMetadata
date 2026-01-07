@@ -13,12 +13,11 @@
 
 import { queryByAttribute, render, screen } from '@testing-library/react';
 import { ColumnProfile } from '../../../generated/entity/data/table';
+import '../../../test/unit/mocks/mui.mock';
+import '../../../test/unit/mocks/recharts.mock';
 import CardinalityDistributionChart, {
   CardinalityDistributionChartProps,
 } from './CardinalityDistributionChart.component';
-
-// Use existing recharts mock
-import '../../../test/unit/mocks/recharts.mock';
 
 // Mock utility functions
 jest.mock('../../../utils/ChartUtils', () => ({
@@ -26,6 +25,7 @@ jest.mock('../../../utils/ChartUtils', () => ({
     (value: string, suffix: string) => `${value}${suffix}`
   ),
   tooltipFormatter: jest.fn((value: number) => value.toLocaleString()),
+  createHorizontalGridLineRenderer: jest.fn(() => jest.fn()),
 }));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
@@ -79,6 +79,26 @@ const mockSecondColumnProfile: ColumnProfile = {
     categories: ['low', 'medium', 'high'],
     counts: [150, 400, 400],
     percentages: [15.8, 42.1, 42.1],
+  },
+};
+
+const mockColumnProfileWithAllUnique: ColumnProfile = {
+  name: 'test_column',
+  timestamp: 1704067200000,
+  valuesCount: 1000,
+  nullCount: 10,
+  cardinalityDistribution: {
+    allValuesUnique: true,
+  },
+};
+
+const mockSecondColumnProfileWithAllUnique: ColumnProfile = {
+  name: 'test_column',
+  timestamp: 1703980800000,
+  valuesCount: 950,
+  nullCount: 15,
+  cardinalityDistribution: {
+    allValuesUnique: true,
   },
 };
 
@@ -464,6 +484,196 @@ describe('CardinalityDistributionChart', () => {
 
       render(<CardinalityDistributionChart {...props} />);
 
+      expect(
+        await screen.findByTestId('error-placeholder')
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('All Values Unique Flag', () => {
+    it('should render single full-width message when both charts have allValuesUnique true', async () => {
+      const props: CardinalityDistributionChartProps = {
+        data: {
+          firstDayData: mockColumnProfileWithAllUnique,
+          currentDayData: mockSecondColumnProfileWithAllUnique,
+        },
+      };
+
+      render(<CardinalityDistributionChart {...props} />);
+
+      const errorPlaceholder = await screen.findByTestId('error-placeholder');
+
+      expect(errorPlaceholder).toBeInTheDocument();
+      expect(errorPlaceholder).toHaveTextContent(
+        'message.all-values-unique-no-distribution-available'
+      );
+      expect(await screen.findByTestId('chart-container')).toBeInTheDocument();
+      expect(screen.queryByTestId('date')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('cardinality-tag')).not.toBeInTheDocument();
+    });
+
+    it('should render message in first chart position when only firstDayData has allValuesUnique true', async () => {
+      const props: CardinalityDistributionChartProps = {
+        data: {
+          firstDayData: mockColumnProfileWithAllUnique,
+          currentDayData: mockSecondColumnProfile,
+        },
+      };
+
+      const { container } = render(<CardinalityDistributionChart {...props} />);
+
+      const errorPlaceholder = await screen.findByTestId('error-placeholder');
+
+      expect(errorPlaceholder).toBeInTheDocument();
+      expect(errorPlaceholder).toHaveTextContent(
+        'message.all-values-unique-no-distribution-available'
+      );
+      expect(await screen.findByTestId('chart-container')).toBeInTheDocument();
+
+      // Second chart should still render normally
+      expect(await screen.findByTestId('date')).toBeInTheDocument();
+      expect(await screen.findByTestId('cardinality-tag')).toBeInTheDocument();
+      expect(
+        queryByAttribute('id', container, 'currentDayData-cardinality')
+      ).toBeInTheDocument();
+      expect(
+        queryByAttribute('id', container, 'firstDayData-cardinality')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render message in second chart position when only currentDayData has allValuesUnique true', async () => {
+      const props: CardinalityDistributionChartProps = {
+        data: {
+          firstDayData: mockColumnProfileWithCardinality,
+          currentDayData: mockSecondColumnProfileWithAllUnique,
+        },
+      };
+
+      const { container } = render(<CardinalityDistributionChart {...props} />);
+
+      const errorPlaceholder = await screen.findByTestId('error-placeholder');
+
+      expect(errorPlaceholder).toBeInTheDocument();
+      expect(errorPlaceholder).toHaveTextContent(
+        'message.all-values-unique-no-distribution-available'
+      );
+      expect(await screen.findByTestId('chart-container')).toBeInTheDocument();
+
+      // First chart should still render normally
+      expect(await screen.findByTestId('date')).toBeInTheDocument();
+      expect(await screen.findByTestId('cardinality-tag')).toBeInTheDocument();
+      expect(
+        queryByAttribute('id', container, 'firstDayData-cardinality')
+      ).toBeInTheDocument();
+      expect(
+        queryByAttribute('id', container, 'currentDayData-cardinality')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render charts normally when allValuesUnique is false', async () => {
+      const profileWithFalseFlag: ColumnProfile = {
+        name: 'test_column',
+        timestamp: 1704067200000,
+        valuesCount: 1000,
+        nullCount: 10,
+        cardinalityDistribution: {
+          allValuesUnique: false,
+          categories: ['low', 'medium', 'high'],
+          counts: [100, 300, 600],
+          percentages: [10, 30, 60],
+        },
+      };
+
+      const props: CardinalityDistributionChartProps = {
+        data: {
+          currentDayData: profileWithFalseFlag,
+        },
+      };
+
+      const { container } = render(<CardinalityDistributionChart {...props} />);
+
+      expect(await screen.findByTestId('chart-container')).toBeInTheDocument();
+      expect(await screen.findByTestId('date')).toBeInTheDocument();
+      expect(await screen.findByTestId('cardinality-tag')).toBeInTheDocument();
+      expect(
+        queryByAttribute('id', container, 'currentDayData-cardinality')
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+    });
+
+    it('should render charts normally when allValuesUnique is undefined', async () => {
+      const props: CardinalityDistributionChartProps = {
+        data: {
+          firstDayData: mockColumnProfileWithCardinality,
+          currentDayData: mockSecondColumnProfile,
+        },
+      };
+
+      const { container } = render(<CardinalityDistributionChart {...props} />);
+
+      expect(await screen.findByTestId('chart-container')).toBeInTheDocument();
+      expect(await screen.findAllByTestId('date')).toHaveLength(2);
+      expect(await screen.findAllByTestId('cardinality-tag')).toHaveLength(2);
+      expect(
+        queryByAttribute('id', container, 'firstDayData-cardinality')
+      ).toBeInTheDocument();
+      expect(
+        queryByAttribute('id', container, 'currentDayData-cardinality')
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+    });
+
+    it('should handle allValuesUnique with empty categories array', async () => {
+      const profileWithEmptyCategories: ColumnProfile = {
+        name: 'test_column',
+        timestamp: 1704067200000,
+        valuesCount: 1000,
+        nullCount: 10,
+        cardinalityDistribution: {
+          allValuesUnique: true,
+          categories: [],
+          counts: [],
+          percentages: [],
+        },
+      };
+
+      const props: CardinalityDistributionChartProps = {
+        data: {
+          currentDayData: profileWithEmptyCategories,
+        },
+      };
+
+      render(<CardinalityDistributionChart {...props} />);
+
+      const errorPlaceholder = await screen.findByTestId('error-placeholder');
+
+      expect(errorPlaceholder).toBeInTheDocument();
+      expect(errorPlaceholder).toHaveTextContent(
+        'message.all-values-unique-no-distribution-available'
+      );
+      expect(screen.queryByTestId('date')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('cardinality-tag')).not.toBeInTheDocument();
+    });
+
+    it('should maintain 50% width layout when one chart has allValuesUnique', async () => {
+      const props: CardinalityDistributionChartProps = {
+        data: {
+          firstDayData: mockColumnProfileWithCardinality,
+          currentDayData: mockSecondColumnProfileWithAllUnique,
+        },
+      };
+
+      const { container } = render(<CardinalityDistributionChart {...props} />);
+
+      // Chart container should exist
+      expect(await screen.findByTestId('chart-container')).toBeInTheDocument();
+
+      // First chart should render normally
+      expect(
+        queryByAttribute('id', container, 'firstDayData-cardinality')
+      ).toBeInTheDocument();
+
+      // Error placeholder should exist for second chart
       expect(
         await screen.findByTestId('error-placeholder')
       ).toBeInTheDocument();

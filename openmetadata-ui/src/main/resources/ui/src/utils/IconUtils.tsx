@@ -34,6 +34,7 @@ import {
   Home02,
   Image01,
   Laptop01,
+  LayersThree01,
   Link01,
   Lock01,
   Mail01,
@@ -54,7 +55,33 @@ import {
   Users01,
   XClose,
 } from '@untitledui/icons';
-import { ComponentType } from 'react';
+import { ComponentType, FC } from 'react';
+import { IMAGE_URL_PATTERN } from '../constants/regex.constants';
+
+/**
+ * Check if a string is a valid image URL
+ * @param str - String to check
+ * @returns true if the string is a valid image URL
+ */
+export const isImageUrl = (str: string): boolean => {
+  return IMAGE_URL_PATTERN.test(str);
+};
+
+/**
+ * Get the proper image source URL for tag/classification icons
+ * Handles absolute URLs, data URIs, and relative paths
+ */
+export const getTagImageSrc = (iconURL: string): string => {
+  if (!iconURL) {
+    return '';
+  }
+
+  if (iconURL.startsWith('http') || iconURL.startsWith('data:image')) {
+    return iconURL;
+  }
+
+  return `${window.location.origin}/${iconURL}`;
+};
 
 // Map of icon names to their components
 export const ICON_MAP: Record<
@@ -102,6 +129,26 @@ export const ICON_MAP: Record<
   Rss01: Rss01,
   Browser: Browser,
   Calendar: Calendar,
+  LayersThree01: LayersThree01,
+};
+
+/**
+ * Creates an icon component with custom stroke width
+ * @param IconComponent - The icon component from @untitledui/icons
+ * @param strokeWidth - Custom stroke width (default icons use 2)
+ * @returns Wrapped icon component with custom stroke width
+ */
+export const createIconWithStroke = (
+  IconComponent: ComponentType<{
+    size?: number;
+    strokeWidth?: number;
+    style?: React.CSSProperties;
+  }>,
+  strokeWidth: number
+) => {
+  return (props: { size?: number; style?: React.CSSProperties }) => (
+    <IconComponent {...props} strokeWidth={strokeWidth} />
+  );
 };
 
 interface RenderIconOptions {
@@ -115,7 +162,7 @@ interface RenderIconOptions {
  * Utility function to render an icon from either a URL or an icon name
  * @param iconValue - Either a URL string or an icon name from ICON_MAP
  * @param options - Options for rendering the icon
- * @returns React element of the icon or image
+ * @returns React element of the icon or image, or null if invalid
  */
 export const renderIcon = (
   iconValue: string | undefined,
@@ -127,23 +174,6 @@ export const renderIcon = (
     return null;
   }
 
-  // Check if it's a URL (starts with http, https, or /)
-  if (iconValue.startsWith('http') || iconValue.startsWith('/')) {
-    return (
-      <img
-        alt="icon"
-        className={className}
-        src={iconValue}
-        style={{
-          width: size,
-          height: size,
-          objectFit: 'contain',
-          ...style,
-        }}
-      />
-    );
-  }
-
   // Check if it's a known icon name
   const IconComponent = ICON_MAP[iconValue];
   if (IconComponent) {
@@ -151,8 +181,25 @@ export const renderIcon = (
     return <IconComponent size={size} style={{ strokeWidth, ...style }} />;
   }
 
-  // If not a URL and not a known icon, return null
-  return null;
+  // Only render as image if it looks like a valid URL/path or has an image extension
+  if (!IMAGE_URL_PATTERN.test(iconValue)) {
+    return null;
+  }
+
+  // Render as image with error handling
+  return (
+    <img
+      alt="icon"
+      className={className}
+      src={getTagImageSrc(iconValue)}
+      style={{
+        width: size,
+        height: size,
+        objectFit: 'contain',
+        ...style,
+      }}
+    />
+  );
 };
 
 /**
@@ -160,7 +207,7 @@ export const renderIcon = (
  * @param entityType - The type of entity
  * @returns The icon component
  */
-export const getDefaultIconForEntityType = (entityType?: string) => {
+export const getDefaultIconForEntityType = (entityType?: string): FC => {
   if (entityType === 'dataProduct') {
     return Cube01;
   }

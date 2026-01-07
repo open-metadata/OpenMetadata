@@ -11,10 +11,26 @@
  *  limitations under the License.
  */
 
-import { Autocomplete, Box, Chip, TextField, useTheme } from '@mui/material';
+import {
+  Autocomplete,
+  AutocompleteRenderGetTagProps,
+  Box,
+  Chip,
+  TextField,
+  useTheme,
+} from '@mui/material';
 import { XClose } from '@untitledui/icons';
 import { debounce } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ComponentPropsWithoutRef,
+  FC,
+  HTMLAttributes,
+  SyntheticEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
@@ -23,12 +39,12 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { searchData } from '../../../rest/miscAPI';
 import {
-    formatTeamsResponse,
-    formatUsersResponse
+  formatTeamsResponse,
+  formatUsersResponse,
 } from '../../../utils/APIUtils';
 import {
-    getEntityName,
-    getEntityReferenceFromEntity
+  getEntityName,
+  getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
 import { ProfilePicture } from '../atoms/ProfilePicture';
 
@@ -112,7 +128,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
       users.map((user) => ({
         label: getEntityName(user),
         value: user.id,
-        entity: user,
+        entity: user as unknown as EntityReference,
         isTeam: false,
       }))
     );
@@ -144,7 +160,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
       teams.map((team) => ({
         label: getEntityName(team),
         value: team.id,
-        entity: team,
+        entity: team as unknown as EntityReference,
         isTeam: true,
       }))
     );
@@ -190,7 +206,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
   }, [open]);
 
   const handleChange = (
-    _event: any,
+    _event: SyntheticEvent<Element, Event>,
     newValue: string | OptionType | (string | OptionType)[] | null
   ) => {
     if (!onChange) {
@@ -283,7 +299,10 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
     return opts;
   };
 
-  const renderOption = (props: any, option: OptionType) => {
+  const renderOption = (
+    props: HTMLAttributes<HTMLLIElement>,
+    option: OptionType
+  ) => {
     const { entity, isTeam } = option;
 
     return (
@@ -307,7 +326,10 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
     );
   };
 
-  const renderTags = (value: OptionType[], getTagProps: any) => {
+  const renderTags = (
+    value: OptionType[],
+    getTagProps: AutocompleteRenderGetTagProps
+  ) => {
     return value.map((option, index) => {
       const { entity, isTeam } = option;
       const tagProps = getTagProps({ index });
@@ -368,11 +390,10 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
       disableCloseOnSelect
       freeSolo
       // Force listbox to remount when options change to fix async search not updating dropdown
-      // Using 'as any' because key is not in MUI's ListboxProps type definition
       ListboxProps={
         {
           key: `listbox-${allOptions.length}`,
-        } as any
+        } as Partial<ComponentPropsWithoutRef<'ul'>> & { key: string }
       }
       autoFocus={autoFocus}
       filterOptions={filterOptions}

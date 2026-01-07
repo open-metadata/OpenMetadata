@@ -1,5 +1,8 @@
 package org.openmetadata.service.security.auth;
 
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
+import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,6 +19,7 @@ import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.security.AuthServeletHandler;
 
 @Slf4j
@@ -109,9 +113,21 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
       resp.setContentType("application/json");
       writeJsonResponse(resp, JsonUtils.pojoToJson(responseToClient));
 
+    } catch (CustomExceptionMessage e) {
+      LOG.error("LDAP login error: {}", e.getMessage(), e);
+      int statusCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
+      if (e.getResponse().getStatus() == SERVICE_UNAVAILABLE.getStatusCode()) {
+        statusCode = HttpServletResponse.SC_SERVICE_UNAVAILABLE;
+      } else if (e.getResponse().getStatus() == UNAUTHORIZED.getStatusCode()) {
+        statusCode = HttpServletResponse.SC_UNAUTHORIZED;
+      } else if (e.getResponse().getStatus() == FORBIDDEN.getStatusCode()) {
+        statusCode = HttpServletResponse.SC_FORBIDDEN;
+      }
+
+      sendError(resp, statusCode, e.getMessage());
     } catch (Exception e) {
-      LOG.error("Error handling LDAP login", e);
-      sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+      LOG.error("Unexpected error handling LDAP login", e);
+      sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Authentication service error");
     }
   }
 
@@ -225,7 +241,7 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
   private void sendError(HttpServletResponse resp, int status, String message) {
     try {
       resp.setStatus(status);
-      writeJsonResponse(resp, String.format("{\"error\":\"%s\"}", message));
+      writeJsonResponse(resp, String.format("{\"message\":\"%s\"}", message));
     } catch (IOException e) {
       LOG.error("Error writing error response", e);
     }
