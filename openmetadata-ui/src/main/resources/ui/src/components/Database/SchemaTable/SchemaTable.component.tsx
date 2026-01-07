@@ -78,6 +78,7 @@ import {
 } from '../../../utils/TableTags/TableTags.utils';
 import {
   findColumnByEntityLink,
+  findFieldByFQN,
   getAllRowKeysByKeyName,
   getTableExpandableConfig,
   prepareConstraintIcon,
@@ -97,7 +98,6 @@ import {
   EntityNameWithAdditionFields,
 } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { ColumnDetailPanel } from '../ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
@@ -110,8 +110,6 @@ const SchemaTable = () => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
   const [editColumn, setEditColumn] = useState<Column>();
-  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
-  const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
 
   const {
     currentPage,
@@ -135,6 +133,7 @@ const SchemaTable = () => {
     permissions: tablePermissions,
     data: table,
     onThreadLinkSelect,
+    openColumnDetailPanel,
   } = useGenericContext<TableType>();
 
   const { testCaseCounts, joins, tableConstraints, deleted } = useMemo(
@@ -248,6 +247,86 @@ const SchemaTable = () => {
       fetchPaginatedColumns(1, searchText || undefined);
     }
   }, [tableFqn, searchText, fetchPaginatedColumns, pageSize]);
+
+  // Sync tableColumns with table.columns when columns are updated via column detail panel
+  useEffect(() => {
+    if (!table?.columns) {
+      return;
+    }
+
+    // Update local tableColumns if any column in the current page was updated
+    setTableColumns((prev) => {
+      if (prev.length === 0) {
+        return prev;
+      }
+
+      // Check all columns (including nested) in the current page for updates
+      let hasChanges = false;
+      let updated = [...prev];
+
+      // Iterate through all columns in the current page (including nested ones)
+      const checkAndUpdateColumn = (columns: Column[]): Column[] => {
+        return columns.map((col) => {
+          // Find the corresponding column in table.columns (handles nested columns)
+          const updatedColumn = findFieldByFQN<Column>(
+            table.columns ?? [],
+            col.fullyQualifiedName ?? ''
+          );
+
+          // If found, check if there are changes
+          if (updatedColumn) {
+            const descriptionChanged =
+              updatedColumn.description !== col.description;
+            const tagsChanged =
+              JSON.stringify(updatedColumn.tags || []) !==
+              JSON.stringify(col.tags || []);
+
+            if (descriptionChanged || tagsChanged) {
+              hasChanges = true;
+
+              // If this column has children, recursively update them
+              if (updatedColumn.children && updatedColumn.children.length > 0) {
+                return {
+                  ...updatedColumn,
+                  children: checkAndUpdateColumn(updatedColumn.children),
+                };
+              }
+
+              return updatedColumn;
+            }
+          }
+
+          // If this column has children, recursively check them even if this column didn't change
+          if (col.children && col.children.length > 0) {
+            const updatedChildren = checkAndUpdateColumn(col.children);
+            const childrenChanged = updatedChildren.some(
+              (child, index) => child !== col.children?.[index]
+            );
+
+            if (childrenChanged) {
+              hasChanges = true;
+
+              return {
+                ...col,
+                children: updatedChildren,
+              };
+            }
+          }
+
+          return col;
+        });
+      };
+
+      updated = checkAndUpdateColumn(prev);
+
+      if (hasChanges) {
+        // Prune empty children from all columns to prevent chevron icons on non-nested columns
+        return pruneEmptyChildren(updated);
+      }
+
+      return prev;
+    });
+  }, [table?.columns]);
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {
@@ -472,6 +551,13 @@ const SchemaTable = () => {
     >;
   }, [tableColumns]);
 
+  const handleColumnClick = useCallback(
+    (column: Column) => {
+      openColumnDetailPanel(column);
+    },
+    [openColumnDetailPanel]
+  );
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -665,35 +751,6 @@ const SchemaTable = () => {
     navigate(getEntityBulkEditPath(EntityType.TABLE, decodedEntityFqn));
   };
 
-  const handleColumnClick = (column: Column) => {
-    setSelectedColumn(column);
-    setIsColumnDetailOpen(true);
-  };
-
-  const handleCloseColumnDetail = () => {
-    setIsColumnDetailOpen(false);
-    setSelectedColumn(null);
-  };
-
-  const handleColumnUpdate = (updatedColumn: Column) => {
-    const cleanColumn = isEmpty(updatedColumn.children)
-      ? omit(updatedColumn, 'children')
-      : updatedColumn;
-
-    setTableColumns((prev) =>
-      updateColumnInNestedStructure(
-        prev,
-        updatedColumn.fullyQualifiedName ?? '',
-        cleanColumn
-      )
-    );
-    setSelectedColumn(cleanColumn);
-  };
-
-  const handleColumnNavigate = (column: Column) => {
-    setSelectedColumn(column);
-  };
-
   useEffect(() => {
     setExpandedRowKeys(
       getAllRowKeysByKeyName<Column>(tableColumns ?? [], 'fullyQualifiedName')
@@ -811,18 +868,6 @@ const SchemaTable = () => {
           onSave={handleEditColumnData}
         />
       )}
-      <ColumnDetailPanel
-        allColumns={tableColumns}
-        column={selectedColumn}
-        deleted={deleted}
-        isOpen={isColumnDetailOpen}
-        permissions={tablePermissions}
-        tableConstraints={table?.tableConstraints}
-        tableFqn={tableFqn}
-        onClose={handleCloseColumnDetail}
-        onColumnUpdate={handleColumnUpdate}
-        onNavigate={handleColumnNavigate}
-      />
     </Row>
   );
 };

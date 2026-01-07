@@ -1535,6 +1535,24 @@ export const getDataTypeDisplay = (
 };
 
 /**
+ * Normalize tags to ensure glossary terms don't have style property
+ * This prevents backend JSON patch errors when trying to remove non-existent style properties
+ * @param tags Array of tags to normalize
+ * @returns Normalized tags array
+ */
+export const normalizeTags = (tags: TagLabel[]): TagLabel[] => {
+  return tags.map((tag) => {
+    if (tag.source === TagSource.Glossary) {
+      // Remove style property from glossary terms to avoid backend patch errors
+      return omit(tag, 'style') as TagLabel;
+    }
+
+    // Keep style property for classification tags
+    return tag;
+  });
+};
+
+/**
  * Merge tags with glossary terms, preserving existing glossary terms
  * Used when updating classification tags to ensure glossary terms are not lost
  * @param columnTags Existing tags from the column
@@ -1550,7 +1568,11 @@ export const mergeTagsWithGlossary = (
   const updatedTagsWithoutGlossary =
     updatedTags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
 
-  return [...updatedTagsWithoutGlossary, ...existingGlossaryTags];
+  // Normalize existing glossary tags to remove style property before merging
+  const normalizedExistingGlossaryTags = normalizeTags(existingGlossaryTags);
+  const normalizedUpdatedTags = normalizeTags(updatedTagsWithoutGlossary);
+
+  return [...normalizedUpdatedTags, ...normalizedExistingGlossaryTags];
 };
 
 /**

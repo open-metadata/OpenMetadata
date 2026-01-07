@@ -27,6 +27,7 @@ import {
   Column,
   DashboardDataModel,
 } from '../../../../../generated/entity/data/dashboardDataModel';
+import { Column as TableColumn } from '../../../../../generated/entity/data/table';
 import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
 import {
@@ -50,7 +51,6 @@ import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/Filt
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../../../common/Table/Table';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
-import { ColumnDetailPanel } from '../../../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../../Database/TableTags/TableTags.component';
@@ -64,8 +64,7 @@ const ModelTab = () => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
   const [searchText, setSearchText] = useState('');
-  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
-  const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
+  const { openColumnDetailPanel } = useGenericContext<DashboardDataModel>();
 
   const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true);
@@ -247,34 +246,12 @@ const ModelTab = () => {
     );
   };
 
-  const handleColumnClick = useCallback((column: Column) => {
-    setSelectedColumn(column);
-    setIsColumnDetailOpen(true);
-  }, []);
-
-  const handleCloseColumnDetail = useCallback(() => {
-    setIsColumnDetailOpen(false);
-    setSelectedColumn(null);
-  }, []);
-
-  const handleColumnUpdate = useCallback((updatedColumn: Column) => {
-    const cleanColumn = isEmpty(updatedColumn.children)
-      ? omit(updatedColumn, 'children')
-      : updatedColumn;
-
-    setPaginatedColumns((prev) =>
-      prev.map((col) =>
-        col.fullyQualifiedName === cleanColumn.fullyQualifiedName
-          ? cleanColumn
-          : col
-      )
-    );
-    setSelectedColumn(cleanColumn);
-  }, []);
-
-  const handleColumnNavigate = useCallback((column: Column) => {
-    setSelectedColumn(column);
-  }, []);
+  const handleColumnClick = useCallback(
+    (column: Column) => {
+      openColumnDetailPanel(column as unknown as TableColumn);
+    },
+    [openColumnDetailPanel]
+  );
 
   const searchProps = useMemo(
     () => ({
@@ -489,29 +466,6 @@ const ModelTab = () => {
           />
         </EntityAttachmentProvider>
       )}
-
-      <ColumnDetailPanel
-        allColumns={paginatedColumns}
-        column={selectedColumn}
-        deleted={deleted}
-        entityType={EntityType.DASHBOARD_DATA_MODEL}
-        isOpen={isColumnDetailOpen}
-        permissions={permissions}
-        tableFqn={entityFqn ?? ''}
-        updateColumnDescription={async (fqn, description) => {
-          const response = await updateDataModelColumn(fqn, { description });
-
-          return response;
-        }}
-        updateColumnTags={async (fqn, tags) => {
-          const response = await updateDataModelColumn(fqn, { tags });
-
-          return response;
-        }}
-        onClose={handleCloseColumnDetail}
-        onColumnUpdate={handleColumnUpdate}
-        onNavigate={handleColumnNavigate}
-      />
     </>
   );
 };

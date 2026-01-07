@@ -13,20 +13,27 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined, toString } from 'lodash';
+import { cloneDeep, isUndefined, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
-import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
+import {
+  Column,
+  DashboardDataModel,
+} from '../../../../generated/entity/data/dashboardDataModel';
+import { Column as TableColumn } from '../../../../generated/entity/data/table';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomPages } from '../../../../hooks/useCustomPages';
 import { useFqn } from '../../../../hooks/useFqn';
 import { FeedCounts } from '../../../../interface/feed.interface';
-import { restoreDataModel } from '../../../../rest/dataModelsAPI';
+import {
+  restoreDataModel,
+  updateDataModelColumn,
+} from '../../../../rest/dataModelsAPI';
 import { getFeedCounts } from '../../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
@@ -39,6 +46,7 @@ import {
   getEntityDetailsPath,
   getVersionPath,
 } from '../../../../utils/RouterUtils';
+import { findFieldByFQN } from '../../../../utils/TableUtils';
 import { updateCertificationTag } from '../../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
@@ -264,6 +272,58 @@ const DataModelDetails = ({
           />
         </Col>
         <GenericProvider<DashboardDataModel>
+          columnDetailPanelConfig={{
+            columns: (dataModelData?.columns ?? []).map(
+              (column) =>
+                ({
+                  ...column,
+                  tags: column.tags ?? [],
+                } as unknown as TableColumn)
+            ),
+            tableFqn: dataModelData?.fullyQualifiedName ?? '',
+            entityType: EntityType.DASHBOARD_DATA_MODEL,
+            onColumnsChange: async (updatedColumns) => {
+              const updatedDataModel: DashboardDataModel = {
+                ...dataModelData,
+                columns: updatedColumns as unknown as Column[],
+              };
+
+              await onUpdateDataModel(updatedDataModel);
+            },
+            onColumnFieldUpdate: async (fqn, update) => {
+              // For DashboardDataModel, we update columns via API directly
+              const columnUpdate: Partial<Column> = {};
+
+              if (update.description !== undefined) {
+                columnUpdate.description = update.description;
+              }
+
+              if (update.tags !== undefined) {
+                columnUpdate.tags = update.tags;
+              }
+
+              const response = await updateDataModelColumn(fqn, columnUpdate);
+
+              // Update local state using recursive findFieldByFQN to handle nested columns
+              const columns = cloneDeep(dataModelData?.columns ?? []);
+              const updatedColumn = findFieldByFQN<Column>(columns, fqn);
+              if (updatedColumn) {
+                Object.assign(updatedColumn, response);
+              }
+
+              const updatedDataModel: DashboardDataModel = {
+                ...dataModelData,
+                columns,
+              };
+
+              await onUpdateDataModel(updatedDataModel);
+
+              // Find the updated column to return
+              const finalUpdatedColumn = findFieldByFQN<Column>(columns, fqn);
+
+              return finalUpdatedColumn as unknown as TableColumn;
+            },
+          }}
           customizedPage={customizedPage}
           data={dataModelData}
           isTabExpanded={isTabExpanded}

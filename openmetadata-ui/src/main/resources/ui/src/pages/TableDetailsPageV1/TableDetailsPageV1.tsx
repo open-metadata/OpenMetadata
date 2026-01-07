@@ -14,7 +14,7 @@
 import { Col, Row, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -50,7 +50,7 @@ import {
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
-import { Table, TableType } from '../../generated/entity/data/table';
+import { Column, Table, TableType } from '../../generated/entity/data/table';
 import {
   Suggestion,
   SuggestionType,
@@ -74,6 +74,7 @@ import {
   patchTableDetails,
   removeFollower,
   restoreTable,
+  updateTableColumn,
   updateTablesVotes,
 } from '../../rest/tableAPI';
 import {
@@ -98,9 +99,12 @@ import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import {
   findColumnByEntityLink,
+  findFieldByFQN,
   getJoinsFromTableJoins,
   getTagsWithoutTier,
   getTierTags,
+  normalizeTags,
+  pruneEmptyChildren,
   updateColumnInNestedStructure,
 } from '../../utils/TableUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
@@ -263,6 +267,12 @@ const TableDetailsPageV1: React.FC = () => {
       }
 
       const testSuiteId = tableDetails?.testSuite?.id;
+
+      if (!testSuiteId) {
+        await fetchDQUpstreamFailureCount();
+
+        return;
+      }
 
       const { data } = await fetchTestCaseResultByTestSuiteId(
         testSuiteId,
@@ -840,6 +850,72 @@ const TableDetailsPageV1: React.FC = () => {
       })}
       title="Table details">
       <GenericProvider<Table>
+        columnDetailPanelConfig={{
+          columns: (tableDetails?.columns ?? []).map(
+            (column) => ({ ...column, tags: column.tags ?? [] } as Column)
+          ),
+          tableFqn: tableFqn ?? '',
+          tableConstraints: tableDetails?.tableConstraints,
+          entityType: EntityType.TABLE,
+          onColumnsChange: async (updatedColumns) => {
+            const updatedTable: Table = {
+              ...tableDetails,
+              columns: updatedColumns as Column[],
+            };
+
+            await onTableUpdate(updatedTable);
+          },
+          onColumnFieldUpdate: async (fqn, update) => {
+            // For Table, we update columns via API directly
+            const columnUpdate: Partial<Column> = {};
+
+            if (update.description !== undefined) {
+              columnUpdate.description = update.description;
+            }
+
+            if (update.tags !== undefined) {
+              // Tags are already normalized in mergeTagsWithGlossary, so we can use them directly
+              // However, we normalize again here as a safety measure in case tags come from other sources
+              columnUpdate.tags = normalizeTags(update.tags);
+            }
+
+            const response = await updateTableColumn(fqn, columnUpdate);
+
+            // Update local state using recursive findFieldByFQN to handle nested columns
+            // Use the response directly without cleaning children first - let pruneEmptyChildren handle it
+            const columns = cloneDeep(tableDetails?.columns ?? []);
+            const updatedColumn = findFieldByFQN<Column>(columns, fqn);
+            if (updatedColumn) {
+              // Update the column with the response
+              Object.assign(updatedColumn, response);
+            }
+
+            // Prune empty children from all columns to prevent chevron icons on non-nested columns
+            const prunedColumns = pruneEmptyChildren(columns);
+
+            // Update state directly without creating another patch (updateTableColumn already updated the backend)
+            // Note: updateTableColumn returns only the column, not the table, so we update columns directly
+            setTableDetails((previous) => {
+              if (!previous) {
+                return previous;
+              }
+
+              return {
+                ...previous,
+                columns: prunedColumns,
+              };
+            });
+
+            // Find the updated column to return
+            // pruneEmptyChildren already removed empty children, so we can return it directly
+            const finalUpdatedColumn = findFieldByFQN<Column>(
+              prunedColumns,
+              fqn
+            );
+
+            return finalUpdatedColumn;
+          },
+        }}
         customizedPage={customizedPage}
         data={tableDetails}
         isTabExpanded={isTabExpanded}

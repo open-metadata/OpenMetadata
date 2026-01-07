@@ -14,6 +14,7 @@ import { OperationPermission } from '../context/PermissionProvider/PermissionPro
 import { EntityTabs } from '../enums/entity.enum';
 import { TagLabel } from '../generated/entity/data/container';
 import { Column, DataType } from '../generated/entity/data/table';
+import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 import { MOCK_TABLE, MOCK_TABLE_DBT } from '../mocks/TableData.mock';
 import {
   ExtraTableDropdownOptions,
@@ -27,6 +28,7 @@ import {
   getTagsWithoutTier,
   getTierTags,
   isLargeSchema,
+  normalizeTags,
   pruneEmptyChildren,
   shouldCollapseSchema,
   updateColumnInNestedStructure,
@@ -333,6 +335,156 @@ describe('TableUtils', () => {
 
       expect(result).toHaveLength(0);
       expect(result).toStrictEqual([]);
+    });
+  });
+
+  describe('normalizeTags', () => {
+    it('should remove style property from glossary terms', () => {
+      const tags: TagLabel[] = [
+        {
+          tagFQN: 'glossary.term1',
+          source: TagSource.Glossary,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          style: { color: '#FF0000' },
+        } as TagLabel,
+        {
+          tagFQN: 'glossary.term2',
+          source: TagSource.Glossary,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          style: { color: '#00FF00' },
+        } as TagLabel,
+      ];
+
+      const result = normalizeTags(tags);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).not.toHaveProperty('style');
+      expect(result[1]).not.toHaveProperty('style');
+      expect(result[0].tagFQN).toBe('glossary.term1');
+      expect(result[1].tagFQN).toBe('glossary.term2');
+    });
+
+    it('should keep style property for classification tags', () => {
+      const tags: TagLabel[] = [
+        {
+          tagFQN: 'Classification.Tag1',
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          style: { color: '#FF0000' },
+        } as TagLabel,
+        {
+          tagFQN: 'Classification.Tag2',
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          style: { color: '#00FF00' },
+        } as TagLabel,
+      ];
+
+      const result = normalizeTags(tags);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toHaveProperty('style');
+      expect(result[1]).toHaveProperty('style');
+      expect(result[0].style).toEqual({ color: '#FF0000' });
+      expect(result[1].style).toEqual({ color: '#00FF00' });
+    });
+
+    it('should handle mixed glossary and classification tags', () => {
+      const tags: TagLabel[] = [
+        {
+          tagFQN: 'glossary.term1',
+          source: TagSource.Glossary,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          style: { color: '#FF0000' },
+        } as TagLabel,
+        {
+          tagFQN: 'Classification.Tag1',
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          style: { color: '#00FF00' },
+        } as TagLabel,
+        {
+          tagFQN: 'glossary.term2',
+          source: TagSource.Glossary,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          style: { color: '#0000FF' },
+        } as TagLabel,
+      ];
+
+      const result = normalizeTags(tags);
+
+      expect(result).toHaveLength(3);
+      // Glossary terms should not have style
+      expect(result[0]).not.toHaveProperty('style');
+      expect(result[2]).not.toHaveProperty('style');
+      // Classification tag should have style
+      expect(result[1]).toHaveProperty('style');
+      expect(result[1].style).toEqual({ color: '#00FF00' });
+    });
+
+    it('should handle tags without style property', () => {
+      const tags: TagLabel[] = [
+        {
+          tagFQN: 'glossary.term1',
+          source: TagSource.Glossary,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        } as TagLabel,
+        {
+          tagFQN: 'Classification.Tag1',
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        } as TagLabel,
+      ];
+
+      const result = normalizeTags(tags);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).not.toHaveProperty('style');
+      expect(result[1]).not.toHaveProperty('style');
+    });
+
+    it('should handle empty array', () => {
+      const tags: TagLabel[] = [];
+
+      const result = normalizeTags(tags);
+
+      expect(result).toHaveLength(0);
+      expect(result).toEqual([]);
+    });
+
+    it('should preserve all other tag properties', () => {
+      const tags: TagLabel[] = [
+        {
+          tagFQN: 'glossary.term1',
+          name: 'term1',
+          displayName: 'Term 1',
+          description: 'Description',
+          source: TagSource.Glossary,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          style: { color: '#FF0000' },
+        } as TagLabel,
+      ];
+
+      const result = normalizeTags(tags);
+
+      expect(result[0]).not.toHaveProperty('style');
+      expect(result[0].tagFQN).toBe('glossary.term1');
+      expect(result[0].name).toBe('term1');
+      expect(result[0].displayName).toBe('Term 1');
+      expect(result[0].description).toBe('Description');
+      expect(result[0].source).toBe('Glossary');
+      expect(result[0].labelType).toBe('Manual');
+      expect(result[0].state).toBe('Confirmed');
     });
   });
 

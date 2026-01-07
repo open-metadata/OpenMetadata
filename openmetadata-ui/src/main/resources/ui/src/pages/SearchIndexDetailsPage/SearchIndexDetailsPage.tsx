@@ -14,7 +14,7 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined, omitBy } from 'lodash';
+import { cloneDeep, isUndefined, omitBy } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,7 +38,12 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
-import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
+import {
+  SearchIndex,
+  SearchIndexField,
+  TagLabel,
+} from '../../generated/entity/data/searchIndex';
+import { Column } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import LimitWrapper from '../../hoc/LimitWrapper';
@@ -69,7 +74,13 @@ import {
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import searchIndexClassBase from '../../utils/SearchIndexDetailsClassBase';
 import { defaultFields } from '../../utils/SearchIndexUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import {
+  findFieldByFQN,
+  getTagsWithoutTier,
+  getTierTags,
+  updateFieldDescription,
+  updateFieldTags,
+} from '../../utils/TableUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -611,6 +622,82 @@ function SearchIndexDetailsPage() {
         </Col>
 
         <GenericProvider<SearchIndex>
+          columnDetailPanelConfig={{
+            columns: (searchIndexDetails.fields ?? []).map(
+              (field) =>
+                ({ ...field, tags: field.tags ?? [] } as unknown as Column)
+            ),
+            tableFqn: searchIndexDetails.fullyQualifiedName ?? '',
+            entityType: EntityType.SEARCH_INDEX,
+            onColumnsChange: async (updatedColumns) => {
+              const updatedSearchIndex = {
+                ...searchIndexDetails,
+                fields: updatedColumns as unknown as SearchIndexField[],
+              };
+              const res = await saveUpdatedSearchIndexData(updatedSearchIndex);
+
+              setSearchIndexDetails((previous) => {
+                if (!previous) {
+                  return;
+                }
+
+                return {
+                  ...previous,
+                  ...res,
+                  fields:
+                    res.fields ??
+                    (updatedColumns as unknown as SearchIndexField[]),
+                };
+              });
+            },
+            onColumnFieldUpdate: async (fqn, update) => {
+              const fields = cloneDeep(searchIndexDetails.fields ?? []);
+
+              // Use recursive utilities to update nested fields
+              if (update.description !== undefined) {
+                updateFieldDescription<SearchIndexField>(
+                  fqn,
+                  update.description,
+                  fields
+                );
+              }
+
+              if (update.tags !== undefined) {
+                // Convert TagLabel[] to EntityTags[] for updateFieldTags
+                const entityTags = update.tags.map((tag) => ({
+                  ...tag,
+                  isRemovable: true,
+                })) as EntityTags[];
+                updateFieldTags<SearchIndexField>(fqn, entityTags, fields);
+              }
+
+              const updatedSearchIndex = {
+                ...searchIndexDetails,
+                fields,
+              };
+              const res = await saveUpdatedSearchIndexData(updatedSearchIndex);
+
+              setSearchIndexDetails((previous) => {
+                if (!previous) {
+                  return;
+                }
+
+                return {
+                  ...previous,
+                  ...res,
+                  fields: res.fields ?? fields,
+                };
+              });
+
+              // Use recursive findFieldByFQN to find nested fields
+              const updatedField = findFieldByFQN<SearchIndexField>(
+                res.fields ?? fields,
+                fqn
+              );
+
+              return updatedField as unknown as Column;
+            },
+          }}
           customizedPage={customizedPage}
           data={searchIndexDetails}
           isTabExpanded={isTabExpanded}
