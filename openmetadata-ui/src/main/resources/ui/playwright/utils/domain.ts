@@ -663,16 +663,10 @@ export const createDataProductFromListPage = async (
   await fillCommonFormItems(page, dataProduct);
 
   // Fill domain field (required when creating from list page)
-  const domainInput = getByRole('combobox', { name: 'Select domain' })
+  const domainInput = page.getByRole('combobox', { name: 'Select domain' });
   await domainInput.scrollIntoViewIfNeeded();
-  await domainInput.waitFor({ state: 'visible' });
-  await domainInput.click();
 
-  const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*index=domain_search_index*`
-  );
   await domainInput.fill(domain.displayName);
-  await searchDomain;
 
   const domainOption = page.getByText(domain.displayName);
   await domainOption.waitFor({ state: 'visible', timeout: 5000 });
