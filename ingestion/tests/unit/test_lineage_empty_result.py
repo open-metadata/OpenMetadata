@@ -12,7 +12,6 @@
 Test that lineage processing handles empty result sets correctly
 """
 import unittest
-from unittest.mock import MagicMock, patch
 
 from sqlalchemy import create_engine, text
 
@@ -29,7 +28,7 @@ class TestLineageEmptyResults(unittest.TestCase):
         engine = create_engine("sqlite:///:memory:")
 
         # Create a test table
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             conn.execute(
                 text(
                     """
@@ -41,7 +40,6 @@ class TestLineageEmptyResults(unittest.TestCase):
             """
                 )
             )
-            conn.commit()
 
         # Test query with LIKE patterns that could trigger the error
         # Similar to the postgres query with %% patterns
@@ -68,7 +66,7 @@ class TestLineageEmptyResults(unittest.TestCase):
         """
         engine = create_engine("sqlite:///:memory:")
 
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             conn.execute(
                 text(
                     """
@@ -84,12 +82,11 @@ class TestLineageEmptyResults(unittest.TestCase):
             conn.execute(
                 text(
                     """
-                INSERT INTO query_logs (query_text, database_name) 
+                INSERT INTO query_logs (query_text, database_name)
                 VALUES ('SELECT * FROM users', 'db1')
             """
                 )
             )
-            conn.commit()
 
         # Query with filter that excludes all rows
         test_query = """
