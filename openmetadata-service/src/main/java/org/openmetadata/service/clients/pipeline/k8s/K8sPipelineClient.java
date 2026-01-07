@@ -16,7 +16,6 @@ package org.openmetadata.service.clients.pipeline.k8s;
 import com.google.common.annotations.VisibleForTesting;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
-import io.kubernetes.client.custom.Quantity;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.Configuration;
@@ -33,7 +32,6 @@ import io.kubernetes.client.openapi.models.V1Job;
 import io.kubernetes.client.openapi.models.V1JobList;
 import io.kubernetes.client.openapi.models.V1JobSpec;
 import io.kubernetes.client.openapi.models.V1JobTemplateSpec;
-import io.kubernetes.client.openapi.models.V1LocalObjectReference;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
@@ -56,7 +54,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.ServiceEntityInterface;
@@ -106,32 +103,11 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private static final String LABEL_PIPELINE_TYPE = "app.kubernetes.io/pipeline-type";
   private static final String LABEL_RUN_ID = "app.kubernetes.io/run-id";
 
-  // Config keys
-  private static final String NAMESPACE_KEY = "namespace";
+  // Config keys for K8s client initialization
   private static final String IN_CLUSTER_KEY = "inCluster";
   private static final String KUBECONFIG_PATH_KEY = "kubeconfigPath";
   private static final String KUBECONFIG_CONTENT_KEY = "kubeConfigContent";
-  private static final String INGESTION_IMAGE_KEY = "ingestionImage";
-  private static final String IMAGE_PULL_POLICY_KEY = "imagePullPolicy";
-  private static final String IMAGE_PULL_SECRETS_KEY = "imagePullSecrets";
-  private static final String SERVICE_ACCOUNT_KEY = "serviceAccountName";
-  private static final String REQUESTS_CPU_KEY = "requestsCpu";
-  private static final String REQUESTS_MEMORY_KEY = "requestsMemory";
-  private static final String LIMITS_CPU_KEY = "limitsCpu";
-  private static final String LIMITS_MEMORY_KEY = "limitsMemory";
-  private static final String TTL_SECONDS_KEY = "ttlSecondsAfterFinished";
-  private static final String ACTIVE_DEADLINE_KEY = "activeDeadlineSeconds";
-  private static final String BACKOFF_LIMIT_KEY = "backoffLimit";
-  private static final String SUCCESS_HISTORY_KEY = "successfulJobsHistoryLimit";
-  private static final String FAILED_HISTORY_KEY = "failedJobsHistoryLimit";
-  private static final String NODE_SELECTOR_KEY = "nodeSelector";
   private static final String SKIP_INIT_KEY = "skipInit";
-  private static final String RUN_AS_USER_KEY = "runAsUser";
-  private static final String RUN_AS_GROUP_KEY = "runAsGroup";
-  private static final String FS_GROUP_KEY = "fsGroup";
-  private static final String RUN_AS_NON_ROOT_KEY = "runAsNonRoot";
-  private static final String EXTRA_ENV_VARS_KEY = "extraEnvVars";
-  private static final String POD_ANNOTATIONS_KEY = "podAnnotations";
 
   // MDC keys for correlation
   private static final String MDC_CORRELATION_ID = "correlationId";
@@ -153,38 +129,16 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private CoreV1Api coreApi;
 
   // Configuration
-  private final String namespace;
-  private final String ingestionImage;
-  private final String imagePullPolicy;
-  private final List<V1LocalObjectReference> imagePullSecrets;
-  private final String serviceAccountName;
-  private final Map<String, Quantity> resourceRequests;
-  private final Map<String, Quantity> resourceLimits;
-  private final int ttlSecondsAfterFinished;
-  private final long activeDeadlineSeconds;
-  private final int backoffLimit;
-  private final int successfulJobsHistoryLimit;
-  private final int failedJobsHistoryLimit;
-  private final Map<String, String> nodeSelector;
+  private final K8sPipelineClientConfig k8sConfig;
   private final String metadataApiEndpoint;
 
-  // Security context configuration
-  private final Long runAsUser;
-  private final Long runAsGroup;
-  private final Long fsGroup;
-  private final boolean runAsNonRoot;
-
-  // P2: Extra configuration
-  private final Map<String, String> extraEnvVars;
-  private final Map<String, String> podAnnotations;
-
-  public K8sPipelineClient(PipelineServiceClientConfiguration config) {
-    super(config);
+  public K8sPipelineClient(PipelineServiceClientConfiguration clientConfig) {
+    super(clientConfig);
     this.setPlatform(PLATFORM);
 
     Map<String, Object> params =
-        config.getParameters() != null
-            ? config.getParameters().getAdditionalProperties()
+        clientConfig.getParameters() != null
+            ? clientConfig.getParameters().getAdditionalProperties()
             : new HashMap<>();
 
     boolean skipInit = Boolean.parseBoolean(getStringParam(params, SKIP_INIT_KEY, "false"));
@@ -199,119 +153,38 @@ public class K8sPipelineClient extends PipelineServiceClient {
       this.coreApi = null;
     }
 
-    this.namespace = getStringParam(params, NAMESPACE_KEY, "openmetadata-pipelines");
-    this.ingestionImage =
-        getStringParam(
-            params, INGESTION_IMAGE_KEY, "docker.getcollate.io/openmetadata/ingestion:latest");
-    this.imagePullPolicy = getStringParam(params, IMAGE_PULL_POLICY_KEY, "IfNotPresent");
-    this.imagePullSecrets =
-        parseImagePullSecrets(getStringParam(params, IMAGE_PULL_SECRETS_KEY, ""));
-    this.serviceAccountName = getStringParam(params, SERVICE_ACCOUNT_KEY, "openmetadata-ingestion");
-    this.metadataApiEndpoint = config.getMetadataApiEndpoint();
+    this.k8sConfig = new K8sPipelineClientConfig(params);
+    this.metadataApiEndpoint = clientConfig.getMetadataApiEndpoint();
 
-    this.resourceRequests = new HashMap<>();
-    this.resourceRequests.put(
-        "cpu", new Quantity(getStringParam(params, REQUESTS_CPU_KEY, "500m")));
-    this.resourceRequests.put(
-        "memory", new Quantity(getStringParam(params, REQUESTS_MEMORY_KEY, "1Gi")));
-
-    this.resourceLimits = new HashMap<>();
-    this.resourceLimits.put("cpu", new Quantity(getStringParam(params, LIMITS_CPU_KEY, "2")));
-    this.resourceLimits.put(
-        "memory", new Quantity(getStringParam(params, LIMITS_MEMORY_KEY, "4Gi")));
-
-    this.ttlSecondsAfterFinished = getIntParam(params, TTL_SECONDS_KEY, 86400);
-    this.activeDeadlineSeconds = getIntParam(params, ACTIVE_DEADLINE_KEY, 7200);
-    this.backoffLimit = getIntParam(params, BACKOFF_LIMIT_KEY, 3);
-    this.successfulJobsHistoryLimit = getIntParam(params, SUCCESS_HISTORY_KEY, 3);
-    this.failedJobsHistoryLimit = getIntParam(params, FAILED_HISTORY_KEY, 3);
-    this.nodeSelector = parseNodeSelector(getStringParam(params, NODE_SELECTOR_KEY, ""));
-
-    // Security context - default to running as non-root user 1000
-    this.runAsUser = getLongParam(params, RUN_AS_USER_KEY, 1000L);
-    this.runAsGroup = getLongParam(params, RUN_AS_GROUP_KEY, 1000L);
-    this.fsGroup = getLongParam(params, FS_GROUP_KEY, 1000L);
-    this.runAsNonRoot = Boolean.parseBoolean(getStringParam(params, RUN_AS_NON_ROOT_KEY, "true"));
-
-    // P2: Extra configuration
-    this.extraEnvVars = parseKeyValuePairs(getStringParam(params, EXTRA_ENV_VARS_KEY, ""));
-    this.podAnnotations = parseKeyValuePairs(getStringParam(params, POD_ANNOTATIONS_KEY, ""));
-
-    // Validate configuration
-    validateConfiguration();
-
-    // Validate namespace exists
+    // Validate k8sConfig.getNamespace() exists
     if (!skipInit) {
       validateNamespaceExists();
     }
 
-    LOG.info("K8sPipelineClient initialized - namespace: {}, image: {}", namespace, ingestionImage);
+    LOG.info(
+        "K8sPipelineClient initialized - namespace: {}, image: {}",
+        k8sConfig.getNamespace(),
+        k8sConfig.getIngestionImage());
   }
 
-  /** Validates configuration parameters. Fails fast with clear error messages. */
-  private void validateConfiguration() {
-    List<String> errors = new ArrayList<>();
-
-    // Validate image format
-    if (StringUtils.isBlank(ingestionImage)) {
-      errors.add("ingestionImage cannot be blank");
-    } else if (!ingestionImage.matches("^[a-zA-Z0-9][a-zA-Z0-9._/-]*:[a-zA-Z0-9._-]+$")
-        && !ingestionImage.matches("^[a-zA-Z0-9][a-zA-Z0-9._/-]*$")) {
-      LOG.warn("ingestionImage '{}' may not be a valid container image reference", ingestionImage);
-    }
-
-    // Validate namespace format
-    if (StringUtils.isBlank(namespace)) {
-      errors.add("namespace cannot be blank");
-    } else if (!namespace.matches("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")) {
-      errors.add(
-          String.format(
-              "namespace '%s' is invalid - must be lowercase alphanumeric with hyphens",
-              namespace));
-    }
-
-    // Validate resource quantities
-    try {
-      resourceRequests.values().forEach(Quantity::getNumber);
-      resourceLimits.values().forEach(Quantity::getNumber);
-    } catch (Exception e) {
-      errors.add("Invalid resource quantity format: " + e.getMessage());
-    }
-
-    // Validate numeric ranges
-    if (ttlSecondsAfterFinished < 0) {
-      errors.add("ttlSecondsAfterFinished must be non-negative");
-    }
-    if (activeDeadlineSeconds <= 0) {
-      errors.add("activeDeadlineSeconds must be positive");
-    }
-    if (backoffLimit < 0) {
-      errors.add("backoffLimit must be non-negative");
-    }
-
-    if (!errors.isEmpty()) {
-      throw new PipelineServiceClientException(
-          "Invalid K8sPipelineClient configuration: " + String.join("; ", errors));
-    }
-  }
-
-  /** Validates that the target namespace exists. Fails fast with a clear error if not. */
+  /** Validates that the target k8sConfig.getNamespace() exists. Fails fast with a clear error if not. */
   private void validateNamespaceExists() {
     try {
-      coreApi.readNamespace(namespace).execute();
-      LOG.debug("Validated namespace exists: {}", namespace);
+      coreApi.readNamespace(k8sConfig.getNamespace()).execute();
+      LOG.debug("Validated namespace exists: {}", k8sConfig.getNamespace());
     } catch (ApiException e) {
       if (e.getCode() == 404) {
         throw new PipelineServiceClientException(
             String.format(
                 "Namespace '%s' does not exist. Create it with: kubectl create namespace %s",
-                namespace, namespace));
+                k8sConfig.getNamespace(), k8sConfig.getNamespace()));
       }
-      // For other errors, log warning but don't fail - namespace might be accessible but not
+      // For other errors, log warning but don't fail - k8sConfig.getNamespace() might be accessible
+      // but not
       // readable
       LOG.warn(
-          "Could not validate namespace '{}' exists (HTTP {}): {}. Proceeding anyway.",
-          namespace,
+          "Could not validate k8sConfig.getNamespace() '{}' exists (HTTP {}): {}. Proceeding anyway.",
+          k8sConfig.getNamespace(),
           e.getCode(),
           e.getMessage());
     }
@@ -492,8 +365,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
     String k8sMessage = parseK8sErrorMessage(e);
     String hint = getErrorHint(e.getCode());
     return String.format(
-        "Failed to %s '%s' in namespace '%s': HTTP %d - %s.%s",
-        operation, resourceName, namespace, e.getCode(), k8sMessage, hint);
+        "Failed to %s '%s' in k8sConfig.getNamespace() '%s': HTTP %d - %s.%s",
+        operation, resourceName, k8sConfig.getNamespace(), e.getCode(), k8sMessage, hint);
   }
 
   /** Parse the K8s error message from the response body. */
@@ -554,7 +427,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
       LOG.info("Running pipeline [correlationId={}]", correlationId);
 
       V1Job job = buildJob(ingestionPipeline, runId, config);
-      executeWithRetry(() -> batchApi.createNamespacedJob(namespace, job).execute());
+      executeWithRetry(() -> batchApi.createNamespacedJob(k8sConfig.getNamespace(), job).execute());
 
       LOG.info(
           "Created Job {} for pipeline {} [correlationId={}]",
@@ -644,13 +517,18 @@ public class K8sPipelineClient extends PipelineServiceClient {
       LOG.info("Toggling pipeline [correlationId={}]", correlationId);
 
       V1CronJob cronJob =
-          executeWithRetry(() -> batchApi.readNamespacedCronJob(cronJobName, namespace).execute());
+          executeWithRetry(
+              () ->
+                  batchApi.readNamespacedCronJob(cronJobName, k8sConfig.getNamespace()).execute());
 
       boolean currentlySuspended = Boolean.TRUE.equals(cronJob.getSpec().getSuspend());
       cronJob.getSpec().setSuspend(!currentlySuspended);
 
       executeWithRetry(
-          () -> batchApi.replaceNamespacedCronJob(cronJobName, namespace, cronJob).execute());
+          () ->
+              batchApi
+                  .replaceNamespacedCronJob(cronJobName, k8sConfig.getNamespace(), cronJob)
+                  .execute());
 
       String newState = currentlySuspended ? "enabled" : "disabled";
       ingestionPipeline.setEnabled(currentlySuspended);
@@ -694,7 +572,11 @@ public class K8sPipelineClient extends PipelineServiceClient {
       String labelSelector = LABEL_PIPELINE + "=" + pipelineName;
       V1JobList jobs =
           executeWithRetry(
-              () -> batchApi.listNamespacedJob(namespace).labelSelector(labelSelector).execute());
+              () ->
+                  batchApi
+                      .listNamespacedJob(k8sConfig.getNamespace())
+                      .labelSelector(labelSelector)
+                      .execute());
 
       int killedCount = 0;
       for (V1Job job : jobs.getItems()) {
@@ -703,7 +585,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
           executeWithRetry(
               () ->
                   batchApi
-                      .deleteNamespacedJob(jobName, namespace)
+                      .deleteNamespacedJob(jobName, k8sConfig.getNamespace())
                       .propagationPolicy("Foreground")
                       .execute());
           killedCount++;
@@ -739,7 +621,11 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     try {
       String labelSelector = LABEL_PIPELINE + "=" + pipelineName;
-      V1JobList jobs = batchApi.listNamespacedJob(namespace).labelSelector(labelSelector).execute();
+      V1JobList jobs =
+          batchApi
+              .listNamespacedJob(k8sConfig.getNamespace())
+              .labelSelector(labelSelector)
+              .execute();
 
       for (V1Job job : jobs.getItems()) {
         PipelineStatus status = mapJobToPipelineStatus(job);
@@ -758,14 +644,15 @@ public class K8sPipelineClient extends PipelineServiceClient {
   @Override
   protected PipelineServiceClientResponse getServiceStatusInternal() {
     try {
-      coreApi.listNamespacedPod(namespace).limit(1).execute();
-      batchApi.listNamespacedJob(namespace).limit(1).execute();
+      coreApi.listNamespacedPod(k8sConfig.getNamespace()).limit(1).execute();
+      batchApi.listNamespacedJob(k8sConfig.getNamespace()).limit(1).execute();
       return buildHealthyStatus(getKubernetesVersion());
 
     } catch (ApiException e) {
       String error =
           String.format(
-              "Failed to connect to Kubernetes API (namespace: %s): %s", namespace, e.getMessage());
+              "Failed to connect to Kubernetes API (namespace: %s): %s",
+              k8sConfig.getNamespace(), e.getMessage());
       LOG.error(error);
       return buildUnhealthyStatus(error);
     }
@@ -781,7 +668,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     try {
       V1Job job = buildAutomationJob(workflow, runId, jobName);
-      batchApi.createNamespacedJob(namespace, job).execute();
+      batchApi.createNamespacedJob(k8sConfig.getNamespace(), job).execute();
 
       return buildSuccessResponse(
           "Automation workflow triggered", Map.of("runId", runId, "jobName", jobName));
@@ -803,7 +690,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     try {
       V1Job job = buildApplicationJob(application, runId, jobName);
-      batchApi.createNamespacedJob(namespace, job).execute();
+      batchApi.createNamespacedJob(k8sConfig.getNamespace(), job).execute();
 
       return buildSuccessResponse(
           "Application triggered", Map.of("runId", runId, "jobName", jobName));
@@ -829,7 +716,11 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     try {
       String labelSelector = LABEL_PIPELINE + "=" + pipelineName;
-      V1JobList jobs = batchApi.listNamespacedJob(namespace).labelSelector(labelSelector).execute();
+      V1JobList jobs =
+          batchApi
+              .listNamespacedJob(k8sConfig.getNamespace())
+              .labelSelector(labelSelector)
+              .execute();
 
       if (jobs.getItems().isEmpty()) {
         return Map.of("logs", "No jobs found for this pipeline");
@@ -853,7 +744,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
       String jobName = latestJob.getMetadata().getName();
       String podLabelSelector = "job-name=" + jobName;
       V1PodList pods =
-          coreApi.listNamespacedPod(namespace).labelSelector(podLabelSelector).execute();
+          coreApi
+              .listNamespacedPod(k8sConfig.getNamespace())
+              .labelSelector(podLabelSelector)
+              .execute();
 
       if (pods.getItems().isEmpty()) {
         return Map.of("logs", "No pods found for job: " + jobName);
@@ -864,7 +758,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
       String logs =
           coreApi
-              .readNamespacedPodLog(podName, namespace)
+              .readNamespacedPodLog(podName, k8sConfig.getNamespace())
               .container("ingestion")
               .tailLines(1000)
               .execute();
@@ -885,9 +779,9 @@ public class K8sPipelineClient extends PipelineServiceClient {
     try {
       String podName = System.getenv("HOSTNAME");
       if (StringUtils.isNotBlank(podName)) {
-        return Map.of("ip", "Pod: " + podName + " in namespace: " + namespace);
+        return Map.of("ip", "Pod: " + podName + " in namespace: " + k8sConfig.getNamespace());
       }
-      return Map.of("ip", "Kubernetes cluster - namespace: " + namespace);
+      return Map.of("ip", "Kubernetes cluster - namespace: " + k8sConfig.getNamespace());
     } catch (Exception e) {
       return Map.of("ip", "Kubernetes cluster");
     }
@@ -899,7 +793,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     return new V1ConfigMap()
         .metadata(
-            new V1ObjectMeta().name(name).namespace(namespace).labels(buildLabels(pipeline, null)))
+            new V1ObjectMeta()
+                .name(name)
+                .namespace(k8sConfig.getNamespace())
+                .labels(buildLabels(pipeline, null)))
         .data(Map.of("config", workflowConfig));
   }
 
@@ -917,7 +814,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     return new V1Secret()
         .metadata(
-            new V1ObjectMeta().name(name).namespace(namespace).labels(buildLabels(pipeline, null)))
+            new V1ObjectMeta()
+                .name(name)
+                .namespace(k8sConfig.getNamespace())
+                .labels(buildLabels(pipeline, null)))
         .data(secretData);
   }
 
@@ -927,14 +827,17 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     return new V1CronJob()
         .metadata(
-            new V1ObjectMeta().name(name).namespace(namespace).labels(buildLabels(pipeline, null)))
+            new V1ObjectMeta()
+                .name(name)
+                .namespace(k8sConfig.getNamespace())
+                .labels(buildLabels(pipeline, null)))
         .spec(
             new V1CronJobSpec()
                 .schedule(schedule)
                 .timeZone(pipeline.getAirflowConfig().getPipelineTimezone())
                 .concurrencyPolicy("Forbid")
-                .successfulJobsHistoryLimit(successfulJobsHistoryLimit)
-                .failedJobsHistoryLimit(failedJobsHistoryLimit)
+                .successfulJobsHistoryLimit(k8sConfig.getSuccessfulJobsHistoryLimit())
+                .failedJobsHistoryLimit(k8sConfig.getFailedJobsHistoryLimit())
                 .suspend(!Boolean.TRUE.equals(pipeline.getEnabled()))
                 .jobTemplate(
                     new V1JobTemplateSpec()
@@ -951,7 +854,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
         .metadata(
             new V1ObjectMeta()
                 .name(jobName)
-                .namespace(namespace)
+                .namespace(k8sConfig.getNamespace())
                 .labels(buildLabels(pipeline, runId)))
         .spec(buildJobSpec(pipeline, runId, configOverride));
   }
@@ -961,58 +864,67 @@ public class K8sPipelineClient extends PipelineServiceClient {
     String pipelineName = sanitizeName(pipeline.getName());
 
     return new V1JobSpec()
-        .backoffLimit(backoffLimit)
-        .activeDeadlineSeconds(activeDeadlineSeconds)
-        .ttlSecondsAfterFinished(ttlSecondsAfterFinished)
+        .backoffLimit(k8sConfig.getBackoffLimit())
+        .activeDeadlineSeconds(k8sConfig.getActiveDeadlineSeconds())
+        .ttlSecondsAfterFinished(k8sConfig.getTtlSecondsAfterFinished())
         .template(
             new V1PodTemplateSpec()
                 .metadata(
                     new V1ObjectMeta()
                         .labels(buildLabels(pipeline, runId))
-                        .annotations(podAnnotations.isEmpty() ? null : podAnnotations))
+                        .annotations(
+                            k8sConfig.getPodAnnotations().isEmpty()
+                                ? null
+                                : k8sConfig.getPodAnnotations()))
                 .spec(
                     new V1PodSpec()
-                        .serviceAccountName(serviceAccountName)
+                        .serviceAccountName(k8sConfig.getServiceAccountName())
                         .restartPolicy("Never")
-                        .imagePullSecrets(imagePullSecrets.isEmpty() ? null : imagePullSecrets)
-                        .nodeSelector(nodeSelector.isEmpty() ? null : nodeSelector)
+                        .imagePullSecrets(
+                            k8sConfig.getImagePullSecrets().isEmpty()
+                                ? null
+                                : k8sConfig.getImagePullSecrets())
+                        .nodeSelector(
+                            k8sConfig.getNodeSelector().isEmpty()
+                                ? null
+                                : k8sConfig.getNodeSelector())
                         .securityContext(buildPodSecurityContext())
                         .containers(
                             List.of(
                                 new V1Container()
                                     .name("ingestion")
-                                    .image(ingestionImage)
-                                    .imagePullPolicy(imagePullPolicy)
+                                    .image(k8sConfig.getIngestionImage())
+                                    .imagePullPolicy(k8sConfig.getImagePullPolicy())
                                     .command(List.of("python", "main.py"))
                                     .env(buildEnvVars(pipeline, runId, configOverride))
                                     .securityContext(buildContainerSecurityContext())
                                     .resources(
                                         new V1ResourceRequirements()
-                                            .requests(resourceRequests)
-                                            .limits(resourceLimits))))));
+                                            .requests(k8sConfig.getResourceRequests())
+                                            .limits(k8sConfig.getResourceLimits()))))));
   }
 
   private V1PodSecurityContext buildPodSecurityContext() {
     V1PodSecurityContext context = new V1PodSecurityContext();
-    if (runAsNonRoot) {
+    if (k8sConfig.isRunAsNonRoot()) {
       context.setRunAsNonRoot(true);
     }
-    if (runAsUser != null) {
-      context.setRunAsUser(runAsUser);
+    if (k8sConfig.getRunAsUser() != null) {
+      context.setRunAsUser(k8sConfig.getRunAsUser());
     }
-    if (runAsGroup != null) {
-      context.setRunAsGroup(runAsGroup);
+    if (k8sConfig.getRunAsGroup() != null) {
+      context.setRunAsGroup(k8sConfig.getRunAsGroup());
     }
-    if (fsGroup != null) {
-      context.setFsGroup(fsGroup);
+    if (k8sConfig.getFsGroup() != null) {
+      context.setFsGroup(k8sConfig.getFsGroup());
     }
     return context;
   }
 
   private V1SecurityContext buildContainerSecurityContext() {
     return new V1SecurityContext()
-        .runAsNonRoot(runAsNonRoot)
-        .runAsUser(runAsUser)
+        .runAsNonRoot(k8sConfig.isRunAsNonRoot())
+        .runAsUser(k8sConfig.getRunAsUser())
         .allowPrivilegeEscalation(false)
         .readOnlyRootFilesystem(false) // Ingestion may need to write temp files
         .capabilities(new V1Capabilities().drop(List.of("ALL")));
@@ -1047,8 +959,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
     }
 
     // P2: Add extra environment variables from configuration
-    if (extraEnvVars != null && !extraEnvVars.isEmpty()) {
-      extraEnvVars.forEach((key, value) -> envVars.add(new V1EnvVar().name(key).value(value)));
+    if (k8sConfig.getExtraEnvVars() != null && !k8sConfig.getExtraEnvVars().isEmpty()) {
+      k8sConfig
+          .getExtraEnvVars()
+          .forEach((key, value) -> envVars.add(new V1EnvVar().name(key).value(value)));
     }
 
     return envVars;
@@ -1059,7 +973,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
         .metadata(
             new V1ObjectMeta()
                 .name(jobName)
-                .namespace(namespace)
+                .namespace(k8sConfig.getNamespace())
                 .labels(
                     Map.of(
                         LABEL_APP, "openmetadata",
@@ -1068,23 +982,25 @@ public class K8sPipelineClient extends PipelineServiceClient {
                         LABEL_RUN_ID, runId)))
         .spec(
             new V1JobSpec()
-                .backoffLimit(backoffLimit)
-                .activeDeadlineSeconds(activeDeadlineSeconds)
-                .ttlSecondsAfterFinished(ttlSecondsAfterFinished)
+                .backoffLimit(k8sConfig.getBackoffLimit())
+                .activeDeadlineSeconds(k8sConfig.getActiveDeadlineSeconds())
+                .ttlSecondsAfterFinished(k8sConfig.getTtlSecondsAfterFinished())
                 .template(
                     new V1PodTemplateSpec()
                         .spec(
                             new V1PodSpec()
-                                .serviceAccountName(serviceAccountName)
+                                .serviceAccountName(k8sConfig.getServiceAccountName())
                                 .restartPolicy("Never")
                                 .imagePullSecrets(
-                                    imagePullSecrets.isEmpty() ? null : imagePullSecrets)
+                                    k8sConfig.getImagePullSecrets().isEmpty()
+                                        ? null
+                                        : k8sConfig.getImagePullSecrets())
                                 .containers(
                                     List.of(
                                         new V1Container()
                                             .name("automation")
-                                            .image(ingestionImage)
-                                            .imagePullPolicy(imagePullPolicy)
+                                            .image(k8sConfig.getIngestionImage())
+                                            .imagePullPolicy(k8sConfig.getImagePullPolicy())
                                             .command(List.of("python", "run_automation.py"))
                                             .env(
                                                 List.of(
@@ -1096,8 +1012,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
                                                         .value(metadataApiEndpoint)))
                                             .resources(
                                                 new V1ResourceRequirements()
-                                                    .requests(resourceRequests)
-                                                    .limits(resourceLimits)))))));
+                                                    .requests(k8sConfig.getResourceRequests())
+                                                    .limits(k8sConfig.getResourceLimits())))))));
   }
 
   private V1Job buildApplicationJob(App application, String runId, String jobName) {
@@ -1105,7 +1021,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
         .metadata(
             new V1ObjectMeta()
                 .name(jobName)
-                .namespace(namespace)
+                .namespace(k8sConfig.getNamespace())
                 .labels(
                     Map.of(
                         LABEL_APP,
@@ -1120,23 +1036,25 @@ public class K8sPipelineClient extends PipelineServiceClient {
                         runId)))
         .spec(
             new V1JobSpec()
-                .backoffLimit(backoffLimit)
-                .activeDeadlineSeconds(activeDeadlineSeconds)
-                .ttlSecondsAfterFinished(ttlSecondsAfterFinished)
+                .backoffLimit(k8sConfig.getBackoffLimit())
+                .activeDeadlineSeconds(k8sConfig.getActiveDeadlineSeconds())
+                .ttlSecondsAfterFinished(k8sConfig.getTtlSecondsAfterFinished())
                 .template(
                     new V1PodTemplateSpec()
                         .spec(
                             new V1PodSpec()
-                                .serviceAccountName(serviceAccountName)
+                                .serviceAccountName(k8sConfig.getServiceAccountName())
                                 .restartPolicy("Never")
                                 .imagePullSecrets(
-                                    imagePullSecrets.isEmpty() ? null : imagePullSecrets)
+                                    k8sConfig.getImagePullSecrets().isEmpty()
+                                        ? null
+                                        : k8sConfig.getImagePullSecrets())
                                 .containers(
                                     List.of(
                                         new V1Container()
                                             .name("application")
-                                            .image(ingestionImage)
-                                            .imagePullPolicy(imagePullPolicy)
+                                            .image(k8sConfig.getIngestionImage())
+                                            .imagePullPolicy(k8sConfig.getImagePullPolicy())
                                             .command(
                                                 List.of(
                                                     "python", "-m", "metadata.applications.runner"))
@@ -1150,8 +1068,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
                                                         .value(metadataApiEndpoint)))
                                             .resources(
                                                 new V1ResourceRequirements()
-                                                    .requests(resourceRequests)
-                                                    .limits(resourceLimits)))))));
+                                                    .requests(k8sConfig.getResourceRequests())
+                                                    .limits(k8sConfig.getResourceLimits())))))));
   }
 
   private String buildWorkflowConfig(IngestionPipeline pipeline) {
@@ -1201,15 +1119,16 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private boolean createOrUpdateConfigMap(V1ConfigMap configMap) throws ApiException {
     String name = configMap.getMetadata().getName();
     try {
-      V1ConfigMap existing = coreApi.readNamespacedConfigMap(name, namespace).execute();
+      V1ConfigMap existing =
+          coreApi.readNamespacedConfigMap(name, k8sConfig.getNamespace()).execute();
       // Use resourceVersion for optimistic locking
       configMap.getMetadata().setResourceVersion(existing.getMetadata().getResourceVersion());
-      coreApi.replaceNamespacedConfigMap(name, namespace, configMap).execute();
+      coreApi.replaceNamespacedConfigMap(name, k8sConfig.getNamespace(), configMap).execute();
       LOG.debug("Updated ConfigMap: {}", name);
       return false;
     } catch (ApiException e) {
       if (e.getCode() == 404) {
-        coreApi.createNamespacedConfigMap(namespace, configMap).execute();
+        coreApi.createNamespacedConfigMap(k8sConfig.getNamespace(), configMap).execute();
         LOG.debug("Created ConfigMap: {}", name);
         return true;
       } else {
@@ -1226,15 +1145,15 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private boolean createOrUpdateSecret(V1Secret secret) throws ApiException {
     String name = secret.getMetadata().getName();
     try {
-      V1Secret existing = coreApi.readNamespacedSecret(name, namespace).execute();
+      V1Secret existing = coreApi.readNamespacedSecret(name, k8sConfig.getNamespace()).execute();
       // Use resourceVersion for optimistic locking
       secret.getMetadata().setResourceVersion(existing.getMetadata().getResourceVersion());
-      coreApi.replaceNamespacedSecret(name, namespace, secret).execute();
+      coreApi.replaceNamespacedSecret(name, k8sConfig.getNamespace(), secret).execute();
       LOG.debug("Updated Secret: {}", name);
       return false;
     } catch (ApiException e) {
       if (e.getCode() == 404) {
-        coreApi.createNamespacedSecret(namespace, secret).execute();
+        coreApi.createNamespacedSecret(k8sConfig.getNamespace(), secret).execute();
         LOG.debug("Created Secret: {}", name);
         return true;
       } else {
@@ -1251,15 +1170,15 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private boolean createOrUpdateCronJob(V1CronJob cronJob) throws ApiException {
     String name = cronJob.getMetadata().getName();
     try {
-      V1CronJob existing = batchApi.readNamespacedCronJob(name, namespace).execute();
+      V1CronJob existing = batchApi.readNamespacedCronJob(name, k8sConfig.getNamespace()).execute();
       // Use resourceVersion for optimistic locking
       cronJob.getMetadata().setResourceVersion(existing.getMetadata().getResourceVersion());
-      batchApi.replaceNamespacedCronJob(name, namespace, cronJob).execute();
+      batchApi.replaceNamespacedCronJob(name, k8sConfig.getNamespace(), cronJob).execute();
       LOG.debug("Updated CronJob: {}", name);
       return false;
     } catch (ApiException e) {
       if (e.getCode() == 404) {
-        batchApi.createNamespacedCronJob(namespace, cronJob).execute();
+        batchApi.createNamespacedCronJob(k8sConfig.getNamespace(), cronJob).execute();
         LOG.debug("Created CronJob: {}", name);
         return true;
       } else {
@@ -1270,18 +1189,22 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   private void deleteJobsForPipeline(String pipelineName) throws ApiException {
     String labelSelector = LABEL_PIPELINE + "=" + pipelineName;
-    V1JobList jobs = batchApi.listNamespacedJob(namespace).labelSelector(labelSelector).execute();
+    V1JobList jobs =
+        batchApi.listNamespacedJob(k8sConfig.getNamespace()).labelSelector(labelSelector).execute();
 
     for (V1Job job : jobs.getItems()) {
       String jobName = job.getMetadata().getName();
-      batchApi.deleteNamespacedJob(jobName, namespace).propagationPolicy("Background").execute();
+      batchApi
+          .deleteNamespacedJob(jobName, k8sConfig.getNamespace())
+          .propagationPolicy("Background")
+          .execute();
       LOG.debug("Deleted Job: {}", jobName);
     }
   }
 
   private void deleteCronJobIfExists(String name) throws ApiException {
     try {
-      batchApi.deleteNamespacedCronJob(name, namespace).execute();
+      batchApi.deleteNamespacedCronJob(name, k8sConfig.getNamespace()).execute();
       LOG.debug("Deleted CronJob: {}", name);
     } catch (ApiException e) {
       if (e.getCode() != 404) {
@@ -1292,7 +1215,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   private void deleteSecretIfExists(String name) throws ApiException {
     try {
-      coreApi.deleteNamespacedSecret(name, namespace).execute();
+      coreApi.deleteNamespacedSecret(name, k8sConfig.getNamespace()).execute();
       LOG.debug("Deleted Secret: {}", name);
     } catch (ApiException e) {
       if (e.getCode() != 404) {
@@ -1303,7 +1226,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   private void deleteConfigMapIfExists(String name) throws ApiException {
     try {
-      coreApi.deleteNamespacedConfigMap(name, namespace).execute();
+      coreApi.deleteNamespacedConfigMap(name, k8sConfig.getNamespace()).execute();
       LOG.debug("Deleted ConfigMap: {}", name);
     } catch (ApiException e) {
       if (e.getCode() != 404) {
@@ -1425,60 +1348,6 @@ public class K8sPipelineClient extends PipelineServiceClient {
       return defaultValue;
     }
     return value.toString();
-  }
-
-  private int getIntParam(Map<String, Object> params, String key, int defaultValue) {
-    Object value = params.get(key);
-    if (value == null) {
-      return defaultValue;
-    }
-    try {
-      return Integer.parseInt(value.toString());
-    } catch (NumberFormatException e) {
-      return defaultValue;
-    }
-  }
-
-  private Long getLongParam(Map<String, Object> params, String key, Long defaultValue) {
-    Object value = params.get(key);
-    if (value == null) {
-      return defaultValue;
-    }
-    try {
-      return Long.parseLong(value.toString());
-    } catch (NumberFormatException e) {
-      return defaultValue;
-    }
-  }
-
-  private List<V1LocalObjectReference> parseImagePullSecrets(String secrets) {
-    if (StringUtils.isBlank(secrets)) {
-      return new ArrayList<>();
-    }
-    return java.util.Arrays.stream(secrets.split(","))
-        .map(String::trim)
-        .filter(s -> !s.isEmpty())
-        .map(s -> new V1LocalObjectReference().name(s))
-        .collect(Collectors.toList());
-  }
-
-  private Map<String, String> parseNodeSelector(String nodeSelectorStr) {
-    return parseKeyValuePairs(nodeSelectorStr);
-  }
-
-  private Map<String, String> parseKeyValuePairs(String pairsStr) {
-    Map<String, String> result = new HashMap<>();
-    if (StringUtils.isBlank(pairsStr)) {
-      return result;
-    }
-    // Expected format: key1=value1,key2=value2
-    for (String pair : pairsStr.split(",")) {
-      String[] kv = pair.split("=", 2);
-      if (kv.length == 2) {
-        result.put(kv[0].trim(), kv[1].trim());
-      }
-    }
-    return result;
   }
 
   private PipelineServiceClientResponse buildSuccessResponse(String message) {
