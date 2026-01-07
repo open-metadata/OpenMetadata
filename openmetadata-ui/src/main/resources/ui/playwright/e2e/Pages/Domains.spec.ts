@@ -52,6 +52,7 @@ import {
   addTagsAndGlossaryToDomain,
   checkAssetsCount,
   createDataProduct,
+  createDataProductForSubDomain,
   createDomain,
   createSubDomain,
   fillDomainForm,
@@ -861,7 +862,9 @@ test.describe('Domains', () => {
     const domainDataProduct = new DataProduct([domain]);
 
     let subDomain!: SubDomain;
-    let subDomainDataProduct!: DataProduct;
+    let subDomainDataProduct!: Awaited<
+      ReturnType<typeof createDataProductForSubDomain>
+    >;
 
     try {
       await test.step('Create domain, subdomain, and data products via API', async () => {
@@ -873,12 +876,10 @@ test.describe('Domains', () => {
         await domainDataProduct.create(apiContext);
 
         // Create data product in subdomain
-        subDomainDataProduct = new DataProduct(
-          [domain],
-          undefined,
-          [subDomain]
+        subDomainDataProduct = await createDataProductForSubDomain(
+          apiContext,
+          subDomain
         );
-        await subDomainDataProduct.create(apiContext);
       });
 
       await test.step(
@@ -905,10 +906,10 @@ test.describe('Domains', () => {
 
           // Verify both data product cards are visible
           await expect(
-            page.getByText(domainDataProduct.data.displayName)
+            page.getByText(domainDataProduct.data.displayName).first()
           ).toBeVisible();
           await expect(
-            page.getByText(subDomainDataProduct.data.displayName)
+            page.getByText(subDomainDataProduct.displayName).first()
           ).toBeVisible();
         }
       );
@@ -948,7 +949,7 @@ test.describe('Domains', () => {
 
           // Verify only subdomain data product card is visible
           await expect(
-            page.getByText(subDomainDataProduct.data.displayName)
+            page.getByText(subDomainDataProduct.displayName).first()
           ).toBeVisible();
         }
       );

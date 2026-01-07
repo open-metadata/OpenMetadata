@@ -1149,3 +1149,35 @@ export const setupNoDomainRule = async (apiContext: APIRequestContext) => {
     cleanup,
   };
 };
+
+/**
+ * Creates a data product under a subdomain via direct API call.
+ * Use this when you need to create a data product that belongs to a subdomain
+ * rather than a parent domain.
+ */
+export const createDataProductForSubDomain = async (
+  apiContext: APIRequestContext,
+  subDomain: SubDomain
+) => {
+  const id = uuid();
+  const response = await apiContext.post('/api/v1/dataProducts', {
+    data: {
+      name: `PW%dataProduct.${id}`,
+      displayName: `PW SubDomain Data Product ${id}`,
+      description: 'playwright subdomain data product description',
+      domains: [subDomain.responseData.fullyQualifiedName],
+    },
+  });
+  const responseData = await response.json();
+
+  return {
+    ...responseData,
+    async delete(deleteContext: APIRequestContext) {
+      await deleteContext.delete(
+        `/api/v1/dataProducts/name/${encodeURIComponent(
+          responseData.fullyQualifiedName
+        )}`
+      );
+    },
+  };
+};
