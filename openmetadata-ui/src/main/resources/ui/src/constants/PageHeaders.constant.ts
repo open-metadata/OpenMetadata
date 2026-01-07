@@ -58,6 +58,10 @@ export const PAGE_HEADERS = {
     header: 'label.policy-plural',
     subHeader: 'message.page-sub-header-for-policies',
   },
+  AUDIT_LOGS: {
+    header: 'label.audit-log-plural',
+    subHeader: 'message.page-sub-header-for-audit-logs',
+  },
   DATABASES_SERVICES: {
     header: 'label.database-plural',
     subHeader: 'message.page-sub-header-for-databases',
