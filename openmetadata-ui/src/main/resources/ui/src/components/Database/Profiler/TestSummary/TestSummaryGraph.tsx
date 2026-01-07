@@ -42,6 +42,7 @@ import {
 } from '../../../../constants/Color.constants';
 import {
   DEFAULT_CHART_OPACITY,
+  GRAPH_BACKGROUND_COLOR,
   HOVER_CHART_OPACITY,
 } from '../../../../constants/constants';
 import {
@@ -260,7 +261,7 @@ function TestSummaryGraph({
         onMouseMove={(e) => {
           setChartMouseEvent(e);
         }}>
-        <CartesianGrid stroke="transparent" />
+        <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
         <XAxis
           angle={-45}
           dataKey="name"

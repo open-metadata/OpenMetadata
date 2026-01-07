@@ -15,7 +15,11 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Divider, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined, startCase, toString } from 'lodash';
+import chunk from 'lodash/chunk';
+import isEmpty from 'lodash/isEmpty';
+import isUndefined from 'lodash/isUndefined';
+import startCase from 'lodash/startCase';
+import toString from 'lodash/toString';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../../enums/codemirror.enum';
@@ -315,12 +319,7 @@ const TestCaseResultTab = () => {
     }
 
     // Group items into rows of 2
-    const rows: Array<
-      Array<{ label: string; value: string | React.ReactNode }>
-    > = [];
-    for (let i = 0; i < items.length; i += 2) {
-      rows.push(items.slice(i, i + 2));
-    }
+    const rows = chunk(items, 2);
 
     return (
       <div className="parameter-rows-container">
