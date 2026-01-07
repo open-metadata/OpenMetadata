@@ -49,8 +49,8 @@ import { SearchIndex } from '../enums/search.enum';
 import { Domain } from '../generated/entity/domains/domain';
 import { Operation } from '../generated/entity/policies/policy';
 import { EntityReference } from '../generated/entity/type';
-import { useDomainStore } from '../hooks/useDomainStore';
 import { PageType } from '../generated/system/ui/page';
+import { useDomainStore } from '../hooks/useDomainStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
   QueryFieldInterface,
@@ -104,8 +104,8 @@ export const withDomainFilter = (
       const mustArray = Array.isArray(filter.query?.bool?.must)
         ? filter.query.bool.must
         : filter.query?.bool?.must
-          ? [filter.query.bool.must]
-          : [];
+        ? [filter.query.bool.must]
+        : [];
 
       filter.query.bool = {
         ...filter.query?.bool,
