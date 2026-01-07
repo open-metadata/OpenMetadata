@@ -87,8 +87,7 @@ const ListView = ({
         title: t('label.end-entity', { entity: t('label.time') }),
         dataIndex: 'endTime',
         key: 'endTime',
-        render: (endTime: number) =>
-          endTime ? formatDateTime(endTime) : '--',
+        render: (endTime: number) => (endTime ? formatDateTime(endTime) : '--'),
       },
       {
         title: t('label.duration'),
