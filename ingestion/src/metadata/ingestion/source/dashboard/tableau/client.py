@@ -118,7 +118,7 @@ class TableauClient:
             if owner_id in self.owner_cache:
                 return self.owner_cache[owner_id]
             owner = self.tableau_server.users.get_by_id(owner_id) if owner_id else None
-            if owner and owner.email:
+            if owner:
                 owner_obj = TableauOwner(
                     id=str(owner.id), name=owner.name, email=owner.email
                 )
