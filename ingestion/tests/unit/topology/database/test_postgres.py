@@ -118,6 +118,42 @@ mock_postgres_usage_config = {
     },
 }
 
+mock_postgres_usage_config_custom_source = {
+    "source": {
+        "type": "postgres-usage",
+        "serviceName": "local_postgres1",
+        "serviceConnection": {
+            "config": {
+                "type": "Postgres",
+                "username": "username",
+                "authType": {
+                    "password": "password",
+                },
+                "hostPort": "localhost:5432",
+                "database": "postgres",
+                "queryStatementSource": "my_schema.custom_pg_stat_statements",
+            }
+        },
+        "sourceConfig": {
+            "config": {
+                "type": "DatabaseUsage",
+                "queryLogDuration": 1,
+            }
+        },
+    },
+    "sink": {
+        "type": "metadata-rest",
+        "config": {},
+    },
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {"jwtToken": "postgres"},
+        }
+    },
+}
+
 MOCK_DATABASE_SERVICE = DatabaseService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="postgres_source",
@@ -344,6 +380,49 @@ class PostgresUnitTest(TestCase):
     def test_close_connection(self, engine, connection):
         connection.return_value = True
         self.postgres_source.close()
+
+    def test_query_statement_source_default(self):
+        """Test that default query statement source is pg_stat_statements"""
+        # Mock the engine with time column check
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+        mock_conn.__exit__ = MagicMock(return_value=None)
+        mock_conn.execute.return_value = [("total_exec_time",)]
+        mock_engine.connect.return_value = mock_conn
+        self.postgres_usage_source.engine = mock_engine
+
+        sql_statement = self.postgres_usage_source.get_sql_statement()
+        # Verify default pg_stat_statements is used
+        self.assertIn("pg_stat_statements s", sql_statement)
+
+    def test_query_statement_source_custom(self):
+        """Test that custom query statement source is used when configured"""
+        custom_config = OpenMetadataWorkflowConfig.model_validate(
+            mock_postgres_usage_config_custom_source
+        )
+        with patch(
+            "metadata.ingestion.source.database.postgres.usage.PostgresUsageSource.test_connection"
+        ):
+            custom_usage_source = PostgresUsageSource.create(
+                mock_postgres_usage_config_custom_source["source"],
+                custom_config.workflowConfig.openMetadataServerConfig,
+            )
+
+        # Mock the engine with time column check
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+        mock_conn.__exit__ = MagicMock(return_value=None)
+        mock_conn.execute.return_value = [("total_exec_time",)]
+        mock_engine.connect.return_value = mock_conn
+        custom_usage_source.engine = mock_engine
+
+        sql_statement = custom_usage_source.get_sql_statement()
+        # Verify custom source is used
+        self.assertIn("my_schema.custom_pg_stat_statements s", sql_statement)
+        # Verify default source is NOT used
+        self.assertNotIn("pg_stat_statements s", sql_statement)
 
     def test_mark_deleted_schemas_enabled(self):
         """Test mark deleted schemas when the config is enabled"""
