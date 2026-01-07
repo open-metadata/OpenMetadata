@@ -855,49 +855,16 @@ const TableDetailsPageV1: React.FC = () => {
             (column) => ({ ...column, tags: column.tags ?? [] } as Column)
           ),
           onColumnsChange: async (updatedColumns) => {
-            // Use functional update to get the latest tableDetails state
-            // This prevents duplicate PATCH calls with stale data
-            let currentTableDetails: Table | undefined;
-            setTableDetails((prev) => {
-              currentTableDetails = prev;
-
-              return prev;
-            });
-
-            if (!currentTableDetails) {
+            if (!tableDetails) {
               return;
             }
 
             const updatedTable: Table = {
-              ...currentTableDetails,
+              ...tableDetails,
               columns: updatedColumns as Column[],
             };
 
-            // Generate patch using current state, not stale closure data
-            const jsonPatch = compare(currentTableDetails, updatedTable);
-
-            // Only make the API call if there are actual changes
-            // This prevents unnecessary PATCH calls when tags are already cleared
-            if (jsonPatch.length > 0) {
-              try {
-                const res = await patchTableDetails(tableId, jsonPatch);
-
-                // Update state with API response
-                setTableDetails((previous) => {
-                  if (!previous) {
-                    return previous;
-                  }
-
-                  return {
-                    ...previous,
-                    ...res,
-                    columns: res.columns ?? previous.columns,
-                  };
-                });
-              } catch (error) {
-                showErrorToast(error as AxiosError);
-              }
-            }
+            await onTableUpdate(updatedTable);
           },
           onColumnFieldUpdate: async (fqn, update) => {
             // For Table, we update columns via API directly

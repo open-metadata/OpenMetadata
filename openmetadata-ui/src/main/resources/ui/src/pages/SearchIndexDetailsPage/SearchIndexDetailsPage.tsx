@@ -629,55 +629,16 @@ function SearchIndexDetailsPage() {
                 ({ ...field, tags: field.tags ?? [] } as unknown as Column)
             ),
             onColumnsChange: async (updatedColumns) => {
-              // Use functional update to get the latest searchIndexDetails state
-              // This prevents duplicate PATCH calls with stale data
-              let currentSearchIndexDetails: SearchIndex | undefined;
-              setSearchIndexDetails((prev) => {
-                currentSearchIndexDetails = prev;
-
-                return prev;
-              });
-
-              if (!currentSearchIndexDetails) {
+              if (!searchIndexDetails) {
                 return;
               }
 
               const updatedSearchIndex = {
-                ...currentSearchIndexDetails,
+                ...searchIndexDetails,
                 fields: updatedColumns as unknown as SearchIndexField[],
               };
 
-              // Generate patch using current state, not stale closure data
-              const jsonPatch = compare(
-                omitBy(currentSearchIndexDetails, isUndefined),
-                updatedSearchIndex
-              );
-
-              // Only make the API call if there are actual changes
-              // This prevents unnecessary PATCH calls when tags are already cleared
-              if (jsonPatch.length > 0) {
-                try {
-                  const res = await patchSearchIndexDetails(
-                    searchIndexId,
-                    jsonPatch
-                  );
-
-                  // Update state with API response
-                  setSearchIndexDetails((previous) => {
-                    if (!previous) {
-                      return previous;
-                    }
-
-                    return {
-                      ...previous,
-                      ...res,
-                      fields: res.fields ?? previous.fields,
-                    };
-                  });
-                } catch (error) {
-                  showErrorToast(error as AxiosError);
-                }
-              }
+              await onSearchIndexUpdate(updatedSearchIndex);
             },
             onColumnFieldUpdate: async (fqn, update) => {
               const fields = cloneDeep(searchIndexDetails.fields ?? []);

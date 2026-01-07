@@ -656,54 +656,19 @@ const ContainerPage = () => {
                 } as unknown as TableColumn)
             ),
             onColumnsChange: async (updatedColumns) => {
-              // Use functional update to get the latest containerData state
-              // This prevents duplicate PATCH calls with stale data
-              let currentContainerData: Container | undefined;
-              setContainerData((prev) => {
-                currentContainerData = prev;
-
-                return prev;
-              });
-
-              if (!currentContainerData?.dataModel) {
+              if (!containerData?.dataModel) {
                 return;
               }
 
               const updatedContainer: Container = {
-                ...currentContainerData,
+                ...containerData,
                 dataModel: {
-                  ...currentContainerData.dataModel,
+                  ...containerData.dataModel,
                   columns: updatedColumns as unknown as Column[],
                 },
               };
 
-              // Generate patch using current state, not stale closure data
-              const jsonPatch = compare(
-                omitBy(currentContainerData, isUndefined),
-                updatedContainer
-              );
-
-              // Only make the API call if there are actual changes
-              // This prevents unnecessary PATCH calls when tags are already cleared
-              if (jsonPatch.length > 0) {
-                try {
-                  const res = await patchContainerDetails(
-                    currentContainerData.id ?? '',
-                    jsonPatch
-                  );
-
-                  // Update state with API response
-                  setContainerData((prev) => {
-                    if (!prev) {
-                      return prev;
-                    }
-
-                    return { ...prev, ...res };
-                  });
-                } catch (error) {
-                  showErrorToast(error as AxiosError);
-                }
-              }
+              await handleContainerUpdate(updatedContainer);
             },
             onColumnFieldUpdate: async (fqn, update) => {
               if (!containerData?.dataModel) {
