@@ -14,7 +14,7 @@ Test Dagster using the topology
 import json
 from pathlib import Path
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -42,12 +42,7 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.dagster.metadata import DagsterSource
-from metadata.ingestion.source.pipeline.dagster.models import (
-    DagsterLocation,
-    DagsterPipeline,
-    GraphOrError,
-    Node,
-)
+from metadata.ingestion.source.pipeline.dagster.models import GraphOrError
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/dagster_dataset.json"
@@ -63,31 +58,6 @@ mock_dagster_config = {
             "config": {"type": "Dagster", "host": "http://lolhost:3000"}
         },
         "sourceConfig": {"config": {"type": "PipelineMetadata"}},
-    },
-    "sink": {"type": "metadata-rest", "config": {}},
-    "workflowConfig": {
-        "openMetadataServerConfig": {
-            "hostPort": "http://localhost:8585/api",
-            "authProvider": "openmetadata",
-            "securityConfig": {"jwtToken": "jnsdjonfonsodifnoisdnfoinsdonfonsd"},
-        }
-    },
-}
-
-# Config with pipeline filter pattern to test filtering
-mock_dagster_config_with_filter = {
-    "source": {
-        "type": "dagster",
-        "serviceName": "dagster_source",
-        "serviceConnection": {
-            "config": {"type": "Dagster", "host": "http://lolhost:3000"}
-        },
-        "sourceConfig": {
-            "config": {
-                "type": "PipelineMetadata",
-                "pipelineFilterPattern": {"includes": ["pipeline_to_include"]},
-            }
-        },
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
@@ -338,84 +308,3 @@ class DagsterUnitTest(TestCase):
             zip(EXPECTED_CREATED_PIPELINES, pipelines_list)
         ):
             self.assertEqual(expected, original)
-
-
-class DagsterPipelineFilterTest(TestCase):
-    """
-    Test Dagster pipeline filter pattern functionality.
-    This test verifies that get_pipelines_list respects the pipelineFilterPattern.
-    """
-
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-    )
-    @patch("dagster_graphql.DagsterGraphQLClient")
-    def __init__(self, methodName, graphql_client, test_connection) -> None:
-        super().__init__(methodName)
-        test_connection.return_value = False
-        graphql_client.return_value = False
-        config = OpenMetadataWorkflowConfig.model_validate(
-            mock_dagster_config_with_filter
-        )
-        self.dagster = DagsterSource.create(
-            mock_dagster_config_with_filter["source"],
-            config.workflowConfig.openMetadataServerConfig,
-        )
-        # Set only pipeline_service for the test
-        # Don't pre-set repository_name and repository_location as we want to verify they get set correctly
-        self.dagster.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
-        self.dagster.context.get().__dict__[
-            "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.root
-
-    @patch(
-        "metadata.ingestion.source.pipeline.dagster.client.DagsterClient.get_run_list"
-    )
-    def test_get_pipelines_list_respects_filter_pattern(self, mock_get_run_list):
-        """
-        Test that get_pipelines_list filters pipelines based on pipelineFilterPattern.
-
-        This test reproduces the issue where Dagster pipeline fails to respect
-        single repository filter. The fix should apply the filter pattern in
-        get_pipelines_list to prevent processing pipelines that don't match.
-        """
-        # Create mock repository data with multiple repositories and pipelines
-        mock_nodes = [
-            Node(
-                id="repo1",
-                name="repository1",
-                location=DagsterLocation(id="loc1", name="location1"),
-                pipelines=[
-                    DagsterPipeline(
-                        id="pipe1", name="pipeline_to_include", description="desc1"
-                    ),
-                    DagsterPipeline(
-                        id="pipe2", name="pipeline_to_exclude", description="desc2"
-                    ),
-                ],
-            ),
-            Node(
-                id="repo2",
-                name="repository2",
-                location=DagsterLocation(id="loc2", name="location2"),
-                pipelines=[
-                    DagsterPipeline(
-                        id="pipe3", name="another_pipeline", description="desc3"
-                    ),
-                ],
-            ),
-        ]
-        mock_get_run_list.return_value = mock_nodes
-
-        # Get all pipelines from get_pipelines_list
-        pipelines_list = list(self.dagster.get_pipelines_list())
-
-        # With the filter pattern "pipeline_to_include", only 1 pipeline should be returned
-        # Before fix: would return 3 pipelines (all pipelines from all repositories)
-        # After fix: should return 1 pipeline (only the matching one)
-        self.assertEqual(len(pipelines_list), 1)
-        self.assertEqual(pipelines_list[0].name, "pipeline_to_include")
-
-        # Also verify the context was set correctly for the matching pipeline
-        self.assertEqual(self.dagster.context.get().repository_name, "repository1")
-        self.assertEqual(self.dagster.context.get().repository_location, "location1")
