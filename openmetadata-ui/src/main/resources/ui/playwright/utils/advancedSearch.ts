@@ -187,17 +187,10 @@ export const selectOption = async (
       .locator('.ant-select-selector')
       .click({ force: true });
 
-    await page.waitForSelector('.ant-select-item-empty', {
-      state: 'detached',
-    });
-
     // Clear any existing input and type the new value
     const combobox = dropdownLocator.getByRole('combobox');
     await combobox.clear();
     await combobox.fill(optionTitle);
-    await page.waitForSelector('.ant-select-item-empty', {
-      state: 'detached',
-    });
   } else {
     await dropdownLocator.click();
   }
