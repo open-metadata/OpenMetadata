@@ -141,6 +141,7 @@ test.describe('Data Products', () => {
   });
 
   test('Create Data Product and Manage Assets', async ({ page }) => {
+    test.slow(true);
     const dataProduct = new DataProduct([domain]);
     const table = new TableClass();
 

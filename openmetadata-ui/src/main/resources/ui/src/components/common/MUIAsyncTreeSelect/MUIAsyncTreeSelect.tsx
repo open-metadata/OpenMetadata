@@ -59,6 +59,7 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
   pageSize = 50,
   maxHeight = 300,
   minWidth,
+  'data-testid': dataTestId,
 
   // Data props
   fetchData,
@@ -558,6 +559,7 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
         }}
         onFocus={() => openDropdown()}
         onKeyDown={handleInputKeyDown}
+        data-testid={dataTestId}
       />
 
       <TreeDropdown
