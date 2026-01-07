@@ -32,6 +32,7 @@ import {
   normalizeTags,
   pruneEmptyChildren,
   shouldCollapseSchema,
+  syncPaginatedColumnsWithTable,
   updateColumnInNestedStructure,
 } from '../utils/TableUtils';
 import EntityLink from './EntityLink';
@@ -588,6 +589,354 @@ describe('TableUtils', () => {
       expect(result[1].children).toHaveLength(1);
       expect(result[2]).not.toHaveProperty('children');
       expect(result[3]).not.toHaveProperty('children');
+    });
+  });
+
+  describe('syncPaginatedColumnsWithTable', () => {
+    it('should return paginated columns unchanged when empty', () => {
+      const paginatedColumns: Column[] = [];
+      const fullTableColumns: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          description: 'description',
+        } as Column,
+      ];
+
+      const result = syncPaginatedColumnsWithTable(
+        paginatedColumns,
+        fullTableColumns
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('should return paginated columns unchanged when full table columns are empty', () => {
+      const paginatedColumns: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          description: 'description',
+        } as Column,
+      ];
+      const fullTableColumns: Column[] = [];
+
+      const result = syncPaginatedColumnsWithTable(
+        paginatedColumns,
+        fullTableColumns
+      );
+
+      expect(result).toEqual(paginatedColumns);
+    });
+
+    it('should sync description changes', () => {
+      const paginatedColumns: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          description: 'old description',
+        } as Column,
+      ];
+      const fullTableColumns: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          description: 'new description',
+        } as Column,
+      ];
+
+      const result = syncPaginatedColumnsWithTable(
+        paginatedColumns,
+        fullTableColumns
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].description).toBe('new description');
+      expect(result[0].fullyQualifiedName).toBe('table.column1');
+    });
+
+    it('should sync tag changes', () => {
+      const paginatedColumns: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          tags: [{ tagFQN: 'tag1', source: 'Classification' }],
+        } as Column,
+      ];
+      const fullTableColumns: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          tags: [
+            { tagFQN: 'tag1', source: 'Classification' },
+            { tagFQN: 'tag2', source: 'Classification' },
+          ],
+        } as Column,
+      ];
+
+      const result = syncPaginatedColumnsWithTable(
+        paginatedColumns,
+        fullTableColumns
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].tags).toHaveLength(2);
+      expect(result[0].tags?.[1].tagFQN).toBe('tag2');
+    });
+
+    it('should sync nested column changes', () => {
+      const paginatedColumns: Column[] = [
+        {
+          name: 'parentColumn',
+          fullyQualifiedName: 'table.parentColumn',
+          description: 'parent description',
+          children: [
+            {
+              name: 'nestedColumn',
+              fullyQualifiedName: 'table.parentColumn.nestedColumn',
+              description: 'old nested description',
+            } as Column,
+          ],
+        } as Column,
+      ];
+      const fullTableColumns: Column[] = [
+        {
+          name: 'parentColumn',
+          fullyQualifiedName: 'table.parentColumn',
+          description: 'parent description',
+          children: [
+            {
+              name: 'nestedColumn',
+              fullyQualifiedName: 'table.parentColumn.nestedColumn',
+              description: 'new nested description',
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const result = syncPaginatedColumnsWithTable(
+        paginatedColumns,
+        fullTableColumns
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].children).toHaveLength(1);
+      expect(result[0].children?.[0].description).toBe(
+        'new nested description'
+      );
+    });
+
+    it('should return unchanged columns when no changes detected', () => {
+      const paginatedColumns: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          description: 'description',
+          tags: [{ tagFQN: 'tag1', source: 'Classification' }],
+        } as Column,
+      ];
+      const fullTableColumns: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          description: 'description',
+          tags: [{ tagFQN: 'tag1', source: 'Classification' }],
+        } as Column,
+      ];
+
+      const result = syncPaginatedColumnsWithTable(
+        paginatedColumns,
+        fullTableColumns
+      );
+
+      // Should return the same reference if no changes
+      expect(result).toEqual(paginatedColumns);
+    });
+
+    it('should handle column not found in full table', () => {
+      const paginatedColumns: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          description: 'description',
+        } as Column,
+      ];
+      const fullTableColumns: Column[] = [
+        {
+          name: 'column2',
+          fullyQualifiedName: 'table.column2',
+          description: 'description',
+        } as Column,
+      ];
+
+      const result = syncPaginatedColumnsWithTable(
+        paginatedColumns,
+        fullTableColumns
+      );
+
+      // Should keep original column when not found
+      expect(result).toHaveLength(1);
+      expect(result[0].fullyQualifiedName).toBe('table.column1');
+    });
+
+    it('should handle removed children', () => {
+      const paginatedColumns: Column[] = [
+        {
+          name: 'parentColumn',
+          fullyQualifiedName: 'table.parentColumn',
+          children: [
+            {
+              name: 'nestedColumn',
+              fullyQualifiedName: 'table.parentColumn.nestedColumn',
+            } as Column,
+          ],
+        } as Column,
+      ];
+      const fullTableColumns: Column[] = [
+        {
+          name: 'parentColumn',
+          fullyQualifiedName: 'table.parentColumn',
+          // No children in updated version
+        } as Column,
+      ];
+
+      const result = syncPaginatedColumnsWithTable(
+        paginatedColumns,
+        fullTableColumns
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).not.toHaveProperty('children');
+    });
+
+    it('should sync multiple columns with mixed changes', () => {
+      const paginatedColumns: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          description: 'old description',
+        } as Column,
+        {
+          name: 'column2',
+          fullyQualifiedName: 'table.column2',
+          description: 'description 2',
+          tags: [{ tagFQN: 'tag1', source: 'Classification' }],
+        } as Column,
+        {
+          name: 'column3',
+          fullyQualifiedName: 'table.column3',
+          description: 'description 3',
+        } as Column,
+      ];
+      const fullTableColumns: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          description: 'new description',
+        } as Column,
+        {
+          name: 'column2',
+          fullyQualifiedName: 'table.column2',
+          description: 'description 2',
+          tags: [
+            { tagFQN: 'tag1', source: 'Classification' },
+            { tagFQN: 'tag2', source: 'Classification' },
+          ],
+        } as Column,
+        {
+          name: 'column3',
+          fullyQualifiedName: 'table.column3',
+          description: 'description 3',
+        } as Column,
+      ];
+
+      const result = syncPaginatedColumnsWithTable(
+        paginatedColumns,
+        fullTableColumns
+      );
+
+      expect(result).toHaveLength(3);
+      expect(result[0].description).toBe('new description');
+      expect(result[1].tags).toHaveLength(2);
+      expect(result[2].description).toBe('description 3'); // Unchanged
+    });
+
+    it('should prune empty children after syncing', () => {
+      const paginatedColumns: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          children: [],
+        } as Column,
+      ];
+      const fullTableColumns: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          description: 'new description',
+          children: [],
+        } as Column,
+      ];
+
+      const result = syncPaginatedColumnsWithTable(
+        paginatedColumns,
+        fullTableColumns
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).not.toHaveProperty('children');
+      expect(result[0].description).toBe('new description');
+    });
+
+    it('should handle deeply nested column updates', () => {
+      const paginatedColumns: Column[] = [
+        {
+          name: 'level1',
+          fullyQualifiedName: 'table.level1',
+          children: [
+            {
+              name: 'level2',
+              fullyQualifiedName: 'table.level1.level2',
+              children: [
+                {
+                  name: 'level3',
+                  fullyQualifiedName: 'table.level1.level2.level3',
+                  description: 'old description',
+                } as Column,
+              ],
+            } as Column,
+          ],
+        } as Column,
+      ];
+      const fullTableColumns: Column[] = [
+        {
+          name: 'level1',
+          fullyQualifiedName: 'table.level1',
+          children: [
+            {
+              name: 'level2',
+              fullyQualifiedName: 'table.level1.level2',
+              children: [
+                {
+                  name: 'level3',
+                  fullyQualifiedName: 'table.level1.level2.level3',
+                  description: 'new description',
+                } as Column,
+              ],
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const result = syncPaginatedColumnsWithTable(
+        paginatedColumns,
+        fullTableColumns
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].children?.[0].children?.[0].description).toBe(
+        'new description'
+      );
     });
 
     it('should handle nested empty children recursively', () => {
@@ -1361,7 +1710,10 @@ describe('TableUtils', () => {
         },
       };
 
-      const result = extractColumnsFromData(containerData, EntityType.CONTAINER);
+      const result = extractColumnsFromData(
+        containerData,
+        EntityType.CONTAINER
+      );
 
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
@@ -1412,10 +1764,7 @@ describe('TableUtils', () => {
         name: 'unknown',
       };
 
-      const result = extractColumnsFromData(
-        unknownData,
-        EntityType.DASHBOARD
-      );
+      const result = extractColumnsFromData(unknownData, EntityType.DASHBOARD);
 
       expect(result).toEqual([]);
     });
@@ -1497,7 +1846,10 @@ describe('TableUtils', () => {
         dataModel: undefined,
       };
 
-      const result = extractColumnsFromData(containerData, EntityType.CONTAINER);
+      const result = extractColumnsFromData(
+        containerData,
+        EntityType.CONTAINER
+      );
 
       expect(result).toEqual([]);
     });

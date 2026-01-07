@@ -78,11 +78,11 @@ import {
 } from '../../../utils/TableTags/TableTags.utils';
 import {
   findColumnByEntityLink,
-  findFieldByFQN,
   getAllRowKeysByKeyName,
   getTableExpandableConfig,
   prepareConstraintIcon,
   pruneEmptyChildren,
+  syncPaginatedColumnsWithTable,
   updateColumnInNestedStructure,
 } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -254,77 +254,12 @@ const SchemaTable = () => {
       return;
     }
 
-    // Update local tableColumns if any column in the current page was updated
     setTableColumns((prev) => {
-      if (prev.length === 0) {
+      if (isEmpty(prev)) {
         return prev;
       }
 
-      // Check all columns (including nested) in the current page for updates
-      let hasChanges = false;
-      let updated = [...prev];
-
-      // Iterate through all columns in the current page (including nested ones)
-      const checkAndUpdateColumn = (columns: Column[]): Column[] => {
-        return columns.map((col) => {
-          // Find the corresponding column in table.columns (handles nested columns)
-          const updatedColumn = findFieldByFQN<Column>(
-            table.columns ?? [],
-            col.fullyQualifiedName ?? ''
-          );
-
-          // If found, check if there are changes
-          if (updatedColumn) {
-            const descriptionChanged =
-              updatedColumn.description !== col.description;
-            const tagsChanged =
-              JSON.stringify(updatedColumn.tags || []) !==
-              JSON.stringify(col.tags || []);
-
-            if (descriptionChanged || tagsChanged) {
-              hasChanges = true;
-
-              // If this column has children, recursively update them
-              if (updatedColumn.children && updatedColumn.children.length > 0) {
-                return {
-                  ...updatedColumn,
-                  children: checkAndUpdateColumn(updatedColumn.children),
-                };
-              }
-
-              return updatedColumn;
-            }
-          }
-
-          // If this column has children, recursively check them even if this column didn't change
-          if (col.children && col.children.length > 0) {
-            const updatedChildren = checkAndUpdateColumn(col.children);
-            const childrenChanged = updatedChildren.some(
-              (child, index) => child !== col.children?.[index]
-            );
-
-            if (childrenChanged) {
-              hasChanges = true;
-
-              return {
-                ...col,
-                children: updatedChildren,
-              };
-            }
-          }
-
-          return col;
-        });
-      };
-
-      updated = checkAndUpdateColumn(prev);
-
-      if (hasChanges) {
-        // Prune empty children from all columns to prevent chevron icons on non-nested columns
-        return pruneEmptyChildren(updated);
-      }
-
-      return prev;
+      return syncPaginatedColumnsWithTable(prev, table.columns ?? []);
     });
   }, [table?.columns]);
 

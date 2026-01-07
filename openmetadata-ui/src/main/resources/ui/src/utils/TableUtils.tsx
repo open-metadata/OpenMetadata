@@ -18,6 +18,7 @@ import classNames from 'classnames';
 import {
   get,
   isEmpty,
+  isEqual,
   isUndefined,
   lowerCase,
   omit,
@@ -156,10 +157,11 @@ import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Container } from '../generated/entity/data/container';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
-import { SearchIndex as SearchIndexEntity } from '../generated/entity/data/searchIndex';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { SearchIndexField } from '../generated/entity/data/searchIndex';
-import { Topic } from '../generated/entity/data/topic';
+import {
+  SearchIndex as SearchIndexEntity,
+  SearchIndexField,
+} from '../generated/entity/data/searchIndex';
 import {
   Column,
   ConstraintType,
@@ -169,6 +171,7 @@ import {
   TableConstraint,
   TableJoins,
 } from '../generated/entity/data/table';
+import { Topic } from '../generated/entity/data/topic';
 import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../generated/system/ui/uiCustomization';
 import { Field } from '../generated/type/schema';
@@ -1386,6 +1389,76 @@ export const pruneEmptyChildren = (columns: Column[]): Column[] => {
   });
 };
 
+/**
+ * Sync paginated columns with full table columns when updates occur.
+ * Only updates columns that exist in the current page, preserving pagination state.
+ */
+export const syncPaginatedColumnsWithTable = (
+  paginatedColumns: Column[],
+  fullTableColumns: Column[]
+): Column[] => {
+  if (isEmpty(paginatedColumns) || isEmpty(fullTableColumns)) {
+    return paginatedColumns;
+  }
+
+  const syncColumn = (col: Column): Column => {
+    const updatedColumn = findFieldByFQN<Column>(
+      fullTableColumns,
+      col.fullyQualifiedName ?? ''
+    );
+
+    if (!updatedColumn) {
+      // Column not found in full table, keep original but still sync children
+      if (col.children?.length) {
+        const syncedChildren = col.children.map(syncColumn);
+
+        return { ...col, children: syncedChildren };
+      }
+
+      return col;
+    }
+
+    // Check if description or tags changed
+    const descriptionChanged = updatedColumn.description !== col.description;
+    const tagsChanged = !isEqual(updatedColumn.tags || [], col.tags || []);
+
+    // Sync children from updatedColumn (handles both cases: updatedColumn has children or not)
+    const syncedChildren = updatedColumn.children?.length
+      ? updatedColumn.children.map(syncColumn)
+      : undefined;
+
+    // If nothing changed, return original with synced children (if any)
+    if (!descriptionChanged && !tagsChanged) {
+      if (syncedChildren && syncedChildren.length > 0) {
+        const childrenChanged = !isEqual(syncedChildren, col.children || []);
+
+        return childrenChanged ? { ...col, children: syncedChildren } : col;
+      }
+      // Remove children if they were removed in updatedColumn
+      if (!syncedChildren && col.children?.length) {
+        return omit(col, 'children');
+      }
+
+      return col;
+    }
+
+    // Column has changes, use updated column with synced children
+    return {
+      ...updatedColumn,
+      children: syncedChildren,
+    };
+  };
+
+  const synced = paginatedColumns.map(syncColumn);
+
+  // Check if anything actually changed
+  if (isEqual(synced, paginatedColumns)) {
+    return paginatedColumns;
+  }
+
+  return pruneEmptyChildren(synced);
+};
+
 export const getSchemaFieldCount = <T extends { children?: T[] }>(
   fields: T[]
 ): number => {
@@ -1708,9 +1781,7 @@ export const buildColumnBreadcrumbPath = <
  * @param entityType Type of entity
  * @returns Array of columns/fields/tasks/features
  */
-export const extractColumnsFromData = <
-  T extends Omit<EntityReference, 'type'>
->(
+export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
   data: T,
   entityType: EntityType
 ): Array<Column | SearchIndexField | Field> => {
@@ -1722,20 +1793,20 @@ export const extractColumnsFromData = <
 
     case EntityType.API_ENDPOINT: {
       const apiEndpoint = data as unknown as APIEndpoint;
+
       return [
         ...(apiEndpoint.requestSchema?.schemaFields ?? []).map(
-          (field) =>
-            ({ ...field, tags: field.tags ?? [] } as unknown as Column)
+          (field) => ({ ...field, tags: field.tags ?? [] } as unknown as Column)
         ),
         ...(apiEndpoint.responseSchema?.schemaFields ?? []).map(
-          (field) =>
-            ({ ...field, tags: field.tags ?? [] } as unknown as Column)
+          (field) => ({ ...field, tags: field.tags ?? [] } as unknown as Column)
         ),
       ];
     }
 
     case EntityType.DASHBOARD_DATA_MODEL: {
       const dataModel = data as unknown as DashboardDataModel;
+
       return (dataModel.columns ?? []).map(
         (column) =>
           ({
@@ -1747,6 +1818,7 @@ export const extractColumnsFromData = <
 
     case EntityType.MLMODEL: {
       const mlModel = data as unknown as Mlmodel;
+
       return (mlModel.mlFeatures ?? []).map(
         (feature) => feature as unknown as Column
       );
@@ -1754,6 +1826,7 @@ export const extractColumnsFromData = <
 
     case EntityType.PIPELINE: {
       const pipeline = data as unknown as Pipeline;
+
       return (pipeline.tasks ?? []).map(
         (task) => ({ ...task, tags: task.tags ?? [] } as unknown as Column)
       );
@@ -1761,6 +1834,7 @@ export const extractColumnsFromData = <
 
     case EntityType.TOPIC: {
       const topic = data as unknown as Topic;
+
       return (topic.messageSchema?.schemaFields ?? []).map(
         (field) => field as unknown as Column
       );
@@ -1768,6 +1842,7 @@ export const extractColumnsFromData = <
 
     case EntityType.CONTAINER: {
       const container = data as unknown as Container;
+
       return (container.dataModel?.columns ?? []).map(
         (column) =>
           ({
@@ -1779,9 +1854,9 @@ export const extractColumnsFromData = <
 
     case EntityType.SEARCH_INDEX: {
       const searchIndex = data as unknown as SearchIndexEntity;
+
       return (searchIndex.fields ?? []).map(
-        (field) =>
-          ({ ...field, tags: field.tags ?? [] } as unknown as Column)
+        (field) => ({ ...field, tags: field.tags ?? [] } as unknown as Column)
       );
     }
 
