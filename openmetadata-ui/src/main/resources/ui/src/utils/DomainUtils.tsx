@@ -247,21 +247,15 @@ export const getQueryFilterToExcludeDomainTerms = (
 export const getQueryFilterForDomain = (domainFqn: string) => ({
   query: {
     bool: {
-      must: [
+      should: [
         {
-          bool: {
-            should: [
-              {
-                term: {
-                  'domains.fullyQualifiedName': domainFqn,
-                },
-              },
-              {
-                prefix: {
-                  'domains.fullyQualifiedName': `${domainFqn}.`,
-                },
-              },
-            ],
+          term: {
+            'domains.fullyQualifiedName': domainFqn,
+          },
+        },
+        {
+          prefix: {
+            'domains.fullyQualifiedName': `${domainFqn}.`,
           },
         },
       ],
