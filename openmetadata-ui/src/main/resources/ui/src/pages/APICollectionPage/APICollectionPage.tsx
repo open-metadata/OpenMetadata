@@ -513,10 +513,7 @@ const APICollectionPage: FunctionComponent = () => {
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(apiCollection),
-      })}>
+    <PageLayoutV1 pageTitle={getEntityName(apiCollection)}>
       {isEmpty(apiCollection) && !isAPICollectionLoading ? (
         <ErrorPlaceHolder className="m-0">
           {getEntityMissingError(

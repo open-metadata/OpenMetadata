@@ -835,11 +835,7 @@ const TableDetailsPageV1: React.FC = () => {
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.table'),
-      })}
-      title="Table details">
+    <PageLayoutV1 pageTitle={entityName} title="Table details">
       <GenericProvider<Table>
         customizedPage={customizedPage}
         data={tableDetails}

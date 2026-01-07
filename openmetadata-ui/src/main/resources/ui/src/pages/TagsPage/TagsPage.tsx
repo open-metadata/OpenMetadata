@@ -727,7 +727,7 @@ const TagsPage = () => {
           children: leftPanelLayout,
           title: t('label.classification-plural'),
         }}
-        pageTitle={t('label.tag-plural')}
+        pageTitle={getEntityName(currentClassification)}
         secondPanel={{
           children: (
             <>

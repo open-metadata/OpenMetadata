@@ -13,6 +13,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getStoredProceduresByFqn } from '../../rest/storedProceduresAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -78,9 +79,9 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
-  return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
-});
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <p>{children}</p>)
+);
 
 jest.mock(
   '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
@@ -272,5 +273,33 @@ describe('StoredProcedure component', () => {
 
     expect(await screen.findByText('GenericTab')).toBeInTheDocument();
     expect(GenericTab).toHaveBeenCalledWith({ type: 'StoredProcedure' }, {});
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    const mockStoredProcedureData = {
+      name: 'test-stored-procedure',
+      id: '123',
+    };
+
+    (getStoredProceduresByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockStoredProcedureData)
+    );
+
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    await act(async () => {
+      render(<StoredProcedurePage />);
+    });
+
+    expect(PageLayoutV1).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageTitle: 'test-stored-procedure',
+      }),
+      expect.anything()
+    );
   });
 });
