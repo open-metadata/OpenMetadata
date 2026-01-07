@@ -1,8 +1,9 @@
 package org.openmetadata.mcp;
 
-import io.modelcontextprotocol.server.McpTransportContext;
+import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpTransportContextExtractor;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Map;
 import org.openmetadata.service.security.JwtFilter;
 
 public class AuthEnrichedMcpContextExtractor
@@ -10,10 +11,8 @@ public class AuthEnrichedMcpContextExtractor
   public static final String AUTHORIZATION_HEADER = "Authorization";
 
   @Override
-  public McpTransportContext extract(
-      HttpServletRequest request, McpTransportContext transportContext) {
-    transportContext.put(
-        AUTHORIZATION_HEADER, JwtFilter.extractToken(request.getHeader(AUTHORIZATION_HEADER)));
-    return transportContext;
+  public McpTransportContext extract(HttpServletRequest request) {
+    String token = JwtFilter.extractToken(request.getHeader(AUTHORIZATION_HEADER));
+    return McpTransportContext.create(Map.of(AUTHORIZATION_HEADER, token != null ? token : ""));
   }
 }
