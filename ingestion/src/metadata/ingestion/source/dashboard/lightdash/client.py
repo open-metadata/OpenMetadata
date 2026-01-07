@@ -119,7 +119,8 @@ class LightdashApiClient:
 
     def get_dashboards_list(self) -> List[LightdashDashboard]:
         """
-        Get List of all charts
+        Get List of all dashboards from the configured space.
+        Returns empty list on failure (used during normal ingestion).
         """
 
         try:
@@ -129,7 +130,10 @@ class LightdashApiClient:
             results = response.get("results")
             if results is None:
                 logger.warning(
-                    "Failed to fetch the dashboard list for the Lightdash Connector"
+                    f"Failed to fetch dashboard list: API returned no results. "
+                    f"Response: {response}. "
+                    f"Please verify projectUUID ({self.config.projectUUID}) "
+                    f"and spaceUUID ({self.config.spaceUUID}) are correct."
                 )
                 return []
 
@@ -145,12 +149,42 @@ class LightdashApiClient:
 
                 self.add_dashboard_lineage(dashboards_list=dashboards_list)
                 return dashboards_list
-        except Exception:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                "Failed to fetch the dashboard list for the Lightdash Connector"
+                f"Failed to fetch dashboard list for Lightdash Connector: {exc}. "
+                f"Please verify projectUUID ({self.config.projectUUID}) "
+                f"and spaceUUID ({self.config.spaceUUID}) are correct."
             )
         return []
+
+    def get_dashboards_list_test_conn(self) -> List[LightdashDashboard]:
+        """
+        Get List of all dashboards from the configured space.
+        Raises exceptions on failure (used during test connection).
+        """
+        response = self.client.get(
+            f"api/v1/projects/{self.config.projectUUID}/spaces/{self.config.spaceUUID}"
+        )
+        results = response.get("results")
+        if results is None:
+            raise ValueError(
+                f"Failed to fetch dashboard list: API returned no results. "
+                f"Response: {response}. "
+                f"Please verify projectUUID ({self.config.projectUUID}) "
+                f"and spaceUUID ({self.config.spaceUUID}) are correct."
+            )
+
+        space_name = results["name"]
+        dashboards_raw = results["dashboards"]
+
+        dashboards_list = []
+        for dashboard in dashboards_raw:
+            dashboards_list.append(
+                LightdashDashboard(**dashboard, spaceName=space_name)
+            )
+
+        return dashboards_list
 
     def add_dashboard_lineage(self, dashboards_list: List[LightdashDashboard]) -> None:
         """
