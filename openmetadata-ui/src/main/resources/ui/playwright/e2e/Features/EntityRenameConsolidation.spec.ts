@@ -20,8 +20,8 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
 import {
+  createNewPage,
   redirectToHomePage,
   uuid,
   visitGlossaryPage,
@@ -31,6 +31,8 @@ import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
 
 const adminUser = new UserClass();
+
+test.use({ storageState: 'playwright/.auth/admin.json' });
 
 /**
  * These tests verify that when an entity is renamed and then another field is updated
@@ -100,14 +102,14 @@ async function updateDescription(
 
 test.describe('Entity Rename + Field Update Consolidation', () => {
   test.beforeAll('Setup admin user', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
     await afterAction();
   });
 
   test.afterAll('Cleanup admin user', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
     await adminUser.delete(apiContext);
     await afterAction();
   });
@@ -117,11 +119,12 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
   // ===================================================================
 
   test('Glossary - rename then update description should preserve terms', async ({
+    page,
     browser,
   }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     // Create glossary with a term
     const glossary = new Glossary();
@@ -130,11 +133,9 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
     const glossaryTerm = new GlossaryTerm(glossary);
     await glossaryTerm.create(apiContext);
 
-    const page = await browser.newPage();
     let currentName = glossary.data.name;
 
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       // Navigate to glossary
@@ -159,8 +160,6 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
       // Step 3: Verify term is still associated using display name
       await expect(page.getByText(glossaryTerm.data.displayName)).toBeVisible();
     } finally {
-      await page.close();
-
       try {
         await apiContext.delete(
           `/api/v1/glossaries/name/${encodeURIComponent(
@@ -178,12 +177,10 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
     }
   });
 
-  test('Glossary - multiple rename + update cycles should preserve terms', async ({
-    browser,
-  }) => {
+  test('Glossary - multiple rename + update cycles should preserve terms', async ({ page, browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     const glossary = new Glossary();
     await glossary.create(apiContext);
@@ -191,11 +188,9 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
     const glossaryTerm = new GlossaryTerm(glossary);
     await glossaryTerm.create(apiContext);
 
-    const page = await browser.newPage();
     let currentName = glossary.data.name;
 
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       await visitGlossaryPage(page, glossary.responseData.displayName);
@@ -219,8 +214,6 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
         ).toBeVisible();
       }
     } finally {
-      await page.close();
-
       try {
         await apiContext.delete(
           `/api/v1/glossaries/name/${encodeURIComponent(
@@ -242,12 +235,10 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
   // GLOSSARY TERM TESTS
   // ===================================================================
 
-  test('GlossaryTerm - rename then update description should work', async ({
-    browser,
-  }) => {
+  test('GlossaryTerm - rename then update description should work', async ({ page, browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     const glossary = new Glossary();
     await glossary.create(apiContext);
@@ -255,10 +246,7 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
     const glossaryTerm = new GlossaryTerm(glossary);
     await glossaryTerm.create(apiContext);
 
-    const page = await browser.newPage();
-
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       await visitGlossaryPage(page, glossary.responseData.displayName);
@@ -283,8 +271,6 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
         newName
       );
     } finally {
-      await page.close();
-
       try {
         await glossary.delete(apiContext);
       } catch {
@@ -298,12 +284,10 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
   // CLASSIFICATION TESTS
   // ===================================================================
 
-  test('Classification - rename then update description should preserve tags', async ({
-    browser,
-  }) => {
+  test('Classification - rename then update description should preserve tags', async ({ page, browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     // Create classification with a tag
     const classification = new ClassificationClass();
@@ -312,11 +296,9 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
     const tag = new TagClass({ classification: classification.data.name });
     await tag.create(apiContext);
 
-    const page = await browser.newPage();
     let currentName = classification.data.name;
 
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       // Navigate to classification
@@ -347,8 +329,6 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
       // Step 3: Verify tag is still associated
       await expect(page.getByTestId(tag.data.name)).toBeVisible();
     } finally {
-      await page.close();
-
       try {
         await apiContext.delete(
           `/api/v1/classifications/name/${encodeURIComponent(
@@ -366,12 +346,10 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
     }
   });
 
-  test('Classification - multiple rename + update cycles should preserve tags', async ({
-    browser,
-  }) => {
+  test('Classification - multiple rename + update cycles should preserve tags', async ({ page, browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     const classification = new ClassificationClass();
     await classification.create(apiContext);
@@ -379,11 +357,9 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
     const tag = new TagClass({ classification: classification.data.name });
     await tag.create(apiContext);
 
-    const page = await browser.newPage();
     let currentName = classification.data.name;
 
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       await sidebarClick(page, SidebarItem.TAGS);
@@ -411,8 +387,6 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
         await expect(page.getByTestId(tag.data.name)).toBeVisible();
       }
     } finally {
-      await page.close();
-
       try {
         await apiContext.delete(
           `/api/v1/classifications/name/${encodeURIComponent(
@@ -434,12 +408,10 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
   // TAG TESTS
   // ===================================================================
 
-  test('Tag - rename then update description should work', async ({
-    browser,
-  }) => {
+  test('Tag - rename then update description should work', async ({ page, browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     const classification = new ClassificationClass();
     await classification.create(apiContext);
@@ -447,10 +419,7 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
     const tag = new TagClass({ classification: classification.data.name });
     await tag.create(apiContext);
 
-    const page = await browser.newPage();
-
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       // Navigate to tag
@@ -482,8 +451,6 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
         newName
       );
     } finally {
-      await page.close();
-
       try {
         await classification.delete(apiContext);
       } catch {
@@ -493,12 +460,10 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
     }
   });
 
-  test('Tag - multiple rename + update cycles should work', async ({
-    browser,
-  }) => {
+  test('Tag - multiple rename + update cycles should work', async ({ page, browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     const classification = new ClassificationClass();
     await classification.create(apiContext);
@@ -506,10 +471,7 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
     const tag = new TagClass({ classification: classification.data.name });
     await tag.create(apiContext);
 
-    const page = await browser.newPage();
-
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       await sidebarClick(page, SidebarItem.TAGS);
@@ -540,8 +502,6 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
         );
       }
     } finally {
-      await page.close();
-
       try {
         await classification.delete(apiContext);
       } catch {
@@ -555,21 +515,17 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
   // METRIC TESTS
   // ===================================================================
 
-  test('Metric - rename then update description should work', async ({
-    browser,
-  }) => {
+  test('Metric - rename then update description should work', async ({ page, browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     const metric = new MetricClass();
     await metric.create(apiContext);
 
-    const page = await browser.newPage();
     let currentName = metric.entity.name;
 
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       // Navigate to metric
@@ -593,8 +549,6 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
         newName
       );
     } finally {
-      await page.close();
-
       try {
         await apiContext.delete(
           `/api/v1/metrics/name/${encodeURIComponent(
@@ -612,21 +566,17 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
     }
   });
 
-  test('Metric - multiple rename + update cycles should work', async ({
-    browser,
-  }) => {
+  test('Metric - multiple rename + update cycles should work', async ({ page, browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     const metric = new MetricClass();
     await metric.create(apiContext);
 
-    const page = await browser.newPage();
     let currentName = metric.entity.name;
 
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       await metric.visitEntityPage(page);
@@ -649,8 +599,6 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
         );
       }
     } finally {
-      await page.close();
-
       try {
         await apiContext.delete(
           `/api/v1/metrics/name/${encodeURIComponent(
@@ -672,21 +620,17 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
   // DOMAIN TESTS
   // ===================================================================
 
-  test('Domain - rename then update description should work', async ({
-    browser,
-  }) => {
+  test('Domain - rename then update description should work', async ({ page, browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     const domain = new Domain();
     await domain.create(apiContext);
 
-    const page = await browser.newPage();
     let currentName = domain.data.name;
 
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       // Navigate to domain
@@ -712,8 +656,6 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
         newName
       );
     } finally {
-      await page.close();
-
       try {
         await apiContext.delete(
           `/api/v1/domains/name/${encodeURIComponent(
@@ -731,21 +673,17 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
     }
   });
 
-  test('Domain - multiple rename + update cycles should work', async ({
-    browser,
-  }) => {
+  test('Domain - multiple rename + update cycles should work', async ({ page, browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     const domain = new Domain();
     await domain.create(apiContext);
 
-    const page = await browser.newPage();
     let currentName = domain.data.name;
 
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       await sidebarClick(page, SidebarItem.DOMAIN);
@@ -770,8 +708,6 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
         );
       }
     } finally {
-      await page.close();
-
       try {
         await apiContext.delete(
           `/api/v1/domains/name/${encodeURIComponent(

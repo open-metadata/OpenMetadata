@@ -21,8 +21,8 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
 import {
+  createNewPage,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -49,17 +49,15 @@ const test = base.extend<{
     await adminPage.close();
   },
   userPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
     await user.login(page);
     await use(page);
-    await page.close();
   },
 });
 
 test.beforeAll(
   'Setup Data Product Persona Customization tests',
   async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);

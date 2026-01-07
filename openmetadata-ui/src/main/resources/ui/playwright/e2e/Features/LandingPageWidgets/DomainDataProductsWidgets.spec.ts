@@ -19,8 +19,7 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
-import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage } from '../../../utils/common';
+import { createNewPage, redirectToHomePage } from '../../../utils/common';
 import {
   addAndVerifyWidget,
   setUserDefaultPersona,
@@ -38,6 +37,8 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
 
 const adminUser = new UserClass();
+
+test.use({ storageState: 'playwright/.auth/admin.json' });
 const persona = new PersonaClass();
 const domain = new Domain();
 const subDomain = new SubDomain(domain);
@@ -47,15 +48,12 @@ const topic = new TopicClass();
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
     await use(page);
-    await page.close();
   },
 });
 
 base.beforeAll('Setup pre-requests', async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
+  const { afterAction, apiContext } = await createNewPage(browser);
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
   await persona.create(apiContext, [adminUser.responseData.id]);
@@ -68,7 +66,7 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
 });
 
 base.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+  const { apiContext, afterAction } = await createNewPage(browser);
   await table.delete(apiContext);
   await topic.delete(apiContext);
   await dataProduct.delete(apiContext);

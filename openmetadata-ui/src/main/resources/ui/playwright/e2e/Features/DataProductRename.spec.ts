@@ -19,8 +19,11 @@ import { Domain } from '../../support/domain/Domain';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import {
+  createNewPage,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import {
   addAssetsToDataProduct,
   checkAssetsCount,
@@ -29,6 +32,8 @@ import {
 import { sidebarClick } from '../../utils/sidebar';
 
 const adminUser = new UserClass();
+
+test.use({ storageState: 'playwright/.auth/admin.json' });
 const domain = new Domain();
 const dataProduct = new DataProduct([domain]);
 const table = new TableClass();
@@ -37,7 +42,7 @@ test.describe('Data Product Rename', () => {
   test.beforeAll(
     'Setup domain, data product and table',
     async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const { apiContext, afterAction } = await createNewPage(browser);
       await adminUser.create(apiContext);
       await adminUser.setAdminRole(apiContext);
       await EntityDataClass.preRequisitesForTests(apiContext);
@@ -65,7 +70,7 @@ test.describe('Data Product Rename', () => {
   );
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     // Try to delete renamed data product first, then fall back to original
     try {
@@ -85,15 +90,10 @@ test.describe('Data Product Rename', () => {
     await afterAction();
   });
 
-  test('should rename data product and verify assets are still associated', async ({
-    browser,
-  }) => {
+  test('should rename data product and verify assets are still associated', async ({ page, browser }) => {
     test.slow();
 
-    const page = await browser.newPage();
-
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       // Navigate to data product
@@ -176,23 +176,17 @@ test.describe('Data Product Rename', () => {
         page.locator(`[data-testid="table-data-card_${tableFqn}"]`)
       ).toBeVisible();
     } finally {
-      await page.close();
     }
   });
 
-  test('should update only display name without changing the actual name', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test('should update only display name without changing the actual name', async ({ page, browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     // Create a new data product for this test
     const testDataProduct = new DataProduct([domain]);
     await testDataProduct.create(apiContext);
 
-    const page = await browser.newPage();
-
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       // Navigate to data product
@@ -236,18 +230,15 @@ test.describe('Data Product Rename', () => {
         page.getByTestId('entity-header-display-name')
       ).toContainText(newDisplayName);
     } finally {
-      await page.close();
       await testDataProduct.delete(apiContext);
       await afterAction();
     }
   });
 
-  test('should handle multiple consecutive renames and preserve assets', async ({
-    browser,
-  }) => {
+  test('should handle multiple consecutive renames and preserve assets', async ({ page, browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     // Create a new data product and table for this test
     const testDataProduct = new DataProduct([domain]);
@@ -271,11 +262,9 @@ test.describe('Data Product Rename', () => {
       ],
     });
 
-    const page = await browser.newPage();
     let currentName = testDataProduct.responseData.name;
 
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       // Navigate to data product
@@ -357,8 +346,6 @@ test.describe('Data Product Rename', () => {
       await page.getByTestId('assets').click();
       await checkAssetsCount(page, 1);
     } finally {
-      await page.close();
-
       // Cleanup - try to delete with current name
       try {
         await apiContext.delete(
@@ -377,10 +364,8 @@ test.describe('Data Product Rename', () => {
     }
   });
 
-  test('should show error when renaming to a name that already exists', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test('should show error when renaming to a name that already exists', async ({ page, browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     // Create two data products for this test
     const dataProduct1 = new DataProduct([domain]);
@@ -389,10 +374,7 @@ test.describe('Data Product Rename', () => {
     await dataProduct1.create(apiContext);
     await dataProduct2.create(apiContext);
 
-    const page = await browser.newPage();
-
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       // Navigate to dataProduct1
@@ -435,7 +417,6 @@ test.describe('Data Product Rename', () => {
         'already exists'
       );
     } finally {
-      await page.close();
       await dataProduct1.delete(apiContext);
       await dataProduct2.delete(apiContext);
       await afterAction();

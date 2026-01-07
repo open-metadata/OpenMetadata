@@ -19,8 +19,11 @@ import { Domain } from '../../support/domain/Domain';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import {
+  createNewPage,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import {
   addAssetsToDataProduct,
   checkAssetsCount,
@@ -29,6 +32,8 @@ import {
 import { sidebarClick } from '../../utils/sidebar';
 
 const adminUser = new UserClass();
+
+test.use({ storageState: 'playwright/.auth/admin.json' });
 const domain = new Domain();
 
 /**
@@ -43,7 +48,7 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
   test.beforeAll(
     'Setup domain and admin user',
     async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const { apiContext, afterAction } = await createNewPage(browser);
       await adminUser.create(apiContext);
       await adminUser.setAdminRole(apiContext);
       await EntityDataClass.preRequisitesForTests(apiContext);
@@ -53,7 +58,7 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
   );
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
     await domain.delete(apiContext);
     await EntityDataClass.postRequisitesForTests(apiContext);
     await adminUser.delete(apiContext);
@@ -116,12 +121,10 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     await page.waitForLoadState('networkidle');
   }
 
-  test('Rename then update description - assets should be preserved', async ({
-    browser,
-  }) => {
+  test('Rename then update description - assets should be preserved', async ({ page, browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     const testDataProduct = new DataProduct(
       [domain],
@@ -143,11 +146,9 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       ],
     });
 
-    const page = await browser.newPage();
     let currentName = testDataProduct.responseData.name;
 
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
@@ -197,8 +198,6 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
         page.getByTestId('KnowledgePanel.DataProducts')
       ).toBeVisible();
     } finally {
-      await page.close();
-
       try {
         await apiContext.delete(
           `/api/v1/dataProducts/name/${encodeURIComponent(`"${currentName}"`)}`
@@ -215,12 +214,10 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     }
   });
 
-  test('Rename then add tags - assets should be preserved', async ({
-    browser,
-  }) => {
+  test('Rename then add tags - assets should be preserved', async ({ page, browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     const testDataProduct = new DataProduct(
       [domain],
@@ -242,11 +239,9 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       ],
     });
 
-    const page = await browser.newPage();
     let currentName = testDataProduct.responseData.name;
 
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
@@ -296,8 +291,6 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
         page.locator(`[data-testid="table-data-card_${tableFqn}"]`)
       ).toBeVisible();
     } finally {
-      await page.close();
-
       try {
         await apiContext.delete(
           `/api/v1/dataProducts/name/${encodeURIComponent(`"${currentName}"`)}`
@@ -314,12 +307,10 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     }
   });
 
-  test('Rename then change owner - assets should be preserved', async ({
-    browser,
-  }) => {
+  test('Rename then change owner - assets should be preserved', async ({ page, browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     const testDataProduct = new DataProduct(
       [domain],
@@ -343,11 +334,9 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       ],
     });
 
-    const page = await browser.newPage();
     let currentName = testDataProduct.responseData.name;
 
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
@@ -417,8 +406,6 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
         page.locator(`[data-testid="table-data-card_${tableFqn}"]`)
       ).toBeVisible();
     } finally {
-      await page.close();
-
       try {
         await apiContext.delete(
           `/api/v1/dataProducts/name/${encodeURIComponent(`"${currentName}"`)}`
@@ -436,12 +423,10 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     }
   });
 
-  test('Multiple rename + update cycles - assets should be preserved', async ({
-    browser,
-  }) => {
+  test('Multiple rename + update cycles - assets should be preserved', async ({ page, browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     const testDataProduct = new DataProduct(
       [domain],
@@ -463,11 +448,9 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       ],
     });
 
-    const page = await browser.newPage();
     let currentName = testDataProduct.responseData.name;
 
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
@@ -525,8 +508,6 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
         page.getByTestId('KnowledgePanel.DataProducts')
       ).toBeVisible();
     } finally {
-      await page.close();
-
       try {
         await apiContext.delete(
           `/api/v1/dataProducts/name/${encodeURIComponent(`"${currentName}"`)}`

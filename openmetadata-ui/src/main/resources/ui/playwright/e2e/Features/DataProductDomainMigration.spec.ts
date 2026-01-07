@@ -17,8 +17,11 @@ import { Domain } from '../../support/domain/Domain';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import {
+  createNewPage,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import { checkAssetsCount } from '../../utils/domain';
 
 // Helper to navigate directly to data product page via URL
@@ -90,7 +93,7 @@ test.describe('Data Product Domain Migration', () => {
   let table2: TableClass;
 
   test.beforeAll('Setup entities', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
@@ -162,7 +165,7 @@ test.describe('Data Product Domain Migration', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     try {
       await dataProduct.delete(apiContext);
@@ -195,16 +198,11 @@ test.describe('Data Product Domain Migration', () => {
     await afterAction();
   });
 
-  test('Changing data product domain via API migrates assets to new domain', async ({
-    browser,
-  }) => {
+  test('Changing data product domain via API migrates assets to new domain', async ({ page, browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    const page = await browser.newPage();
-
+    const { apiContext, afterAction } = await createNewPage(browser);
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       // STEP 1: Verify initial state - assets should be under source domain
@@ -277,16 +275,13 @@ test.describe('Data Product Domain Migration', () => {
       await navigateToDomainAssetsTab(page, sourceDomain, 0);
     } finally {
       await afterAction();
-      await page.close();
     }
   });
 
-  test('Data product with no assets can change domain without confirmation', async ({
-    browser,
-  }) => {
+  test('Data product with no assets can change domain without confirmation', async ({ page, browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     // Create a data product with no assets for this test
     const noAssetsDomain = new Domain({
@@ -312,10 +307,7 @@ test.describe('Data Product Domain Migration', () => {
     await noAssetsDomain2.create(apiContext);
     await noAssetsDataProduct.create(apiContext);
 
-    const page = await browser.newPage();
-
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       // Navigate directly to data product page via URL
@@ -373,12 +365,11 @@ test.describe('Data Product Domain Migration', () => {
       await checkAssetsCount(page, 0);
     } finally {
       await afterAction();
-      await page.close();
     }
 
     // Cleanup
     const { apiContext: cleanupContext, afterAction: cleanupAfter } =
-      await performAdminLogin(browser);
+      await createNewPage(browser);
     try {
       await noAssetsDataProduct.delete(cleanupContext);
     } catch {

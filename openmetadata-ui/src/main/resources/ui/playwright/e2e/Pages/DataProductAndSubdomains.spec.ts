@@ -18,8 +18,12 @@ import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, toastNotification, uuid } from '../../utils/common';
+import {
+  createNewPage,
+  getApiContext,
+  toastNotification,
+  uuid,
+} from '../../utils/common';
 import { checkAssetsCount, selectDomain } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -37,9 +41,8 @@ const test = base.extend<{
   page: Page;
 }>({
   page: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
+    const { page } = await createNewPage(browser);
     await use(page);
-    await page.close();
   },
 });
 
