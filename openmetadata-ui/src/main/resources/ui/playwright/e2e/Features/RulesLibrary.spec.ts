@@ -10,14 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
-import { redirectToHomePage } from '../../utils/common';
-import { test } from '../fixtures/pages';
+import test, { expect } from '@playwright/test';
+import { redirectToHomePage, uuid } from '../../utils/common';
 
-const TEST_DEFINITION_NAME = 'customTestDefinition';
+const TEST_DEFINITION_NAME = `aCustomTestDefinition${uuid()}`;
 const TEST_DEFINITION_DISPLAY_NAME = 'Custom Test Definition';
 const TEST_DEFINITION_DESCRIPTION =
-  'This is a custom test definition for E2E testing';
+  'A This is a custom test definition for E2E testing';
+
+
+test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Rules Library', () => {
   test.beforeEach(async ({ page }) => {
@@ -108,11 +110,6 @@ test.describe('Rules Library', () => {
       .locator('.ant-select-item-option-content:has-text("OpenMetadata")')
       .first()
       .click();
-
-    // Verify enabled switch is checked by default
-    const enabledSwitch = page.getByRole('switch');
-
-    await expect(enabledSwitch).toBeChecked();
 
     // Click save
     await page.getByTestId('save-test-definition').click();

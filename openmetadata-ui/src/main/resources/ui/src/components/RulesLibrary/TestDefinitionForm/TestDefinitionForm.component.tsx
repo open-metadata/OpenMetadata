@@ -118,10 +118,12 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
     <Drawer
       destroyOnClose
       open
+      className="custom-drawer-style"
       closable={false}
       extra={
         <Button
           className="drawer-close-icon flex-center"
+          data-testid="close-drawer-button"
           icon={<CloseIcon />}
           type="link"
           onClick={onCancel}
