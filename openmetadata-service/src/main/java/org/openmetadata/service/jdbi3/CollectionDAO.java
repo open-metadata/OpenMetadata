@@ -465,10 +465,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   SearchReindexLockDAO searchReindexLockDAO();
-  
+
   @CreateSqlObject
   AuditLogDAO auditLogDAO();
-
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -9574,6 +9573,7 @@ public interface CollectionDAO {
         return System.currentTimeMillis() > expiresAt;
       }
     }
+  }
 
   @RegisterRowMapper(AuditLogRecordMapper.class)
   interface AuditLogDAO {
