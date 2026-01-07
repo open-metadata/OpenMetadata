@@ -273,21 +273,6 @@ const DataModelDetails = ({
         </Col>
         <GenericProvider<DashboardDataModel>
           columnDetailPanelConfig={{
-            columns: (dataModelData?.columns ?? []).map(
-              (column) =>
-                ({
-                  ...column,
-                  tags: column.tags ?? [],
-                } as unknown as TableColumn)
-            ),
-            onColumnsChange: async (updatedColumns) => {
-              const updatedDataModel: DashboardDataModel = {
-                ...dataModelData,
-                columns: updatedColumns as unknown as Column[],
-              };
-
-              await onUpdateDataModel(updatedDataModel);
-            },
             onColumnFieldUpdate: async (fqn, update) => {
               // For DashboardDataModel, we update columns via API directly
               const columnUpdate: Partial<Column> = {};

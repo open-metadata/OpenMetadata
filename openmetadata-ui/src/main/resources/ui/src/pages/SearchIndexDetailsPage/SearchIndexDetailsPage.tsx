@@ -14,7 +14,7 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, isUndefined, omitBy } from 'lodash';
+import { isUndefined, omitBy } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,10 +40,8 @@ import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import {
   SearchIndex,
-  SearchIndexField,
   TagLabel,
 } from '../../generated/entity/data/searchIndex';
-import { Column } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import LimitWrapper from '../../hoc/LimitWrapper';
@@ -75,12 +73,8 @@ import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import searchIndexClassBase from '../../utils/SearchIndexDetailsClassBase';
 import { defaultFields } from '../../utils/SearchIndexUtils';
 import {
-  findFieldByFQN,
   getTagsWithoutTier,
   getTierTags,
-  normalizeTags,
-  updateFieldDescription,
-  updateFieldTags,
 } from '../../utils/TableUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -623,73 +617,6 @@ function SearchIndexDetailsPage() {
         </Col>
 
         <GenericProvider<SearchIndex>
-          columnDetailPanelConfig={{
-            columns: (searchIndexDetails.fields ?? []).map(
-              (field) =>
-                ({ ...field, tags: field.tags ?? [] } as unknown as Column)
-            ),
-            onColumnsChange: async (updatedColumns) => {
-              if (!searchIndexDetails) {
-                return;
-              }
-
-              const updatedSearchIndex = {
-                ...searchIndexDetails,
-                fields: updatedColumns as unknown as SearchIndexField[],
-              };
-
-              await onSearchIndexUpdate(updatedSearchIndex);
-            },
-            onColumnFieldUpdate: async (fqn, update) => {
-              const fields = cloneDeep(searchIndexDetails.fields ?? []);
-
-              // Use recursive utilities to update nested fields
-              if (update.description !== undefined) {
-                updateFieldDescription<SearchIndexField>(
-                  fqn,
-                  update.description,
-                  fields
-                );
-              }
-
-              if (update.tags !== undefined) {
-                // Normalize tags to remove style property from glossary terms
-                const normalizedTags = normalizeTags(update.tags);
-                // Convert TagLabel[] to EntityTags[] for updateFieldTags
-                const entityTags = normalizedTags.map((tag) => ({
-                  ...tag,
-                  isRemovable: true,
-                })) as EntityTags[];
-                updateFieldTags<SearchIndexField>(fqn, entityTags, fields);
-              }
-
-              const updatedSearchIndex = {
-                ...searchIndexDetails,
-                fields,
-              };
-              const res = await saveUpdatedSearchIndexData(updatedSearchIndex);
-
-              setSearchIndexDetails((previous) => {
-                if (!previous) {
-                  return;
-                }
-
-                return {
-                  ...previous,
-                  ...res,
-                  fields: res.fields ?? fields,
-                };
-              });
-
-              // Use recursive findFieldByFQN to find nested fields
-              const updatedField = findFieldByFQN<SearchIndexField>(
-                res.fields ?? fields,
-                fqn
-              );
-
-              return updatedField as unknown as Column;
-            },
-          }}
           customizedPage={customizedPage}
           data={searchIndexDetails}
           isTabExpanded={isTabExpanded}

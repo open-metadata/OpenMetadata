@@ -13,7 +13,6 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import { cloneDeep } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,9 +25,7 @@ import { Tag } from '../../../generated/entity/classification/tag';
 import {
   Pipeline,
   TagLabel,
-  Task,
 } from '../../../generated/entity/data/pipeline';
-import { Column } from '../../../generated/entity/data/table';
 import { Operation as PermissionOperation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import LimitWrapper from '../../../hoc/LimitWrapper';
@@ -53,7 +50,6 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   getTagsWithoutTier,
   getTierTags,
-  normalizeTags,
 } from '../../../utils/TableUtils';
 import {
   createTagObject,
@@ -400,45 +396,6 @@ const PipelineDetails = ({
           />
         </Col>
         <GenericProvider<Pipeline>
-          columnDetailPanelConfig={{
-            columns: (pipelineDetails.tasks ?? []).map(
-              (task) =>
-                ({ ...task, tags: task.tags ?? [] } as unknown as Column)
-            ),
-            onColumnsChange: async (updatedColumns) => {
-              await settingsUpdateHandler({
-                ...pipelineDetails,
-                tasks: updatedColumns as unknown as Task[],
-              });
-            },
-            onColumnFieldUpdate: async (fqn, update) => {
-              const tasks = cloneDeep(pipelineDetails.tasks ?? []);
-              const updatedTasks = tasks.map((task) => {
-                if (task.fullyQualifiedName === fqn) {
-                  return {
-                    ...task,
-                    ...(update.description !== undefined && {
-                      description: update.description,
-                    }),
-                    ...(update.tags !== undefined && {
-                      tags: normalizeTags(update.tags),
-                    }),
-                  };
-                }
-
-                return task;
-              });
-              await settingsUpdateHandler({
-                ...pipelineDetails,
-                tasks: updatedTasks,
-              });
-              const updatedTask = updatedTasks.find(
-                (t) => t.fullyQualifiedName === fqn
-              );
-
-              return updatedTask as unknown as Column;
-            },
-          }}
           customizedPage={customizedPage}
           data={pipelineDetails}
           isTabExpanded={isTabExpanded}

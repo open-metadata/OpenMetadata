@@ -24,8 +24,7 @@ import {
 } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.interface';
 
 export interface ColumnDetailPanelConfig<C extends ColumnOrTask = Column> {
-  columns: C[];
-  onColumnsChange?: (columns: C[]) => void;
+  columns?: C[];
   onColumnFieldUpdate?: (
     fqn: string,
     update: ColumnFieldUpdate

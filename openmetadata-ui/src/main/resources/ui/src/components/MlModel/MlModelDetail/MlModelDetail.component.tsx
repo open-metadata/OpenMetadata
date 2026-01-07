@@ -14,7 +14,7 @@
 import { Col, Row, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { cloneDeep, isEmpty } from 'lodash';
+import { isEmpty } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -26,11 +26,9 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { MlHyperParameter } from '../../../generated/api/data/createMlModel';
 import { Tag } from '../../../generated/entity/classification/tag';
 import {
-  MlFeature,
   Mlmodel,
   MlStore,
 } from '../../../generated/entity/data/mlmodel';
-import { Column } from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
@@ -56,7 +54,6 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   getTagsWithoutTier,
   getTierTags,
-  normalizeTags,
 } from '../../../utils/TableUtils';
 import {
   updateCertificationTag,
@@ -449,44 +446,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           />
         </Col>
         <GenericProvider<Mlmodel>
-          columnDetailPanelConfig={{
-            columns: (mlModelDetail.mlFeatures ?? []).map(
-              (feature) => feature as unknown as Column
-            ),
-            onColumnsChange: async (updatedColumns) => {
-              await onMlModelUpdate({
-                ...mlModelDetail,
-                mlFeatures: updatedColumns as unknown as MlFeature[],
-              });
-            },
-            onColumnFieldUpdate: async (fqn, update) => {
-              const mlFeatures = cloneDeep(mlModelDetail.mlFeatures ?? []);
-              const updatedFeatures = mlFeatures.map((feature) => {
-                if (feature.fullyQualifiedName === fqn) {
-                  return {
-                    ...feature,
-                    ...(update.description !== undefined && {
-                      description: update.description,
-                    }),
-                    ...(update.tags !== undefined && {
-                      tags: normalizeTags(update.tags),
-                    }),
-                  };
-                }
-
-                return feature;
-              });
-              await onMlModelUpdate({
-                ...mlModelDetail,
-                mlFeatures: updatedFeatures,
-              });
-              const updatedFeature = updatedFeatures.find(
-                (f) => f.fullyQualifiedName === fqn
-              );
-
-              return updatedFeature as unknown as Column;
-            },
-          }}
           customizedPage={customizedPage}
           data={mlModelDetail}
           isTabExpanded={isTabExpanded}

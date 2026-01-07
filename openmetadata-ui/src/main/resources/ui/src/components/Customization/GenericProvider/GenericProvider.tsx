@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { isEmpty, omit, once } from 'lodash';
+import { cloneDeep, isEmpty, omit, once } from 'lodash';
+import { EntityTags } from 'Models';
 import {
   createContext,
   useCallback,
@@ -22,10 +23,17 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
+import {
+  ENTITY_PAGE_TYPE_MAP,
+} from '../../../constants/Customize.constants';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
+import { Container } from '../../../generated/entity/data/container';
+import { Mlmodel } from '../../../generated/entity/data/mlmodel';
+import { Pipeline } from '../../../generated/entity/data/pipeline';
+import { SearchIndex } from '../../../generated/entity/data/searchIndex';
+import { Topic } from '../../../generated/entity/data/topic';
 import { Column, Table } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
@@ -36,7 +44,17 @@ import {
   getLayoutFromCustomizedPage,
   updateWidgetHeightRecursively,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
-import { updateColumnInNestedStructure } from '../../../utils/TableUtils';
+import {
+  updateContainerColumnDescription,
+  updateContainerColumnTags,
+} from '../../../utils/ContainerDetailUtils';
+import {
+  extractColumnsFromData,
+  findFieldByFQN,
+  normalizeTags,
+  updateFieldDescription,
+  updateFieldTags,
+} from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -89,9 +107,22 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const [selectedColumn, setSelectedColumn] = useState<ColumnOrTask | null>(
     null
   );
-  const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
+
+  // Derive isColumnDetailOpen from selectedColumn - if a column is selected, panel is open
+  const isColumnDetailOpen = useMemo(
+    () => selectedColumn !== null,
+    [selectedColumn]
+  );
 
   const { entityRules } = useEntityRules(type);
+
+  // Extract columns from data if not explicitly provided
+  const extractedColumns = useMemo(() => {
+    if (columnDetailPanelConfig?.columns) {
+      return columnDetailPanelConfig.columns;
+    }
+    return extractColumnsFromData(data, type) as ColumnOrTask[];
+  }, [data, type, columnDetailPanelConfig?.columns]);
 
   useEffect(() => {
     setLayout(
@@ -145,45 +176,195 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
   const openColumnDetailPanel = useCallback((column: ColumnOrTask) => {
     setSelectedColumn(column);
-    setIsColumnDetailOpen(true);
   }, []);
 
   const closeColumnDetailPanel = useCallback(() => {
-    setIsColumnDetailOpen(false);
     setSelectedColumn(null);
   }, []);
 
   const handleColumnUpdate = useCallback(
     (updatedColumn: ColumnOrTask) => {
+      // This is only called as a fallback when onColumnFieldUpdate is not provided
+      // Since all implementations provide onColumnFieldUpdate, this is rarely used
+      // but kept for backward compatibility
       const cleanColumn = isEmpty((updatedColumn as Column).children)
         ? omit(updatedColumn, 'children')
         : updatedColumn;
 
-      if (columnDetailPanelConfig?.onColumnsChange) {
-        const updatedColumns = updateColumnInNestedStructure(
-          columnDetailPanelConfig.columns as Column[],
-          updatedColumn.fullyQualifiedName ?? '',
-          cleanColumn as Partial<Column>
-        );
-        columnDetailPanelConfig.onColumnsChange(updatedColumns);
-      }
-
       setSelectedColumn(cleanColumn as ColumnOrTask);
     },
-    [columnDetailPanelConfig]
+    []
+  );
+
+  // Default implementation of onColumnFieldUpdate for simple entity types
+  const defaultColumnFieldUpdate = useCallback(
+    async (fqn: string, update: ColumnFieldUpdate): Promise<ColumnOrTask | undefined> => {
+      const updatedData = cloneDeep(data);
+
+      // Handle different entity types
+      switch (type) {
+        case EntityType.TOPIC: {
+          const topic = updatedData as unknown as Topic;
+          const schemaFields = cloneDeep(topic.messageSchema?.schemaFields ?? []);
+
+          if (update.description !== undefined) {
+            updateFieldDescription(fqn, update.description, schemaFields);
+          }
+          if (update.tags !== undefined) {
+            const normalizedTags = normalizeTags(update.tags);
+            const entityTags = normalizedTags.map((tag) => ({
+              ...tag,
+              isRemovable: true,
+            })) as EntityTags[];
+            updateFieldTags(fqn, entityTags, schemaFields);
+          }
+
+          const updatedTopic: Topic = {
+            ...topic,
+            messageSchema: {
+              ...topic.messageSchema,
+              schemaFields,
+            },
+          };
+
+          await onUpdate(updatedTopic as unknown as T);
+          return findFieldByFQN(schemaFields, fqn) as unknown as Column;
+        }
+
+        case EntityType.SEARCH_INDEX: {
+          const searchIndex = updatedData as unknown as SearchIndex;
+          const fields = cloneDeep(searchIndex.fields ?? []);
+
+          if (update.description !== undefined) {
+            updateFieldDescription(fqn, update.description, fields);
+          }
+          if (update.tags !== undefined) {
+            const normalizedTags = normalizeTags(update.tags);
+            const entityTags = normalizedTags.map((tag) => ({
+              ...tag,
+              isRemovable: true,
+            })) as EntityTags[];
+            updateFieldTags(fqn, entityTags, fields);
+          }
+
+          const updatedSearchIndex: SearchIndex = {
+            ...searchIndex,
+            fields,
+          };
+
+          await onUpdate(updatedSearchIndex as unknown as T);
+          return findFieldByFQN(fields, fqn) as unknown as Column;
+        }
+
+        case EntityType.CONTAINER: {
+          const container = updatedData as unknown as Container;
+          if (!container.dataModel) {
+            return undefined;
+          }
+
+          const dataModel = cloneDeep(container.dataModel);
+          const columns = cloneDeep(dataModel.columns ?? []);
+
+          if (update.description !== undefined) {
+            updateContainerColumnDescription(columns, fqn, update.description);
+          }
+          if (update.tags !== undefined) {
+            const normalizedTags = normalizeTags(update.tags);
+            const entityTags = normalizedTags.map((tag) => ({
+              ...tag,
+              isRemovable: true,
+            })) as EntityTags[];
+            updateContainerColumnTags(columns, fqn, entityTags);
+          }
+
+          const updatedContainer: Container = {
+            ...container,
+            dataModel: {
+              ...dataModel,
+              columns,
+            },
+          };
+
+          await onUpdate(updatedContainer as unknown as T);
+          return findFieldByFQN(columns, fqn) as unknown as Column;
+        }
+
+        case EntityType.MLMODEL: {
+          const mlModel = updatedData as unknown as Mlmodel;
+          const mlFeatures = cloneDeep(mlModel.mlFeatures ?? []);
+
+          const updatedFeatures = mlFeatures.map((feature) => {
+            if (feature.fullyQualifiedName === fqn) {
+              return {
+                ...feature,
+                ...(update.description !== undefined && {
+                  description: update.description,
+                }),
+                ...(update.tags !== undefined && {
+                  tags: normalizeTags(update.tags),
+                }),
+              };
+            }
+            return feature;
+          });
+
+          const updatedMlModel: Mlmodel = {
+            ...mlModel,
+            mlFeatures: updatedFeatures,
+          };
+
+          await onUpdate(updatedMlModel as unknown as T);
+          return updatedFeatures.find(
+            (f) => f.fullyQualifiedName === fqn
+          ) as unknown as Column;
+        }
+
+        case EntityType.PIPELINE: {
+          const pipeline = updatedData as unknown as Pipeline;
+          const tasks = cloneDeep(pipeline.tasks ?? []);
+
+          const updatedTasks = tasks.map((task) => {
+            if (task.fullyQualifiedName === fqn) {
+              return {
+                ...task,
+                ...(update.description !== undefined && {
+                  description: update.description,
+                }),
+                ...(update.tags !== undefined && {
+                  tags: normalizeTags(update.tags),
+                }),
+              };
+            }
+            return task;
+          });
+
+          const updatedPipeline: Pipeline = {
+            ...pipeline,
+            tasks: updatedTasks,
+          };
+
+          await onUpdate(updatedPipeline as unknown as T);
+          return updatedTasks.find(
+            (t) => t.fullyQualifiedName === fqn
+          ) as unknown as Column;
+        }
+
+        default:
+          // For Table, DataModel, APIEndpoint - these should have custom implementations
+          return undefined;
+      }
+    },
+    [data, type, onUpdate]
   );
 
   // Wrapper for onColumnFieldUpdate that updates selectedColumn after the update completes
   const handleColumnFieldUpdate = useCallback(
     async (fqn: string, update: ColumnFieldUpdate) => {
-      if (!columnDetailPanelConfig?.onColumnFieldUpdate) {
-        return undefined;
-      }
+      // Use custom implementation if provided, otherwise use default
+      const customHandler = columnDetailPanelConfig?.onColumnFieldUpdate;
+      const handler = customHandler || defaultColumnFieldUpdate;
 
-      const updatedColumn = await columnDetailPanelConfig.onColumnFieldUpdate(
-        fqn,
-        update
-      );
+      const updatedColumn = await handler(fqn, update);
 
       // Update selectedColumn with the returned updated column to reflect changes immediately
       if (updatedColumn && selectedColumn?.fullyQualifiedName === fqn) {
@@ -195,7 +376,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
       return updatedColumn;
     },
-    [columnDetailPanelConfig, selectedColumn]
+    [columnDetailPanelConfig?.onColumnFieldUpdate, defaultColumnFieldUpdate, selectedColumn]
   );
 
   const handleColumnNavigate = useCallback((column: ColumnOrTask) => {
@@ -326,9 +507,9 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
           onCancel={onThreadPanelClose}
         />
       ) : null}
-      {columnDetailPanelConfig && (
+      {extractedColumns.length > 0 && (
         <ColumnDetailPanel
-          allColumns={columnDetailPanelConfig.columns}
+          allColumns={extractedColumns as Column[]}
           column={selectedColumn as Column}
           deleted={deleted}
           entityType={type}

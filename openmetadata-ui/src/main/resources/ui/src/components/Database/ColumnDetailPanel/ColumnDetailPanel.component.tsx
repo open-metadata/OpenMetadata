@@ -33,7 +33,6 @@ import {
   flattenColumns,
   generateEntityLink,
   getDataTypeDisplay,
-  mergeGlossaryWithTags,
   mergeTagsWithGlossary,
   normalizeTags,
 } from '../../../utils/TableUtils';
@@ -51,6 +50,7 @@ import { LineageTabContent } from '../../Explore/EntitySummaryPanel/LineageTab';
 import { LineageData } from '../../Lineage/Lineage.interface';
 import {
   ColumnDetailPanelProps,
+  ColumnFieldUpdate,
   ColumnOrTask,
   TestCaseStatusCounts,
 } from './ColumnDetailPanel.interface';
@@ -214,43 +214,70 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     [flattenedColumns, allColumns, onNavigate]
   );
 
-  const handleDescriptionUpdate = useCallback(
-    async (newDescription: string) => {
+  // Common handler for column field updates
+  const performColumnFieldUpdate = useCallback(
+    async (
+      update: ColumnFieldUpdate,
+      successMessageKey: string
+    ): Promise<T | undefined> => {
       if (!column?.fullyQualifiedName) {
-        return;
+        return undefined;
       }
 
+      let response: T | undefined;
+
+      if (onColumnFieldUpdate) {
+        response = await onColumnFieldUpdate(column.fullyQualifiedName, update);
+      } else if (update.description !== undefined && updateColumnDescription) {
+        response = await updateColumnDescription(
+          column.fullyQualifiedName,
+          update.description
+        );
+      } else if (update.tags !== undefined && updateColumnTags) {
+        response = await updateColumnTags(
+          column.fullyQualifiedName,
+          update.tags
+        );
+      } else {
+        // Fallback to direct API call for Table entities
+        response = (await updateTableColumn(
+          column.fullyQualifiedName,
+          update
+        )) as T;
+      }
+
+      showSuccessToast(
+        t('server.update-entity-success', {
+          entity: t(successMessageKey),
+        })
+      );
+
+      // Only call onColumnUpdate if onColumnFieldUpdate is not used
+      // onColumnFieldUpdate already handles state updates in the parent
+      if (onColumnUpdate && response && !onColumnFieldUpdate) {
+        onColumnUpdate(response);
+      }
+
+      return response;
+    },
+    [
+      column,
+      t,
+      onColumnUpdate,
+      updateColumnDescription,
+      updateColumnTags,
+      onColumnFieldUpdate,
+    ]
+  );
+
+  const handleDescriptionUpdate = useCallback(
+    async (newDescription: string) => {
       try {
         setIsDescriptionLoading(true);
-
-        let response: T | undefined;
-
-        if (onColumnFieldUpdate) {
-          response = await onColumnFieldUpdate(column.fullyQualifiedName, {
-            description: newDescription,
-          });
-        } else if (updateColumnDescription) {
-          response = await updateColumnDescription(
-            column.fullyQualifiedName,
-            newDescription
-          );
-        } else {
-          response = (await updateTableColumn(column.fullyQualifiedName, {
-            description: newDescription,
-          })) as T;
-        }
-
-        showSuccessToast(
-          t('server.update-entity-success', {
-            entity: t('label.description'),
-          })
+        await performColumnFieldUpdate(
+          { description: newDescription },
+          'label.description'
         );
-
-        // Only call onColumnUpdate if onColumnFieldUpdate is not used
-        // onColumnFieldUpdate already handles state updates in the parent
-        if (onColumnUpdate && response && !onColumnFieldUpdate) {
-          onColumnUpdate(response);
-        }
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -262,64 +289,38 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         setIsDescriptionLoading(false);
       }
     },
-    [column, t, onColumnUpdate, updateColumnDescription, onColumnFieldUpdate]
+    [performColumnFieldUpdate, t]
+  );
+
+  // Prepare tags for classification tag updates (preserve glossary and tier tags)
+  const prepareClassificationTags = useCallback(
+    (updatedTags: TagLabel[]): TagLabel[] => {
+      if (updatedTags.length === 0) {
+        // Clear all classification tags but preserve glossary terms and tier tags
+        return normalizeTags(
+          (column?.tags ?? []).filter(
+            (tag) =>
+              tag.source === TagSource.Glossary ||
+              (tag.tagFQN?.startsWith('Tier.') ?? false)
+          )
+        );
+      }
+      // Merge updated classification tags with existing glossary tags
+      return normalizeTags(
+        (mergeTagsWithGlossary(column?.tags, updatedTags) ?? []) as TagLabel[]
+      );
+    },
+    [column?.tags]
   );
 
   const handleTagsUpdate = useCallback(
     async (updatedTags: TagLabel[]) => {
-      if (!column?.fullyQualifiedName) {
-        return;
-      }
-
       try {
-        // When clearing classification tags (updatedTags is empty), preserve glossary terms and tier tags
-        // When updating tags, merge with existing glossary tags to preserve them
-        // Normalize tags to ensure consistent format and prevent backend patch index errors
-        const allTags =
-          updatedTags.length === 0
-            ? // Clear all classification tags but preserve glossary terms and tier tags
-              normalizeTags(
-                (column.tags ?? []).filter(
-                  (tag) =>
-                    tag.source === TagSource.Glossary ||
-                    (tag.tagFQN?.startsWith('Tier.') ?? false)
-                )
-              )
-            : // Merge updated classification tags with existing glossary tags
-              normalizeTags(
-                (mergeTagsWithGlossary(column.tags, updatedTags) ??
-                  []) as TagLabel[]
-              );
-
-        let response: T | undefined;
-
-        if (onColumnFieldUpdate) {
-          response = await onColumnFieldUpdate(column.fullyQualifiedName, {
-            tags: allTags ?? [],
-          });
-        } else if (updateColumnTags) {
-          response = await updateColumnTags(
-            column.fullyQualifiedName,
-            allTags ?? []
-          );
-        } else {
-          response = (await updateTableColumn(column.fullyQualifiedName, {
-            tags: allTags ?? [],
-          })) as T;
-        }
-
-        showSuccessToast(
-          t('server.update-entity-success', {
-            entity: t('label.tag-plural'),
-          })
+        const allTags = prepareClassificationTags(updatedTags);
+        const response = await performColumnFieldUpdate(
+          { tags: allTags },
+          'label.tag-plural'
         );
-
-        // Only call onColumnUpdate if onColumnFieldUpdate is not used
-        // onColumnFieldUpdate already handles state updates in the parent
-        if (onColumnUpdate && response && !onColumnFieldUpdate) {
-          onColumnUpdate(response);
-        }
-
         return response?.tags;
       } catch (error) {
         showErrorToast(
@@ -328,65 +329,41 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             entity: t('label.tag-plural'),
           })
         );
-
         throw error;
       }
     },
-    [column, t, onColumnUpdate, updateColumnTags, onColumnFieldUpdate]
+    [prepareClassificationTags, performColumnFieldUpdate, t]
   );
 
   const handleGlossaryTermsUpdate = useCallback(
-    async (updatedGlossaryTerms: TagLabel[]) => {
-      if (!column?.fullyQualifiedName) {
-        return;
-      }
-
+    async (updatedTags: TagLabel[]) => {
+      // GlossaryTermsSection already handles the API call via updateEntityField (PATCH)
+      // and passes the full updated tags array (already merged correctly by the backend)
+      // We need to sync with parent state, but avoid duplicate API calls
       try {
-        // If updatedGlossaryTerms is empty, respect the clear operation and don't merge with existing tags
-        // Otherwise, merge with existing non-glossary tags to preserve them
-        // Normalize tags to ensure consistent format and prevent backend patch index errors
-        const allTags =
-          updatedGlossaryTerms.length === 0
-            ? normalizeTags(
-                column.tags?.filter(
-                  (tag) => tag.source !== TagSource.Glossary
-                ) || []
-              )
-            : normalizeTags(
-                (mergeGlossaryWithTags(column.tags, updatedGlossaryTerms) ??
-                  []) as TagLabel[]
-              );
-
-        let response: T | undefined;
-
-        if (onColumnFieldUpdate) {
-          response = await onColumnFieldUpdate(column.fullyQualifiedName, {
-            tags: allTags ?? [],
+        const normalizedTags = normalizeTags(updatedTags);
+        
+        // If onColumnFieldUpdate is provided, we need to sync state but avoid duplicate API call
+        // Since GlossaryTermsSection already updated via PATCH, we should update local state
+        // without making another API call. However, onColumnFieldUpdate might be needed for
+        // state synchronization in TableDetailsPageV1. Let's call it but it should handle
+        // the case where the backend is already updated (it uses the response, not current state)
+        if (onColumnFieldUpdate && column?.fullyQualifiedName) {
+          // Pass the normalized tags - onColumnFieldUpdate will handle state sync
+          // Note: This might make a PUT call, but it should use the updated tags from the response
+          await onColumnFieldUpdate(column.fullyQualifiedName, {
+            tags: normalizedTags,
           });
-        } else if (updateColumnTags) {
-          response = await updateColumnTags(
-            column.fullyQualifiedName,
-            allTags ?? []
-          );
-        } else {
-          response = (await updateTableColumn(column.fullyQualifiedName, {
-            tags: allTags ?? [],
-          })) as T;
+        } else if (onColumnUpdate) {
+          // Fallback to onColumnUpdate if onColumnFieldUpdate is not provided
+          const updatedColumn = {
+            ...column,
+            tags: normalizedTags,
+          } as T;
+          onColumnUpdate(updatedColumn);
         }
-
-        showSuccessToast(
-          t('server.update-entity-success', {
-            entity: t('label.glossary-term-plural'),
-          })
-        );
-
-        // Only call onColumnUpdate if onColumnFieldUpdate is not used
-        // onColumnFieldUpdate already handles state updates in the parent
-        if (onColumnUpdate && response && !onColumnFieldUpdate) {
-          onColumnUpdate(response);
-        }
-
-        return response?.tags;
+        
+        return normalizedTags;
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -394,11 +371,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             entity: t('label.glossary-term-plural'),
           })
         );
-
         throw error;
       }
     },
-    [column, t, onColumnUpdate, updateColumnTags, onColumnFieldUpdate]
+    [column, t, onColumnUpdate, onColumnFieldUpdate]
   );
 
   useEffect(() => {

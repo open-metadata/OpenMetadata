@@ -309,51 +309,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
         </Col>
         <GenericProvider<APIEndpoint>
           columnDetailPanelConfig={{
-            columns: [
-              ...(apiEndpointDetails.requestSchema?.schemaFields ?? []).map(
-                (field) =>
-                  ({ ...field, tags: field.tags ?? [] } as unknown as Column)
-              ),
-              ...(apiEndpointDetails.responseSchema?.schemaFields ?? []).map(
-                (field) =>
-                  ({ ...field, tags: field.tags ?? [] } as unknown as Column)
-              ),
-            ],
-            onColumnsChange: async (updatedColumns) => {
-              // Determine which schema the updated columns belong to
-              const requestFields = updatedColumns.filter((col) =>
-                (apiEndpointDetails.requestSchema?.schemaFields ?? []).some(
-                  (f) => f.fullyQualifiedName === col.fullyQualifiedName
-                )
-              ) as unknown as Field[];
-              const responseFields = updatedColumns.filter((col) =>
-                (apiEndpointDetails.responseSchema?.schemaFields ?? []).some(
-                  (f) => f.fullyQualifiedName === col.fullyQualifiedName
-                )
-              ) as unknown as Field[];
-
-              const updatedApiEndpoint: APIEndpoint = {
-                ...apiEndpointDetails,
-                ...(requestFields.length > 0 && {
-                  requestSchema: apiEndpointDetails.requestSchema
-                    ? {
-                        ...apiEndpointDetails.requestSchema,
-                        schemaFields: requestFields,
-                      }
-                    : undefined,
-                }),
-                ...(responseFields.length > 0 && {
-                  responseSchema: apiEndpointDetails.responseSchema
-                    ? {
-                        ...apiEndpointDetails.responseSchema,
-                        schemaFields: responseFields,
-                      }
-                    : undefined,
-                }),
-              };
-
-              await onApiEndpointUpdate(updatedApiEndpoint);
-            },
             onColumnFieldUpdate: async (fqn, update) => {
               // Use recursive findFieldByFQN to determine which schema contains this field (including nested)
               const requestField = findFieldByFQN<Field>(

@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
-import { EntityTabs } from '../enums/entity.enum';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { TagLabel } from '../generated/entity/data/container';
 import { Column, DataType } from '../generated/entity/data/table';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 import { MOCK_TABLE, MOCK_TABLE_DBT } from '../mocks/TableData.mock';
 import {
+  extractColumnsFromData,
   ExtraTableDropdownOptions,
   findColumnByEntityLink,
   getEntityIcon,
@@ -1146,6 +1147,396 @@ describe('TableUtils', () => {
       expect(stringifyResult).toContain(
         '{"data-testid":"dbt-source-project-id","children":"--"}'
       );
+    });
+  });
+
+  describe('extractColumnsFromData', () => {
+    it('should extract columns from TABLE entity', () => {
+      const tableData = {
+        id: '1',
+        name: 'test_table',
+        columns: [
+          {
+            name: 'col1',
+            fullyQualifiedName: 'test.col1',
+            dataType: 'STRING',
+            tags: [{ tagFQN: 'tag1' }],
+          },
+          {
+            name: 'col2',
+            fullyQualifiedName: 'test.col2',
+            dataType: 'INT',
+            tags: undefined,
+          },
+        ],
+      };
+
+      const result = extractColumnsFromData(tableData, EntityType.TABLE);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        name: 'col1',
+        tags: [{ tagFQN: 'tag1' }],
+      });
+      expect(result[1]).toMatchObject({
+        name: 'col2',
+        tags: [],
+      });
+    });
+
+    it('should extract fields from API_ENDPOINT entity (request and response schemas)', () => {
+      const apiEndpointData = {
+        id: '1',
+        name: 'test_api',
+        requestSchema: {
+          schemaFields: [
+            {
+              name: 'reqField1',
+              fullyQualifiedName: 'test.reqField1',
+              tags: [{ tagFQN: 'tag1' }],
+            },
+          ],
+        },
+        responseSchema: {
+          schemaFields: [
+            {
+              name: 'resField1',
+              fullyQualifiedName: 'test.resField1',
+              tags: [{ tagFQN: 'tag2' }],
+            },
+          ],
+        },
+      };
+
+      const result = extractColumnsFromData(
+        apiEndpointData,
+        EntityType.API_ENDPOINT
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        name: 'reqField1',
+        tags: [{ tagFQN: 'tag1' }],
+      });
+      expect(result[1]).toMatchObject({
+        name: 'resField1',
+        tags: [{ tagFQN: 'tag2' }],
+      });
+    });
+
+    it('should extract columns from DASHBOARD_DATA_MODEL entity', () => {
+      const dataModelData = {
+        id: '1',
+        name: 'test_model',
+        columns: [
+          {
+            name: 'modelCol1',
+            fullyQualifiedName: 'test.modelCol1',
+            tags: [{ tagFQN: 'tag1' }],
+          },
+        ],
+      };
+
+      const result = extractColumnsFromData(
+        dataModelData,
+        EntityType.DASHBOARD_DATA_MODEL
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        name: 'modelCol1',
+        tags: [{ tagFQN: 'tag1' }],
+      });
+    });
+
+    it('should extract features from MLMODEL entity', () => {
+      const mlModelData = {
+        id: '1',
+        name: 'test_ml_model',
+        mlFeatures: [
+          {
+            name: 'feature1',
+            fullyQualifiedName: 'test.feature1',
+            dataType: 'NUMERIC',
+          },
+          {
+            name: 'feature2',
+            fullyQualifiedName: 'test.feature2',
+            dataType: 'CATEGORICAL',
+          },
+        ],
+      };
+
+      const result = extractColumnsFromData(mlModelData, EntityType.MLMODEL);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        name: 'feature1',
+        dataType: 'NUMERIC',
+      });
+      expect(result[1]).toMatchObject({
+        name: 'feature2',
+        dataType: 'CATEGORICAL',
+      });
+    });
+
+    it('should extract tasks from PIPELINE entity', () => {
+      const pipelineData = {
+        id: '1',
+        name: 'test_pipeline',
+        tasks: [
+          {
+            name: 'task1',
+            fullyQualifiedName: 'test.task1',
+            taskType: 'Ingestion',
+            tags: [{ tagFQN: 'tag1' }],
+          },
+          {
+            name: 'task2',
+            fullyQualifiedName: 'test.task2',
+            taskType: 'Transformation',
+            tags: undefined,
+          },
+        ],
+      };
+
+      const result = extractColumnsFromData(pipelineData, EntityType.PIPELINE);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        name: 'task1',
+        tags: [{ tagFQN: 'tag1' }],
+      });
+      expect(result[1]).toMatchObject({
+        name: 'task2',
+        tags: [],
+      });
+    });
+
+    it('should extract schema fields from TOPIC entity', () => {
+      const topicData = {
+        id: '1',
+        name: 'test_topic',
+        messageSchema: {
+          schemaFields: [
+            {
+              name: 'field1',
+              fullyQualifiedName: 'test.field1',
+              dataType: 'STRING',
+            },
+            {
+              name: 'field2',
+              fullyQualifiedName: 'test.field2',
+              dataType: 'INT',
+            },
+          ],
+        },
+      };
+
+      const result = extractColumnsFromData(topicData, EntityType.TOPIC);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        name: 'field1',
+        dataType: 'STRING',
+      });
+      expect(result[1]).toMatchObject({
+        name: 'field2',
+        dataType: 'INT',
+      });
+    });
+
+    it('should extract columns from CONTAINER entity', () => {
+      const containerData = {
+        id: '1',
+        name: 'test_container',
+        dataModel: {
+          columns: [
+            {
+              name: 'containerCol1',
+              fullyQualifiedName: 'test.containerCol1',
+              tags: [{ tagFQN: 'tag1' }],
+            },
+          ],
+        },
+      };
+
+      const result = extractColumnsFromData(containerData, EntityType.CONTAINER);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        name: 'containerCol1',
+        tags: [{ tagFQN: 'tag1' }],
+      });
+    });
+
+    it('should extract fields from SEARCH_INDEX entity', () => {
+      const searchIndexData = {
+        id: '1',
+        name: 'test_index',
+        fields: [
+          {
+            name: 'indexField1',
+            fullyQualifiedName: 'test.indexField1',
+            dataType: 'TEXT',
+            tags: [{ tagFQN: 'tag1' }],
+          },
+          {
+            name: 'indexField2',
+            fullyQualifiedName: 'test.indexField2',
+            dataType: 'KEYWORD',
+            tags: undefined,
+          },
+        ],
+      };
+
+      const result = extractColumnsFromData(
+        searchIndexData,
+        EntityType.SEARCH_INDEX
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        name: 'indexField1',
+        tags: [{ tagFQN: 'tag1' }],
+      });
+      expect(result[1]).toMatchObject({
+        name: 'indexField2',
+        tags: [],
+      });
+    });
+
+    it('should return empty array for unsupported entity type', () => {
+      const unknownData = {
+        id: '1',
+        name: 'unknown',
+      };
+
+      const result = extractColumnsFromData(
+        unknownData,
+        EntityType.DASHBOARD
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle missing columns/fields arrays gracefully', () => {
+      const tableDataWithoutColumns = {
+        id: '1',
+        name: 'test_table',
+        columns: undefined,
+      };
+
+      const result = extractColumnsFromData(
+        tableDataWithoutColumns,
+        EntityType.TABLE
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle empty columns/fields arrays', () => {
+      const tableDataWithEmptyColumns = {
+        id: '1',
+        name: 'test_table',
+        columns: [],
+      };
+
+      const result = extractColumnsFromData(
+        tableDataWithEmptyColumns,
+        EntityType.TABLE
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle API_ENDPOINT with missing schemas', () => {
+      const apiEndpointData = {
+        id: '1',
+        name: 'test_api',
+        requestSchema: undefined,
+        responseSchema: undefined,
+      };
+
+      const result = extractColumnsFromData(
+        apiEndpointData,
+        EntityType.API_ENDPOINT
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle API_ENDPOINT with only request schema', () => {
+      const apiEndpointData = {
+        id: '1',
+        name: 'test_api',
+        requestSchema: {
+          schemaFields: [
+            {
+              name: 'reqField1',
+              fullyQualifiedName: 'test.reqField1',
+            },
+          ],
+        },
+        responseSchema: undefined,
+      };
+
+      const result = extractColumnsFromData(
+        apiEndpointData,
+        EntityType.API_ENDPOINT
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ name: 'reqField1' });
+    });
+
+    it('should handle CONTAINER with missing dataModel', () => {
+      const containerData = {
+        id: '1',
+        name: 'test_container',
+        dataModel: undefined,
+      };
+
+      const result = extractColumnsFromData(containerData, EntityType.CONTAINER);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle TOPIC with missing messageSchema', () => {
+      const topicData = {
+        id: '1',
+        name: 'test_topic',
+        messageSchema: undefined,
+      };
+
+      const result = extractColumnsFromData(topicData, EntityType.TOPIC);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should ensure all columns have tags array (default to empty)', () => {
+      const tableData = {
+        id: '1',
+        name: 'test_table',
+        columns: [
+          {
+            name: 'col1',
+            fullyQualifiedName: 'test.col1',
+            tags: undefined,
+          },
+          {
+            name: 'col2',
+            fullyQualifiedName: 'test.col2',
+            tags: null,
+          },
+        ],
+      };
+
+      const result = extractColumnsFromData(tableData, EntityType.TABLE);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].tags).toEqual([]);
+      expect(result[1].tags).toEqual([]);
     });
   });
 });

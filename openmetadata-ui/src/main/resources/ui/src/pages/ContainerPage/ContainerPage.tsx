@@ -648,28 +648,6 @@ const ContainerPage = () => {
         </Col>
         <GenericProvider<Container>
           columnDetailPanelConfig={{
-            columns: (containerData?.dataModel?.columns ?? []).map(
-              (column) =>
-                ({
-                  ...column,
-                  tags: column.tags ?? [],
-                } as unknown as TableColumn)
-            ),
-            onColumnsChange: async (updatedColumns) => {
-              if (!containerData?.dataModel) {
-                return;
-              }
-
-              const updatedContainer: Container = {
-                ...containerData,
-                dataModel: {
-                  ...containerData.dataModel,
-                  columns: updatedColumns as unknown as Column[],
-                },
-              };
-
-              await handleContainerUpdate(updatedContainer);
-            },
             onColumnFieldUpdate: async (fqn, update) => {
               if (!containerData?.dataModel) {
                 return undefined;

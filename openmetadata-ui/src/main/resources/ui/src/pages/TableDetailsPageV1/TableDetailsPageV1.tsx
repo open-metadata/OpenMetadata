@@ -851,21 +851,6 @@ const TableDetailsPageV1: React.FC = () => {
       title="Table details">
       <GenericProvider<Table>
         columnDetailPanelConfig={{
-          columns: (tableDetails?.columns ?? []).map(
-            (column) => ({ ...column, tags: column.tags ?? [] } as Column)
-          ),
-          onColumnsChange: async (updatedColumns) => {
-            if (!tableDetails) {
-              return;
-            }
-
-            const updatedTable: Table = {
-              ...tableDetails,
-              columns: updatedColumns as Column[],
-            };
-
-            await onTableUpdate(updatedTable);
-          },
           onColumnFieldUpdate: async (fqn, update) => {
             // For Table, we update columns via API directly
             const columnUpdate: Partial<Column> = {};

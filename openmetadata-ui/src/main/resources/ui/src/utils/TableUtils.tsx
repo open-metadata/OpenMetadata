@@ -152,15 +152,24 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
+import { Container } from '../generated/entity/data/container';
+import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import { Mlmodel } from '../generated/entity/data/mlmodel';
+import { SearchIndex as SearchIndexEntity } from '../generated/entity/data/searchIndex';
+import { Pipeline } from '../generated/entity/data/pipeline';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
+import { Topic } from '../generated/entity/data/topic';
 import {
   Column,
   ConstraintType,
   DataType,
   JoinedWith,
+  Table,
   TableConstraint,
   TableJoins,
 } from '../generated/entity/data/table';
+import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../generated/system/ui/uiCustomization';
 import { Field } from '../generated/type/schema';
 import {
@@ -1691,4 +1700,92 @@ export const buildColumnBreadcrumbPath = <
   }
 
   return breadcrumbs;
+};
+
+/**
+ * Extract columns/fields from entity data based on entity type
+ * @param data Entity data
+ * @param entityType Type of entity
+ * @returns Array of columns/fields/tasks/features
+ */
+export const extractColumnsFromData = <
+  T extends Omit<EntityReference, 'type'>
+>(
+  data: T,
+  entityType: EntityType
+): Array<Column | SearchIndexField | Field> => {
+  switch (entityType) {
+    case EntityType.TABLE:
+      return ((data as unknown as Table).columns ?? []).map(
+        (column) => ({ ...column, tags: column.tags ?? [] } as Column)
+      );
+
+    case EntityType.API_ENDPOINT: {
+      const apiEndpoint = data as unknown as APIEndpoint;
+      return [
+        ...(apiEndpoint.requestSchema?.schemaFields ?? []).map(
+          (field) =>
+            ({ ...field, tags: field.tags ?? [] } as unknown as Column)
+        ),
+        ...(apiEndpoint.responseSchema?.schemaFields ?? []).map(
+          (field) =>
+            ({ ...field, tags: field.tags ?? [] } as unknown as Column)
+        ),
+      ];
+    }
+
+    case EntityType.DASHBOARD_DATA_MODEL: {
+      const dataModel = data as unknown as DashboardDataModel;
+      return (dataModel.columns ?? []).map(
+        (column) =>
+          ({
+            ...column,
+            tags: column.tags ?? [],
+          } as unknown as Column)
+      );
+    }
+
+    case EntityType.MLMODEL: {
+      const mlModel = data as unknown as Mlmodel;
+      return (mlModel.mlFeatures ?? []).map(
+        (feature) => feature as unknown as Column
+      );
+    }
+
+    case EntityType.PIPELINE: {
+      const pipeline = data as unknown as Pipeline;
+      return (pipeline.tasks ?? []).map(
+        (task) => ({ ...task, tags: task.tags ?? [] } as unknown as Column)
+      );
+    }
+
+    case EntityType.TOPIC: {
+      const topic = data as unknown as Topic;
+      return (topic.messageSchema?.schemaFields ?? []).map(
+        (field) => field as unknown as Column
+      );
+    }
+
+    case EntityType.CONTAINER: {
+      const container = data as unknown as Container;
+      return (container.dataModel?.columns ?? []).map(
+        (column) =>
+          ({
+            ...column,
+            tags: column.tags ?? [],
+          } as unknown as Column)
+      );
+    }
+
+    case EntityType.SEARCH_INDEX: {
+      const searchIndex = data as unknown as SearchIndexEntity;
+      return (searchIndex.fields ?? []).map(
+        (field) =>
+          ({ ...field, tags: field.tags ?? [] } as unknown as Column)
+      );
+    }
+
+    default:
+      return [];
+  }
 };
