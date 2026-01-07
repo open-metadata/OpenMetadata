@@ -463,17 +463,23 @@ const SchemaTable = () => {
         setTimeout(() => setCopiedColumnFqn(undefined), 2000);
       } catch {
         // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = columnLink;
-        textArea.style.position = 'fixed';
-        textArea.style.opacity = '0';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        setCopiedColumnFqn(columnFqn);
-        setTimeout(() => setCopiedColumnFqn(undefined), 2000);
+        try {
+          const textArea = document.createElement('textarea');
+          textArea.value = columnLink;
+          textArea.style.position = 'fixed';
+          textArea.style.opacity = '0';
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          const successful = document.execCommand('copy');
+          document.body.removeChild(textArea);
+          if (successful) {
+            setCopiedColumnFqn(columnFqn);
+            setTimeout(() => setCopiedColumnFqn(undefined), 2000);
+          }
+        } catch {
+          // Silently fail if both methods don't work
+        }
       }
     },
     [getColumnLink]
