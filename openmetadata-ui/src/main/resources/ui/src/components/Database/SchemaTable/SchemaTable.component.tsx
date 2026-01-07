@@ -695,7 +695,6 @@ const SchemaTable = () => {
       copiedColumnFqn,
       renderDataTypeDisplay,
       renderDescription,
-      handleTagSelection,
       onThreadLinkSelect,
       tagFilter,
       testCaseCounts,
