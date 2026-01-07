@@ -301,56 +301,57 @@ const TestCaseResultTab = () => {
     return items.length > 0 ? items : null;
   }, [
     withoutSqlParams,
-    testCaseData,
+    testCaseData?.useDynamicAssertion,
     showComputeRowCount,
     computeRowCountDisplay,
     isVersionPage,
   ]);
 
-  const renderParameterRows = (
-    items: Array<{ label: string; value: string | React.ReactNode }>
-  ) => {
-    if (items.length === 0) {
+  const renderParameterRows = useCallback(
+    (items: Array<{ label: string; value: string | React.ReactNode }>) => {
+      if (items.length === 0) {
+        return (
+          <Typography.Text type="secondary">
+            {t('label.no-parameter-available')}
+          </Typography.Text>
+        );
+      }
+
+      // Group items into rows of 2
+      const rows = chunk(items, 2);
+
       return (
-        <Typography.Text type="secondary">
-          {t('label.no-parameter-available')}
-        </Typography.Text>
-      );
-    }
-
-    // Group items into rows of 2
-    const rows = chunk(items, 2);
-
-    return (
-      <div className="parameter-rows-container">
-        {rows.map((row, rowIndex) => (
-          <div key={rowIndex}>
-            <Row className="parameter-row" gutter={[16, 0]}>
-              {row.map((item, itemIndex) => (
-                <Col key={itemIndex} span={row.length === 1 ? 16 : 12}>
-                  <Space align="start" size={4}>
-                    <Typography.Text className="parameter-label">
-                      {`${item.label}:`}
-                    </Typography.Text>
-                    {typeof item.value === 'string' ? (
-                      <Typography.Text className="parameter-value-text">
-                        {item.value}
+        <div className="parameter-rows-container">
+          {rows.map((row, rowIndex) => (
+            <div key={rowIndex}>
+              <Row className="parameter-row" gutter={[16, 0]}>
+                {row.map((item, itemIndex) => (
+                  <Col key={itemIndex} span={row.length === 1 ? 16 : 12}>
+                    <Space align="start" size={4}>
+                      <Typography.Text className="parameter-label">
+                        {`${item.label}:`}
                       </Typography.Text>
-                    ) : (
-                      item.value
-                    )}
-                  </Space>
-                </Col>
-              ))}
-            </Row>
-            {rowIndex < rows.length - 1 && (
-              <Divider className="parameter-row-divider" />
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  };
+                      {typeof item.value === 'string' ? (
+                        <Typography.Text className="parameter-value-text">
+                          {item.value}
+                        </Typography.Text>
+                      ) : (
+                        item.value
+                      )}
+                    </Space>
+                  </Col>
+                ))}
+              </Row>
+              {rowIndex < rows.length - 1 && (
+                <Divider className="parameter-row-divider" />
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    },
+    [t]
+  );
 
   const testCaseParams = useMemo(() => {
     if (isVersionPage) {
@@ -395,11 +396,12 @@ const TestCaseResultTab = () => {
     return renderParameterRows(parameterItems);
   }, [
     parameterItems,
-    testCaseData,
+    testCaseData?.changeDescription,
+    testCaseData?.parameterValues,
     isVersionPage,
     showComputeRowCount,
     computeRowCountDisplay,
-    t,
+    renderParameterRows,
   ]);
 
   return (
