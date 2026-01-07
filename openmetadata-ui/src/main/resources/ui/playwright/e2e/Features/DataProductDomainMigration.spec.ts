@@ -11,77 +11,24 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
-import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, uuid } from '../../utils/common';
-import { checkAssetsCount } from '../../utils/domain';
+import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  checkAssetsCount,
+  goToAssetsTab,
+  selectDataProduct,
+  verifyAssetsInDomain,
+} from '../../utils/domain';
+import { sidebarClick } from '../../utils/sidebar';
 
-// Helper to navigate directly to data product page via URL
-const navigateToDataProductPage = async (
-  page: Page,
-  dataProduct: DataProduct
-) => {
-  const fqn = dataProduct.responseData.fullyQualifiedName;
-  await page.goto(`/dataProduct/${encodeURIComponent(fqn!)}`);
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-};
-
-// Helper to navigate to a domain's assets tab and verify asset count
-const navigateToDomainAssetsTab = async (
-  page: Page,
-  domain: Domain,
-  expectedAssetCount: number
-) => {
-  const fqn = domain.responseData.fullyQualifiedName;
-  await page.goto(`/domain/${encodeURIComponent(fqn!)}`);
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-  // Click on Assets tab
-  await page.getByTestId('assets').click();
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-  // Verify asset count
-  await checkAssetsCount(page, expectedAssetCount);
-};
-
-// Helper to verify specific assets are visible in the domain's assets tab
-const verifyAssetsInDomain = async (
-  page: Page,
-  domain: Domain,
-  tables: TableClass[],
-  expectedVisible: boolean
-) => {
-  const fqn = domain.responseData.fullyQualifiedName;
-  await page.goto(`/domain/${encodeURIComponent(fqn!)}`);
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-  // Click on Assets tab
-  await page.getByTestId('assets').click();
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-  for (const table of tables) {
-    const tableFqn = table.entityResponseData.fullyQualifiedName;
-    const tableCard = page.locator(`[data-testid="table-data-card_${tableFqn}"]`);
-    if (expectedVisible) {
-      await expect(tableCard).toBeVisible({ timeout: 10000 });
-    } else {
-      await expect(tableCard).not.toBeVisible({ timeout: 5000 });
-    }
-  }
-};
+test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Data Product Domain Migration', () => {
-  const adminUser = new UserClass();
   let shortId: string;
   let sourceDomain: Domain;
   let targetDomain: Domain;
@@ -89,11 +36,9 @@ test.describe('Data Product Domain Migration', () => {
   let table1: TableClass;
   let table2: TableClass;
 
-  test.beforeAll('Setup entities', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test.beforeAll('Setup entities', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
 
-    await adminUser.create(apiContext);
-    await adminUser.setAdminRole(apiContext);
     await EntityDataClass.preRequisitesForTests(apiContext);
 
     shortId = uuid();
@@ -121,7 +66,6 @@ test.describe('Data Product Domain Migration', () => {
     await table1.create(apiContext);
     await table2.create(apiContext);
 
-    // Assign tables to source domain
     await table1.patch({
       apiContext,
       patchData: [
@@ -143,7 +87,6 @@ test.describe('Data Product Domain Migration', () => {
       ],
     });
 
-    // Add tables to data product
     await apiContext.put(
       `/api/v1/dataProducts/${encodeURIComponent(
         dataProduct.responseData.fullyQualifiedName!
@@ -161,63 +104,47 @@ test.describe('Data Product Domain Migration', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test.afterAll('Cleanup', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
 
-    try {
-      await dataProduct.delete(apiContext);
-    } catch {
-      // Ignore error
-    }
-    try {
-      await table1.delete(apiContext);
-    } catch {
-      // Ignore error
-    }
-    try {
-      await table2.delete(apiContext);
-    } catch {
-      // Ignore error
-    }
-    try {
-      await sourceDomain.delete(apiContext);
-    } catch {
-      // Ignore error
-    }
-    try {
-      await targetDomain.delete(apiContext);
-    } catch {
-      // Ignore error
-    }
-
+    await dataProduct.delete(apiContext);
+    await table1.delete(apiContext);
+    await table2.delete(apiContext);
+    await sourceDomain.delete(apiContext);
+    await targetDomain.delete(apiContext);
     await EntityDataClass.postRequisitesForTests(apiContext);
-    await adminUser.delete(apiContext);
     await afterAction();
   });
 
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
   test('Changing data product domain via API migrates assets to new domain', async ({
-    browser,
+    page,
   }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    const page = await browser.newPage();
-
+    const { apiContext, afterAction } = await getApiContext(page);
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
       // STEP 1: Verify initial state - assets should be under source domain
-      await navigateToDomainAssetsTab(page, sourceDomain, 2);
-
-      // Verify the specific tables are visible under source domain
-      await verifyAssetsInDomain(page, sourceDomain, [table1, table2], true);
+      await verifyAssetsInDomain(
+        page,
+        sourceDomain.data,
+        [table1, table2],
+        true
+      );
+      await checkAssetsCount(page, 2);
 
       // Verify target domain has no assets initially
-      await navigateToDomainAssetsTab(page, targetDomain, 0);
+      await goToAssetsTab(page, targetDomain.data);
+      await checkAssetsCount(page, 0);
 
       // STEP 2: Navigate to data product and verify it's in source domain
-      await navigateToDataProductPage(page, dataProduct);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct.data);
 
       await expect(
         page.locator('[data-testid="entity-header-name"]')
@@ -256,7 +183,8 @@ test.describe('Data Product Domain Migration', () => {
       expect(patchResponse.ok()).toBeTruthy();
 
       // STEP 4: Verify data product now shows target domain
-      await navigateToDataProductPage(page, dataProduct);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct.data);
 
       await expect(page.getByTestId('domain-link').first()).toContainText(
         targetDomain.data.displayName
@@ -268,25 +196,28 @@ test.describe('Data Product Domain Migration', () => {
 
       // STEP 5: THE KEY VERIFICATION - assets should now appear under TARGET domain
       // This is the actual bug we're testing - assets must be migrated to the new domain
-      await navigateToDomainAssetsTab(page, targetDomain, 2);
-
-      // Verify the specific tables are now visible under target domain
-      await verifyAssetsInDomain(page, targetDomain, [table1, table2], true);
+      await verifyAssetsInDomain(
+        page,
+        targetDomain.data,
+        [table1, table2],
+        true
+      );
+      await checkAssetsCount(page, 2);
 
       // STEP 6: Verify assets are no longer under source domain
-      await navigateToDomainAssetsTab(page, sourceDomain, 0);
+      await goToAssetsTab(page, sourceDomain.data);
+      await checkAssetsCount(page, 0);
     } finally {
       await afterAction();
-      await page.close();
     }
   });
 
   test('Data product with no assets can change domain without confirmation', async ({
-    browser,
+    page,
   }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getApiContext(page);
 
     // Create a data product with no assets for this test
     const noAssetsDomain = new Domain({
@@ -312,14 +243,11 @@ test.describe('Data Product Domain Migration', () => {
     await noAssetsDomain2.create(apiContext);
     await noAssetsDataProduct.create(apiContext);
 
-    const page = await browser.newPage();
-
     try {
-      await adminUser.login(page);
       await redirectToHomePage(page);
 
-      // Navigate directly to data product page via URL
-      await navigateToDataProductPage(page, noAssetsDataProduct);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, noAssetsDataProduct.data);
 
       // Verify we're on the data product page
       await expect(
@@ -373,12 +301,10 @@ test.describe('Data Product Domain Migration', () => {
       await checkAssetsCount(page, 0);
     } finally {
       await afterAction();
-      await page.close();
     }
 
-    // Cleanup
     const { apiContext: cleanupContext, afterAction: cleanupAfter } =
-      await performAdminLogin(browser);
+      await getApiContext(page);
     try {
       await noAssetsDataProduct.delete(cleanupContext);
     } catch {

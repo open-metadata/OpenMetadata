@@ -11,40 +11,34 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, toastNotification, uuid } from '../../utils/common';
-import { checkAssetsCount, selectDomain } from '../../utils/domain';
+import {
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+} from '../../utils/common';
+import {
+  checkAssetsCount,
+  selectDataProduct,
+  selectDomain,
+} from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
 
-// Helper to navigate to data product page directly
-const navigateToDataProduct = async (page: Page, dataProduct: DataProduct) => {
-  const fqn =
-    dataProduct.responseData.fullyQualifiedName ??
-    dataProduct.data.fullyQualifiedName;
-  await page.goto(`/dataProduct/${encodeURIComponent(fqn!)}`);
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-};
-
-const test = base.extend<{
-  page: Page;
-}>({
-  page: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
-    await use(page);
-    await page.close();
-  },
-});
+test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Data Product Comprehensive Tests', () => {
   test.slow(true);
+
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
 
   test('Create data product via UI with description', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
@@ -106,7 +100,8 @@ test.describe('Data Product Comprehensive Tests', () => {
       await domain.create(apiContext);
       await dataProduct.create(apiContext);
 
-      await navigateToDataProduct(page, dataProduct);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct.data);
 
       // Click edit description
       await page.getByTestId('edit-description').click();
@@ -147,7 +142,8 @@ test.describe('Data Product Comprehensive Tests', () => {
       await dataProduct.create(apiContext);
       await user.create(apiContext);
 
-      await navigateToDataProduct(page, dataProduct);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct.data);
 
       // Click add expert button
       await page.getByTestId('Add').click();
@@ -219,7 +215,8 @@ test.describe('Data Product Comprehensive Tests', () => {
       await domain.create(apiContext);
       await dataProduct.create(apiContext);
 
-      await navigateToDataProduct(page, dataProduct);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct.data);
 
       // Click add tag button in tags container
       await page.getByTestId('tags-container').getByTestId('add-tag').click();
@@ -278,7 +275,8 @@ test.describe('Data Product Comprehensive Tests', () => {
         ],
       });
 
-      await navigateToDataProduct(page, dataProduct);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct.data);
 
       // Click assets tab
       await page.getByTestId('assets').click();
@@ -393,6 +391,10 @@ test.describe('Data Product Comprehensive Tests', () => {
 
 test.describe('Multiple Subdomains Tests', () => {
   test.slow(true);
+
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
 
   test('Create multiple sibling subdomains under a domain', async ({
     page,
@@ -624,14 +626,16 @@ test.describe('Multiple Subdomains Tests', () => {
       await dp2.create(apiContext);
 
       // Verify dp1 shows subdomain1
-      await navigateToDataProduct(page, dp1);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dp1.data);
 
       await expect(page.getByTestId('domain-link')).toContainText(
         subDomain1.data.displayName
       );
 
       // Verify dp2 shows subdomain2
-      await navigateToDataProduct(page, dp2);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dp2.data);
 
       await expect(page.getByTestId('domain-link')).toContainText(
         subDomain2.data.displayName
@@ -755,6 +759,10 @@ test.describe('Multiple Subdomains Tests', () => {
 
 test.describe('Data Product Search and Filter', () => {
   test.slow(true);
+
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
 
   test('Search data products by name', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
