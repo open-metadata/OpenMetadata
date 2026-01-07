@@ -13,16 +13,13 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import { cloneDeep } from 'lodash';
-import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
-import { APIEndpoint, Field } from '../../../generated/entity/data/apiEndpoint';
-import { Column } from '../../../generated/entity/data/table';
+import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
@@ -41,14 +38,7 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import {
-  findFieldByFQN,
-  getTagsWithoutTier,
-  getTierTags,
-  normalizeTags,
-  updateFieldDescription,
-  updateFieldTags,
-} from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
   updateCertificationTag,
   updateTierTag,
@@ -308,71 +298,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           />
         </Col>
         <GenericProvider<APIEndpoint>
-          columnDetailPanelConfig={{
-            onColumnFieldUpdate: async (fqn, update) => {
-              // Use recursive findFieldByFQN to determine which schema contains this field (including nested)
-              const requestField = findFieldByFQN<Field>(
-                apiEndpointDetails.requestSchema?.schemaFields ?? [],
-                fqn
-              );
-              const responseField = findFieldByFQN<Field>(
-                apiEndpointDetails.responseSchema?.schemaFields ?? [],
-                fqn
-              );
-
-              const schemaKey = requestField
-                ? 'requestSchema'
-                : responseField
-                ? 'responseSchema'
-                : null;
-              const schema = requestField
-                ? apiEndpointDetails.requestSchema
-                : responseField
-                ? apiEndpointDetails.responseSchema
-                : null;
-
-              if (!schema || !schemaKey) {
-                return undefined;
-              }
-
-              const schemaFields = cloneDeep(schema.schemaFields ?? []);
-
-              // Use recursive utilities to update nested fields
-              if (update.description !== undefined) {
-                updateFieldDescription<Field>(
-                  fqn,
-                  update.description,
-                  schemaFields
-                );
-              }
-
-              if (update.tags !== undefined) {
-                // Normalize tags to remove style property from glossary terms
-                const normalizedTags = normalizeTags(update.tags);
-                // Convert TagLabel[] to EntityTags[] for updateFieldTags
-                const entityTags = normalizedTags.map((tag) => ({
-                  ...tag,
-                  isRemovable: true,
-                })) as EntityTags[];
-                updateFieldTags<Field>(fqn, entityTags, schemaFields);
-              }
-
-              const updatedApiEndpoint: APIEndpoint = {
-                ...apiEndpointDetails,
-                [schemaKey]: {
-                  ...schema,
-                  schemaFields,
-                },
-              };
-
-              await onApiEndpointUpdate(updatedApiEndpoint, schemaKey);
-
-              // Use recursive findFieldByFQN to find nested fields
-              const updatedField = findFieldByFQN<Field>(schemaFields, fqn);
-
-              return updatedField as unknown as Column;
-            },
-          }}
           customizedPage={customizedPage}
           data={apiEndpointDetails}
           isTabExpanded={isTabExpanded}

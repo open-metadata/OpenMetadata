@@ -13,7 +13,7 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import { cloneDeep, isUndefined, toString } from 'lodash';
+import { isUndefined, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -46,7 +46,6 @@ import {
   getEntityDetailsPath,
   getVersionPath,
 } from '../../../../utils/RouterUtils';
-import { findFieldByFQN, normalizeTags } from '../../../../utils/TableUtils';
 import { updateCertificationTag } from '../../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
@@ -272,42 +271,6 @@ const DataModelDetails = ({
           />
         </Col>
         <GenericProvider<DashboardDataModel>
-          columnDetailPanelConfig={{
-            onColumnFieldUpdate: async (fqn, update) => {
-              // For DashboardDataModel, we update columns via API directly
-              const columnUpdate: Partial<Column> = {};
-
-              if (update.description !== undefined) {
-                columnUpdate.description = update.description;
-              }
-
-              if (update.tags !== undefined) {
-                // Normalize tags to remove style property from glossary terms
-                columnUpdate.tags = normalizeTags(update.tags);
-              }
-
-              const response = await updateDataModelColumn(fqn, columnUpdate);
-
-              // Update local state using recursive findFieldByFQN to handle nested columns
-              const columns = cloneDeep(dataModelData?.columns ?? []);
-              const updatedColumn = findFieldByFQN<Column>(columns, fqn);
-              if (updatedColumn) {
-                Object.assign(updatedColumn, response);
-              }
-
-              const updatedDataModel: DashboardDataModel = {
-                ...dataModelData,
-                columns,
-              };
-
-              await onUpdateDataModel(updatedDataModel);
-
-              // Find the updated column to return
-              const finalUpdatedColumn = findFieldByFQN<Column>(columns, fqn);
-
-              return finalUpdatedColumn as unknown as TableColumn;
-            },
-          }}
           customizedPage={customizedPage}
           data={dataModelData}
           isTabExpanded={isTabExpanded}

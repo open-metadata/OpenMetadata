@@ -42,6 +42,7 @@ import DescriptionSection from '../../common/DescriptionSection/DescriptionSecti
 import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
 import Loader from '../../common/Loader/Loader';
 import TagsSection from '../../common/TagsSection/TagsSection';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import CustomPropertiesSection from '../../Explore/EntitySummaryPanel/CustomPropertiesSection/CustomPropertiesSection';
@@ -67,13 +68,9 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   tableFqn,
   isOpen,
   onClose,
-  onColumnUpdate,
   updateColumnDescription,
   updateColumnTags,
   onColumnFieldUpdate,
-  hasEditPermission: hasEditPermissionProp = {},
-  hasViewPermission: hasViewPermissionProp = {},
-  permissions,
   deleted = false,
   allColumns = [],
   onNavigate,
@@ -82,33 +79,28 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 }: ColumnDetailPanelProps<T>) => {
   const { t } = useTranslation();
   const theme = useTheme();
+  const { permissions } = useGenericContext();
   const [isDescriptionLoading, setIsDescriptionLoading] = useState(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
 
-  const hasEditPermission = useMemo(() => {
-    if (permissions) {
-      return {
-        tags: (permissions.EditTags || permissions.EditAll) && !deleted,
-        glossaryTerms:
-          (permissions.EditGlossaryTerms || permissions.EditAll) && !deleted,
-        description:
-          (permissions.EditDescription || permissions.EditAll) && !deleted,
-        viewAllPermission: permissions.ViewAll,
-      };
-    }
+  const hasEditPermission = useMemo(
+    () => ({
+      tags: (permissions.EditTags || permissions.EditAll) && !deleted,
+      glossaryTerms:
+        (permissions.EditGlossaryTerms || permissions.EditAll) && !deleted,
+      description:
+        (permissions.EditDescription || permissions.EditAll) && !deleted,
+      viewAllPermission: permissions.ViewAll,
+    }),
+    [permissions, deleted]
+  );
 
-    return hasEditPermissionProp;
-  }, [permissions, deleted, hasEditPermissionProp]);
-
-  const hasViewPermission = useMemo(() => {
-    if (permissions) {
-      return {
-        customProperties: permissions.ViewAll || permissions.ViewCustomFields,
-      };
-    }
-
-    return hasViewPermissionProp;
-  }, [permissions, hasViewPermissionProp]);
+  const hasViewPermission = useMemo(
+    () => ({
+      customProperties: permissions.ViewAll || permissions.ViewCustomFields,
+    }),
+    [permissions]
+  );
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
     EntityRightPanelTab.OVERVIEW
   );
@@ -252,22 +244,9 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         })
       );
 
-      // Only call onColumnUpdate if onColumnFieldUpdate is not used
-      // onColumnFieldUpdate already handles state updates in the parent
-      if (onColumnUpdate && response && !onColumnFieldUpdate) {
-        onColumnUpdate(response);
-      }
-
       return response;
     },
-    [
-      column,
-      t,
-      onColumnUpdate,
-      updateColumnDescription,
-      updateColumnTags,
-      onColumnFieldUpdate,
-    ]
+    [column, t, updateColumnDescription, updateColumnTags, onColumnFieldUpdate]
   );
 
   const handleDescriptionUpdate = useCallback(
@@ -337,33 +316,24 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
   const handleGlossaryTermsUpdate = useCallback(
     async (updatedTags: TagLabel[]) => {
-      // GlossaryTermsSection already handles the API call via updateEntityField (PATCH)
-      // and passes the full updated tags array (already merged correctly by the backend)
-      // We need to sync with parent state, but avoid duplicate API calls
       try {
-        const normalizedTags = normalizeTags(updatedTags);
-        
-        // If onColumnFieldUpdate is provided, we need to sync state but avoid duplicate API call
-        // Since GlossaryTermsSection already updated via PATCH, we should update local state
-        // without making another API call. However, onColumnFieldUpdate might be needed for
-        // state synchronization in TableDetailsPageV1. Let's call it but it should handle
-        // the case where the backend is already updated (it uses the response, not current state)
-        if (onColumnFieldUpdate && column?.fullyQualifiedName) {
-          // Pass the normalized tags - onColumnFieldUpdate will handle state sync
-          // Note: This might make a PUT call, but it should use the updated tags from the response
-          await onColumnFieldUpdate(column.fullyQualifiedName, {
-            tags: normalizedTags,
-          });
-        } else if (onColumnUpdate) {
-          // Fallback to onColumnUpdate if onColumnFieldUpdate is not provided
-          const updatedColumn = {
-            ...column,
-            tags: normalizedTags,
-          } as T;
-          onColumnUpdate(updatedColumn);
-        }
-        
-        return normalizedTags;
+        // Merge glossary terms with existing classification tags
+        const classificationAndTierTags = (column?.tags ?? []).filter(
+          (tag) =>
+            tag.source === TagSource.Classification ||
+            (tag.tagFQN?.startsWith('Tier.') ?? false)
+        );
+        const allTags = normalizeTags([
+          ...classificationAndTierTags,
+          ...updatedTags.filter((tag) => tag.source === TagSource.Glossary),
+        ]);
+
+        const response = await performColumnFieldUpdate(
+          { tags: allTags },
+          'label.glossary-term-plural'
+        );
+
+        return response?.tags;
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -374,7 +344,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         throw error;
       }
     },
-    [column, t, onColumnUpdate, onColumnFieldUpdate]
+    [column?.tags, performColumnFieldUpdate, t]
   );
 
   useEffect(() => {

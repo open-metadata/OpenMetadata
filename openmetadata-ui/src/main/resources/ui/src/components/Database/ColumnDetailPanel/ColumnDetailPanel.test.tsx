@@ -337,6 +337,19 @@ jest.mock('../../../rest/testAPI', () => ({
   }),
 }));
 
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockReturnValue({
+    permissions: {
+      EditTags: true,
+      EditGlossaryTerms: true,
+      EditDescription: true,
+      EditAll: false,
+      ViewAll: true,
+      ViewCustomFields: true,
+    },
+  }),
+}));
+
 jest.mock('../../../utils/DataQuality/DataQualityUtils', () => ({
   calculateTestCaseStatusCounts: jest
     .fn()
@@ -475,13 +488,6 @@ describe('ColumnDetailPanel', () => {
     tableFqn: 'test_db.test_schema.test_table',
     isOpen: true,
     onClose: jest.fn(),
-    onColumnUpdate: jest.fn(),
-    hasEditPermission: {
-      description: true,
-      tags: true,
-      glossaryTerms: true,
-      customProperties: true,
-    },
     allColumns: [mockColumn],
     tableConstraints: [],
     entityType: EntityType.TABLE,
@@ -594,17 +600,20 @@ describe('ColumnDetailPanel', () => {
     });
 
     it('should not show loader for glossary terms section when updating glossary terms', async () => {
-      const onColumnUpdate = jest.fn();
+      const onColumnFieldUpdate = jest.fn().mockResolvedValue(mockColumn);
 
       const { getByTestId } = render(
-        <ColumnDetailPanel {...mockProps} onColumnUpdate={onColumnUpdate} />
+        <ColumnDetailPanel
+          {...mockProps}
+          onColumnFieldUpdate={onColumnFieldUpdate}
+        />
       );
 
       const updateButton = getByTestId('update-glossary-terms');
       fireEvent.click(updateButton);
 
       await waitFor(() => {
-        expect(onColumnUpdate).toHaveBeenCalled();
+        expect(onColumnFieldUpdate).toHaveBeenCalled();
       });
 
       expect(getByTestId('description-section')).toBeInTheDocument();

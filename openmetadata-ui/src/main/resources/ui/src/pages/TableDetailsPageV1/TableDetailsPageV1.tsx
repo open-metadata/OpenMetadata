@@ -14,7 +14,7 @@
 import { Col, Row, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -50,7 +50,7 @@ import {
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
-import { Column, Table, TableType } from '../../generated/entity/data/table';
+import { Table, TableType } from '../../generated/entity/data/table';
 import {
   Suggestion,
   SuggestionType,
@@ -74,7 +74,6 @@ import {
   patchTableDetails,
   removeFollower,
   restoreTable,
-  updateTableColumn,
   updateTablesVotes,
 } from '../../rest/tableAPI';
 import {
@@ -99,12 +98,9 @@ import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import {
   findColumnByEntityLink,
-  findFieldByFQN,
   getJoinsFromTableJoins,
   getTagsWithoutTier,
   getTierTags,
-  normalizeTags,
-  pruneEmptyChildren,
   updateColumnInNestedStructure,
 } from '../../utils/TableUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
@@ -404,9 +400,21 @@ const TableDetailsPageV1: React.FC = () => {
     [tableDetails, tableId]
   );
 
-  const onTableUpdate = async (updatedTable: Table, key?: keyof Table) => {
+  const onTableUpdate = async (
+    updatedTable: Table,
+    key?: keyof Table,
+    skipApiCall?: boolean
+  ) => {
     try {
-      const res = await saveUpdatedTableData(updatedTable);
+      let res: Table;
+
+      if (skipApiCall) {
+        // Backend is already updated, just use the provided table as the response
+        res = updatedTable;
+      } else {
+        // Generate patch and update via API
+        res = await saveUpdatedTableData(updatedTable);
+      }
 
       setTableDetails((previous) => {
         if (!previous) {
@@ -850,114 +858,6 @@ const TableDetailsPageV1: React.FC = () => {
       })}
       title="Table details">
       <GenericProvider<Table>
-        columnDetailPanelConfig={{
-          onColumnFieldUpdate: async (fqn, update) => {
-            // For Table, we update columns via API directly
-            const columnUpdate: Partial<Column> = {};
-
-            if (update.description !== undefined) {
-              columnUpdate.description = update.description;
-            }
-
-            if (update.tags !== undefined) {
-              // Normalize tags to remove style property from glossary terms
-              // This prevents backend JSON patch errors when trying to remove non-existent style properties
-              const normalizedTags = normalizeTags(update.tags);
-
-              // When clearing all tags (empty array), the backend's JSON patch generation
-              // tries to remove tags by index which causes "array item index is out of range" errors.
-              // Workaround: Use table-level update instead of column-level update when clearing all tags
-              // to avoid the backend's problematic patch generation for empty arrays.
-              // The table-level update uses fast-json-patch which generates a "replace" operation
-              // instead of multiple "remove" operations, avoiding the index error.
-              if (normalizedTags.length === 0 && tableDetails) {
-                // Update via table-level PATCH to avoid index errors
-                const columns = cloneDeep(tableDetails.columns ?? []);
-                const updatedColumn = findFieldByFQN<Column>(columns, fqn);
-                if (updatedColumn) {
-                  updatedColumn.tags = [];
-                }
-
-                const updatedTable: Table = {
-                  ...tableDetails,
-                  columns: pruneEmptyChildren(columns),
-                };
-
-                // Use saveUpdatedTableData directly with current tableDetails to generate patch
-                // This ensures we're comparing against the current state, not stale closure data
-                const currentTableDetails = tableDetails;
-                const jsonPatch = compare(currentTableDetails, updatedTable);
-                const res = await patchTableDetails(tableId, jsonPatch);
-
-                // Update state with the response to ensure consistency
-                // This prevents subsequent updates from using stale data
-                setTableDetails((previous) => {
-                  if (!previous) {
-                    return previous;
-                  }
-
-                  const updatedState = {
-                    ...previous,
-                    ...res,
-                    columns: res.columns ?? previous.columns,
-                  };
-
-                  return updatedState;
-                });
-
-                // Return the updated column from the API response
-                // Use the response columns which are already updated on the backend
-                const finalUpdatedColumn = findFieldByFQN<Column>(
-                  res.columns ?? [],
-                  fqn
-                );
-
-                // Return the column with tags already cleared
-                // This prevents onColumnUpdate from triggering onColumnsChange
-                // which would cause a second PATCH call with stale data
-                return finalUpdatedColumn;
-              }
-
-              columnUpdate.tags = normalizedTags;
-            }
-
-            const response = await updateTableColumn(fqn, columnUpdate);
-
-            // Update local state using recursive findFieldByFQN to handle nested columns
-            // Use the response directly without cleaning children first - let pruneEmptyChildren handle it
-            const columns = cloneDeep(tableDetails?.columns ?? []);
-            const updatedColumn = findFieldByFQN<Column>(columns, fqn);
-            if (updatedColumn) {
-              // Update the column with the response
-              Object.assign(updatedColumn, response);
-            }
-
-            // Prune empty children from all columns to prevent chevron icons on non-nested columns
-            const prunedColumns = pruneEmptyChildren(columns);
-
-            // Update state directly without creating another patch (updateTableColumn already updated the backend)
-            // Note: updateTableColumn returns only the column, not the table, so we update columns directly
-            setTableDetails((previous) => {
-              if (!previous) {
-                return previous;
-              }
-
-              return {
-                ...previous,
-                columns: prunedColumns,
-              };
-            });
-
-            // Find the updated column to return
-            // pruneEmptyChildren already removed empty children, so we can return it directly
-            const finalUpdatedColumn = findFieldByFQN<Column>(
-              prunedColumns,
-              fqn
-            );
-
-            return finalUpdatedColumn;
-          },
-        }}
         customizedPage={customizedPage}
         data={tableDetails}
         isTabExpanded={isTabExpanded}

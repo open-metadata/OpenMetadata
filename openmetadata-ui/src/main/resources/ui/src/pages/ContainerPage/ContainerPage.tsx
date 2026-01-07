@@ -13,7 +13,7 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, isEmpty, isUndefined, omitBy, toString } from 'lodash';
+import { isEmpty, isUndefined, omitBy, toString } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -85,7 +85,6 @@ import {
   getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
-import { findFieldByFQN, normalizeTags } from '../../utils/TableUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -647,61 +646,6 @@ const ContainerPage = () => {
           />
         </Col>
         <GenericProvider<Container>
-          columnDetailPanelConfig={{
-            onColumnFieldUpdate: async (fqn, update) => {
-              if (!containerData?.dataModel) {
-                return undefined;
-              }
-
-              const dataModel = cloneDeep(containerData.dataModel);
-              const columns = cloneDeep(dataModel.columns ?? []);
-
-              // Use recursive utilities to update nested fields
-              if (update.description !== undefined) {
-                updateContainerColumnDescription(
-                  columns,
-                  fqn,
-                  update.description
-                );
-              }
-
-              if (update.tags !== undefined) {
-                // Normalize tags to remove style property from glossary terms
-                const normalizedTags = normalizeTags(update.tags);
-                // Convert TagLabel[] to EntityTags[] for updateContainerColumnTags
-                const entityTags = normalizedTags.map((tag) => ({
-                  ...tag,
-                  isRemovable: true,
-                })) as EntityTags[];
-                updateContainerColumnTags(columns, fqn, entityTags);
-              }
-
-              const updatedContainer: Container = {
-                ...containerData,
-                dataModel: {
-                  ...dataModel,
-                  columns,
-                },
-              };
-
-              const res = await handleUpdateContainerData(updatedContainer);
-
-              // Update state with API response
-              setContainerData((prev) => {
-                if (!prev) {
-                  return prev;
-                }
-
-                return { ...prev, ...res };
-              });
-
-              // Use recursive findFieldByFQN to find nested fields from API response
-              const updatedColumns = res.dataModel?.columns ?? columns;
-              const updatedField = findFieldByFQN<Column>(updatedColumns, fqn);
-
-              return updatedField as unknown as TableColumn;
-            },
-          }}
           customizedPage={customizedPage}
           data={containerData}
           isTabExpanded={isTabExpanded}

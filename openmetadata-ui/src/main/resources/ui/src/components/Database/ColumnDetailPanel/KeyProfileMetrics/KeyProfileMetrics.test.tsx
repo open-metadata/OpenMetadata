@@ -58,11 +58,11 @@ const mockTheme = createTheme({
         900: '#181D27',
       },
     },
-  } as Palette,
-  spacing: 8,
+  } as unknown as Palette,
+  spacing: (value: number) => `${value * 8}px`,
   typography: {
     pxToRem: (px: number) => `${px / 16}rem`,
-  } as TypographyVariantsOptions,
+  } as unknown as TypographyVariantsOptions,
 });
 
 const renderWithTheme = (component: React.ReactElement) => {
