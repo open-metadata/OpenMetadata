@@ -1775,9 +1775,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   return (
     <PageLayoutV1
       className="service-details-page"
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(serviceDetails),
-      })}>
+      pageTitle={getEntityName(serviceDetails)}>
       {isEmpty(serviceDetails) ? (
         <ErrorPlaceHolder className="m-0 h-min-80">
           {getEntityMissingError(serviceCategory as string, decodedServiceFQN)}
