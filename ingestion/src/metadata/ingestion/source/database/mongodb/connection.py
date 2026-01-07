@@ -14,7 +14,6 @@ Source connection handler
 """
 from functools import partial
 from typing import Optional
-from urllib.parse import quote_plus
 
 from pydantic import BaseModel
 from pymongo import MongoClient
@@ -28,10 +27,7 @@ from metadata.generated.schema.entity.services.connections.database.mongoDBConne
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
-from metadata.ingestion.connections.builders import (
-    get_connection_options_dict,
-    get_password_secret,
-)
+from metadata.ingestion.connections.builders import get_connection_url_common
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
@@ -41,34 +37,7 @@ def get_connection(connection: MongoDBConnection):
     """
     Create connection
     """
-    # Build MongoDB connection URL
-    # MongoDB uses databaseName field for the authentication database
-    url = f"{connection.scheme.value}://"
-
-    if connection.username:
-        url += f"{quote_plus(connection.username)}"
-        password = get_password_secret(connection)
-        url += f":{quote_plus(password.get_secret_value())}"
-        url += "@"
-
-    url += connection.hostPort
-
-    # Add database name if provided (this is the authentication database)
-    if connection.databaseName:
-        url += f"/{connection.databaseName}"
-
-    # Add connection options
-    options = get_connection_options_dict(connection)
-    if options:
-        if not connection.databaseName:
-            url += "/"
-        params = "&".join(
-            f"{key}={quote_plus(str(value))}"
-            for (key, value) in options.items()
-            if value
-        )
-        url = f"{url}?{params}"
-
+    mongo_url = get_connection_url_common(connection)
     args = {}
 
     # Check for extended timeout configuration in connectionArguments
@@ -76,7 +45,7 @@ def get_connection(connection: MongoDBConnection):
     if connection.connectionOptions and connection.connectionOptions.root:
         args = connection.connectionOptions.root
 
-    return MongoClient(url, **args)
+    return MongoClient(mongo_url, **args)
 
 
 def test_connection(
@@ -114,7 +83,7 @@ def test_connection(
     test_fn = {
         "CheckAccess": client.server_info,
         "GetDatabases": partial(
-            test_get_databases, client, holder, service_connection.databaseName
+            test_get_databases, client, holder, service_connection.databaseSchema
         ),
         "GetCollections": partial(test_get_collections, client, holder),
     }
