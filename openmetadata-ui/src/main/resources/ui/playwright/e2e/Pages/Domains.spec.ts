@@ -853,6 +853,114 @@ test.describe('Domains', () => {
     }
   });
 
+  test('Verify domain data products count includes subdomain data products', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const domainDataProduct = new DataProduct([domain]);
+
+    let subDomain!: SubDomain;
+    let subDomainDataProduct!: DataProduct;
+
+    try {
+      await test.step('Create domain, subdomain, and data products via API', async () => {
+        await domain.create(apiContext);
+        subDomain = new SubDomain(domain);
+        await subDomain.create(apiContext);
+
+        // Create data product in parent domain
+        await domainDataProduct.create(apiContext);
+
+        // Create data product in subdomain
+        subDomainDataProduct = new DataProduct(
+          [domain],
+          undefined,
+          [subDomain]
+        );
+        await subDomainDataProduct.create(apiContext);
+      });
+
+      await test.step(
+        'Verify domain data products tab shows both domain and subdomain data products',
+        async () => {
+          await page.reload();
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+
+          // Click on Data Products tab
+          await page.getByTestId('data_products').click();
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          // Verify data products count is 2 (one from domain + one from subdomain)
+          const dataProductCountElement = page
+            .getByTestId('data_products')
+            .getByTestId('count');
+          const countText = await dataProductCountElement.textContent();
+          const displayedCount = parseInt(countText ?? '0', 10);
+
+          expect(displayedCount).toBe(2);
+
+          // Verify both data product cards are visible
+          await expect(
+            page.getByText(domainDataProduct.data.displayName)
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomainDataProduct.data.displayName)
+          ).toBeVisible();
+        }
+      );
+
+      await test.step(
+        'Verify subdomain data products tab shows only its own data products',
+        async () => {
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+
+          // Navigate to subdomain
+          await page.getByTestId('subdomains').getByText('Sub Domains').click();
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          await Promise.all([
+            page.getByTestId(subDomain.data.name).click(),
+            page.waitForResponse('/api/v1/domains/name/*'),
+          ]);
+
+          // Click on Data Products tab
+          await page.getByTestId('data_products').click();
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          // Verify data products count is 1 (only subdomain's own data product)
+          const dataProductCountElement = page
+            .getByTestId('data_products')
+            .getByTestId('count');
+          const countText = await dataProductCountElement.textContent();
+          const displayedCount = parseInt(countText ?? '0', 10);
+
+          expect(displayedCount).toBe(1);
+
+          // Verify only subdomain data product card is visible
+          await expect(
+            page.getByText(subDomainDataProduct.data.displayName)
+          ).toBeVisible();
+        }
+      );
+    } finally {
+      await subDomainDataProduct?.delete(apiContext);
+      await domainDataProduct.delete(apiContext);
+      await subDomain?.delete(apiContext);
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
   test('Verify domain tags and glossary terms', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
