@@ -94,6 +94,7 @@ export default function EntitySummaryPanel({
   downstreamDepth,
   pipelineViewMode,
   nodesPerLayer,
+  onEntityUpdate,
 }: EntitySummaryPanelProps) {
   // Fallback when tests mock EntityUtils and omit DRAWER_NAVIGATION_OPTIONS
   const NAV_OPTIONS = DRAWER_NAVIGATION_OPTIONS || {
@@ -143,6 +144,7 @@ export default function EntitySummaryPanel({
   // Memoize the entity fetch map to avoid recreating it on every render
   const entityFetchMap = useMemo(() => {
     const commonFields = 'owners,domains,tags,extension';
+    const domainFields = 'owners,tags,extension';
 
     return {
       [EntityType.TABLE]: (fqn: string) =>
@@ -188,7 +190,7 @@ export default function EntitySummaryPanel({
       [EntityType.DATA_PRODUCT]: (fqn: string) =>
         getDataProductByName(fqn, { fields: commonFields }),
       [EntityType.DOMAIN]: (fqn: string) =>
-        getDomainByName(fqn, { fields: commonFields }),
+        getDomainByName(fqn, { fields: domainFields }),
     } as Record<string, (fqn: string) => Promise<unknown>>;
   }, []);
 
@@ -321,8 +323,12 @@ export default function EntitySummaryPanel({
 
         return newState;
       });
+
+      if (onEntityUpdate) {
+        onEntityUpdate(updatedData);
+      }
     },
-    [entityDetails.details]
+    [entityDetails.details, onEntityUpdate]
   );
 
   const handleOwnerUpdate = useCallback(
@@ -671,7 +677,8 @@ export default function EntitySummaryPanel({
         explore: panelPath === 'explore',
         lineage: panelPath === 'lineage',
         'glossary-term-assets-tab': panelPath === 'glossary-term-assets-tab',
-      })}>
+      })}
+      data-testid="entity-summary-panel-container">
       {isSideDrawer && (
         <div className="d-flex items-center justify-between">
           <EntityTitleSection

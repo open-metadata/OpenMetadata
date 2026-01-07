@@ -44,12 +44,12 @@ public record SubjectContext(User user, String impersonatedBy) {
   public static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile,domains";
 
   public static SubjectContext getSubjectContext(String userName) {
-    User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
+    User user = SubjectCache.getUserContext(userName);
     return new SubjectContext(user, null);
   }
 
   public static SubjectContext getSubjectContext(String userName, String impersonatedBy) {
-    User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
+    User user = SubjectCache.getUserContext(userName);
     return new SubjectContext(user, impersonatedBy);
   }
 
@@ -73,6 +73,28 @@ public record SubjectContext(User user, String impersonatedBy) {
         for (EntityReference userTeam : listOrEmpty(user.getTeams())) {
           if (userTeam.getName().equals(owner.getName())) {
             return true; // Owner is a team, and the user is part of this team.
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  public boolean isReviewer(List<EntityReference> reviewers) {
+    if (nullOrEmpty(reviewers)) {
+      return false;
+    }
+    for (EntityReference reviewer : reviewers) {
+      // Reviewer is the same user
+      if (reviewer.getType().equals(Entity.USER) && reviewer.getName().equals(user.getName())) {
+        return true;
+      }
+
+      // Reviewer is a team and user is a member of that team
+      if (reviewer.getType().equals(Entity.TEAM)) {
+        for (EntityReference userTeam : listOrEmpty(user.getTeams())) {
+          if (userTeam.getName().equals(reviewer.getName())) {
+            return true;
           }
         }
       }

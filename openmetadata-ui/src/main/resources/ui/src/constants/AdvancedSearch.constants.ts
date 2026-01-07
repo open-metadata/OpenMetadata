@@ -331,8 +331,6 @@ export const LIST_VALUE_OPERATORS = ['select_equals', 'select_not_equals'];
 
 export const NULL_CHECK_OPERATORS = ['is_null', 'is_not_null'];
 
-export const MISC_FIELDS = ['owner.displayName', 'tags.tagFQN'];
-
 export const OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY = 'displayName.keyword';
 
 export const NULL_OPTION_KEY = 'OM_NULL_FIELD';

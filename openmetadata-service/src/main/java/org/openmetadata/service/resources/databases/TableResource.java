@@ -226,11 +226,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter =
-        new ListFilter(include)
-            .addQueryParam("database", databaseParam)
-            .addQueryParam("databaseSchema", databaseSchemaParam)
-            .addQueryParam("includeEmptyTestSuite", includeEmptyTestSuite);
+    ListFilter filter = new ListFilter(include);
+    if (databaseParam != null) {
+      filter.addQueryParam("database", databaseParam);
+    }
+    if (databaseSchemaParam != null) {
+      filter.addQueryParam("databaseSchema", databaseSchemaParam);
+    }
+    // Only add includeEmptyTestSuite when it's explicitly false (default is true)
+    if (!includeEmptyTestSuite) {
+      filter.addQueryParam("includeEmptyTestSuite", false);
+    }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }

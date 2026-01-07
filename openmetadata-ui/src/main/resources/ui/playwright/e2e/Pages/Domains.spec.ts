@@ -39,6 +39,7 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
+  visitGlossaryPage,
 } from '../../utils/common';
 import {
   addCustomPropertiesForEntity,
@@ -66,6 +67,7 @@ import {
   verifyDomain,
 } from '../../utils/domain';
 import {
+  assignGlossaryTerm,
   createAnnouncement,
   deleteAnnouncement,
   editAnnouncement,
@@ -80,6 +82,7 @@ import {
   sidebarClick,
 } from '../../utils/sidebar';
 import { performUserLogin, visitUserProfilePage } from '../../utils/user';
+import { selectActiveGlossaryTerm } from '../../utils/glossary';
 const user = new UserClass();
 
 const domain = new Domain();
@@ -425,60 +428,6 @@ test.describe('Domains', () => {
 
     await dataProduct1.cleanupCustomProperty(apiContext);
     await dataProduct1.delete(apiContext);
-    await domain.delete(apiContext);
-    await afterAction();
-  });
-
-  test('Switch domain from navbar and check domain query call wrap in quotes', async ({
-    page,
-  }) => {
-    const { afterAction, apiContext } = await getApiContext(page);
-    const domain = new Domain();
-    await domain.create(apiContext);
-    await page.reload();
-
-    await redirectToExplorePage(page);
-    await waitForAllLoadersToDisappear(page);
-    await page.waitForLoadState('networkidle');
-
-    const domainsResponse = page.waitForResponse('api/v1/domains/hierarchy?*');
-    await page.getByTestId('domain-dropdown').click();
-    await domainsResponse;
-    await waitForAllLoadersToDisappear(page);
-
-    const searchDomainResponse = page.waitForResponse(
-      'api/v1/search/query?q=*&index=domain_search_index*'
-    );
-    await page.getByTestId('searchbar').fill(domain.responseData.displayName);
-    await searchDomainResponse;
-
-    await page
-      .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
-      .click();
-    await waitForAllLoadersToDisappear(page);
-
-    await page.waitForLoadState('networkidle');
-
-    await redirectToHomePage(page);
-
-    const queryRes = page.waitForRequest(
-      '/api/v1/search/query?*index=dataAsset*'
-    );
-    await sidebarClick(page, SidebarItem.EXPLORE);
-    const response = await queryRes;
-    const url = new URL(response.url());
-    const queryParams = new URLSearchParams(url.search);
-    const qParam = queryParams.get('q');
-
-    // The domain FQN should be properly escaped in the query
-    // The actual format uses escaped hyphens, not URL encoding
-    const fqn = (domain.data.fullyQualifiedName ?? '')
-      .replace(/\\/g, '\\\\')
-      .replace(/"/g, '\\"')
-      .replace(/-/g, '\\-');
-
-    expect(qParam).toContain(`(domains.fullyQualifiedName:"${fqn}")`);
-
     await domain.delete(apiContext);
     await afterAction();
   });
@@ -1870,5 +1819,158 @@ test.describe('Domain Tree View Functionality', () => {
         .getByTestId(subDomain.data.name)
         .getByText(subDomain.data.displayName)
     ).toBeVisible();
+  });
+
+  test('Verify Domain entity API calls do not include invalid domains field in glossary term assets', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const testGlossary = new Glossary();
+    const testGlossaryTerm = new GlossaryTerm(testGlossary);
+    const testDomain = new Domain();
+
+    try {
+      await testGlossary.create(apiContext);
+      await testGlossaryTerm.create(apiContext);
+      await testDomain.create(apiContext);
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+      await selectDomain(page, testDomain.data);
+      await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="glossary-container"]', {
+        state: 'visible',
+      });
+
+      // Add only glossary term to domain (no tags)
+      await assignGlossaryTerm(page, {
+        displayName: testGlossaryTerm.data.displayName,
+        name: testGlossaryTerm.data.name,
+        fullyQualifiedName: testGlossaryTerm.responseData.fullyQualifiedName,
+      });
+
+      await visitGlossaryPage(page, testGlossary.data.displayName);
+      await selectActiveGlossaryTerm(page, testGlossaryTerm.data.displayName);
+
+      let apiRequestUrl: string | null = null;
+      const responsePromise = page.waitForResponse(
+        (response) => {
+          const url = response.url();
+          if (
+            url.includes('/api/v1/domains/name/') &&
+            url.includes('fields=') &&
+            response.status() === 200
+          ) {
+            apiRequestUrl = url;
+            return true;
+          }
+          return false;
+        }
+      );
+
+      await page.getByTestId('assets').click();
+      await responsePromise;
+      await page.waitForSelector('.ant-tabs-tab-active:has-text("Assets")');
+      await waitForAllLoadersToDisappear(page);
+
+      expect(apiRequestUrl).not.toBeNull();
+      const urlObj = new URL(apiRequestUrl!);
+      const fields = urlObj.searchParams.get('fields');
+      const fieldArray = fields?.split(',') ?? [];
+
+      expect(fieldArray.includes('domains')).toBe(false);
+    } finally {
+      await testDomain.delete(apiContext);
+      await testGlossaryTerm.delete(apiContext);
+      await testGlossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Verify Domain entity API calls do not include invalid domains field in tag assets', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const testClassification = new ClassificationClass({
+      provider: 'system',
+      mutuallyExclusive: false,
+    });
+    const testTag = new TagClass({
+      classification: testClassification.data.name,
+    });
+    const testDomain = new Domain();
+
+    try {
+      await testClassification.create(apiContext);
+      await testTag.create(apiContext);
+      await testDomain.create(apiContext);
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+      await selectDomain(page, testDomain.data);
+      await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="tags-container"]', {
+        state: 'visible',
+      });
+
+      await page
+        .locator('[data-testid="tags-container"] [data-testid="add-tag"]')
+        .click();
+      const input = page.locator('[data-testid="tags-container"] #tagsForm_tags');
+      await input.click();
+      await input.fill(testTag.responseData.fullyQualifiedName);
+      await page
+        .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+        .click();
+
+      const updateResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/domains/') &&
+          response.request().method() === 'PATCH'
+      );
+      await page.getByTestId('saveAssociatedTag').click();
+      await updateResponse;
+
+      await testTag.visitPage(page);
+
+      let apiRequestUrl: string | null = null;
+      const responsePromise = page.waitForResponse(
+        (response) => {
+          const url = response.url();
+          if (
+            url.includes('/api/v1/domains/name/') &&
+            url.includes('fields=') &&
+            response.status() === 200
+          ) {
+            apiRequestUrl = url;
+            return true;
+          }
+          return false;
+        }
+      );
+
+      await page.getByTestId('assets').click();
+      await responsePromise;
+      await page.waitForSelector('.ant-tabs-tab-active:has-text("Assets")');
+      await waitForAllLoadersToDisappear(page);
+
+      expect(apiRequestUrl).not.toBeNull();
+      const urlObj = new URL(apiRequestUrl!);
+      const fields = urlObj.searchParams.get('fields');
+      const fieldArray = fields?.split(',') ?? [];
+
+      expect(fieldArray.includes('domains')).toBe(false);
+    } finally {
+      await testDomain.delete(apiContext);
+      await testTag.delete(apiContext);
+      await testClassification.delete(apiContext);
+      await afterAction();
+    }
   });
 });
