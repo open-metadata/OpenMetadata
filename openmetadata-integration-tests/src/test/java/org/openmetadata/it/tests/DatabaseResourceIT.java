@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.HashMap;
 import java.util.List;
@@ -19,12 +20,23 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.UpdateType;
 import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
+import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Integration tests for Database entity operations.
@@ -628,6 +640,195 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     // READY - needs SDK endpoint fix
   }
   */
+
+  // ===================================================================
+  // CSV EXPORT/IMPORT TESTS WITH DOT IN SERVICE NAME
+  // Tests for issue #24401
+  // ===================================================================
+
+  /**
+   * Test: CSV export and import with dot in service name.
+   *
+   * <p>This test reproduces issue #24401 where CSV import fails with:
+   * "Invalid character between encapsulated token and delimiter"
+   *
+   * <p>The issue occurs because FQNs with dots are quoted (e.g., "asd.asd"),
+   * and these quotes can conflict with CSV's field encapsulation when not
+   * properly escaped during export.
+   *
+   * @see <a href="https://github.com/open-metadata/OpenMetadata/issues/24401">Issue #24401</a>
+   */
+  @Test
+  void test_csvExportImportWithDotInServiceName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String serviceNameWithDot = ns.prefix("asd.asd");
+
+    PostgresConnection conn =
+        new PostgresConnection().withHostPort("localhost:5432").withUsername("test");
+
+    CreateDatabaseService serviceRequest =
+        new CreateDatabaseService()
+            .withName(serviceNameWithDot)
+            .withServiceType(DatabaseServiceType.Postgres)
+            .withConnection(new DatabaseConnection().withConfig(conn));
+
+    DatabaseService service = client.databaseServices().create(serviceRequest);
+    assertNotNull(service);
+
+    String expectedServiceFqn = FullyQualifiedName.quoteName(serviceNameWithDot);
+    assertEquals(expectedServiceFqn, service.getFullyQualifiedName());
+
+    CreateDatabase dbRequest =
+        new CreateDatabase()
+            .withName(ns.prefix("testdb"))
+            .withService(service.getFullyQualifiedName())
+            .withDescription("Database for CSV export/import test");
+
+    Database database = client.databases().create(dbRequest);
+    assertNotNull(database);
+
+    CreateDatabaseSchema schemaRequest =
+        new CreateDatabaseSchema()
+            .withName(ns.prefix("testschema"))
+            .withDatabase(database.getFullyQualifiedName())
+            .withDescription("Schema for CSV export/import test");
+
+    DatabaseSchema schema = client.databaseSchemas().create(schemaRequest);
+    assertNotNull(schema);
+
+    CreateTable tableRequest =
+        new CreateTable()
+            .withName(ns.prefix("testtable"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription("Table for CSV export/import test")
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("id")
+                        .withDataType(ColumnDataType.INT)
+                        .withDescription("Primary key"),
+                    new Column()
+                        .withName("name")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(100)
+                        .withDescription("Name field")));
+
+    Table table = client.tables().create(tableRequest);
+    assertNotNull(table);
+
+    try {
+      String exportedCsv = client.databases().exportCsv(database.getFullyQualifiedName());
+      assertNotNull(exportedCsv, "CSV export should succeed");
+      assertFalse(exportedCsv.isEmpty(), "Exported CSV should not be empty");
+
+      String importResult =
+          client.databases().importCsv(database.getFullyQualifiedName(), exportedCsv, true);
+      assertNotNull(importResult, "CSV import dry run should succeed");
+
+      assertFalse(
+          importResult.toLowerCase().contains("failure"),
+          "CSV import should not contain failures. Result: " + importResult);
+
+      String actualImportResult =
+          client.databases().importCsv(database.getFullyQualifiedName(), exportedCsv, false);
+      assertNotNull(actualImportResult, "CSV import should succeed");
+
+      assertFalse(
+          actualImportResult.toLowerCase().contains("failure"),
+          "CSV actual import should not contain failures. Result: " + actualImportResult);
+
+    } catch (Exception e) {
+      fail(
+          "CSV export/import failed with dot in service name. "
+              + "This reproduces issue #24401. Error: "
+              + e.getMessage());
+    }
+  }
+
+  /**
+   * Test: Full database hierarchy with dot in service name and verify FQN propagation.
+   *
+   * <p>Creates: "service.name" -> database -> schema -> table
+   * <p>Verifies that FQNs are correctly built with proper quoting throughout the hierarchy.
+   *
+   * @see <a href="https://github.com/open-metadata/OpenMetadata/issues/24401">Issue #24401</a>
+   */
+  @Test
+  void test_hierarchyWithDotInServiceName_fqnPropagation(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String serviceNameWithDot = ns.prefix("snowflake.prod");
+
+    PostgresConnection conn =
+        new PostgresConnection().withHostPort("localhost:5432").withUsername("test");
+
+    CreateDatabaseService serviceRequest =
+        new CreateDatabaseService()
+            .withName(serviceNameWithDot)
+            .withServiceType(DatabaseServiceType.Postgres)
+            .withConnection(new DatabaseConnection().withConfig(conn));
+
+    DatabaseService service = client.databaseServices().create(serviceRequest);
+    assertNotNull(service);
+
+    CreateDatabase dbRequest =
+        new CreateDatabase()
+            .withName(ns.prefix("customers"))
+            .withService(service.getFullyQualifiedName());
+
+    Database database = client.databases().create(dbRequest);
+    assertNotNull(database);
+
+    String expectedDbFqn =
+        FullyQualifiedName.add(service.getFullyQualifiedName(), database.getName());
+    assertEquals(expectedDbFqn, database.getFullyQualifiedName());
+
+    CreateDatabaseSchema schemaRequest =
+        new CreateDatabaseSchema()
+            .withName(ns.prefix("orders"))
+            .withDatabase(database.getFullyQualifiedName());
+
+    DatabaseSchema schema = client.databaseSchemas().create(schemaRequest);
+    assertNotNull(schema);
+
+    String expectedSchemaFqn =
+        FullyQualifiedName.add(database.getFullyQualifiedName(), schema.getName());
+    assertEquals(expectedSchemaFqn, schema.getFullyQualifiedName());
+
+    CreateTable tableRequest =
+        new CreateTable()
+            .withName(ns.prefix("history"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("id")
+                        .withDataType(ColumnDataType.INT)
+                        .withDescription("Primary key")));
+
+    Table table = client.tables().create(tableRequest);
+    assertNotNull(table);
+
+    String expectedTableFqn =
+        FullyQualifiedName.add(schema.getFullyQualifiedName(), table.getName());
+    assertEquals(expectedTableFqn, table.getFullyQualifiedName());
+
+    String[] fqnParts = FullyQualifiedName.split(table.getFullyQualifiedName());
+    assertEquals(4, fqnParts.length);
+    assertEquals(FullyQualifiedName.quoteName(serviceNameWithDot), fqnParts[0]);
+
+    Database fetchedDb = client.databases().getByName(database.getFullyQualifiedName());
+    assertNotNull(fetchedDb);
+    assertEquals(database.getId(), fetchedDb.getId());
+
+    DatabaseSchema fetchedSchema =
+        client.databaseSchemas().getByName(schema.getFullyQualifiedName());
+    assertNotNull(fetchedSchema);
+    assertEquals(schema.getId(), fetchedSchema.getId());
+
+    Table fetchedTable = client.tables().getByName(table.getFullyQualifiedName());
+    assertNotNull(fetchedTable);
+    assertEquals(table.getId(), fetchedTable.getId());
+  }
 
   // ===================================================================
   // RDF TESTS - Run only with -Ppostgres-rdf-tests profile

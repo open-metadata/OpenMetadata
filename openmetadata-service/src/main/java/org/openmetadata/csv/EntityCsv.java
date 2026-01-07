@@ -749,7 +749,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
               .withIgnoreSurroundingSpaces()
               .withQuote('"')
               .withIgnoreEmptyLines() // Ignore empty lines
-              .withEscape('\\') // Handle escaped quotes
               .parse(in);
 
       List<List<String>> fixedRows = new ArrayList<>();
