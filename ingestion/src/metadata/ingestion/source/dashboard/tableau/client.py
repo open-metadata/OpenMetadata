@@ -267,9 +267,7 @@ class TableauClient:
             "Please check if the user has permissions to access the Charts information"
         )
 
-    def test_get_owners(
-        self, include_owners: bool = True
-    ) -> Optional[List[TableauOwner]]:
+    def test_get_owners(self, include_owners: bool = True) -> Optional[TableauOwner]:
         workbook = self.test_get_workbooks()
         owners = self.get_tableau_owner(workbook.owner_id, include_owners)
         if owners is not None:
