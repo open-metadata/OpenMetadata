@@ -158,6 +158,8 @@ import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.audit.AuditLogRecord;
+import org.openmetadata.service.audit.AuditLogRecordMapper;
 import org.openmetadata.service.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
@@ -463,6 +465,10 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   SearchReindexLockDAO searchReindexLockDAO();
+  
+  @CreateSqlObject
+  AuditLogDAO auditLogDAO();
+
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -6147,6 +6153,30 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT count(*) FROM change_event")
     long listCount();
+
+    /** Record holding change event offset and JSON for cursor-based pagination. */
+    record ChangeEventRecord(long offset, String json) {}
+
+    /** Returns change events with their offset values for accurate cursor tracking. */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT `offset`, json FROM change_event WHERE `offset` > :afterOffset ORDER BY `offset` ASC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT \"offset\", json FROM change_event WHERE \"offset\" > :afterOffset ORDER BY \"offset\" ASC LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ChangeEventRecordMapper.class)
+    List<ChangeEventRecord> listWithOffset(
+        @Bind("limit") int limit, @Bind("afterOffset") long afterOffset);
+  }
+
+  class ChangeEventRecordMapper implements RowMapper<ChangeEventDAO.ChangeEventRecord> {
+    @Override
+    public ChangeEventDAO.ChangeEventRecord map(ResultSet rs, StatementContext ctx)
+        throws SQLException {
+      return new ChangeEventDAO.ChangeEventRecord(rs.getLong("offset"), rs.getString("json"));
+    }
   }
 
   class FailedEventResponseMapper implements RowMapper<FailedEventResponse> {
@@ -9544,5 +9574,77 @@ public interface CollectionDAO {
         return System.currentTimeMillis() > expiresAt;
       }
     }
+
+  @RegisterRowMapper(AuditLogRecordMapper.class)
+  interface AuditLogDAO {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO audit_log_event(change_event_id, event_ts, event_type, user_name, "
+                + "actor_type, impersonated_by, service_name, "
+                + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, created_at) "
+                + "VALUES (:changeEventId, :eventTs, :eventType, :userName, "
+                + ":actorType, :impersonatedBy, :serviceName, "
+                + ":entityType, :entityId, :entityFQN, :entityFQNHash, :eventJson, :createdAt) "
+                + "ON CONFLICT (change_event_id) DO NOTHING",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT IGNORE INTO audit_log_event(change_event_id, event_ts, event_type, user_name, "
+                + "actor_type, impersonated_by, service_name, "
+                + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, created_at) "
+                + "VALUES (:changeEventId, :eventTs, :eventType, :userName, "
+                + ":actorType, :impersonatedBy, :serviceName, "
+                + ":entityType, :entityId, :entityFQN, :entityFQNHash, :eventJson, :createdAt)",
+        connectionType = MYSQL)
+    void insert(@BindBean AuditLogRecord record);
+
+    @SqlQuery(
+        "SELECT id, change_event_id, event_ts, event_type, user_name, "
+            + "actor_type, impersonated_by, service_name, "
+            + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, created_at "
+            + "FROM audit_log_event <condition> <orderClause> LIMIT :limit")
+    List<AuditLogRecord> list(
+        @Define("condition") String condition,
+        @Define("orderClause") String orderClause,
+        @Bind("userName") String userName,
+        @Bind("actorType") String actorType,
+        @Bind("serviceName") String serviceName,
+        @Bind("entityType") String entityType,
+        @Bind("entityFQN") String entityFQN,
+        @Bind("entityFQNHASH") String entityFqnHash,
+        @Bind("eventType") String eventType,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs,
+        @Bind("afterEventTs") Long afterEventTs,
+        @Bind("afterId") Long afterId,
+        @Bind("limit") int limit);
+
+    @SqlQuery("SELECT COUNT(id) FROM audit_log_event <condition>")
+    int count(
+        @Define("condition") String condition,
+        @Bind("userName") String userName,
+        @Bind("actorType") String actorType,
+        @Bind("serviceName") String serviceName,
+        @Bind("entityType") String entityType,
+        @Bind("entityFQN") String entityFQN,
+        @Bind("entityFQNHASH") String entityFqnHash,
+        @Bind("eventType") String eventType,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM audit_log_event "
+                + "WHERE created_at < :cutoffTs ORDER BY created_at LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM audit_log_event "
+                + "WHERE ctid IN ( "
+                + "  SELECT ctid FROM audit_log_event "
+                + "  WHERE created_at < :cutoffTs ORDER BY created_at LIMIT :limit "
+                + ")",
+        connectionType = POSTGRES)
+    int deleteInBatches(@Bind("cutoffTs") long cutoffTs, @Bind("limit") int limit);
   }
 }
