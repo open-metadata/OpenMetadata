@@ -85,6 +85,10 @@ jest.mock('./SchemaTablesTab', () => {
   return jest.fn().mockReturnValue(<p>testSchemaTablesTab</p>);
 });
 
+jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
+  GenericTab: jest.fn().mockImplementation(() => <p>testSchemaTablesTab</p>),
+}));
+
 jest.mock('../../pages/StoredProcedure/StoredProcedureTab', () => {
   return jest.fn().mockImplementation(() => <div>testStoredProcedureTab</div>);
 });
@@ -126,6 +130,11 @@ jest.mock('../../utils/RouterUtils', () => ({
 jest.mock('../../utils/TableUtils', () => ({
   getTierTags: jest.fn(),
   getTagsWithoutTier: jest.fn(),
+  extractColumnsFromData: jest.fn().mockReturnValue([]),
+  findFieldByFQN: jest.fn(),
+  normalizeTags: jest.fn().mockImplementation((tags) => tags),
+  updateFieldDescription: jest.fn(),
+  updateFieldTags: jest.fn(),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
@@ -233,6 +242,34 @@ jest.mock('../../hooks/useEntityRules', () => ({
   })),
 }));
 
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericProvider',
+  () => {
+    const React = require('react');
+    return {
+      GenericProvider: jest
+        .fn()
+        .mockImplementation(({ children }) =>
+          React.createElement('div', null, children)
+        ),
+      useGenericContext: jest.fn().mockReturnValue({
+        data: {},
+        permissions: DEFAULT_ENTITY_PERMISSION,
+        layout: [
+          {
+            i: 'Tables.1',
+            x: 0,
+            y: 0,
+            w: 8,
+            h: 10,
+          },
+        ],
+        updateWidgetHeight: jest.fn(),
+      }),
+    };
+  }
+);
+
 describe('Tests for DatabaseSchemaPage', () => {
   it('DatabaseSchemaPage should fetch permissions', () => {
     render(<DatabaseSchemaPageComponent />);
@@ -299,19 +336,22 @@ describe('Tests for DatabaseSchemaPage', () => {
   });
 
   it('DatabaseSchemaPage should render page for ViewBasic permissions', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+    (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
         ViewBasic: true,
-      })),
+      }),
     }));
 
-    await act(async () => {
-      render(<DatabaseSchemaPageComponent />);
-    });
+    render(<DatabaseSchemaPageComponent />);
 
-    expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(mockParams.fqn, {
-      fields: API_FIELDS.join(','),
-      include: 'all',
+    await waitFor(() => {
+      expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
+        mockParams.fqn,
+        {
+          fields: API_FIELDS.join(','),
+          include: 'all',
+        }
+      );
     });
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
@@ -320,19 +360,22 @@ describe('Tests for DatabaseSchemaPage', () => {
   });
 
   it('DatabaseSchemaPage should render tables by default', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+    (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
         ViewBasic: true,
-      })),
+      }),
     }));
 
-    await act(async () => {
-      render(<DatabaseSchemaPageComponent />);
-    });
+    render(<DatabaseSchemaPageComponent />);
 
-    expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(mockParams.fqn, {
-      fields: API_FIELDS.join(','),
-      include: 'all',
+    await waitFor(() => {
+      expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
+        mockParams.fqn,
+        {
+          fields: API_FIELDS.join(','),
+          include: 'all',
+        }
+      );
     });
 
     expect(await screen.findByText('testSchemaTablesTab')).toBeInTheDocument();

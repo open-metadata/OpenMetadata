@@ -594,17 +594,17 @@ describe('ColumnDetailPanel', () => {
     });
 
     it('should not show loader for glossary terms section when updating glossary terms', async () => {
-      const updateColumnTags = jest.fn().mockResolvedValue(mockColumn);
+      const onColumnUpdate = jest.fn();
 
       const { getByTestId } = render(
-        <ColumnDetailPanel {...mockProps} updateColumnTags={updateColumnTags} />
+        <ColumnDetailPanel {...mockProps} onColumnUpdate={onColumnUpdate} />
       );
 
       const updateButton = getByTestId('update-glossary-terms');
       fireEvent.click(updateButton);
 
       await waitFor(() => {
-        expect(updateColumnTags).toHaveBeenCalled();
+        expect(onColumnUpdate).toHaveBeenCalled();
       });
 
       expect(getByTestId('description-section')).toBeInTheDocument();
