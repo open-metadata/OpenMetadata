@@ -239,6 +239,11 @@ export const getQueryFilterToExcludeDomainTerms = (
   };
 };
 
+/**
+ * Returns an Elasticsearch query filter for fetching assets belonging to a domain,
+ * excluding DataProduct entities. Use this for general domain asset listings.
+ * @param domainFqn - The fully qualified name of the domain
+ */
 export const getQueryFilterForDomain = (domainFqn: string) => ({
   query: {
     bool: {
@@ -271,6 +276,11 @@ export const getQueryFilterForDomain = (domainFqn: string) => ({
   },
 });
 
+/**
+ * Returns an Elasticsearch query filter for fetching DataProduct entities within a domain.
+ * Unlike getQueryFilterForDomain, this does not exclude any entity types.
+ * @param domainFqn - The fully qualified name of the domain
+ */
 export const getQueryFilterForDataProducts = (domainFqn: string) => ({
   query: {
     bool: {
