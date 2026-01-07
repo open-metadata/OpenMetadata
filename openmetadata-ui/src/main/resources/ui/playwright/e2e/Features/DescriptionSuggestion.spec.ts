@@ -78,7 +78,7 @@ test.describe.serial('Description Suggestions Table Entity', () => {
       // All Column Suggestions Card should be visible
       await expect(
         page.getByTestId('suggested-SuggestDescription-card')
-      ).toHaveCount(8);
+      ).toHaveCount(table.entityLinkColumnsName.length);
 
       // Close the suggestions
       await page.getByTestId('close-suggestion').click();
@@ -112,7 +112,8 @@ test.describe.serial('Description Suggestions Table Entity', () => {
         state: 'detached',
       });
 
-      await expect(page.locator('.ant-badge [title="7"]')).toBeVisible();
+      // since we accepted one suggestion, the badge count should be total-1
+      await expect(page.locator(`.ant-badge [title="${table.entityLinkColumnsName.length - 1}"]`)).toBeVisible();
 
       await expect(
         page.locator(
@@ -147,7 +148,8 @@ test.describe.serial('Description Suggestions Table Entity', () => {
         state: 'detached',
       });
 
-      await expect(page.locator('.ant-badge [title="6"]')).toBeVisible();
+      // since we accepted two suggestions, the badge count should be total-2
+      await expect(page.locator(`.ant-badge [title="${table.entityLinkColumnsName.length - 2}"]`)).toBeVisible();
 
       await expect(
         page.locator(
@@ -176,7 +178,8 @@ test.describe.serial('Description Suggestions Table Entity', () => {
 
       await singleResolveResponse;
 
-      await expect(page.locator('.ant-badge [title="5"]')).toBeVisible();
+      // since we accepted two suggestions and rejected one, the badge count should be total-3
+      await expect(page.locator(`.ant-badge [title="${table.entityLinkColumnsName.length - 3}"]`)).toBeVisible();
 
       await expect(
         page.locator(
