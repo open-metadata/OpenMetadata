@@ -284,21 +284,15 @@ export const getQueryFilterForDomain = (domainFqn: string) => ({
 export const getQueryFilterForDataProducts = (domainFqn: string) => ({
   query: {
     bool: {
-      must: [
+      should: [
         {
-          bool: {
-            should: [
-              {
-                term: {
-                  'domains.fullyQualifiedName': domainFqn,
-                },
-              },
-              {
-                prefix: {
-                  'domains.fullyQualifiedName': `${domainFqn}.`,
-                },
-              },
-            ],
+          term: {
+            'domains.fullyQualifiedName': domainFqn,
+          },
+        },
+        {
+          prefix: {
+            'domains.fullyQualifiedName': `${domainFqn}.`,
           },
         },
       ],
