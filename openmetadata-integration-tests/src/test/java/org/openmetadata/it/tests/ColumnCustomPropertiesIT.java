@@ -668,6 +668,85 @@ public class ColumnCustomPropertiesIT {
   }
 
   // ========================================================================
+  // TRANSFORMATION TESTS
+  // ========================================================================
+
+  @Test
+  void test_tableColumn_enumSortingTransformation(TestNamespace ns) throws Exception {
+    String propName = ns.prefix("enumSortTest");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      EnumConfig enumConfig = new EnumConfig();
+      enumConfig.setValues(List.of("CRITICAL", "HIGH", "MEDIUM", "LOW"));
+      enumConfig.setMultiSelect(true);
+      CustomPropertyConfig config = new CustomPropertyConfig();
+      config.setConfig(enumConfig);
+
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, ENUM_TYPE, config);
+
+      Table table = createTestTable(ns);
+      String columnFQN = table.getFullyQualifiedName() + ".id";
+
+      Map<String, Object> extension = new HashMap<>();
+      extension.put(propName, List.of("LOW", "CRITICAL", "MEDIUM"));
+
+      Column updated = updateColumn(client, columnFQN, "table", extension);
+
+      assertNotNull(updated.getExtension());
+      @SuppressWarnings("unchecked")
+      Map<String, Object> resultExt = (Map<String, Object>) updated.getExtension();
+      @SuppressWarnings("unchecked")
+      List<String> enumValues = (List<String>) resultExt.get(propName);
+      assertEquals(3, enumValues.size());
+      assertEquals(
+          List.of("CRITICAL", "LOW", "MEDIUM"),
+          enumValues,
+          "Enum values should be sorted alphabetically");
+
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_dashboardColumn_enumSortingTransformation(TestNamespace ns) throws Exception {
+    String propName = ns.prefix("dashEnumSort");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      EnumConfig enumConfig = new EnumConfig();
+      enumConfig.setValues(List.of("A", "B", "C", "D"));
+      enumConfig.setMultiSelect(true);
+      CustomPropertyConfig config = new CustomPropertyConfig();
+      config.setConfig(enumConfig);
+
+      addCustomPropertyToColumnType(
+          client, DASHBOARD_DATA_MODEL_COLUMN, propName, ENUM_TYPE, config);
+
+      DashboardDataModel dataModel = createTestDashboardDataModel(ns);
+      String columnFQN = dataModel.getFullyQualifiedName() + ".metric1";
+
+      Map<String, Object> extension = new HashMap<>();
+      extension.put(propName, List.of("D", "B", "A"));
+
+      Column updated = updateColumn(client, columnFQN, "dashboardDataModel", extension);
+
+      assertNotNull(updated.getExtension());
+      @SuppressWarnings("unchecked")
+      Map<String, Object> resultExt = (Map<String, Object>) updated.getExtension();
+      @SuppressWarnings("unchecked")
+      List<String> enumValues = (List<String>) resultExt.get(propName);
+      assertEquals(3, enumValues.size());
+      assertEquals(
+          List.of("A", "B", "D"), enumValues, "Enum values should be sorted alphabetically");
+
+    } finally {
+      deleteCustomPropertyFromColumnType(client, DASHBOARD_DATA_MODEL_COLUMN, propName);
+    }
+  }
+
+  // ========================================================================
   // VALIDATION TESTS
   // ========================================================================
 

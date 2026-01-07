@@ -133,7 +133,6 @@ import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import lombok.Getter;
 import lombok.NonNull;
@@ -2443,31 +2442,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.entityExtensionTimeSeriesDao().deleteBeforeTimestamp(fqn, extension, timestamp);
   }
 
-  private void validateExtension(T entity, Entry<String, JsonNode> field) {
-    if (entity.getExtension() == null) {
-      return;
-    }
-
-    // Validate single extension field
-    JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
-    String fieldName = field.getKey();
-    JsonNode fieldValue = field.getValue();
-
-    JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
-    if (jsonSchema == null) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
-    }
-    String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
-    String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
-    validateAndUpdateExtensionBasedOnPropertyType(
-        entity, (ObjectNode) jsonNode, fieldName, fieldValue, customPropertyType, propertyConfig);
-    Set<ValidationMessage> validationMessages = jsonSchema.validate(fieldValue);
-    if (!validationMessages.isEmpty()) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
-    }
-  }
-
   /**
    * Public utility method to validate custom properties extension for any entity type.
    * This method can be used by other repositories that need to validate extensions
@@ -2501,62 +2475,63 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  public static Object validateAndTransformExtension(Object extension, String entityTypeName) {
+    if (extension == null) {
+      return null;
+    }
+
+    // Validate custom properties existence and schema compliance
+    validateExtension(extension, entityTypeName);
+
+    // Apply property type-specific transformations (date formatting, enum sorting, etc.)
+    ObjectNode jsonNode = (ObjectNode) JsonUtils.valueToTree(extension);
+    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
+
+    while (customFields.hasNext()) {
+      Entry<String, JsonNode> entry = customFields.next();
+      String fieldName = entry.getKey();
+      JsonNode fieldValue = entry.getValue();
+
+      String customPropertyType = TypeRegistry.getCustomPropertyType(entityTypeName, fieldName);
+      String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityTypeName, fieldName);
+
+      switch (customPropertyType) {
+        case "date-cp", "dateTime-cp", "time-cp" -> {
+          String formattedValue =
+              getFormattedDateTimeField(
+                  fieldValue.textValue(), customPropertyType, propertyConfig, fieldName);
+          jsonNode.put(fieldName, formattedValue);
+          fieldValue = jsonNode.get(fieldName);
+        }
+        case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
+        case "enum" -> {
+          validateEnumKeys(fieldName, fieldValue, propertyConfig);
+          List<String> enumValues =
+              StreamSupport.stream(fieldValue.spliterator(), false)
+                  .map(JsonNode::asText)
+                  .sorted()
+                  .collect(Collectors.toList());
+          jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
+          fieldValue = jsonNode.get(fieldName);
+        }
+        default -> {}
+      }
+    }
+
+    return JsonUtils.treeToValue(jsonNode, Object.class);
+  }
+
   private void validateExtension(T entity, boolean update) {
     // Validate complete extension field only on POST
     if (entity.getExtension() == null || update) {
       return;
     }
 
-    // Validate custom properties existence and schema compliance
-    validateExtension(entity.getExtension(), entityType);
-
-    // Apply property type-specific transformations (date formatting, enum sorting, etc.)
-    JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
-    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
-    while (customFields.hasNext()) {
-      Entry<String, JsonNode> entry = customFields.next();
-      String fieldName = entry.getKey();
-      JsonNode fieldValue = entry.getValue();
-
-      String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
-      String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
-
-      validateAndUpdateExtensionBasedOnPropertyType(
-          entity, (ObjectNode) jsonNode, fieldName, fieldValue, customPropertyType, propertyConfig);
-    }
+    Object transformedExtension = validateAndTransformExtension(entity.getExtension(), entityType);
+    entity.setExtension(transformedExtension);
   }
 
-  private void validateAndUpdateExtensionBasedOnPropertyType(
-      T entity,
-      ObjectNode jsonNode,
-      String fieldName,
-      JsonNode fieldValue,
-      String customPropertyType,
-      String propertyConfig) {
-
-    switch (customPropertyType) {
-      case "date-cp", "dateTime-cp", "time-cp" -> {
-        String formattedValue =
-            getFormattedDateTimeField(
-                fieldValue.textValue(), customPropertyType, propertyConfig, fieldName);
-        jsonNode.put(fieldName, formattedValue);
-      }
-      case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
-      case "enum" -> {
-        validateEnumKeys(fieldName, fieldValue, propertyConfig);
-        List<String> enumValues =
-            StreamSupport.stream(fieldValue.spliterator(), false)
-                .map(JsonNode::asText)
-                .sorted()
-                .collect(Collectors.toList());
-        jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
-        entity.setExtension(jsonNode);
-      }
-      default -> {}
-    }
-  }
-
-  private String getFormattedDateTimeField(
+  private static String getFormattedDateTimeField(
       String fieldValue, String customPropertyType, String propertyConfig, String fieldName) {
     DateTimeFormatter formatter;
 
@@ -2589,7 +2564,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void validateTableType(JsonNode fieldValue, String propertyConfig, String fieldName) {
+  private static void validateTableType(
+      JsonNode fieldValue, String propertyConfig, String fieldName) {
     TableConfig tableConfig =
         JsonUtils.convertValue(JsonUtils.readTree(propertyConfig), TableConfig.class);
     org.openmetadata.schema.type.customProperties.Table tableValue =
@@ -4543,11 +4519,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
 
-      if (!consolidatingChanges) {
-        for (JsonNode node :
-            Stream.of(addedFields, updatedFields, deletedFields).flatMap(List::stream).toList()) {
-          node.fields().forEachRemaining(field -> validateExtension(updated, field));
-        }
+      if (!consolidatingChanges && updatedExtension != null) {
+        Object transformedExtension = validateAndTransformExtension(updatedExtension, entityType);
+        updated.setExtension(transformedExtension);
       }
       if (!addedFields.isEmpty()) {
         fieldAdded(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(addedFields));

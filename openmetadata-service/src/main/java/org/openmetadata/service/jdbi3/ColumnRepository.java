@@ -206,8 +206,9 @@ public class ColumnRepository {
     Optional.ofNullable(updateColumn.getExtension())
         .ifPresent(
             ext -> {
-              EntityRepository.validateExtension(ext, columnEntityType);
-              column.setExtension(ext);
+              Object transformedExtension =
+                  EntityRepository.validateAndTransformExtension(ext, columnEntityType);
+              column.setExtension(transformedExtension);
             });
   }
 
