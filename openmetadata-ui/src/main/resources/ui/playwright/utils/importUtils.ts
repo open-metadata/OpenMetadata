@@ -77,7 +77,9 @@ export const fillDescriptionDetails = async (
 
   await page.click('[data-testid="save"]');
 
-  await expect(page.locator(RDG_ACTIVE_CELL_SELECTOR)).not.toContainText('<p>');
+  await page.waitForSelector('[data-testid="markdown-editor"]', {
+    state: 'detached',
+  });
 };
 
 export const fillOwnerDetails = async (page: Page, owners: string[]) => {
@@ -128,6 +130,7 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
     .locator('[id^="rc-tabs-"][id$="-panel-users"]')
     .getByTestId('selectable-list-update-btn')
     .click();
+
   await page.waitForSelector('[data-testid="selectable-list-update-btn"]', {
     state: 'detached',
   });
@@ -191,6 +194,7 @@ export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
   await page.getByTestId('entity-type-select').click();
   await page.getByTitle(entityType, { exact: true }).nth(0).click();
   await page.getByTestId('inline-save-btn').click();
+
   await page.waitForSelector('[data-testid="inline-save-btn"]', {
     state: 'detached',
   });
@@ -207,6 +211,7 @@ export const fillTagDetails = async (page: Page, tag: string) => {
   await waitForQueryResponse;
   await page.click(`[data-testid="tag-${tag}"]`);
   await page.click('[data-testid="inline-save-btn"]');
+
   await page.waitForSelector('[data-testid="inline-save-btn"]', {
     state: 'detached',
   });
@@ -229,6 +234,7 @@ export const fillGlossaryTermDetails = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId(`tag-"${glossary.parent}"."${glossary.name}"`).click();
   await page.click('[data-testid="saveAssociatedTag"]');
+
   await page.waitForSelector('[data-testid="saveAssociatedTag"]', {
     state: 'detached',
   });
@@ -258,6 +264,7 @@ export const fillDomainDetails = async (
   await page.getByTestId(`tag-${domains.fullyQualifiedName}`).click();
 
   await page.getByTestId('saveAssociatedTag').click();
+
   await page.waitForSelector('[data-testid="saveAssociatedTag"]', {
     state: 'detached',
   });
@@ -275,6 +282,10 @@ export const fillStoredProcedureCode = async (page: Page) => {
     .fill(BULK_IMPORT_EXPORT_SQL_QUERY);
 
   await page.getByTestId('save').click();
+
+  await page.waitForSelector('[data-testid="schema-modal"]', {
+    state: 'detached',
+  });
 };
 
 const editGlossaryCustomProperty = async (
@@ -375,9 +386,9 @@ export const fillCustomPropertyDetails = async (
 
   await page.getByTestId('save').click();
 
-  await expect(page.locator('.ant-modal-wrap')).not.toBeVisible();
-
-  await page.click(RDG_ACTIVE_CELL_SELECTOR);
+  await page.waitForSelector('[data-testid="custom-property-editor"]', {
+    state: 'detached',
+  });
 };
 
 export const fillExtensionDetails = async (
@@ -415,8 +426,6 @@ export const fillExtensionDetails = async (
   await page.waitForSelector('[data-testid="custom-property-editor"]', {
     state: 'detached',
   });
-
-  await page.click(RDG_ACTIVE_CELL_SELECTOR);
 };
 
 export const fillGlossaryRowDetails = async (
