@@ -1063,6 +1063,7 @@ export const performDeleteOperationOnEntity = async (page: Page) => {
   await page.keyboard.press('ArrowRight', { delay: 100 });
 
   await page.keyboard.press('Backspace');
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   // Owner Remove
   await page.keyboard.press('ArrowRight', { delay: 100 });
