@@ -85,7 +85,7 @@ import {
   getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
-import { findFieldByFQN } from '../../utils/TableUtils';
+import { findFieldByFQN, normalizeTags } from '../../utils/TableUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -656,17 +656,54 @@ const ContainerPage = () => {
                 } as unknown as TableColumn)
             ),
             onColumnsChange: async (updatedColumns) => {
+              // Use functional update to get the latest containerData state
+              // This prevents duplicate PATCH calls with stale data
+              let currentContainerData: Container | undefined;
+              setContainerData((prev) => {
+                currentContainerData = prev;
+
+                return prev;
+              });
+
+              if (!currentContainerData?.dataModel) {
+                return;
+              }
+
               const updatedContainer: Container = {
-                ...containerData,
-                dataModel: containerData?.dataModel
-                  ? {
-                      ...containerData.dataModel,
-                      columns: updatedColumns as unknown as Column[],
-                    }
-                  : undefined,
+                ...currentContainerData,
+                dataModel: {
+                  ...currentContainerData.dataModel,
+                  columns: updatedColumns as unknown as Column[],
+                },
               };
 
-              await handleContainerUpdate(updatedContainer);
+              // Generate patch using current state, not stale closure data
+              const jsonPatch = compare(
+                omitBy(currentContainerData, isUndefined),
+                updatedContainer
+              );
+
+              // Only make the API call if there are actual changes
+              // This prevents unnecessary PATCH calls when tags are already cleared
+              if (jsonPatch.length > 0) {
+                try {
+                  const res = await patchContainerDetails(
+                    currentContainerData.id ?? '',
+                    jsonPatch
+                  );
+
+                  // Update state with API response
+                  setContainerData((prev) => {
+                    if (!prev) {
+                      return prev;
+                    }
+
+                    return { ...prev, ...res };
+                  });
+                } catch (error) {
+                  showErrorToast(error as AxiosError);
+                }
+              }
             },
             onColumnFieldUpdate: async (fqn, update) => {
               if (!containerData?.dataModel) {
@@ -686,8 +723,10 @@ const ContainerPage = () => {
               }
 
               if (update.tags !== undefined) {
+                // Normalize tags to remove style property from glossary terms
+                const normalizedTags = normalizeTags(update.tags);
                 // Convert TagLabel[] to EntityTags[] for updateContainerColumnTags
-                const entityTags = update.tags.map((tag) => ({
+                const entityTags = normalizedTags.map((tag) => ({
                   ...tag,
                   isRemovable: true,
                 })) as EntityTags[];

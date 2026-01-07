@@ -53,7 +53,11 @@ import {
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import {
+  getTagsWithoutTier,
+  getTierTags,
+  normalizeTags,
+} from '../../../utils/TableUtils';
 import {
   updateCertificationTag,
   updateTierTag,
@@ -464,7 +468,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                     ...(update.description !== undefined && {
                       description: update.description,
                     }),
-                    ...(update.tags !== undefined && { tags: update.tags }),
+                    ...(update.tags !== undefined && {
+                      tags: normalizeTags(update.tags),
+                    }),
                   };
                 }
 

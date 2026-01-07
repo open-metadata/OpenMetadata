@@ -42,7 +42,10 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { ColumnDetailPanel } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
-import { ColumnOrTask } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.interface';
+import {
+  ColumnFieldUpdate,
+  ColumnOrTask,
+} from '../../Database/ColumnDetailPanel/ColumnDetailPanel.interface';
 import {
   GenericContextType,
   GenericProviderProps,
@@ -168,6 +171,31 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       setSelectedColumn(cleanColumn as ColumnOrTask);
     },
     [columnDetailPanelConfig]
+  );
+
+  // Wrapper for onColumnFieldUpdate that updates selectedColumn after the update completes
+  const handleColumnFieldUpdate = useCallback(
+    async (fqn: string, update: ColumnFieldUpdate) => {
+      if (!columnDetailPanelConfig?.onColumnFieldUpdate) {
+        return undefined;
+      }
+
+      const updatedColumn = await columnDetailPanelConfig.onColumnFieldUpdate(
+        fqn,
+        update
+      );
+
+      // Update selectedColumn with the returned updated column to reflect changes immediately
+      if (updatedColumn && selectedColumn?.fullyQualifiedName === fqn) {
+        const cleanColumn = isEmpty((updatedColumn as Column).children)
+          ? omit(updatedColumn, 'children')
+          : updatedColumn;
+        setSelectedColumn(cleanColumn as ColumnOrTask);
+      }
+
+      return updatedColumn;
+    },
+    [columnDetailPanelConfig, selectedColumn]
   );
 
   const handleColumnNavigate = useCallback((column: ColumnOrTask) => {
@@ -313,7 +341,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
           }
           tableFqn={data.fullyQualifiedName}
           onClose={closeColumnDetailPanel}
-          onColumnFieldUpdate={columnDetailPanelConfig.onColumnFieldUpdate}
+          onColumnFieldUpdate={handleColumnFieldUpdate}
           onColumnUpdate={handleColumnUpdate}
           onNavigate={handleColumnNavigate}
         />

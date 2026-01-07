@@ -35,6 +35,7 @@ import {
   getDataTypeDisplay,
   mergeGlossaryWithTags,
   mergeTagsWithGlossary,
+  normalizeTags,
 } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import DataQualitySection from '../../common/DataQualitySection/DataQualitySection';
@@ -245,7 +246,9 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           })
         );
 
-        if (onColumnUpdate && response) {
+        // Only call onColumnUpdate if onColumnFieldUpdate is not used
+        // onColumnFieldUpdate already handles state updates in the parent
+        if (onColumnUpdate && response && !onColumnFieldUpdate) {
           onColumnUpdate(response);
         }
       } catch (error) {
@@ -269,7 +272,24 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       }
 
       try {
-        const allTags = mergeTagsWithGlossary(column.tags, updatedTags);
+        // When clearing classification tags (updatedTags is empty), preserve glossary terms and tier tags
+        // When updating tags, merge with existing glossary tags to preserve them
+        // Normalize tags to ensure consistent format and prevent backend patch index errors
+        const allTags =
+          updatedTags.length === 0
+            ? // Clear all classification tags but preserve glossary terms and tier tags
+              normalizeTags(
+                (column.tags ?? []).filter(
+                  (tag) =>
+                    tag.source === TagSource.Glossary ||
+                    (tag.tagFQN?.startsWith('Tier.') ?? false)
+                )
+              )
+            : // Merge updated classification tags with existing glossary tags
+              normalizeTags(
+                (mergeTagsWithGlossary(column.tags, updatedTags) ??
+                  []) as TagLabel[]
+              );
 
         let response: T | undefined;
 
@@ -294,7 +314,9 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           })
         );
 
-        if (onColumnUpdate && response) {
+        // Only call onColumnUpdate if onColumnFieldUpdate is not used
+        // onColumnFieldUpdate already handles state updates in the parent
+        if (onColumnUpdate && response && !onColumnFieldUpdate) {
           onColumnUpdate(response);
         }
 
@@ -320,10 +342,20 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       }
 
       try {
-        const allTags = mergeGlossaryWithTags(
-          column.tags,
-          updatedGlossaryTerms
-        );
+        // If updatedGlossaryTerms is empty, respect the clear operation and don't merge with existing tags
+        // Otherwise, merge with existing non-glossary tags to preserve them
+        // Normalize tags to ensure consistent format and prevent backend patch index errors
+        const allTags =
+          updatedGlossaryTerms.length === 0
+            ? normalizeTags(
+                column.tags?.filter(
+                  (tag) => tag.source !== TagSource.Glossary
+                ) || []
+              )
+            : normalizeTags(
+                (mergeGlossaryWithTags(column.tags, updatedGlossaryTerms) ??
+                  []) as TagLabel[]
+              );
 
         let response: T | undefined;
 
@@ -348,7 +380,9 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           })
         );
 
-        if (onColumnUpdate && response) {
+        // Only call onColumnUpdate if onColumnFieldUpdate is not used
+        // onColumnFieldUpdate already handles state updates in the parent
+        if (onColumnUpdate && response && !onColumnFieldUpdate) {
           onColumnUpdate(response);
         }
 

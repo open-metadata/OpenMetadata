@@ -45,6 +45,7 @@ import {
   findFieldByFQN,
   getTagsWithoutTier,
   getTierTags,
+  normalizeTags,
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
@@ -391,8 +392,10 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
               }
 
               if (update.tags !== undefined) {
+                // Normalize tags to remove style property from glossary terms
+                const normalizedTags = normalizeTags(update.tags);
                 // Convert TagLabel[] to EntityTags[] for updateFieldTags
-                const entityTags = update.tags.map((tag) => ({
+                const entityTags = normalizedTags.map((tag) => ({
                   ...tag,
                   isRemovable: true,
                 })) as EntityTags[];

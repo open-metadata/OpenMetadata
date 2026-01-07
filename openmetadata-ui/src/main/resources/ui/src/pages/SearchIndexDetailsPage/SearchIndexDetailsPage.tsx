@@ -78,6 +78,7 @@ import {
   findFieldByFQN,
   getTagsWithoutTier,
   getTierTags,
+  normalizeTags,
   updateFieldDescription,
   updateFieldTags,
 } from '../../utils/TableUtils';
@@ -628,25 +629,55 @@ function SearchIndexDetailsPage() {
                 ({ ...field, tags: field.tags ?? [] } as unknown as Column)
             ),
             onColumnsChange: async (updatedColumns) => {
+              // Use functional update to get the latest searchIndexDetails state
+              // This prevents duplicate PATCH calls with stale data
+              let currentSearchIndexDetails: SearchIndex | undefined;
+              setSearchIndexDetails((prev) => {
+                currentSearchIndexDetails = prev;
+
+                return prev;
+              });
+
+              if (!currentSearchIndexDetails) {
+                return;
+              }
+
               const updatedSearchIndex = {
-                ...searchIndexDetails,
+                ...currentSearchIndexDetails,
                 fields: updatedColumns as unknown as SearchIndexField[],
               };
-              const res = await saveUpdatedSearchIndexData(updatedSearchIndex);
 
-              setSearchIndexDetails((previous) => {
-                if (!previous) {
-                  return;
+              // Generate patch using current state, not stale closure data
+              const jsonPatch = compare(
+                omitBy(currentSearchIndexDetails, isUndefined),
+                updatedSearchIndex
+              );
+
+              // Only make the API call if there are actual changes
+              // This prevents unnecessary PATCH calls when tags are already cleared
+              if (jsonPatch.length > 0) {
+                try {
+                  const res = await patchSearchIndexDetails(
+                    searchIndexId,
+                    jsonPatch
+                  );
+
+                  // Update state with API response
+                  setSearchIndexDetails((previous) => {
+                    if (!previous) {
+                      return previous;
+                    }
+
+                    return {
+                      ...previous,
+                      ...res,
+                      fields: res.fields ?? previous.fields,
+                    };
+                  });
+                } catch (error) {
+                  showErrorToast(error as AxiosError);
                 }
-
-                return {
-                  ...previous,
-                  ...res,
-                  fields:
-                    res.fields ??
-                    (updatedColumns as unknown as SearchIndexField[]),
-                };
-              });
+              }
             },
             onColumnFieldUpdate: async (fqn, update) => {
               const fields = cloneDeep(searchIndexDetails.fields ?? []);
@@ -661,8 +692,10 @@ function SearchIndexDetailsPage() {
               }
 
               if (update.tags !== undefined) {
+                // Normalize tags to remove style property from glossary terms
+                const normalizedTags = normalizeTags(update.tags);
                 // Convert TagLabel[] to EntityTags[] for updateFieldTags
-                const entityTags = update.tags.map((tag) => ({
+                const entityTags = normalizedTags.map((tag) => ({
                   ...tag,
                   isRemovable: true,
                 })) as EntityTags[];

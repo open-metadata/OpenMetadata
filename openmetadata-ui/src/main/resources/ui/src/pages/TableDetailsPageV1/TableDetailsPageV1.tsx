@@ -855,12 +855,49 @@ const TableDetailsPageV1: React.FC = () => {
             (column) => ({ ...column, tags: column.tags ?? [] } as Column)
           ),
           onColumnsChange: async (updatedColumns) => {
+            // Use functional update to get the latest tableDetails state
+            // This prevents duplicate PATCH calls with stale data
+            let currentTableDetails: Table | undefined;
+            setTableDetails((prev) => {
+              currentTableDetails = prev;
+
+              return prev;
+            });
+
+            if (!currentTableDetails) {
+              return;
+            }
+
             const updatedTable: Table = {
-              ...tableDetails,
+              ...currentTableDetails,
               columns: updatedColumns as Column[],
             };
 
-            await onTableUpdate(updatedTable);
+            // Generate patch using current state, not stale closure data
+            const jsonPatch = compare(currentTableDetails, updatedTable);
+
+            // Only make the API call if there are actual changes
+            // This prevents unnecessary PATCH calls when tags are already cleared
+            if (jsonPatch.length > 0) {
+              try {
+                const res = await patchTableDetails(tableId, jsonPatch);
+
+                // Update state with API response
+                setTableDetails((previous) => {
+                  if (!previous) {
+                    return previous;
+                  }
+
+                  return {
+                    ...previous,
+                    ...res,
+                    columns: res.columns ?? previous.columns,
+                  };
+                });
+              } catch (error) {
+                showErrorToast(error as AxiosError);
+              }
+            }
           },
           onColumnFieldUpdate: async (fqn, update) => {
             // For Table, we update columns via API directly
@@ -871,9 +908,65 @@ const TableDetailsPageV1: React.FC = () => {
             }
 
             if (update.tags !== undefined) {
-              // Tags are already normalized in mergeTagsWithGlossary, so we can use them directly
-              // However, we normalize again here as a safety measure in case tags come from other sources
-              columnUpdate.tags = normalizeTags(update.tags);
+              // Normalize tags to remove style property from glossary terms
+              // This prevents backend JSON patch errors when trying to remove non-existent style properties
+              const normalizedTags = normalizeTags(update.tags);
+
+              // When clearing all tags (empty array), the backend's JSON patch generation
+              // tries to remove tags by index which causes "array item index is out of range" errors.
+              // Workaround: Use table-level update instead of column-level update when clearing all tags
+              // to avoid the backend's problematic patch generation for empty arrays.
+              // The table-level update uses fast-json-patch which generates a "replace" operation
+              // instead of multiple "remove" operations, avoiding the index error.
+              if (normalizedTags.length === 0 && tableDetails) {
+                // Update via table-level PATCH to avoid index errors
+                const columns = cloneDeep(tableDetails.columns ?? []);
+                const updatedColumn = findFieldByFQN<Column>(columns, fqn);
+                if (updatedColumn) {
+                  updatedColumn.tags = [];
+                }
+
+                const updatedTable: Table = {
+                  ...tableDetails,
+                  columns: pruneEmptyChildren(columns),
+                };
+
+                // Use saveUpdatedTableData directly with current tableDetails to generate patch
+                // This ensures we're comparing against the current state, not stale closure data
+                const currentTableDetails = tableDetails;
+                const jsonPatch = compare(currentTableDetails, updatedTable);
+                const res = await patchTableDetails(tableId, jsonPatch);
+
+                // Update state with the response to ensure consistency
+                // This prevents subsequent updates from using stale data
+                setTableDetails((previous) => {
+                  if (!previous) {
+                    return previous;
+                  }
+
+                  const updatedState = {
+                    ...previous,
+                    ...res,
+                    columns: res.columns ?? previous.columns,
+                  };
+
+                  return updatedState;
+                });
+
+                // Return the updated column from the API response
+                // Use the response columns which are already updated on the backend
+                const finalUpdatedColumn = findFieldByFQN<Column>(
+                  res.columns ?? [],
+                  fqn
+                );
+
+                // Return the column with tags already cleared
+                // This prevents onColumnUpdate from triggering onColumnsChange
+                // which would cause a second PATCH call with stale data
+                return finalUpdatedColumn;
+              }
+
+              columnUpdate.tags = normalizedTags;
             }
 
             const response = await updateTableColumn(fqn, columnUpdate);

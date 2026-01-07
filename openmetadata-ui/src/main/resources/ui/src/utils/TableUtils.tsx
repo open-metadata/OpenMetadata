@@ -1541,6 +1541,11 @@ export const getDataTypeDisplay = (
  * @returns Normalized tags array
  */
 export const normalizeTags = (tags: TagLabel[]): TagLabel[] => {
+  // Handle empty array case
+  if (!tags || tags.length === 0) {
+    return [];
+  }
+
   return tags.map((tag) => {
     if (tag.source === TagSource.Glossary) {
       // Remove style property from glossary terms to avoid backend patch errors
@@ -1589,7 +1594,11 @@ export const mergeGlossaryWithTags = (
   const nonGlossaryTags =
     columnTags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
 
-  return [...nonGlossaryTags, ...(updatedGlossaryTerms || [])];
+  // Normalize both arrays before merging to ensure consistent format
+  const normalizedNonGlossaryTags = normalizeTags(nonGlossaryTags);
+  const normalizedGlossaryTerms = normalizeTags(updatedGlossaryTerms || []);
+
+  return [...normalizedNonGlossaryTags, ...normalizedGlossaryTerms];
 };
 
 /**

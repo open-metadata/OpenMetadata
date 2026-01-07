@@ -50,7 +50,11 @@ import {
 } from '../../../utils/PermissionsUtils';
 import pipelineClassBase from '../../../utils/PipelineClassBase';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import {
+  getTagsWithoutTier,
+  getTierTags,
+  normalizeTags,
+} from '../../../utils/TableUtils';
 import {
   createTagObject,
   updateCertificationTag,
@@ -416,7 +420,9 @@ const PipelineDetails = ({
                     ...(update.description !== undefined && {
                       description: update.description,
                     }),
-                    ...(update.tags !== undefined && { tags: update.tags }),
+                    ...(update.tags !== undefined && {
+                      tags: normalizeTags(update.tags),
+                    }),
                   };
                 }
 

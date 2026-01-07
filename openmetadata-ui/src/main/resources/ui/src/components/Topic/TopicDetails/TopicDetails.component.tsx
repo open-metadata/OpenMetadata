@@ -53,6 +53,7 @@ import {
   findFieldByFQN,
   getTagsWithoutTier,
   getTierTags,
+  normalizeTags,
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
@@ -481,7 +482,13 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 );
               }
               if (update.tags !== undefined) {
-                updateFieldTags<Field>(fqn, update.tags, schema?.schemaFields);
+                // Normalize tags to remove style property from glossary terms
+                const normalizedTags = normalizeTags(update.tags);
+                updateFieldTags<Field>(
+                  fqn,
+                  normalizedTags,
+                  schema?.schemaFields
+                );
               }
               await handleSchemaFieldsUpdate(schema);
               const updatedField = findFieldByFQN<Field>(

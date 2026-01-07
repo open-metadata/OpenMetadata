@@ -46,7 +46,7 @@ import {
   getEntityDetailsPath,
   getVersionPath,
 } from '../../../../utils/RouterUtils';
-import { findFieldByFQN } from '../../../../utils/TableUtils';
+import { findFieldByFQN, normalizeTags } from '../../../../utils/TableUtils';
 import { updateCertificationTag } from '../../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
@@ -297,7 +297,8 @@ const DataModelDetails = ({
               }
 
               if (update.tags !== undefined) {
-                columnUpdate.tags = update.tags;
+                // Normalize tags to remove style property from glossary terms
+                columnUpdate.tags = normalizeTags(update.tags);
               }
 
               const response = await updateDataModelColumn(fqn, columnUpdate);
