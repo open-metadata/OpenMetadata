@@ -13,6 +13,7 @@
 
 // Mock i18n for tests
 jest.mock('./i18next/LocalUtil', () => ({
+  __esModule: true,
   default: {
     t: jest.fn((key: string) => {
       const translations: Record<string, string> = {
