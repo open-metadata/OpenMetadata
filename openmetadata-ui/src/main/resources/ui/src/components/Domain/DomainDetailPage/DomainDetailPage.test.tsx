@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { DOMAINS_LIST } from '../../../mocks/Domains.mock';
+import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { getDomainByName } from '../../../rest/domainAPI';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DomainDetailPage from './DomainDetailPage.component';
@@ -54,6 +55,19 @@ jest.mock('../../../hooks/useFqn', () => ({
 jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
+
+jest.mock('../DomainDetails/DomainDetails.component', () => {
+  return jest.fn().mockImplementation(() => <div>DomainDetails</div>);
+});
+
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({
+    permissions: {
+      domain: ENTITY_PERMISSIONS,
+      dataProduct: ENTITY_PERMISSIONS,
+    },
+  }),
+}));
 
 const mockGetDomainByName = getDomainByName as jest.MockedFunction<
   typeof getDomainByName
@@ -99,11 +113,13 @@ describe('DomainDetailPage', () => {
   });
 
   it('should pass entity name as pageTitle to PageLayoutV1', async () => {
-    render(
-      <MemoryRouter>
-        <DomainDetailPage />
-      </MemoryRouter>
-    );
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <DomainDetailPage />
+        </MemoryRouter>
+      );
+    });
 
     // Wait for the domain to be fetched
     expect(mockGetDomainByName).toHaveBeenCalled();

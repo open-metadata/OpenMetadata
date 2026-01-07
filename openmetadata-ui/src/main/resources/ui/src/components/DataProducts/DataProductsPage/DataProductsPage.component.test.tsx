@@ -33,6 +33,10 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
+jest.mock('../../common/Loader/Loader', () => {
+  return jest.fn().mockImplementation(() => <div>Loader</div>);
+});
+
 jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('testEntityName'),
 }));
@@ -57,11 +61,23 @@ jest.mock('../../../utils/useRequiredParams', () => ({
   }),
 }));
 
+jest.mock('../../../utils/RouterUtils', () => ({
+  getDomainPath: jest.fn().mockImplementation(() => '/domain/test-domain'),
+  getEntityDetailsPath: jest
+    .fn()
+    .mockImplementation(() => '/dataProduct/test.dataproduct'),
+  getVersionPath: jest
+    .fn()
+    .mockImplementation(() => '/dataProduct/test.dataproduct/version/1'),
+}));
+
 jest.mock('../../../rest/dataProductAPI', () => ({
-  getDataProductByName: jest.fn().mockResolvedValue(mockDataProduct),
+  getDataProductByName: jest.fn().mockImplementation(() => mockDataProduct),
   getDataProductVersionsList: jest.fn().mockResolvedValue({}),
-  getDataProductVersionData: jest.fn().mockResolvedValue(mockDataProduct),
-  patchDataProduct: jest.fn().mockResolvedValue(mockDataProduct),
+  getDataProductVersionData: jest
+    .fn()
+    .mockImplementation(() => mockDataProduct),
+  patchDataProduct: jest.fn().mockImplementation(() => mockDataProduct),
   deleteDataProduct: jest.fn().mockResolvedValue({}),
   addFollower: jest.fn().mockResolvedValue({
     changeDescription: {
@@ -75,6 +91,11 @@ jest.mock('../../../rest/dataProductAPI', () => ({
   }),
 }));
 
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn().mockImplementation(() => 'error'),
+  showSuccessToast: jest.fn().mockImplementation(() => 'success'),
+}));
+
 jest.mock(
   '../DataProductsDetailsPage/DataProductsDetailsPage.component',
   () => {
@@ -84,6 +105,10 @@ jest.mock(
 
 jest.mock('../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () => {
   return jest.fn().mockReturnValue(<div>EntityVersionTimeLine</div>);
+});
+
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
 describe('DataProductsPage component', () => {
