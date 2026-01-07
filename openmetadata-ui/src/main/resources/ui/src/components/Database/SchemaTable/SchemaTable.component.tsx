@@ -206,61 +206,32 @@ const SchemaTable = () => {
 
       setColumnsLoading(true);
       try {
-        const hasActiveFilters =
-          tagFilters &&
-          (tagFilters.Classification.length > 0 ||
-            tagFilters.Glossary.length > 0);
+        const offset = (page - 1) * pageSize;
 
-        // If tag filters are active, fetch all columns for client-side filtering
-        // Otherwise use normal pagination
-        const limit = hasActiveFilters ? 10000 : pageSize;
-        const offset = hasActiveFilters ? 0 : (page - 1) * pageSize;
+        // Build tags parameter for server-side filtering
+        const tagsList = [
+          ...(tagFilters?.Classification || []),
+          ...(tagFilters?.Glossary || []),
+        ];
+        const tagsParam = tagsList.length > 0 ? tagsList.join(',') : undefined;
 
-        // Use search API if there's a search query, otherwise use regular pagination
-        const response = searchQuery
+        // Use search API if there's a search query or tags filter
+        const response = searchQuery || tagsParam
           ? await searchTableColumnsByFQN(tableFqn, {
               q: searchQuery,
-              limit: limit,
+              limit: pageSize,
               offset: offset,
               fields: 'tags,customMetrics',
+              tags: tagsParam,
             })
           : await getTableColumnsByFQN(tableFqn, {
-              limit: limit,
+              limit: pageSize,
               offset: offset,
               fields: 'tags,customMetrics',
             });
 
-        let prunedColumns = pruneEmptyChildren(response.data) || [];
-
-        // Apply client-side tag filtering if filters are active
-        if (hasActiveFilters) {
-          const filterTags = [
-            ...tagFilters.Classification,
-            ...tagFilters.Glossary,
-          ];
-          if (filterTags.length > 0) {
-            prunedColumns = prunedColumns.filter((col) =>
-              searchTagInData(filterTags, col)
-            );
-          }
-
-          // Manually paginate filtered results
-          const total = prunedColumns.length;
-          const startIndex = (page - 1) * pageSize;
-          const endIndex = Math.min(startIndex + pageSize, total);
-          const paginatedColumns = prunedColumns.slice(startIndex, endIndex);
-
-          setTableColumns(paginatedColumns);
-          handlePagingChange({
-            total: total,
-            after:
-              endIndex < total ? String(endIndex) : undefined,
-            before: startIndex > 0 ? String(Math.max(0, startIndex - pageSize)) : undefined,
-          });
-        } else {
-          setTableColumns(prunedColumns);
-          handlePagingChange(response.paging);
-        }
+        setTableColumns(pruneEmptyChildren(response.data) || []);
+        handlePagingChange(response.paging);
       } catch {
         // Set empty state if API fails
         setTableColumns([]);
@@ -647,7 +618,7 @@ const SchemaTable = () => {
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
         filteredValue: activeTagFilters.Classification,
-        onFilter: () => true, // Filtering is handled via state
+        onFilter: () => true, // Server-side filtering
       },
       {
         title: t('label.glossary-term-plural'),
@@ -671,7 +642,7 @@ const SchemaTable = () => {
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
         filteredValue: activeTagFilters.Glossary,
-        onFilter: () => true, // Filtering is handled via state
+        onFilter: () => true, // Server-side filtering
       },
       {
         title: t('label.data-quality'),

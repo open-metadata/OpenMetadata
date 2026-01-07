@@ -2246,11 +2246,12 @@ public class TableRepository extends EntityRepository<Table> {
       int offset,
       String fieldsParam,
       Include include,
+      String tags,
       Authorizer authorizer,
       SecurityContext securityContext) {
     Table table = get(null, id, getFields(fieldsParam), include, false);
     return searchTableColumnsInternal(
-        table, query, limit, offset, fieldsParam, authorizer, securityContext);
+        table, query, limit, offset, fieldsParam, tags, authorizer, securityContext);
   }
 
   public ResultList<Column> searchTableColumnsByFQN(
@@ -2260,11 +2261,12 @@ public class TableRepository extends EntityRepository<Table> {
       int offset,
       String fieldsParam,
       Include include,
+      String tags,
       Authorizer authorizer,
       SecurityContext securityContext) {
     Table table = getByName(null, fqn, getFields(fieldsParam), include, false);
     return searchTableColumnsInternal(
-        table, query, limit, offset, fieldsParam, authorizer, securityContext);
+        table, query, limit, offset, fieldsParam, tags, authorizer, securityContext);
   }
 
   private ResultList<Column> searchTableColumnsInternal(
@@ -2273,6 +2275,7 @@ public class TableRepository extends EntityRepository<Table> {
       int limit,
       int offset,
       String fieldsParam,
+      String tags,
       Authorizer authorizer,
       SecurityContext securityContext) {
     List<Column> allColumns = table.getColumns();
@@ -2282,6 +2285,13 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Flatten nested columns for search
     List<Column> flattenedColumns = flattenTableColumns(allColumns);
+
+    // First, populate tags for all columns if tag filtering is requested
+    Fields fields = getFields(fieldsParam);
+    if (tags != null && !tags.trim().isEmpty()) {
+      // Ensure tags are populated before filtering
+      populateEntityFieldTags(entityType, flattenedColumns, table.getFullyQualifiedName(), true);
+    }
 
     List<Column> matchingColumns;
     if (query == null || query.trim().isEmpty()) {
@@ -2302,6 +2312,32 @@ public class TableRepository extends EntityRepository<Table> {
               .toList();
     }
 
+    // Apply tag filtering if tags parameter is provided
+    if (tags != null && !tags.trim().isEmpty()) {
+      String[] tagFQNs = tags.split(",");
+      matchingColumns =
+          matchingColumns.stream()
+              .filter(
+                  column -> {
+                    if (column.getTags() == null || column.getTags().isEmpty()) {
+                      return false;
+                    }
+                    // Check if column has any of the requested tags
+                    return column.getTags().stream()
+                        .anyMatch(
+                            tag -> {
+                              for (String tagFQN : tagFQNs) {
+                                if (tag.getTagFQN() != null
+                                    && tag.getTagFQN().equals(tagFQN.trim())) {
+                                  return true;
+                                }
+                              }
+                              return false;
+                            });
+                  })
+              .toList();
+    }
+
     int total = matchingColumns.size();
     int startIndex = Math.min(offset, total);
     int endIndex = Math.min(offset + limit, total);
@@ -2309,7 +2345,6 @@ public class TableRepository extends EntityRepository<Table> {
     List<Column> paginatedResults =
         startIndex < total ? matchingColumns.subList(startIndex, endIndex) : List.of();
 
-    Fields fields = getFields(fieldsParam);
     if (fields.contains("customMetrics") || fields.contains("*")) {
       for (Column column : paginatedResults) {
         column.setCustomMetrics(getCustomMetrics(table, column.getName()));
@@ -2317,7 +2352,10 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     if (fields.contains("tags") || fields.contains("*")) {
-      populateEntityFieldTags(entityType, paginatedResults, table.getFullyQualifiedName(), true);
+      // Only populate tags if not already populated for filtering
+      if (tags == null || tags.trim().isEmpty()) {
+        populateEntityFieldTags(entityType, paginatedResults, table.getFullyQualifiedName(), true);
+      }
     }
 
     if (fieldsParam != null && fieldsParam.contains("profile")) {
