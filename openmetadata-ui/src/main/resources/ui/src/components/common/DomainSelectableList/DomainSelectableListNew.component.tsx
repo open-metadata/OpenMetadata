@@ -65,11 +65,7 @@ const DomainSelectableListNew = ({
   const dropdownRef = useRef<BaseSelectRef>(null);
 
   useEffect(() => {
-    if (popupVisible) {
-      setIsDropdownOpen(true);
-    } else {
-      setIsDropdownOpen(false);
-    }
+    setIsDropdownOpen(popupVisible);
   }, [popupVisible]);
 
   useEffect(() => {

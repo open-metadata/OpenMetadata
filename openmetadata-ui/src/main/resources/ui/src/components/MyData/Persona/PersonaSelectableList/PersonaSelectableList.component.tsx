@@ -79,11 +79,7 @@ export const PersonaSelectableList = ({
   const dropdownRef = useRef<RefSelectProps | null>(null);
 
   useEffect(() => {
-    if (popupVisible) {
-      setIsDropdownOpen(true);
-    } else {
-      setIsDropdownOpen(false);
-    }
+    setIsDropdownOpen(popupVisible);
   }, [popupVisible]);
 
   useEffect(() => {
