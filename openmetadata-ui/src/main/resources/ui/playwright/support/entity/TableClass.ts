@@ -62,7 +62,7 @@ export class TableClass extends EntityClass {
     name: string;
     displayName: string;
     description: string;
-    columns: unknown[];
+    columns: TableColumn[];
     tableType: string;
     databaseSchema: string;
   };
@@ -130,6 +130,7 @@ export class TableClass extends EntityClass {
       `address${uuid()}`,
       `mail${uuid()}`,
       `email${uuid()}`,
+      `created_at${uuid()}`,
     ];
 
     this.entityLinkColumnsName = [
@@ -141,6 +142,7 @@ export class TableClass extends EntityClass {
       `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[5]}`,
       `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[6]}`,
       this.columnsName[7],
+      this.columnsName[8],
     ];
 
     this.children = [
@@ -153,8 +155,8 @@ export class TableClass extends EntityClass {
       },
       {
         name: this.columnsName[1],
-        dataType: 'NUMERIC',
-        dataTypeDisplay: 'numeric',
+        dataType: 'INT',
+        dataTypeDisplay: 'int',
         description:
           'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
       },
@@ -204,6 +206,13 @@ export class TableClass extends EntityClass {
         dataLength: 100,
         dataTypeDisplay: 'varchar',
         description: 'Email address of the staff member.',
+      },
+      {
+        name: this.columnsName[8],
+        dataType: 'TIMESTAMP',
+        dataLength: 100,
+        dataTypeDisplay: 'timestamp',
+        description: 'entity created time',
       },
     ];
 
@@ -310,9 +319,8 @@ export class TableClass extends EntityClass {
     await visitEntityPage({
       page,
       searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${
-        this.entityResponseData.service.name ?? this.service.name
-      }-${this.entityResponseData.name ?? this.entity.name}`,
+      dataTestId: `${this.entityResponseData.service.name ?? this.service.name
+        }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
 

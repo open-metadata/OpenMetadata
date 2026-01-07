@@ -18,6 +18,7 @@ import {
   Drawer,
   IconButton,
   Typography,
+  useTheme,
 } from '@mui/material';
 import { XClose } from '@untitledui/icons';
 import { FC } from 'react';
@@ -34,6 +35,7 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
   onClose,
   onSubmit,
 }) => {
+  const theme = useTheme();
   const { t } = useTranslation();
 
   return (
@@ -53,11 +55,10 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
         sx={{
           px: 6,
           py: 5,
-          borderBottom: 1,
-          borderColor: 'divider',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          boxShadow: (theme) => theme.shadows[1],
         }}>
         <Typography data-testid="form-heading" variant="h6">
           {t('label.adding-new-classification')}
@@ -89,15 +90,25 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
         sx={{
           px: 6,
           py: 3,
-          borderTop: 1,
-          borderColor: 'divider',
           display: 'flex',
           justifyContent: 'flex-end',
           gap: 2,
+          boxShadow: (theme) => `0px -4px 6px -2px ${theme.palette.grey[200]}`,
         }}>
         <Button
+          color="primary"
           data-testid="cancel-button"
-          variant="outlined"
+          sx={{
+            px: theme.spacing(4),
+            py: theme.spacing(2.5),
+            fontSize: theme.typography.body2.fontSize,
+            color: theme.palette.allShades.blue[600],
+            '&:hover': {
+              backgroundColor: 'transparent',
+              color: theme.palette.allShades.blue[700],
+            },
+          }}
+          variant="text"
           onClick={onClose}>
           {t('label.cancel')}
         </Button>
