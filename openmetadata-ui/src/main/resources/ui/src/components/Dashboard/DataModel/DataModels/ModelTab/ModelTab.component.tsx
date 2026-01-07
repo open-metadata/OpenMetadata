@@ -27,7 +27,6 @@ import {
   Column,
   DashboardDataModel,
 } from '../../../../../generated/entity/data/dashboardDataModel';
-import { Column as TableColumn } from '../../../../../generated/entity/data/table';
 import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
 import {
@@ -248,7 +247,7 @@ const ModelTab = () => {
 
   const handleColumnClick = useCallback(
     (column: Column) => {
-      openColumnDetailPanel(column as unknown as TableColumn);
+      openColumnDetailPanel(column);
     },
     [openColumnDetailPanel]
   );

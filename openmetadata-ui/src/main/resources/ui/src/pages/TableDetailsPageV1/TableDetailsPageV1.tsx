@@ -14,7 +14,7 @@
 import { Col, Row, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -252,12 +252,6 @@ const TableDetailsPageV1: React.FC = () => {
     try {
       if (!tableClassBase.getAlertEnableStatus()) {
         setDqFailureCount(0);
-
-        return;
-      }
-
-      if (isUndefined(tableDetails?.testSuite?.id)) {
-        await fetchDQUpstreamFailureCount();
 
         return;
       }

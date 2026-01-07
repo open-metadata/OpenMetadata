@@ -11,23 +11,31 @@
  *  limitations under the License.
  */
 import { EntityType } from '../../../enums/entity.enum';
+import { Field as APIEndpointField } from '../../../generated/entity/data/apiEndpoint';
+import { MlFeature } from '../../../generated/entity/data/mlmodel';
 import { Task } from '../../../generated/entity/data/pipeline';
+import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
-import { TagLabel } from '../../../generated/type/tagLabel';
+import { Field as TopicField } from '../../../generated/entity/data/topic';
 import { ColumnFieldUpdate } from '../../../utils/ColumnUpdateUtils';
 
 // Re-export ColumnFieldUpdate from utils for backward compatibility
 export type { ColumnFieldUpdate } from '../../../utils/ColumnUpdateUtils';
 
-export type ColumnOrTask = Column | Task;
+// Union type for all column-like entities that can be displayed in the detail panel
+export type ColumnOrTask =
+  | Column
+  | Task
+  | APIEndpointField
+  | TopicField
+  | SearchIndexField
+  | MlFeature;
 
 export interface ColumnDetailPanelProps<T extends ColumnOrTask = Column> {
   column: T | null;
   tableFqn?: string;
   isOpen: boolean;
   onClose: () => void;
-  updateColumnDescription?: (fqn: string, description: string) => Promise<T>;
-  updateColumnTags?: (fqn: string, tags: TagLabel[]) => Promise<T>;
   onColumnFieldUpdate?: (
     fqn: string,
     update: ColumnFieldUpdate

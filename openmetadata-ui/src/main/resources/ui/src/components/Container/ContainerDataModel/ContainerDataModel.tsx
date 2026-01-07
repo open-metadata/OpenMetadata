@@ -35,7 +35,6 @@ import {
   Container,
   TagLabel,
 } from '../../../generated/entity/data/container';
-import { Column as TableColumn } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/type/tagLabel';
 import {
   updateContainerColumnDescription,
@@ -113,7 +112,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
 
   const handleColumnClick = useCallback(
     (column: Column) => {
-      openColumnDetailPanel(column as unknown as TableColumn);
+      openColumnDetailPanel(column);
     },
     [openColumnDetailPanel]
   );

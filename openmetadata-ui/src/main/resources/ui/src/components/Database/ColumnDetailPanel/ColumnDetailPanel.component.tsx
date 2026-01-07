@@ -25,6 +25,7 @@ import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { updateTableColumn } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
+import { toEntityData } from '../../../utils/EntitySummaryPanelUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import {
@@ -68,8 +69,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   tableFqn,
   isOpen,
   onClose,
-  updateColumnDescription,
-  updateColumnTags,
   onColumnFieldUpdate,
   deleted = false,
   allColumns = [],
@@ -220,18 +219,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
       if (onColumnFieldUpdate) {
         response = await onColumnFieldUpdate(column.fullyQualifiedName, update);
-      } else if (update.description !== undefined && updateColumnDescription) {
-        response = await updateColumnDescription(
-          column.fullyQualifiedName,
-          update.description
-        );
-      } else if (update.tags !== undefined && updateColumnTags) {
-        response = await updateColumnTags(
-          column.fullyQualifiedName,
-          update.tags
-        );
       } else {
-        // Fallback to direct API call for Table entities
+        // Fallback to direct API call for Table entities when used outside GenericProvider
         response = (await updateTableColumn(
           column.fullyQualifiedName,
           update
@@ -246,7 +235,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
       return response;
     },
-    [column, t, updateColumnDescription, updateColumnTags, onColumnFieldUpdate]
+    [column, t, onColumnFieldUpdate]
   );
 
   const handleDescriptionUpdate = useCallback(
@@ -284,6 +273,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           )
         );
       }
+
       // Merge updated classification tags with existing glossary tags
       return normalizeTags(
         (mergeTagsWithGlossary(column?.tags, updatedTags) ?? []) as TagLabel[]
@@ -300,6 +290,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           { tags: allTags },
           'label.tag-plural'
         );
+
         return response?.tags;
       } catch (error) {
         showErrorToast(
@@ -308,6 +299,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             entity: t('label.tag-plural'),
           })
         );
+
         throw error;
       }
     },
@@ -341,6 +333,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             entity: t('label.glossary-term-plural'),
           })
         );
+
         throw error;
       }
     },
@@ -512,10 +505,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     return (
       <div className="overview-tab-content">
         <CustomPropertiesSection
-          entityData={
-            column as unknown as { extension?: Record<string, unknown> }
-          }
-          entityDetails={{ details: column }}
+          entityData={toEntityData(column)}
           entityType={entityType}
           isEntityDataLoading={false}
           viewCustomPropertiesPermission={
@@ -526,14 +516,15 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     );
   };
   const isPrimaryKey = useMemo(() => {
-    if (!column?.name) {
+    const columnName = column?.name;
+    if (!columnName) {
       return false;
     }
 
     return tableConstraints.some(
       (constraint: TableConstraint) =>
         constraint.constraintType === 'PRIMARY_KEY' &&
-        constraint.columns?.includes(column.name)
+        constraint.columns?.includes(columnName)
     );
   }, [column?.name, tableConstraints]);
 
@@ -567,7 +558,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         <Tooltip
           mouseEnterDelay={0.5}
           placement="topLeft"
-          title={column.displayName || column.name}
+          title={getEntityName(column)}
           trigger="hover">
           <div className="d-flex items-center justify-between w-full">
             <div className="d-flex items-center gap-2">

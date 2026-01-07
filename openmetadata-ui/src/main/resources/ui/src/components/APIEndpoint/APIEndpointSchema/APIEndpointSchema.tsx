@@ -32,7 +32,6 @@ import {
   Field,
   TagSource,
 } from '../../../generated/entity/data/apiEndpoint';
-import { Column } from '../../../generated/entity/data/table';
 import { APISchema } from '../../../generated/type/apiSchema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -201,7 +200,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 
   const handleFieldClick = useCallback(
     (field: Field) => {
-      openColumnDetailPanel(field as unknown as Column);
+      openColumnDetailPanel(field);
     },
     [openColumnDetailPanel]
   );

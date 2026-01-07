@@ -18,7 +18,6 @@ import { Fragment, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { MlFeature, Mlmodel } from '../../../generated/entity/data/mlmodel';
-import { Column } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/type/schema';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
@@ -111,7 +110,7 @@ const MlModelFeaturesList = () => {
 
   const handleColumnClick = useCallback(
     (feature: MlFeature) => {
-      openColumnDetailPanel(feature as unknown as Column);
+      openColumnDetailPanel(feature);
     },
     [openColumnDetailPanel]
   );

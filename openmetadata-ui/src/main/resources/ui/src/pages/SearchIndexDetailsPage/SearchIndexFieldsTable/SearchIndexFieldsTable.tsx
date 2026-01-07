@@ -47,7 +47,6 @@ import {
   SearchIndex,
   SearchIndexField,
 } from '../../../generated/entity/data/searchIndex';
-import { Column } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import {
@@ -178,7 +177,7 @@ const SearchIndexFieldsTable = ({
   const handleFieldClick = useCallback(
     (field: SearchIndexField) => {
       if (hasViewPermission) {
-        openColumnDetailPanel(field as unknown as Column);
+        openColumnDetailPanel(field);
       }
     },
     [openColumnDetailPanel, hasViewPermission]

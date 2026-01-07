@@ -37,7 +37,10 @@ import {
   getLayoutFromCustomizedPage,
   updateWidgetHeightRecursively,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
-import { extractColumnsFromData, findFieldByFQN } from '../../../utils/TableUtils';
+import {
+  extractColumnsFromData,
+  findFieldByFQN,
+} from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -104,6 +107,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     if (columnDetailPanelConfig?.columns) {
       return columnDetailPanelConfig.columns;
     }
+
     return extractColumnsFromData(data, type) as ColumnOrTask[];
   }, [data, type, columnDetailPanelConfig?.columns]);
 
@@ -116,7 +120,10 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   useEffect(() => {
     const fqn = selectedColumnFqnRef.current;
     if (fqn && extractedColumns.length > 0) {
-      const updatedColumn = findFieldByFQN<Column>(extractedColumns as Column[], fqn);
+      const updatedColumn = findFieldByFQN<Column>(
+        extractedColumns as Column[],
+        fqn
+      );
       if (updatedColumn) {
         const cleanColumn = isEmpty(updatedColumn.children)
           ? omit(updatedColumn, 'children')
@@ -185,13 +192,20 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   }, []);
 
   const defaultColumnFieldUpdate = useCallback(
-    async (fqn: string, update: ColumnFieldUpdate): Promise<ColumnOrTask | undefined> => {
+    async (
+      fqn: string,
+      update: ColumnFieldUpdate
+    ): Promise<ColumnOrTask | undefined> => {
       const updatedColumn = await handleColumnFieldUpdateUtil({
         entityType: type,
         entityData: data,
         fqn,
         update,
-        onUpdate: onUpdate as (entity: T, key?: keyof T, skipApiCall?: boolean) => Promise<void>,
+        onUpdate: onUpdate as (
+          entity: T,
+          key?: keyof T,
+          skipApiCall?: boolean
+        ) => Promise<void>,
       });
 
       return updatedColumn as ColumnOrTask;
@@ -219,7 +233,11 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
       return updatedColumn;
     },
-    [columnDetailPanelConfig?.onColumnFieldUpdate, defaultColumnFieldUpdate, selectedColumn]
+    [
+      columnDetailPanelConfig?.onColumnFieldUpdate,
+      defaultColumnFieldUpdate,
+      selectedColumn,
+    ]
   );
 
   const handleColumnNavigate = useCallback((column: ColumnOrTask) => {
@@ -232,6 +250,17 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
     return entityWithDeleted.deleted;
   }, [data]);
+
+  // Extract tableConstraints for Table entities
+  const tableConstraints = useMemo(() => {
+    if (type === EntityType.TABLE && 'tableConstraints' in data) {
+      const tableData = data as Partial<Table>;
+
+      return tableData.tableConstraints;
+    }
+
+    return undefined;
+  }, [type, data]);
 
   // store the left side panel widget
   const leftPanelWidget = useMemo(() => {
@@ -359,11 +388,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
           deleted={deleted}
           entityType={type}
           isOpen={isColumnDetailOpen}
-          tableConstraints={
-            type === EntityType.TABLE
-              ? (data as unknown as Table).tableConstraints
-              : undefined
-          }
+          tableConstraints={tableConstraints}
           tableFqn={data.fullyQualifiedName}
           onClose={closeColumnDetailPanel}
           onColumnFieldUpdate={handleColumnFieldUpdate}

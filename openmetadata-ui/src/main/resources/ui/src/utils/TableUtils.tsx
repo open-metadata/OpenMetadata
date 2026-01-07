@@ -156,8 +156,8 @@ import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Container } from '../generated/entity/data/container';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
-import { Mlmodel } from '../generated/entity/data/mlmodel';
-import { Pipeline } from '../generated/entity/data/pipeline';
+import { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
+import { Pipeline, Task } from '../generated/entity/data/pipeline';
 import {
   SearchIndex as SearchIndexEntity,
   SearchIndexField,
@@ -1784,80 +1784,113 @@ export const buildColumnBreadcrumbPath = <
 export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
   data: T,
   entityType: EntityType
-): Array<Column | SearchIndexField | Field> => {
+): Array<Column | SearchIndexField | Field | Task | MlFeature> => {
   switch (entityType) {
-    case EntityType.TABLE:
-      return ((data as unknown as Table).columns ?? []).map(
-        (column) => ({ ...column, tags: column.tags ?? [] } as Column)
-      );
+    case EntityType.TABLE: {
+      if ('columns' in data) {
+        const table = data as Partial<Table>;
+
+        return (table.columns ?? []).map(
+          (column) => ({ ...column, tags: column.tags ?? [] } as Column)
+        );
+      }
+
+      return [];
+    }
 
     case EntityType.API_ENDPOINT: {
-      const apiEndpoint = data as unknown as APIEndpoint;
+      if ('requestSchema' in data || 'responseSchema' in data) {
+        const apiEndpoint = data as Partial<APIEndpoint>;
 
-      return [
-        ...(apiEndpoint.requestSchema?.schemaFields ?? []).map(
-          (field) => ({ ...field, tags: field.tags ?? [] } as unknown as Column)
-        ),
-        ...(apiEndpoint.responseSchema?.schemaFields ?? []).map(
-          (field) => ({ ...field, tags: field.tags ?? [] } as unknown as Column)
-        ),
-      ];
+        return [
+          ...(apiEndpoint.requestSchema?.schemaFields ?? []).map(
+            (field) => ({ ...field, tags: field.tags ?? [] } as Field)
+          ),
+          ...(apiEndpoint.responseSchema?.schemaFields ?? []).map(
+            (field) => ({ ...field, tags: field.tags ?? [] } as Field)
+          ),
+        ];
+      }
+
+      return [];
     }
 
     case EntityType.DASHBOARD_DATA_MODEL: {
-      const dataModel = data as unknown as DashboardDataModel;
+      if ('columns' in data) {
+        const dataModel = data as Partial<DashboardDataModel>;
 
-      return (dataModel.columns ?? []).map(
-        (column) =>
-          ({
-            ...column,
-            tags: column.tags ?? [],
-          } as unknown as Column)
-      );
+        return (dataModel.columns ?? []).map(
+          (column) =>
+            ({
+              ...column,
+              tags: column.tags ?? [],
+            } as Column)
+        );
+      }
+
+      return [];
     }
 
     case EntityType.MLMODEL: {
-      const mlModel = data as unknown as Mlmodel;
+      if ('mlFeatures' in data) {
+        const mlModel = data as Partial<Mlmodel>;
 
-      return (mlModel.mlFeatures ?? []).map(
-        (feature) => feature as unknown as Column
-      );
+        return (mlModel.mlFeatures ?? []) as MlFeature[];
+      }
+
+      return [];
     }
 
     case EntityType.PIPELINE: {
-      const pipeline = data as unknown as Pipeline;
+      if ('tasks' in data) {
+        const pipeline = data as Partial<Pipeline>;
 
-      return (pipeline.tasks ?? []).map(
-        (task) => ({ ...task, tags: task.tags ?? [] } as unknown as Column)
-      );
+        return (pipeline.tasks ?? []).map(
+          (task) => ({ ...task, tags: task.tags ?? [] } as Task)
+        );
+      }
+
+      return [];
     }
 
     case EntityType.TOPIC: {
-      const topic = data as unknown as Topic;
+      if ('messageSchema' in data) {
+        const topic = data as Partial<Topic>;
 
-      return (topic.messageSchema?.schemaFields ?? []).map(
-        (field) => field as unknown as Column
-      );
+        return (topic.messageSchema?.schemaFields ?? []).map(
+          (field) => field as Field
+        );
+      }
+
+      return [];
     }
 
     case EntityType.CONTAINER: {
-      const container = data as unknown as Container;
+      if ('dataModel' in data) {
+        const container = data as Partial<Container>;
 
-      return (container.dataModel?.columns ?? []).map(
-        (column) =>
-          ({
-            ...column,
-            tags: column.tags ?? [],
-          } as unknown as Column)
-      );
+        return (container.dataModel?.columns ?? []).map(
+          (column) =>
+            ({
+              ...column,
+              tags: column.tags ?? [],
+            } as Column)
+        );
+      }
+
+      return [];
     }
 
     case EntityType.SEARCH_INDEX: {
-      const searchIndex = data as unknown as SearchIndexEntity;
+      if ('fields' in data) {
+        const searchIndex = data as Partial<SearchIndexEntity>;
 
-      return (searchIndex.fields ?? []).map(
-        (field) => ({ ...field, tags: field.tags ?? [] } as unknown as Column)
-      );
+        return (searchIndex.fields ?? []).map(
+          (field) => ({ ...field, tags: field.tags ?? [] } as SearchIndexField)
+        );
+      }
+
+      return [];
     }
 
     default:

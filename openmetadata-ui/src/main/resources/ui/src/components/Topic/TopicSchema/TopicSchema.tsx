@@ -27,7 +27,6 @@ import {
 } from '../../../constants/TableKeys.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
-import { Column } from '../../../generated/entity/data/table';
 import {
   DataTypeTopic,
   Field,
@@ -182,7 +181,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const handleColumnClick = useCallback(
     (field: Field) => {
-      openColumnDetailPanel(field as unknown as Column);
+      openColumnDetailPanel(field);
     },
     [openColumnDetailPanel]
   );
