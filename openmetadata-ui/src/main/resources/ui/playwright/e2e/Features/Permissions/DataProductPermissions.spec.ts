@@ -17,7 +17,7 @@ import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { UserClass } from '../../../support/user/UserClass';
-import { createNewPage, redirectToHomePage, uuid } from '../../../utils/common';
+import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
 import { addCustomPropertiesForEntity } from '../../../utils/customProperty';
 import { selectDataProduct } from '../../../utils/domain';
 import {
@@ -31,8 +31,6 @@ import {
 } from '../../../utils/sidebar';
 
 const adminUser = new UserClass();
-
-test.use({ storageState: 'playwright/.auth/admin.json' });
 const testUser = new UserClass();
 
 const test = base.extend<{
@@ -49,16 +47,18 @@ const test = base.extend<{
     }
   },
   testUserPage: async ({ browser }, use) => {
+    const userPage = await browser.newPage();
     try {
-      await testUser.login(page);
-      await use(page);
+      await testUser.login(userPage);
+      await use(userPage);
     } finally {
+      await userPage.close();
     }
   },
 });
 
-test.beforeAll('Setup pre-requests', async ({ browser }) => {
-  const { apiContext, afterAction } = await createNewPage(browser);
+test.beforeAll('Setup pre-requests', async ({ page }) => {
+  const { apiContext, afterAction } = await getApiContext(page);
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
   await testUser.create(apiContext);
@@ -71,8 +71,8 @@ const customPropertyName = `pwDataProductCustomProperty${uuid()}`;
 
 test.beforeAll(
   'Setup domain, data product and custom property',
-  async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+  async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
     await EntityDataClass.preRequisitesForTests(apiContext);
     await domain.create(apiContext);
     await dataProduct.create(apiContext);
@@ -88,14 +88,8 @@ test.beforeAll(
   }
 );
 
-const navigateToDataProduct = async (page: Page) => {
-  await redirectToHomePage(page);
-  await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-  await selectDataProduct(page, dataProduct.responseData);
-};
-
 test.describe('Data Product Permissions', () => {
-  test('Data Product allow operations', async ({ testUserPage, browser }) => {
+  test('Data Product allow operations', async ({ testUserPage, page }) => {
     test.slow(true);
 
     await initializePermissions(page, 'allow', [
@@ -108,7 +102,9 @@ test.describe('Data Product Permissions', () => {
       'EditCustomFields',
     ]);
     await assignRoleToUser(page, testUser);
-    await navigateToDataProduct(testUserPage);
+    await redirectToHomePage(testUserPage);
+    await sidebarClick(testUserPage, SidebarItem.DATA_PRODUCT);
+    await selectDataProduct(testUserPage, dataProduct.responseData);
 
     const directElements = ['edit-description', 'add-tag'];
 
@@ -149,7 +145,7 @@ test.describe('Data Product Permissions', () => {
     }
   });
 
-  test('Data Product deny operations', async ({ testUserPage, browser }) => {
+  test('Data Product deny operations', async ({ testUserPage, page }) => {
     test.slow(true);
 
     await initializePermissions(page, 'deny', [
@@ -162,7 +158,9 @@ test.describe('Data Product Permissions', () => {
       'EditCustomFields',
     ]);
     await assignRoleToUser(page, testUser);
-    await navigateToDataProduct(testUserPage);
+    await redirectToHomePage(testUserPage);
+    await sidebarClick(testUserPage, SidebarItem.DATA_PRODUCT);
+    await selectDataProduct(testUserPage, dataProduct.responseData);
 
     const directElements = ['edit-description', 'add-tag'];
 
@@ -203,11 +201,14 @@ test.describe('Data Product Permissions', () => {
     }
   });
 
-  test('Data Product expert can edit data product details', async ({ page, browser }) => {
+  test('Data Product expert can edit data product details', async ({
+    page,
+    browser,
+  }) => {
     test.slow(true);
 
     const expertUser = new UserClass();
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await getApiContext(page);
 
     try {
       await expertUser.create(apiContext);
@@ -251,16 +252,16 @@ test.describe('Data Product Permissions', () => {
   });
 });
 
-test.afterAll('Cleanup data product and domain', async ({ browser }) => {
-  const { apiContext, afterAction } = await createNewPage(browser);
+test.afterAll('Cleanup data product and domain', async ({ page }) => {
+  const { apiContext, afterAction } = await getApiContext(page);
   await dataProduct.delete(apiContext);
   await domain.delete(apiContext);
   await EntityDataClass.postRequisitesForTests(apiContext);
   await afterAction();
 });
 
-test.afterAll('Cleanup users', async ({ browser }) => {
-  const { apiContext, afterAction } = await createNewPage(browser);
+test.afterAll('Cleanup users', async ({ page }) => {
+  const { apiContext, afterAction } = await getApiContext(page);
   await adminUser.delete(apiContext);
   await testUser.delete(apiContext);
   await afterAction();

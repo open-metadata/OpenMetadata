@@ -49,6 +49,7 @@ const test = base.extend<{
     await adminPage.close();
   },
   userPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
     await user.login(page);
     await use(page);
   },

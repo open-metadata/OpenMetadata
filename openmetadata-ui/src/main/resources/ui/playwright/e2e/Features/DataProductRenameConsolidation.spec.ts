@@ -32,8 +32,6 @@ import {
 } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
 
-const adminUser = new UserClass();
-
 test.use({ storageState: 'playwright/.auth/admin.json' });
 const domain = new Domain();
 
@@ -46,23 +44,17 @@ const domain = new Domain();
  * potentially breaking asset relationships. The fix skips consolidation when the name has changed.
  */
 test.describe('Data Product Rename + Field Update Consolidation', () => {
-  test.beforeAll(
-    'Setup domain and admin user',
-    async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await EntityDataClass.preRequisitesForTests(apiContext);
-      await domain.create(apiContext);
-      await afterAction();
-    }
-  );
+  test.beforeAll('Setup domain and admin user', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await EntityDataClass.preRequisitesForTests(apiContext);
+    await domain.create(apiContext);
+    await afterAction();
+  });
 
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await domain.delete(apiContext);
     await EntityDataClass.postRequisitesForTests(apiContext);
-    await adminUser.delete(apiContext);
     await afterAction();
   });
 
@@ -126,7 +118,9 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     await page.waitForLoadState('networkidle');
   }
 
-  test('Rename then update description - assets should be preserved', async ({ page }) => {
+  test('Rename then update description - assets should be preserved', async ({
+    page,
+  }) => {
     test.slow();
 
     const { apiContext, afterAction } = await getApiContext(page);
@@ -178,7 +172,10 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       // Step 2: Update description (this triggers consolidation logic)
       await page.getByTestId('documentation').click();
       await page.waitForLoadState('networkidle');
-      await updateDescription(page, `Updated description after rename ${uuid()}`);
+      await updateDescription(
+        page,
+        `Updated description after rename ${uuid()}`
+      );
 
       // Step 3: Verify assets are still preserved after consolidation
       await page.getByTestId('assets').click();
@@ -217,7 +214,9 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     }
   });
 
-  test('Rename then add tags - assets should be preserved', async ({ page }) => {
+  test('Rename then add tags - assets should be preserved', async ({
+    page,
+  }) => {
     test.slow();
 
     const { apiContext, afterAction } = await getApiContext(page);
@@ -308,7 +307,9 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     }
   });
 
-  test('Rename then change owner - assets should be preserved', async ({ page }) => {
+  test('Rename then change owner - assets should be preserved', async ({
+    page,
+  }) => {
     test.slow();
 
     const { apiContext, afterAction } = await getApiContext(page);
@@ -363,10 +364,14 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       await page.waitForLoadState('networkidle');
       // Use add-owner since there's no owner initially
       await page.getByTestId('add-owner').click();
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await page.getByRole('tab', { name: 'Users' }).click();
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       // Wait for search response after typing user name
       const ownerDisplayName = newOwner.getUserDisplayName();
@@ -422,7 +427,9 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     }
   });
 
-  test('Multiple rename + update cycles - assets should be preserved', async ({ page }) => {
+  test('Multiple rename + update cycles - assets should be preserved', async ({
+    page,
+  }) => {
     test.slow();
 
     const { apiContext, afterAction } = await getApiContext(page);

@@ -21,6 +21,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
+  getApiContext,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
@@ -69,118 +70,100 @@ test.describe('Data Product Rename', () => {
     }
   );
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    // Try to delete renamed data product first, then fall back to original
-    try {
-      await apiContext.delete(
-        `/api/v1/dataProducts/name/${encodeURIComponent(
-          dataProduct.responseData?.fullyQualifiedName ?? dataProduct.data.name
-        )}`
-      );
-    } catch {
-      // Data product may have been renamed, ignore error
-    }
-
-    await table.delete(apiContext);
-    await domain.delete(apiContext);
-    await EntityDataClass.postRequisitesForTests(apiContext);
-    await adminUser.delete(apiContext);
-    await afterAction();
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
   });
 
-  test('should rename data product and verify assets are still associated', async ({ page, browser }) => {
+  test('should rename data product and verify assets are still associated', async ({
+    page,
+  }) => {
     test.slow();
 
-    try {
-      await redirectToHomePage(page);
+    // Navigate to data product
+    await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+    await selectDataProduct(page, dataProduct.responseData);
 
-      // Navigate to data product
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await selectDataProduct(page, dataProduct.responseData);
+    // Add asset to data product
+    await addAssetsToDataProduct(
+      page,
+      dataProduct.responseData.fullyQualifiedName ?? '',
+      [table]
+    );
 
-      // Add asset to data product
-      await addAssetsToDataProduct(
-        page,
-        dataProduct.responseData.fullyQualifiedName ?? '',
-        [table]
-      );
+    // Verify asset is added
+    await checkAssetsCount(page, 1);
 
-      // Verify asset is added
-      await checkAssetsCount(page, 1);
+    // Store new name for rename
+    const newName = `renamed-${uuid()}`;
 
-      // Store new name for rename
-      const newName = `renamed-${uuid()}`;
+    // Click manage button to open rename modal
+    await page.getByTestId('manage-button').click();
+    await page
+      .getByRole('menuitem', { name: /Rename.*Name/ })
+      .getByTestId('rename-button')
+      .click();
 
-      // Click manage button to open rename modal
-      await page.getByTestId('manage-button').click();
-      await page
-        .getByRole('menuitem', { name: /Rename.*Name/ })
-        .getByTestId('rename-button')
-        .click();
+    // Wait for modal to appear
+    await expect(page.getByTestId('header')).toContainText('Edit Name');
 
-      // Wait for modal to appear
-      await expect(page.getByTestId('header')).toContainText('Edit Name');
+    // Clear and enter new name
+    const nameInput = page.locator('input[id="name"]');
+    await nameInput.clear();
+    await nameInput.fill(newName);
 
-      // Clear and enter new name
-      const nameInput = page.locator('input[id="name"]');
-      await nameInput.clear();
-      await nameInput.fill(newName);
+    // Save the rename
+    const patchResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/dataProducts/') &&
+        response.request().method() === 'PATCH'
+    );
+    await page.getByTestId('save-button').click();
+    await patchResponse;
 
-      // Save the rename
-      const patchResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/dataProducts/') &&
-          response.request().method() === 'PATCH'
-      );
-      await page.getByTestId('save-button').click();
-      await patchResponse;
+    // Wait for navigation to new URL (URL should change to new name)
+    await page.waitForURL(`**/dataProduct/${newName}/**`);
 
-      // Wait for navigation to new URL (URL should change to new name)
-      await page.waitForURL(`**/dataProduct/${newName}/**`);
+    // Verify the data product header shows the new name (use first() as there may be multiple elements)
+    await expect(
+      page.getByTestId('entity-header-display-name').first()
+    ).toBeVisible();
 
-      // Verify the data product header shows the new name (use first() as there may be multiple elements)
-      await expect(
-        page.getByTestId('entity-header-display-name').first()
-      ).toBeVisible();
+    // Update the data product response data for cleanup
+    dataProduct.responseData.name = newName;
+    dataProduct.responseData.fullyQualifiedName = `"${newName}"`;
 
-      // Update the data product response data for cleanup
-      dataProduct.responseData.name = newName;
-      dataProduct.responseData.fullyQualifiedName = `"${newName}"`;
+    // Verify assets are still associated with the renamed data product
+    await page.getByTestId('assets').click();
+    await checkAssetsCount(page, 1);
 
-      // Verify assets are still associated with the renamed data product
-      await page.getByTestId('assets').click();
-      await checkAssetsCount(page, 1);
+    const tableFqn = get(table, 'entityResponseData.fullyQualifiedName');
 
-      const tableFqn = get(table, 'entityResponseData.fullyQualifiedName');
+    // Click on the asset to navigate to the table page
+    await page
+      .locator(
+        `[data-testid="table-data-card_${tableFqn}"] a[data-testid="entity-link"]`
+      )
+      .click();
 
-      // Click on the asset to navigate to the table page
-      await page
-        .locator(
-          `[data-testid="table-data-card_${tableFqn}"] a[data-testid="entity-link"]`
-        )
-        .click();
+    await page.waitForLoadState('networkidle');
 
-      await page.waitForLoadState('networkidle');
+    // Navigate back to data product and verify assets tab still shows the asset
+    await page.goBack();
+    await page.waitForLoadState('networkidle');
 
-      // Navigate back to data product and verify assets tab still shows the asset
-      await page.goBack();
-      await page.waitForLoadState('networkidle');
+    await page.getByTestId('assets').click();
+    await checkAssetsCount(page, 1);
 
-      await page.getByTestId('assets').click();
-      await checkAssetsCount(page, 1);
-
-      // Verify the asset card is still visible
-      await expect(
-        page.locator(`[data-testid="table-data-card_${tableFqn}"]`)
-      ).toBeVisible();
-    } finally {
-    }
+    // Verify the asset card is still visible
+    await expect(
+      page.locator(`[data-testid="table-data-card_${tableFqn}"]`)
+    ).toBeVisible();
   });
 
-  test('should update only display name without changing the actual name', async ({ page, browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+  test('should update only display name without changing the actual name', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
 
     // Create a new data product for this test
     const testDataProduct = new DataProduct([domain]);
@@ -235,10 +218,12 @@ test.describe('Data Product Rename', () => {
     }
   });
 
-  test('should handle multiple consecutive renames and preserve assets', async ({ page, browser }) => {
+  test('should handle multiple consecutive renames and preserve assets', async ({
+    page,
+  }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await getApiContext(page);
 
     // Create a new data product and table for this test
     const testDataProduct = new DataProduct([domain]);
@@ -364,8 +349,10 @@ test.describe('Data Product Rename', () => {
     }
   });
 
-  test('should show error when renaming to a name that already exists', async ({ page, browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+  test('should show error when renaming to a name that already exists', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
 
     // Create two data products for this test
     const dataProduct1 = new DataProduct([domain]);

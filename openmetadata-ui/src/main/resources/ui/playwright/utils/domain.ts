@@ -257,7 +257,7 @@ export const selectDataProduct = async (
   });
 };
 
-const goToAssetsTab = async (
+export const goToAssetsTab = async (
   page: Page,
   domain: Domain['data'],
   skipDomainSelection = false
@@ -275,6 +275,25 @@ const goToAssetsTab = async (
 
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+};
+
+export const verifyAssetsInDomain = async (
+  page: Page,
+  domain: Domain['data'],
+  tables: TableClass[],
+  expectedVisible: boolean
+) => {
+  await goToAssetsTab(page, domain);
+
+  for (const table of tables) {
+    const tableFqn = table.entityResponseData.fullyQualifiedName;
+    const tableCard = page.locator(`[data-testid="table-data-card_${tableFqn}"]`);
+    if (expectedVisible) {
+      await expect(tableCard).toBeVisible({ timeout: 10000 });
+    } else {
+      await expect(tableCard).not.toBeVisible({ timeout: 5000 });
+    }
+  }
 };
 
 const fillCommonFormItems = async (
