@@ -97,10 +97,26 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
         email = String.format("%s@%s", username, SamlSettingsHolder.getInstance().getDomain());
       }
 
+      // Extract team/department attribute from SAML response
+      String teamFromClaim = null;
+      String teamClaimMapping = SecurityConfigurationManager.getCurrentAuthConfig().getJwtTeamClaimMapping();
+      if (!nullOrEmpty(teamClaimMapping)) {
+        try {
+          List<String> attributeValues = auth.getAttribute(teamClaimMapping);
+          if (attributeValues != null && !attributeValues.isEmpty()) {
+            teamFromClaim = attributeValues.get(0);
+            LOG.debug("[SAML ACS] Found team attribute '{}' with value '{}'", teamClaimMapping, teamFromClaim);
+          }
+        } catch (Exception e) {
+          LOG.debug("[SAML ACS] Could not extract team attribute '{}': {}", teamClaimMapping, e.getMessage());
+        }
+      }
+
       JWTAuthMechanism jwtAuthMechanism;
       User user;
+      boolean userExists = true;
       try {
-        user = Entity.getEntityByName(Entity.USER, username, "id,roles", Include.NON_DELETED);
+        user = Entity.getEntityByName(Entity.USER, username, "id,roles,teams", Include.NON_DELETED);
         jwtAuthMechanism =
             JWTTokenGenerator.getInstance()
                 .generateJWTToken(
@@ -113,8 +129,9 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
                     ServiceTokenType.OM_USER);
       } catch (Exception e) {
         LOG.error("[SAML ACS] User not found: " + username);
+        userExists = false;
         // Create the user
-        user = UserUtil.addOrUpdateUser(UserUtil.user(username, email.split("@")[1], username));
+        user = UserUtil.user(username, email.split("@")[1], username);
         jwtAuthMechanism =
             JWTTokenGenerator.getInstance()
                 .generateJWTToken(
@@ -125,6 +142,16 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
                     SamlSettingsHolder.getInstance().getTokenValidity(),
                     false,
                     ServiceTokenType.OM_USER);
+      }
+
+      // Assign team from claim if provided
+      if (!nullOrEmpty(teamFromClaim)) {
+        UserUtil.assignTeamFromClaim(user, teamFromClaim);
+      }
+
+      // Add or update user after team assignment
+      if (!userExists || !nullOrEmpty(teamFromClaim)) {
+        user = UserUtil.addOrUpdateUser(user);
       }
 
       // Add to json response cookie

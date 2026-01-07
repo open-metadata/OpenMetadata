@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.JwtFilter.EMAIL_CLAIM_KEY;
 import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
+import static org.openmetadata.service.security.SecurityUtil.findTeamFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
@@ -143,6 +144,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private OidcClient client;
   private List<String> claimsOrder;
   private Map<String, String> claimsMapping;
+  private String teamClaimMapping;
   private String serverUrl;
   private ClientAuthentication clientAuthentication;
   private String principalDomain;
@@ -209,6 +211,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
             .map(s -> s.split(":"))
             .collect(Collectors.toMap(s -> s[0], s -> s[1]));
     validatePrincipalClaimsMapping(claimsMapping);
+    this.teamClaimMapping = authenticationConfiguration.getJwtTeamClaimMapping();
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
     this.tokenValidity = authenticationConfiguration.getOidcConfiguration().getTokenValidity();
     this.maxAge = authenticationConfiguration.getOidcConfiguration().getMaxAge();
@@ -748,7 +751,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     String email = findEmailFromClaims(claimsMapping, claimsOrder, claims, principalDomain);
 
     String redirectUri = (String) httpSession.getAttribute(SESSION_REDIRECT_URI);
-    User user = getOrCreateOidcUser(userName, email);
+    User user = getOrCreateOidcUser(userName, email, claims);
     Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
     // Store user info in session for logout audit
     httpSession.setAttribute(SESSION_USER_ID, user.getId().toString());
@@ -765,7 +768,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     response.sendRedirect(url);
   }
 
-  private User getOrCreateOidcUser(String userName, String email) {
+  private User getOrCreateOidcUser(String userName, String email, Map<String, Object> claims) {
+    // Extract team from claims if configured
+    String teamFromClaim = findTeamFromClaims(teamClaimMapping, claims);
+    
     try {
       String storedUserStr =
           Entity.getCollectionDAO().userDAO().findUserByNameAndEmail(userName, email);
@@ -773,6 +779,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         User user = JsonUtils.readValue(storedUserStr, User.class);
 
         boolean shouldBeAdmin = getAdminPrincipals().contains(userName);
+        boolean needsUpdate = false;
 
         LOG.info(
             "OIDC login - Username: {}, Email: {}, Should be admin: {}, Current admin status: {}",
@@ -785,8 +792,19 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         if (shouldBeAdmin && !Boolean.TRUE.equals(user.getIsAdmin())) {
           LOG.info("Updating user {} to admin based on adminPrincipals", userName);
           user.setIsAdmin(true);
+          needsUpdate = true;
+        }
+        
+        // Assign team from claim if provided
+        if (!nullOrEmpty(teamFromClaim)) {
+          UserUtil.assignTeamFromClaim(user, teamFromClaim);
+          needsUpdate = true;
+        }
+        
+        if (needsUpdate) {
           UserUtil.addOrUpdateUser(user);
         }
+        
         return user;
       }
     } catch (Exception e) {
@@ -801,6 +819,12 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       String domain = email.split("@")[1];
       User newUser =
           UserUtil.user(userName, domain, userName).withIsAdmin(isAdmin).withIsEmailVerified(true);
+      
+      // Assign team from claim if provided
+      if (!nullOrEmpty(teamFromClaim)) {
+        UserUtil.assignTeamFromClaim(newUser, teamFromClaim);
+      }
+      
       return UserUtil.addOrUpdateUser(newUser);
     }
     throw new AuthenticationException("User not found and self-signup is disabled");

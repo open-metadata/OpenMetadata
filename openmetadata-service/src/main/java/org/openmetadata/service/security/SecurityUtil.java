@@ -173,6 +173,19 @@ public final class SecurityUtil {
     return StringUtils.EMPTY;
   }
 
+  public static String findTeamFromClaims(String jwtTeamClaimMapping, Map<String, ?> claims) {
+    if (nullOrEmpty(jwtTeamClaimMapping) || claims == null) {
+      return null;
+    }
+
+    if (claims.containsKey(jwtTeamClaimMapping)) {
+      String teamValue = getClaimOrObject(claims.get(jwtTeamClaimMapping));
+      return nullOrEmpty(teamValue) ? null : teamValue;
+    }
+
+    return null;
+  }
+
   public static String getFirstMatchJwtClaim(
       List<String> jwtPrincipalClaimsOrder, Map<String, ?> claims) {
     return jwtPrincipalClaimsOrder.stream()

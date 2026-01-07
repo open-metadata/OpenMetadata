@@ -241,6 +241,46 @@ public final class UserUtil {
   }
 
   /**
+   * Assigns a user to a team based on the team name from SAML/JWT claims.
+   * If the team exists, it will be assigned to the user.
+   * If the team doesn't exist, it will be logged and ignored.
+   *
+   * @param user User to assign team to
+   * @param teamName Team name from the claim (e.g., department value)
+   */
+  public static void assignTeamFromClaim(User user, String teamName) {
+    if (nullOrEmpty(teamName)) {
+      return;
+    }
+
+    try {
+      // Try to fetch the team by name
+      EntityReference teamRef = Entity.getEntityReferenceByName(Entity.TEAM, teamName, NON_DELETED);
+      
+      // Check if user already has this team assigned
+      List<EntityReference> currentTeams = user.getTeams();
+      if (currentTeams == null) {
+        currentTeams = new ArrayList<>();
+      }
+      
+      // Check if team is already assigned
+      boolean teamAlreadyAssigned = currentTeams.stream()
+          .anyMatch(t -> t.getId().equals(teamRef.getId()));
+      
+      if (!teamAlreadyAssigned) {
+        currentTeams.add(teamRef);
+        user.setTeams(currentTeams);
+        LOG.info("Assigned team '{}' to user '{}' from claim", teamName, user.getName());
+      }
+    } catch (EntityNotFoundException e) {
+      LOG.warn("Team '{}' from claim mapping not found in OpenMetadata. User '{}' will not be assigned to this team.", teamName, user.getName());
+    } catch (Exception e) {
+      LOG.error("Error assigning team '{}' to user '{}': {}", teamName, user.getName(), e.getMessage(), e);
+    }
+  }
+
+
+  /**
    * This method add auth mechanism in the following way:
    *
    * <ul>
