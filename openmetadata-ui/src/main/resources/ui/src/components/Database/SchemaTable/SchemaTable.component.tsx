@@ -585,6 +585,7 @@ const SchemaTable = () => {
                 <Button
                   className="cursor-pointer hover-cell-icon w-fit-content"
                   data-testid="copy-column-link-button"
+                  disabled={!record.fullyQualifiedName}
                   style={{
                     color: DE_ACTIVE_COLOR,
                     padding: 0,
@@ -592,7 +593,8 @@ const SchemaTable = () => {
                     background: 'transparent',
                   }}
                   onClick={() =>
-                    handleCopyColumnLink(record.fullyQualifiedName ?? '')
+                    record.fullyQualifiedName &&
+                    handleCopyColumnLink(record.fullyQualifiedName)
                   }>
                   <ShareIcon
                     style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
