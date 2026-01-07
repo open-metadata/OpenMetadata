@@ -398,6 +398,26 @@ jest.mock('../../../utils/EntityUtils', () => ({
     .mockImplementation((entity) => entity?.displayName || entity?.name || ''),
 }));
 
+jest.mock('../../../utils/EntitySummaryPanelUtils', () => ({
+  toEntityData: jest.fn().mockImplementation((column) => {
+    if (!column) {
+      return undefined;
+    }
+
+    const extension =
+      'extension' in column && typeof column.extension === 'object'
+        ? column.extension
+        : undefined;
+
+    const entityData: { extension?: unknown; [key: string]: unknown } = {};
+    if (extension) {
+      entityData.extension = extension;
+    }
+
+    return entityData;
+  }),
+}));
+
 jest.mock('../../../utils/StringsUtils', () => ({
   stringToHTML: jest.fn().mockImplementation((str) => str),
 }));
@@ -535,17 +555,17 @@ describe('ColumnDetailPanel', () => {
 
   describe('Individual Section Loaders', () => {
     it('should show loader only for description section when updating description', async () => {
-      const updateColumnDescription = jest
+      const onColumnFieldUpdate = jest
         .fn()
         .mockImplementation(
-          () =>
+          (_fqn: string, _update: { description: string }) =>
             new Promise((resolve) => setTimeout(() => resolve(mockColumn), 100))
         );
 
       const { getByTestId, queryByTestId } = render(
         <ColumnDetailPanel
           {...mockProps}
-          updateColumnDescription={updateColumnDescription}
+          onColumnFieldUpdate={onColumnFieldUpdate}
         />
       );
 
@@ -583,17 +603,20 @@ describe('ColumnDetailPanel', () => {
     });
 
     it('should not show loader for tags section when updating tags', async () => {
-      const updateColumnTags = jest.fn().mockResolvedValue(mockColumn);
+      const onColumnFieldUpdate = jest.fn().mockResolvedValue(mockColumn);
 
       const { getByTestId } = render(
-        <ColumnDetailPanel {...mockProps} updateColumnTags={updateColumnTags} />
+        <ColumnDetailPanel
+          {...mockProps}
+          onColumnFieldUpdate={onColumnFieldUpdate}
+        />
       );
 
       const updateButton = getByTestId('update-tags');
       fireEvent.click(updateButton);
 
       await waitFor(() => {
-        expect(updateColumnTags).toHaveBeenCalled();
+        expect(onColumnFieldUpdate).toHaveBeenCalled();
       });
 
       expect(getByTestId('description-section')).toBeInTheDocument();
@@ -620,7 +643,7 @@ describe('ColumnDetailPanel', () => {
     });
 
     it('should show loader for description section and hide it on error', async () => {
-      const updateColumnDescription = jest.fn().mockImplementation(
+      const onColumnFieldUpdate = jest.fn().mockImplementation(
         () =>
           new Promise((_, reject) => {
             setTimeout(() => {
@@ -632,7 +655,7 @@ describe('ColumnDetailPanel', () => {
       const { getByTestId } = render(
         <ColumnDetailPanel
           {...mockProps}
-          updateColumnDescription={updateColumnDescription}
+          onColumnFieldUpdate={onColumnFieldUpdate}
         />
       );
 
@@ -648,7 +671,7 @@ describe('ColumnDetailPanel', () => {
 
       await waitFor(
         () => {
-          expect(updateColumnDescription).toHaveBeenCalled();
+          expect(onColumnFieldUpdate).toHaveBeenCalled();
           expect(showErrorToast).toHaveBeenCalled();
           expect(getByTestId('description-section')).toBeInTheDocument();
         },
@@ -657,19 +680,17 @@ describe('ColumnDetailPanel', () => {
     });
 
     it('should allow multiple sections to be updated independently', async () => {
-      const updateColumnDescription = jest
+      const onColumnFieldUpdate = jest
         .fn()
         .mockImplementation(
-          () =>
+          (_fqn: string, _update: { description?: string; tags?: unknown[] }) =>
             new Promise((resolve) => setTimeout(() => resolve(mockColumn), 100))
         );
-      const updateColumnTags = jest.fn().mockResolvedValue(mockColumn);
 
       const { getByTestId, queryByTestId } = render(
         <ColumnDetailPanel
           {...mockProps}
-          updateColumnDescription={updateColumnDescription}
-          updateColumnTags={updateColumnTags}
+          onColumnFieldUpdate={onColumnFieldUpdate}
         />
       );
 
@@ -731,7 +752,7 @@ describe('ColumnDetailPanel', () => {
 
   describe('Error Handling', () => {
     it('should handle description update error gracefully', async () => {
-      const updateColumnDescription = jest.fn().mockImplementation(
+      const onColumnFieldUpdate = jest.fn().mockImplementation(
         () =>
           new Promise((_, reject) => {
             setTimeout(() => {
@@ -743,7 +764,7 @@ describe('ColumnDetailPanel', () => {
       const { getByTestId } = render(
         <ColumnDetailPanel
           {...mockProps}
-          updateColumnDescription={updateColumnDescription}
+          onColumnFieldUpdate={onColumnFieldUpdate}
         />
       );
 
@@ -759,7 +780,7 @@ describe('ColumnDetailPanel', () => {
 
       await waitFor(
         () => {
-          expect(updateColumnDescription).toHaveBeenCalled();
+          expect(onColumnFieldUpdate).toHaveBeenCalled();
           expect(showErrorToast).toHaveBeenCalled();
           expect(getByTestId('description-section')).toBeInTheDocument();
         },

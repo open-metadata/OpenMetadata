@@ -70,7 +70,6 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   isTabExpanded = false,
   customizedPage,
   muiTags = false,
-  columnDetailPanelConfig,
 }: GenericProviderProps<T>) => {
   const GenericContext = createGenericContext<T>();
   const [threadLink, setThreadLink] = useState<string>('');
@@ -102,36 +101,35 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
   const { entityRules } = useEntityRules(type);
 
-  // Extract columns from data if not explicitly provided
+  // Extract columns from data
   const extractedColumns = useMemo(() => {
-    if (columnDetailPanelConfig?.columns) {
-      return columnDetailPanelConfig.columns;
-    }
-
     return extractColumnsFromData(data, type) as ColumnOrTask[];
-  }, [data, type, columnDetailPanelConfig?.columns]);
+  }, [data, type]);
 
-  const selectedColumnFqnRef = useRef<string | undefined>();
+  // Helper to clean column by removing empty children array
+  const cleanColumn = useCallback((column: ColumnOrTask): ColumnOrTask => {
+    const columnWithChildren = column as Column;
 
+    return isEmpty(columnWithChildren.children)
+      ? omit(column, 'children')
+      : column;
+  }, []);
+
+  // Sync selected column when extractedColumns change (e.g., after updates)
   useEffect(() => {
-    selectedColumnFqnRef.current = selectedColumn?.fullyQualifiedName;
-  }, [selectedColumn?.fullyQualifiedName]);
-
-  useEffect(() => {
-    const fqn = selectedColumnFqnRef.current;
-    if (fqn && extractedColumns.length > 0) {
-      const updatedColumn = findFieldByFQN<Column>(
-        extractedColumns as Column[],
-        fqn
-      );
-      if (updatedColumn) {
-        const cleanColumn = isEmpty(updatedColumn.children)
-          ? omit(updatedColumn, 'children')
-          : updatedColumn;
-        setSelectedColumn(cleanColumn as ColumnOrTask);
-      }
+    if (!selectedColumn?.fullyQualifiedName || extractedColumns.length === 0) {
+      return;
     }
-  }, [extractedColumns]);
+
+    const updatedColumn = findFieldByFQN<Column>(
+      extractedColumns as Column[],
+      selectedColumn.fullyQualifiedName
+    );
+
+    if (updatedColumn) {
+      setSelectedColumn(cleanColumn(updatedColumn));
+    }
+  }, [extractedColumns, selectedColumn?.fullyQualifiedName, cleanColumn]);
 
   useEffect(() => {
     setLayout(
@@ -216,28 +214,16 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   // Wrapper for onColumnFieldUpdate that updates selectedColumn after the update completes
   const handleColumnFieldUpdate = useCallback(
     async (fqn: string, update: ColumnFieldUpdate) => {
-      // Use custom implementation if provided, otherwise use default
-      const customHandler = columnDetailPanelConfig?.onColumnFieldUpdate;
-      const handler = customHandler || defaultColumnFieldUpdate;
+      const updatedColumn = await defaultColumnFieldUpdate(fqn, update);
 
-      const updatedColumn = await handler(fqn, update);
-
+      // Update selected column if it matches the updated one
       if (updatedColumn && selectedColumn?.fullyQualifiedName === fqn) {
-        const columnWithChildren = updatedColumn as Column;
-        const hasEmptyChildren = isEmpty(columnWithChildren.children);
-        const cleanColumn = hasEmptyChildren
-          ? omit(updatedColumn, 'children')
-          : updatedColumn;
-        setSelectedColumn(cleanColumn);
+        setSelectedColumn(cleanColumn(updatedColumn));
       }
 
       return updatedColumn;
     },
-    [
-      columnDetailPanelConfig?.onColumnFieldUpdate,
-      defaultColumnFieldUpdate,
-      selectedColumn,
-    ]
+    [defaultColumnFieldUpdate, selectedColumn, cleanColumn]
   );
 
   const handleColumnNavigate = useCallback((column: ColumnOrTask) => {
@@ -245,11 +231,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   }, []);
 
   // Extract deleted status from entity data
-  const deleted = useMemo(() => {
-    const entityWithDeleted = data as Partial<{ deleted: boolean }>;
-
-    return entityWithDeleted.deleted;
-  }, [data]);
+  const deleted = (data as { deleted?: boolean })?.deleted;
 
   // Extract tableConstraints for Table entities
   const tableConstraints = useMemo(() => {

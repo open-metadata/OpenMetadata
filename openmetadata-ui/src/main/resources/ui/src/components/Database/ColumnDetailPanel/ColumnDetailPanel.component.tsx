@@ -215,17 +215,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         return undefined;
       }
 
-      let response: T | undefined;
-
-      if (onColumnFieldUpdate) {
-        response = await onColumnFieldUpdate(column.fullyQualifiedName, update);
-      } else {
-        // Fallback to direct API call for Table entities when used outside GenericProvider
-        response = (await updateTableColumn(
-          column.fullyQualifiedName,
-          update
-        )) as T;
-      }
+      const response = onColumnFieldUpdate
+        ? await onColumnFieldUpdate(column.fullyQualifiedName, update)
+        : // Fallback to direct API call for Table entities when used outside GenericProvider
+          ((await updateTableColumn(column.fullyQualifiedName, update)) as T);
 
       showSuccessToast(
         t('server.update-entity-success', {
@@ -235,7 +228,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
       return response;
     },
-    [column, t, onColumnFieldUpdate]
+    [column?.fullyQualifiedName, t, onColumnFieldUpdate]
   );
 
   const handleDescriptionUpdate = useCallback(
