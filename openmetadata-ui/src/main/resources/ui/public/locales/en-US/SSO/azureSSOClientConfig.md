@@ -80,6 +80,29 @@ Azure Active Directory (Azure AD) SSO enables users to log in with their Microso
 - **Why it matters:** Controls how user information from Azure AD maps to OpenMetadata user profiles.
 - **Note:** Format: "openmetadata_field:jwt_claim"
 
+### <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
+
+- **Definition:** Azure AD claim or attribute containing team/department information for automatic team assignment.
+- **Example:** "department" or "jobTitle" or "companyName"
+- **Why it matters:** Automatically assigns users to existing OpenMetadata teams based on their Azure AD attributes during login.
+- **How it works:**
+  - Extracts the value from the specified Azure AD claim (e.g., if set to "department", reads user's department from Azure AD)
+  - Matches the extracted value against existing team names in OpenMetadata
+  - If a team with matching name exists, user is automatically assigned to that team
+  - If team doesn't exist, a warning is logged but authentication continues
+- **Azure AD Configuration:**
+  - Common attributes: "department", "jobTitle", "companyName", "officeLocation"
+  - To use custom attributes, ensure they're included in the token:
+    1. Go to Azure AD → App registrations → Your app → Token configuration
+    2. Add optional claims → Select ID token → Add the desired attribute (e.g., "department")
+    3. Check "Turn on the Microsoft Graph profile permission"
+  - For group-based teams, use "groups" claim (requires group membership configuration)
+- **Note:** 
+  - The team must already exist in OpenMetadata for assignment to work
+  - Team names are case-sensitive and must match exactly
+  - Azure AD's "department" attribute is the most common use case (e.g., "Engineering", "Sales", "Marketing")
+  - Multiple team assignments from a single claim are not currently supported
+
 ### <span data-id="tokenValidation">Token Validation Algorithm</span>
 
 - **Definition:** Algorithm used to validate JWT token signatures.

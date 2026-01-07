@@ -250,6 +250,23 @@ SAML (Security Assertion Markup Language) SSO enables users to log in using SAML
 - **Why it matters:** Controls how SAML user information maps to OpenMetadata user profiles.
 - **Note:** Format: "openmetadata_field:saml_claim" or "openmetadata_field:jwt_claim"
 
+## <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
+
+- **Definition:** SAML attribute or JWT claim name containing team/department information for automatic team assignment.
+- **Example:** "department" (for Azure AD department attribute) or "groups" (for group membership)
+- **Why it matters:** Automatically assigns users to existing OpenMetadata teams based on their SAML/JWT attributes during login.
+- **How it works:**
+  - For SAML: Extracts the value from the specified SAML attribute (e.g., if set to "department", reads the "department" attribute from SAML assertion)
+  - For JWT/OIDC: Extracts the value from the specified JWT claim (e.g., if set to "department", reads the "department" claim from JWT token)
+  - Matches the extracted value against existing team names in OpenMetadata
+  - If a team with matching name exists, user is automatically assigned to that team
+  - If team doesn't exist, a warning is logged but authentication continues
+- **Note:** 
+  - The team must already exist in OpenMetadata for assignment to work
+  - Team names are case-sensitive and must match exactly
+  - This is useful for Azure AD "department" attribute or similar organizational attributes
+  - Multiple team assignments from a single claim are not currently supported (only the first value is used)
+
 ## <span data-id="tokenValidationAlgorithm">Token Validation Algorithm</span>
 
 - **Definition:** Algorithm used to validate JWT token signatures when SAML uses token-based authentication.
