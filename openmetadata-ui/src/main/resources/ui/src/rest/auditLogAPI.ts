@@ -10,5 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export { default } from './ChipSelect';
-export type { ChipSelectProps } from './ChipSelect.interface';
+
+import {
+  AuditLogListParams,
+  AuditLogListResponse,
+} from '../types/auditLogs.interface';
+import APIClient from './index';
+
+const BASE_URL = '/audit/logs';
+
+export const getAuditLogs = async (params: AuditLogListParams) => {
+  const response = await APIClient.get<AuditLogListResponse>(BASE_URL, {
+    params,
+  });
+
+  return response.data;
+};
