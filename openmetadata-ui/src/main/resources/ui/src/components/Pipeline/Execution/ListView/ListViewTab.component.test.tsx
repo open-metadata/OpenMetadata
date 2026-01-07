@@ -31,6 +31,10 @@ jest.mock('../../../../utils/executionUtils', () => ({
     .mockImplementation(() => <div>StatusIndicator</div>),
 }));
 
+jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
+  formatDateTime: jest.fn().mockImplementation((timestamp) => timestamp),
+}));
+
 const mockProps = {
   executions: EXECUTION_LIST_MOCK,
   status: StatusType.Successful,
