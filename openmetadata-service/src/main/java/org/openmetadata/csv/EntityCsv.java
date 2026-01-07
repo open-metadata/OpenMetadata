@@ -56,7 +56,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -168,6 +167,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
     List<CSVRecord> records = parse(csv);
     if (records == null) {
       return importResult; // Error during parsing
+    }
+
+    // Initialize arrays for tracking create status and field changes
+    if (records != null && !records.isEmpty()) {
+      initializeArrays(records.size());
     }
 
     // First record is CSV header - Validate headers
@@ -1757,15 +1761,15 @@ public abstract class EntityCsv<T extends EntityInterface> {
       throws IOException {
     String columnFqn = csvRecord.get(0);
     String columnFullyQualifiedName = csvRecord.get(13);
-    Column existingColumn = null;
+    Column column = null;
     boolean columnExists = false;
     try {
-      existingColumn = findColumnWithChildren(table.getColumns(), columnFullyQualifiedName);
+      column = findColumnWithChildren(table.getColumns(), columnFullyQualifiedName);
       columnExists = true;
     } catch (Exception e) {
       LOG.warn("column not found, will be created");
     }
-    if (existingColumn == null) columnExists = false;
+    if (column == null) columnExists = false;
 
     int recordIndex = getRecordIndex(csvRecord);
     if (recordCreateStatusArray != null
@@ -1774,8 +1778,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
       recordCreateStatusArray[recordIndex] = !columnExists;
     }
 
-    Column column =
-        existingColumn != null ? JsonUtils.deepCopy(existingColumn, Column.class) : null;
     if (!columnExists) {
       column =
           new Column()
@@ -1783,9 +1785,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
               .withFullyQualifiedName(table.getFullyQualifiedName() + Entity.SEPARATOR + columnFqn);
     }
 
-    List<FieldChange> fieldsAdded = new ArrayList<>();
-    List<FieldChange> fieldsUpdated = new ArrayList<>();
-
+    // Extract values from CSV
     String displayName = csvRecord.get(1);
     String description = csvRecord.get(2);
     String dataTypeDisplay = csvRecord.get(14);
@@ -1819,6 +1819,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
             csvRecord,
             List.of(Pair.of(4, TagSource.CLASSIFICATION), Pair.of(5, TagSource.GLOSSARY)));
 
+    List<FieldChange> fieldsAdded = new ArrayList<>();
+    List<FieldChange> fieldsUpdated = new ArrayList<>();
+
     if (!columnExists) {
       if (!nullOrEmpty(displayName)) {
         fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
@@ -1844,62 +1847,55 @@ public abstract class EntityCsv<T extends EntityInterface> {
             new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tagLabels)));
       }
     } else {
-      if (CommonUtil.isChanged(existingColumn.getDisplayName(), displayName)) {
+      if (CommonUtil.isChanged(column.getDisplayName(), displayName)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("displayName")
-                .withOldValue(existingColumn.getDisplayName())
+                .withOldValue(column.getDisplayName())
                 .withNewValue(displayName));
       }
-      if (CommonUtil.isChanged(existingColumn.getDescription(), description)) {
+      if (CommonUtil.isChanged(column.getDescription(), description)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("description")
-                .withOldValue(existingColumn.getDescription())
+                .withOldValue(column.getDescription())
                 .withNewValue(description));
       }
-      if (CommonUtil.isChanged(existingColumn.getDataTypeDisplay(), dataTypeDisplay)) {
+      if (CommonUtil.isChanged(column.getDataTypeDisplay(), dataTypeDisplay)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("dataTypeDisplay")
-                .withOldValue(existingColumn.getDataTypeDisplay())
+                .withOldValue(column.getDataTypeDisplay())
                 .withNewValue(dataTypeDisplay));
       }
-      if (CommonUtil.isChanged(existingColumn.getDataType(), dataType)) {
+      if (CommonUtil.isChanged(column.getDataType(), dataType)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("dataType")
-                .withOldValue(
-                    existingColumn.getDataType() != null
-                        ? existingColumn.getDataType().toString()
-                        : null)
+                .withOldValue(column.getDataType() != null ? column.getDataType().toString() : null)
                 .withNewValue(dataType.toString()));
       }
-      if (CommonUtil.isChanged(existingColumn.getArrayDataType(), arrayDataType)) {
+      if (CommonUtil.isChanged(column.getArrayDataType(), arrayDataType)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("arrayDataType")
                 .withOldValue(
-                    existingColumn.getArrayDataType() != null
-                        ? existingColumn.getArrayDataType().toString()
-                        : null)
+                    column.getArrayDataType() != null ? column.getArrayDataType().toString() : null)
                 .withNewValue(arrayDataType != null ? arrayDataType.toString() : null));
       }
-      if (CommonUtil.isChanged(existingColumn.getDataLength(), dataLength)) {
+      if (CommonUtil.isChanged(column.getDataLength(), dataLength)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("dataLength")
                 .withOldValue(
-                    existingColumn.getDataLength() != null
-                        ? existingColumn.getDataLength().toString()
-                        : null)
+                    column.getDataLength() != null ? column.getDataLength().toString() : null)
                 .withNewValue(dataLength != null ? dataLength.toString() : null));
       }
-      if (CommonUtil.isChanged(existingColumn.getTags(), tagLabels)) {
+      if (CommonUtil.isChanged(column.getTags(), tagLabels)) {
         fieldsUpdated.add(
             new FieldChange()
                 .withName("tags")
-                .withOldValue(JsonUtils.pojoToJson(existingColumn.getTags()))
+                .withOldValue(JsonUtils.pojoToJson(column.getTags()))
                 .withNewValue(JsonUtils.pojoToJson(tagLabels)));
       }
     }

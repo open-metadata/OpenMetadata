@@ -3292,7 +3292,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     csv = createCsv(TableCsv.HEADERS, listOf(csvRecord), null);
     result = importCsv(tableName, csv, false);
     assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
-    expectedRows = new String[] {resultsHeader, getSuccessRecord(csvRecord, "Entity updated")};
+    expectedRows = new String[] {resultsHeader, getSuccessRecord(csvRecord, "Entity created")};
     assertRows(result, expectedRows);
   }
 
@@ -3324,20 +3324,15 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void test_csvImportCreate() throws IOException {
-    // Create a table with columns
-    Column c1 = new Column().withName("c1").withDataType(INT);
-    Column c2 = new Column().withName("c2").withDataType(VARCHAR);
-    Column c3 = new Column().withName("c3").withDataType(BIGINT);
-    CreateTable createTable =
-        createRequest("csvImportCreate").withColumns(listOf(c1, c2, c3)).withTableConstraints(null);
+    CreateTable createTable = createRequest("csvImportCreate").withTableConstraints(null);
     Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // Create CSV records for initial import (these should be marked as ENTITY_CREATED)
     List<String> createRecords =
         listOf(
-            "c1,Display Name 1,Description for c1,type,INT,,,,",
-            "c2,Display Name 2,Description for c2,type,VARCHAR,,,,",
-            "c3,Display Name 3,Description for c3,type,BIGINT,,,,");
+            "c31,Display Name 1,Description for c1,type,INT,,,,",
+            "c32,Display Name 2,Description for c2,type,INT,,,,",
+            "c33,Display Name 3,Description for c3,type,INT,,,,");
 
     String csv = createCsv(TableCsv.HEADERS, createRecords, null);
 
@@ -3364,9 +3359,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void test_csvImportUpdate() throws IOException {
     // Create a table with columns
     Column c1 = new Column().withName("c1").withDataType(INT).withDescription("Initial desc 1");
-    Column c2 =
-        new Column().withName("c2").withDataType(VARCHAR).withDescription("Initial desc 2");
-    Column c3 = new Column().withName("c3").withDataType(BIGINT).withDescription("Initial desc 3");
+    Column c2 = new Column().withName("c2").withDataType(INT).withDescription("Initial desc 2");
+    Column c3 = new Column().withName("c3").withDataType(INT).withDescription("Initial desc 3");
     CreateTable createTable =
         createRequest("csvImportUpdate").withColumns(listOf(c1, c2, c3)).withTableConstraints(null);
     Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
@@ -3375,8 +3369,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     List<String> createRecords =
         listOf(
             "c1,Display Name 1,Initial desc 1,type,INT,,,,",
-            "c2,Display Name 2,Initial desc 2,type,VARCHAR,,,,",
-            "c3,Display Name 3,Initial desc 3,type,BIGINT,,,,");
+            "c2,Display Name 2,Initial desc 2,type,INT,,,,",
+            "c3,Display Name 3,Initial desc 3,type,INT,,,,");
 
     String createCsv = createCsv(TableCsv.HEADERS, createRecords, null);
     importCsv(table.getFullyQualifiedName(), createCsv, false);
@@ -3385,8 +3379,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     List<String> updateRecords =
         listOf(
             "c1,Updated Display 1,Updated description 1,type,INT,,,PII.Sensitive,",
-            "c2,Updated Display 2,Updated description 2,type,VARCHAR,,,PII.Sensitive,",
-            "c3,Updated Display 3,Updated description 3,type,BIGINT,,,PII.NonSensitive,");
+            "c2,Updated Display 2,Updated description 2,type,INT,,,PII.Sensitive,",
+            "c3,Updated Display 3,Updated description 3,type,INT,,,PII.NonSensitive,");
 
     String updateCsv = createCsv(TableCsv.HEADERS, updateRecords, null);
 
@@ -3411,25 +3405,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void test_csvImportRecursiveCreate() throws IOException {
-    // Create a table with nested columns
-    Column c1 = new Column().withName("c1").withDataType(STRUCT);
-    Column c11 = new Column().withName("c11").withDataType(INT);
-    Column c12 = new Column().withName("c12").withDataType(VARCHAR);
-    c1.withChildren(listOf(c11, c12));
-    Column c2 = new Column().withName("c2").withDataType(BIGINT);
-    CreateTable createTable =
-        createRequest("csvImportRecursiveCreate")
-            .withColumns(listOf(c1, c2))
-            .withTableConstraints(null);
+    CreateTable createTable = createRequest("csvImportRecursiveCreate").withTableConstraints(null);
     Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // Create CSV records for recursive import (these should be marked as ENTITY_CREATED)
     List<String> createRecords =
         listOf(
-            "c1,Display c1,Description for c1,type,STRUCT,,,,",
-            "c1.c11,Display c11,Description for c11,type,INT,,,,",
-            "c1.c12,Display c12,Description for c12,type,VARCHAR,,,,",
-            "c2,Display c2,Description for c2,type,BIGINT,,,,");
+            "c01,Display c1,Description for c1,type,INT,,,,",
+            "c01.c11,Display c11,Description for c11,type,INT,,,,",
+            "c01.c12,Display c12,Description for c12,type,INT,,,,",
+            "c02,Display c2,Description for c2,type,INT,,,,");
 
     String csv = createCsv(TableCsv.HEADERS, createRecords, null);
 
@@ -3459,10 +3444,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Column c11 =
         new Column().withName("c11").withDataType(INT).withDescription("Initial nested desc 1");
     Column c12 =
-        new Column()
-            .withName("c12")
-            .withDataType(VARCHAR)
-            .withDescription("Initial nested desc 2");
+        new Column().withName("c12").withDataType(VARCHAR).withDescription("Initial nested desc 2");
     c1.withChildren(listOf(c11, c12));
     Column c2 = new Column().withName("c2").withDataType(BIGINT).withDescription("Initial desc 2");
     CreateTable createTable =

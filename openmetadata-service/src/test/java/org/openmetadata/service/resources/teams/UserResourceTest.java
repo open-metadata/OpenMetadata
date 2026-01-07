@@ -1779,14 +1779,19 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Test
   void test_csvImportCreate() throws IOException {
     TeamResourceTest teamTest = new TeamResourceTest();
-    CreateTeam createTeam = teamTest.createRequest("csvImportCreateTeam").withTeamType(TeamType.DEPARTMENT);
+    CreateTeam createTeam =
+        teamTest.createRequest("csvImportCreateTeam").withTeamType(CreateTeam.TeamType.DEPARTMENT);
     Team team = teamTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
 
     // Create CSV records for initial import (these should be marked as ENTITY_CREATED)
     List<String> createRecords =
         listOf(
-            "user1,Display User 1,Description for user1,user1@example.com,,false," + team.getName() + ",",
-            "user2,Display User 2,Description for user2,user2@example.com,,false," + team.getName() + ",");
+            "user1,Display User 1,Description for user1,user1@example.com,,false,"
+                + team.getName()
+                + ",",
+            "user2,Display User 2,Description for user2,user2@example.com,,false,"
+                + team.getName()
+                + ",");
 
     String csv = createCsv(UserCsv.HEADERS, createRecords, null);
 
@@ -1812,14 +1817,19 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Test
   void test_csvImportUpdate() throws IOException {
     TeamResourceTest teamTest = new TeamResourceTest();
-    CreateTeam createTeam = teamTest.createRequest("csvImportUpdateTeam").withTeamType(TeamType.DEPARTMENT);
+    CreateTeam createTeam =
+        teamTest.createRequest("csvImportUpdateTeam").withTeamType(CreateTeam.TeamType.DEPARTMENT);
     Team team = teamTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
 
     // First import to create user metadata
     List<String> createRecords =
         listOf(
-            "user1,Display User 1,Initial description 1,user1@example.com,,false," + team.getName() + ",",
-            "user2,Display User 2,Initial description 2,user2@example.com,,false," + team.getName() + ",");
+            "user1,Display User 1,Initial description 1,user1@example.com,,false,"
+                + team.getName()
+                + ",",
+            "user2,Display User 2,Initial description 2,user2@example.com,,false,"
+                + team.getName()
+                + ",");
 
     String createCsv = createCsv(UserCsv.HEADERS, createRecords, null);
     importCsv(team.getName(), createCsv, false);
@@ -1827,8 +1837,12 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Now update the same users (these should be marked as ENTITY_UPDATED)
     List<String> updateRecords =
         listOf(
-            "user1,Updated Display 1,Updated description 1,user1@example.com,,false," + team.getName() + ",",
-            "user2,Updated Display 2,Updated description 2,user2@example.com,,false," + team.getName() + ",");
+            "user1,Updated Display 1,Updated description 1,user1@example.com,,false,"
+                + team.getName()
+                + ",",
+            "user2,Updated Display 2,Updated description 2,user2@example.com,,false,"
+                + team.getName()
+                + ",");
 
     String updateCsv = createCsv(UserCsv.HEADERS, updateRecords, null);
 

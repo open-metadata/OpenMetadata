@@ -1053,8 +1053,22 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Create CSV records for initial import (these should be marked as ENTITY_CREATED)
     List<String> createRecords =
         listOf(
-            getRecord("user1", USER, team.getName(), null, true, null, (List<Policy>) null),
-            getRecord("user2", USER, team.getName(), null, true, null, (List<Policy>) null));
+            getRecord(
+                "user1",
+                GROUP,
+                team.getName(),
+                (User) null,
+                true,
+                (List<Role>) null,
+                (List<Policy>) null),
+            getRecord(
+                "user2",
+                GROUP,
+                team.getName(),
+                (User) null,
+                true,
+                (List<Role>) null,
+                (List<Policy>) null));
 
     String csv = createCsv(TeamCsv.HEADERS, createRecords, null);
 
@@ -1073,8 +1087,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
           resultLines[i].contains("fieldsAdded"),
           "Record " + i + " should have changeDescription: " + resultLines[i]);
     }
-
-    deleteEntityByName(team.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -1083,16 +1095,30 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     Team team = createEntity(createTeam, ADMIN_AUTH_HEADERS);
 
     UserResourceTest userTest = new UserResourceTest();
-    CreateUser createUser1 = userTest.createRequest("user1");
+    CreateUser createUser1 = userTest.createRequest("user10");
     User user1 = userTest.createEntity(createUser1, ADMIN_AUTH_HEADERS);
-    CreateUser createUser2 = userTest.createRequest("user2");
+    CreateUser createUser2 = userTest.createRequest("user20");
     User user2 = userTest.createEntity(createUser2, ADMIN_AUTH_HEADERS);
 
     // First import to create user metadata in team
     List<String> createRecords =
         listOf(
-            getRecord("user1", USER, team.getName(), null, true, null, (List<Policy>) null),
-            getRecord("user2", USER, team.getName(), null, true, null, (List<Policy>) null));
+            getRecord(
+                "user10",
+                GROUP,
+                team.getName(),
+                (User) null,
+                true,
+                (List<Role>) null,
+                (List<Policy>) null),
+            getRecord(
+                "user20",
+                GROUP,
+                team.getName(),
+                (User) null,
+                true,
+                (List<Role>) null,
+                (List<Policy>) null));
 
     String createCsv = createCsv(TeamCsv.HEADERS, createRecords, null);
     importCsv(team.getName(), createCsv, false);
@@ -1100,8 +1126,22 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Now update the same users (these should be marked as ENTITY_UPDATED)
     List<String> updateRecords =
         listOf(
-            getRecord("user1", USER, team.getName(), "Updated description 1", true, null, (List<Policy>) null),
-            getRecord("user2", USER, team.getName(), "Updated description 2", true, null, (List<Policy>) null));
+            getRecord(
+                "user10",
+                GROUP,
+                team.getName(),
+                (User) null,
+                true,
+                (List<Role>) null,
+                (List<Policy>) null),
+            getRecord(
+                "user20",
+                GROUP,
+                team.getName(),
+                (User) null,
+                true,
+                (List<Role>) null,
+                (List<Policy>) null));
 
     String updateCsv = createCsv(TeamCsv.HEADERS, updateRecords, null);
 
@@ -1120,8 +1160,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
           resultLines[i].contains("fieldsUpdated"),
           "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
     }
-
-    deleteEntityByName(team.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
   }
 
   @Test

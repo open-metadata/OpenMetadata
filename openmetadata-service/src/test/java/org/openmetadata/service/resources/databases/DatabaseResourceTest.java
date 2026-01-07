@@ -361,18 +361,12 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   void test_csvImportCreate() throws IOException {
     Database database = createEntity(createRequest("csvImportCreate"), ADMIN_AUTH_HEADERS);
     DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
-    CreateDatabaseSchema createSchema1 =
-        schemaTest.createRequest("schema1").withDatabase(database.getFullyQualifiedName());
-    schemaTest.createEntity(createSchema1, ADMIN_AUTH_HEADERS);
-    CreateDatabaseSchema createSchema2 =
-        schemaTest.createRequest("schema2").withDatabase(database.getFullyQualifiedName());
-    schemaTest.createEntity(createSchema2, ADMIN_AUTH_HEADERS);
 
     // Create CSV records for initial import (these should be marked as ENTITY_CREATED)
     List<String> createRecords =
         listOf(
-            "schema1,Display Schema 1,Description for schema1,,,,,,,,",
-            "schema2,Display Schema 2,Description for schema2,,,,,,,,");
+            "schema1,Display Schema 1,Description for schema1,,,,,,,,,",
+            "schema2,Display Schema 2,Description for schema2,,,,,,,,,");
 
     String csv = createCsv(getDatabaseCsvHeaders(database, false), createRecords, null);
 
@@ -415,8 +409,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     // First import to create schema metadata
     List<String> createRecords =
         listOf(
-            "schema1,Display Schema 1,Initial description 1,,,,,,,,",
-            "schema2,Display Schema 2,Initial description 2,,,,,,,,");
+            "schema1,Display Schema 1,Initial description 1,,,,,,,,,",
+            "schema2,Display Schema 2,Initial description 2,,,,,,,,,");
 
     String createCsv = createCsv(getDatabaseCsvHeaders(database, false), createRecords, null);
     importCsv(database.getFullyQualifiedName(), createCsv, false);
@@ -424,8 +418,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     // Now update the same schemas (these should be marked as ENTITY_UPDATED)
     List<String> updateRecords =
         listOf(
-            "schema1,Updated Display 1,Updated description 1,,,,,,,," ,
-            "schema2,Updated Display 2,Updated description 2,,,,,,,,");
+            "schema1,Updated Display 1,Updated description 1,,,,,,,,,",
+            "schema2,Updated Display 2,Updated description 2,,,,,,,,,");
 
     String updateCsv = createCsv(getDatabaseCsvHeaders(database, false), updateRecords, null);
 
@@ -451,21 +445,14 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   @Test
   void test_csvImportRecursiveCreate() throws IOException {
     Database database = createEntity(createRequest("csvImportRecCreate"), ADMIN_AUTH_HEADERS);
-    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
-    CreateDatabaseSchema createSchema =
-        schemaTest.createRequest("schema1").withDatabase(database.getFullyQualifiedName());
-    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
-
-    TableResourceTest tableTest = new TableResourceTest();
-    CreateTable createTable =
-        tableTest.createRequest("table1").withDatabaseSchema(schema.getFullyQualifiedName());
-    tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // Create CSV records for recursive import (these should be marked as ENTITY_CREATED)
     List<String> createRecords =
         listOf(
-            "schema1,databaseSchema,Display Schema,Description for schema,,,,,,,,",
-            "schema1.table1,table,Display Table,Description for table,,,,,,,,");
+            "schema1,Display Schema,Description for schema,,,,,,,,,,databaseSchema,"
+                + escapeCsv(database.getFullyQualifiedName() + ".schema1"),
+            "schema1.table1,Display Table,Description for table,,,,,,,,,,table,"
+                + escapeCsv(database.getFullyQualifiedName() + ".schema1.table1"));
 
     // Get recursive headers
     String csv =
@@ -515,8 +502,10 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     // First import to create metadata
     List<String> createRecords =
         listOf(
-            "schema1,databaseSchema,Display Schema,Initial schema description,,,,,,,,",
-            "schema1.table1,table,Display Table,Initial table description,,,,,,,,");
+            "schema1,Display Schema,Initial schema description,,,,,,,,,,databaseSchema,"
+                + escapeCsv(database.getFullyQualifiedName() + ".schema1"),
+            "schema1.table1,Display Table,Initial table description,,,,,,,,,,table,"
+                + escapeCsv(database.getFullyQualifiedName() + ".schema1.table1"));
 
     String createCsv =
         createCsv(
@@ -528,8 +517,10 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     // Now update the same entities recursively (these should be marked as ENTITY_UPDATED)
     List<String> updateRecords =
         listOf(
-            "schema1,databaseSchema,Updated Schema,Updated schema description,,,,,,,,",
-            "schema1.table1,table,Updated Table,Updated table description,,,,,,,,");
+            "schema1,Updated Schema,Updated schema description,,,,,,,,,,databaseSchema,"
+                + escapeCsv(database.getFullyQualifiedName() + ".schema1"),
+            "schema1.table1,Updated Table,Updated table description,,,,,,,,,,table,"
+                + escapeCsv(database.getFullyQualifiedName() + ".schema1.table1"));
 
     String updateCsv =
         createCsv(

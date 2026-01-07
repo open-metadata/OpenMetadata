@@ -837,19 +837,11 @@ public class DatabaseSchemaResourceTest
     CreateDatabaseSchema createSchema = createRequest("csvImportCreate");
     DatabaseSchema schema = createEntity(createSchema, ADMIN_AUTH_HEADERS);
 
-    TableResourceTest tableTest = new TableResourceTest();
-    CreateTable createTable1 =
-        tableTest.createRequest("table1").withDatabaseSchema(schema.getFullyQualifiedName());
-    tableTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
-    CreateTable createTable2 =
-        tableTest.createRequest("table2").withDatabaseSchema(schema.getFullyQualifiedName());
-    tableTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
-
     // Create CSV records for initial import (these should be marked as ENTITY_CREATED)
     List<String> createRecords =
         listOf(
-            "table1,Display Table 1,Description for table1,,,,,,,,",
-            "table2,Display Table 2,Description for table2,,,,,,,,");
+            "table1,Display Table 1,Description for table1,,,,,,,,,",
+            "table2,Display Table 2,Description for table2,,,,,,,,,");
 
     String csv = createCsv(getDatabaseSchemaCsvHeaders(schema, false), createRecords, null);
 
@@ -894,8 +886,8 @@ public class DatabaseSchemaResourceTest
     // First import to create table metadata
     List<String> createRecords =
         listOf(
-            "table1,Display Table 1,Initial description 1,,,,,,,,",
-            "table2,Display Table 2,Initial description 2,,,,,,,,");
+            "table1,Display Table 1,Initial description 1,,,,,,,,,",
+            "table2,Display Table 2,Initial description 2,,,,,,,,,");
 
     String createCsv = createCsv(getDatabaseSchemaCsvHeaders(schema, false), createRecords, null);
     importCsv(schema.getFullyQualifiedName(), createCsv, false);
@@ -903,8 +895,8 @@ public class DatabaseSchemaResourceTest
     // Now update the same tables (these should be marked as ENTITY_UPDATED)
     List<String> updateRecords =
         listOf(
-            "table1,Updated Display 1,Updated description 1,,,,,,,,",
-            "table2,Updated Display 2,Updated description 2,,,,,,,,");
+            "table1,Updated Display 1,Updated description 1,,,,,,,,,",
+            "table2,Updated Display 2,Updated description 2,,,,,,,,,");
 
     String updateCsv = createCsv(getDatabaseSchemaCsvHeaders(schema, false), updateRecords, null);
 
@@ -931,27 +923,21 @@ public class DatabaseSchemaResourceTest
   void test_csvImportRecursiveCreate() throws IOException {
     CreateDatabaseSchema createSchema = createRequest("csvImportRecCreate");
     DatabaseSchema schema = createEntity(createSchema, ADMIN_AUTH_HEADERS);
-
-    TableResourceTest tableTest = new TableResourceTest();
-    Column c1 = new Column().withName("col1").withDataType(ColumnDataType.INT);
-    Column c2 = new Column().withName("col2").withDataType(ColumnDataType.VARCHAR);
-    CreateTable createTable =
-        tableTest
-            .createRequest("table1")
-            .withDatabaseSchema(schema.getFullyQualifiedName())
-            .withColumns(List.of(c1, c2));
-    Table table = tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
-
-    // Create CSV records for recursive import (these should be marked as ENTITY_CREATED)
+    //    // Create CSV records for recursive import (these should be marked as ENTITY_CREATED)
+    String table1fqn = schema.getFullyQualifiedName() + ".table1";
+    String column1fqn = schema.getFullyQualifiedName() + ".table1.col1";
+    String column2fqn = schema.getFullyQualifiedName() + ".table1.col2";
     List<String> createRecords =
         listOf(
-            "table1,table,Display Table,Description for table,,,,,,,,",
             String.format(
-                "%s.col1,column,Display Col1,Description for col1,type,INT,,,,,,,",
-                table.getFullyQualifiedName()),
+                "table1,Display Table,Description for table,,,,,,,,,,table,%s,",
+                escapeCsv(table1fqn)),
             String.format(
-                "%s.col2,column,Display Col2,Description for col2,type,VARCHAR,,,,,,,",
-                table.getFullyQualifiedName()));
+                "col1,Display Col1,Description for col1,,,,,,,,,,column,%s,,INT",
+                escapeCsv(column1fqn)),
+            String.format(
+                "col2,Display Col2,Description for col2,,,,,,,,,,column,%s,,INT",
+                escapeCsv(column2fqn)));
 
     // Get recursive headers
     String csv =
@@ -975,8 +961,6 @@ public class DatabaseSchemaResourceTest
           resultLines[i].contains("fieldsAdded"),
           "Record " + i + " should have changeDescription: " + resultLines[i]);
     }
-
-    deleteEntityByName(schema.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -988,28 +972,30 @@ public class DatabaseSchemaResourceTest
     Column c1 =
         new Column().withName("col1").withDataType(ColumnDataType.INT).withDescription("Init col1");
     Column c2 =
-        new Column()
-            .withName("col2")
-            .withDataType(ColumnDataType.VARCHAR)
-            .withDescription("Init col2");
+        new Column().withName("col2").withDataType(ColumnDataType.INT).withDescription("Init col2");
     CreateTable createTable =
         tableTest
             .createRequest("table1")
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription("Initial table description")
-            .withColumns(List.of(c1, c2));
+            .withColumns(List.of(c1, c2))
+            .withTableConstraints(null);
     Table table = tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // First import to create metadata
+    String table1fqn = schema.getFullyQualifiedName() + ".table1";
+    String column1fqn = schema.getFullyQualifiedName() + ".table1.col1";
+    String column2fqn = schema.getFullyQualifiedName() + ".table1.col2";
+
     List<String> createRecords =
         listOf(
-            "table1,table,Display Table,Initial table description,,,,,,,,",
             String.format(
-                "%s.col1,column,Display Col1,Init col1,type,INT,,,,,,,",
-                table.getFullyQualifiedName()),
+                "table1,Display Table,Initial table description,,,,,,,,,,table,%s,",
+                escapeCsv(table1fqn)),
             String.format(
-                "%s.col2,column,Display Col2,Init col2,type,VARCHAR,,,,,,,",
-                table.getFullyQualifiedName()));
+                "col1,Display Col1,Init col1,,,,,,,,,,column,%s,,INT", escapeCsv(column1fqn)),
+            String.format(
+                "col2,Display Col2,Init col2,,,,,,,,,,column,%s,,INT", escapeCsv(column2fqn)));
 
     String createCsv =
         createCsv(
@@ -1019,15 +1005,19 @@ public class DatabaseSchemaResourceTest
     importCsvRecursive(schema.getFullyQualifiedName(), createCsv, false);
 
     // Now update the same entities recursively (these should be marked as ENTITY_UPDATED)
+    table1fqn = schema.getFullyQualifiedName() + ".table1";
+    column1fqn = schema.getFullyQualifiedName() + ".table1.col1";
+    column2fqn = schema.getFullyQualifiedName() + ".table1.col2";
+
     List<String> updateRecords =
         listOf(
-            "table1,table,Updated Table,Updated table description,,,,,,,,",
             String.format(
-                "%s.col1,column,Updated Col1,Updated col1,type,INT,,,,,,,",
-                table.getFullyQualifiedName()),
+                "table1,Updated Table,Updated table description,,,,,,,,,,table,%s,",
+                escapeCsv(table1fqn)),
             String.format(
-                "%s.col2,column,Updated Col2,Updated col2,type,VARCHAR,,,,,,,",
-                table.getFullyQualifiedName()));
+                "col1,Updated Col1,Updated col1,,,,,,,,,,column,%s,,INT", escapeCsv(column1fqn)),
+            String.format(
+                "col2,Updated Col2,Updated col2,,,,,,,,,,column,%s,,INT", escapeCsv(column2fqn)));
 
     String updateCsv =
         createCsv(

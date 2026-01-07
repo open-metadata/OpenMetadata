@@ -524,19 +524,11 @@ public class DatabaseServiceResourceTest
   void test_csvImportCreate() throws IOException {
     DatabaseService service = createEntity(createRequest("csvImportCreate"), ADMIN_AUTH_HEADERS);
 
-    DatabaseResourceTest dbTest = new DatabaseResourceTest();
-    CreateDatabase createDatabase1 =
-        dbTest.createRequest("db1").withService(service.getFullyQualifiedName());
-    dbTest.createEntity(createDatabase1, ADMIN_AUTH_HEADERS);
-    CreateDatabase createDatabase2 =
-        dbTest.createRequest("db2").withService(service.getFullyQualifiedName());
-    dbTest.createEntity(createDatabase2, ADMIN_AUTH_HEADERS);
-
     // Create CSV records for initial import (these should be marked as ENTITY_CREATED)
     List<String> createRecords =
         listOf(
-            "db1,Display DB 1,Description for db1,,,,,,,,",
-            "db2,Display DB 2,Description for db2,,,,,,,,");
+            "db1,Display DB 1,Description for db1,,,,,,,",
+            "db2,Display DB 2,Description for db2,,,,,,,");
 
     String csv = createCsv(getDatabaseServiceCsvHeaders(service, false), createRecords, null);
 
@@ -563,25 +555,11 @@ public class DatabaseServiceResourceTest
   void test_csvImportUpdate() throws IOException {
     DatabaseService service = createEntity(createRequest("csvImportUpdate"), ADMIN_AUTH_HEADERS);
 
-    DatabaseResourceTest dbTest = new DatabaseResourceTest();
-    CreateDatabase createDatabase1 =
-        dbTest
-            .createRequest("db1")
-            .withService(service.getFullyQualifiedName())
-            .withDescription("Initial description 1");
-    dbTest.createEntity(createDatabase1, ADMIN_AUTH_HEADERS);
-    CreateDatabase createDatabase2 =
-        dbTest
-            .createRequest("db2")
-            .withService(service.getFullyQualifiedName())
-            .withDescription("Initial description 2");
-    dbTest.createEntity(createDatabase2, ADMIN_AUTH_HEADERS);
-
-    // First import to create database metadata
+    // First, create the databases via CSV import to establish baseline
     List<String> createRecords =
         listOf(
-            "db1,Display DB 1,Initial description 1,,,,,,,,",
-            "db2,Display DB 2,Initial description 2,,,,,,,,");
+            "db1,Display DB 1,Initial description 1,,,,,,,",
+            "db2,Display DB 2,Initial description 2,,,,,,,");
 
     String createCsv = createCsv(getDatabaseServiceCsvHeaders(service, false), createRecords, null);
     importCsv(service.getFullyQualifiedName(), createCsv, false);
@@ -589,8 +567,8 @@ public class DatabaseServiceResourceTest
     // Now update the same databases (these should be marked as ENTITY_UPDATED)
     List<String> updateRecords =
         listOf(
-            "db1,Updated Display 1,Updated description 1,,,,,,,,",
-            "db2,Updated Display 2,Updated description 2,,,,,,,,");
+            "db1,Updated Display 1,Updated description 1,,,,,,,",
+            "db2,Updated Display 2,Updated description 2,,,,,,,");
 
     String updateCsv = createCsv(getDatabaseServiceCsvHeaders(service, false), updateRecords, null);
 
@@ -617,21 +595,17 @@ public class DatabaseServiceResourceTest
   void test_csvImportRecursiveCreate() throws IOException {
     DatabaseService service = createEntity(createRequest("csvImportRecCreate"), ADMIN_AUTH_HEADERS);
 
-    DatabaseResourceTest dbTest = new DatabaseResourceTest();
-    CreateDatabase createDatabase =
-        dbTest.createRequest("db1").withService(service.getFullyQualifiedName());
-    Database database = dbTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
-
-    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
-    CreateDatabaseSchema createSchema =
-        schemaTest.createRequest("schema1").withDatabase(database.getFullyQualifiedName());
-    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
-
     // Create CSV records for recursive import (these should be marked as ENTITY_CREATED)
+    // Headers:
+    // name,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,entityType,fullyQualifiedName
     List<String> createRecords =
         listOf(
-            "db1,database,Display DB,Description for db,,,,,,,,",
-            "db1.schema1,databaseSchema,Display Schema,Description for schema,,,,,,,,");
+            "db1,Display DB,Description for db,,,,,,,,,,database,"
+                + service.getFullyQualifiedName()
+                + ".db1",
+            "schema1,Display Schema,Description for schema,,,,,,,,,,databaseSchema,"
+                + service.getFullyQualifiedName()
+                + ".db1.schema1");
 
     // Get recursive headers
     String csv =
@@ -663,27 +637,17 @@ public class DatabaseServiceResourceTest
   void test_csvImportRecursiveUpdate() throws IOException {
     DatabaseService service = createEntity(createRequest("csvImportRecUpdate"), ADMIN_AUTH_HEADERS);
 
-    DatabaseResourceTest dbTest = new DatabaseResourceTest();
-    CreateDatabase createDatabase =
-        dbTest
-            .createRequest("db1")
-            .withService(service.getFullyQualifiedName())
-            .withDescription("Initial db description");
-    Database database = dbTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
-
-    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
-    CreateDatabaseSchema createSchema =
-        schemaTest
-            .createRequest("schema1")
-            .withDatabase(database.getFullyQualifiedName())
-            .withDescription("Initial schema description");
-    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
-
-    // First import to create metadata
+    // First import to create entities via CSV
+    // Headers:
+    // name,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,entityType,fullyQualifiedName
     List<String> createRecords =
         listOf(
-            "db1,database,Display DB,Initial db description,,,,,,,,",
-            "db1.schema1,databaseSchema,Display Schema,Initial schema description,,,,,,,,");
+            "db1,Display DB,Initial db description,,,,,,,,,,database,"
+                + service.getFullyQualifiedName()
+                + ".db1",
+            "schema1,Display Schema,Initial schema description,,,,,,,,,,databaseSchema,"
+                + service.getFullyQualifiedName()
+                + ".db1.schema1");
 
     String createCsv =
         createCsv(
@@ -695,8 +659,12 @@ public class DatabaseServiceResourceTest
     // Now update the same entities recursively (these should be marked as ENTITY_UPDATED)
     List<String> updateRecords =
         listOf(
-            "db1,database,Updated DB,Updated db description,,,,,,,,",
-            "db1.schema1,databaseSchema,Updated Schema,Updated schema description,,,,,,,,");
+            "db1,Updated DB,Updated db description,,,,,,,,,,database,"
+                + service.getFullyQualifiedName()
+                + ".db1",
+            "schema1,Updated Schema,Updated schema description,,,,,,,,,,databaseSchema,"
+                + service.getFullyQualifiedName()
+                + ".db1.schema1");
 
     String updateCsv =
         createCsv(

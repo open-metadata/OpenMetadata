@@ -27,6 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.EntityCsvTest.assertSummary;
+import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.MetadataOperation.DELETE;
@@ -57,8 +59,6 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.dateToTimestamp;
-import static org.openmetadata.csv.EntityCsvTest.assertSummary;
-import static org.openmetadata.csv.EntityCsvTest.createCsv;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -96,6 +96,8 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.csv.CsvUtil;
+import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -135,6 +137,7 @@ import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestResultValue;
 import org.openmetadata.schema.tests.type.TestSummary;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -152,9 +155,6 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
-import org.openmetadata.csv.CsvUtil;
-import org.openmetadata.csv.EntityCsv;
-import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -5777,7 +5777,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     TableResourceTest tableResourceTest = new TableResourceTest();
     Column c1 = new Column().withName("c1").withDataType(BIGINT);
     CreateTable createTable =
-        tableResourceTest.createRequest("csvImportCreateTable").withColumns(listOf(c1)).withTableConstraints(null);
+        tableResourceTest
+            .createRequest("csvImportCreateTable")
+            .withColumns(listOf(c1))
+            .withTableConstraints(null);
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     TestDefinition tableRowCountDef =
@@ -5785,7 +5788,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
 
     String entityFQN = "\"" + table.getFullyQualifiedName().replace("\"", "\"\"") + "\"";
-    
+
     // Create CSV records for initial import (these should be marked as ENTITY_CREATED)
     List<String> createRecords =
         listOf(
@@ -5814,7 +5817,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
           "Record " + i + " should have changeDescription: " + resultLines[i]);
     }
 
-    tableResourceTest.deleteEntityByName(table.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
+    tableResourceTest.deleteEntityByName(
+        table.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -5822,7 +5826,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     TableResourceTest tableResourceTest = new TableResourceTest();
     Column c1 = new Column().withName("c1").withDataType(BIGINT);
     CreateTable createTable =
-        tableResourceTest.createRequest("csvImportUpdateTable").withColumns(listOf(c1)).withTableConstraints(null);
+        tableResourceTest
+            .createRequest("csvImportUpdateTable")
+            .withColumns(listOf(c1))
+            .withTableConstraints(null);
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     TestDefinition tableRowCountDef =
@@ -5830,7 +5837,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
 
     String entityFQN = "\"" + table.getFullyQualifiedName().replace("\"", "\"\"") + "\"";
-    
+
     // First import to create test case metadata
     List<String> createRecords =
         listOf(
@@ -5866,7 +5873,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
           "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
     }
 
-    tableResourceTest.deleteEntityByName(table.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
+    tableResourceTest.deleteEntityByName(
+        table.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -5876,7 +5884,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     TableResourceTest tableResourceTest = new TableResourceTest();
     Column c1 = new Column().withName("c1").withDataType(BIGINT);
     CreateTable createTable =
-        tableResourceTest.createRequest("csvImportRecCreateTable").withColumns(listOf(c1)).withTableConstraints(null);
+        tableResourceTest
+            .createRequest("csvImportRecCreateTable")
+            .withColumns(listOf(c1))
+            .withTableConstraints(null);
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     TestDefinition tableRowCountDef =
@@ -5884,7 +5895,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
 
     String entityFQN = "\"" + table.getFullyQualifiedName().replace("\"", "\"\"") + "\"";
-    
+
     List<String> createRecords =
         listOf(
             String.format(
@@ -5906,7 +5917,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
           "Record " + i + " should have changeDescription: " + resultLines[i]);
     }
 
-    tableResourceTest.deleteEntityByName(table.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
+    tableResourceTest.deleteEntityByName(
+        table.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -5916,7 +5928,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     TableResourceTest tableResourceTest = new TableResourceTest();
     Column c1 = new Column().withName("c1").withDataType(BIGINT);
     CreateTable createTable =
-        tableResourceTest.createRequest("csvImportRecUpdateTable").withColumns(listOf(c1)).withTableConstraints(null);
+        tableResourceTest
+            .createRequest("csvImportRecUpdateTable")
+            .withColumns(listOf(c1))
+            .withTableConstraints(null);
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     TestDefinition tableRowCountDef =
@@ -5924,7 +5939,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
 
     String entityFQN = "\"" + table.getFullyQualifiedName().replace("\"", "\"\"") + "\"";
-    
+
     // First import to create metadata
     List<String> createRecords =
         listOf(
@@ -5957,7 +5972,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
           "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
     }
 
-    tableResourceTest.deleteEntityByName(table.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
+    tableResourceTest.deleteEntityByName(
+        table.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
   }
 
   @Test

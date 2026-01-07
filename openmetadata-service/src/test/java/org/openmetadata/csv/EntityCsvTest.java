@@ -88,14 +88,6 @@ public class EntityCsvTest {
         importResult.getImportResultsCsv());
   }
 
-  //  public static void assertRows(CsvImportResult importResult, String... expectedRows) {
-  //    String[] resultRecords = importResult.getImportResultsCsv().split(LINE_SEPARATOR);
-  //    assertEquals(expectedRows.length, resultRecords.length);
-  //    for (int i = 0; i < resultRecords.length; i++) {
-  //      assertEquals(expectedRows[i], resultRecords[i], "Row number is " + i);
-  //    }
-  //  }
-
   public static void assertRows(
       CsvImportResult importResult, String... expectedRowsWithoutChangeDesc) {
     try (Reader reader = new StringReader(importResult.getImportResultsCsv())) {
@@ -113,7 +105,7 @@ public class EntityCsvTest {
             // Handle case where expected row is empty
             expectedRecord = null;
           } else {
-            expectedRecord = parsedExpected.get(0);
+            expectedRecord = parsedExpected.getFirst();
           }
         }
         CSVRecord actualRecord = resultRecords.get(i);

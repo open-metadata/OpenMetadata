@@ -1913,7 +1913,7 @@ public class TableRepository extends EntityRepository<Table> {
 
       for (int i = 1; i < records.size(); i++) {
         CSVRecord record = records.get(i);
-        int arrayIndex = i - 1;
+        int arrayIndex = getRecordIndex(record);
         boolean isCreated =
             recordCreateStatusArray != null
                 && arrayIndex < recordCreateStatusArray.length

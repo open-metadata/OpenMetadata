@@ -1080,11 +1080,6 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     CreateGlossary createGlossary = createRequest("csvImportCreate");
     Glossary glossary = createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
-    // Create glossary terms
-    GlossaryTermResourceTest termTest = new GlossaryTermResourceTest();
-    createGlossaryTerm(termTest, glossary, null, "term1");
-    createGlossaryTerm(termTest, glossary, null, "term2");
-
     // Create CSV records for initial import (these should be marked as ENTITY_CREATED)
     List<String> createRecords =
         listOf(
