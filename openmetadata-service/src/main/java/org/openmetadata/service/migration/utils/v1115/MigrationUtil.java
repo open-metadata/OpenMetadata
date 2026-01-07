@@ -42,7 +42,7 @@ public class MigrationUtil {
                                     true
                                 )
                                 WHERE configType = 'authenticationConfiguration'
-                                  AND (json::jsonb #> '{samlConfiguration,idp}') ? 'authorityUrl'
+                                  AND json::jsonb #> '{samlConfiguration,idp,authorityUrl}' IS NOT NULL
                                 """;
           };
 
