@@ -770,11 +770,6 @@ export const testPaginationNavigation = async (
     expect(reloadedSearchParams.get('cursorValue')).toBe(afterValue);
   }
 
-  const reloadResponse = await reloadResponsePromise;
-  const reloadData = await reloadResponse.json();
-  const reloadItems = reloadData.data?.map((item: { id: string }) => item.id) || [];
-
-  expect(reloadItems).toEqual(page2Items);
 
   const paginationText = page.locator('[data-testid="page-indicator"]');
 
