@@ -8852,6 +8852,7 @@ public interface CollectionDAO {
         @Bind("eventType") String eventType,
         @Bind("startTs") Long startTs,
         @Bind("endTs") Long endTs,
+        @Bind("searchPattern") String searchPattern,
         @Bind("afterEventTs") Long afterEventTs,
         @Bind("afterId") Long afterId,
         @Bind("limit") int limit);
@@ -8867,7 +8868,8 @@ public interface CollectionDAO {
         @Bind("entityFQNHASH") String entityFqnHash,
         @Bind("eventType") String eventType,
         @Bind("startTs") Long startTs,
-        @Bind("endTs") Long endTs);
+        @Bind("endTs") Long endTs,
+        @Bind("searchPattern") String searchPattern);
 
     @ConnectionAwareSqlUpdate(
         value =
