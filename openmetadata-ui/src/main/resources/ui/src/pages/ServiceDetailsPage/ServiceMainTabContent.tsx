@@ -15,7 +15,7 @@ import { Col, Row, Space, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags, PagingWithoutTotal, ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import {
