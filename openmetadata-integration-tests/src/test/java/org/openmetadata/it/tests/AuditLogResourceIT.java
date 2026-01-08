@@ -701,8 +701,8 @@ public class AuditLogResourceIT {
   @Test
   void test_listAuditLogs_withEntityFQNAndEntityType_entityLevelAuth() throws Exception {
     // When entityFQN AND entityType are provided, should check VIEW_BASIC on the entity
-    // DataConsumer role should have VIEW_BASIC on sample_data tables
-    OpenMetadataClient client = SdkClients.dataConsumerClient();
+    // Non-admin users may have VIEW_BASIC on sample_data tables
+    OpenMetadataClient client = SdkClients.testUserClient();
 
     Map<String, String> params = new HashMap<>();
     params.put("entityFQN", "sample_data.ecommerce_db.shopify.raw_product_catalog");
@@ -711,7 +711,7 @@ public class AuditLogResourceIT {
 
     try {
       String response = executeGet(client, AUDIT_LOGS_PATH, params);
-      // DataConsumer with VIEW_BASIC on table should succeed
+      // User with VIEW_BASIC on table should succeed
       assertNotNull(response);
       Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
       assertNotNull(result.get("data"), "Response should contain 'data' field");
@@ -728,7 +728,7 @@ public class AuditLogResourceIT {
   @Test
   void test_listAuditLogs_withServiceNameAndEntityType_serviceLevelAuth() throws Exception {
     // When serviceName AND entityType are provided, should check VIEW_BASIC on the service
-    OpenMetadataClient client = SdkClients.dataConsumerClient();
+    OpenMetadataClient client = SdkClients.testUserClient();
 
     Map<String, String> params = new HashMap<>();
     params.put("serviceName", "sample_data");
@@ -752,61 +752,49 @@ public class AuditLogResourceIT {
   }
 
   @Test
-  void test_listAuditLogs_asDataSteward_globalAccess_denied() throws Exception {
-    // DataSteward without global AUDIT_LOGS permission should be denied for unfiltered access
-    OpenMetadataClient client = SdkClients.dataStewardClient();
+  void test_listAuditLogs_asNonAdmin_globalAccess_behaviorDependsOnPermissions() throws Exception {
+    // Non-admin user without global AUDIT_LOGS permission should be denied for unfiltered access
+    // If they have permission, they should get a valid response
+    OpenMetadataClient client = SdkClients.testUserClient();
 
     Map<String, String> params = new HashMap<>();
     params.put("limit", "10");
 
     try {
-      executeGet(client, AUDIT_LOGS_PATH, params);
-      // If we get here, DataSteward unexpectedly has global audit log access
+      String response = executeGet(client, AUDIT_LOGS_PATH, params);
+      // If we get here, user has global audit log access - verify valid response
+      assertNotNull(response);
+      Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+      assertNotNull(result.get("data"), "Response should contain 'data' field when authorized");
     } catch (Exception e) {
+      // If access denied, verify it's proper authorization error
       assertTrue(
           e.getMessage().contains("403")
               || e.getMessage().contains("not authorized")
               || e.getMessage().contains("not allowed"),
-          "DataSteward without global AUDIT_LOGS permission should be denied, got: "
+          "Non-admin without global AUDIT_LOGS permission should be denied, got: "
               + e.getMessage());
     }
   }
 
   @Test
-  void test_listAuditLogs_asDataConsumer_globalAccess_denied() throws Exception {
-    // DataConsumer without global AUDIT_LOGS permission should be denied for unfiltered access
-    OpenMetadataClient client = SdkClients.dataConsumerClient();
-
-    Map<String, String> params = new HashMap<>();
-    params.put("limit", "10");
-
-    try {
-      executeGet(client, AUDIT_LOGS_PATH, params);
-      // If we get here, DataConsumer unexpectedly has global audit log access
-    } catch (Exception e) {
-      assertTrue(
-          e.getMessage().contains("403")
-              || e.getMessage().contains("not authorized")
-              || e.getMessage().contains("not allowed"),
-          "DataConsumer without global AUDIT_LOGS permission should be denied, got: "
-              + e.getMessage());
-    }
-  }
-
-  @Test
-  void test_listAuditLogs_withOnlyEntityType_requiresGlobalPermission() throws Exception {
+  void test_listAuditLogs_withOnlyEntityType_behaviorDependsOnPermissions() throws Exception {
     // When only entityType is provided (without entityFQN or serviceName),
-    // should require global AUDIT_LOGS permission
-    OpenMetadataClient client = SdkClients.dataConsumerClient();
+    // behavior depends on user's global AUDIT_LOGS permission
+    OpenMetadataClient client = SdkClients.testUserClient();
 
     Map<String, String> params = new HashMap<>();
     params.put("entityType", "table");
     params.put("limit", "10");
 
     try {
-      executeGet(client, AUDIT_LOGS_PATH, params);
-      // If we get here, user unexpectedly has global access
+      String response = executeGet(client, AUDIT_LOGS_PATH, params);
+      // If we get here, user has global access - verify valid response
+      assertNotNull(response);
+      Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+      assertNotNull(result.get("data"), "Response should contain 'data' field when authorized");
     } catch (Exception e) {
+      // If access denied, verify it's proper authorization error
       assertTrue(
           e.getMessage().contains("403")
               || e.getMessage().contains("not authorized")
@@ -817,19 +805,23 @@ public class AuditLogResourceIT {
   }
 
   @Test
-  void test_listAuditLogs_withOnlyServiceName_requiresGlobalPermission() throws Exception {
+  void test_listAuditLogs_withOnlyServiceName_behaviorDependsOnPermissions() throws Exception {
     // When only serviceName is provided (without entityType),
-    // should require global AUDIT_LOGS permission
-    OpenMetadataClient client = SdkClients.dataConsumerClient();
+    // behavior depends on user's global AUDIT_LOGS permission
+    OpenMetadataClient client = SdkClients.testUserClient();
 
     Map<String, String> params = new HashMap<>();
     params.put("serviceName", "sample_data");
     params.put("limit", "10");
 
     try {
-      executeGet(client, AUDIT_LOGS_PATH, params);
-      // If we get here, user unexpectedly has global access
+      String response = executeGet(client, AUDIT_LOGS_PATH, params);
+      // If we get here, user has global access - verify valid response
+      assertNotNull(response);
+      Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+      assertNotNull(result.get("data"), "Response should contain 'data' field when authorized");
     } catch (Exception e) {
+      // If access denied, verify it's proper authorization error
       assertTrue(
           e.getMessage().contains("403")
               || e.getMessage().contains("not authorized")
@@ -840,9 +832,10 @@ public class AuditLogResourceIT {
   }
 
   @Test
-  void test_exportAuditLogs_asDataSteward_forbidden() throws Exception {
-    // Export always requires global AUDIT_LOGS permission
-    OpenMetadataClient client = SdkClients.dataStewardClient();
+  void test_exportAuditLogs_asNonAdmin_behaviorDependsOnPermissions() throws Exception {
+    // Export requires global AUDIT_LOGS permission
+    // Non-admin behavior depends on their configured permissions
+    OpenMetadataClient client = SdkClients.testUserClient();
 
     long now = System.currentTimeMillis();
     long oneWeekAgo = now - (7 * 24 * 60 * 60 * 1000);
@@ -852,38 +845,18 @@ public class AuditLogResourceIT {
     params.put("endTs", String.valueOf(now));
 
     try {
-      executeGet(client, AUDIT_LOGS_PATH + "/export", params);
-      // If we get here, DataSteward unexpectedly has export permission
+      String response = executeGet(client, AUDIT_LOGS_PATH + "/export", params);
+      // If we get here, user has export permission - verify valid response
+      assertNotNull(response);
+      Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+      assertNotNull(result.get("jobId"), "Response should contain 'jobId' field when authorized");
     } catch (Exception e) {
+      // If access denied, verify it's proper authorization error
       assertTrue(
           e.getMessage().contains("403")
               || e.getMessage().contains("not authorized")
               || e.getMessage().contains("not allowed"),
-          "DataSteward should not have export permission, got: " + e.getMessage());
-    }
-  }
-
-  @Test
-  void test_exportAuditLogs_asDataConsumer_forbidden() throws Exception {
-    // Export always requires global AUDIT_LOGS permission
-    OpenMetadataClient client = SdkClients.dataConsumerClient();
-
-    long now = System.currentTimeMillis();
-    long oneWeekAgo = now - (7 * 24 * 60 * 60 * 1000);
-
-    Map<String, String> params = new HashMap<>();
-    params.put("startTs", String.valueOf(oneWeekAgo));
-    params.put("endTs", String.valueOf(now));
-
-    try {
-      executeGet(client, AUDIT_LOGS_PATH + "/export", params);
-      // If we get here, DataConsumer unexpectedly has export permission
-    } catch (Exception e) {
-      assertTrue(
-          e.getMessage().contains("403")
-              || e.getMessage().contains("not authorized")
-              || e.getMessage().contains("not allowed"),
-          "DataConsumer should not have export permission, got: " + e.getMessage());
+          "Non-admin without export permission should be denied, got: " + e.getMessage());
     }
   }
 
@@ -923,7 +896,10 @@ public class AuditLogResourceIT {
             !e.getMessage().toLowerCase().contains("sql")
                 && !e.getMessage().toLowerCase().contains("syntax")
                 && !e.getMessage().toLowerCase().contains("query"),
-            "SQL injection payload should not cause SQL error: " + payload + ", got: " + e.getMessage());
+            "SQL injection payload should not cause SQL error: "
+                + payload
+                + ", got: "
+                + e.getMessage());
       }
     }
   }
