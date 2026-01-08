@@ -708,7 +708,7 @@ class OMetaRolePolicyTest(TestCase):
         assert res
         assert res.id == role.id
         assert len(res.policies.root) == 2
-        assert res.policies.root[1].id == self.role_policy_2.id
+        assert res.policies.root[0].id == self.role_policy_2.id
 
         # Remove last policy from role
         res = self.metadata.patch_role_policy(
