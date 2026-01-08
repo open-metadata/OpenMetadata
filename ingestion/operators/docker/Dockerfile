@@ -5,60 +5,60 @@ RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/ap
 
 # Install Dependencies (listed in alphabetical order)
 RUN dpkg --configure -a \
-    && apt-get -qq update \
-    && apt-get -qq install -y \
-    alien \
-    build-essential \
-    default-libmysqlclient-dev \
-    freetds-bin \
-    freetds-dev \
-    gcc \
-    gnupg \
-    libaio1 \
-    libevent-dev \
-    libffi-dev \
-    libpq-dev \
-    librdkafka-dev \
-    libsasl2-dev \
-    libsasl2-2 \
-    libsasl2-modules \
-    libsasl2-modules-gssapi-mit \
-    libssl-dev \
-    libxml2 \
-    libkrb5-dev \
-    default-jdk \
-    openssl \
-    # To ensure compatibility with unixodbc package
-    odbcinst=2.3.11-2+deb12u1 \
-    postgresql \
-    postgresql-contrib \
-    tdsodbc \
-    unixodbc=2.3.11-2+deb12u1 \
-    unixodbc-dev=2.3.11-2+deb12u1 \
-    unzip \
-    git \
-    wget --no-install-recommends \
-    # Accept MSSQL ODBC License
-    && ACCEPT_EULA=Y apt-get -qq install -y msodbcsql18 \
-    && rm -rf /var/lib/apt/lists/*
+  && apt-get -qq update \
+  && apt-get -qq install -y \
+  alien \
+  build-essential \
+  default-libmysqlclient-dev \
+  freetds-bin \
+  freetds-dev \
+  gcc \
+  gnupg \
+  libaio1 \
+  libevent-dev \
+  libffi-dev \
+  libpq-dev \
+  librdkafka-dev \
+  libsasl2-dev \
+  libsasl2-2 \
+  libsasl2-modules \
+  libsasl2-modules-gssapi-mit \
+  libssl-dev \
+  libxml2 \
+  libkrb5-dev \
+  default-jdk \
+  openssl \
+  # To ensure compatibility with unixodbc package
+  odbcinst=2.3.11-2+deb12u1 \
+  postgresql \
+  postgresql-contrib \
+  tdsodbc \
+  unixodbc=2.3.11-2+deb12u1 \
+  unixodbc-dev=2.3.11-2+deb12u1 \
+  unzip \
+  git \
+  wget --no-install-recommends \
+  # Accept MSSQL ODBC License
+  && ACCEPT_EULA=Y apt-get -qq install -y msodbcsql18 \
+  && rm -rf /var/lib/apt/lists/*
 
 # Add updated postgres/redshift dependencies based on libq
 ENV DEBIAN_FRONTEND=noninteractive
 RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 RUN echo "deb https://apt.postgresql.org/pub/repos/apt/ bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list; \
-    apt-get -qq update; \
-    apt-get -qq install --no-install-recommends -y libpq-dev postgresql-client postgresql-common postgresql postgresql-contrib; \
-    apt-get -qq autoremove -yqq --purge; \
-    apt-get -qq clean && rm -rf /var/lib/apt/lists/*
+  apt-get -qq update; \
+  apt-get -qq install --no-install-recommends -y libpq-dev postgresql-client postgresql-common postgresql postgresql-contrib; \
+  apt-get -qq autoremove -yqq --purge; \
+  apt-get -qq clean && rm -rf /var/lib/apt/lists/*
 
 RUN if [ $(uname -m) = "arm64" || $(uname -m) = "aarch64" ]; \
- then \
- wget -q https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
- unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
- else \
- wget -q https://download.oracle.com/otn_software/linux/instantclient/1917000/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip -O /oracle-instantclient.zip && \
- unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
- fi
+  then \
+  wget -q https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
+  unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+  else \
+  wget -q https://download.oracle.com/otn_software/linux/instantclient/1917000/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip -O /oracle-instantclient.zip && \
+  unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+  fi
 
 ENV LD_LIBRARY_PATH=/instantclient
 
@@ -84,7 +84,7 @@ ENV PIP_QUIET=1
 RUN pip install --upgrade pip
 
 ARG INGESTION_DEPENDENCY="all"
-ARG RI_VERSION="1.9.16.0"
+ARG RI_VERSION="1.9.16.1"
 RUN pip install --upgrade pip
 RUN pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
