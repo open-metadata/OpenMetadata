@@ -87,12 +87,6 @@ test.describe('Pagination tests for all pages', () => {
       await afterAction();
     });
 
-    test.afterAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
-      await database.delete(apiContext);
-      await afterAction();
-    });
-
     test('should test pagination on Table columns', async ({ page }) => {
       test.slow(true);
 
