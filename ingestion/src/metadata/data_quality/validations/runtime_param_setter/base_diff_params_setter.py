@@ -201,7 +201,7 @@ class BaseTableParameter:
                 url = url.set(drivername=drivername, database=database)
         if drivername in {Dialects.MSSQL, Dialects.Snowflake, Dialects.Trino}:
             url = url.set(drivername=drivername, database=f"{database}/{schema}")
-        if drivername in {Dialects.MySQL, Dialects.MariaDB}:
+        elif drivername in {Dialects.MySQL, Dialects.MariaDB}:
             url = url.set(drivername=drivername, database=f"{schema}")
         else:
             url = url.set(drivername=drivername)

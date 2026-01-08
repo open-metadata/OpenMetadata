@@ -44,8 +44,8 @@ if [ -z "$DIFF" ]; then
     exit 0
 fi
 
-# Run Claude Code with the diff as context
-claude "
+# Run Claude Code with the diff as context (-p for non-interactive mode)
+claude -p "
 ## Task: Validate Code Changes
 
 ### Context
