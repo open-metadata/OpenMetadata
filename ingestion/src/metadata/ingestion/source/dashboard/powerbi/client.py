@@ -232,6 +232,10 @@ class PowerBiApiClient:
             response_data = self.client.get(
                 f"/myorg/groups/{group_id}/reports/{report_id}"
             )
+            if not response_data:
+                logger.debug(
+                    f"report details could not be fetched from api for report_id = {report_id}"
+                )
             return PowerBIReport(**response_data)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
