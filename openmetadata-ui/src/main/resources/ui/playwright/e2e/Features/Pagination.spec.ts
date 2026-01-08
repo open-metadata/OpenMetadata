@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test from '@playwright/test';
+import test, { expect } from '@playwright/test';
 import { AlertClass } from '../../support/entity/AlertClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -20,7 +20,6 @@ import {
   testPaginationNavigation,
   uuid,
 } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -31,21 +30,21 @@ test.describe('Pagination tests for all pages', () => {
     test.slow(true);
 
     await page.goto('/settings/members/users');
-    await testPaginationNavigation(page, 'table');
+    await testPaginationNavigation(page, '/api/v1/users', 'table');
   });
 
   test('should test pagination on Roles page', async ({ page }) => {
     test.slow(true);
 
     await page.goto('/settings/access/roles');
-    await testPaginationNavigation(page, 'table');
+    await testPaginationNavigation(page, '/api/v1/roles', 'table');
   });
 
   test('should test pagination on Policies page', async ({ page }) => {
     test.slow(true);
 
     await page.goto('/settings/access/policies');
-    await testPaginationNavigation(page, 'table');
+    await testPaginationNavigation(page, '/api/v1/policies', 'table');
   });
 
   test('should test pagination on Database Schema page', async ({ page }) => {
@@ -54,7 +53,7 @@ test.describe('Pagination tests for all pages', () => {
     await page.goto(
       '/databaseSchema/sample_data.ecommerce_db.shopify?showDeletedTables=false'
     );
-    await testPaginationNavigation(page, 'table');
+    await testPaginationNavigation(page, '/api/v1/tables', 'table');
   });
 
   test('should test pagination on Table columns', async ({ page }) => {
@@ -63,16 +62,18 @@ test.describe('Pagination tests for all pages', () => {
     await page.goto(
       '/table/sample_data.ecommerce_db.shopify.customer_features?pageSize=3'
     );
-    await testPaginationNavigation(page, 'table', 0, false);
+    await testPaginationNavigation(page, '/columns', 'table', false);
   });
 
   test.describe('Service Databases page pagination', () => {
     const databases: Array<{ id: string; name: string }> = [];
 
     test.beforeAll(async ({ browser }) => {
+      test.slow();
+  
       const { apiContext, afterAction } = await createNewPage(browser);
 
-      for (let i = 1; i <= 5; i++) {
+      for (let i = 1; i <= 20; i++) {
         const databaseName = `pw-test-db-${uuid()}-${i}`;
         const response = await apiContext.put('/api/v1/databases', {
           data: {
@@ -88,7 +89,7 @@ test.describe('Pagination tests for all pages', () => {
 
       await afterAction();
     });
-
+    //TODO: remove this
     test.afterAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -105,13 +106,26 @@ test.describe('Pagination tests for all pages', () => {
       test.slow(true);
 
       await page.goto(
-        '/service/databaseServices/sample_data/databases?currentPage=1&pageSize=3'
+        '/service/databaseServices/sample_data/databases'
       );
-      await testPaginationNavigation(page, 'table');
+      await testPaginationNavigation(page, '/api/v1/databases', 'table');
+
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/analytics/dataInsights/system/charts/listChartData') &&
+          response.status() === 200
+      );
       await page.getByTestId('insights').click();
-      await waitForAllLoadersToDisappear(page);
+      await responsePromise;
+
       await page.getByTestId('databases').click();
-      await testPaginationNavigation(page, 'table');
+      await page.waitForSelector('table', { state: 'visible' });
+
+      const paginationText = page.locator('[data-testid="page-indicator"]');
+      await expect(paginationText).toBeVisible();
+
+      const paginationTextContent = await paginationText.textContent();
+      expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
     });
   });
 
@@ -119,14 +133,14 @@ test.describe('Pagination tests for all pages', () => {
     test.slow(true);
 
     await page.goto('/settings/bots');
-    await testPaginationNavigation(page, 'table');
+    await testPaginationNavigation(page, '/api/v1/bots', 'table');
   });
 
   test('should test pagination on Service version page', async ({ page }) => {
     test.slow(true);
 
     await page.goto(`/service/dashboardServices/sample_superset/versions/0.1`);
-    await testPaginationNavigation(page, 'table');
+    await testPaginationNavigation(page, '/api/v1/dashboards', 'table');
   });
 });
 
@@ -170,7 +184,7 @@ test.describe('Pagination tests for Classification Tags page', () => {
     test.slow(true);
 
     await page.goto(`/tags/${classification.responseData.name}`);
-    await testPaginationNavigation(page, 'table', 1);
+    await testPaginationNavigation(page, '/api/v1/tags', 'table');
   });
 });
 
@@ -204,7 +218,7 @@ test.describe('Pagination tests for Metrics page', () => {
     test.slow(true);
 
     await page.goto('/metrics');
-    await testPaginationNavigation(page, 'table');
+    await testPaginationNavigation(page, '/api/v1/metrics', 'table');
   });
 });
 
@@ -256,7 +270,7 @@ test.describe('Pagination tests for Notification Alerts page', () => {
     test.slow(true);
 
     await page.goto('/settings/notifications/alerts');
-    await testPaginationNavigation(page, 'table');
+    await testPaginationNavigation(page, '/api/v1/events/subscriptions', 'table');
   });
 });
 
@@ -308,6 +322,6 @@ test.describe('Pagination tests for Observability Alerts page', () => {
     test.slow(true);
 
     await page.goto('/observability/alerts');
-    await testPaginationNavigation(page, 'table');
+    await testPaginationNavigation(page, '/api/v1/events/subscriptions', 'table');
   });
 });

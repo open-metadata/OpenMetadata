@@ -683,32 +683,31 @@ export const readElementInListWithScroll = async (
 
 export const testPaginationNavigation = async (
   page: Page,
+  apiEndpointPattern: string,
   waitForLoadSelector?: string,
-  dataColumnIndex: number = 0,
   validateUrl = true,
 ) => {
-  await page.waitForLoadState('networkidle');
+  const responseMatcher = (response: { url: () => string; status: () => number }) => {
+    const url = response.url();
+    return (
+      response.status() === 200 &&
+      url.includes(apiEndpointPattern) &&
+      (url.includes('limit=') || url.includes('after=') || url.includes('before='))
+    );
+  };
+
+  const page1ResponsePromise = page.waitForResponse(responseMatcher);
+
+  await page1ResponsePromise;
 
   if (waitForLoadSelector) {
     await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
   }
-
   await waitForAllLoadersToDisappear(page);
 
-  const tableSelector = waitForLoadSelector || 'table';
-  const tableRows = page.locator(`${tableSelector} tbody tr`);
-  const page1RowCount = await tableRows.count();
-
-  const page1RowData: string[] = [];
-  for (let i = 0; i < Math.min(page1RowCount, 3); i++) {
-    const row = tableRows.nth(i);
-    const cell = row.locator('td').nth(dataColumnIndex);
-    const cellText = await cell.textContent();
-    const trimmedText = cellText?.trim();
-    if (trimmedText) {
-      page1RowData.push(trimmedText);
-    }
-  }
+  const page1Response = await page1ResponsePromise;
+  const page1Data = await page1Response.json();
+  const page1Items = page1Data.data?.map((item: { id: string }) => item.id) || [];
 
   const nextButton = page.locator('[data-testid="next"]');
 
@@ -724,9 +723,11 @@ export const testPaginationNavigation = async (
     return;
   }
 
+  const page2ResponsePromise = page.waitForResponse(responseMatcher);
+
   await nextButton.click();
 
-  await page.waitForLoadState('networkidle');
+  await page2ResponsePromise;
   await waitForAllLoadersToDisappear(page);
 
   let afterValue: string | null = '';
@@ -743,41 +744,37 @@ export const testPaginationNavigation = async (
     expect(afterValue).toBeTruthy();
   }
 
-  const page2RowCount = await tableRows.count();
-  const page2RowData: string[] = [];
-  for (let i = 0; i < Math.min(page2RowCount, 3); i++) {
-    const row = tableRows.nth(i);
-    const cell = row.locator('td').nth(dataColumnIndex);
-    const cellText = await cell.textContent();
-    const trimmedText = cellText?.trim();
-    if (trimmedText) {
-      page2RowData.push(trimmedText);
-    }
-  }
+  const page2Response = await page2ResponsePromise;
+  const page2Data = await page2Response.json();
+  const page2Items = page2Data.data?.map((item: { id: string }) => item.id) || [];
 
-  expect(page2RowData.length).toBeGreaterThan(0);
-  for (const page2Row of page2RowData) {
-    expect(page1RowData).not.toContain(page2Row);
-  }
+  expect(page2Items.length).toBeGreaterThan(0);
+
+  const hasOverlap = page1Items.some((id: string) => page2Items.includes(id));
+  expect(hasOverlap).toBe(false);
+
+  const reloadResponsePromise = page.waitForResponse(responseMatcher);
 
   await page.reload();
-  await page.waitForLoadState('networkidle');
 
-  if (waitForLoadSelector) {
-    await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
-  }
-
+  await reloadResponsePromise;
   await waitForAllLoadersToDisappear(page);
 
   if (validateUrl) {
     const reloadedUrl = page.url();
     const reloadedUrlObj = new URL(reloadedUrl);
     const reloadedSearchParams = reloadedUrlObj.searchParams;
-  
+
     expect(reloadedSearchParams.get('currentPage')).toBe('2');
     expect(reloadedSearchParams.get('cursorType')).toBe('after');
     expect(reloadedSearchParams.get('cursorValue')).toBe(afterValue);
   }
+
+  const reloadResponse = await reloadResponsePromise;
+  const reloadData = await reloadResponse.json();
+  const reloadItems = reloadData.data?.map((item: { id: string }) => item.id) || [];
+
+  expect(reloadItems).toEqual(page2Items);
 
   const paginationText = page.locator('[data-testid="page-indicator"]');
 

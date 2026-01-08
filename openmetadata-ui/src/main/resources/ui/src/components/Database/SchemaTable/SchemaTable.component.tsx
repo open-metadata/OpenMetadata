@@ -235,7 +235,7 @@ const SchemaTable = () => {
     ({ currentPage }: PagingHandlerParams) => {
       handlePageChange(currentPage);
     },
-    []
+    [handlePageChange]
   );
 
   const fetchTestCaseSummary = async () => {
