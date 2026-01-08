@@ -71,6 +71,7 @@ import {
 import domainClassBase from '../../../utils/Domain/DomainClassBase';
 import { getDomainContainerStyles } from '../../../utils/DomainPageStyles';
 import {
+  getQueryFilterForDataProducts,
   getQueryFilterForDomain,
   getQueryFilterToExcludeDomainTerms,
 } from '../../../utils/DomainUtils';
@@ -243,9 +244,7 @@ const DomainDetails = ({
           query: '',
           pageNumber: 1,
           pageSize: 0,
-          queryFilter: getTermQuery({
-            'domains.fullyQualifiedName': domain.fullyQualifiedName ?? '',
-          }),
+          queryFilter: getQueryFilterForDataProducts(domainFqn),
           searchIndex: SearchIndex.DATA_PRODUCT,
         });
 
