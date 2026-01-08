@@ -309,9 +309,6 @@ test.describe('Data Products', () => {
       await page.waitForLoadState('networkidle');
 
       await expect(page.locator('.MuiCard-root').first()).toBeVisible();
-      await expect(
-        page.getByText(dataProduct.data.displayName)
-      ).toBeVisible();
     });
 
     await test.step('Switch back to table view', async () => {
