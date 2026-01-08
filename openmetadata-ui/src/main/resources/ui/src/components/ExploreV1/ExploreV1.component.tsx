@@ -470,6 +470,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                         },
                         ['description', 'displayName']
                       )}
+                      panelPath="explore"
                     />
                   </Col>
                 )}

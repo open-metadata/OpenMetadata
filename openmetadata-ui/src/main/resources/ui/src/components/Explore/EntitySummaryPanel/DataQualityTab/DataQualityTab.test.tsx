@@ -19,6 +19,16 @@ import {
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import DataQualityTab from './DataQualityTab';
 
+// Mock react-router-dom
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  Link: jest.fn().mockImplementation(({ children, to, ...props }) => (
+    <a data-testid="router-link" href={to} {...props}>
+      {children}
+    </a>
+  )),
+}));
+
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -118,7 +128,7 @@ jest.mock('antd', () => {
       Text: jest
         .fn()
         .mockImplementation(
-          ({ children, className, ellipsis, strong, ...props }) => (
+          ({ children, className, ellipsis, strong: _strong, ...props }) => (
             <span
               className={className}
               data-ellipsis={ellipsis}
@@ -232,6 +242,41 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getEpochMillisForPastDays: jest.fn().mockReturnValue(1234567890),
   getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
   getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
+}));
+
+jest.mock('../../../../utils/EntityUtils', () => ({
+  getColumnNameFromEntityLink: jest
+    .fn()
+    .mockImplementation((entityLink: string) => {
+      if (entityLink.includes('::columns::')) {
+        const parts = entityLink.split('::columns::');
+
+        return parts[parts.length - 1];
+      }
+
+      return null;
+    }),
+}));
+
+jest.mock('../../../../utils/RouterUtils', () => ({
+  getTestCaseDetailPagePath: jest.fn().mockReturnValue('/test-case-path'),
+}));
+
+jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockImplementation(({ owners, placeHolder }) => {
+    if (owners && owners.length > 0) {
+      const owner = owners[0];
+
+      return (
+        <div data-testid="owner-label">
+          <div data-testid="avatar">{owner.displayName?.charAt(0) || 'U'}</div>
+          <span>{owner.displayName || owner.name || 'Unknown'}</span>
+        </div>
+      );
+    }
+
+    return <span data-testid="owner-placeholder">{placeHolder || '--'}</span>;
+  }),
 }));
 
 const mockEntityFQN = 'test.entity.fqn';
@@ -371,7 +416,7 @@ describe('DataQualityTab', () => {
       listTestCases.mockResolvedValue({ data: [] });
       getListTestCaseIncidentStatus.mockResolvedValue({ data: [] });
 
-      const { findByText } = render(<DataQualityTab {...defaultProps} />);
+      render(<DataQualityTab {...defaultProps} />);
 
       await waitFor(() => {
         expect(
@@ -883,7 +928,9 @@ describe('DataQualityTab', () => {
         });
         fireEvent.click(assignedButton);
 
-        expect(screen.getByText('--')).toBeInTheDocument();
+        expect(
+          screen.getByText('label.no-entity - {"entity":"label.assignee"}')
+        ).toBeInTheDocument();
       });
     });
   });

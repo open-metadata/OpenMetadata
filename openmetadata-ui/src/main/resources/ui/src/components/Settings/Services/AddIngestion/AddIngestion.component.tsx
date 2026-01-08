@@ -16,7 +16,10 @@ import { isEmpty, isUndefined, omit, trim } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STEPS_FOR_ADD_INGESTION } from '../../../../constants/Ingestions.constant';
-import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
+import {
+  DEFAULT_SCHEDULE_CRON_DAILY,
+  SCHEDULAR_OPTIONS,
+} from '../../../../constants/Schedular.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { LOADING_STATE } from '../../../../enums/common.enum';
 import { FormSubmitType } from '../../../../enums/form.enum';
@@ -183,7 +186,7 @@ const AddIngestion = ({
       name = '',
       enableDebugLog,
       displayName,
-      raiseOnError,
+      raiseOnError: _raiseOnError,
       rootProcessingEngine,
       ...rest
     } = workflowData ?? {};
@@ -318,6 +321,16 @@ const AddIngestion = ({
     [onFocus]
   );
 
+  const schedularOptionsTranslated = useMemo(
+    () =>
+      SCHEDULAR_OPTIONS.map((option) => ({
+        ...option,
+        title: t(option.title),
+        description: t(option.description),
+      })),
+    [t]
+  );
+
   return (
     <div data-testid="add-ingestion-container">
       <Typography.Title className="font-normal" level={5}>
@@ -361,6 +374,7 @@ const AddIngestion = ({
               raiseOnError: data?.raiseOnError ?? true,
             }}
             isEditMode={isEditMode}
+            schedularOptions={schedularOptionsTranslated}
             status={saveState}
             onBack={() => handlePrev(1)}
             onDeploy={handleScheduleIntervalDeployClick}>

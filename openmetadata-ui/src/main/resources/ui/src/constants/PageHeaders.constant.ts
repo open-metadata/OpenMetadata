@@ -58,6 +58,10 @@ export const PAGE_HEADERS = {
     header: 'label.policy-plural',
     subHeader: 'message.page-sub-header-for-policies',
   },
+  AUDIT_LOGS: {
+    header: 'label.audit-log-plural',
+    subHeader: 'message.page-sub-header-for-audit-logs',
+  },
   DATABASES_SERVICES: {
     header: 'label.database-plural',
     subHeader: 'message.page-sub-header-for-databases',
@@ -182,12 +186,14 @@ export const PAGE_HEADERS = {
   },
   APPLICATION: {
     header: 'label.extend-open-meta-data',
+    headerParams: { brandName: brandClassBase.getPageTitle() },
     subHeader: 'message.application-to-improve-data',
   },
   CUSTOM_PAGE: {
     header: 'label.customize-entity',
     headerParams: { entity: 'label.landing-page' },
     subHeader: 'message.page-sub-header-for-customize-landing-page',
+    subHeaderParams: { brandName: brandClassBase.getPageTitle() },
   },
   INCIDENT_MANAGER: {
     header: 'label.incident-manager',
@@ -218,6 +224,7 @@ export const PAGE_HEADERS = {
     header: 'label.entity-configuration',
     headerParams: { entity: 'label.open-metadata-url' },
     subHeader: 'message.om-url-configuration-message',
+    subHeaderParams: { brandName: brandClassBase.getPageTitle() },
   },
   OM_HEALTH: {
     header: 'label.health-check',

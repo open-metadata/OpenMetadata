@@ -22,13 +22,12 @@ import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg'
 import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../components/common/Table/Table';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { NO_DATA_PLACEHOLDER, ROUTES } from '../../../constants/constants';
+import { ROUTES } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import {
   NO_PERMISSION_FOR_ACTION,
@@ -55,6 +54,7 @@ import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
 } from '../../../utils/RouterUtils';
+import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './roles-list.less';
 
@@ -122,17 +122,7 @@ const RolesListPage = () => {
           </Link>
         ),
       },
-      {
-        title: t('label.description').toString(),
-        dataIndex: 'description',
-        key: 'description',
-        render: (_, record) =>
-          isEmpty(record?.description) ? (
-            NO_DATA_PLACEHOLDER
-          ) : (
-            <RichTextEditorPreviewerNew markdown={record?.description ?? ''} />
-          ),
-      },
+      ...descriptionTableObject(),
       {
         title: t('label.policy-plural').toString(),
         dataIndex: 'policies',
@@ -152,7 +142,7 @@ const RolesListPage = () => {
                     {getEntityName(policy)}
                   </Link>
                 ) : (
-                  <Tooltip key={uniqueId()} title={NO_PERMISSION_TO_VIEW}>
+                  <Tooltip key={uniqueId()} title={t(NO_PERMISSION_TO_VIEW)}>
                     {getEntityName(policy)}
                   </Tooltip>
                 )
@@ -174,7 +164,7 @@ const RolesListPage = () => {
                         ) : (
                           <Tooltip
                             key={uniqueId()}
-                            title={NO_PERMISSION_TO_VIEW}>
+                            title={t(NO_PERMISSION_TO_VIEW)}>
                             {getEntityName(policy)}
                           </Tooltip>
                         )
@@ -209,7 +199,7 @@ const RolesListPage = () => {
                   ? t('label.delete-entity', {
                       entity: t('label.role-plural').toString(),
                     })
-                  : NO_PERMISSION_FOR_ACTION
+                  : t(NO_PERMISSION_FOR_ACTION)
               }>
               <Button
                 data-testid={`delete-action-${getEntityName(record)}`}

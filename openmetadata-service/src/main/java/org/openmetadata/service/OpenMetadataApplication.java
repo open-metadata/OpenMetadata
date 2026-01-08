@@ -52,7 +52,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.util.Collections;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Objects;
 import javax.naming.ConfigurationException;
 import lombok.SneakyThrows;
@@ -60,7 +62,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jetty.server.session.SessionHandler;
 import org.eclipse.jetty.servlet.FilterHolder;
+import org.eclipse.jetty.servlet.ServletHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.servlet.ServletMapping;
 import org.eclipse.jetty.websocket.server.config.JettyWebSocketServletContainerInitializer;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
@@ -74,11 +78,14 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.audit.AuditLogEventPublisher;
+import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
@@ -112,6 +119,7 @@ import org.openmetadata.service.monitoring.JettyMetricsIntegration;
 import org.openmetadata.service.monitoring.UserMetricsServlet;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
+import org.openmetadata.service.resources.audit.AuditLogResource;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.filters.ETagRequestFilter;
 import org.openmetadata.service.resources.filters.ETagResponseFilter;
@@ -186,6 +194,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   protected Jdbi jdbi;
   private Environment environment;
+  private AuditLogRepository auditLogRepository;
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
@@ -227,6 +236,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
     // as first step register all the repositories
     Entity.initializeRepositories(catalogConfig, jdbi);
+    auditLogRepository = new AuditLogRepository(Entity.getCollectionDAO());
+    Entity.setAuditLogRepository(auditLogRepository);
+    ResourceRegistry.addResource(
+        Entity.AUDIT_LOG, List.of(MetadataOperation.AUDIT_LOGS), Collections.emptySet());
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
@@ -400,7 +413,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Get session expiry - use OIDC config if available, otherwise default
     int sessionExpiry = 604800; // Default 7 days in seconds
-    if (SecurityConfigurationManager.getCurrentAuthConfig().getOidcConfiguration() != null) {
+    if (SecurityConfigurationManager.getCurrentAuthConfig().getOidcConfiguration() != null
+        && SecurityConfigurationManager.getCurrentAuthConfig()
+                .getOidcConfiguration()
+                .getSessionExpiry()
+            >= 3600) {
       sessionExpiry =
           SecurityConfigurationManager.getCurrentAuthConfig()
               .getOidcConfiguration()
@@ -495,11 +512,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OMWebConfiguration webConfiguration,
       Environment environment) {
 
+    LOG.info("Registering Asset Servlet with basePath: {}", config.getBasePath());
+    LOG.info("Application Context Path: {}", environment.getApplicationContext().getContextPath());
+
     // Handle Asset Using Servlet
     OpenMetadataAssetServlet assetServlet =
         new OpenMetadataAssetServlet(
             config.getBasePath(), "/assets", "/", "index.html", webConfiguration);
     environment.servlets().addServlet("static", assetServlet).addMapping("/*");
+
+    LOG.info("Asset Servlet registered with mapping: /*");
   }
 
   protected CollectionDAO getDao(Jdbi jdbi) {
@@ -526,14 +548,52 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Initialize default SAML settings (e.g. IDP metadata, SP keys, etc.)
       SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
 
-      contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
-      contextHandler.addServlet(
-          new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
-      contextHandler.addServlet(
-          new ServletHolder(new SamlMetadataServlet()), "/api/v1/saml/metadata");
-      contextHandler.addServlet(
-          new ServletHolder(new SamlTokenRefreshServlet()), "/api/v1/saml/refresh");
-      contextHandler.addServlet(new ServletHolder(new SamlLogoutServlet()), "/api/v1/saml/logout");
+      // Only register servlets if they don't already exist to prevent duplicate registration
+      if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/login")) {
+        contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
+      }
+      if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/acs")) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
+      }
+      if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/metadata")) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlMetadataServlet()), "/api/v1/saml/metadata");
+      }
+      if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/refresh")) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlTokenRefreshServlet()), "/api/v1/saml/refresh");
+      }
+      if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/logout")) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlLogoutServlet()), "/api/v1/saml/logout");
+      }
+    }
+  }
+
+  private boolean isSamlServletRegistered(
+      MutableServletContextHandler contextHandler, String path) {
+    try {
+      ServletHandler servletHandler = contextHandler.getServletHandler();
+      ServletMapping[] servletMappings = servletHandler.getServletMappings();
+
+      if (servletMappings != null) {
+        for (ServletMapping mapping : servletMappings) {
+          if (mapping.getPathSpecs() != null) {
+            for (String pathSpec : mapping.getPathSpecs()) {
+              if (path.equals(pathSpec)) {
+                LOG.debug("SAML servlet already registered at path: {}", path);
+                return true;
+              }
+            }
+          }
+        }
+      }
+      return false;
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to check if SAML servlet is registered at path {}: {}", path, e.getMessage());
+      return false;
     }
   }
 
@@ -796,6 +856,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
 
+    EventPubSub.addEventHandler(new AuditLogEventPublisher(auditLogRepository));
+
     if (openMetadataApplicationConfig.getEventMonitorConfiguration() != null) {
       final EventMonitor eventMonitor =
           EventMonitorFactory.createEventMonitor(
@@ -819,6 +881,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             authorizer,
             SecurityConfigurationManager.getInstance().getAuthenticatorHandler(),
             limits);
+    environment.jersey().register(new AuditLogResource(authorizer, auditLogRepository));
     environment.jersey().register(new JsonPatchProvider());
     environment.jersey().register(new JsonPatchMessageBodyReader());
 
@@ -848,6 +911,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     SocketAddressFilter socketAddressFilter;
     String pathSpec = "/api/v1/push/feed/*";
+
+    LOG.info("Initializing WebSockets");
+    LOG.info("WebSocket pathSpec: {}", pathSpec);
+    LOG.info(
+        "Application Context Path during WebSocket init: {}",
+        environment.getApplicationContext().getContextPath());
+
     if (catalogConfig.getAuthorizerConfiguration() != null) {
       socketAddressFilter =
           new SocketAddressFilter(
@@ -860,7 +930,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     EngineIoServerOptions eioOptions = EngineIoServerOptions.newFromDefault();
     eioOptions.setAllowedCorsOrigins(null);
     WebSocketManager.WebSocketManagerBuilder.build(eioOptions);
-    environment.getApplicationContext().setContextPath("/");
     FilterHolder socketAddressFilterHolder = new FilterHolder();
     socketAddressFilterHolder.setFilter(socketAddressFilter);
     environment

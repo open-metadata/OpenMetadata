@@ -1807,6 +1807,171 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
   @Test
   @Order(6)
+  void test_WorkflowFieldUpdateDoesNotCreateRedundantChangeEvents(TestInfo test) throws Exception {
+    LOG.info("Starting test to verify workflow field updates don't create redundant change events");
+
+    // Create a test table
+    CreateDatabaseService createService =
+        databaseServiceTest.createRequest(
+            "test_changeevent_service_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""));
+    DatabaseService service = databaseServiceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+
+    CreateDatabase createDatabase =
+        new CreateDatabase()
+            .withName(
+                "test_changeevent_db_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withService(service.getFullyQualifiedName());
+    Database database = databaseTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+    CreateDatabaseSchema createSchema =
+        new CreateDatabaseSchema()
+            .withName(
+                "test_changeevent_schema_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName(
+                "test_changeevent_table_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("name").withDataType(ColumnDataType.STRING)));
+    Table table = tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created test table: {}", table.getName());
+
+    // Record initial change event count
+    long initialOffset =
+        org.openmetadata.service.Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+    LOG.debug("Initial change event offset: {}", initialOffset);
+
+    // Create workflow that sets tags (this should create meaningful changes)
+    String workflowJson =
+        """
+    {
+      "name": "testRedundantChangeEvents",
+      "displayName": "Test Redundant Change Events",
+      "description": "Test workflow to verify no redundant change events",
+      "trigger": {
+        "type": "periodicBatchEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "schedule": {"scheduleTimeline": "None"},
+          "batchSize": 100,
+          "filters": {}
+        },
+        "output": ["relatedEntity", "updatedBy"]
+      },
+      "nodes": [
+        {"type": "startEvent", "subType": "startEvent", "name": "start", "displayName": "start"},
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "setTag",
+          "displayName": "Set Tag",
+          "config": {
+            "fieldName": "tags",
+            "fieldValue": "Tier.Tier1"
+          },
+          "input": ["relatedEntity", "updatedBy"],
+          "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"},
+          "output": []
+        },
+        {"type": "endEvent", "subType": "endEvent", "name": "end", "displayName": "end"}
+      ],
+      "edges": [
+        {"from": "start", "to": "setTag"},
+        {"from": "setTag", "to": "end"}
+      ],
+      "config": {"storeStageStatus": true}
+    }
+    """;
+
+    CreateWorkflowDefinition workflow =
+        JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class);
+
+    // Create and trigger workflow
+    Response response =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(workflow));
+    assertTrue(
+        response.getStatus() == Response.Status.CREATED.getStatusCode()
+            || response.getStatus() == Response.Status.OK.getStatusCode());
+
+    // Wait a moment for workflow setup
+    java.lang.Thread.sleep(2000);
+
+    // Trigger the workflow FIRST time
+    Response triggerResponse =
+        SecurityUtil.addHeaders(
+                getResource(
+                    "governance/workflowDefinitions/name/testRedundantChangeEvents/trigger"),
+                ADMIN_AUTH_HEADERS)
+            .post(Entity.json("{}"));
+    assertEquals(Response.Status.OK.getStatusCode(), triggerResponse.getStatus());
+
+    // Wait for workflow to complete
+    java.lang.Thread.sleep(15000);
+
+    // Count change events after first workflow run
+    long firstRunOffset =
+        org.openmetadata.service.Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+    long firstRunEventCount = firstRunOffset - initialOffset;
+
+    // Verify the tag was actually added (meaningful change)
+    Table updatedTable = tableTest.getEntity(table.getId(), "tags", ADMIN_AUTH_HEADERS);
+    boolean hasTag =
+        updatedTable.getTags() != null
+            && updatedTable.getTags().stream()
+                .anyMatch(tag -> "Tier.Tier1".equals(tag.getTagFQN()));
+    assertTrue(hasTag, "Table should have Tier.Tier1 tag after first workflow run");
+
+    LOG.info("First workflow run created {} change events", firstRunEventCount);
+    assertTrue(
+        firstRunEventCount > 0, "First workflow run should create at least one change event");
+
+    // Trigger the workflow SECOND time (should NOT create new events since no actual changes)
+    triggerResponse =
+        SecurityUtil.addHeaders(
+                getResource(
+                    "governance/workflowDefinitions/name/testRedundantChangeEvents/trigger"),
+                ADMIN_AUTH_HEADERS)
+            .post(Entity.json("{}"));
+    assertEquals(Response.Status.OK.getStatusCode(), triggerResponse.getStatus());
+
+    // Wait for second workflow to complete
+    java.lang.Thread.sleep(15000);
+
+    // Count change events after second workflow run
+    long secondRunOffset =
+        org.openmetadata.service.Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+    long secondRunEventCount = secondRunOffset - firstRunOffset;
+
+    LOG.info("Second workflow run created {} change events", secondRunEventCount);
+
+    // CRITICAL ASSERTION: Second run should create NO new change events
+    // because the tag is already set and EntityFieldUtils should not generate
+    // redundant events due to updateEntityMetadata timestamp changes
+    assertEquals(
+        0,
+        secondRunEventCount,
+        "Second workflow run should NOT create change events when no actual field changes occur. "
+            + "This verifies the fix for redundant updateEntityMetadata events.");
+
+    // Verify the tag is still there (no regression)
+    Table finalTable = tableTest.getEntity(table.getId(), "tags", ADMIN_AUTH_HEADERS);
+    boolean stillHasTag =
+        finalTable.getTags() != null
+            && finalTable.getTags().stream().anyMatch(tag -> "Tier.Tier1".equals(tag.getTagFQN()));
+    assertTrue(stillHasTag, "Table should still have the tag after second workflow run");
+
+    LOG.info("✓ PASSED: Workflow field updates do not create redundant change events");
+  }
+
+  @Test
+  @Order(7)
   void test_MultiEntityPeriodicQueryWithFilters(TestInfo test)
       throws IOException, InterruptedException {
     LOG.info("Starting test_MultiEntityPeriodicQueryWithFilters");
@@ -3086,6 +3251,11 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
           "from": "checkTask",
           "to": "end",
           "condition": "true"
+        },
+        {
+          "from": "checkTask",
+          "to": "end",
+          "condition": "false"
         }
       ]
     }
@@ -3465,7 +3635,13 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         },
         {
           "from": "userApproval",
-          "to": "setTask"
+          "to": "setTask",
+          "condition": "true"
+        },
+        {
+          "from": "userApproval",
+          "to": "setTask",
+          "condition": "false"
         },
         {
           "from": "setTask",
@@ -4022,6 +4198,233 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         endWithOutgoingResponseBody.contains("cannot have outgoing edges"),
         "Expected cannot have outgoing edges error message, got: " + endWithOutgoingResponseBody);
     LOG.debug("End node with outgoing edges correctly rejected: {}", endWithOutgoingResponseBody);
+
+    // Test 8: Conditional task with missing FALSE condition should fail
+    String missingFalseConditionJson =
+        """
+    {
+      "name": "missingFalseConditionWorkflow",
+      "displayName": "Missing False Condition Workflow",
+      "description": "Workflow with conditional task missing FALSE condition",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["glossaryTerm"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "checkTask",
+          "displayName": "Check Task",
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "config": {
+            "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
+          },
+          "input": ["relatedEntity"],
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          },
+          "output": ["result"]
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "checkTask"
+        },
+        {
+          "from": "checkTask",
+          "to": "end",
+          "condition": "true"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition missingFalseConditionWorkflow =
+        JsonUtils.readValue(missingFalseConditionJson, CreateWorkflowDefinition.class);
+
+    Response missingFalseResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(missingFalseConditionWorkflow));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), missingFalseResponse.getStatus());
+    String missingFalseResponseBody = missingFalseResponse.readEntity(String.class);
+    assertTrue(
+        missingFalseResponseBody.contains("must have both TRUE and FALSE outgoing sequence flows"),
+        "Expected conditional task validation error, got: " + missingFalseResponseBody);
+    LOG.debug(
+        "Conditional task missing FALSE condition correctly rejected: {}",
+        missingFalseResponseBody);
+
+    // Test 9: UserApprovalTask with missing TRUE condition should fail
+    String missingTrueConditionJson =
+        """
+    {
+      "name": "missingTrueConditionWorkflow",
+      "displayName": "Missing True Condition Workflow",
+      "description": "Workflow with UserApprovalTask missing TRUE condition",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["glossaryTerm"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "approvalTask",
+          "displayName": "Approval Task",
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "config": {
+            "assignees": {
+              "addReviewers": true
+            }
+          },
+          "input": ["relatedEntity"],
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          },
+          "output": ["result"]
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "approvalTask"
+        },
+        {
+          "from": "approvalTask",
+          "to": "end",
+          "condition": "false"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition missingTrueConditionWorkflow =
+        JsonUtils.readValue(missingTrueConditionJson, CreateWorkflowDefinition.class);
+
+    Response missingTrueResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(missingTrueConditionWorkflow));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), missingTrueResponse.getStatus());
+    String missingTrueResponseBody = missingTrueResponse.readEntity(String.class);
+    assertTrue(
+        missingTrueResponseBody.contains("must have both TRUE and FALSE outgoing sequence flows"),
+        "Expected conditional task validation error, got: " + missingTrueResponseBody);
+    LOG.debug(
+        "UserApprovalTask missing TRUE condition correctly rejected: {}", missingTrueResponseBody);
+
+    // Test 10: Valid conditional task with both TRUE and FALSE conditions should pass
+    String validConditionalJson =
+        """
+    {
+      "name": "validConditionalWorkflow",
+      "displayName": "Valid Conditional Workflow",
+      "description": "Workflow with proper conditional task setup",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["glossaryTerm"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "checkTask",
+          "displayName": "Check Task",
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "config": {
+            "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
+          },
+          "input": ["relatedEntity"],
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          },
+          "output": ["result"]
+        },
+        {
+          "name": "endTrue",
+          "displayName": "End True",
+          "type": "endEvent",
+          "subType": "endEvent"
+        },
+        {
+          "name": "endFalse",
+          "displayName": "End False",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "checkTask"
+        },
+        {
+          "from": "checkTask",
+          "to": "endTrue",
+          "condition": "true"
+        },
+        {
+          "from": "checkTask",
+          "to": "endFalse",
+          "condition": "false"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition validConditionalWorkflow =
+        JsonUtils.readValue(validConditionalJson, CreateWorkflowDefinition.class);
+
+    Response validConditionalResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(validConditionalWorkflow));
+
+    assertEquals(Response.Status.OK.getStatusCode(), validConditionalResponse.getStatus());
+    String validConditionalResponseBody = validConditionalResponse.readEntity(String.class);
+    assertTrue(validConditionalResponseBody.contains("valid"));
+    LOG.debug("Valid conditional workflow passed validation: {}", validConditionalResponseBody);
 
     LOG.info("test_WorkflowValidationEndpoint completed successfully");
   }

@@ -15,26 +15,46 @@ SQL Queries used during ingestion
 import textwrap
 
 SNOWFLAKE_GET_TABLE_NAMES = """
-    select TABLE_NAME, NULL, TABLE_TYPE from information_schema.tables
+    select
+        TABLE_NAME,
+        NULL as DELETED,
+        CASE
+            WHEN TABLE_TYPE = 'EXTERNAL TABLE' THEN 'EXTERNAL TABLE'
+            WHEN TABLE_TYPE = 'VIEW' THEN 'VIEW'
+            WHEN TABLE_TYPE = 'MATERIALIZED VIEW' THEN 'MATERIALIZED VIEW'
+            WHEN IS_TRANSIENT = 'YES' THEN 'TRANSIENT TABLE'
+            WHEN IS_DYNAMIC = 'YES' THEN 'DYNAMIC TABLE'
+            WHEN TABLE_TYPE = 'BASE TABLE' THEN 'BASE TABLE'
+            ELSE TABLE_TYPE
+        END as TABLE_TYPE
+    from information_schema.tables
     where TABLE_SCHEMA = '{schema}'
-    AND COALESCE(IS_TRANSIENT, 'NO') != '{is_transient}'
+    AND {include_transient_tables}
     AND {include_views}
 """
 
 SNOWFLAKE_INCREMENTAL_GET_TABLE_NAMES = """
-select TABLE_NAME, DELETED, TABLE_TYPE
+select TABLE_NAME, DELETED, COMPUTED_TABLE_TYPE as TABLE_TYPE
 from (
     select
         TABLE_NAME,
         DELETED,
-        TABLE_TYPE,
+        CASE
+            WHEN TABLE_TYPE = 'EXTERNAL TABLE' THEN 'EXTERNAL TABLE'
+            WHEN TABLE_TYPE = 'VIEW' THEN 'VIEW'
+            WHEN TABLE_TYPE = 'MATERIALIZED VIEW' THEN 'MATERIALIZED VIEW'
+            WHEN IS_TRANSIENT = 'YES' THEN 'TRANSIENT TABLE'
+            WHEN IS_DYNAMIC = 'YES' THEN 'DYNAMIC TABLE'
+            WHEN TABLE_TYPE = 'BASE TABLE' THEN 'BASE TABLE'
+            ELSE TABLE_TYPE
+        END as COMPUTED_TABLE_TYPE,
         ROW_NUMBER() over (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
     from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
-    and COALESCE(IS_TRANSIENT, 'NO') != '{is_transient}'
+    and {include_transient_tables}
     and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
     and {include_views}
 )
@@ -72,6 +92,7 @@ SNOWFLAKE_FETCH_TABLE_TAGS = textwrap.dedent(
     from {account_usage}.tag_references
     where OBJECT_DATABASE = '{database_name}'
       and OBJECT_SCHEMA = '{schema_name}'
+      and OBJECT_DELETED IS NULL
 """
 )
 
@@ -472,7 +493,7 @@ SNOWFLAKE_QUERY_LOG_QUERY = """
         ROWS_INSERTED,
         ROWS_UPDATED,
         ROWS_DELETED
-    FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"
+    FROM {account_usage_schema}."QUERY_HISTORY"
     WHERE
     start_time>= DATEADD('DAY', -1, CURRENT_TIMESTAMP)
     AND QUERY_TEXT ILIKE '%{tablename}%'

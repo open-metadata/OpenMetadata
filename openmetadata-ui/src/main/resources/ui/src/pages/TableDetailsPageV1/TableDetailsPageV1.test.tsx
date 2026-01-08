@@ -13,6 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { TableType } from '../../generated/entity/data/table';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
@@ -290,10 +291,6 @@ jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
   GenericTab: jest.fn().mockImplementation(() => <>GenericTab</>),
 }));
 
-jest.mock('../../utils/TableColumn.util', () => ({
-  ownerTableObject: jest.fn().mockReturnValue([{}]),
-}));
-
 jest.mock(
   '../../context/RuleEnforcementProvider/RuleEnforcementProvider',
   () => ({
@@ -524,5 +521,34 @@ describe('TestDetailsPageV1 component', () => {
 
     expect(await screen.findByText('GenericTab')).toBeInTheDocument();
     expect(GenericTab).toHaveBeenCalledWith({ type: 'Table' }, {});
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    const mockTableData = {
+      name: 'test-table',
+      id: '123',
+      columns: [],
+    };
+
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockTableData)
+    );
+
+    await act(async () => {
+      render(<TableDetailsPageV1 />);
+    });
+
+    expect(PageLayoutV1).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageTitle: 'test-table',
+      }),
+      expect.anything()
+    );
   });
 });

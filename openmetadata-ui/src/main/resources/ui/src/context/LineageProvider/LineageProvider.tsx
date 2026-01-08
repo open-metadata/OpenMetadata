@@ -49,6 +49,7 @@ import {
   useEdgesState,
   useKeyPress,
   useNodesState,
+  useUpdateNodeInternals,
 } from 'reactflow';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
@@ -118,6 +119,7 @@ import {
   getAllDownstreamEdges,
   getAllTracedColumnEdge,
   getClassifiedEdge,
+  getColumnSourceTargetHandles,
   getConnectedNodesEdges,
   getEdgeDataFromEdge,
   getELKLayoutedElements,
@@ -229,6 +231,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const { showModal } = useEntityExportModalProvider();
   const [isPlatformLineage, setIsPlatformLineage] = useState(false);
   const [dqHighlightedEdges, setDqHighlightedEdges] = useState<Set<string>>();
+  const [isCreatingEdge, setIsCreatingEdge] = useState<boolean>(false);
+  const [columnsInCurrentPages, setColumnsInCurrentPages] = useState<
+    Record<string, string[]>
+  >({});
 
   // Add state for entityFqn that can be updated independently of URL params
   const [entityFqn, setEntityFqn] = useState<string>(decodedFqn);
@@ -277,7 +283,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         queryFilter
       );
       setDataQualityLineage(dqLineageResp);
-    } catch (error) {
+    } catch {
       setDataQualityLineage(undefined);
     }
   };
@@ -503,7 +509,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         navigate({
           search: QueryString.stringify({
             ...searchData,
-            platformView: view !== LineagePlatformView.None ? view : undefined,
+            platformView: view === LineagePlatformView.None ? undefined : view,
           }),
         });
       }
@@ -576,7 +582,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         for (const node of entityLineage.nodes ?? []) {
           currentNodes[node.fullyQualifiedName ?? ''] = {
             entity: node,
-            paging: (node as LineageEntityReference).paging ?? {
+            paging: node.paging ?? {
               entityDownstreamCount: 0,
               entityUpstreamCount: 0,
             },
@@ -628,7 +634,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         for (const node of uniqueNodes) {
           visibleNodes[node.fullyQualifiedName ?? ''] = {
             entity: node,
-            paging: (node as LineageEntityReference).paging ?? {
+            paging: node.paging ?? {
               entityDownstreamCount: 0,
               entityUpstreamCount: 0,
             },
@@ -641,11 +647,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
         if (currentNode) {
           if (direction === LineageDirection.Upstream) {
-            (currentNode as LineageEntityReference).upstreamExpandPerformed =
-              true;
+            currentNode.upstreamExpandPerformed = true;
           } else {
-            (currentNode as LineageEntityReference).downstreamExpandPerformed =
-              true;
+            currentNode.downstreamExpandPerformed = true;
           }
         }
 
@@ -769,6 +773,22 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [nodes, edges]
   );
 
+  const onColumnMouseEnter = useCallback(
+    (column: string) => {
+      const { columnEdge } = getClassifiedEdge(edges);
+      const { connectedColumnEdges } = getAllTracedColumnEdge(
+        column,
+        columnEdge
+      );
+      setTracedColumns(connectedColumnEdges);
+    },
+    [edges]
+  );
+
+  const onColumnMouseLeave = useCallback(() => {
+    setTracedColumns([]);
+  }, []);
+
   const removeEdgeHandler = async (
     edge: Edge,
     confirmDelete: boolean
@@ -860,6 +880,26 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setEdges((prev) => {
       return prev.filter((item) => item.id !== edge.id);
     });
+
+    // Recompute columnsHavingLineage after removing the column edge
+    const allNodes: LineageEntityReference[] = uniqWith(
+      [
+        ...(entityLineage.nodes ?? []),
+        ...(entityLineage.entity ? [entityLineage.entity] : []),
+      ],
+      isEqual
+    );
+
+    const { columnsHavingLineage: updatedColumnsHavingLineage } =
+      createEdgesAndEdgeMaps(
+        allNodes,
+        updatedEdgeWithColumns,
+        entityFqn,
+        activeLayer.includes(LineageLayer.ColumnLevelLineage)
+      );
+
+    setColumnsHavingLineage(updatedColumnsHavingLineage);
+
     setShowDeleteModal(false);
   };
 
@@ -922,6 +962,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       });
 
       setNewAddedNode({} as Node);
+
+      setColumnsInCurrentPages((prev) => {
+        const updated = { ...prev };
+        delete updated[node.id];
+
+        return updated;
+      });
     },
     [nodes, entityLineage]
   );
@@ -1034,6 +1081,43 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   };
 
+  const updateNodeData = useCallback(
+    (entityId: string, updatedEntity: Partial<SourceType>) => {
+      setNodes((prevNodes) =>
+        prevNodes.map((node) => {
+          if (node.id !== entityId) {
+            return node;
+          }
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              node: { ...node.data.node, ...updatedEntity },
+            },
+          };
+        })
+      );
+    },
+    [setNodes]
+  );
+
+  const handleEntityUpdate = useCallback(
+    (updatedEntity: Partial<SourceType>) => {
+      setSelectedNode((prev) => {
+        if (!prev?.id) {
+          return prev;
+        }
+
+        const entityId = updatedEntity.id ?? prev.id;
+        updateNodeData(entityId, updatedEntity);
+
+        return { ...prev, ...updatedEntity };
+      });
+    },
+    [updateNodeData]
+  );
+
   const onNodeClick = useCallback(
     (node: Node) => {
       if (!node) {
@@ -1050,13 +1134,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         handleLineageTracing(node);
       }
     },
-    [handleLineageTracing]
+    [handleLineageTracing, selectedColumn]
   );
 
   const onPaneClick = useCallback(() => {
     setIsDrawerOpen(false);
     setTracedNodes([]);
     setTracedColumns([]);
+    setSelectedColumn('');
     setActiveNode(undefined);
     setSelectedNode({} as SourceType);
   }, []);
@@ -1067,16 +1152,30 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setSelectedNode({} as SourceType);
     setIsDrawerOpen(true);
     setTracedNodes([]);
-    setTracedColumns([]);
+    const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
+    if (sourceHandle && targetHandle) {
+      setTracedColumns([sourceHandle, targetHandle]);
+    }
   }, []);
 
   const onLineageEditClick = useCallback(() => {
+    const hasColumnLayer = activeLayer.includes(
+      LineageLayer.ColumnLevelLineage
+    );
+
+    if (!isEditMode && !hasColumnLayer) {
+      setActiveLayer((pre) => uniq([LineageLayer.ColumnLevelLineage, ...pre]));
+    } else if (isEditMode) {
+      setTracedNodes([]);
+      setTracedColumns([]);
+    }
+
     setIsEditMode((pre) => !pre);
     setActiveNode(undefined);
     setSelectedNode({} as SourceType);
     setSelectedEdge(undefined);
     setIsDrawerOpen(false);
-  }, []);
+  }, [isEditMode, activeLayer]);
 
   const onInitReactFlow = (reactFlowInstance: ReactFlowInstance) => {
     setReactFlowInstance(reactFlowInstance);
@@ -1127,7 +1226,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         loading: false,
       }));
     }
-  }, [selectedEdge, setShowDeleteModal]);
+  }, [removeColumnEdge, removeEdgeHandler, selectedEdge]);
 
   const onConnect = useCallback(
     (params: Edge | Connection) => {
@@ -1145,6 +1244,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       if (columnConnection) {
         params.sourceHandle = decodeLineageHandles(params.sourceHandle);
         params.targetHandle = decodeLineageHandles(params.targetHandle);
+
+        if (!tracedColumns.includes(params.sourceHandle as string)) {
+          setTracedColumns((prev) => [...prev, params.sourceHandle as string]);
+        }
+
+        if (!tracedColumns.includes(params.targetHandle as string)) {
+          setTracedColumns((prev) => [...prev, params.targetHandle as string]);
+        }
       }
 
       setStatus('waiting');
@@ -1247,11 +1354,29 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           .finally(() => {
             setStatus('initial');
             setLoading(false);
+            setTracedNodes([]);
           });
       }
     },
-    [entityLineage, nodes, entityFqn]
+    [
+      nodes,
+      entityLineage,
+      updateLineageData,
+      setNodes,
+      entityFqn,
+      activeLayer,
+      setEdges,
+      tracedColumns,
+    ]
   );
+
+  const onConnectStart = useCallback(() => {
+    setIsCreatingEdge(true);
+  }, []);
+
+  const onConnectEnd = useCallback(() => {
+    setIsCreatingEdge(false);
+  }, []);
 
   const onAddPipelineClick = useCallback(() => {
     setShowAddEdgeModal(true);
@@ -1357,7 +1482,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             edges: newEdges,
           };
         });
-      } catch (error) {
+      } catch {
         setLoading(false);
       } finally {
         setStatus('initial');
@@ -1468,11 +1593,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       const nodeToUpdate = updatedNodes.find((n) => n.id === currentNodeId);
       if (nodeToUpdate) {
         if (direction === LineageDirection.Upstream) {
-          (nodeToUpdate as LineageEntityReference).upstreamExpandPerformed =
-            false;
+          nodeToUpdate.upstreamExpandPerformed = false;
         } else {
-          (nodeToUpdate as LineageEntityReference).downstreamExpandPerformed =
-            false;
+          nodeToUpdate.downstreamExpandPerformed = false;
         }
       }
 
@@ -1481,7 +1604,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       for (const node of updatedNodes) {
         visibleNodes[node.fullyQualifiedName ?? ''] = {
           entity: node,
-          paging: (node as LineageEntityReference).paging ?? {
+          paging: node.paging ?? {
             entityDownstreamCount: 0,
             entityUpstreamCount: 0,
           },
@@ -1671,10 +1794,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     );
     const currHasColumn = activeLayer.includes(LineageLayer.ColumnLevelLineage);
 
-    if (prevHadColumn !== currHasColumn) {
-      redraw();
-    } else {
+    if (prevHadColumn === currHasColumn) {
       repositionLayout();
+    } else {
+      redraw();
     }
 
     prevActiveLayerRef.current = activeLayer;
@@ -1719,6 +1842,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       platformView,
       isPlatformLineage,
       entityFqn,
+      isCreatingEdge,
       exportLineageData,
       onCloseDrawer,
       updateEntityFqn,
@@ -1726,9 +1850,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onInitReactFlow,
       onPaneClick,
       onConnect,
+      onConnectStart,
+      onConnectEnd,
       onNodeDrop,
       onNodeCollapse,
       onColumnClick,
+      onColumnMouseEnter,
+      onColumnMouseLeave,
       onNodesChange,
       onEdgesChange,
       onZoomUpdate,
@@ -1752,6 +1880,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       queryFilter,
       onPlatformViewChange,
       dqHighlightedEdges,
+      useUpdateNodeInternals,
+      columnsInCurrentPages,
+      setColumnsInCurrentPages,
     };
   }, [
     dataQualityLineage,
@@ -1775,6 +1906,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     expandAllColumns,
     isPlatformLineage,
     entityFqn,
+    isCreatingEdge,
     exportLineageData,
     onCloseDrawer,
     updateEntityFqn,
@@ -1782,9 +1914,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onInitReactFlow,
     onPaneClick,
     onConnect,
+    onConnectStart,
+    onConnectEnd,
     onNodeDrop,
     onNodeCollapse,
     onColumnClick,
+    onColumnMouseEnter,
+    onColumnMouseLeave,
     selectedQuickFilters,
     setSelectedQuickFilters,
     onNodesChange,
@@ -1806,6 +1942,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     redraw,
     onPlatformViewChange,
     dqHighlightedEdges,
+    useUpdateNodeInternals,
+    columnsInCurrentPages,
+    setColumnsInCurrentPages,
   ]);
 
   useEffect(() => {
@@ -1935,8 +2074,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               entityDetails={{ details: selectedNode }}
               handleClosePanel={onCloseDrawer}
               nodesPerLayer={lineageConfig.nodesPerLayer}
+              panelPath="lineage"
               pipelineViewMode={lineageConfig.pipelineViewMode}
               upstreamDepth={lineageConfig.upstreamDepth}
+              onEntityUpdate={handleEntityUpdate}
             />
           </Drawer>
         )}

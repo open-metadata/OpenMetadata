@@ -212,7 +212,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     !isRenderedInRightPanel
   ) {
     return (
-      <div className="h-full p-x-lg flex-center border-default border-radius-sm">
+      <div className="h-full flex-center border-default border-radius-sm">
         <ErrorPlaceHolder
           className="border-none"
           contentMaxWidth="24rem"
