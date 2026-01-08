@@ -152,7 +152,7 @@ SERVICE_CONNECTION_CONFIG = MysqlConnection(
     ],
 )
 def test_get_data_diff_url(input, expected):
-     assert expected == BaseTableParameter().get_data_diff_url(
+    assert expected == BaseTableParameter().get_data_diff_url(
         input, "service.database.schema.table"
     )
 
