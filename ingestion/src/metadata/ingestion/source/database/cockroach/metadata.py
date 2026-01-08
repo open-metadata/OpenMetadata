@@ -142,9 +142,11 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
         included in the column list, causing a mismatch that results in
         'Invalid column name found in table constraint' errors from the server.
         """
-        pk_columns, unique_columns, foreign_columns = super()._get_columns_with_constraints(
-            schema_name, table_name, inspector
-        )
+        (
+            pk_columns,
+            unique_columns,
+            foreign_columns,
+        ) = super()._get_columns_with_constraints(schema_name, table_name, inspector)
 
         # Filter out hidden shard columns from primary key constraints
         if pk_columns:

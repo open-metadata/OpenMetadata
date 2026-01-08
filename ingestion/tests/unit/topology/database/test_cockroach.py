@@ -301,9 +301,7 @@ class cockroachUnitTest(TestCase):
         self.assertFalse(CockroachSource._is_hidden_shard_column("id"))
         self.assertFalse(CockroachSource._is_hidden_shard_column("user_id"))
         self.assertFalse(CockroachSource._is_hidden_shard_column("crdb_internal"))
-        self.assertFalse(
-            CockroachSource._is_hidden_shard_column("crdb_internal_shard")
-        )
+        self.assertFalse(CockroachSource._is_hidden_shard_column("crdb_internal_shard"))
         self.assertFalse(
             CockroachSource._is_hidden_shard_column("crdb_internal_id_shard")
         )
@@ -337,7 +335,11 @@ class cockroachUnitTest(TestCase):
         inspector.get_unique_constraints = lambda table_name, schema_name: []
         inspector.get_foreign_keys = lambda table_name, schema_name: []
 
-        columns, table_constraints, _ = self.cockroach_source.get_columns_and_constraints(
+        (
+            columns,
+            table_constraints,
+            _,
+        ) = self.cockroach_source.get_columns_and_constraints(
             "public", "test_table", "cockroach", inspector, TableType.Regular
         )
 
@@ -371,7 +373,11 @@ class cockroachUnitTest(TestCase):
         inspector.get_unique_constraints = lambda table_name, schema_name: []
         inspector.get_foreign_keys = lambda table_name, schema_name: []
 
-        columns, table_constraints, _ = self.cockroach_source.get_columns_and_constraints(
+        (
+            columns,
+            table_constraints,
+            _,
+        ) = self.cockroach_source.get_columns_and_constraints(
             "public", "test_table", "cockroach", inspector, TableType.Regular
         )
 
@@ -411,7 +417,11 @@ class cockroachUnitTest(TestCase):
         inspector.get_unique_constraints = lambda table_name, schema_name: []
         inspector.get_foreign_keys = lambda table_name, schema_name: []
 
-        columns, table_constraints, _ = self.cockroach_source.get_columns_and_constraints(
+        (
+            columns,
+            table_constraints,
+            _,
+        ) = self.cockroach_source.get_columns_and_constraints(
             "public", "test_table", "cockroach", inspector, TableType.Regular
         )
 
