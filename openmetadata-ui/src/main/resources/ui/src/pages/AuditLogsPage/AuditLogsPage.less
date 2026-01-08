@@ -10,20 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+.audit-log-filter-trigger {
+  min-width: 140px;
+  max-width: 220px;
+  justify-content: flex-start;
+  border-radius: 18px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
 
-export interface ChipOption {
-  value: string;
-  label: string;
+  &.active {
+    background-color: #e6f4ff;
+    border-color: #1677ff;
+    color: #1677ff;
+  }
 }
 
-export interface ChipSelectProps {
-  options: ChipOption[];
-  value: string;
-  onChange: (value: string) => void;
-  label?: string;
-  required?: boolean;
-  error?: boolean;
-  helperText?: string;
-  disabled?: boolean;
-  dataTestId?: string;
+.audit-log-filters {
+  gap: 8px;
 }
