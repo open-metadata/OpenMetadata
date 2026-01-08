@@ -9,14 +9,20 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-"""Test Oracle DataDiff parameter setter functionality"""
+"""Test DataDiff parameter setter functionality"""
 
+import uuid
 from unittest.mock import patch
 
 from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (
     BaseTableParameter,
 )
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
     DatabaseServiceType,
 )
 
@@ -60,3 +66,34 @@ def test_get_data_diff_table_path_mysql_no_denormalization():
     # MySQL should preserve original case
     expected = "schema_name.table_name"
     assert result == expected
+
+
+def test_get_data_diff_url_mysql_includes_database():
+    """Test MySQL URL generation includes the database (schema in FQN) in the path.
+
+    This is required because data_diff library requires MySQL URLs to specify a database.
+    See: https://github.com/open-metadata/OpenMetadata/issues/24641
+    """
+    mysql_connection = MysqlConnection(
+        hostPort="localhost:3306",
+        username="testuser",
+    )
+
+    db_service = DatabaseService(
+        id=uuid.uuid4(),
+        name="mysql_test_service",
+        serviceType=DatabaseServiceType.Mysql,
+        connection=DatabaseConnection(config=mysql_connection),
+    )
+
+    table_fqn = "mysql_test_service.default.zxk.test_table"
+
+    param_setter = BaseTableParameter()
+    with patch.object(
+        param_setter,
+        "_get_service_connection_config",
+        return_value="mysql+pymysql://testuser:pass@localhost:3306/",
+    ):
+        result = param_setter.get_data_diff_url(db_service, table_fqn)
+
+    assert result == "mysql://testuser:pass@localhost:3306/zxk"
