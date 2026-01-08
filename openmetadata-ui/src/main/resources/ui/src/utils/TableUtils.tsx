@@ -152,15 +152,9 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
-import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
-import { Container } from '../generated/entity/data/container';
-import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
-import { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
-import { Pipeline, Task } from '../generated/entity/data/pipeline';
-import {
-  SearchIndex as SearchIndexEntity,
-  SearchIndexField,
-} from '../generated/entity/data/searchIndex';
+import { MlFeature } from '../generated/entity/data/mlmodel';
+import { Task } from '../generated/entity/data/pipeline';
+import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import {
   Column,
   ConstraintType,
@@ -170,7 +164,6 @@ import {
   TableConstraint,
   TableJoins,
 } from '../generated/entity/data/table';
-import { Topic } from '../generated/entity/data/topic';
 import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../generated/system/ui/uiCustomization';
 import { Field } from '../generated/type/schema';
@@ -195,14 +188,21 @@ import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
+import { extractApiEndpointFields } from './APIEndpoints/APIEndpointUtils';
+import { extractContainerColumns } from './ContainerDetailUtils';
+import { extractDataModelColumns } from './DashboardDataModelUtils';
 import EntityLink from './EntityLink';
 import { getEntityImportPath } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
+import { extractMlModelFeatures } from './MlModelDetailsUtils';
+import { extractPipelineTasks } from './PipelineDetailsUtils';
 import searchClassBase from './SearchClassBase';
+import { extractSearchIndexFields } from './SearchIndexUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { ordinalize } from './StringsUtils';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
+import { extractTopicFields } from './TopicDetailsUtils';
 
 const EntityLineageTab = lazy(() =>
   import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
@@ -1704,97 +1704,13 @@ export const buildColumnBreadcrumbPath = <
   return breadcrumbs;
 };
 
-/**
- * Helper functions to extract columns/fields from specific entity types
- */
-const extractTableColumns = <T extends Omit<EntityReference, 'type'>>(
+export const extractTableColumns = <T extends Omit<EntityReference, 'type'>>(
   data: T
 ): Column[] => {
   const table = data as Partial<Table>;
 
   return (table.columns ?? []).map(
     (column) => ({ ...column, tags: column.tags ?? [] } as Column)
-  );
-};
-
-const extractApiEndpointFields = <T extends Omit<EntityReference, 'type'>>(
-  data: T
-): Field[] => {
-  const apiEndpoint = data as Partial<APIEndpoint>;
-
-  return [
-    ...(apiEndpoint.requestSchema?.schemaFields ?? []).map(
-      (field) => ({ ...field, tags: field.tags ?? [] } as Field)
-    ),
-    ...(apiEndpoint.responseSchema?.schemaFields ?? []).map(
-      (field) => ({ ...field, tags: field.tags ?? [] } as Field)
-    ),
-  ];
-};
-
-const extractDataModelColumns = <T extends Omit<EntityReference, 'type'>>(
-  data: T
-): Column[] => {
-  const dataModel = data as Partial<DashboardDataModel>;
-
-  return (dataModel.columns ?? []).map(
-    (column) =>
-      ({
-        ...column,
-        tags: column.tags ?? [],
-      } as Column)
-  );
-};
-
-const extractMlModelFeatures = <T extends Omit<EntityReference, 'type'>>(
-  data: T
-): MlFeature[] => {
-  const mlModel = data as Partial<Mlmodel>;
-
-  return mlModel.mlFeatures ?? [];
-};
-
-const extractPipelineTasks = <T extends Omit<EntityReference, 'type'>>(
-  data: T
-): Task[] => {
-  const pipeline = data as Partial<Pipeline>;
-
-  return (pipeline.tasks ?? []).map(
-    (task) => ({ ...task, tags: task.tags ?? [] } as Task)
-  );
-};
-
-const extractTopicFields = <T extends Omit<EntityReference, 'type'>>(
-  data: T
-): Field[] => {
-  const topic = data as Partial<Topic>;
-
-  return (topic.messageSchema?.schemaFields ?? []).map(
-    (field) => field as Field
-  );
-};
-
-const extractContainerColumns = <T extends Omit<EntityReference, 'type'>>(
-  data: T
-): Column[] => {
-  const container = data as Partial<Container>;
-
-  return (container.dataModel?.columns ?? []).map(
-    (column) =>
-      ({
-        ...column,
-        tags: column.tags ?? [],
-      } as Column)
-  );
-};
-
-const extractSearchIndexFields = <T extends Omit<EntityReference, 'type'>>(
-  data: T
-): SearchIndexField[] => {
-  const searchIndex = data as Partial<SearchIndexEntity>;
-
-  return (searchIndex.fields ?? []).map(
-    (field) => ({ ...field, tags: field.tags ?? [] } as SearchIndexField)
   );
 };
 

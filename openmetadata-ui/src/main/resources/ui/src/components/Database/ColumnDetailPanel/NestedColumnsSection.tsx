@@ -10,24 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@mui/material';
+import { Box, useTheme } from '@mui/material';
 import { Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-new.svg';
 import { Column } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';
-
-interface NestedColumnsSectionProps {
-  columns: Column[];
-  onColumnClick: (column: Column) => void;
-}
+import { NestedColumnsSectionProps } from './NestedColumnsSection.interface';
 
 const NestedColumnItem: React.FC<{
   column: Column;
   depth: number;
   onColumnClick: (column: Column) => void;
 }> = ({ column, depth, onColumnClick }) => {
+  const theme = useTheme();
   const hasChildren = column.children && column.children.length > 0;
 
   return (
@@ -49,7 +46,7 @@ const NestedColumnItem: React.FC<{
           style={{
             width: 11,
             height: 11,
-            color: '#175CD3',
+            color: theme.palette.allShades?.brand?.[700],
             strokeWidth: '1.2px',
           }}
         />
@@ -58,7 +55,7 @@ const NestedColumnItem: React.FC<{
           style={{
             fontSize: 14,
             fontWeight: 400,
-            color: '#175CD3',
+            color: theme.palette.allShades?.brand?.[700],
           }}>
           {getEntityName(column)}
         </Typography.Link>
@@ -84,13 +81,17 @@ export const NestedColumnsSection: React.FC<NestedColumnsSectionProps> = ({
   onColumnClick,
 }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
 
   if (columns.length === 0) {
     return null;
   }
 
   return (
-    <Box borderBottom="0.6px solid #EAECF5" padding={4} paddingTop={0}>
+    <Box
+      borderBottom={`0.6px solid ${theme.palette.allShades?.blueGray?.[100]}`}
+      padding={4}
+      paddingTop={0}>
       <Box
         sx={{
           display: 'flex',
@@ -102,7 +103,7 @@ export const NestedColumnsSection: React.FC<NestedColumnsSectionProps> = ({
           style={{
             fontSize: 13,
             fontWeight: 600,
-            color: '#181D27',
+            color: theme.palette.allShades?.gray?.[900],
           }}>
           {t('label.nested-column-plural')}
         </Typography.Text>
@@ -122,7 +123,7 @@ export const NestedColumnsSection: React.FC<NestedColumnsSectionProps> = ({
           }}>
           <Typography.Text
             style={{
-              color: '#535862',
+              color: theme.palette.allShades?.gray?.[600],
               fontSize: 10,
               fontWeight: 500,
             }}>

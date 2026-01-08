@@ -199,40 +199,20 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   };
 
   const handleFieldClick = useCallback(
-    (field: Field) => {
-      openColumnDetailPanel(field);
+    (field: Field, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const isExpandIcon = target.closest('.table-expand-icon') !== null;
+
+      if (!isExpandIcon) {
+        openColumnDetailPanel(field);
+      }
     },
     [openColumnDetailPanel]
   );
 
   const renderSchemaName = useCallback(
     (_: string, record: Field) => (
-      <div
-        aria-disabled={isVersionView}
-        aria-label={getEntityName(record)}
-        className="d-inline-flex w-max-90 vertical-align-inherit"
-        data-testid="column-name"
-        style={{ cursor: isVersionView ? 'default' : 'pointer' }}
-        tabIndex={isVersionView ? -1 : 0}
-        onClick={(e) => {
-          if (isVersionView) {
-            return;
-          }
-          // Don't open detail panel if clicking on edit button or link
-          if ((e.target as HTMLElement).closest('button, a')) {
-            return;
-          }
-          handleFieldClick(record);
-        }}
-        onKeyDown={(e) => {
-          if (isVersionView) {
-            return;
-          }
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleFieldClick(record);
-          }
-        }}>
+      <div className="d-inline-flex w-max-90 vertical-align-inherit">
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">
             {isVersionView ? (
@@ -314,11 +294,15 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     () => [
       {
         title: t('label.name'),
+        className: 'cursor-pointer',
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 220,
         sorter: getColumnSorter<Field, 'name'>('name'),
+        onCell: (record: Field) => ({
+          onClick: (event) => handleFieldClick(record, event),
+        }),
         render: renderSchemaName,
       },
       {

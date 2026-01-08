@@ -75,12 +75,10 @@ import {
 const SearchIndexFieldsTable = ({
   searchIndexFields,
   onUpdate,
-  viewAllPermission: _viewAllPermission,
   hasDescriptionEditAccess,
   hasTagEditAccess,
   hasGlossaryTermEditAccess,
   isReadOnly = false,
-  hasCustomPropertiesViewAccess: _hasCustomPropertiesViewAccess,
   entityFqn,
   fieldAllRowKeys,
 }: SearchIndexFieldsTableProps) => {
@@ -175,13 +173,18 @@ const SearchIndexFieldsTable = ({
   );
 
   const handleFieldClick = useCallback(
-    (field: SearchIndexField) => {
-      if (hasViewPermission) {
-        openColumnDetailPanel(field);
+    (field: SearchIndexField, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const isExpandIcon = target.closest('.table-expand-icon') !== null;
+
+      if (!isExpandIcon) {
+        if (hasViewPermission) {
+          openColumnDetailPanel(field);
+        }
       }
     },
     [openColumnDetailPanel, hasViewPermission]
-  );
+  ); 
 
   const renderDataTypeDisplay: SearchIndexCellRendered<
     SearchIndexField,
@@ -244,35 +247,12 @@ const SearchIndexFieldsTable = ({
         width: 220,
         fixed: 'left',
         sorter: getColumnSorter<SearchIndexField, 'name'>('name'),
+        className: 'cursor-pointer',
+        onCell: (record: SearchIndexField) => ({
+          onClick: (event: React.MouseEvent) => handleFieldClick(record, event),
+        }),
         render: (_, record: SearchIndexField) => (
-          <div
-            aria-disabled={isReadOnly}
-            aria-label={getEntityName(record)}
-            className="d-inline-flex w-max-90"
-            data-testid="column-name"
-            style={{
-              cursor: isReadOnly ? 'default' : 'pointer',
-            }}
-            tabIndex={isReadOnly ? -1 : 0}
-            onClick={(e) => {
-              if (isReadOnly) {
-                return;
-              }
-              // Don't open detail panel if clicking on edit button or link
-              if ((e.target as HTMLElement).closest('button, a')) {
-                return;
-              }
-              handleFieldClick(record);
-            }}
-            onKeyDown={(e) => {
-              if (isReadOnly) {
-                return;
-              }
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleFieldClick(record);
-              }
-            }}>
+          <div className="d-inline-flex w-max-90">
             <span className="break-word">
               {stringToHTML(
                 highlightSearchText(getEntityName(record), searchText)

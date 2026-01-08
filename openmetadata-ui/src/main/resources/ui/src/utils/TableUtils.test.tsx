@@ -12,8 +12,10 @@
  */
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { extractTableColumns } from './TableUtils';
 import { TagLabel } from '../generated/entity/data/container';
-import { Column, DataType } from '../generated/entity/data/table';
+import { Column, DataType, Table } from '../generated/entity/data/table';
+import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 import { MOCK_TABLE, MOCK_TABLE_DBT } from '../mocks/TableData.mock';
 import {
@@ -1305,6 +1307,69 @@ describe('TableUtils', () => {
       expect(result).toHaveLength(2);
       expect(result[0].tags).toEqual([]);
       expect(result[1].tags).toEqual([]);
+    });
+  });
+
+  describe('extractTableColumns', () => {
+    it('should extract columns from table with tags filled', () => {
+      const mockTable = {
+        id: 'test-id',
+        columns: [
+          {
+            name: 'column1',
+            dataType: DataType.String,
+            fullyQualifiedName: 'table.column1',
+          },
+          {
+            name: 'column2',
+            dataType: DataType.Int,
+            fullyQualifiedName: 'table.column2',
+            tags: [
+              {
+                tagFQN: 'tag1',
+                source: TagSource.Classification,
+                labelType: LabelType.Manual,
+                state: State.Confirmed,
+              },
+            ],
+          },
+        ],
+      } as Partial<Table> & Pick<Omit<EntityReference, 'type'>, 'id'>;
+
+      const result = extractTableColumns(mockTable);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].name).toBe('column1');
+      expect(result[0].tags).toEqual([]);
+      expect(result[1].name).toBe('column2');
+      expect(result[1].tags).toHaveLength(1);
+    });
+
+    it('should return empty array when columns are undefined', () => {
+      const mockTable = {
+        id: 'test-id',
+      } as Partial<Table> & Pick<Omit<EntityReference, 'type'>, 'id'>;
+
+      const result = extractTableColumns(mockTable);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should add empty tags array to columns without tags', () => {
+      const mockTable = {
+        id: 'test-id',
+        columns: [
+          {
+            name: 'column1',
+            dataType: DataType.String,
+            fullyQualifiedName: 'table.column1',
+          },
+        ],
+      } as Partial<Table> & Pick<Omit<EntityReference, 'type'>, 'id'>;
+
+      const result = extractTableColumns(mockTable);
+
+      expect(result[0].tags).toEqual([]);
     });
   });
 });

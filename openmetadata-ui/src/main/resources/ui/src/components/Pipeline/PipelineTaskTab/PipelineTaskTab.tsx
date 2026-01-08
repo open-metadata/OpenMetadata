@@ -132,8 +132,13 @@ export const PipelineTaskTab = () => {
     setEditTask(undefined);
   };
 
-  const handleTaskClick = (task: Task) => {
-    openColumnDetailPanel(task);
+  const handleTaskClick = (task: Task, event: React.MouseEvent) => {
+    const target = event.target as HTMLElement;
+    const isExpandIcon = target.closest('.table-expand-icon') !== null;
+
+    if (!isExpandIcon) {
+      openColumnDetailPanel(task);
+    }
   };
 
   const onTaskUpdate = async (taskDescription: string) => {
@@ -190,33 +195,31 @@ export const PipelineTaskTab = () => {
         title: t('label.name'),
         width: 220,
         fixed: 'left',
+        className: 'cursor-pointer',
         sorter: getColumnSorter<Task, 'name'>('name'),
-        render: (_, record) => {
-          const taskName = getEntityName(record);
+        onCell: (record: Task) => ({
+          onClick: (event) =>
+            isEmpty(record.sourceUrl) && handleTaskClick(record, event),
+        }),
+        render: (_, record) =>
+          isEmpty(record.sourceUrl) ? (
+            <span>{getEntityName(record)}</span>
+          ) : (
+            <Link
+              className="flex items-center gap-2"
+              target="_blank"
+              to={record.sourceUrl ?? ''}>
+              <div className="d-flex items-center">
+                <span className="break-all">{getEntityName(record)}</span>
 
-          return (
-            <div className="d-flex items-center gap-2">
-              <Typography.Text
-                className="break-word cursor-pointer"
-                data-testid="task-name"
-                onClick={() => handleTaskClick(record)}>
-                {taskName}
-              </Typography.Text>
-              {!isEmpty(record.sourceUrl) && (
-                <Link
-                  data-testid="external-task-link"
-                  target="_blank"
-                  to={record.sourceUrl ?? ''}>
-                  <Icon
-                    className="flex-none"
-                    component={ExternalLinkIcon}
-                    style={DATA_ASSET_ICON_DIMENSION}
-                  />
-                </Link>
-              )}
-            </div>
-          );
-        },
+                <Icon
+                  className="m-l-xs flex-none"
+                  component={ExternalLinkIcon}
+                  style={DATA_ASSET_ICON_DIMENSION}
+                />
+              </div>
+            </Link>
+          ),
       },
       {
         key: TABLE_COLUMNS_KEYS.TASK_TYPE,

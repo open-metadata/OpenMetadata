@@ -65,7 +65,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   hasDescriptionEditAccess,
   hasTagEditAccess,
   hasGlossaryTermEditAccess,
-  hasCustomPropertiesViewAccess: _hasCustomPropertiesViewAccess,
   isReadOnly,
   onUpdate,
   entityFqn,
@@ -111,9 +110,14 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   };
 
   const handleColumnClick = useCallback(
-    (column: Column) => {
-      openColumnDetailPanel(column);
-    },
+      (column: Column, event: React.MouseEvent) => {
+        const target = event.target as HTMLElement;
+        const isExpandIcon = target.closest('.table-expand-icon') !== null;
+
+        if (!isExpandIcon) {
+          openColumnDetailPanel(column);
+        }
+      },
     [openColumnDetailPanel]
   );
 
@@ -134,36 +138,14 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         key: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 300,
+        className: 'cursor-pointer',
+        onCell: (record: Column) => ({
+          onClick: (event: React.MouseEvent) => handleColumnClick(record, event),
+        }),
         render: (_, record: Column) => (
-          <div
-            aria-disabled={isReadOnly}
-            aria-label={getEntityName(record)}
-            data-testid="column-name"
-            style={{ cursor: isReadOnly ? 'default' : 'pointer' }}
-            tabIndex={isReadOnly ? -1 : 0}
-            onClick={(e) => {
-              if (isReadOnly) {
-                return;
-              }
-              // Don't open detail panel if clicking on edit button or link
-              if ((e.target as HTMLElement).closest('button, a')) {
-                return;
-              }
-              handleColumnClick(record);
-            }}
-            onKeyDown={(e) => {
-              if (isReadOnly) {
-                return;
-              }
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleColumnClick(record);
-              }
-            }}>
-            <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
-              <Typography.Text>{getEntityName(record)}</Typography.Text>
-            </Tooltip>
-          </div>
+          <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
+            <Typography.Text>{getEntityName(record)}</Typography.Text>
+          </Tooltip>
         ),
       },
       {

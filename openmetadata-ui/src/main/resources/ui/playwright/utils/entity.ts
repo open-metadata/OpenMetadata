@@ -614,7 +614,6 @@ export const updateDescriptionForChildren = async (
   await page
     .locator(`[${rowSelector}="${rowId}"]`)
     .getByTestId('edit-button')
-    .first()
     .click();
 
   await page.waitForSelector('[role="dialog"]', { state: 'visible' });
@@ -722,7 +721,6 @@ export const assignTagToChildren = async ({
     .locator(`[${rowSelector}="${rowId}"]`)
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-    .first()
     .click();
 
   const searchTags = page.waitForResponse(
@@ -818,7 +816,6 @@ export const removeTagsFromChildren = async ({
       .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('tags-container')
       .getByTestId('edit-button')
-      .first()
       .click();
 
     await page

@@ -30,7 +30,6 @@ export const ContainerWidget = () => {
     editDescriptionPermission,
     editGlossaryTermsPermission,
     editTagsPermission,
-    viewCustomPropertiesPermission,
     deleted,
   } = useMemo(() => {
     const isDeleted = containerData?.deleted;
@@ -42,8 +41,6 @@ export const ContainerWidget = () => {
         (permissions.EditAll || permissions.EditGlossaryTerms) && !isDeleted,
       editTagsPermission:
         (permissions.EditAll || permissions.EditTags) && !isDeleted,
-      viewCustomPropertiesPermission:
-        permissions.ViewAll || permissions.ViewCustomFields,
       deleted: isDeleted,
     };
   }, [permissions, containerData]);
@@ -70,7 +67,6 @@ export const ContainerWidget = () => {
     <ContainerDataModel
       dataModel={containerData?.dataModel}
       entityFqn={decodedContainerName}
-      hasCustomPropertiesViewAccess={viewCustomPropertiesPermission}
       hasDescriptionEditAccess={editDescriptionPermission}
       hasGlossaryTermEditAccess={editGlossaryTermsPermission}
       hasTagEditAccess={editTagsPermission}

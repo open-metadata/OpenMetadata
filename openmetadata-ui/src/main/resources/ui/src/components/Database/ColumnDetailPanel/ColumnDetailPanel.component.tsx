@@ -10,9 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined, RightOutlined } from '@ant-design/icons';
 import { Box, Chip, IconButton, useTheme } from '@mui/material';
-import { ChevronDown, ChevronUp } from '@untitledui/icons';
+import {
+  ChevronDown,
+  ChevronUp,
+  ChevronRight,
+  XClose,
+} from '@untitledui/icons';
 import { Card, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -27,7 +31,6 @@ import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
 import { toEntityData } from '../../../utils/EntitySummaryPanelUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import {
   buildColumnBreadcrumbPath,
@@ -75,7 +78,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   allColumns = [],
   onNavigate,
   tableConstraints = [],
-  entityType = EntityType.TABLE,
+  entityType,
 }: ColumnDetailPanelProps<T>) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -83,28 +86,23 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   const [isDescriptionLoading, setIsDescriptionLoading] = useState(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
 
-  const safePermissions = permissions || DEFAULT_ENTITY_PERMISSION;
-
   const hasEditPermission = useMemo(
     () => ({
-      tags: (safePermissions.EditTags || safePermissions.EditAll) && !deleted,
+      tags: (permissions.EditTags || permissions.EditAll) && !deleted,
       glossaryTerms:
-        (safePermissions.EditGlossaryTerms || safePermissions.EditAll) &&
-        !deleted,
+        (permissions.EditGlossaryTerms || permissions.EditAll) && !deleted,
       description:
-        (safePermissions.EditDescription || safePermissions.EditAll) &&
-        !deleted,
-      viewAllPermission: safePermissions.ViewAll,
+        (permissions.EditDescription || permissions.EditAll) && !deleted,
+      viewAllPermission: permissions.ViewAll,
     }),
-    [safePermissions, deleted]
+    [permissions, deleted]
   );
 
   const hasViewPermission = useMemo(
     () => ({
-      customProperties:
-        safePermissions.ViewAll || safePermissions.ViewCustomFields,
+      customProperties: permissions.ViewAll || permissions.ViewCustomFields,
     }),
-    [safePermissions]
+    [permissions]
   );
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
     EntityRightPanelTab.OVERVIEW
@@ -150,7 +148,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   }, [column?.fullyQualifiedName]);
 
   useEffect(() => {
-    if (isOpen && column) {
+    if (isOpen && entityType === EntityType.TABLE) {
       fetchTestCases();
     }
   }, [isOpen, column, fetchTestCases]);
@@ -544,11 +542,19 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 key={breadcrumb.fullyQualifiedName}
                 sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
                 <Typography.Text
-                  style={{ fontSize: 12, color: '#6B7280', fontWeight: 400 }}>
+                  style={{
+                    fontSize: 12,
+                    color: theme.palette.allShades?.gray?.[500],
+                    fontWeight: 400,
+                  }}>
                   {getEntityName(breadcrumb)}
                 </Typography.Text>
                 {index < breadcrumbPath.length - 1 && (
-                  <RightOutlined style={{ fontSize: 10, color: '#9CA3AF' }} />
+                  <ChevronRight
+                    color={theme.palette.allShades?.gray?.[400]}
+                    height={16}
+                    width={16}
+                  />
                 )}
               </Box>
             ))}
@@ -573,7 +579,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             </div>
             <div>
               <IconButton data-testid="close-button" onClick={onClose}>
-                <CloseOutlined
+                <XClose
                   color={theme.palette.allShades?.gray?.[600]}
                   height={16}
                   width={16}
@@ -616,7 +622,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           <DataQualityTab
             isColumnDetailPanel
             entityFQN={column.fullyQualifiedName || ''}
-            entityType={entityType as string}
+            entityType={entityType}
           />
         );
       case EntityRightPanelTab.LINEAGE:

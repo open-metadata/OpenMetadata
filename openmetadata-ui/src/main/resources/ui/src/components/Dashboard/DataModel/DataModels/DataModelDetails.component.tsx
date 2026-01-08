@@ -20,17 +20,13 @@ import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
-import {
-  DashboardDataModel,
-} from '../../../../generated/entity/data/dashboardDataModel';
+import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomPages } from '../../../../hooks/useCustomPages';
 import { useFqn } from '../../../../hooks/useFqn';
 import { FeedCounts } from '../../../../interface/feed.interface';
-import {
-  restoreDataModel,
-} from '../../../../rest/dataModelsAPI';
+import { restoreDataModel } from '../../../../rest/dataModelsAPI';
 import { getFeedCounts } from '../../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,

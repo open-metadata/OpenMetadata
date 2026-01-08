@@ -246,8 +246,13 @@ const ModelTab = () => {
   };
 
   const handleColumnClick = useCallback(
-    (column: Column) => {
-      openColumnDetailPanel(column);
+    (column: Column, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const isExpandIcon = target.closest('.table-expand-icon') !== null;
+
+      if (!isExpandIcon) {
+        openColumnDetailPanel(column);
+      }
     },
     [openColumnDetailPanel]
   );
@@ -295,41 +300,23 @@ const ModelTab = () => {
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 250,
         fixed: 'left',
+        className: 'cursor-pointer',
         sorter: getColumnSorter<Column, 'name'>('name'),
+        onCell: (record: Column) => ({
+          onClick: (event: React.MouseEvent) =>
+            handleColumnClick(record, event),
+        }),
         render: (_, record: Column) => {
           const { displayName } = record;
 
           return (
-            <div
-              aria-label={getEntityName(record)}
-              data-testid="column-name"
-              style={{ cursor: 'pointer' }}
-              tabIndex={0}
-              onClick={(e) => {
-                // Don't open detail panel if clicking on edit button or link
-                if (
-                  (e.target as HTMLElement).closest(
-                    'button, a, input, textarea, select'
-                  )
-                ) {
-                  return;
-                }
-                handleColumnClick(record);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleColumnClick(record);
-                }
-              }}>
-              <DisplayName
-                displayName={displayName}
-                hasEditPermission={editDisplayNamePermission}
-                id={record.fullyQualifiedName ?? ''}
-                name={record.name}
-                onEditDisplayName={handleEditColumnData}
-              />
-            </div>
+            <DisplayName
+              displayName={displayName}
+              hasEditPermission={editDisplayNamePermission}
+              id={record.fullyQualifiedName ?? ''}
+              name={record.name}
+              onEditDisplayName={handleEditColumnData}
+            />
           );
         },
       },

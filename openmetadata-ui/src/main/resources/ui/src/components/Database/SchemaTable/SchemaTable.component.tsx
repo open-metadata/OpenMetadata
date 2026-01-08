@@ -501,8 +501,13 @@ const SchemaTable = () => {
   }, [tableColumns]);
 
   const handleColumnClick = useCallback(
-    (column: Column) => {
-      openColumnDetailPanel(column);
+    (column: Column, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const isExpandIcon = target.closest('.table-expand-icon') !== null;
+
+      if (!isExpandIcon) {
+        openColumnDetailPanel(column);
+      }
     },
     [openColumnDetailPanel]
   );
@@ -516,6 +521,9 @@ const SchemaTable = () => {
         width: 200,
         fixed: 'left',
         sorter: getColumnSorter<Column, 'name'>('name'),
+        onCell: (record: Column) => ({
+          onClick: (event) => handleColumnClick(record, event),
+        }),
         render: (name: Column['name'], record: Column) => {
           const { displayName } = record;
 
@@ -534,8 +542,7 @@ const SchemaTable = () => {
                       'text-grey-600': !isEmpty(displayName),
                     }
                   )}
-                  data-testid="column-name"
-                  onClick={() => handleColumnClick(record)}>
+                  data-testid="column-name">
                   {stringToHTML(highlightSearchText(name, searchText))}
                 </Typography.Text>
               </div>
@@ -783,10 +790,6 @@ const SchemaTable = () => {
           searchProps={searchProps}
           size="middle"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
-          //   onRow={(record) => ({
-          //     onClick: () => handleColumnClick(record),
-          //     style: { cursor: 'pointer' },
-          //   })}
         />
       </Col>
       {editColumn && (

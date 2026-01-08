@@ -125,8 +125,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       hasTagEditAccess: permissions.EditAll || permissions.EditTags,
       hasGlossaryTermEditAccess:
         permissions.EditAll || permissions.EditGlossaryTerms,
-      hasCustomPropertiesViewAccess:
-        permissions.ViewAll || permissions.ViewCustomFields,
     }),
     [permissions]
   );
@@ -180,8 +178,13 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   };
 
   const handleColumnClick = useCallback(
-    (field: Field) => {
-      openColumnDetailPanel(field);
+    (field: Field, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const isExpandIcon = target.closest('.table-expand-icon') !== null;
+
+      if (!isExpandIcon) {
+        openColumnDetailPanel(field);
+      }
     },
     [openColumnDetailPanel]
   );
@@ -205,42 +208,15 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const renderSchemaName = useCallback(
     (_: unknown, record: Field) => (
-      <div
-        aria-disabled={isVersionView}
-        aria-label={getEntityName(record)}
-        className="d-inline-flex w-max-90 vertical-align-inherit"
-        data-testid="column-name"
-        style={{ cursor: isVersionView ? 'default' : 'pointer' }}
-        tabIndex={isVersionView ? -1 : 0}
-        onClick={(e) => {
-          if (isVersionView) {
-            return;
-          }
-          // Don't open detail panel if clicking on edit button or link
-          if ((e.target as HTMLElement).closest('button, a')) {
-            return;
-          }
-          handleColumnClick(record);
-        }}
-        onKeyDown={(e) => {
-          if (isVersionView) {
-            return;
-          }
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleColumnClick(record);
-          }
-        }}>
-        <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
-          <span className="break-word">
-            {isVersionView ? (
-              <RichTextEditorPreviewerV1 markdown={getEntityName(record)} />
-            ) : (
-              getEntityName(record)
-            )}
-          </span>
-        </Tooltip>
-      </div>
+      <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
+        <span className="break-word">
+          {isVersionView ? (
+            <RichTextEditorPreviewerV1 markdown={getEntityName(record)} />
+          ) : (
+            getEntityName(record)
+          )}
+        </span>
+      </Tooltip>
     ),
     [isVersionView, handleColumnClick]
   );
@@ -331,6 +307,10 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         width: 220,
         sorter: getColumnSorter<Field, 'name'>('name'),
         render: renderSchemaName,
+        className: 'cursor-pointer',
+        onCell: (record: Field) => ({
+          onClick: (event) => handleColumnClick(record, event),
+        }),
       },
       {
         title: t('label.type'),

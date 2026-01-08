@@ -367,7 +367,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
       if (isColumnDetailPanel && testCases.length > 0) {
         const testCaseFQNSet = new Set(
-          testCases.map((tc) => tc.fullyQualifiedName)
+          testCases.map((testCase) => testCase.fullyQualifiedName)
         );
         allIncidents = allIncidents.filter(
           (incident) =>

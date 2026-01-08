@@ -18,11 +18,8 @@ import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { ColumnProfile } from '../../../../generated/entity/data/table';
 import { getTableColumnsByFQN } from '../../../../rest/tableAPI';
-import {
-  calculatePercentage,
-  formatNumberWithComma,
-} from '../../../../utils/CommonUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { getKeyProfileMetrics } from '../../../../utils/TableProfilerUtils';
 import Loader from '../../../common/Loader/Loader';
 import {
   KeyProfileMetricsProps,
@@ -70,54 +67,10 @@ export const KeyProfileMetrics = ({
     fetchColumnProfile();
   }, [fetchColumnProfile]);
 
-  const metrics: ProfileMetric[] = useMemo(() => {
-    if (!profile) {
-      return [
-        { label: t('label.uniqueness'), value: '--' },
-        { label: t('label.nullness'), value: '--' },
-        { label: t('label.distinct'), value: '--' },
-        { label: t('label.value-count'), value: '--' },
-      ];
-    }
-
-    return [
-      {
-        label: t('label.uniqueness'),
-        value:
-          profile.uniqueProportion !== undefined &&
-          profile.uniqueProportion !== null
-            ? calculatePercentage(profile.uniqueProportion, 1, 0, true)
-            : '--',
-        tooltip: t('message.uniqueness-profile-metric-description'),
-      },
-      {
-        label: t('label.nullness'),
-        value:
-          profile.nullProportion !== undefined &&
-          profile.nullProportion !== null
-            ? calculatePercentage(profile.nullProportion, 1, 0, true)
-            : '--',
-        tooltip: t('message.nullness-profile-metric-description'),
-      },
-      {
-        label: t('label.distinct'),
-        value:
-          profile.distinctProportion !== undefined &&
-          profile.distinctProportion !== null
-            ? calculatePercentage(profile.distinctProportion, 1, 0, true)
-            : '--',
-        tooltip: t('message.distinct-profile-metric-description'),
-      },
-      {
-        label: t('label.value-count'),
-        value:
-          profile.valuesCount !== undefined && profile.valuesCount !== null
-            ? formatNumberWithComma(profile.valuesCount)
-            : '--',
-        tooltip: t('message.value-count-profile-metric-description'),
-      },
-    ];
-  }, [profile, t]);
+  const metrics: ProfileMetric[] = useMemo(
+    () => getKeyProfileMetrics(profile, t),
+    [profile, t]
+  );
 
   if (isLoading) {
     return (

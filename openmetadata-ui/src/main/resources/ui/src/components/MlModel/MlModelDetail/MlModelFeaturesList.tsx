@@ -109,8 +109,13 @@ const MlModelFeaturesList = () => {
   };
 
   const handleColumnClick = useCallback(
-    (feature: MlFeature) => {
-      openColumnDetailPanel(feature);
+    (feature: MlFeature, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const isExpandIcon = target.closest('.table-expand-icon') !== null;
+
+      if (!isExpandIcon) {
+        openColumnDetailPanel(feature);
+      }
     },
     [openColumnDetailPanel]
   );
@@ -143,19 +148,7 @@ const MlModelFeaturesList = () => {
                         style={{
                           cursor: isDeleted ? 'default' : 'pointer',
                         }}
-                        onClick={(e) => {
-                          if (isDeleted) {
-                            return;
-                          }
-                          // Don't open detail panel if clicking on edit button or link
-                          if (
-                            (e.target as HTMLElement).closest('button') ||
-                            (e.target as HTMLElement).closest('a')
-                          ) {
-                            return;
-                          }
-                          handleColumnClick(feature);
-                        }}>
+                        onClick={(event) => handleColumnClick(feature, event)}>
                         {feature.name}
                       </Typography.Text>
                     </Col>
