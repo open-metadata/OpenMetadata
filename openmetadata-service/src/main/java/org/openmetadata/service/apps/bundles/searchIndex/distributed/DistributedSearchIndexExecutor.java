@@ -28,6 +28,10 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.CompositeProgressListener;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingJobContext;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.ReindexContext;
 
@@ -68,6 +72,7 @@ public class DistributedSearchIndexExecutor {
   private final JobRecoveryManager recoveryManager;
   private final AtomicBoolean stopped = new AtomicBoolean(false);
   private final String serverId;
+  private final CompositeProgressListener listeners = new CompositeProgressListener();
 
   @Getter private SearchIndexJob currentJob;
   private DistributedJobStatsAggregator statsAggregator;
@@ -83,11 +88,45 @@ public class DistributedSearchIndexExecutor {
   // Notifier for alerting other servers when job starts
   private DistributedJobNotifier jobNotifier;
 
+  // Job context for listener callbacks
+  private ReindexingJobContext jobContext;
+
   public DistributedSearchIndexExecutor(CollectionDAO collectionDAO) {
     this.collectionDAO = collectionDAO;
     this.coordinator = new DistributedSearchIndexCoordinator(collectionDAO);
     this.recoveryManager = new JobRecoveryManager(collectionDAO);
     this.serverId = ServerIdentityResolver.getInstance().getServerId();
+  }
+
+  /**
+   * Add a progress listener to receive callbacks during job execution.
+   *
+   * @param listener The progress listener to add
+   * @return This executor for method chaining
+   */
+  public DistributedSearchIndexExecutor addListener(ReindexingProgressListener listener) {
+    listeners.addListener(listener);
+    return this;
+  }
+
+  /**
+   * Remove a progress listener.
+   *
+   * @param listener The progress listener to remove
+   * @return This executor for method chaining
+   */
+  public DistributedSearchIndexExecutor removeListener(ReindexingProgressListener listener) {
+    listeners.removeListener(listener);
+    return this;
+  }
+
+  /**
+   * Get the number of registered listeners.
+   *
+   * @return The listener count
+   */
+  public int getListenerCount() {
+    return listeners.getListenerCount();
   }
 
   /**
@@ -246,6 +285,19 @@ public class DistributedSearchIndexExecutor {
           "Job must be in RUNNING state to execute. Current: " + currentJob.getStatus());
     }
 
+    // Create job context for listener callbacks
+    jobContext = new DistributedJobContext(currentJob);
+
+    // Notify listeners that job has started
+    listeners.onJobStarted(jobContext);
+
+    // Notify listeners with configuration
+    if (currentJob.getJobConfiguration() != null) {
+      ReindexingConfiguration config =
+          ReindexingConfiguration.from(currentJob.getJobConfiguration());
+      listeners.onJobConfigured(jobContext, config);
+    }
+
     // Create stats aggregator with app context for proper WebSocket matching
     statsAggregator =
         new DistributedJobStatsAggregator(
@@ -254,6 +306,12 @@ public class DistributedSearchIndexExecutor {
             appId,
             appStartTime,
             DistributedJobStatsAggregator.DEFAULT_POLL_INTERVAL_MS);
+
+    // Set up progress listener on stats aggregator
+    if (listeners.getListenerCount() > 0) {
+      statsAggregator.setProgressListener(listeners, jobContext);
+    }
+
     statsAggregator.start();
 
     // Start lock refresh thread to prevent lock expiration during long-running jobs

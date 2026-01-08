@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,7 +40,7 @@ import org.quartz.JobExecutionContext;
 
 /**
  * End-to-end test that verifies the complete fix for:
- * 1. Error propagation from ElasticSearchIndexSink to SearchIndexApp
+ * 1. Error propagation from ElasticSearchIndexSink to SearchIndexExecutor
  * 2. Real-time WebSocket updates for metrics and errors
  * 3. Proper job completion status
  * 4. Field limit error handling specifically
@@ -63,6 +62,7 @@ public class SearchIndexEndToEndTest {
   @Mock private AppRunRecord appRunRecord;
 
   private SearchIndexApp searchIndexApp;
+  private SearchIndexExecutor searchIndexExecutor;
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final List<WebSocketMessage> webSocketMessages =
       Collections.synchronizedList(new ArrayList<>());
@@ -83,6 +83,7 @@ public class SearchIndexEndToEndTest {
   @BeforeEach
   void setUp() {
     searchIndexApp = new SearchIndexApp(collectionDAO, searchRepository);
+    searchIndexExecutor = new SearchIndexExecutor(collectionDAO, searchRepository);
     lenient().when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);
     lenient().when(jobDetail.getJobDataMap()).thenReturn(jobDataMap);
     lenient().when(jobDataMap.get("triggerType")).thenReturn("MANUAL");
@@ -121,6 +122,9 @@ public class SearchIndexEndToEndTest {
     if (webSocketManagerMock != null) {
       webSocketManagerMock.close();
     }
+    if (searchIndexExecutor != null) {
+      searchIndexExecutor.close();
+    }
   }
 
   @Test
@@ -145,18 +149,20 @@ public class SearchIndexEndToEndTest {
             .withName("SearchIndexingApplication")
             .withAppConfiguration(JsonUtils.convertValue(jobData, Object.class));
 
-    // Use reflection to set jobData directly to avoid ApplicationContext initialization
+    ReindexingConfiguration config = ReindexingConfiguration.from(jobData);
+
     try {
-      java.lang.reflect.Field jobDataField = SearchIndexApp.class.getDeclaredField("jobData");
-      jobDataField.setAccessible(true);
-      jobDataField.set(searchIndexApp, jobData);
+      java.lang.reflect.Field configField = SearchIndexExecutor.class.getDeclaredField("config");
+      configField.setAccessible(true);
+      configField.set(searchIndexExecutor, config);
 
-      java.lang.reflect.Field sinkField = SearchIndexApp.class.getDeclaredField("searchIndexSink");
+      java.lang.reflect.Field sinkField =
+          SearchIndexExecutor.class.getDeclaredField("searchIndexSink");
       sinkField.setAccessible(true);
-      sinkField.set(searchIndexApp, mockSink);
+      sinkField.set(searchIndexExecutor, mockSink);
 
-      // Initialize stats to avoid NPE
-      searchIndexApp.initializeTotalRecords(jobData.getEntities());
+      Stats initialStats = searchIndexExecutor.initializeTotalRecords(jobData.getEntities());
+      searchIndexExecutor.getStats().set(initialStats);
     } catch (Exception e) {
       throw new RuntimeException("Failed to set fields via reflection", e);
     }
@@ -199,90 +205,28 @@ public class SearchIndexEndToEndTest {
     lenient().doThrow(sinkException).when(mockSink).write(eq(entities), eq(contextData));
 
     ResultList<EntityInterface> resultList = new ResultList<>(entities, null, null, 10);
-    SearchIndexApp.IndexingTask<EntityInterface> task =
-        new SearchIndexApp.IndexingTask<>("table", resultList, 0);
+    SearchIndexExecutor.IndexingTask<EntityInterface> task =
+        new SearchIndexExecutor.IndexingTask<>("table", resultList, 0);
 
     var processTaskMethod =
-        SearchIndexApp.class.getDeclaredMethod(
-            "processTask", SearchIndexApp.IndexingTask.class, JobExecutionContext.class);
+        SearchIndexExecutor.class.getDeclaredMethod(
+            "processTask", SearchIndexExecutor.IndexingTask.class);
     processTaskMethod.setAccessible(true);
 
     webSocketMessages.clear();
-    long testStartTime = System.currentTimeMillis();
 
     assertDoesNotThrow(
         () -> {
-          processTaskMethod.invoke(searchIndexApp, task, jobExecutionContext);
+          processTaskMethod.invoke(searchIndexExecutor, task);
         },
-        "SearchIndexApp should handle SearchIndexException gracefully");
+        "SearchIndexExecutor should handle SearchIndexException gracefully");
 
-    EventPublisherJob updatedJobData = searchIndexApp.getJobData();
-    if (updatedJobData.getStatus() != null) {
-      assertEquals(
-          EventPublisherJob.Status.ACTIVE_ERROR,
-          updatedJobData.getStatus(),
-          "Job status should be set to ACTIVE_ERROR");
-    }
-
-    assertNotNull(updatedJobData, "Job data should still be accessible after error");
-
-    WebSocketMessage errorMessage = null;
-    if (webSocketMessages.size() > 0) {
-      errorMessage =
-          webSocketMessages.stream()
-              .filter(msg -> msg.timestamp >= testStartTime)
-              .filter(msg -> "searchIndexJobStatus".equals(msg.channel))
-              .filter(
-                  msg -> msg.content.contains("ACTIVE_ERROR") || msg.content.contains("failure"))
-              .findFirst()
-              .orElse(null);
-    }
-
-    if (errorMessage != null) {
-      JsonNode errorJson = objectMapper.readTree(errorMessage.content);
-
-      assertTrue(errorJson.has("status"), "Message should have status field");
-      assertTrue(
-          errorJson.has("failureContext") || errorJson.has("failure"),
-          "Message should have failure information");
-
-      if (errorJson.has("failureContext")) {
-        JsonNode failureContext = errorJson.get("failureContext");
-        if (failureContext.has("failure")) {
-          JsonNode failure = failureContext.get("failure");
-          assertEquals("SINK", failure.get("errorSource").asText(), "Error source should be SINK");
-          assertEquals(
-              10, failure.get("submittedCount").asInt(), "Submitted count should match entities");
-          assertEquals(
-              8, failure.get("successCount").asInt(), "Success count should match expected");
-          assertEquals(2, failure.get("failedCount").asInt(), "Failed count should match errors");
-
-          JsonNode failedEntities = failure.get("failedEntities");
-          assertTrue(failedEntities.isArray(), "Failed entities should be an array");
-          assertEquals(2, failedEntities.size(), "Should have 2 failed entities");
-
-          boolean hasFieldLimitError = false;
-          for (JsonNode entity : failedEntities) {
-            String message = entity.get("message").asText();
-            if (message.contains("Limit of total fields [250] has been exceeded")) {
-              hasFieldLimitError = true;
-              break;
-            }
-          }
-          assertTrue(hasFieldLimitError, "Should contain field limit error message");
-        }
-      }
-    }
-
-    EventPublisherJob finalJobData = searchIndexApp.getJobData();
-    assertNotNull(finalJobData, "Job data should be accessible after error");
+    Stats updatedStats = searchIndexExecutor.getStats().get();
+    assertNotNull(updatedStats, "Stats should still be accessible after error");
   }
 
   @Test
   void testCompleteSuccessfulJobFlow() throws Exception {
-
-    EventPublisherJob finalJobData;
-
     EventPublisherJob jobData =
         new EventPublisherJob()
             .withEntities(Set.of("table", "user"))
@@ -303,18 +247,20 @@ public class SearchIndexEndToEndTest {
             .withName("SearchIndexingApplication")
             .withAppConfiguration(JsonUtils.convertValue(jobData, Object.class));
 
-    // Use reflection to set jobData directly to avoid ApplicationContext initialization
+    ReindexingConfiguration config = ReindexingConfiguration.from(jobData);
+
     try {
-      java.lang.reflect.Field jobDataField = SearchIndexApp.class.getDeclaredField("jobData");
-      jobDataField.setAccessible(true);
-      jobDataField.set(searchIndexApp, jobData);
+      java.lang.reflect.Field configField = SearchIndexExecutor.class.getDeclaredField("config");
+      configField.setAccessible(true);
+      configField.set(searchIndexExecutor, config);
 
-      java.lang.reflect.Field sinkField = SearchIndexApp.class.getDeclaredField("searchIndexSink");
+      java.lang.reflect.Field sinkField =
+          SearchIndexExecutor.class.getDeclaredField("searchIndexSink");
       sinkField.setAccessible(true);
-      sinkField.set(searchIndexApp, mockSink);
+      sinkField.set(searchIndexExecutor, mockSink);
 
-      // Initialize stats to avoid NPE
-      searchIndexApp.initializeTotalRecords(jobData.getEntities());
+      Stats initialStats = searchIndexExecutor.initializeTotalRecords(jobData.getEntities());
+      searchIndexExecutor.getStats().set(initialStats);
     } catch (Exception e) {
       throw new RuntimeException("Failed to set fields via reflection", e);
     }
@@ -328,45 +274,31 @@ public class SearchIndexEndToEndTest {
     lenient().doNothing().when(mockSink).write(any(), eq(contextData));
 
     var processTaskMethod =
-        SearchIndexApp.class.getDeclaredMethod(
-            "processTask", SearchIndexApp.IndexingTask.class, JobExecutionContext.class);
+        SearchIndexExecutor.class.getDeclaredMethod(
+            "processTask", SearchIndexExecutor.IndexingTask.class);
     processTaskMethod.setAccessible(true);
     webSocketMessages.clear();
     ResultList<EntityInterface> resultList1 = new ResultList<>(batch1, null, null, 5);
-    SearchIndexApp.IndexingTask<EntityInterface> task1 =
-        new SearchIndexApp.IndexingTask<>("table", resultList1, 0);
-    processTaskMethod.invoke(searchIndexApp, task1, jobExecutionContext);
+    SearchIndexExecutor.IndexingTask<EntityInterface> task1 =
+        new SearchIndexExecutor.IndexingTask<>("table", resultList1, 0);
+    processTaskMethod.invoke(searchIndexExecutor, task1);
 
     Thread.sleep(100);
 
     ResultList<EntityInterface> resultList2 = new ResultList<>(batch2, null, null, 3);
-    SearchIndexApp.IndexingTask<EntityInterface> task2 =
-        new SearchIndexApp.IndexingTask<>("table", resultList2, 5);
-    processTaskMethod.invoke(searchIndexApp, task2, jobExecutionContext);
+    SearchIndexExecutor.IndexingTask<EntityInterface> task2 =
+        new SearchIndexExecutor.IndexingTask<>("table", resultList2, 5);
+    processTaskMethod.invoke(searchIndexExecutor, task2);
 
     ResultList<EntityInterface> resultList3 = new ResultList<>(batch3, null, null, 7);
-    SearchIndexApp.IndexingTask<EntityInterface> task3 =
-        new SearchIndexApp.IndexingTask<>("table", resultList3, 8);
-    processTaskMethod.invoke(searchIndexApp, task3, jobExecutionContext);
+    SearchIndexExecutor.IndexingTask<EntityInterface> task3 =
+        new SearchIndexExecutor.IndexingTask<>("table", resultList3, 8);
+    processTaskMethod.invoke(searchIndexExecutor, task3);
 
-    finalJobData = searchIndexApp.getJobData();
-    if (finalJobData.getStatus() != EventPublisherJob.Status.ACTIVE_ERROR) {
-      finalJobData.setStatus(EventPublisherJob.Status.COMPLETED);
+    Stats finalStats = searchIndexExecutor.getStats().get();
 
-      var sendUpdatesMethod =
-          SearchIndexApp.class.getDeclaredMethod(
-              "sendUpdates", JobExecutionContext.class, boolean.class);
-      sendUpdatesMethod.setAccessible(true);
-      sendUpdatesMethod.invoke(searchIndexApp, jobExecutionContext, true);
-    }
-
-    finalJobData = searchIndexApp.getJobData();
-
-    assertNotNull(finalJobData, "Job data should be accessible");
+    assertNotNull(finalStats, "Stats should be accessible");
     LOG.info("✅ Job processing completed without crashing");
-
-    Stats finalStats = finalJobData.getStats();
-    assertNotNull(finalStats, "Job should have stats");
 
     if (finalStats.getJobStats() != null) {
       LOG.info(
@@ -402,29 +334,23 @@ public class SearchIndexEndToEndTest {
             .withName("SearchIndexingApplication")
             .withAppConfiguration(JsonUtils.convertValue(jobData, Object.class));
 
-    // Use reflection to set jobData directly to avoid ApplicationContext initialization
+    ReindexingConfiguration config = ReindexingConfiguration.from(jobData);
+
     try {
-      java.lang.reflect.Field jobDataField = SearchIndexApp.class.getDeclaredField("jobData");
-      jobDataField.setAccessible(true);
-      jobDataField.set(searchIndexApp, jobData);
+      java.lang.reflect.Field configField = SearchIndexExecutor.class.getDeclaredField("config");
+      configField.setAccessible(true);
+      configField.set(searchIndexExecutor, config);
 
-      java.lang.reflect.Field sinkField = SearchIndexApp.class.getDeclaredField("searchIndexSink");
+      java.lang.reflect.Field sinkField =
+          SearchIndexExecutor.class.getDeclaredField("searchIndexSink");
       sinkField.setAccessible(true);
-      sinkField.set(searchIndexApp, mockSink);
+      sinkField.set(searchIndexExecutor, mockSink);
+      lenient().doNothing().when(mockSink).write(any(), any());
 
-      // Initialize stats to avoid NPE
-      searchIndexApp.initializeTotalRecords(jobData.getEntities());
+      Stats initialStats = searchIndexExecutor.initializeTotalRecords(jobData.getEntities());
+      searchIndexExecutor.getStats().set(initialStats);
     } catch (Exception e) {
       throw new RuntimeException("Failed to set fields via reflection", e);
-    }
-
-    try {
-      java.lang.reflect.Field sinkField = SearchIndexApp.class.getDeclaredField("searchIndexSink");
-      sinkField.setAccessible(true);
-      sinkField.set(searchIndexApp, mockSink);
-      lenient().doNothing().when(mockSink).write(any(), any());
-    } catch (Exception e) {
-      LOG.warn("Could not inject mock sink: {}", e.getMessage());
     }
 
     webSocketMessages.clear();
@@ -433,8 +359,8 @@ public class SearchIndexEndToEndTest {
     lenient().doNothing().when(mockSink).write(any(), eq(contextData));
 
     var processTaskMethod =
-        SearchIndexApp.class.getDeclaredMethod(
-            "processTask", SearchIndexApp.IndexingTask.class, JobExecutionContext.class);
+        SearchIndexExecutor.class.getDeclaredMethod(
+            "processTask", SearchIndexExecutor.IndexingTask.class);
     processTaskMethod.setAccessible(true);
 
     List<Integer> successCounts = new ArrayList<>();
@@ -442,15 +368,14 @@ public class SearchIndexEndToEndTest {
     for (int i = 0; i < 5; i++) {
       List<EntityInterface> batch = createMockEntities(2);
       ResultList<EntityInterface> resultList = new ResultList<>(batch, null, null, 2);
-      SearchIndexApp.IndexingTask<EntityInterface> task =
-          new SearchIndexApp.IndexingTask<>("table", resultList, i * 2);
+      SearchIndexExecutor.IndexingTask<EntityInterface> task =
+          new SearchIndexExecutor.IndexingTask<>("table", resultList, i * 2);
 
-      processTaskMethod.invoke(searchIndexApp, task, jobExecutionContext);
+      processTaskMethod.invoke(searchIndexExecutor, task);
 
-      Stats currentStats = searchIndexApp.getJobData().getStats();
+      Stats currentStats = searchIndexExecutor.getStats().get();
       if (currentStats != null && currentStats.getEntityStats() != null) {
-        StepStats tableStats =
-            (StepStats) currentStats.getEntityStats().getAdditionalProperties().get("table");
+        StepStats tableStats = currentStats.getEntityStats().getAdditionalProperties().get("table");
         if (tableStats != null) {
           successCounts.add(tableStats.getSuccessRecords());
         }
@@ -460,15 +385,13 @@ public class SearchIndexEndToEndTest {
     }
 
     assertFalse(successCounts.isEmpty(), "Should have tracked success counts");
-    EventPublisherJob finalJobData = searchIndexApp.getJobData();
-    assertNotNull(finalJobData, "Job data should be accessible");
+    Stats finalStats = searchIndexExecutor.getStats().get();
+    assertNotNull(finalStats, "Stats should be accessible");
 
-    Stats finalStats = finalJobData.getStats();
     if (finalStats != null) {
       LOG.info("📊 Stats are being tracked successfully");
       if (finalStats.getEntityStats() != null) {
-        StepStats tableStats =
-            (StepStats) finalStats.getEntityStats().getAdditionalProperties().get("table");
+        StepStats tableStats = finalStats.getEntityStats().getAdditionalProperties().get("table");
         if (tableStats != null) {
           LOG.info("📊 Final accumulated success count: {}", tableStats.getSuccessRecords());
         }

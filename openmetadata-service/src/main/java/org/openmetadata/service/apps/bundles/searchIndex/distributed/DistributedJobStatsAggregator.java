@@ -21,6 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.SuccessContext;
@@ -28,6 +29,8 @@ import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingJobContext;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
 import org.openmetadata.service.socket.WebSocketManager;
 
 /**
@@ -53,6 +56,10 @@ public class DistributedJobStatsAggregator {
   private final AtomicBoolean running = new AtomicBoolean(false);
   private ScheduledExecutorService scheduler;
 
+  private ReindexingProgressListener progressListener;
+  private ReindexingJobContext jobContext;
+  private final AtomicReference<IndexJobStatus> lastNotifiedStatus = new AtomicReference<>();
+
   public DistributedJobStatsAggregator(DistributedSearchIndexCoordinator coordinator, UUID jobId) {
     this(coordinator, jobId, null, null, DEFAULT_POLL_INTERVAL_MS);
   }
@@ -74,6 +81,18 @@ public class DistributedJobStatsAggregator {
     this.appId = appId;
     this.appStartTime = appStartTime;
     this.pollIntervalMs = Math.max(pollIntervalMs, MIN_POLL_INTERVAL_MS);
+  }
+
+  /**
+   * Set a progress listener to receive callbacks during job execution.
+   *
+   * @param listener The progress listener
+   * @param context The job context for listener callbacks
+   */
+  public void setProgressListener(
+      ReindexingProgressListener listener, ReindexingJobContext context) {
+    this.progressListener = listener;
+    this.jobContext = context;
   }
 
   /** Safely convert long to int, capping at Integer.MAX_VALUE to prevent overflow */
@@ -161,6 +180,9 @@ public class DistributedJobStatsAggregator {
       // Broadcast via WebSocket
       broadcastStats(appRecord);
 
+      // Notify progress listener
+      notifyProgressListener(job);
+
       // Note: Do NOT auto-stop when job is terminal. The executor will call stop()
       // after ensuring final stats are broadcast with forceUpdate(). This prevents
       // a race condition where the aggregator stops before all partition stats are
@@ -175,6 +197,96 @@ public class DistributedJobStatsAggregator {
     } catch (Exception e) {
       LOG.error("Error aggregating stats for job {}", jobId, e);
     }
+  }
+
+  /**
+   * Notify the progress listener about job status and progress.
+   *
+   * @param job The current job state
+   */
+  private void notifyProgressListener(SearchIndexJob job) {
+    if (progressListener == null || jobContext == null) {
+      return;
+    }
+
+    try {
+      Stats stats = convertToStats(job);
+      IndexJobStatus currentStatus = job.getStatus();
+      IndexJobStatus previousStatus = lastNotifiedStatus.get();
+
+      // Always notify progress updates
+      progressListener.onProgressUpdate(stats, jobContext);
+
+      // Notify status transitions only once
+      if (currentStatus != previousStatus) {
+        lastNotifiedStatus.set(currentStatus);
+
+        long elapsedMillis =
+            job.getStartedAt() != null ? System.currentTimeMillis() - job.getStartedAt() : 0;
+
+        switch (currentStatus) {
+          case COMPLETED -> progressListener.onJobCompleted(stats, elapsedMillis);
+          case COMPLETED_WITH_ERRORS -> progressListener.onJobCompletedWithErrors(
+              stats, elapsedMillis);
+          case FAILED -> progressListener.onJobFailed(
+              stats,
+              new RuntimeException(
+                  job.getErrorMessage() != null
+                      ? job.getErrorMessage()
+                      : "Distributed job failed"));
+          case STOPPED -> progressListener.onJobStopped(stats);
+          default -> {
+            /* No special notification for other states */
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Error notifying progress listener for job {}", jobId, e);
+    }
+  }
+
+  /**
+   * Convert SearchIndexJob to Stats format for listener callbacks.
+   *
+   * @param job The distributed job
+   * @return Stats object
+   */
+  private Stats convertToStats(SearchIndexJob job) {
+    Stats stats = new Stats();
+
+    StepStats jobStats = new StepStats();
+    jobStats.setTotalRecords(safeToInt(job.getTotalRecords()));
+    jobStats.setSuccessRecords(safeToInt(job.getSuccessRecords()));
+    jobStats.setFailedRecords(safeToInt(job.getFailedRecords()));
+    stats.setJobStats(jobStats);
+
+    EntityStats entityStats = new EntityStats();
+    if (job.getEntityStats() != null) {
+      for (Map.Entry<String, SearchIndexJob.EntityTypeStats> entry :
+          job.getEntityStats().entrySet()) {
+        SearchIndexJob.EntityTypeStats es = entry.getValue();
+        StepStats stepStats = new StepStats();
+        stepStats.setTotalRecords(safeToInt(es.getTotalRecords()));
+        stepStats.setSuccessRecords(safeToInt(es.getSuccessRecords()));
+        stepStats.setFailedRecords(safeToInt(es.getFailedRecords()));
+        entityStats.getAdditionalProperties().put(entry.getKey(), stepStats);
+      }
+    }
+    stats.setEntityStats(entityStats);
+
+    StepStats readerStats = new StepStats();
+    readerStats.setTotalRecords(safeToInt(job.getTotalRecords()));
+    readerStats.setSuccessRecords(safeToInt(job.getProcessedRecords()));
+    readerStats.setFailedRecords(0);
+    stats.setReaderStats(readerStats);
+
+    StepStats sinkStats = new StepStats();
+    sinkStats.setTotalRecords(safeToInt(job.getProcessedRecords()));
+    sinkStats.setSuccessRecords(safeToInt(job.getSuccessRecords()));
+    sinkStats.setFailedRecords(safeToInt(job.getFailedRecords()));
+    stats.setSinkStats(sinkStats);
+
+    return stats;
   }
 
   /**
