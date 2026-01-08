@@ -4,7 +4,7 @@
   "title": "Query Parser Config",
   "description": "Configuration for SQL query parser selection for lineage and usage extraction.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.database.common.LineageParserConfig",
+  "javaType": "org.openmetadata.schema.metadataIngestion.parserconfig.QueryParserConfig",
   "definitions": {
     "QueryParserType": {
       "description": "Type of SQL query parser to use for lineage and usage extraction. Auto mode is recommended for best results.",
