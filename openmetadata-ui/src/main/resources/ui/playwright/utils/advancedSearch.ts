@@ -189,10 +189,23 @@ export const selectOption = async (
       .locator('.ant-select-selector')
       .click({ force: true });
 
+    await dropdownLocator
+      .locator('.ant-select-arrow-loading svg[data-icon="loading"]')
+      .waitFor({ state: 'detached' });
+
     // Clear any existing input and type the new value
     const combobox = dropdownLocator.getByRole('combobox');
     await combobox.clear();
+
+    await dropdownLocator
+      .locator('.ant-select-arrow-loading svg[data-icon="loading"]')
+      .waitFor({ state: 'detached' });
+
     await combobox.fill(optionTitle);
+
+    await dropdownLocator
+      .locator('.ant-select-arrow-loading svg[data-icon="loading"]')
+      .waitFor({ state: 'detached' });
   } else {
     await dropdownLocator.click();
   }
