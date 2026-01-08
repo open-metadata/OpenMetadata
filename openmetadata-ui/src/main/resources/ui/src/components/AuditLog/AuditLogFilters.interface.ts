@@ -10,5 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export { default } from './ChipSelect';
-export type { ChipSelectProps } from './ChipSelect.interface';
+
+import {
+  AuditLogActiveFilter,
+  AuditLogListParams,
+} from '../../types/auditLogs.interface';
+
+export interface AuditLogFiltersProps {
+  activeFilters: AuditLogActiveFilter[];
+  onFiltersChange: (
+    filters: AuditLogActiveFilter[],
+    params: Partial<AuditLogListParams>
+  ) => void;
+}
+
+export interface FilterOption {
+  label: string;
+  value: string;
+  key?: string;
+}
