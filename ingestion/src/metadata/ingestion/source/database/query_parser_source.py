@@ -136,6 +136,7 @@ class QueryParserSource(Source, ABC):
         if (
             hasattr(self.source_config, "queryParserConfig")
             and self.source_config.queryParserConfig
+            and self.source_config.queryParserConfig.type
         ):
             return self.source_config.queryParserConfig.type
         return QueryParserType.Auto
