@@ -52,6 +52,7 @@ from metadata.ingestion.source.pipeline.dagster.models import (
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
+from metadata.utils.filters import filter_by_pipeline
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
@@ -266,9 +267,18 @@ class DagsterSource(PipelineServiceSource):
         try:
             results = self.client.get_run_list()
             for result in results:
-                self.context.get().repository_location = result.location.name
-                self.context.get().repository_name = result.name
                 for job in result.pipelines or []:
+                    if filter_by_pipeline(
+                        self.source_config.pipelineFilterPattern,
+                        job.name,
+                    ):
+                        self.status.filter(
+                            job.name,
+                            "Pipeline Filtered Out",
+                        )
+                        continue
+                    self.context.get().repository_location = result.location.name
+                    self.context.get().repository_name = result.name
                     yield job
         except Exception as exc:
             logger.debug(traceback.format_exc())
