@@ -222,7 +222,7 @@ export const PersonaSelectableList = ({
                 (persona) => persona.fullyQualifiedName as string
               )}
               dropdownStyle={{
-                maxHeight: '200px',
+                maxHeight: 'fit-content',
                 overflow: 'auto',
               }}
               maxTagCount={3}

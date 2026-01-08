@@ -79,11 +79,7 @@ const UserProfileTeams = ({
   }, [setUserTeams]);
 
   useEffect(() => {
-    if (isTeamsEdit) {
-      setIsDropdownOpen(true);
-    } else {
-      setIsDropdownOpen(false);
-    }
+    setIsDropdownOpen(isTeamsEdit);
   }, [isTeamsEdit]);
 
   const handleDropdownChange = (visible: boolean) => {

@@ -51,6 +51,7 @@ const UserProfileRoles = ({
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
   const useRolesOption = useMemo(() => {
     const options = roles?.map((role) => ({
@@ -97,7 +98,6 @@ const UserProfileRoles = ({
     setSelectedRoles(defaultUserRoles);
   }, [userRoles, isUserAdmin]);
 
-  const [popoverHeight, setPopoverHeight] = useState<number>(156);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   const handleRolesSave = async () => {
@@ -160,7 +160,17 @@ const UserProfileRoles = ({
   }, [isRolesEdit, roles]);
 
   useEffect(() => {
-    if (!isRolesEdit) {
+    setIsDropdownOpen(isRolesEdit);
+  }, [isRolesEdit]);
+
+  const handleDropdownChange = (open: boolean) => {
+    setIsDropdownOpen(open);
+  };
+
+  const [popoverHeight, setPopoverHeight] = useState<number>(156);
+
+  useEffect(() => {
+    if (!isDropdownOpen) {
       return;
     }
 
@@ -184,7 +194,7 @@ const UserProfileRoles = ({
     }
 
     return () => observer.disconnect();
-  }, [isRolesEdit]);
+  }, [isDropdownOpen]);
 
   return (
     <div
@@ -223,14 +233,12 @@ const UserProfileRoles = ({
                   }}>
                   <Select
                     allowClear
-                    defaultOpen
                     showSearch
                     aria-label="Roles"
                     className="w-full"
                     data-testid="profile-edit-roles-select"
-                    dropdownMatchSelectWidth={339}
+                    dropdownMatchSelectWidth={false}
                     filterOption={handleSearchFilterOption}
-                    key={isRolesEdit ? 'roles-open' : 'roles-closed'}
                     loading={isLoading}
                     maxTagCount={3}
                     maxTagPlaceholder={(omittedValues) => (
@@ -241,12 +249,14 @@ const UserProfileRoles = ({
                       </span>
                     )}
                     mode="multiple"
+                    open={isDropdownOpen}
                     options={useRolesOption}
                     popupClassName="roles-custom-dropdown-class"
                     ref={dropdownRef as any}
                     tagRender={TagRenderer}
                     value={selectedRoles}
                     onChange={setSelectedRoles}
+                    onDropdownVisibleChange={handleDropdownChange}
                   />
                 </div>
 

@@ -604,7 +604,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
         <Select
           className="custom-domain-edit-select"
           dropdownRender={() => treeContent}
-          dropdownStyle={{ maxHeight: '200px' }}
+          dropdownStyle={{ maxHeight: 'fit-content' }}
           filterOption={false}
           maxTagCount={3}
           maxTagPlaceholder={(omittedValues) => (
