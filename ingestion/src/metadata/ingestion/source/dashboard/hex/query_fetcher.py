@@ -29,6 +29,9 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
     SnowflakeConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_table_entities_from_query
@@ -412,7 +415,7 @@ class HexQueryFetcher:
                     query=query_text,
                     dialect=dialect,
                     timeout_seconds=10,  # Use a reasonable timeout
-                    parser_type=self.get_query_parser_type(),
+                    parser_type=QueryParserType.Auto,
                 )
                 query_hash = lineage_parser.query_hash
 
