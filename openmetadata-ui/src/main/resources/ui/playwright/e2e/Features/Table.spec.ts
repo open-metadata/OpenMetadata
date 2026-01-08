@@ -44,15 +44,6 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await afterAction();
   });
 
-  test.afterAll('Clean up', async ({ browser }) => {
-    test.slow(true);
-
-    const { afterAction, apiContext } = await performAdminLogin(browser);
-    await table1.delete(apiContext);
-
-    await afterAction();
-  });
-
   test.beforeEach('Visit home page', async ({ dataConsumerPage: page }) => {
     await redirectToHomePage(page);
   });
@@ -80,47 +71,71 @@ test.describe('Table pagination sorting search scenarios ', () => {
     expect(await page.locator('.ant-table-row').count()).toBe(15);
   });
 
-  test('Table search with sorting should works', async ({
+  test('Table search with sorting should work', async ({
     dataConsumerPage: page,
   }) => {
+    const listTestCasesResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*'
+    );
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
     await page.click('[data-testid="test-cases"]');
+
+    await listTestCasesResponse;
+    await page.waitForSelector(
+      '[data-testid="test-case-container"] [data-testid="loader"]',
+      { state: 'detached' }
+    );
+
     await page.getByText('Name', { exact: true }).click();
     await page.getByTestId('searchbar').click();
+
+    const testSearchResponse = page.waitForResponse(
+      `/api/v1/dataQuality/testCases/search/list?*q=%2Atemp-test-case%2A*`
+    );
+
     await page.getByTestId('searchbar').fill('temp-test-case');
+
+    await testSearchResponse;
+    await page.waitForSelector(
+      '[data-testid="test-case-container"] [data-testid="loader"]',
+      { state: 'detached' }
+    );
 
     await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
   });
 
-  test('Table filter with sorting should works', async ({
+  test('Table filter with sorting should work', async ({
     dataConsumerPage: page,
   }) => {
+    const listTestCasesResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*'
+    );
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
-    await page.waitForLoadState('networkidle');
     await page.click('[data-testid="test-cases"]');
 
-    const listTestCaseResponse = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/search/list?**`
+    await listTestCasesResponse;
+    await page.waitForSelector(
+      '[data-testid="test-case-container"] [data-testid="loader"]',
+      { state: 'detached' }
     );
 
     await page.getByText('Name', { exact: true }).click();
 
-    await listTestCaseResponse;
-
     await page.getByTestId('status-select-filter').locator('div').click();
 
-    const response = page.waitForResponse(
-      '/api/v1/dataQuality/testSuites/dataQualityReport?q=*'
+    const filteredResults = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Queued*'
     );
 
     await page.getByTitle('Queued').locator('div').click();
 
-    await response;
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await filteredResults;
+    await page.waitForSelector(
+      '[data-testid="test-case-container"] [data-testid="loader"]',
+      { state: 'detached' }
+    );
 
     await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
   });
@@ -260,14 +275,21 @@ test.describe('Table & Data Model columns table pagination', () => {
   test('pagination for table column should work', async ({
     dataConsumerPage: page,
   }) => {
+    const columnsResponse = page.waitForResponse(
+      '/api/v1/tables/name/*/columns?*fields=tags*&include=all*'
+    );
+
     await page.goto(
       '/table/sample_data.ecommerce_db.shopify.performance_test_table'
     );
 
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await columnsResponse;
+    await page.waitForSelector(
+      '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
+      {
+        state: 'detached',
+      }
+    );
 
     // Check for column count
     expect(page.getByTestId('schema').getByTestId('filter-count')).toHaveText(
@@ -280,14 +302,21 @@ test.describe('Table & Data Model columns table pagination', () => {
   test('pagination for dashboard data model columns should work', async ({
     dataConsumerPage: page,
   }) => {
+    const dataModelsResponse1 = page.waitForResponse(
+      '/api/v1/dashboard/datamodels/name/*/columns?*fields=tags*include=all*'
+    );
+
     await page.goto(
       '/dashboardDataModel/sample_superset.model.big_analytics_data_model_with_nested_columns'
     );
 
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await dataModelsResponse1;
+    await page.waitForSelector(
+      '#KnowledgePanel\\.DataModel [data-testid="loader"]',
+      {
+        state: 'detached',
+      }
+    );
 
     // 50 Row + 1 Header row
     expect(
@@ -296,11 +325,19 @@ test.describe('Table & Data Model columns table pagination', () => {
 
     expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 36`);
 
+    const dataModelsResponse2 = page.waitForResponse(
+      '/api/v1/dashboard/datamodels/name/*/columns?*fields=tags*include=all*'
+    );
+
     await page.getByTestId('next').click();
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await dataModelsResponse2;
+    await page.waitForSelector(
+      '#KnowledgePanel\\.DataModel [data-testid="loader"]',
+      {
+        state: 'detached',
+      }
+    );
 
     expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 36`);
 
@@ -308,21 +345,38 @@ test.describe('Table & Data Model columns table pagination', () => {
       page.getByTestId('data-model-column-table').getByRole('row')
     ).toHaveCount(51);
 
+    const dataModelsResponse3 = page.waitForResponse(
+      '/api/v1/dashboard/datamodels/name/*/columns?*fields=tags*include=all*'
+    );
+
     await page.getByTestId('previous').click();
+
+    await dataModelsResponse3;
+    await page.waitForSelector(
+      '#KnowledgePanel\\.DataModel [data-testid="loader"]',
+      {
+        state: 'detached',
+      }
+    );
 
     expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 36`);
 
     // Change page size to 15
     await page.getByTestId('page-size-selection-dropdown').click();
+
+    const dataModelsResponse4 = page.waitForResponse(
+      '/api/v1/dashboard/datamodels/name/*/columns?*fields=tags*include=all*'
+    );
+
     await page.getByRole('menuitem', { name: '15 / Page' }).click();
 
-    // Change page size to 15
-    await page.getByTestId('page-size-selection-dropdown').click();
-    await page.getByRole('menuitem', { name: '15 / Page' }).click();
-
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await dataModelsResponse4;
+    await page.waitForSelector(
+      '#KnowledgePanel\\.DataModel [data-testid="loader"]',
+      {
+        state: 'detached',
+      }
+    );
 
     // 15 Row + 1 Header row
     expect(
@@ -331,11 +385,20 @@ test.describe('Table & Data Model columns table pagination', () => {
 
     // Change page size to 25
     await page.getByTestId('page-size-selection-dropdown').click();
+
+    const dataModelsResponse5 = page.waitForResponse(
+      '/api/v1/dashboard/datamodels/name/*/columns?*fields=tags*include=all*'
+    );
+
     await page.getByRole('menuitem', { name: '25 / Page' }).click();
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await dataModelsResponse5;
+    await page.waitForSelector(
+      '#KnowledgePanel\\.DataModel [data-testid="loader"]',
+      {
+        state: 'detached',
+      }
+    );
 
     // 25 Row + 1 Header row
     expect(
@@ -472,25 +535,24 @@ test.describe(
       await testTag.create(apiContext);
     });
 
-    test.afterAll(async ({ browser }) => {
-      const { apiContext } = await performAdminLogin(browser);
-      await glossaryTerm.delete(apiContext);
-      await glossary.delete(apiContext);
-      await testClassification.delete(apiContext);
-      await testTag.delete(apiContext);
-    });
-
     test('Glossary term should be consistent for search', async ({
       dataConsumerPage: page,
     }) => {
+      const columnsResponse = page.waitForResponse(
+        '/api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns?*fields=tags*&include=all*'
+      );
+
       // Go to tables page
       await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
 
       // Wait for page to be fully loaded
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await columnsResponse;
+      await page.waitForSelector(
+        '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
+        {
+          state: 'detached',
+        }
+      );
 
       // Check if add button exists and is visible
       const rowSelector =
@@ -582,13 +644,20 @@ test.describe(
     test('Tags term should be consistent for search', async ({
       dataConsumerPage: page,
     }) => {
+      const columnsResponse = page.waitForResponse(
+        '/api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns?*fields=tags*&include=all*'
+      );
+
       await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
 
       // Wait for page to be fully loaded
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await columnsResponse;
+      await page.waitForSelector(
+        '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
+        {
+          state: 'detached',
+        }
+      );
 
       // Check if add button exists and is visible
       const rowSelector =
@@ -601,9 +670,8 @@ test.describe(
         await page.click(`${rowSelector} [data-testid="edit-button"]`);
       }
 
-      await page.waitForSelector('.ant-select-dropdown', { state: 'visible' });
       await page.waitForSelector(
-        '.ant-select-dropdown [data-testid="loader"]',
+        '.ant-select-dropdown:visible [data-testid="loader"]',
         {
           state: 'detached',
         }

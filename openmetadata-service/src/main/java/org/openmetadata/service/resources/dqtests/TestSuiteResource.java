@@ -521,7 +521,12 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               description = "Index to perform the aggregation against",
               schema = @Schema(type = "String"))
           @QueryParam("index")
-          String index)
+          String index,
+      @Parameter(
+              description = "Filter by domain fully qualified name",
+              schema = @Schema(type = "String"))
+          @QueryParam("domain")
+          String domain)
       throws IOException {
     List<AuthRequest> authRequests = getAuthRequestsForListOps();
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
@@ -529,7 +534,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       throw new IllegalArgumentException("aggregationQuery and index are required parameters");
     }
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    return repository.getDataQualityReport(query, aggregationQuery, index, subjectContext);
+    return repository.getDataQualityReport(query, aggregationQuery, index, domain, subjectContext);
   }
 
   @POST
