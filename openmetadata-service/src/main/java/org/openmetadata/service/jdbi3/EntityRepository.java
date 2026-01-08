@@ -2502,7 +2502,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
               getFormattedDateTimeField(
                   fieldValue.textValue(), customPropertyType, propertyConfig, fieldName);
           jsonNode.put(fieldName, formattedValue);
-          fieldValue = jsonNode.get(fieldName);
         }
         case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
         case "enum" -> {
@@ -2513,7 +2512,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
                   .sorted()
                   .collect(Collectors.toList());
           jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
-          fieldValue = jsonNode.get(fieldName);
         }
         default -> {}
       }
