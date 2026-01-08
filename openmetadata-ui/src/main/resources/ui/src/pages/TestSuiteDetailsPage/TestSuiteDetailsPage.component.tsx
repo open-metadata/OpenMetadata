@@ -297,7 +297,7 @@ const TestSuiteDetailsPage = () => {
 
       await updateTestSuiteData(updatedTestSuite);
     },
-    [testOwners, testSuite]
+    [testSuite]
   );
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
@@ -407,18 +407,32 @@ const TestSuiteDetailsPage = () => {
         ),
         key: EntityTabs.TEST_CASES,
         children: (
-          <DataQualityTab
-            afterDeleteAction={fetchTestCases}
-            breadcrumbData={incidentUrlState}
-            fetchTestCases={handleSortTestCase}
-            isLoading={isLoading || isTestCaseLoading}
-            pagingData={pagingData}
-            removeFromTestSuite={removeFromTestSuite}
-            showPagination={showPagination}
-            testCases={testCaseResult}
-            onTestCaseResultUpdate={handleTestSuiteUpdate}
-            onTestUpdate={handleTestSuiteUpdate}
-          />
+          <Row className="p-md test-suite-content-container" gutter={[0, 20]}>
+            <Col span={24}>
+              <DescriptionV1
+                wrapInCard
+                description={testSuiteDescription}
+                entityType={EntityType.TEST_SUITE}
+                hasEditAccess={permissions.hasEditDescriptionPermission}
+                showCommentsIcon={false}
+                onDescriptionUpdate={onDescriptionUpdate}
+              />
+            </Col>
+            <Col span={24}>
+              <DataQualityTab
+                afterDeleteAction={fetchTestCases}
+                breadcrumbData={incidentUrlState}
+                fetchTestCases={handleSortTestCase}
+                isLoading={isLoading || isTestCaseLoading}
+                pagingData={pagingData}
+                removeFromTestSuite={removeFromTestSuite}
+                showPagination={showPagination}
+                testCases={testCaseResult}
+                onTestCaseResultUpdate={handleTestSuiteUpdate}
+                onTestUpdate={handleTestSuiteUpdate}
+              />
+            </Col>
+          </Row>
         ),
       },
       {
@@ -431,7 +445,21 @@ const TestSuiteDetailsPage = () => {
         ),
         key: EntityTabs.PIPELINE,
         children: (
-          <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
+          <Row className="p-md test-suite-content-container" gutter={[0, 20]}>
+            <Col span={24}>
+              <DescriptionV1
+                wrapInCard
+                description={testSuiteDescription}
+                entityType={EntityType.TEST_SUITE}
+                hasEditAccess={permissions.hasEditDescriptionPermission}
+                showCommentsIcon={false}
+                onDescriptionUpdate={onDescriptionUpdate}
+              />
+            </Col>
+            <Col span={24}>
+              <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
+            </Col>
+          </Row>
         ),
       },
     ];
@@ -448,6 +476,9 @@ const TestSuiteDetailsPage = () => {
     fetchTestCases,
     ingestionPipelineCount,
     testSuitePermissions,
+    testSuiteDescription,
+    permissions.hasEditDescriptionPermission,
+    onDescriptionUpdate,
   ]);
 
   const selectedTestCases = useMemo(() => {
@@ -475,7 +506,7 @@ const TestSuiteDetailsPage = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(testSuite),
       })}>
-      <Row className="page-container" gutter={[0, 24]}>
+      <Row className="page-container" gutter={[0, 12]}>
         <Col span={24}>
           <TitleBreadcrumb
             data-testid="test-suite-breadcrumb"
@@ -526,8 +557,10 @@ const TestSuiteDetailsPage = () => {
             </Col>
 
             <Col span={24}>
-              <div className="d-flex flex-wrap gap-2">
+              <div className="test-suite-header-metadata">
                 <DomainLabel
+                  headerLayout
+                  showDashPlaceholder
                   domains={testSuite?.domains}
                   entityFqn={testSuite?.fullyQualifiedName ?? ''}
                   entityId={testSuite?.id ?? ''}
@@ -536,9 +569,13 @@ const TestSuiteDetailsPage = () => {
                   multiple={entityRules.canAddMultipleDomains}
                   onUpdate={handleDomainUpdate}
                 />
-                <Divider className="self-center" type="vertical" />
+                <Divider
+                  className="self-center vertical-divider"
+                  type="vertical"
+                />
                 <OwnerLabel
                   hasPermission={permissions.hasEditOwnerPermission}
+                  isCompactView={false}
                   multiple={{
                     user: entityRules.canAddMultipleUserOwners,
                     team: entityRules.canAddMultipleTeamOwner,
@@ -551,19 +588,7 @@ const TestSuiteDetailsPage = () => {
           </Row>
         </Col>
 
-        <Col span={24}>
-          <DescriptionV1
-            className="test-suite-description"
-            description={testSuiteDescription}
-            entityName={getEntityName(testSuite)}
-            entityType={EntityType.TEST_SUITE}
-            hasEditAccess={permissions.hasEditDescriptionPermission}
-            showCommentsIcon={false}
-            onDescriptionUpdate={onDescriptionUpdate}
-          />
-        </Col>
-
-        <Col span={24}>
+        <Col className="test-suite-details-tabs" span={24}>
           <Tabs className="tabs-new" items={tabs} />
         </Col>
         <Col span={24}>
