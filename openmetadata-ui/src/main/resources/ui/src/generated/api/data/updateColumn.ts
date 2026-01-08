@@ -31,8 +31,7 @@ export interface UpdateColumn {
      */
     displayName?: string;
     /**
-     * Entity extension data with custom attributes added to the column. Only applicable to
-     * table columns, ignored for dashboard data model columns.
+     * Entity extension data with custom attributes added to the column.
      */
     extension?: any;
     /**
