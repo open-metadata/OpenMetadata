@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover, Skeleton, Space, Tag, Typography } from 'antd';
+import { Popover, Skeleton, Space, Tag } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
@@ -47,18 +47,7 @@ export const commonUserDetailColumns = (
     key: 'username',
     width: 200,
     ellipsis: { showTitle: false },
-    render: (_, record) =>
-      record.name ? (
-        <UserPopOverCard
-          showUserName
-          profileWidth={16}
-          userName={record.name}
-        />
-      ) : (
-        <Typography.Text ellipsis={{ tooltip: true }}>
-          {getEntityName(record)}
-        </Typography.Text>
-      ),
+    render: (_, record) => userCellRenderer(record),
   },
   {
     title: t('label.name'),
@@ -66,11 +55,7 @@ export const commonUserDetailColumns = (
     key: 'name',
     width: 200,
     ellipsis: { showTitle: false },
-    render: (_, record) => (
-      <Typography.Text ellipsis={{ tooltip: true }}>
-        {getEntityName(record)}
-      </Typography.Text>
-    ),
+    render: (_, record) => getEntityName(record),
   },
   {
     title: t('label.team-plural'),
