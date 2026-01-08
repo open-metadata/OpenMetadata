@@ -322,31 +322,36 @@ const TestCaseResultTab = () => {
 
       return (
         <div className="parameter-rows-container">
-          {rows.map((row, rowIndex) => (
-            <div key={rowIndex}>
-              <Row className="parameter-row" gutter={[16, 0]}>
-                {row.map((item, itemIndex) => (
-                  <Col key={itemIndex} span={row.length === 1 ? 16 : 12}>
-                    <Space align="start" size={4}>
-                      <Typography.Text className="parameter-label">
-                        {`${item.label}:`}
-                      </Typography.Text>
-                      {typeof item.value === 'string' ? (
-                        <Typography.Text className="parameter-value-text">
-                          {item.value}
+          {rows.map((row, rowIndex) => {
+            // Create a stable key from the row items' labels
+            const rowKey = row.map((item) => item.label).join('-');
+
+            return (
+              <div key={rowKey}>
+                <Row className="parameter-row" gutter={[16, 0]}>
+                  {row.map((item) => (
+                    <Col key={item.label} span={row.length === 1 ? 16 : 12}>
+                      <Space align="start" size={4}>
+                        <Typography.Text className="parameter-label">
+                          {`${item.label}:`}
                         </Typography.Text>
-                      ) : (
-                        item.value
-                      )}
-                    </Space>
-                  </Col>
-                ))}
-              </Row>
-              {rowIndex < rows.length - 1 && (
-                <Divider className="parameter-row-divider" />
-              )}
-            </div>
-          ))}
+                        {typeof item.value === 'string' ? (
+                          <Typography.Text className="parameter-value-text">
+                            {item.value}
+                          </Typography.Text>
+                        ) : (
+                          item.value
+                        )}
+                      </Space>
+                    </Col>
+                  ))}
+                </Row>
+                {rowIndex < rows.length - 1 && (
+                  <Divider className="parameter-row-divider" />
+                )}
+              </div>
+            );
+          })}
         </div>
       );
     },

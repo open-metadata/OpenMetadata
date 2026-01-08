@@ -53,12 +53,12 @@ const TestSummaryCustomTooltip = (
   const formattedDateTime = formatDateTime(timestamp);
 
   // Get status color
-  const statusColor =
-    status === TestCaseStatus.Failed
-      ? RED_3
-      : status === TestCaseStatus.Success
-      ? GREEN_3
-      : undefined;
+  let statusColor: string | undefined;
+  if (status === TestCaseStatus.Failed) {
+    statusColor = RED_3;
+  } else if (status === TestCaseStatus.Success) {
+    statusColor = GREEN_3;
+  }
 
   // Helper to check if value is a Thread
   const isThread = (value: unknown): value is Thread => {

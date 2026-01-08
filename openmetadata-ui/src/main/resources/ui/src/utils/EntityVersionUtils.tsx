@@ -465,9 +465,9 @@ export const getSummary = ({
 };
 
 export const isMajorVersion = (version1: string, version2: string) => {
-  const v1 = parseFloat(version1);
-  const v2 = parseFloat(version2);
-  const flag = !isNaN(v1) && !isNaN(v2);
+  const v1 = Number.parseFloat(version1);
+  const v2 = Number.parseFloat(version2);
+  const flag = !Number.isNaN(v1) && !Number.isNaN(v2);
   if (flag) {
     return v1 + 1 === v2;
   }
@@ -644,7 +644,7 @@ export const getOwnerDiff = (
 
   const unchangedItems = defaultItems.filter(
     (item: EntityReference) =>
-      !addedItems.find((addedItem: EntityReference) => addedItem.id === item.id)
+      !addedItems.some((addedItem: EntityReference) => addedItem.id === item.id)
   );
 
   const allItems = [
@@ -696,7 +696,7 @@ export const getDomainDiff = (
 
   const unchangedItems = defaultItems.filter(
     (item: EntityReference) =>
-      !addedItems.find((addedItem: EntityReference) => addedItem.id === item.id)
+      !addedItems.some((addedItem: EntityReference) => addedItem.id === item.id)
   );
 
   const allItems = [
@@ -1088,10 +1088,10 @@ export const renderVersionButton = (
 
   const majorVersionChecks = () => {
     return isMajorVersion(
-      parseFloat(currV?.changeDescription?.previousVersion)
+      Number.parseFloat(currV?.changeDescription?.previousVersion)
         .toFixed(1)
         .toString(),
-      parseFloat(currV?.version).toFixed(1).toString()
+      Number.parseFloat(currV?.version).toFixed(1).toString()
     );
   };
 
