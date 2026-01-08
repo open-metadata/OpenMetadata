@@ -25,7 +25,7 @@ test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-test.describe('Pagination tests for all pages', () => {
+test.describe.serial('Pagination tests for all pages', () => {
   test('should test pagination on Users page', async ({ page }) => {
     test.slow(true);
 
@@ -68,7 +68,6 @@ test.describe('Pagination tests for all pages', () => {
   test.describe('Service Databases page pagination', () => {
 
     test.beforeAll(async ({ browser }) => {
-      test.slow();
   
       const { apiContext, afterAction } = await createNewPage(browser);
 
