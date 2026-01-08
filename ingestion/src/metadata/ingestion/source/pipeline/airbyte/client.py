@@ -39,10 +39,13 @@ class AirbyteClient:
     """
     Client for self-hosted Airbyte instances.
     Supports Basic Authentication or no authentication.
+    Automatically detects if the public API is being used based on apiVersion.
     """
 
     def __init__(self, config: AirbyteConnection):
         self.config = config
+        # Detect if using the public API based on apiVersion containing "public"
+        self._use_public_api = "public" in (self.config.apiVersion or "").lower()
 
         client_config: ClientConfig = ClientConfig(
             base_url=clean_uri(self.config.hostPort),
@@ -68,6 +71,14 @@ class AirbyteClient:
         Method returns the list of workflows
         an airbyte instance can contain multiple workflows
         """
+        if self._use_public_api:
+            # Public API uses GET /workspaces with data in response
+            response = self.client.get("/workspaces")
+            if response.get("exceptionStack"):
+                raise APIError(response["message"])
+            return response.get("data", [])
+
+        # Internal API uses POST /workspaces/list
         response = self.client.post("/workspaces/list")
         if response.get("exceptionStack"):
             raise APIError(response["message"])
@@ -77,6 +88,14 @@ class AirbyteClient:
         """
         Method returns the list all of connections of workflow
         """
+        if self._use_public_api:
+            # Public API uses GET /connections with workspaceIds query parameter
+            response = self.client.get(f"/connections?workspaceIds={workflow_id}")
+            if response.get("exceptionStack"):
+                raise APIError(response["message"])
+            return response.get("data", [])
+
+        # Internal API uses POST /connections/list with JSON body
         data = {"workspaceId": workflow_id}
         response = self.client.post("/connections/list", data=json.dumps(data))
         if response.get("exceptionStack"):
@@ -87,6 +106,14 @@ class AirbyteClient:
         """
         Method returns the list all of jobs of a connection
         """
+        if self._use_public_api:
+            # Public API uses GET /jobs with connectionId query parameter
+            response = self.client.get(f"/jobs?connectionId={connection_id}")
+            if response.get("exceptionStack"):
+                raise APIError(response["message"])
+            return response.get("data", [])
+
+        # Internal API uses POST /jobs/list with JSON body
         data = {"configId": connection_id, "configTypes": ["sync", "reset_connection"]}
         response = self.client.post("/jobs/list", data=json.dumps(data))
         if response.get("exceptionStack"):
@@ -97,6 +124,14 @@ class AirbyteClient:
         """
         Method returns source details
         """
+        if self._use_public_api:
+            # Public API uses GET /sources/{sourceId}
+            response = self.client.get(f"/sources/{source_id}")
+            if response.get("exceptionStack"):
+                raise APIError(response["message"])
+            return response
+
+        # Internal API uses POST /sources/get with JSON body
         data = {"sourceId": source_id}
         response = self.client.post("/sources/get", data=json.dumps(data))
         if response.get("exceptionStack"):
@@ -107,6 +142,14 @@ class AirbyteClient:
         """
         Method returns destination details
         """
+        if self._use_public_api:
+            # Public API uses GET /destinations/{destinationId}
+            response = self.client.get(f"/destinations/{destination_id}")
+            if response.get("exceptionStack"):
+                raise APIError(response["message"])
+            return response
+
+        # Internal API uses POST /destinations/get with JSON body
         data = {"destinationId": destination_id}
         response = self.client.post("/destinations/get", data=json.dumps(data))
         if response.get("exceptionStack"):
