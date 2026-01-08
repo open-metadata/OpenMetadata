@@ -26,7 +26,6 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
-  INITIAL_PAGING_VALUE,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
@@ -234,10 +233,9 @@ const SchemaTable = () => {
 
   const handleColumnsPageChange = useCallback(
     ({ currentPage }: PagingHandlerParams) => {
-      fetchPaginatedColumns(currentPage, searchText);
       handlePageChange(currentPage);
     },
-    [paging, fetchPaginatedColumns, searchText]
+    []
   );
 
   const fetchTestCaseSummary = async () => {
@@ -256,13 +254,9 @@ const SchemaTable = () => {
   // Fetch columns when search changes
   useEffect(() => {
     if (tableFqn) {
-      // Reset to first page when search changes
-      fetchPaginatedColumns(
-        searchText ? INITIAL_PAGING_VALUE : currentPage,
-        searchText || undefined
-      );
+      fetchPaginatedColumns(currentPage, searchText || undefined);
     }
-  }, [tableFqn, searchText, fetchPaginatedColumns, pageSize]);
+  }, [tableFqn, searchText, fetchPaginatedColumns, pageSize, currentPage]);
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {

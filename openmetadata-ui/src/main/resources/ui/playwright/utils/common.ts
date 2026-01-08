@@ -730,7 +730,7 @@ export const testPaginationNavigation = async (
   await waitForAllLoadersToDisappear(page);
 
   let afterValue: string | null = '';
-  if(validateUrl){
+  if (validateUrl) {
     const currentUrl = page.url();
     const urlObj = new URL(currentUrl);
     const searchParams = urlObj.searchParams;
@@ -769,7 +769,7 @@ export const testPaginationNavigation = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  if(validateUrl){
+  if (validateUrl) {
     const reloadedUrl = page.url();
     const reloadedUrlObj = new URL(reloadedUrl);
     const reloadedSearchParams = reloadedUrlObj.searchParams;
