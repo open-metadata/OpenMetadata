@@ -353,16 +353,18 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             else []
         )
 
-    def get_query_parser_type(self) -> Optional[QueryParserType]:
+    def get_query_parser_type(self) -> QueryParserType:
         """
-        Get the query parser type from config.
-        Returns Auto as default if not specified.
+        Get the query parser type from source config.
+
+        Returns QueryParserType.Auto if queryParserConfig is not set.
         """
-        return (
-            self.source_config.queryParserConfig.type
-            if self.source_config.queryParserConfig
-            else None
-        )
+        if (
+            hasattr(self.source_config, "queryParserConfig")
+            and self.source_config.queryParserConfig
+        ):
+            return self.source_config.queryParserConfig.type
+        return QueryParserType.Auto
 
     def parse_db_service_prefix(
         self, db_service_prefix: Optional[str]

@@ -12,8 +12,7 @@
       "enum": [
         "Auto",
         "SqlGlot",
-        "SqlFluff",
-        "SqlParse"
+        "SqlFluff"
       ],
       "default": "Auto"
     }
@@ -21,7 +20,7 @@
   "properties": {
     "type": {
       "title": "Query Parser Type",
-      "description": "Choose the SQL parser for lineage extraction:\n• Auto (default): Automatically tries SqlGlot first, falls back to SqlFluff, then SqlParse. Recommended for best results.\n• SqlGlot: High-performance parser with excellent dialect support. Falls back to SqlParse on failure.\n• SqlFluff: Comprehensive parser with strong dialect support. Falls back to SqlParse on failure.\n• SqlParse: Generic ANSI SQL parser with limited dialect support. No fallback.",
+      "description": "Choose the SQL parser for lineage extraction:\n• Auto (default): Automatically tries SqlGlot first, falls back to SqlFluff, then SqlParse. Recommended for best results.\n• SqlGlot: High-performance parser with excellent dialect support. Falls back to SqlParse on failure.\n• SqlFluff: Comprehensive parser with strong dialect support. Falls back to SqlParse on failure.",
       "$ref": "#/definitions/QueryParserType",
       "default": "Auto"
     }

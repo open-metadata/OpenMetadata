@@ -127,18 +127,18 @@ class QueryParserSource(Source, ABC):
             return f"{self.filters} AND {self.source_config.filterCondition}"
         return self.filters
 
-    def get_query_parser_type(self) -> Optional[QueryParserType]:
+    def get_query_parser_type(self) -> QueryParserType:
         """
         Get the query parser type from source config.
 
-        Returns None to use default Auto parser type.
+        Returns QueryParserType.Auto if queryParserConfig is not set.
         """
         if (
             hasattr(self.source_config, "queryParserConfig")
             and self.source_config.queryParserConfig
         ):
             return self.source_config.queryParserConfig.type
-        return None
+        return QueryParserType.Auto
 
     def get_engine(self):
         yield self.engine

@@ -126,9 +126,9 @@ def _yield_procedure_lineage(
     if enableTempTableLineage:
         if not procedure_graph_map.get(procedure.fullyQualifiedName.root):
             # Map to store the directed graph for each procedure with its FQN as key
-            procedure_graph_map[procedure.fullyQualifiedName.root] = (
-                ProcedureAndProcedureGraph(procedure=procedure, graph=nx.DiGraph())
-            )
+            procedure_graph_map[
+                procedure.fullyQualifiedName.root
+            ] = ProcedureAndProcedureGraph(procedure=procedure, graph=nx.DiGraph())
 
         graph = procedure_graph_map.get(procedure.fullyQualifiedName.root).graph
 

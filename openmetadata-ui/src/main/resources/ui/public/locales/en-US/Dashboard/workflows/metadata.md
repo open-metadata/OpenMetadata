@@ -74,7 +74,6 @@ Choose the SQL parser for lineage extraction:
 - **Auto** (default): Automatically tries SqlGlot first, falls back to SqlFluff, then SqlParse. Recommended for best results.
 - **SqlGlot**: High-performance parser with good dialect support. Falls back to SqlParse on failure.
 - **SqlFluff**: Comprehensive but slower parser with strong dialect support. Falls back to SqlParse on failure.
-- **SqlParse**: Generic ANSI SQL parser with limited dialect support.
 $$
 
 $$section

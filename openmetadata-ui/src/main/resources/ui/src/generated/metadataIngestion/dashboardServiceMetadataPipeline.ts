@@ -137,7 +137,6 @@ export interface QueryParserConfig {
      * on failure.
      * • SqlFluff: Comprehensive parser with strong dialect support. Falls back to SqlParse on
      * failure.
-     * • SqlParse: Generic ANSI SQL parser with limited dialect support. No fallback.
      */
     type?: QueryParserType;
 }
@@ -150,7 +149,6 @@ export interface QueryParserConfig {
  * on failure.
  * • SqlFluff: Comprehensive parser with strong dialect support. Falls back to SqlParse on
  * failure.
- * • SqlParse: Generic ANSI SQL parser with limited dialect support. No fallback.
  *
  * Type of SQL query parser to use for lineage and usage extraction. Auto mode is
  * recommended for best results.
@@ -159,7 +157,6 @@ export enum QueryParserType {
     Auto = "Auto",
     SQLFluff = "SqlFluff",
     SQLGlot = "SqlGlot",
-    SQLParse = "SqlParse",
 }
 
 /**

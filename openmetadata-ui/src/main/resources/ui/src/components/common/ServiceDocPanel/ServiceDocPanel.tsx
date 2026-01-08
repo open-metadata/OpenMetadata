@@ -116,7 +116,6 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
       }
 
       setMarkdownContent(response);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       setMarkdownContent('');
     } finally {

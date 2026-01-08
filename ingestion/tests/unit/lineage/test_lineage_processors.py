@@ -20,9 +20,6 @@ import uuid
 from datetime import datetime
 from unittest.mock import Mock, patch
 
-from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
-    QueryParserType,
-)
 import networkx as nx
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
@@ -30,6 +27,9 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedure,
     StoredProcedureCode,
+)
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
