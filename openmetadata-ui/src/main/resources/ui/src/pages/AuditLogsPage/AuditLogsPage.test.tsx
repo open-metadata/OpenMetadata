@@ -62,6 +62,13 @@ jest.mock('../../rest/userAPI', () => ({
   }),
 }));
 
+jest.mock('../../rest/botsAPI', () => ({
+  getBots: jest.fn().mockResolvedValue({
+    data: [],
+    paging: { total: 0 },
+  }),
+}));
+
 jest.mock(
   '../../components/common/SelectableList/SelectableList.component',
   () => jest.fn().mockReturnValue(<div data-testid="selectable-list" />)
