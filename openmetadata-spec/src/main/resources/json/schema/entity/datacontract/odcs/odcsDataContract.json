@@ -196,9 +196,9 @@
           "default": -1
         },
         "logicalType": {
-          "description": "Logical data type.",
+          "description": "Logical data type per ODCS v3.1.0 spec.",
           "type": "string",
-          "enum": ["string", "date", "timestamp", "time", "number", "integer", "object", "array", "boolean"]
+          "enum": ["string", "text", "date", "timestamp", "time", "number", "integer", "decimal", "float", "double", "long", "object", "array", "boolean", "bytes", "null"]
         },
         "logicalTypeOptions": {
           "description": "Type-specific options.",
@@ -224,9 +224,8 @@
           "default": -1
         },
         "classification": {
-          "description": "Security level.",
-          "type": "string",
-          "enum": ["public", "internal", "restricted", "confidential", "sensitive"]
+          "description": "Data classification tag (e.g., PII, public, internal, restricted, confidential, sensitive).",
+          "type": "string"
         },
         "encryptedName": {
           "description": "Encrypted column reference.",
@@ -538,7 +537,7 @@
         "access": {
           "description": "Access type.",
           "type": "string",
-          "enum": ["read", "write"]
+          "enum": ["read", "write", "readWrite"]
         },
         "firstLevelApprovers": {
           "description": "Initial approval authority.",

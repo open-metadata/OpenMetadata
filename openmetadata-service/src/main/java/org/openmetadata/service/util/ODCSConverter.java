@@ -128,8 +128,11 @@ public class ODCSConverter {
    * @param odcs The ODCS data contract to import
    * @param entityRef Reference to the target entity (table, topic, etc.)
    * @return OpenMetadata DataContract
+   * @throws IllegalArgumentException if required ODCS fields are missing
    */
   public static DataContract fromODCS(ODCSDataContract odcs, EntityReference entityRef) {
+    validateRequiredODCSFields(odcs);
+
     DataContract contract = new DataContract();
 
     contract.setId(parseUUID(odcs.getId()));
@@ -239,13 +242,16 @@ public class ODCSConverter {
       for (TagLabel tag : column.getTags()) {
         String tagFqn = tag.getTagFQN();
         if (tagFqn != null && tagFqn.toLowerCase().contains("pii")) {
-          element.setClassification(ODCSSchemaElement.Classification.SENSITIVE);
+          element.setClassification("PII");
+          break;
+        } else if (tagFqn != null && tagFqn.toLowerCase().contains("sensitive")) {
+          element.setClassification("sensitive");
           break;
         } else if (tagFqn != null && tagFqn.toLowerCase().contains("confidential")) {
-          element.setClassification(ODCSSchemaElement.Classification.CONFIDENTIAL);
+          element.setClassification("confidential");
           break;
         } else if (tagFqn != null && tagFqn.toLowerCase().contains("restricted")) {
-          element.setClassification(ODCSSchemaElement.Classification.RESTRICTED);
+          element.setClassification("restricted");
           break;
         }
       }
@@ -261,14 +267,21 @@ public class ODCSConverter {
   private static ODCSSchemaElement.LogicalType mapDataTypeToLogicalType(ColumnDataType dataType) {
     if (dataType == null) return ODCSSchemaElement.LogicalType.STRING;
     return switch (dataType) {
-      case INT, BIGINT, SMALLINT, TINYINT, BYTEINT -> ODCSSchemaElement.LogicalType.INTEGER;
-      case FLOAT, DOUBLE, DECIMAL, NUMERIC, NUMBER -> ODCSSchemaElement.LogicalType.NUMBER;
+      case INT, SMALLINT, TINYINT, BYTEINT -> ODCSSchemaElement.LogicalType.INTEGER;
+      case BIGINT -> ODCSSchemaElement.LogicalType.LONG;
+      case FLOAT -> ODCSSchemaElement.LogicalType.FLOAT;
+      case DOUBLE -> ODCSSchemaElement.LogicalType.DOUBLE;
+      case DECIMAL, NUMERIC -> ODCSSchemaElement.LogicalType.DECIMAL;
+      case NUMBER -> ODCSSchemaElement.LogicalType.NUMBER;
       case BOOLEAN -> ODCSSchemaElement.LogicalType.BOOLEAN;
       case DATE, DATETIME -> ODCSSchemaElement.LogicalType.DATE;
       case TIMESTAMP, TIMESTAMPZ -> ODCSSchemaElement.LogicalType.TIMESTAMP;
       case TIME -> ODCSSchemaElement.LogicalType.TIME;
       case ARRAY -> ODCSSchemaElement.LogicalType.ARRAY;
       case MAP, STRUCT, JSON -> ODCSSchemaElement.LogicalType.OBJECT;
+      case BLOB, BYTEA, BINARY, VARBINARY, LONGBLOB, MEDIUMBLOB -> ODCSSchemaElement.LogicalType
+          .BYTES;
+      case TEXT, MEDIUMTEXT, CLOB, NTEXT -> ODCSSchemaElement.LogicalType.TEXT;
       default -> ODCSSchemaElement.LogicalType.STRING;
     };
   }
@@ -319,14 +332,21 @@ public class ODCSConverter {
     if (logicalType == null) return ColumnDataType.STRING;
     return switch (logicalType) {
       case INTEGER -> ColumnDataType.INT;
-      case NUMBER -> ColumnDataType.DECIMAL;
+      case LONG -> ColumnDataType.BIGINT;
+      case FLOAT -> ColumnDataType.FLOAT;
+      case DOUBLE -> ColumnDataType.DOUBLE;
+      case DECIMAL -> ColumnDataType.DECIMAL;
+      case NUMBER -> ColumnDataType.NUMBER;
       case BOOLEAN -> ColumnDataType.BOOLEAN;
       case DATE -> ColumnDataType.DATE;
       case TIMESTAMP -> ColumnDataType.TIMESTAMP;
       case TIME -> ColumnDataType.TIME;
       case ARRAY -> ColumnDataType.ARRAY;
       case OBJECT -> ColumnDataType.STRUCT;
-      case STRING -> ColumnDataType.STRING;
+      case TEXT -> ColumnDataType.TEXT;
+      case BYTES -> ColumnDataType.BINARY;
+      case NULL -> ColumnDataType.NULL;
+      case STRING -> ColumnDataType.VARCHAR;
     };
   }
 
@@ -516,7 +536,7 @@ public class ODCSConverter {
           RefreshFrequency rf = new RefreshFrequency();
           rf.setInterval(parseInteger(prop.getValue()));
           if (prop.getUnit() != null) {
-            rf.setUnit(RefreshFrequency.Unit.fromValue(prop.getUnit()));
+            rf.setUnit(RefreshFrequency.Unit.fromValue(normalizeTimeUnit(prop.getUnit())));
           }
           sla.setRefreshFrequency(rf);
         }
@@ -525,7 +545,7 @@ public class ODCSConverter {
           MaxLatency ml = new MaxLatency();
           ml.setValue(parseInteger(prop.getValue()));
           if (prop.getUnit() != null) {
-            ml.setUnit(MaxLatency.Unit.fromValue(prop.getUnit()));
+            ml.setUnit(MaxLatency.Unit.fromValue(normalizeTimeUnit(prop.getUnit())));
           }
           sla.setMaxLatency(ml);
         }
@@ -533,7 +553,7 @@ public class ODCSConverter {
           Retention ret = new Retention();
           ret.setPeriod(parseInteger(prop.getValue()));
           if (prop.getUnit() != null) {
-            ret.setUnit(Retention.Unit.fromValue(prop.getUnit()));
+            ret.setUnit(Retention.Unit.fromValue(normalizeTimeUnit(prop.getUnit())));
           }
           sla.setRetention(ret);
         }
@@ -571,6 +591,38 @@ public class ODCSConverter {
     }
   }
 
+  private static String normalizeTimeUnit(String unit) {
+    if (unit == null) return null;
+    String lower = unit.toLowerCase().trim();
+    return switch (lower) {
+      case "hours", "hrs", "h" -> "hour";
+      case "days", "d" -> "day";
+      case "weeks", "wks", "w" -> "week";
+      case "months", "mos" -> "month";
+      case "years", "yrs", "y" -> "year";
+      case "minutes", "mins", "m" -> "minute";
+      case "seconds", "secs", "s" -> "second";
+      default -> lower;
+    };
+  }
+
+  private static void validateRequiredODCSFields(ODCSDataContract odcs) {
+    List<String> missingFields = new ArrayList<>();
+
+    // Note: apiVersion has a default value in the generated class, so it can never be null
+    if (odcs.getKind() == null) {
+      missingFields.add("kind");
+    }
+    if (odcs.getStatus() == null) {
+      missingFields.add("status");
+    }
+
+    if (!missingFields.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Missing required ODCS fields: " + String.join(", ", missingFields));
+    }
+  }
+
   private static String generateContractName(EntityReference entity) {
     if (entity == null || entity.getName() == null) {
       return "contract_" + UUID.randomUUID().toString().substring(0, 8);
@@ -593,8 +645,9 @@ public class ODCSConverter {
 
     DataContract merged = new DataContract();
 
+    // Preserve existing identity fields to maintain FQN integrity
     merged.setId(existing.getId());
-    merged.setName(imported.getName() != null ? imported.getName() : existing.getName());
+    merged.setName(existing.getName());
     merged.setFullyQualifiedName(existing.getFullyQualifiedName());
     merged.setDescription(
         imported.getDescription() != null ? imported.getDescription() : existing.getDescription());
@@ -635,6 +688,50 @@ public class ODCSConverter {
     merged.setCreatedBy(existing.getCreatedBy());
 
     return merged;
+  }
+
+  /**
+   * Performs a full replace of the existing contract with imported data, preserving only identity
+   * fields and execution history. This is used when the user wants to completely overwrite the
+   * contract without losing the contract ID and run history.
+   *
+   * @param existing The existing DataContract
+   * @param imported The imported DataContract from ODCS
+   * @return Replaced DataContract with preserved identity
+   */
+  public static DataContract fullReplace(DataContract existing, DataContract imported) {
+    if (existing == null) return imported;
+    if (imported == null) return existing;
+
+    // Start with imported data
+    DataContract replaced = new DataContract();
+
+    // Preserve identity fields from existing (critical for maintaining history)
+    replaced.setId(existing.getId());
+    replaced.setName(existing.getName());
+    replaced.setFullyQualifiedName(existing.getFullyQualifiedName());
+    replaced.setEntity(existing.getEntity());
+    replaced.setVersion(existing.getVersion());
+    replaced.setCreatedAt(existing.getCreatedAt());
+    replaced.setCreatedBy(existing.getCreatedBy());
+
+    // Preserve execution history reference
+    replaced.setLatestResult(existing.getLatestResult());
+    replaced.setTestSuite(existing.getTestSuite());
+
+    // Replace all other fields from imported
+    replaced.setDescription(imported.getDescription());
+    replaced.setEntityStatus(imported.getEntityStatus());
+    replaced.setSchema(imported.getSchema());
+    replaced.setSla(imported.getSla());
+    replaced.setSecurity(imported.getSecurity());
+    replaced.setOwners(imported.getOwners());
+    replaced.setReviewers(imported.getReviewers());
+    replaced.setTermsOfUse(imported.getTermsOfUse());
+    replaced.setExtension(imported.getExtension());
+    replaced.setSemantics(imported.getSemantics());
+
+    return replaced;
   }
 
   private static ContractSLA mergeSLA(ContractSLA existing, ContractSLA imported) {

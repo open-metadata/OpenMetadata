@@ -2234,6 +2234,259 @@ test.describe('Data Contracts', () => {
       await expect(page.getByTestId('columnName-input-0-0')).toBeVisible();
     });
   });
+
+  test('ODCS Import Modal with Merge Mode should preserve existing contract ID', async ({
+    page,
+  }) => {
+    test.slow(true);
+
+    const { apiContext } = await getApiContext(page);
+    const table = new TableClass();
+    await table.create(apiContext);
+
+    try {
+      await test.step('Create initial contract via ODCS import', async () => {
+        await redirectToHomePage(page);
+        await table.visitEntityPage(page);
+        await page.click('[data-testid="contract"]');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await page.getByTestId('add-contract-button').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+
+        const importResponse = page.waitForResponse(
+          '/api/v1/dataContracts/odcs/yaml**'
+        );
+
+        const fileInput = page.getByTestId('odcs-import-file-input');
+        await fileInput.setInputFiles({
+          name: 'initial.yaml',
+          mimeType: 'application/yaml',
+          buffer: Buffer.from(ODCS_WITH_SLA_YAML),
+        });
+
+        await importResponse;
+
+        await toastNotification(page, 'Contract imported successfully');
+
+        await expect(page.getByTestId('contract-title')).toBeVisible();
+        await expect(page.getByTestId('contract-sla-card')).toBeVisible();
+      });
+
+      await test.step(
+        'Import again via modal with merge mode (default)',
+        async () => {
+          // Click to import via the modal
+          await page.getByTestId('manage-contract-actions').click();
+
+          await page.waitForSelector('.contract-action-dropdown', {
+            state: 'visible',
+          });
+
+          await page.getByTestId('import-odcs-contract-button').click();
+
+          // Modal should be visible
+          await page.waitForSelector('.ant-modal', { state: 'visible' });
+
+          // Upload a new ODCS file with different content
+          const dropzone = page.locator('.ant-upload-drag');
+          await dropzone.click();
+
+          const fileInput = page.locator('input[type="file"]');
+          await fileInput.setInputFiles({
+            name: 'update.yaml',
+            mimeType: 'application/yaml',
+            buffer: Buffer.from(`apiVersion: v3.1.0
+kind: DataContract
+id: merge-update
+name: Updated via Merge
+version: "2.0.0"
+status: active
+description:
+  purpose: Updated description via merge mode
+`),
+          });
+
+          // Wait for file to be processed
+          await page.waitForSelector('.ant-alert-success');
+
+          // Modal should show "existing contract detected" warning and merge/replace options
+          await expect(
+            page.getByText(/existing contract detected/i)
+          ).toBeVisible();
+
+          // Verify merge is default selected
+          const mergeRadio = page.getByRole('radio', { name: /Merge/i });
+          await expect(mergeRadio).toBeChecked();
+
+          // Import with merge mode
+          const importResponse = page.waitForResponse(
+            '/api/v1/dataContracts/odcs/yaml**mode=merge**'
+          );
+
+          await page.getByRole('button', { name: 'Import' }).click();
+          await importResponse;
+
+          await toastNotification(page, 'imported successfully');
+
+          // Verify description was updated
+          await page.waitForLoadState('networkidle');
+
+          // SLA should still be preserved from original import (merge mode preserves fields)
+          await expect(page.getByTestId('contract-sla-card')).toBeVisible();
+        }
+      );
+    } finally {
+      await test.step('Cleanup: Delete contract', async () => {
+        const deleteResponse = page.waitForResponse(
+          'api/v1/dataContracts/*?hardDelete=true&recursive=true'
+        );
+
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+
+        await page.getByTestId('delete-contract-button').click();
+        await page.getByTestId('confirmation-text-input').fill('DELETE');
+        await page.getByTestId('confirm-button').click();
+        await deleteResponse;
+      });
+    }
+  });
+
+  test('ODCS Import Modal with Replace Mode should overwrite all fields', async ({
+    page,
+  }) => {
+    test.slow(true);
+
+    const { apiContext } = await getApiContext(page);
+    const table = new TableClass();
+    await table.create(apiContext);
+
+    try {
+      await test.step(
+        'Create initial contract with SLA via ODCS import',
+        async () => {
+          await redirectToHomePage(page);
+          await table.visitEntityPage(page);
+          await page.click('[data-testid="contract"]');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          await page.getByTestId('add-contract-button').click();
+
+          await page.waitForSelector('.contract-action-dropdown', {
+            state: 'visible',
+          });
+
+          const importResponse = page.waitForResponse(
+            '/api/v1/dataContracts/odcs/yaml**'
+          );
+
+          const fileInput = page.getByTestId('odcs-import-file-input');
+          await fileInput.setInputFiles({
+            name: 'initial.yaml',
+            mimeType: 'application/yaml',
+            buffer: Buffer.from(ODCS_WITH_SLA_YAML),
+          });
+
+          await importResponse;
+
+          await toastNotification(page, 'Contract imported successfully');
+
+          // Verify SLA is present
+          await expect(page.getByTestId('contract-sla-card')).toBeVisible();
+        }
+      );
+
+      await test.step(
+        'Import again via modal with replace mode',
+        async () => {
+          await page.getByTestId('manage-contract-actions').click();
+
+          await page.waitForSelector('.contract-action-dropdown', {
+            state: 'visible',
+          });
+
+          await page.getByTestId('import-odcs-contract-button').click();
+
+          await page.waitForSelector('.ant-modal', { state: 'visible' });
+
+          const dropzone = page.locator('.ant-upload-drag');
+          await dropzone.click();
+
+          const fileInput = page.locator('input[type="file"]');
+          await fileInput.setInputFiles({
+            name: 'replace.yaml',
+            mimeType: 'application/yaml',
+            buffer: Buffer.from(`apiVersion: v3.1.0
+kind: DataContract
+id: replace-contract
+name: Replaced Contract
+version: "3.0.0"
+status: active
+description:
+  purpose: Completely replaced via replace mode
+`),
+          });
+
+          await page.waitForSelector('.ant-alert-success');
+
+          await expect(
+            page.getByText(/existing contract detected/i)
+          ).toBeVisible();
+
+          // Select replace mode
+          const replaceRadio = page.getByRole('radio', { name: /Replace/i });
+          await replaceRadio.click();
+
+          const importResponse = page.waitForResponse(
+            '/api/v1/dataContracts/odcs/yaml**mode=replace**'
+          );
+
+          await page.getByRole('button', { name: 'Import' }).click();
+          await importResponse;
+
+          await toastNotification(page, 'imported successfully');
+
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          // SLA should NOT be visible (replace mode clears fields not in import)
+          await expect(
+            page.getByTestId('contract-sla-card')
+          ).not.toBeVisible();
+        }
+      );
+    } finally {
+      await test.step('Cleanup: Delete contract', async () => {
+        const deleteResponse = page.waitForResponse(
+          'api/v1/dataContracts/*?hardDelete=true&recursive=true'
+        );
+
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+
+        await page.getByTestId('delete-contract-button').click();
+        await page.getByTestId('confirmation-text-input').fill('DELETE');
+        await page.getByTestId('confirm-button').click();
+        await deleteResponse;
+      });
+    }
+  });
 });
 
 entitiesWithDataContracts.forEach((EntityClass) => {

@@ -2034,7 +2034,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals(ODCSDataContract.OdcsStatus.ACTIVE, odcs.getStatus());
     assertEquals(3, odcs.getSchema().size());
 
-    assertEquals(ODCSSchemaElement.LogicalType.INTEGER, odcs.getSchema().get(0).getLogicalType());
+    assertEquals(ODCSSchemaElement.LogicalType.LONG, odcs.getSchema().get(0).getLogicalType()); // BIGINT maps to LONG
     assertEquals(ODCSSchemaElement.LogicalType.STRING, odcs.getSchema().get(1).getLogicalType());
     assertEquals(ODCSSchemaElement.LogicalType.STRING, odcs.getSchema().get(2).getLogicalType());
 
@@ -2083,15 +2083,15 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertNotNull(odcs.getSlaProperties());
     assertTrue(odcs.getSlaProperties().size() >= 2);
 
-    boolean hasRefreshFrequency =
+    boolean hasFreshness =
         odcs.getSlaProperties().stream()
-            .anyMatch(p -> "refreshFrequency".equals(p.getProperty()) && "1".equals(p.getValue()));
-    assertTrue(hasRefreshFrequency);
+            .anyMatch(p -> "freshness".equals(p.getProperty()) && "1".equals(p.getValue())); // ODCS uses "freshness"
+    assertTrue(hasFreshness);
 
-    boolean hasMaxLatency =
+    boolean hasLatency =
         odcs.getSlaProperties().stream()
-            .anyMatch(p -> "maxLatency".equals(p.getProperty()) && "2".equals(p.getValue()));
-    assertTrue(hasMaxLatency);
+            .anyMatch(p -> "latency".equals(p.getProperty()) && "2".equals(p.getValue())); // ODCS uses "latency"
+    assertTrue(hasLatency);
   }
 
   // ===================================================================
@@ -3263,25 +3263,29 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
-  void testImportODCSWithMissingApiVersion(TestNamespace ns) {
+  void testImportODCSWithMissingApiVersionUsesDefault(TestNamespace ns) {
+    // Note: apiVersion has a default value of v3.1.0 in the schema, so missing it should succeed
     Table table = createTestTable(ns);
 
-    String invalidYaml =
-        """
-        kind: DataContract
-        id: missing-version-contract
-        name: Missing Version Contract
-        version: "1.0.0"
-        status: active
-        """;
+    String yamlWithoutVersion =
+        "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("missing_version")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n";
 
-    assertThrows(
-        Exception.class,
-        () ->
-            SdkClients.adminClient()
-                .dataContracts()
-                .importFromODCSYaml(invalidYaml, table.getId(), "table"),
-        "Import should fail for missing apiVersion");
+    // Should succeed using default apiVersion
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yamlWithoutVersion, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertEquals(ns.prefix("missing_version"), imported.getName());
   }
 
   @Test
@@ -3445,7 +3449,12 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
   @Test
   void testImportODCSAndRetrieveAsOpenMetadataFormat(TestNamespace ns) {
-    Table table = createTestTable(ns);
+    // Create table with columns matching the ODCS schema
+    List<Column> tableColumns =
+        List.of(
+            new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+            new Column().withName("email").withDataType(ColumnDataType.VARCHAR).withDataLength(255));
+    Table table = createTestTable(ns, tableColumns);
 
     ODCSDataContract odcs = new ODCSDataContract();
     odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
@@ -3463,10 +3472,10 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     List<ODCSSchemaElement> schema = new java.util.ArrayList<>();
     ODCSSchemaElement col1 = new ODCSSchemaElement();
-    col1.setName("user_id");
+    col1.setName("id");
     col1.setLogicalType(ODCSSchemaElement.LogicalType.INTEGER);
     col1.setPrimaryKey(true);
-    col1.setDescription("User identifier");
+    col1.setDescription("Primary identifier");
     schema.add(col1);
 
     ODCSSchemaElement col2 = new ODCSSchemaElement();
@@ -3495,10 +3504,10 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertNotNull(retrieved.getSchema());
     assertEquals(2, retrieved.getSchema().size());
 
-    Column userIdCol = retrieved.getSchema().get(0);
-    assertEquals("user_id", userIdCol.getName());
-    assertEquals(ColumnDataType.INT, userIdCol.getDataType());
-    assertEquals("User identifier", userIdCol.getDescription());
+    Column idCol = retrieved.getSchema().get(0);
+    assertEquals("id", idCol.getName());
+    assertEquals(ColumnDataType.INT, idCol.getDataType());
+    assertEquals("Primary identifier", idCol.getDescription());
 
     Column emailCol = retrieved.getSchema().get(1);
     assertEquals("email", emailCol.getName());
@@ -3570,7 +3579,14 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
   @Test
   void testImportODCSYamlWithFullFieldsAndRetrieveAsOpenMetadataFormat(TestNamespace ns) {
-    Table table = createTestTable(ns);
+    // Create table with columns matching the ODCS schema
+    List<Column> tableColumns =
+        List.of(
+            new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+            new Column().withName("created_at").withDataType(ColumnDataType.TIMESTAMP),
+            new Column().withName("amount").withDataType(ColumnDataType.DOUBLE),
+            new Column().withName("is_active").withDataType(ColumnDataType.BOOLEAN));
+    Table table = createTestTable(ns, tableColumns);
 
     String contractName = ns.prefix("odcs_yaml_full_to_om");
 
@@ -3642,7 +3658,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals(ColumnDataType.TIMESTAMP, retrieved.getSchema().get(1).getDataType());
 
     assertEquals("amount", retrieved.getSchema().get(2).getName());
-    assertEquals(ColumnDataType.DOUBLE, retrieved.getSchema().get(2).getDataType());
+    assertEquals(ColumnDataType.NUMBER, retrieved.getSchema().get(2).getDataType()); // ODCS "number" maps to NUMBER
 
     assertEquals("is_active", retrieved.getSchema().get(3).getName());
     assertEquals(ColumnDataType.BOOLEAN, retrieved.getSchema().get(3).getDataType());
@@ -3656,7 +3672,12 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
   @Test
   void testImportODCSWithTimezoneAndRetrieveAsOpenMetadataFormat(TestNamespace ns) {
-    Table table = createTestTable(ns);
+    // Create table with columns matching the ODCS schema
+    List<Column> tableColumns =
+        List.of(
+            new Column().withName("event_time").withDataType(ColumnDataType.TIMESTAMP),
+            new Column().withName("start_time").withDataType(ColumnDataType.TIME));
+    Table table = createTestTable(ns, tableColumns);
 
     ODCSDataContract odcs = new ODCSDataContract();
     odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
@@ -3731,7 +3752,10 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
   @Test
   void testImportODCSV302AndRetrieveAsOpenMetadataFormat(TestNamespace ns) {
-    Table table = createTestTable(ns);
+    // Create table with columns matching the ODCS schema
+    List<Column> tableColumns =
+        List.of(new Column().withName("legacy_field").withDataType(ColumnDataType.VARCHAR).withDataLength(255));
+    Table table = createTestTable(ns, tableColumns);
 
     ODCSDataContract odcs = new ODCSDataContract();
     odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_0_2);
@@ -3765,5 +3789,530 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertNotNull(retrieved.getSchema());
     assertEquals(1, retrieved.getSchema().size());
     assertEquals("legacy_field", retrieved.getSchema().get(0).getName());
+  }
+
+  // MERGE VS REPLACE MODE TESTS
+
+  @Test
+  void testODCSMergeModePreservesIdentity(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    // Create initial contract with schema
+    ODCSDataContract initialOdcs = new ODCSDataContract();
+    initialOdcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    initialOdcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    initialOdcs.setId(UUID.randomUUID().toString());
+    initialOdcs.setName(ns.prefix("merge_identity_test"));
+    initialOdcs.setVersion("1.0.0");
+    initialOdcs.setStatus(ODCSDataContract.OdcsStatus.DRAFT);
+
+    ODCSDescription desc = new ODCSDescription();
+    desc.setPurpose("Initial description");
+    initialOdcs.setDescription(desc);
+
+    List<ODCSSchemaElement> schema = new java.util.ArrayList<>();
+    ODCSSchemaElement col = new ODCSSchemaElement();
+    col.setName("id");
+    col.setLogicalType(ODCSSchemaElement.LogicalType.INTEGER);
+    schema.add(col);
+    initialOdcs.setSchema(schema);
+
+    DataContract created =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCS(initialOdcs, table.getId(), "table");
+
+    UUID originalId = created.getId();
+    String originalFqn = created.getFullyQualifiedName();
+    String originalName = created.getName();
+
+    // Update with merge mode
+    ODCSDataContract updateOdcs = new ODCSDataContract();
+    updateOdcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    updateOdcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    updateOdcs.setId(UUID.randomUUID().toString());
+    updateOdcs.setName(ns.prefix("different_name"));
+    updateOdcs.setVersion("2.0.0");
+    updateOdcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    ODCSDescription newDesc = new ODCSDescription();
+    newDesc.setPurpose("Updated description via merge");
+    updateOdcs.setDescription(newDesc);
+
+    DataContract merged =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCS(updateOdcs, table.getId(), "table", "merge");
+
+    // Verify ID, FQN, and name are preserved
+    assertEquals(originalId, merged.getId());
+    assertEquals(originalFqn, merged.getFullyQualifiedName());
+    assertEquals(originalName, merged.getName());
+    assertEquals(table.getId(), merged.getEntity().getId());
+
+    // Verify other fields are updated
+    assertTrue(merged.getDescription().contains("Updated description via merge"));
+  }
+
+  @Test
+  void testODCSMergeModePreservesExistingFields(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    // Create initial contract with schema and SLA
+    ODCSDataContract initialOdcs = new ODCSDataContract();
+    initialOdcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    initialOdcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    initialOdcs.setId(UUID.randomUUID().toString());
+    initialOdcs.setName(ns.prefix("merge_preserve_fields"));
+    initialOdcs.setVersion("1.0.0");
+    initialOdcs.setStatus(ODCSDataContract.OdcsStatus.DRAFT);
+
+    List<ODCSSchemaElement> schema = new java.util.ArrayList<>();
+    ODCSSchemaElement col = new ODCSSchemaElement();
+    col.setName("id"); // Use column that exists in test table
+    col.setLogicalType(ODCSSchemaElement.LogicalType.INTEGER);
+    col.setRequired(true);
+    schema.add(col);
+    initialOdcs.setSchema(schema);
+
+    List<ODCSSlaProperty> slaProps = new java.util.ArrayList<>();
+    ODCSSlaProperty freshness = new ODCSSlaProperty();
+    freshness.setProperty("freshness");
+    freshness.setValue("24");
+    freshness.setUnit("hour"); // Use normalized unit value
+    slaProps.add(freshness);
+    initialOdcs.setSlaProperties(slaProps);
+
+    DataContract created =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCS(initialOdcs, table.getId(), "table");
+
+    // Update with only description (no schema or SLA)
+    ODCSDataContract updateOdcs = new ODCSDataContract();
+    updateOdcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    updateOdcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    updateOdcs.setId(UUID.randomUUID().toString());
+    updateOdcs.setName(ns.prefix("merge_preserve_fields"));
+    updateOdcs.setVersion("1.0.0");
+    updateOdcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    ODCSDescription newDesc = new ODCSDescription();
+    newDesc.setPurpose("Updated description only");
+    updateOdcs.setDescription(newDesc);
+
+    DataContract merged =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCS(updateOdcs, table.getId(), "table", "merge");
+
+    DataContract retrieved =
+        SdkClients.adminClient().dataContracts().get(merged.getId().toString(), "schema,sla");
+
+    // Verify schema is preserved
+    assertNotNull(retrieved.getSchema());
+    assertEquals(1, retrieved.getSchema().size());
+    assertEquals("id", retrieved.getSchema().get(0).getName());
+
+    // Verify SLA is preserved
+    assertNotNull(retrieved.getSla());
+    assertNotNull(retrieved.getSla().getRefreshFrequency());
+  }
+
+  @Test
+  void testODCSReplaceModePreservesIdAndHistory(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    // Create initial contract with schema and SLA
+    ODCSDataContract initialOdcs = new ODCSDataContract();
+    initialOdcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    initialOdcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    initialOdcs.setId(UUID.randomUUID().toString());
+    initialOdcs.setName(ns.prefix("replace_test"));
+    initialOdcs.setVersion("1.0.0");
+    initialOdcs.setStatus(ODCSDataContract.OdcsStatus.DRAFT);
+
+    ODCSDescription desc = new ODCSDescription();
+    desc.setPurpose("Initial description");
+    initialOdcs.setDescription(desc);
+
+    List<ODCSSchemaElement> schema = new java.util.ArrayList<>();
+    ODCSSchemaElement col = new ODCSSchemaElement();
+    col.setName("name"); // Use column that exists in test table
+    col.setLogicalType(ODCSSchemaElement.LogicalType.STRING);
+    schema.add(col);
+    initialOdcs.setSchema(schema);
+
+    List<ODCSSlaProperty> slaProps = new java.util.ArrayList<>();
+    ODCSSlaProperty freshness = new ODCSSlaProperty();
+    freshness.setProperty("freshness");
+    freshness.setValue("48");
+    freshness.setUnit("hour"); // Use normalized unit value
+    slaProps.add(freshness);
+    initialOdcs.setSlaProperties(slaProps);
+
+    DataContract created =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCS(initialOdcs, table.getId(), "table");
+
+    UUID originalId = created.getId();
+    String originalFqn = created.getFullyQualifiedName();
+    String originalName = created.getName();
+
+    // Replace with completely different contract (no schema, no SLA)
+    ODCSDataContract replaceOdcs = new ODCSDataContract();
+    replaceOdcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    replaceOdcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    replaceOdcs.setId(UUID.randomUUID().toString());
+    replaceOdcs.setName(ns.prefix("different_name_replace"));
+    replaceOdcs.setVersion("3.0.0");
+    replaceOdcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    ODCSDescription newDesc = new ODCSDescription();
+    newDesc.setPurpose("Completely replaced description");
+    replaceOdcs.setDescription(newDesc);
+
+    DataContract replaced =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCS(replaceOdcs, table.getId(), "table", "replace");
+
+    // Verify ID, FQN, name, and entity are preserved
+    assertEquals(originalId, replaced.getId());
+    assertEquals(originalFqn, replaced.getFullyQualifiedName());
+    assertEquals(originalName, replaced.getName());
+    assertEquals(table.getId(), replaced.getEntity().getId());
+
+    // Verify description is replaced
+    assertTrue(replaced.getDescription().contains("Completely replaced description"));
+  }
+
+  @Test
+  void testODCSImportWithClassificationPII(TestNamespace ns) {
+    // Create table with columns matching the ODCS schema (nested users structure)
+    List<Column> childColumns =
+        List.of(
+            new Column().withName("email").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
+            new Column().withName("ssn").withDataType(ColumnDataType.VARCHAR).withDataLength(20),
+            new Column().withName("public_id").withDataType(ColumnDataType.VARCHAR).withDataLength(255));
+    List<Column> tableColumns =
+        List.of(new Column().withName("users").withDataType(ColumnDataType.STRUCT).withChildren(childColumns));
+    Table table = createTestTable(ns, tableColumns);
+
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("classification_pii")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "schema:\n"
+            + "  - name: users\n"
+            + "    properties:\n"
+            + "      - name: email\n"
+            + "        logicalType: string\n"
+            + "        classification: PII\n"
+            + "        description: User email address - contains personal information\n"
+            + "      - name: ssn\n"
+            + "        logicalType: string\n"
+            + "        classification: sensitive\n"
+            + "        description: Social security number\n"
+            + "      - name: public_id\n"
+            + "        logicalType: string\n"
+            + "        classification: public\n"
+            + "        description: Public identifier\n";
+
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertEquals(ns.prefix("classification_pii"), imported.getName());
+  }
+
+  @Test
+  void testODCSYamlMergeMode(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    String initialYaml =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("yaml_merge_test")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: draft\n"
+            + "description:\n"
+            + "  purpose: Initial contract\n"
+            + "slaProperties:\n"
+            + "  - property: freshness\n"
+            + "    value: '12'\n"
+            + "    unit: hour\n";
+
+    DataContract created =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(initialYaml, table.getId(), "table");
+
+    UUID originalId = created.getId();
+    String originalName = created.getName();
+
+    String updateYaml =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("yaml_merge_different_name")
+            + "\n"
+            + "version: '2.0.0'\n"
+            + "status: active\n"
+            + "description:\n"
+            + "  purpose: Updated via merge mode\n";
+
+    DataContract merged =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(updateYaml, table.getId(), "table", "merge");
+
+    // Verify ID and name preserved
+    assertEquals(originalId, merged.getId());
+    assertEquals(originalName, merged.getName());
+
+    // Verify description updated
+    assertTrue(merged.getDescription().contains("Updated via merge mode"));
+
+    DataContract retrieved =
+        SdkClients.adminClient().dataContracts().get(merged.getId().toString(), "sla");
+
+    // Verify SLA preserved (not in update YAML)
+    assertNotNull(retrieved.getSla());
+    assertNotNull(retrieved.getSla().getRefreshFrequency());
+  }
+
+  @Test
+  void testODCSYamlReplaceMode(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    String initialYaml =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("yaml_replace_test")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: draft\n"
+            + "description:\n"
+            + "  purpose: Initial contract\n"
+            + "slaProperties:\n"
+            + "  - property: freshness\n"
+            + "    value: '12'\n"
+            + "    unit: hours\n"
+            + "schema:\n"
+            + "  - name: name\n"
+            + "    logicalType: string\n";
+
+    DataContract created =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(initialYaml, table.getId(), "table");
+
+    UUID originalId = created.getId();
+    String originalName = created.getName();
+
+    String replaceYaml =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("yaml_replace_different_name")
+            + "\n"
+            + "version: '3.0.0'\n"
+            + "status: active\n"
+            + "description:\n"
+            + "  purpose: Completely replaced via replace mode\n";
+
+    DataContract replaced =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(replaceYaml, table.getId(), "table", "replace");
+
+    // Verify ID and name preserved
+    assertEquals(originalId, replaced.getId());
+    assertEquals(originalName, replaced.getName());
+
+    // Verify description replaced
+    assertTrue(replaced.getDescription().contains("Completely replaced via replace mode"));
+  }
+
+  @Test
+  void testODCSImportWithVariousClassifications(TestNamespace ns) {
+    // Create table with columns matching the ODCS schema (nested data structure)
+    List<Column> childColumns =
+        List.of(
+            new Column().withName("field_pii").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
+            new Column().withName("field_public").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
+            new Column().withName("field_internal").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
+            new Column().withName("field_confidential").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
+            new Column().withName("field_restricted").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
+            new Column().withName("field_sensitive").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
+            new Column().withName("field_custom").withDataType(ColumnDataType.VARCHAR).withDataLength(255));
+    List<Column> tableColumns =
+        List.of(new Column().withName("data").withDataType(ColumnDataType.STRUCT).withChildren(childColumns));
+    Table table = createTestTable(ns, tableColumns);
+
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("various_classifications")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "schema:\n"
+            + "  - name: data\n"
+            + "    properties:\n"
+            + "      - name: field_pii\n"
+            + "        logicalType: string\n"
+            + "        classification: PII\n"
+            + "      - name: field_public\n"
+            + "        logicalType: string\n"
+            + "        classification: public\n"
+            + "      - name: field_internal\n"
+            + "        logicalType: string\n"
+            + "        classification: internal\n"
+            + "      - name: field_confidential\n"
+            + "        logicalType: string\n"
+            + "        classification: confidential\n"
+            + "      - name: field_restricted\n"
+            + "        logicalType: string\n"
+            + "        classification: restricted\n"
+            + "      - name: field_sensitive\n"
+            + "        logicalType: string\n"
+            + "        classification: sensitive\n"
+            + "      - name: field_custom\n"
+            + "        logicalType: string\n"
+            + "        classification: CustomClassification\n";
+
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertEquals(ns.prefix("various_classifications"), imported.getName());
+  }
+
+  @Test
+  void testODCSImportFullV310Features(TestNamespace ns) {
+    // Create table with columns matching the ODCS schema (nested events structure)
+    List<Column> childColumns =
+        List.of(
+            new Column().withName("id").withDataType(ColumnDataType.INT),
+            new Column().withName("event_time").withDataType(ColumnDataType.TIMESTAMP),
+            new Column().withName("duration").withDataType(ColumnDataType.TIME),
+            new Column().withName("user_email").withDataType(ColumnDataType.VARCHAR).withDataLength(255));
+    List<Column> tableColumns =
+        List.of(new Column().withName("events").withDataType(ColumnDataType.STRUCT).withChildren(childColumns));
+    Table table = createTestTable(ns, tableColumns);
+
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("full_v310")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "description:\n"
+            + "  purpose: Full v3.1.0 test contract\n"
+            + "  limitations: Test only\n"
+            + "  usage: Integration testing\n"
+            + "schema:\n"
+            + "  - name: events\n"
+            + "    properties:\n"
+            + "      - name: id\n"
+            + "        logicalType: integer\n"
+            + "        primaryKey: true\n"
+            + "        required: true\n"
+            + "      - name: event_time\n"
+            + "        logicalType: timestamp\n"
+            + "        logicalTypeOptions:\n"
+            + "          timezone: true\n"
+            + "          defaultTimezone: America/New_York\n"
+            + "      - name: duration\n"
+            + "        logicalType: time\n"
+            + "      - name: user_email\n"
+            + "        logicalType: string\n"
+            + "        classification: PII\n"
+            + "        required: true\n"
+            + "slaProperties:\n"
+            + "  - property: freshness\n"
+            + "    value: '1'\n"
+            + "    unit: hours\n"
+            + "  - property: latency\n"
+            + "    value: '30'\n"
+            + "    unit: minute\n"
+            + "  - property: retention\n"
+            + "    value: '90'\n"
+            + "    unit: days\n"
+            + "roles:\n"
+            + "  - role: DataReader\n"
+            + "    description: Read-only access\n"
+            + "    access: read\n"
+            + "  - role: DataWriter\n"
+            + "    description: Write access\n"
+            + "    access: readWrite\n"
+            + "team:\n"
+            + "  - username: owner\n"
+            + "    role: owner\n"
+            + "  - username: developer\n"
+            + "    role: developer\n";
+
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertEquals(ns.prefix("full_v310"), imported.getName());
+
+    DataContract retrieved =
+        SdkClients.adminClient().dataContracts().get(imported.getId().toString(), "schema,sla");
+
+    // Verify various fields were imported
+    assertNotNull(retrieved.getDescription());
+    assertTrue(retrieved.getDescription().contains("Full v3.1.0 test contract"));
+
+    // Verify SLA
+    assertNotNull(retrieved.getSla());
+    assertNotNull(retrieved.getSla().getRefreshFrequency());
+    assertNotNull(retrieved.getSla().getMaxLatency());
+    assertNotNull(retrieved.getSla().getRetention());
+
+    // Verify schema
+    assertNotNull(retrieved.getSchema());
+    assertFalse(retrieved.getSchema().isEmpty());
   }
 }

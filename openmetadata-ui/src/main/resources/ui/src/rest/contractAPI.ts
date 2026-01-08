@@ -386,18 +386,20 @@ export const createOrUpdateContractFromODCS = async (
 };
 
 /**
- * Create or update a data contract from ODCS v3.1.0 YAML format (smart merge)
+ * Create or update a data contract from ODCS v3.1.0 YAML format
+ * @param mode 'merge' preserves existing fields, 'replace' overwrites all fields but preserves ID and history
  */
 export const createOrUpdateContractFromODCSYaml = async (
   yamlContent: string,
   entityId: string,
-  entityType: string
+  entityType: string,
+  mode: 'merge' | 'replace' = 'merge'
 ): Promise<DataContract> => {
   const response = await APIClient.put<DataContract>(
     `${BASE_URL}/odcs/yaml`,
     yamlContent,
     {
-      params: { entityId, entityType },
+      params: { entityId, entityType, mode },
       headers: { 'Content-Type': 'application/yaml' },
     }
   );

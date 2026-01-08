@@ -157,28 +157,52 @@ public class DataContractService extends EntityServiceBase<DataContract> {
   }
 
   /**
-   * Create or update data contract from ODCS format.
+   * Create or update data contract from ODCS format using merge mode (default).
    */
   public DataContract createOrUpdateFromODCS(
       ODCSDataContract odcs, UUID entityId, String entityType) throws OpenMetadataException {
+    return createOrUpdateFromODCS(odcs, entityId, entityType, "merge");
+  }
+
+  /**
+   * Create or update data contract from ODCS format with specified mode.
+   *
+   * @param mode 'merge' preserves existing fields, 'replace' overwrites all fields
+   */
+  public DataContract createOrUpdateFromODCS(
+      ODCSDataContract odcs, UUID entityId, String entityType, String mode)
+      throws OpenMetadataException {
     RequestOptions options =
         RequestOptions.builder()
             .queryParam("entityId", entityId.toString())
             .queryParam("entityType", entityType)
+            .queryParam("mode", mode)
             .build();
     return httpClient.execute(
         HttpMethod.PUT, basePath + "/odcs", odcs, DataContract.class, options);
   }
 
   /**
-   * Create or update data contract from ODCS YAML format.
+   * Create or update data contract from ODCS YAML format using merge mode (default).
    */
   public DataContract createOrUpdateFromODCSYaml(
       String yamlContent, UUID entityId, String entityType) throws OpenMetadataException {
+    return createOrUpdateFromODCSYaml(yamlContent, entityId, entityType, "merge");
+  }
+
+  /**
+   * Create or update data contract from ODCS YAML format with specified mode.
+   *
+   * @param mode 'merge' preserves existing fields, 'replace' overwrites all fields
+   */
+  public DataContract createOrUpdateFromODCSYaml(
+      String yamlContent, UUID entityId, String entityType, String mode)
+      throws OpenMetadataException {
     RequestOptions options =
         RequestOptions.builder()
             .queryParam("entityId", entityId.toString())
             .queryParam("entityType", entityType)
+            .queryParam("mode", mode)
             .header("Content-Type", "application/yaml")
             .build();
     return httpClient.execute(

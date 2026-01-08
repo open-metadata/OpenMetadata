@@ -15,6 +15,7 @@ package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -551,13 +552,13 @@ class ODCSConverterTest {
     assertEquals(
         ODCSSchemaElement.LogicalType.INTEGER, odcs.getSchema().get(0).getLogicalType()); // INT
     assertEquals(
-        ODCSSchemaElement.LogicalType.INTEGER, odcs.getSchema().get(1).getLogicalType()); // BIGINT
+        ODCSSchemaElement.LogicalType.LONG, odcs.getSchema().get(1).getLogicalType()); // BIGINT
     assertEquals(
-        ODCSSchemaElement.LogicalType.NUMBER, odcs.getSchema().get(2).getLogicalType()); // FLOAT
+        ODCSSchemaElement.LogicalType.FLOAT, odcs.getSchema().get(2).getLogicalType()); // FLOAT
     assertEquals(
-        ODCSSchemaElement.LogicalType.NUMBER, odcs.getSchema().get(3).getLogicalType()); // DOUBLE
+        ODCSSchemaElement.LogicalType.DOUBLE, odcs.getSchema().get(3).getLogicalType()); // DOUBLE
     assertEquals(
-        ODCSSchemaElement.LogicalType.NUMBER, odcs.getSchema().get(4).getLogicalType()); // DECIMAL
+        ODCSSchemaElement.LogicalType.DECIMAL, odcs.getSchema().get(4).getLogicalType()); // DECIMAL
     assertEquals(
         ODCSSchemaElement.LogicalType.BOOLEAN, odcs.getSchema().get(5).getLogicalType()); // BOOLEAN
     assertEquals(
@@ -627,9 +628,11 @@ class ODCSConverterTest {
     assertEquals(7, contract.getSchema().size());
 
     assertEquals(ColumnDataType.INT, contract.getSchema().get(0).getDataType());
-    assertEquals(ColumnDataType.DECIMAL, contract.getSchema().get(1).getDataType());
+    assertEquals(ColumnDataType.NUMBER, contract.getSchema().get(1).getDataType());
     assertEquals(ColumnDataType.BOOLEAN, contract.getSchema().get(2).getDataType());
-    assertEquals(ColumnDataType.STRING, contract.getSchema().get(3).getDataType());
+    assertEquals(
+        ColumnDataType.VARCHAR,
+        contract.getSchema().get(3).getDataType()); // STRING logical type maps to VARCHAR
     assertEquals(ColumnDataType.DATE, contract.getSchema().get(4).getDataType());
     assertEquals(ColumnDataType.ARRAY, contract.getSchema().get(5).getDataType());
     assertEquals(ColumnDataType.STRUCT, contract.getSchema().get(6).getDataType());
@@ -769,7 +772,24 @@ class ODCSConverterTest {
         getContractStatus(ODCSDataContract.OdcsStatus.DEPRECATED, entityRef));
     assertEquals(
         EntityStatus.DEPRECATED, getContractStatus(ODCSDataContract.OdcsStatus.RETIRED, entityRef));
-    assertEquals(EntityStatus.DRAFT, getContractStatus(null, entityRef));
+  }
+
+  @Test
+  void testFromODCS_MissingStatusThrowsException() {
+    EntityReference entityRef = new EntityReference();
+    entityRef.setId(UUID.randomUUID());
+    entityRef.setType("table");
+
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_0_2);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setVersion("1.0.0");
+    // status is null (missing)
+
+    IllegalArgumentException exception =
+        assertThrows(IllegalArgumentException.class, () -> ODCSConverter.fromODCS(odcs, entityRef));
+    assertTrue(exception.getMessage().contains("status"));
   }
 
   private EntityStatus getContractStatus(
@@ -881,7 +901,9 @@ class ODCSConverterTest {
 
     assertEquals(existing.getId(), merged.getId());
     assertEquals(existing.getFullyQualifiedName(), merged.getFullyQualifiedName());
-    assertEquals("imported_contract", merged.getName());
+    assertEquals(
+        "existing_contract",
+        merged.getName()); // smartMerge preserves existing name for FQN integrity
     assertEquals("Imported description", merged.getDescription());
     assertEquals(EntityStatus.DRAFT, merged.getEntityStatus());
     assertEquals(existing.getEntity(), merged.getEntity());
@@ -922,7 +944,9 @@ class ODCSConverterTest {
 
     DataContract merged = ODCSConverter.smartMerge(existing, imported);
 
-    assertEquals("imported_contract", merged.getName());
+    assertEquals(
+        "existing_contract",
+        merged.getName()); // smartMerge preserves existing name for FQN integrity
     assertEquals(EntityStatus.APPROVED, merged.getEntityStatus());
     assertEquals(1, merged.getSchema().size());
     assertEquals("new_col", merged.getSchema().get(0).getName());

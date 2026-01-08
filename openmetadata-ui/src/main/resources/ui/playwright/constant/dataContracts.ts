@@ -427,6 +427,67 @@ roles:
     access: read
 `;
 
+// ODCS with PII classification (testing that custom string classifications work)
+export const ODCS_WITH_PII_CLASSIFICATION_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: pii-classification-contract
+name: ODCS Contract with PII Classification
+version: "1.0.0"
+status: active
+description:
+  purpose: Contract testing PII classification support
+schema:
+  - name: users
+    properties:
+      - name: email
+        logicalType: string
+        classification: PII
+        description: User email - contains personal information
+      - name: name
+        logicalType: string
+        classification: PersonalData
+      - name: public_id
+        logicalType: string
+        classification: public
+`;
+
+// ODCS for merge mode testing - initial contract
+export const ODCS_MERGE_INITIAL_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: merge-test-initial
+name: Merge Test Contract
+version: "1.0.0"
+status: draft
+description:
+  purpose: Initial contract for merge testing
+slaProperties:
+  - property: freshness
+    value: "24"
+    unit: hour
+`;
+
+// ODCS for merge mode testing - update with different fields
+export const ODCS_MERGE_UPDATE_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: merge-test-update
+name: Different Name for Merge
+version: "2.0.0"
+status: active
+description:
+  purpose: Updated description via merge mode
+`;
+
+// ODCS for replace mode testing
+export const ODCS_REPLACE_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: replace-test
+name: Completely Different Name
+version: "3.0.0"
+status: active
+description:
+  purpose: Completely replaced contract via replace mode
+`;
+
 // Helper function to generate unique ODCS contract
 export const generateODCSContract = (
   name: string,

@@ -79,7 +79,7 @@ jest.mock('react-i18next', () => ({
         'message.import-mode-merge-description':
           'Merge imported data with existing contract',
         'message.import-mode-replace-description':
-          'Replace existing contract completely',
+          'Overwrite all contract fields with imported ODCS',
         'message.import-odcs-merge-preserve-id':
           'Preserve existing contract ID',
         'message.import-odcs-merge-update-fields':
@@ -87,12 +87,12 @@ jest.mock('react-i18next', () => ({
         'message.import-odcs-merge-preserve-reviewers':
           'Preserve existing reviewers',
         'message.import-odcs-merge-deep-merge-sla': 'Deep merge SLA properties',
-        'message.import-odcs-replace-delete-existing':
-          'Delete existing contract',
-        'message.import-odcs-replace-create-new':
-          'Create new contract from import',
-        'message.import-odcs-replace-lose-history':
-          'Lose existing history and version',
+        'message.import-odcs-replace-overwrite-all':
+          'All contract fields will be overwritten',
+        'message.import-odcs-replace-preserve-id':
+          'Contract ID will be preserved',
+        'message.import-odcs-replace-preserve-history':
+          'Execution history will be preserved',
         'message.entity-imported-successfully': `${options?.entity} imported successfully`,
       };
 
@@ -591,13 +591,13 @@ describe('ContractImportModal', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('Delete existing contract')
+          screen.getByText('All contract fields will be overwritten')
         ).toBeInTheDocument();
         expect(
-          screen.getByText('Create new contract from import')
+          screen.getByText('Contract ID will be preserved')
         ).toBeInTheDocument();
         expect(
-          screen.getByText('Lose existing history and version')
+          screen.getByText('Execution history will be preserved')
         ).toBeInTheDocument();
       });
     });
@@ -647,7 +647,7 @@ describe('ContractImportModal', () => {
       });
     });
 
-    it('should call createOrUpdateContractFromODCSYaml for merge mode', async () => {
+    it('should call createOrUpdateContractFromODCSYaml with merge mode', async () => {
       (createOrUpdateContractFromODCSYaml as jest.Mock).mockResolvedValue(
         mockImportedContract
       );
@@ -685,15 +685,15 @@ describe('ContractImportModal', () => {
         expect(createOrUpdateContractFromODCSYaml).toHaveBeenCalledWith(
           validODCSYaml,
           'table-1',
-          'table'
+          'table',
+          'merge'
         );
         expect(deleteContractById).not.toHaveBeenCalled();
       });
     });
 
-    it('should delete and recreate for replace mode', async () => {
-      (deleteContractById as jest.Mock).mockResolvedValue({});
-      (importContractFromODCSYaml as jest.Mock).mockResolvedValue(
+    it('should call createOrUpdateContractFromODCSYaml with replace mode', async () => {
+      (createOrUpdateContractFromODCSYaml as jest.Mock).mockResolvedValue(
         mockImportedContract
       );
 
@@ -734,12 +734,13 @@ describe('ContractImportModal', () => {
       });
 
       await waitFor(() => {
-        expect(deleteContractById).toHaveBeenCalledWith('existing-contract-id');
-        expect(importContractFromODCSYaml).toHaveBeenCalledWith(
+        expect(createOrUpdateContractFromODCSYaml).toHaveBeenCalledWith(
           validODCSYaml,
           'table-1',
-          'table'
+          'table',
+          'replace'
         );
+        expect(deleteContractById).not.toHaveBeenCalled();
       });
     });
 

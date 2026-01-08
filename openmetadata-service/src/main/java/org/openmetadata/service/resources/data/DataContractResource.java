@@ -1169,7 +1169,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       operationId = "createOrUpdateDataContractFromODCSYaml",
       summary = "Create or update data contract from ODCS YAML format",
       description =
-          "Create or update a data contract from Open Data Contract Standard (ODCS) v3.1.0 YAML format. When updating, performs smart merge preserving existing fields not in the import.",
+          "Create or update a data contract from Open Data Contract Standard (ODCS) v3.1.0 YAML format. "
+              + "Use mode=merge (default) to preserve existing fields not in the import. "
+              + "Use mode=replace to fully overwrite the contract while preserving ID and execution history.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1193,13 +1195,26 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string", example = Entity.TABLE))
           @QueryParam("entityType")
           String entityType,
+      @Parameter(
+              description =
+                  "Import mode: 'merge' preserves existing fields, 'replace' overwrites all fields",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"merge", "replace"}))
+          @QueryParam("mode")
+          @DefaultValue("merge")
+          String mode,
       String yamlContent) {
     try {
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
       ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
       EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
       DataContract imported = ODCSConverter.fromODCS(odcs, entityRef);
-      DataContract dataContract = applySmartMerge(entityRef, imported);
+      DataContract dataContract =
+          "replace".equalsIgnoreCase(mode)
+              ? applyFullReplace(entityRef, imported)
+              : applySmartMerge(entityRef, imported);
       dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
       dataContract.setUpdatedAt(System.currentTimeMillis());
       return createOrUpdate(uriInfo, securityContext, dataContract);
@@ -1222,6 +1237,30 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     if (existing != null) {
       LOG.debug("Found existing contract {} for entity {}", existing.getId(), entityRef.getId());
       return ODCSConverter.smartMerge(existing, imported);
+    }
+
+    // No existing contract found - return imported for new creation
+    LOG.debug("No existing contract found for entity {}, will create new", entityRef.getId());
+    return imported;
+  }
+
+  private DataContract applyFullReplace(EntityReference entityRef, DataContract imported) {
+    DataContract existing = null;
+
+    // Try to find existing contract by entity reference
+    try {
+      existing = repository.loadEntityDataContract(entityRef);
+    } catch (Exception e) {
+      LOG.debug(
+          "Could not load contract by entity ref for {}: {}", entityRef.getId(), e.getMessage());
+    }
+
+    if (existing != null) {
+      LOG.debug(
+          "Found existing contract {} for entity {}, will replace",
+          existing.getId(),
+          entityRef.getId());
+      return ODCSConverter.fullReplace(existing, imported);
     }
 
     // No existing contract found - return imported for new creation

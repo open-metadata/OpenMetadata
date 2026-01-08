@@ -11,28 +11,83 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 import { test } from '../fixtures/pages';
-import {
-  generateODCSContract,
-  ODCS_DRAFT_STATUS_YAML,
-  ODCS_FULL_CONTRACT_YAML,
-  ODCS_INVALID_MALFORMED_YAML,
-  ODCS_MINIMAL_YAML,
-  ODCS_V302_YAML,
-  ODCS_WITH_DESCRIPTION_YAML,
-  ODCS_WITH_QUALITY_RULES_YAML,
-  ODCS_WITH_SCHEMA_YAML,
-  ODCS_WITH_SECURITY_YAML,
-  ODCS_WITH_SLA_YAML,
-  ODCS_WITH_TEAM_YAML,
-  ODCS_WITH_TIMESTAMP_YAML,
-} from '../../constant/dataContracts';
+import { generateODCSContract } from '../../constant/dataContracts';
 import { TableClass } from '../../support/entity/TableClass';
 import {
   getApiContext,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
+
+// Path to the ODCS test data files
+const ODCS_TEST_DATA_PATH = path.join(
+  __dirname,
+  '../../../test-data/odcs-examples'
+);
+
+// Helper function to load ODCS test data files
+const loadODCSTestFile = (filename: string): string => {
+  const filePath = path.join(ODCS_TEST_DATA_PATH, filename);
+
+  return fs.readFileSync(filePath, 'utf-8');
+};
+
+// Lazy-loaded ODCS test data from files
+const ODCS_TEST_FILES = {
+  // Valid files
+  get VALID_BASIC_YAML() {
+    return loadODCSTestFile('valid-basic.yaml');
+  },
+  get VALID_FULL_YAML() {
+    return loadODCSTestFile('valid-full.yaml');
+  },
+  get VALID_DRAFT_STATUS_YAML() {
+    return loadODCSTestFile('valid-draft-status.yaml');
+  },
+  get VALID_WITH_TIMESTAMPS_YAML() {
+    return loadODCSTestFile('valid-with-timestamps.yaml');
+  },
+  get VALID_QUALITY_RULES_YAML() {
+    return loadODCSTestFile('valid-quality-rules.yaml');
+  },
+  get VALID_BASIC_JSON() {
+    return loadODCSTestFile('valid-basic.json');
+  },
+  get VALID_FULL_JSON() {
+    return loadODCSTestFile('valid-full.json');
+  },
+  // Invalid files
+  get INVALID_EMPTY_FILE_YAML() {
+    return loadODCSTestFile('invalid-empty-file.yaml');
+  },
+  get INVALID_MALFORMED_YAML() {
+    return loadODCSTestFile('invalid-malformed-yaml.yaml');
+  },
+  get INVALID_MALFORMED_JSON() {
+    return loadODCSTestFile('invalid-malformed.json');
+  },
+  get INVALID_MISSING_APIVERSION_YAML() {
+    return loadODCSTestFile('invalid-missing-apiversion.yaml');
+  },
+  get INVALID_MISSING_KIND_YAML() {
+    return loadODCSTestFile('invalid-missing-kind.yaml');
+  },
+  get INVALID_MISSING_STATUS_YAML() {
+    return loadODCSTestFile('invalid-missing-status.yaml');
+  },
+  get INVALID_NOT_YAML_TXT() {
+    return loadODCSTestFile('invalid-not-yaml.txt');
+  },
+  get INVALID_WRONG_APIVERSION_YAML() {
+    return loadODCSTestFile('invalid-wrong-apiversion.yaml');
+  },
+  get INVALID_WRONG_KIND_YAML() {
+    return loadODCSTestFile('invalid-wrong-kind.yaml');
+  },
+};
 
 const navigateToContractTab = async (page, table) => {
   await table.visitEntityPage(page);
@@ -149,72 +204,9 @@ test.describe('ODCS Import/Export', () => {
     await redirectToHomePage(page);
   });
 
-  test('Import minimal ODCS contract', async ({ page }) => {
-    const table = new TableClass();
-    const { apiContext } = await getApiContext(page);
-    await table.create(apiContext);
+  // Tests using actual test-data files from test-data/odcs-examples/
 
-    try {
-      await navigateToContractTab(page, table);
-      await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_MINIMAL_YAML, 'minimal.yaml');
-
-      await expect(page.getByTestId('contract-title')).toBeVisible();
-    } finally {
-      await table.delete(apiContext);
-    }
-  });
-
-  test('Import ODCS contract with SLA properties', async ({ page }) => {
-    const table = new TableClass();
-    const { apiContext } = await getApiContext(page);
-    await table.create(apiContext);
-
-    try {
-      await navigateToContractTab(page, table);
-      await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_WITH_SLA_YAML, 'sla-contract.yaml');
-
-      await expect(page.getByTestId('contract-title')).toBeVisible();
-      await expect(page.getByTestId('contract-sla-card')).toBeVisible();
-    } finally {
-      await table.delete(apiContext);
-    }
-  });
-
-  test('Import ODCS contract with schema', async ({ page }) => {
-    const table = new TableClass();
-    const { apiContext } = await getApiContext(page);
-    await table.create(apiContext);
-
-    try {
-      await navigateToContractTab(page, table);
-      await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_WITH_SCHEMA_YAML, 'schema-contract.yaml');
-
-      await expect(page.getByTestId('contract-title')).toBeVisible();
-    } finally {
-      await table.delete(apiContext);
-    }
-  });
-
-  test('Import ODCS contract with team information', async ({ page }) => {
-    const table = new TableClass();
-    const { apiContext } = await getApiContext(page);
-    await table.create(apiContext);
-
-    try {
-      await navigateToContractTab(page, table);
-      await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_WITH_TEAM_YAML, 'team-contract.yaml');
-
-      await expect(page.getByTestId('contract-title')).toBeVisible();
-    } finally {
-      await table.delete(apiContext);
-    }
-  });
-
-  test('Import ODCS contract with description', async ({ page }) => {
+  test('Import basic ODCS contract from test-data file', async ({ page }) => {
     const table = new TableClass();
     const { apiContext } = await getApiContext(page);
     await table.create(apiContext);
@@ -224,8 +216,8 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_WITH_DESCRIPTION_YAML,
-        'description-contract.yaml'
+        ODCS_TEST_FILES.VALID_BASIC_YAML,
+        'valid-basic.yaml'
       );
 
       await expect(page.getByTestId('contract-title')).toBeVisible();
@@ -234,24 +226,7 @@ test.describe('ODCS Import/Export', () => {
     }
   });
 
-  test('Import full ODCS contract with all fields', async ({ page }) => {
-    const table = new TableClass();
-    const { apiContext } = await getApiContext(page);
-    await table.create(apiContext);
-
-    try {
-      await navigateToContractTab(page, table);
-      await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_FULL_CONTRACT_YAML, 'full-contract.yaml');
-
-      await expect(page.getByTestId('contract-title')).toBeVisible();
-      await expect(page.getByTestId('contract-sla-card')).toBeVisible();
-    } finally {
-      await table.delete(apiContext);
-    }
-  });
-
-  test('Import ODCS v3.0.2 contract (backwards compatibility)', async ({
+  test('Import full ODCS contract with all sections from test-data file', async ({
     page,
   }) => {
     const table = new TableClass();
@@ -261,15 +236,22 @@ test.describe('ODCS Import/Export', () => {
     try {
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_V302_YAML, 'v302-contract.yaml');
+      await importODCSYaml(
+        page,
+        ODCS_TEST_FILES.VALID_FULL_YAML,
+        'valid-full.yaml'
+      );
 
       await expect(page.getByTestId('contract-title')).toBeVisible();
+      await expect(page.getByTestId('contract-sla-card')).toBeVisible();
     } finally {
       await table.delete(apiContext);
     }
   });
 
-  test('Import ODCS contract with draft status', async ({ page }) => {
+  test('Import ODCS contract with draft status from test-data file', async ({
+    page,
+  }) => {
     const table = new TableClass();
     const { apiContext } = await getApiContext(page);
     await table.create(apiContext);
@@ -279,8 +261,8 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_DRAFT_STATUS_YAML,
-        'draft-contract.yaml'
+        ODCS_TEST_FILES.VALID_DRAFT_STATUS_YAML,
+        'valid-draft-status.yaml'
       );
 
       await expect(page.getByTestId('contract-title')).toBeVisible();
@@ -289,7 +271,208 @@ test.describe('ODCS Import/Export', () => {
     }
   });
 
-  test('Import malformed ODCS YAML shows error', async ({ page }) => {
+  test('Import ODCS contract with v3.1.0 timestamp types from test-data file', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await importODCSYaml(
+        page,
+        ODCS_TEST_FILES.VALID_WITH_TIMESTAMPS_YAML,
+        'valid-with-timestamps.yaml'
+      );
+
+      await expect(page.getByTestId('contract-title')).toBeVisible();
+      await expect(page.getByTestId('contract-sla-card')).toBeVisible();
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  test('Import ODCS contract with quality rules from test-data file', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await importODCSYaml(
+        page,
+        ODCS_TEST_FILES.VALID_QUALITY_RULES_YAML,
+        'valid-quality-rules.yaml'
+      );
+
+      await expect(page.getByTestId('contract-title')).toBeVisible();
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  // Invalid file tests using test-data files
+
+  test('Import malformed ODCS YAML from test-data file shows error', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await clickImportODCSButton(page);
+
+      await page.waitForSelector('.ant-modal', {
+        state: 'visible',
+        timeout: 10000,
+      });
+
+      const fileInput = page.locator('.ant-upload input[type="file"]');
+      await fileInput.setInputFiles({
+        name: 'invalid-malformed-yaml.yaml',
+        mimeType: 'application/yaml',
+        buffer: Buffer.from(ODCS_TEST_FILES.INVALID_MALFORMED_YAML),
+      });
+
+      // Should show error alert for malformed YAML
+      await expect(page.locator('.ant-alert-error')).toBeVisible({
+        timeout: 10000,
+      });
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  test('Import ODCS missing apiVersion from test-data file shows error', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await clickImportODCSButton(page);
+
+      await page.waitForSelector('.ant-modal', {
+        state: 'visible',
+        timeout: 10000,
+      });
+
+      const fileInput = page.locator('.ant-upload input[type="file"]');
+      await fileInput.setInputFiles({
+        name: 'invalid-missing-apiversion.yaml',
+        mimeType: 'application/yaml',
+        buffer: Buffer.from(ODCS_TEST_FILES.INVALID_MISSING_APIVERSION_YAML),
+      });
+
+      // Should show error alert for missing apiVersion
+      await expect(page.locator('.ant-alert-error')).toBeVisible({
+        timeout: 10000,
+      });
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  test('Import ODCS missing status from test-data file shows error', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await clickImportODCSButton(page);
+
+      await page.waitForSelector('.ant-modal', {
+        state: 'visible',
+        timeout: 10000,
+      });
+
+      const fileInput = page.locator('.ant-upload input[type="file"]');
+      await fileInput.setInputFiles({
+        name: 'invalid-missing-status.yaml',
+        mimeType: 'application/yaml',
+        buffer: Buffer.from(ODCS_TEST_FILES.INVALID_MISSING_STATUS_YAML),
+      });
+
+      // Should show error alert for missing status
+      await expect(page.locator('.ant-alert-error')).toBeVisible({
+        timeout: 10000,
+      });
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  test('Import empty ODCS file from test-data shows error', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await clickImportODCSButton(page);
+
+      await page.waitForSelector('.ant-modal', {
+        state: 'visible',
+        timeout: 10000,
+      });
+
+      const fileInput = page.locator('.ant-upload input[type="file"]');
+      await fileInput.setInputFiles({
+        name: 'invalid-empty-file.yaml',
+        mimeType: 'application/yaml',
+        buffer: Buffer.from(ODCS_TEST_FILES.INVALID_EMPTY_FILE_YAML),
+      });
+
+      // Should show error alert for empty/invalid file
+      await expect(page.locator('.ant-alert-error')).toBeVisible({
+        timeout: 10000,
+      });
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  // Legacy tests using inline constants (kept for backwards compatibility)
+
+  test('Import minimal ODCS contract (inline)', async ({ page }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await importODCSYaml(
+        page,
+        generateODCSContract('Minimal Contract'),
+        'minimal.yaml'
+      );
+
+      await expect(page.getByTestId('contract-title')).toBeVisible();
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  test('Import malformed ODCS YAML shows error (inline)', async ({ page }) => {
     const table = new TableClass();
     const { apiContext } = await getApiContext(page);
     await table.create(apiContext);
@@ -303,13 +486,13 @@ test.describe('ODCS Import/Export', () => {
       await fileInput.setInputFiles({
         name: 'malformed.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_INVALID_MALFORMED_YAML),
+        buffer: Buffer.from(ODCS_TEST_FILES.INVALID_MALFORMED_YAML),
       });
 
       // Should show an error alert for malformed YAML
-      await expect(
-        page.locator('.ant-alert-error')
-      ).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('.ant-alert-error')).toBeVisible({
+        timeout: 15000,
+      });
     } finally {
       await table.delete(apiContext);
     }
@@ -324,7 +507,11 @@ test.describe('ODCS Import/Export', () => {
       // First import a contract
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_WITH_SLA_YAML, 'export-test.yaml');
+      await importODCSYaml(
+        page,
+        ODCS_TEST_FILES.VALID_BASIC_YAML,
+        'export-test.yaml'
+      );
 
       // Now export the contract
       const downloadPromise = page.waitForEvent('download');
@@ -410,7 +597,11 @@ test.describe('ODCS Import/Export', () => {
       // First import a minimal contract
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_MINIMAL_YAML, 'initial.yaml');
+      await importODCSYaml(
+        page,
+        ODCS_TEST_FILES.VALID_BASIC_YAML,
+        'initial.yaml'
+      );
 
       // Verify minimal contract was created
       await expect(page.getByTestId('contract-title')).toBeVisible();
@@ -420,7 +611,7 @@ test.describe('ODCS Import/Export', () => {
 
       // Now import a contract with SLA to merge with the existing one
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_WITH_SLA_YAML, 'update-with-sla.yaml', {
+      await importODCSYaml(page, ODCS_TEST_FILES.VALID_FULL_YAML, 'update-with-sla.yaml', {
         hasExistingContract: true,
         mode: 'merge',
       });
@@ -448,7 +639,7 @@ test.describe('ODCS Import/Export', () => {
       // First import a contract with SLA
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_WITH_SLA_YAML, 'initial.yaml');
+      await importODCSYaml(page, ODCS_TEST_FILES.VALID_FULL_YAML, 'initial.yaml');
 
       // Verify SLA card is visible
       await expect(page.getByTestId('contract-sla-card')).toBeVisible({
@@ -457,7 +648,7 @@ test.describe('ODCS Import/Export', () => {
 
       // Now replace with a minimal contract (no SLA)
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_MINIMAL_YAML, 'replace.yaml', {
+      await importODCSYaml(page, ODCS_TEST_FILES.VALID_BASIC_YAML, 'replace.yaml', {
         hasExistingContract: true,
         mode: 'replace',
       });
@@ -484,7 +675,11 @@ test.describe('ODCS Import/Export', () => {
       // First import a contract
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_MINIMAL_YAML, 'initial.yaml');
+      await importODCSYaml(
+        page,
+        ODCS_TEST_FILES.VALID_BASIC_YAML,
+        'initial.yaml'
+      );
 
       await expect(page.getByTestId('contract-title')).toBeVisible();
 
@@ -500,7 +695,7 @@ test.describe('ODCS Import/Export', () => {
       await fileInput.setInputFiles({
         name: 'test.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_WITH_SLA_YAML),
+        buffer: Buffer.from(ODCS_TEST_FILES.VALID_FULL_YAML),
       });
 
       // Wait for file to be parsed
@@ -541,7 +736,7 @@ test.describe('ODCS Import/Export', () => {
       await fileInput.setInputFiles({
         name: 'full-contract.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_FULL_CONTRACT_YAML),
+        buffer: Buffer.from(ODCS_TEST_FILES.VALID_FULL_YAML),
       });
 
       // Wait for preview
@@ -571,7 +766,7 @@ test.describe('ODCS Import/Export', () => {
       // Import an ODCS contract with SLA
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_WITH_SLA_YAML, 'odcs-to-om.yaml');
+      await importODCSYaml(page, ODCS_TEST_FILES.VALID_FULL_YAML, 'odcs-to-om.yaml');
 
       // Verify contract was created
       await expect(page.getByTestId('contract-title')).toBeVisible();
@@ -625,7 +820,7 @@ test.describe('ODCS Import/Export', () => {
       // Import an ODCS contract with description (schema removed due to dynamic test table columns)
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_WITH_SCHEMA_YAML, 'odcs-schema.yaml');
+      await importODCSYaml(page, ODCS_TEST_FILES.VALID_FULL_YAML, 'odcs-schema.yaml');
 
       // Verify contract was created
       await expect(page.getByTestId('contract-title')).toBeVisible();
@@ -670,7 +865,7 @@ test.describe('ODCS Import/Export', () => {
       // Import a full ODCS contract
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_FULL_CONTRACT_YAML, 'full-odcs.yaml');
+      await importODCSYaml(page, ODCS_TEST_FILES.VALID_FULL_YAML, 'full-odcs.yaml');
 
       // Verify contract was created
       await expect(page.getByTestId('contract-title')).toBeVisible();
@@ -733,7 +928,7 @@ test.describe('ODCS Import/Export', () => {
       // Import ODCS with SLA properties
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_WITH_SLA_YAML, 'sla-mapping.yaml');
+      await importODCSYaml(page, ODCS_TEST_FILES.VALID_FULL_YAML, 'sla-mapping.yaml');
 
       // Verify SLA card is visible (with extended timeout for rendering)
       await expect(page.getByTestId('contract-sla-card')).toBeVisible({
@@ -779,7 +974,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_WITH_TIMESTAMP_YAML,
+        ODCS_TEST_FILES.VALID_WITH_TIMESTAMPS_YAML,
         'timestamp-contract.yaml'
       );
 
@@ -825,7 +1020,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_WITH_SECURITY_YAML,
+        ODCS_TEST_FILES.VALID_FULL_YAML,
         'security-contract.yaml'
       );
 
@@ -871,7 +1066,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_WITH_QUALITY_RULES_YAML,
+        ODCS_TEST_FILES.VALID_QUALITY_RULES_YAML,
         'quality-contract.yaml'
       );
 

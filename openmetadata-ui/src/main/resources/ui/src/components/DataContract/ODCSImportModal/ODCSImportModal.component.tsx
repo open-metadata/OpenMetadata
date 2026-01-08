@@ -168,27 +168,19 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
       throw new Error('No content to import');
     }
 
-    if (hasExistingContract && importMode === 'replace') {
-      await deleteContractById(existingContract!.id!);
-
-      return importContractFromODCSYaml(yamlContent, entityId, entityType);
-    } else if (hasExistingContract && importMode === 'merge') {
+    if (hasExistingContract) {
+      // Use the mode parameter to let backend handle merge vs replace
+      // This preserves contract ID and execution history
       return createOrUpdateContractFromODCSYaml(
         yamlContent,
         entityId,
-        entityType
+        entityType,
+        importMode
       );
     }
 
     return importContractFromODCSYaml(yamlContent, entityId, entityType);
-  }, [
-    yamlContent,
-    hasExistingContract,
-    importMode,
-    existingContract,
-    entityId,
-    entityType,
-  ]);
+  }, [yamlContent, hasExistingContract, importMode, entityId, entityType]);
 
   const handleOpenMetadataImport =
     useCallback(async (): Promise<DataContract> => {
@@ -300,9 +292,9 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
       <div className="m-t-md">
         <Text strong>{t('label.what-will-happen')}:</Text>
         <ul className="m-t-xs m-l-md">
-          <li>{t('message.import-odcs-replace-delete-existing')}</li>
-          <li>{t('message.import-odcs-replace-create-new')}</li>
-          <li>{t('message.import-odcs-replace-lose-history')}</li>
+          <li>{t('message.import-odcs-replace-overwrite-all')}</li>
+          <li>{t('message.import-odcs-replace-preserve-id')}</li>
+          <li>{t('message.import-odcs-replace-preserve-history')}</li>
         </ul>
       </div>
     );
