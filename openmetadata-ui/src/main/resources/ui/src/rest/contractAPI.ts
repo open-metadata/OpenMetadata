@@ -172,6 +172,21 @@ export interface ODCSDataContract {
   contractCreatedTs?: string;
 }
 
+export interface ODCSLogicalTypeOptions {
+  maxLength?: number;
+  minLength?: number;
+  pattern?: string;
+  format?: string;
+  minimum?: number;
+  maximum?: number;
+  precision?: number;
+  scale?: number;
+  enumValues?: string[];
+  items?: string;
+  timezone?: boolean;
+  defaultTimezone?: string;
+}
+
 export interface ODCSSchemaElement {
   name: string;
   physicalName?: string;
@@ -179,8 +194,17 @@ export interface ODCSSchemaElement {
   description?: string;
   businessName?: string;
   tags?: string[];
-  logicalType?: string;
-  logicalTypeOptions?: Record<string, unknown>;
+  logicalType?:
+    | 'string'
+    | 'date'
+    | 'timestamp'
+    | 'time'
+    | 'number'
+    | 'integer'
+    | 'object'
+    | 'array'
+    | 'boolean';
+  logicalTypeOptions?: ODCSLogicalTypeOptions;
   primaryKey?: boolean;
   primaryKeyPosition?: number;
   required?: boolean;
@@ -200,6 +224,8 @@ export interface ODCSQualityRule {
   engine?: string;
   dimension?: string;
   severity?: string;
+  schedule?: string;
+  scheduler?: string;
 }
 
 export interface ODCSSupportChannel {
@@ -259,7 +285,7 @@ export interface ODCSCustomProperty {
 }
 
 /**
- * Export a data contract to ODCS v3.0.2 JSON format
+ * Export a data contract to ODCS v3.1.0 JSON format
  */
 export const exportContractToODCS = async (
   contractId: string,
@@ -274,7 +300,7 @@ export const exportContractToODCS = async (
 };
 
 /**
- * Export a data contract to ODCS v3.0.2 YAML format
+ * Export a data contract to ODCS v3.1.0 YAML format
  */
 export const exportContractToODCSYaml = async (
   contractId: string,
@@ -293,7 +319,7 @@ export const exportContractToODCSYaml = async (
 };
 
 /**
- * Export a data contract by FQN to ODCS v3.0.2 JSON format
+ * Export a data contract by FQN to ODCS v3.1.0 JSON format
  */
 export const exportContractToODCSByFqn = async (
   fqn: string,
@@ -308,7 +334,7 @@ export const exportContractToODCSByFqn = async (
 };
 
 /**
- * Import a data contract from ODCS v3.0.2 JSON format
+ * Import a data contract from ODCS v3.1.0 JSON format
  */
 export const importContractFromODCS = async (
   odcs: ODCSDataContract,
@@ -325,7 +351,7 @@ export const importContractFromODCS = async (
 };
 
 /**
- * Import a data contract from ODCS v3.0.2 YAML format
+ * Import a data contract from ODCS v3.1.0 YAML format
  */
 export const importContractFromODCSYaml = async (
   yamlContent: string,
@@ -345,7 +371,7 @@ export const importContractFromODCSYaml = async (
 };
 
 /**
- * Create or update a data contract from ODCS v3.0.2 JSON format
+ * Create or update a data contract from ODCS v3.1.0 JSON format (smart merge)
  */
 export const createOrUpdateContractFromODCS = async (
   odcs: ODCSDataContract,
@@ -360,7 +386,7 @@ export const createOrUpdateContractFromODCS = async (
 };
 
 /**
- * Create or update a data contract from ODCS v3.0.2 YAML format
+ * Create or update a data contract from ODCS v3.1.0 YAML format (smart merge)
  */
 export const createOrUpdateContractFromODCSYaml = async (
   yamlContent: string,

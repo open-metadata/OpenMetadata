@@ -19,13 +19,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.ContractSLA;
+import org.openmetadata.schema.api.data.ContractSecurity;
 import org.openmetadata.schema.api.data.MaxLatency;
+import org.openmetadata.schema.api.data.Policy;
 import org.openmetadata.schema.api.data.RefreshFrequency;
+import org.openmetadata.schema.api.data.Retention;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSRole;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSlaProperty;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSTeamMember;
@@ -54,12 +61,161 @@ class ODCSConverterTest {
     ODCSDataContract odcs = ODCSConverter.toODCS(contract);
 
     assertNotNull(odcs);
-    assertEquals(ODCSDataContract.OdcsApiVersion.V_3_0_2, odcs.getApiVersion());
+    assertEquals(ODCSDataContract.OdcsApiVersion.V_3_1_0, odcs.getApiVersion());
     assertEquals(ODCSDataContract.OdcsKind.DATA_CONTRACT, odcs.getKind());
     assertEquals("test_contract", odcs.getName());
     assertEquals(ODCSDataContract.OdcsStatus.ACTIVE, odcs.getStatus());
     assertNotNull(odcs.getDescription());
     assertEquals("Test contract description", odcs.getDescription().getPurpose());
+  }
+
+  @Test
+  void testToODCS_Version310() {
+    DataContract contract = new DataContract();
+    contract.setId(UUID.randomUUID());
+    contract.setName("version_test");
+    contract.setEntityStatus(EntityStatus.APPROVED);
+
+    EntityReference entity = new EntityReference();
+    entity.setId(UUID.randomUUID());
+    entity.setType("table");
+    contract.setEntity(entity);
+
+    ODCSDataContract odcs = ODCSConverter.toODCS(contract);
+
+    assertNotNull(odcs);
+    assertEquals(ODCSDataContract.OdcsApiVersion.V_3_1_0, odcs.getApiVersion());
+  }
+
+  @Test
+  void testToODCS_WithTimestampType() {
+    DataContract contract = new DataContract();
+    contract.setId(UUID.randomUUID());
+    contract.setName("timestamp_test");
+    contract.setEntityStatus(EntityStatus.APPROVED);
+
+    EntityReference entity = new EntityReference();
+    entity.setId(UUID.randomUUID());
+    entity.setType("table");
+    contract.setEntity(entity);
+
+    List<Column> columns = new ArrayList<>();
+    columns.add(new Column().withName("created_at").withDataType(ColumnDataType.TIMESTAMP));
+    columns.add(new Column().withName("updated_at").withDataType(ColumnDataType.TIMESTAMPZ));
+    contract.setSchema(columns);
+
+    ODCSDataContract odcs = ODCSConverter.toODCS(contract);
+
+    assertNotNull(odcs.getSchema());
+    assertEquals(2, odcs.getSchema().size());
+    assertEquals(ODCSSchemaElement.LogicalType.TIMESTAMP, odcs.getSchema().get(0).getLogicalType());
+    assertEquals(ODCSSchemaElement.LogicalType.TIMESTAMP, odcs.getSchema().get(1).getLogicalType());
+  }
+
+  @Test
+  void testToODCS_WithTimeType() {
+    DataContract contract = new DataContract();
+    contract.setId(UUID.randomUUID());
+    contract.setName("time_test");
+    contract.setEntityStatus(EntityStatus.APPROVED);
+
+    EntityReference entity = new EntityReference();
+    entity.setId(UUID.randomUUID());
+    entity.setType("table");
+    contract.setEntity(entity);
+
+    List<Column> columns = new ArrayList<>();
+    columns.add(new Column().withName("start_time").withDataType(ColumnDataType.TIME));
+    contract.setSchema(columns);
+
+    ODCSDataContract odcs = ODCSConverter.toODCS(contract);
+
+    assertNotNull(odcs.getSchema());
+    assertEquals(1, odcs.getSchema().size());
+    assertEquals(ODCSSchemaElement.LogicalType.TIME, odcs.getSchema().get(0).getLogicalType());
+  }
+
+  @Test
+  void testFromODCS_WithTimestampType() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    List<ODCSSchemaElement> schema = new ArrayList<>();
+    schema.add(
+        new ODCSSchemaElement()
+            .withName("event_ts")
+            .withLogicalType(ODCSSchemaElement.LogicalType.TIMESTAMP));
+    odcs.setSchema(schema);
+
+    EntityReference entityRef = new EntityReference();
+    entityRef.setId(UUID.randomUUID());
+    entityRef.setType("table");
+
+    DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
+
+    assertNotNull(contract.getSchema());
+    assertEquals(1, contract.getSchema().size());
+    assertEquals(ColumnDataType.TIMESTAMP, contract.getSchema().get(0).getDataType());
+  }
+
+  @Test
+  void testFromODCS_WithTimeType() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    List<ODCSSchemaElement> schema = new ArrayList<>();
+    schema.add(
+        new ODCSSchemaElement()
+            .withName("schedule_time")
+            .withLogicalType(ODCSSchemaElement.LogicalType.TIME));
+    odcs.setSchema(schema);
+
+    EntityReference entityRef = new EntityReference();
+    entityRef.setId(UUID.randomUUID());
+    entityRef.setType("table");
+
+    DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
+
+    assertNotNull(contract.getSchema());
+    assertEquals(1, contract.getSchema().size());
+    assertEquals(ColumnDataType.TIME, contract.getSchema().get(0).getDataType());
+  }
+
+  @Test
+  void testVersionBackwardsCompatibility_302() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_0_2);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName("compat_test");
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    List<ODCSSchemaElement> schema = new ArrayList<>();
+    schema.add(
+        new ODCSSchemaElement()
+            .withName("date_col")
+            .withLogicalType(ODCSSchemaElement.LogicalType.DATE));
+    odcs.setSchema(schema);
+
+    EntityReference entityRef = new EntityReference();
+    entityRef.setId(UUID.randomUUID());
+    entityRef.setType("table");
+
+    DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
+
+    assertNotNull(contract);
+    assertEquals("compat_test", contract.getName());
+    assertEquals(EntityStatus.APPROVED, contract.getEntityStatus());
+    assertEquals(ColumnDataType.DATE, contract.getSchema().get(0).getDataType());
   }
 
   @Test
@@ -142,12 +298,12 @@ class ODCSConverterTest {
 
     boolean hasRefreshFrequency =
         odcs.getSlaProperties().stream()
-            .anyMatch(p -> "refreshFrequency".equals(p.getProperty()) && "1".equals(p.getValue()));
+            .anyMatch(p -> "freshness".equals(p.getProperty()) && "1".equals(p.getValue()));
     assertTrue(hasRefreshFrequency);
 
     boolean hasMaxLatency =
         odcs.getSlaProperties().stream()
-            .anyMatch(p -> "maxLatency".equals(p.getProperty()) && "4".equals(p.getValue()));
+            .anyMatch(p -> "latency".equals(p.getProperty()) && "4".equals(p.getValue()));
     assertTrue(hasMaxLatency);
   }
 
@@ -297,8 +453,12 @@ class ODCSConverterTest {
     DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
 
     assertNotNull(contract);
+    // Note: In unit tests without database context, team member resolution won't find users/teams
+    // The converter gracefully handles this by returning empty owners list
+    // In integration tests with database, this would return actual owner references
     assertNotNull(contract.getOwners());
-    assertEquals(2, contract.getOwners().size());
+    // Database lookups won't work in unit tests, so we expect empty list
+    assertTrue(contract.getOwners().isEmpty());
   }
 
   @Test
@@ -405,7 +565,8 @@ class ODCSConverterTest {
     assertEquals(
         ODCSSchemaElement.LogicalType.DATE, odcs.getSchema().get(7).getLogicalType()); // DATE
     assertEquals(
-        ODCSSchemaElement.LogicalType.DATE, odcs.getSchema().get(8).getLogicalType()); // TIMESTAMP
+        ODCSSchemaElement.LogicalType.TIMESTAMP,
+        odcs.getSchema().get(8).getLogicalType()); // TIMESTAMP
     assertEquals(
         ODCSSchemaElement.LogicalType.ARRAY, odcs.getSchema().get(9).getLogicalType()); // ARRAY
     assertEquals(
@@ -638,7 +799,7 @@ class ODCSConverterTest {
     ODCSDataContract odcs = ODCSConverter.toODCS(contract);
 
     assertNotNull(odcs);
-    assertEquals(ODCSDataContract.OdcsApiVersion.V_3_0_2, odcs.getApiVersion());
+    assertEquals(ODCSDataContract.OdcsApiVersion.V_3_1_0, odcs.getApiVersion());
     assertEquals("null_test_contract", odcs.getName());
     assertNotNull(odcs.getVersion()); // Version comes from DataContract default version
     assertEquals(ODCSDataContract.OdcsStatus.DRAFT, odcs.getStatus()); // Default when null
@@ -687,6 +848,109 @@ class ODCSConverterTest {
   }
 
   @Test
+  void testSmartMerge_PreservesExistingFields() {
+    DataContract existing = new DataContract();
+    existing.setId(UUID.randomUUID());
+    existing.setName("existing_contract");
+    existing.setFullyQualifiedName("service.db.schema.table.existing_contract");
+    existing.setDescription("Existing description");
+    existing.setEntityStatus(EntityStatus.APPROVED);
+
+    EntityReference entity = new EntityReference();
+    entity.setId(UUID.randomUUID());
+    entity.setType("table");
+    existing.setEntity(entity);
+
+    List<Column> existingColumns = new ArrayList<>();
+    existingColumns.add(new Column().withName("id").withDataType(ColumnDataType.INT));
+    existing.setSchema(existingColumns);
+
+    ContractSLA existingSla = new ContractSLA();
+    Retention retention = new Retention();
+    retention.setPeriod(90);
+    retention.setUnit(Retention.Unit.DAY);
+    existingSla.setRetention(retention);
+    existing.setSla(existingSla);
+
+    DataContract imported = new DataContract();
+    imported.setName("imported_contract");
+    imported.setDescription("Imported description");
+    imported.setEntityStatus(EntityStatus.DRAFT);
+
+    DataContract merged = ODCSConverter.smartMerge(existing, imported);
+
+    assertEquals(existing.getId(), merged.getId());
+    assertEquals(existing.getFullyQualifiedName(), merged.getFullyQualifiedName());
+    assertEquals("imported_contract", merged.getName());
+    assertEquals("Imported description", merged.getDescription());
+    assertEquals(EntityStatus.DRAFT, merged.getEntityStatus());
+    assertEquals(existing.getEntity(), merged.getEntity());
+    assertEquals(existing.getSchema(), merged.getSchema());
+    assertNotNull(merged.getSla());
+    assertEquals(90, merged.getSla().getRetention().getPeriod());
+  }
+
+  @Test
+  void testSmartMerge_OverridesWithImportedFields() {
+    DataContract existing = new DataContract();
+    existing.setId(UUID.randomUUID());
+    existing.setName("existing_contract");
+    existing.setDescription("Existing description");
+    existing.setEntityStatus(EntityStatus.DRAFT);
+
+    ContractSLA existingSla = new ContractSLA();
+    RefreshFrequency rf = new RefreshFrequency();
+    rf.setInterval(1);
+    rf.setUnit(RefreshFrequency.Unit.DAY);
+    existingSla.setRefreshFrequency(rf);
+    existing.setSla(existingSla);
+
+    DataContract imported = new DataContract();
+    imported.setName("imported_contract");
+    imported.setEntityStatus(EntityStatus.APPROVED);
+
+    ContractSLA importedSla = new ContractSLA();
+    RefreshFrequency newRf = new RefreshFrequency();
+    newRf.setInterval(6);
+    newRf.setUnit(RefreshFrequency.Unit.HOUR);
+    importedSla.setRefreshFrequency(newRf);
+    imported.setSla(importedSla);
+
+    List<Column> newSchema = new ArrayList<>();
+    newSchema.add(new Column().withName("new_col").withDataType(ColumnDataType.STRING));
+    imported.setSchema(newSchema);
+
+    DataContract merged = ODCSConverter.smartMerge(existing, imported);
+
+    assertEquals("imported_contract", merged.getName());
+    assertEquals(EntityStatus.APPROVED, merged.getEntityStatus());
+    assertEquals(1, merged.getSchema().size());
+    assertEquals("new_col", merged.getSchema().get(0).getName());
+    assertEquals(6, merged.getSla().getRefreshFrequency().getInterval());
+    assertEquals(RefreshFrequency.Unit.HOUR, merged.getSla().getRefreshFrequency().getUnit());
+  }
+
+  @Test
+  void testSmartMerge_NullExistingReturnsImported() {
+    DataContract imported = new DataContract();
+    imported.setName("imported_contract");
+
+    DataContract merged = ODCSConverter.smartMerge(null, imported);
+
+    assertEquals(imported, merged);
+  }
+
+  @Test
+  void testSmartMerge_NullImportedReturnsExisting() {
+    DataContract existing = new DataContract();
+    existing.setName("existing_contract");
+
+    DataContract merged = ODCSConverter.smartMerge(existing, null);
+
+    assertEquals(existing, merged);
+  }
+
+  @Test
   void testFromODCS_WithFullDescription() {
     ODCSDataContract odcs = new ODCSDataContract();
     odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_0_2);
@@ -696,8 +960,7 @@ class ODCSConverterTest {
     odcs.setVersion("1.0.0");
     odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
 
-    org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription desc =
-        new org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription();
+    ODCSDescription desc = new ODCSDescription();
     desc.setPurpose("Main purpose of the data.");
     desc.setLimitations("Some limitations apply.");
     desc.setUsage("Use responsibly.");
@@ -715,5 +978,661 @@ class ODCSConverterTest {
     assertTrue(contract.getDescription().contains("Some limitations apply."));
     assertTrue(contract.getDescription().contains("Usage"));
     assertTrue(contract.getDescription().contains("Use responsibly."));
+  }
+
+  @Test
+  void testToODCS_WithSecurity() {
+    DataContract contract = new DataContract();
+    contract.setId(UUID.randomUUID());
+    contract.setName("security_contract");
+    contract.setEntityStatus(EntityStatus.APPROVED);
+
+    EntityReference entity = new EntityReference();
+    entity.setId(UUID.randomUUID());
+    entity.setType("table");
+    contract.setEntity(entity);
+
+    ContractSecurity security = new ContractSecurity();
+    security.setDataClassification("PII");
+
+    List<Policy> policies = new ArrayList<>();
+    Policy policy1 = new Policy();
+    policy1.setAccessPolicy("data-analyst");
+    policy1.setIdentities(List.of("user1@example.com", "user2@example.com"));
+    policies.add(policy1);
+
+    Policy policy2 = new Policy();
+    policy2.setAccessPolicy("data-engineer");
+    policy2.setIdentities(List.of("eng-team@example.com"));
+    policies.add(policy2);
+
+    security.setPolicies(policies);
+    contract.setSecurity(security);
+
+    ODCSDataContract odcs = ODCSConverter.toODCS(contract);
+
+    assertNotNull(odcs);
+    assertNotNull(odcs.getRoles());
+    assertEquals(3, odcs.getRoles().size());
+
+    boolean hasAnalystRole =
+        odcs.getRoles().stream()
+            .anyMatch(
+                r ->
+                    "data-analyst".equals(r.getRole())
+                        && r.getFirstLevelApprovers() != null
+                        && r.getFirstLevelApprovers().contains("user1@example.com"));
+    assertTrue(hasAnalystRole);
+
+    boolean hasEngineerRole =
+        odcs.getRoles().stream()
+            .anyMatch(
+                r ->
+                    "data-engineer".equals(r.getRole())
+                        && r.getFirstLevelApprovers() != null
+                        && r.getFirstLevelApprovers().contains("eng-team@example.com"));
+    assertTrue(hasEngineerRole);
+
+    boolean hasClassificationRole =
+        odcs.getRoles().stream().anyMatch(r -> "classification-PII".equals(r.getRole()));
+    assertTrue(hasClassificationRole);
+  }
+
+  @Test
+  void testFromODCS_WithRoles() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName("roles_test");
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    List<ODCSRole> roles = new ArrayList<>();
+
+    ODCSRole consumerRole = new ODCSRole();
+    consumerRole.setRole("data-consumer");
+    consumerRole.setAccess(ODCSRole.Access.READ);
+    consumerRole.setFirstLevelApprovers(List.of("approver1@example.com", "approver2@example.com"));
+    roles.add(consumerRole);
+
+    ODCSRole classificationRole = new ODCSRole();
+    classificationRole.setRole("classification-Confidential");
+    classificationRole.setDescription("Data classification: Confidential");
+    roles.add(classificationRole);
+
+    odcs.setRoles(roles);
+
+    EntityReference entityRef = new EntityReference();
+    entityRef.setId(UUID.randomUUID());
+    entityRef.setType("table");
+
+    DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
+
+    assertNotNull(contract);
+    assertNotNull(contract.getSecurity());
+    assertEquals("Confidential", contract.getSecurity().getDataClassification());
+    assertNotNull(contract.getSecurity().getPolicies());
+    assertEquals(1, contract.getSecurity().getPolicies().size());
+    assertEquals("data-consumer", contract.getSecurity().getPolicies().get(0).getAccessPolicy());
+    assertTrue(
+        contract
+            .getSecurity()
+            .getPolicies()
+            .get(0)
+            .getIdentities()
+            .contains("approver1@example.com"));
+  }
+
+  @Test
+  void testToODCS_SLAWithFreshnessMapping() {
+    DataContract contract = new DataContract();
+    contract.setId(UUID.randomUUID());
+    contract.setName("freshness_test");
+    contract.setEntityStatus(EntityStatus.APPROVED);
+
+    EntityReference entity = new EntityReference();
+    entity.setId(UUID.randomUUID());
+    entity.setType("table");
+    contract.setEntity(entity);
+
+    ContractSLA sla = new ContractSLA();
+    RefreshFrequency rf = new RefreshFrequency();
+    rf.setInterval(24);
+    rf.setUnit(RefreshFrequency.Unit.HOUR);
+    sla.setRefreshFrequency(rf);
+    contract.setSla(sla);
+
+    ODCSDataContract odcs = ODCSConverter.toODCS(contract);
+
+    assertNotNull(odcs.getSlaProperties());
+    assertEquals(1, odcs.getSlaProperties().size());
+
+    ODCSSlaProperty freshnessProperty = odcs.getSlaProperties().get(0);
+    assertEquals("freshness", freshnessProperty.getProperty());
+    assertEquals("24", freshnessProperty.getValue());
+    assertEquals("hour", freshnessProperty.getUnit());
+  }
+
+  @Test
+  void testToODCS_SLAWithLatencyMapping() {
+    DataContract contract = new DataContract();
+    contract.setId(UUID.randomUUID());
+    contract.setName("latency_test");
+    contract.setEntityStatus(EntityStatus.APPROVED);
+
+    EntityReference entity = new EntityReference();
+    entity.setId(UUID.randomUUID());
+    entity.setType("table");
+    contract.setEntity(entity);
+
+    ContractSLA sla = new ContractSLA();
+    MaxLatency ml = new MaxLatency();
+    ml.setValue(30);
+    ml.setUnit(MaxLatency.Unit.MINUTE);
+    sla.setMaxLatency(ml);
+    contract.setSla(sla);
+
+    ODCSDataContract odcs = ODCSConverter.toODCS(contract);
+
+    assertNotNull(odcs.getSlaProperties());
+    assertEquals(1, odcs.getSlaProperties().size());
+
+    ODCSSlaProperty latencyProperty = odcs.getSlaProperties().get(0);
+    assertEquals("latency", latencyProperty.getProperty());
+    assertEquals("30", latencyProperty.getValue());
+    assertEquals("minute", latencyProperty.getUnit());
+  }
+
+  @Test
+  void testFromODCS_SLAWithFreshnessMapping() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    List<ODCSSlaProperty> slaProperties = new ArrayList<>();
+    ODCSSlaProperty freshness = new ODCSSlaProperty();
+    freshness.setProperty("freshness");
+    freshness.setValue("12");
+    freshness.setUnit("hour");
+    slaProperties.add(freshness);
+    odcs.setSlaProperties(slaProperties);
+
+    EntityReference entityRef = new EntityReference();
+    entityRef.setId(UUID.randomUUID());
+    entityRef.setType("table");
+
+    DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
+
+    assertNotNull(contract.getSla());
+    assertNotNull(contract.getSla().getRefreshFrequency());
+    assertEquals(12, contract.getSla().getRefreshFrequency().getInterval());
+    assertEquals(RefreshFrequency.Unit.HOUR, contract.getSla().getRefreshFrequency().getUnit());
+  }
+
+  @Test
+  void testFromODCS_SLAWithLatencyMapping() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    List<ODCSSlaProperty> slaProperties = new ArrayList<>();
+    ODCSSlaProperty latency = new ODCSSlaProperty();
+    latency.setProperty("latency");
+    latency.setValue("5");
+    latency.setUnit("minute");
+    slaProperties.add(latency);
+    odcs.setSlaProperties(slaProperties);
+
+    EntityReference entityRef = new EntityReference();
+    entityRef.setId(UUID.randomUUID());
+    entityRef.setType("table");
+
+    DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
+
+    assertNotNull(contract.getSla());
+    assertNotNull(contract.getSla().getMaxLatency());
+    assertEquals(5, contract.getSla().getMaxLatency().getValue());
+    assertEquals(MaxLatency.Unit.MINUTE, contract.getSla().getMaxLatency().getUnit());
+  }
+
+  @Test
+  void testToODCS_SLAWithTimezone() {
+    DataContract contract = new DataContract();
+    contract.setId(UUID.randomUUID());
+    contract.setName("timezone_test");
+    contract.setEntityStatus(EntityStatus.APPROVED);
+
+    EntityReference entity = new EntityReference();
+    entity.setId(UUID.randomUUID());
+    entity.setType("table");
+    contract.setEntity(entity);
+
+    ContractSLA sla = new ContractSLA();
+    sla.setTimezone(ContractSLA.Timezone.GMT_05_00_AMERICA_NEW_YORK);
+    sla.setAvailabilityTime("09:00");
+    contract.setSla(sla);
+
+    ODCSDataContract odcs = ODCSConverter.toODCS(contract);
+
+    assertNotNull(odcs.getSlaProperties());
+    boolean hasTimezone =
+        odcs.getSlaProperties().stream()
+            .anyMatch(
+                p ->
+                    "availabilityTime".equals(p.getProperty())
+                        && p.getValueExt() != null
+                        && p.getValueExt().contains("America"));
+    assertTrue(hasTimezone);
+  }
+
+  @Test
+  void testFromODCS_SLAWithTimezone() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    List<ODCSSlaProperty> slaProperties = new ArrayList<>();
+    ODCSSlaProperty availability = new ODCSSlaProperty();
+    availability.setProperty("availabilityTime");
+    availability.setValue("10:00");
+    availability.setValueExt("GMT+00:00 (Europe/London)");
+    slaProperties.add(availability);
+    odcs.setSlaProperties(slaProperties);
+
+    EntityReference entityRef = new EntityReference();
+    entityRef.setId(UUID.randomUUID());
+    entityRef.setType("table");
+
+    DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
+
+    assertNotNull(contract.getSla());
+    assertEquals("10:00", contract.getSla().getAvailabilityTime());
+    assertEquals(ContractSLA.Timezone.GMT_00_00_EUROPE_LONDON, contract.getSla().getTimezone());
+  }
+
+  @Test
+  void testRoundTrip_WithSecurityAndSLA() {
+    DataContract original = new DataContract();
+    original.setId(UUID.randomUUID());
+    original.setName("full_roundtrip_contract");
+    original.setDescription("Comprehensive round trip test");
+    original.setEntityStatus(EntityStatus.APPROVED);
+
+    EntityReference entity = new EntityReference();
+    entity.setId(UUID.randomUUID());
+    entity.setType("table");
+    entity.setFullyQualifiedName("db.schema.table");
+    original.setEntity(entity);
+
+    List<Column> columns = new ArrayList<>();
+    columns.add(
+        new Column()
+            .withName("id")
+            .withDataType(ColumnDataType.INT)
+            .withConstraint(ColumnConstraint.PRIMARY_KEY));
+    columns.add(new Column().withName("name").withDataType(ColumnDataType.STRING));
+    columns.add(new Column().withName("created_at").withDataType(ColumnDataType.TIMESTAMP));
+    original.setSchema(columns);
+
+    ContractSLA sla = new ContractSLA();
+    RefreshFrequency rf = new RefreshFrequency();
+    rf.setInterval(6);
+    rf.setUnit(RefreshFrequency.Unit.HOUR);
+    sla.setRefreshFrequency(rf);
+
+    MaxLatency ml = new MaxLatency();
+    ml.setValue(15);
+    ml.setUnit(MaxLatency.Unit.MINUTE);
+    sla.setMaxLatency(ml);
+
+    Retention retention = new Retention();
+    retention.setPeriod(365);
+    retention.setUnit(Retention.Unit.DAY);
+    sla.setRetention(retention);
+
+    sla.setAvailabilityTime("08:00");
+    sla.setTimezone(ContractSLA.Timezone.GMT_00_00_EUROPE_LONDON);
+    original.setSla(sla);
+
+    ContractSecurity security = new ContractSecurity();
+    security.setDataClassification("Sensitive");
+    List<Policy> policies = new ArrayList<>();
+    Policy policy = new Policy();
+    policy.setAccessPolicy("data-scientist");
+    policy.setIdentities(List.of("team@example.com"));
+    policies.add(policy);
+    security.setPolicies(policies);
+    original.setSecurity(security);
+
+    ODCSDataContract odcs = ODCSConverter.toODCS(original);
+
+    EntityReference newEntityRef = new EntityReference();
+    newEntityRef.setId(UUID.randomUUID());
+    newEntityRef.setType("table");
+
+    DataContract converted = ODCSConverter.fromODCS(odcs, newEntityRef);
+
+    assertEquals(original.getName(), converted.getName());
+    assertEquals(original.getEntityStatus(), converted.getEntityStatus());
+    assertEquals(original.getSchema().size(), converted.getSchema().size());
+    assertEquals(original.getSchema().get(0).getName(), converted.getSchema().get(0).getName());
+    assertEquals(ColumnConstraint.PRIMARY_KEY, converted.getSchema().get(0).getConstraint());
+    assertEquals(ColumnDataType.TIMESTAMP, converted.getSchema().get(2).getDataType());
+
+    assertEquals(
+        original.getSla().getRefreshFrequency().getInterval(),
+        converted.getSla().getRefreshFrequency().getInterval());
+    assertEquals(
+        original.getSla().getMaxLatency().getValue(),
+        converted.getSla().getMaxLatency().getValue());
+    assertEquals(
+        original.getSla().getRetention().getPeriod(),
+        converted.getSla().getRetention().getPeriod());
+    assertEquals(original.getSla().getAvailabilityTime(), converted.getSla().getAvailabilityTime());
+    assertEquals(original.getSla().getTimezone(), converted.getSla().getTimezone());
+
+    assertEquals(
+        original.getSecurity().getDataClassification(),
+        converted.getSecurity().getDataClassification());
+    assertEquals(1, converted.getSecurity().getPolicies().size());
+    assertEquals("data-scientist", converted.getSecurity().getPolicies().get(0).getAccessPolicy());
+  }
+
+  @Test
+  void testSmartMerge_PreservesSecurity() {
+    DataContract existing = new DataContract();
+    existing.setId(UUID.randomUUID());
+    existing.setName("existing_contract");
+
+    ContractSecurity existingSecurity = new ContractSecurity();
+    existingSecurity.setDataClassification("PII");
+    List<Policy> existingPolicies = new ArrayList<>();
+    Policy existingPolicy = new Policy();
+    existingPolicy.setAccessPolicy("existing-policy");
+    existingPolicies.add(existingPolicy);
+    existingSecurity.setPolicies(existingPolicies);
+    existing.setSecurity(existingSecurity);
+
+    DataContract imported = new DataContract();
+    imported.setName("imported_contract");
+
+    DataContract merged = ODCSConverter.smartMerge(existing, imported);
+
+    assertNotNull(merged.getSecurity());
+    assertEquals("PII", merged.getSecurity().getDataClassification());
+  }
+
+  @Test
+  void testSmartMerge_OverridesSecurity() {
+    DataContract existing = new DataContract();
+    existing.setId(UUID.randomUUID());
+    existing.setName("existing_contract");
+
+    ContractSecurity existingSecurity = new ContractSecurity();
+    existingSecurity.setDataClassification("Public");
+    existing.setSecurity(existingSecurity);
+
+    DataContract imported = new DataContract();
+    imported.setName("imported_contract");
+
+    ContractSecurity importedSecurity = new ContractSecurity();
+    importedSecurity.setDataClassification("Confidential");
+    List<Policy> importedPolicies = new ArrayList<>();
+    Policy importedPolicy = new Policy();
+    importedPolicy.setAccessPolicy("new-policy");
+    importedPolicies.add(importedPolicy);
+    importedSecurity.setPolicies(importedPolicies);
+    imported.setSecurity(importedSecurity);
+
+    DataContract merged = ODCSConverter.smartMerge(existing, imported);
+
+    assertNotNull(merged.getSecurity());
+    assertEquals("Confidential", merged.getSecurity().getDataClassification());
+    assertEquals(1, merged.getSecurity().getPolicies().size());
+    assertEquals("new-policy", merged.getSecurity().getPolicies().get(0).getAccessPolicy());
+  }
+
+  @Test
+  void testFromODCS_WithQualityRules() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName("quality_test");
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    List<ODCSQualityRule> qualityRules = new ArrayList<>();
+
+    ODCSQualityRule rule1 = new ODCSQualityRule();
+    rule1.setType(ODCSQualityRule.Type.LIBRARY);
+    rule1.setMetric(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES);
+    rule1.setColumn("email");
+    rule1.setName("email_not_null_check");
+    rule1.setDescription("Ensure email column has no null values");
+    qualityRules.add(rule1);
+
+    ODCSQualityRule rule2 = new ODCSQualityRule();
+    rule2.setType(ODCSQualityRule.Type.LIBRARY);
+    rule2.setMetric(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT);
+    rule2.setName("row_count_check");
+    qualityRules.add(rule2);
+
+    ODCSQualityRule rule3 = new ODCSQualityRule();
+    rule3.setType(ODCSQualityRule.Type.SQL);
+    rule3.setQuery("SELECT COUNT(*) FROM table WHERE status = 'active'");
+    rule3.setName("active_records_check");
+    qualityRules.add(rule3);
+
+    odcs.setQuality(qualityRules);
+
+    EntityReference entityRef = new EntityReference();
+    entityRef.setId(UUID.randomUUID());
+    entityRef.setType("table");
+
+    DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
+
+    assertNotNull(contract);
+    assertNotNull(contract.getExtension());
+    assertTrue(contract.getExtension() instanceof Map);
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> extension = (Map<String, Object>) contract.getExtension();
+    assertTrue(extension.containsKey("odcsQualityRules"));
+
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> storedRules =
+        (List<Map<String, Object>>) extension.get("odcsQualityRules");
+    assertEquals(3, storedRules.size());
+    assertEquals("email_not_null_check", storedRules.get(0).get("name"));
+    assertEquals("nullValues", storedRules.get(0).get("metric"));
+    assertEquals("email", storedRules.get(0).get("column"));
+  }
+
+  @Test
+  void testToODCS_WithQualityRulesInExtension() {
+    DataContract contract = new DataContract();
+    contract.setId(UUID.randomUUID());
+    contract.setName("quality_export_test");
+    contract.setEntityStatus(EntityStatus.APPROVED);
+
+    EntityReference entity = new EntityReference();
+    entity.setId(UUID.randomUUID());
+    entity.setType("table");
+    contract.setEntity(entity);
+
+    // Store quality rules in extension
+    List<Map<String, Object>> rulesData = new ArrayList<>();
+    Map<String, Object> rule1 =
+        Map.of(
+            "type", "library",
+            "metric", "nullValues",
+            "column", "user_id",
+            "name", "user_id_not_null");
+    rulesData.add(rule1);
+
+    Map<String, Object> rule2 =
+        Map.of(
+            "type", "library",
+            "metric", "rowCount",
+            "name", "minimum_rows");
+    rulesData.add(rule2);
+
+    Map<String, Object> extension = Map.of("odcsQualityRules", rulesData);
+    contract.setExtension(extension);
+
+    ODCSDataContract odcs = ODCSConverter.toODCS(contract);
+
+    assertNotNull(odcs);
+    assertNotNull(odcs.getQuality());
+    assertEquals(2, odcs.getQuality().size());
+
+    ODCSQualityRule exportedRule1 = odcs.getQuality().get(0);
+    assertEquals(ODCSQualityRule.Type.LIBRARY, exportedRule1.getType());
+    assertEquals(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES, exportedRule1.getMetric());
+    assertEquals("user_id", exportedRule1.getColumn());
+    assertEquals("user_id_not_null", exportedRule1.getName());
+
+    ODCSQualityRule exportedRule2 = odcs.getQuality().get(1);
+    assertEquals(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT, exportedRule2.getMetric());
+  }
+
+  @Test
+  void testQualityRules_RoundTrip() {
+    ODCSDataContract original = new ODCSDataContract();
+    original.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    original.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    original.setId(UUID.randomUUID().toString());
+    original.setName("quality_roundtrip_test");
+    original.setVersion("1.0.0");
+    original.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    List<ODCSQualityRule> qualityRules = new ArrayList<>();
+
+    ODCSQualityRule rule = new ODCSQualityRule();
+    rule.setType(ODCSQualityRule.Type.LIBRARY);
+    rule.setMetric(ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES);
+    rule.setColumn("id");
+    rule.setName("id_uniqueness");
+    rule.setDescription("ID must be unique");
+    rule.setDimension(ODCSQualityRule.Dimension.UNIQUENESS);
+    rule.setScheduler("cron");
+    rule.setSchedule("0 0 * * *");
+    qualityRules.add(rule);
+
+    original.setQuality(qualityRules);
+
+    EntityReference entityRef = new EntityReference();
+    entityRef.setId(UUID.randomUUID());
+    entityRef.setType("table");
+
+    DataContract contract = ODCSConverter.fromODCS(original, entityRef);
+    ODCSDataContract exported = ODCSConverter.toODCS(contract);
+
+    assertNotNull(exported.getQuality());
+    assertEquals(1, exported.getQuality().size());
+
+    ODCSQualityRule exportedRule = exported.getQuality().get(0);
+    assertEquals(ODCSQualityRule.Type.LIBRARY, exportedRule.getType());
+    assertEquals(ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES, exportedRule.getMetric());
+    assertEquals("id", exportedRule.getColumn());
+    assertEquals("id_uniqueness", exportedRule.getName());
+    assertEquals("ID must be unique", exportedRule.getDescription());
+    assertEquals(ODCSQualityRule.Dimension.UNIQUENESS, exportedRule.getDimension());
+    assertEquals("cron", exportedRule.getScheduler());
+    assertEquals("0 0 * * *", exportedRule.getSchedule());
+  }
+
+  @Test
+  void testMapODCSMetricToTestDefinition() {
+    assertEquals(
+        "columnValuesToBeNotNull",
+        ODCSConverter.mapODCSMetricToTestDefinition(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES));
+    assertEquals(
+        "tableRowCountToEqual",
+        ODCSConverter.mapODCSMetricToTestDefinition(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT));
+    assertEquals(
+        "columnValuesToBeUnique",
+        ODCSConverter.mapODCSMetricToTestDefinition(
+            ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES));
+    assertEquals(
+        "columnValueDistinctCountToEqual",
+        ODCSConverter.mapODCSMetricToTestDefinition(
+            ODCSQualityRule.OdcsQualityMetric.DISTINCT_VALUES));
+  }
+
+  @Test
+  void testMapTestDefinitionToODCSMetric() {
+    assertEquals(
+        ODCSQualityRule.OdcsQualityMetric.NULL_VALUES,
+        ODCSConverter.mapTestDefinitionToODCSMetric("columnValuesToBeNotNull"));
+    assertEquals(
+        ODCSQualityRule.OdcsQualityMetric.ROW_COUNT,
+        ODCSConverter.mapTestDefinitionToODCSMetric("tableRowCountToEqual"));
+    assertEquals(
+        ODCSQualityRule.OdcsQualityMetric.ROW_COUNT,
+        ODCSConverter.mapTestDefinitionToODCSMetric("tableRowCountToBeBetween"));
+    assertEquals(
+        ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES,
+        ODCSConverter.mapTestDefinitionToODCSMetric("columnValuesToBeUnique"));
+  }
+
+  @Test
+  void testSmartMerge_PreservesExtension() {
+    DataContract existing = new DataContract();
+    existing.setId(UUID.randomUUID());
+    existing.setName("existing_contract");
+
+    Map<String, Object> existingExtension =
+        Map.of("odcsQualityRules", List.of(Map.of("name", "existing_rule")));
+    existing.setExtension(existingExtension);
+
+    DataContract imported = new DataContract();
+    imported.setName("imported_contract");
+
+    DataContract merged = ODCSConverter.smartMerge(existing, imported);
+
+    assertNotNull(merged.getExtension());
+    @SuppressWarnings("unchecked")
+    Map<String, Object> mergedExtension = (Map<String, Object>) merged.getExtension();
+    assertTrue(mergedExtension.containsKey("odcsQualityRules"));
+  }
+
+  @Test
+  void testSmartMerge_OverridesExtension() {
+    DataContract existing = new DataContract();
+    existing.setId(UUID.randomUUID());
+    existing.setName("existing_contract");
+
+    Map<String, Object> existingExtension =
+        Map.of("odcsQualityRules", List.of(Map.of("name", "old_rule")));
+    existing.setExtension(existingExtension);
+
+    DataContract imported = new DataContract();
+    imported.setName("imported_contract");
+
+    Map<String, Object> importedExtension =
+        Map.of("odcsQualityRules", List.of(Map.of("name", "new_rule")));
+    imported.setExtension(importedExtension);
+
+    DataContract merged = ODCSConverter.smartMerge(existing, imported);
+
+    assertNotNull(merged.getExtension());
+    @SuppressWarnings("unchecked")
+    Map<String, Object> mergedExtension = (Map<String, Object>) merged.getExtension();
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> rules =
+        (List<Map<String, Object>>) mergedExtension.get("odcsQualityRules");
+    assertEquals("new_rule", rules.get(0).get("name"));
   }
 }

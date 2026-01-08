@@ -1,0 +1,33 @@
+# Copyright 2026 Collate.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ODCS Invalid Example: Malformed YAML
+# Should fail parsing - invalid YAML syntax
+
+apiVersion: v3.1.0
+kind: DataContract
+id: malformed-contract
+name: Malformed YAML Contract
+version: "1.0.0"
+status: active
+
+description:
+  purpose: This has invalid YAML
+  - this is wrong
+    indentation: broken
+      nested: incorrectly
+
+schema:
+- name: bad_table
+  properties:
+    - name: column1
+    logicalType: string  # Wrong indentation
+      required: true
+

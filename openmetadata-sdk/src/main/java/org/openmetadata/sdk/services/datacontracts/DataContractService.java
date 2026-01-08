@@ -169,4 +169,28 @@ public class DataContractService extends EntityServiceBase<DataContract> {
     return httpClient.execute(
         HttpMethod.PUT, basePath + "/odcs", odcs, DataContract.class, options);
   }
+
+  /**
+   * Create or update data contract from ODCS YAML format.
+   */
+  public DataContract createOrUpdateFromODCSYaml(
+      String yamlContent, UUID entityId, String entityType) throws OpenMetadataException {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityId", entityId.toString())
+            .queryParam("entityType", entityType)
+            .header("Content-Type", "application/yaml")
+            .build();
+    return httpClient.execute(
+        HttpMethod.PUT, basePath + "/odcs/yaml", yamlContent, DataContract.class, options);
+  }
+
+  /**
+   * Export data contract to ODCS YAML format by FQN.
+   */
+  public String exportToODCSYamlByFqn(String fqn) throws OpenMetadataException {
+    RequestOptions options = RequestOptions.builder().header("Accept", "application/yaml").build();
+    return httpClient.executeForString(
+        HttpMethod.GET, basePath + "/name/" + fqn + "/odcs/yaml", null, options);
+  }
 }

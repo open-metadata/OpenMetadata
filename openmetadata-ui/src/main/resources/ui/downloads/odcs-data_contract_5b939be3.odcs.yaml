@@ -1,0 +1,130 @@
+# Copyright 2026 Collate.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+apiVersion: "v3.1.0"
+kind: "DataContract"
+id: "3187cf31-f0f2-4fdb-b226-9a7c988ca70f"
+name: "data_contract_5b939be3"
+version: "0.2"
+status: "active"
+tags:
+- "terms-of-use"
+description:
+  purpose: "<p>new data contract description</p>"
+authoritativeDefinitions: []
+schema:
+- name: "defaultbb3c50ef"
+  physicalName: "defaultbb3c50ef"
+  physicalType: "RECORD"
+  tags: []
+  authoritativeDefinitions: []
+  primaryKey: false
+  primaryKeyPosition: -1
+  logicalType: "string"
+  required: false
+  unique: false
+  partitionKeyPosition: -1
+  transformSourceObjects: []
+  examples: []
+  properties:
+  - name: "nameebb6f696"
+    physicalName: "nameebb6f696"
+    physicalType: "RECORD"
+    tags: []
+    authoritativeDefinitions: []
+    primaryKey: false
+    primaryKeyPosition: -1
+    logicalType: "string"
+    required: false
+    unique: false
+    partitionKeyPosition: -1
+    transformSourceObjects: []
+    examples: []
+    properties:
+    - name: "first_name"
+      physicalName: "first_name"
+      physicalType: "STRING"
+      description: "Description for schema field first_name"
+      tags: []
+      authoritativeDefinitions: []
+      primaryKey: false
+      primaryKeyPosition: -1
+      logicalType: "string"
+      required: false
+      unique: false
+      partitionKeyPosition: -1
+      transformSourceObjects: []
+      examples: []
+      properties: []
+    - name: "last_name"
+      physicalName: "last_name"
+      physicalType: "STRING"
+      tags: []
+      authoritativeDefinitions: []
+      primaryKey: false
+      primaryKeyPosition: -1
+      logicalType: "string"
+      required: false
+      unique: false
+      partitionKeyPosition: -1
+      transformSourceObjects: []
+      examples: []
+      properties: []
+  - name: "age"
+    physicalName: "age"
+    physicalType: "INT"
+    tags: []
+    authoritativeDefinitions: []
+    primaryKey: false
+    primaryKeyPosition: -1
+    logicalType: "integer"
+    required: false
+    unique: false
+    partitionKeyPosition: -1
+    transformSourceObjects: []
+    examples: []
+    properties: []
+  - name: "club_name"
+    physicalName: "club_name"
+    physicalType: "STRING"
+    tags: []
+    authoritativeDefinitions: []
+    primaryKey: false
+    primaryKeyPosition: -1
+    logicalType: "string"
+    required: false
+    unique: false
+    partitionKeyPosition: -1
+    transformSourceObjects: []
+    examples: []
+    properties: []
+- name: "secondary70d3884c"
+  physicalName: "secondary70d3884c"
+  physicalType: "RECORD"
+  tags: []
+  authoritativeDefinitions: []
+  primaryKey: false
+  primaryKeyPosition: -1
+  logicalType: "string"
+  required: false
+  unique: false
+  partitionKeyPosition: -1
+  transformSourceObjects: []
+  examples: []
+  properties: []
+quality: []
+support: []
+team: []
+roles: []
+slaProperties: []
+servers: []
+customProperties: []
+contractCreatedTs: 1767806273020

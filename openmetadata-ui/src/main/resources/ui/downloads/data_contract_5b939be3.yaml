@@ -1,0 +1,86 @@
+# Copyright 2026 Collate.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+name: data_contract_5b939be3
+displayName: data_contract_5b939be3
+description: <p>new data contract description</p>
+createdAt: 1767806273020
+createdBy: admin
+entityStatus: Approved
+entity:
+  id: 43c1e0cd-9c0b-40d2-b063-c29508f2114a
+  type: topic
+  href: http://localhost:8585/v1/topics/43c1e0cd-9c0b-40d2-b063-c29508f2114a
+schema:
+  - name: defaultbb3c50ef
+    dataType: RECORD
+    fullyQualifiedName: >-
+      pw-messaging-service-978e849c.pw-topic-entity-class-5d76e863.defaultbb3c50ef
+    tags: []
+    children:
+      - name: nameebb6f696
+        dataType: RECORD
+        fullyQualifiedName: >-
+          pw-messaging-service-978e849c.pw-topic-entity-class-5d76e863.defaultbb3c50ef.nameebb6f696
+        tags: []
+        children:
+          - name: first_name
+            dataType: STRING
+            description: Description for schema field first_name
+            fullyQualifiedName: >-
+              pw-messaging-service-978e849c.pw-topic-entity-class-5d76e863.defaultbb3c50ef.nameebb6f696.first_name
+            tags: []
+            children: []
+          - name: last_name
+            dataType: STRING
+            fullyQualifiedName: >-
+              pw-messaging-service-978e849c.pw-topic-entity-class-5d76e863.defaultbb3c50ef.nameebb6f696.last_name
+            tags: []
+            children: []
+      - name: age
+        dataType: INT
+        fullyQualifiedName: >-
+          pw-messaging-service-978e849c.pw-topic-entity-class-5d76e863.defaultbb3c50ef.age
+        tags: []
+        children: []
+      - name: club_name
+        dataType: STRING
+        fullyQualifiedName: >-
+          pw-messaging-service-978e849c.pw-topic-entity-class-5d76e863.defaultbb3c50ef.club_name
+        tags: []
+        children: []
+  - name: secondary70d3884c
+    dataType: RECORD
+    fullyQualifiedName: >-
+      pw-messaging-service-978e849c.pw-topic-entity-class-5d76e863.secondary70d3884c
+    tags: []
+    children: []
+semantics:
+  - name: data_contract_semantic_1_29316862
+    description: new data contract semantic description 1
+    rule: >-
+      {"and":[{"some":[{"var":"owners"},{"==":[{"var":"fullyQualifiedName"},"\"calmeba6734b.bear6beb7527.1767806261770\""]}]},{"!=":[{"var":"description"},null]}]}
+    enabled: true
+    ignoredEntities: []
+    jsonTree: >-
+      {"id":"bba8baa9-cdef-4012-b456-719b9976f4c3","type":"group","properties":{"conjunction":"AND","not":false},"children1":[{"type":"rule_group","id":"88ba9998-89ab-4cde-b012-319b9976f4c3","properties":{"conjunction":"AND","not":false,"mode":"some","field":"owners","fieldSrc":"field"},"children1":[{"type":"rule","id":"8aba8a89-4567-489a-bcde-f19b9976f4c3","properties":{"field":"owners.fullyQualifiedName","operator":"select_equals","value":["\"calmeba6734b.bear6beb7527.1767806261770\""],"valueSrc":["value"],"fieldSrc":"field","valueType":["select"],"valueError":[null],"asyncListValues":[{"title":"Calmeba6734bBear6beb7527","value":"\"calmeba6734b.bear6beb7527.1767806261770\""}]}}]},{"type":"rule","id":"8b8999a9-89ab-4cde-b012-319b9976fdda","properties":{"fieldSrc":"field","field":"description","operator":"is_not_null","value":[],"valueSrc":[],"valueType":[]}}]}
+    provider: user
+termsOfUse: >-
+  <p>This is playwright article body here you can add rich text and block, it
+  also support the slash command.</p>
+owners:
+  - id: 4cf5c05c-b448-4281-a2eb-8ea30c364c0b
+    type: team
+    name: Accounting
+    fullyQualifiedName: Accounting
+    displayName: Accounting
+    deleted: false
+    href: http://localhost:8585/v1/teams/4cf5c05c-b448-4281-a2eb-8ea30c364c0b
+reviewers: []

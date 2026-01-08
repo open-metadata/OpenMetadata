@@ -1,0 +1,89 @@
+{
+  "apiVersion": "v3.1.0",
+  "kind": "DataContract",
+  "id": "customer-analytics-json",
+  "name": "Customer Analytics Contract (JSON)",
+  "version": "2.0.0",
+  "status": "active",
+  "description": {
+    "purpose": "Full contract with all sections in JSON format",
+    "usage": "Customer analytics and reporting"
+  },
+  "schema": [
+    {
+      "name": "customers",
+      "logicalType": "object",
+      "description": "Customer master data",
+      "properties": [
+        {
+          "name": "customer_id",
+          "logicalType": "string",
+          "primaryKey": true,
+          "required": true
+        },
+        {
+          "name": "email",
+          "logicalType": "string",
+          "required": true,
+          "unique": true,
+          "classification": "PII"
+        },
+        {
+          "name": "created_at",
+          "logicalType": "timestamp",
+          "logicalTypeOptions": {
+            "timezone": true,
+            "defaultTimezone": "UTC"
+          }
+        },
+        {
+          "name": "lifetime_value",
+          "logicalType": "decimal",
+          "logicalTypeOptions": {
+            "precision": 10,
+            "scale": 2
+          }
+        }
+      ]
+    }
+  ],
+  "slaProperties": [
+    {
+      "property": "freshness",
+      "value": "24",
+      "unit": "hours"
+    },
+    {
+      "property": "availability",
+      "value": "99.9",
+      "unit": "percent"
+    }
+  ],
+  "quality": [
+    {
+      "type": "library",
+      "rule": "nullValues",
+      "column": "customer_id",
+      "mustBe": 0
+    },
+    {
+      "type": "custom",
+      "rule": "lifetime_value >= 0",
+      "column": "lifetime_value"
+    }
+  ],
+  "team": [
+    {
+      "name": "data-team",
+      "role": "owner",
+      "email": "data@company.com"
+    }
+  ],
+  "roles": [
+    {
+      "name": "analyst",
+      "description": "Read access for analysts",
+      "access": "read"
+    }
+  ]
+}

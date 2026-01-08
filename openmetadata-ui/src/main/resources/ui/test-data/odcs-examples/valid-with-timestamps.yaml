@@ -1,0 +1,73 @@
+# Copyright 2026 Collate.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ODCS Valid Example: Contract with Timestamp/Time Types (v3.1.0)
+# Tests the new timestamp and time logical types
+
+apiVersion: v3.1.0
+kind: DataContract
+id: events-tracking-contract
+name: Events Tracking Contract
+version: "1.0.0"
+status: active
+
+description:
+  purpose: Track user events with precise timestamps
+
+schema:
+  - name: user_events
+    logicalType: object
+    description: User event tracking table
+    properties:
+      - name: event_id
+        logicalType: string
+        primaryKey: true
+      - name: user_id
+        logicalType: string
+        required: true
+      - name: event_timestamp
+        logicalType: timestamp
+        description: When the event occurred (with timezone)
+        required: true
+        logicalTypeOptions:
+          timezone: true
+          defaultTimezone: UTC
+      - name: event_date
+        logicalType: date
+        description: Date portion of the event
+      - name: event_time
+        logicalType: time
+        description: Time portion of the event
+        logicalTypeOptions:
+          timezone: false
+      - name: processing_timestamp
+        logicalType: timestamp
+        description: When the event was processed
+        logicalTypeOptions:
+          timezone: true
+          defaultTimezone: America/Los_Angeles
+      - name: event_type
+        logicalType: string
+        required: true
+        enum:
+          - page_view
+          - click
+          - purchase
+          - signup
+
+slaProperties:
+  - property: freshness
+    value: "1"
+    unit: hours
+  - property: latency
+    value: "30"
+    unit: seconds
+    timezone: GMT+00:00 UTC
+

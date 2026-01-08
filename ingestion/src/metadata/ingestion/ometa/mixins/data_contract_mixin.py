@@ -20,6 +20,9 @@ from metadata.generated.schema.entity.data.dataContract import DataContract
 from metadata.generated.schema.entity.datacontract.dataContractResult import (
     DataContractResult,
 )
+from metadata.generated.schema.entity.datacontract.odcs.odcsDataContract import (
+    ODCSDataContract,
+)
 from metadata.generated.schema.type.basic import Uuid
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import model_str
@@ -201,5 +204,245 @@ class OMetaDataContractMixin:
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Error validating data contract {model_str(data_contract_id)}: {err}"
+            )
+        return None
+
+    def export_to_odcs(
+        self, data_contract_id: Uuid
+    ) -> Optional[ODCSDataContract]:
+        """
+        Export a data contract to ODCS (Open Data Contract Standard) format
+
+        Args:
+            data_contract_id: UUID of the data contract to export
+
+        Returns:
+            ODCSDataContract if successful, None otherwise
+        """
+        try:
+            resp = self.client.get(
+                f"{self.get_suffix(DataContract)}/{model_str(data_contract_id)}/odcs"
+            )
+            if resp:
+                return ODCSDataContract(**resp)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error exporting data contract {model_str(data_contract_id)} to ODCS: {err}"
+            )
+        return None
+
+    def export_to_odcs_by_fqn(
+        self, fqn: str
+    ) -> Optional[ODCSDataContract]:
+        """
+        Export a data contract to ODCS format by fully qualified name
+
+        Args:
+            fqn: Fully qualified name of the data contract
+
+        Returns:
+            ODCSDataContract if successful, None otherwise
+        """
+        try:
+            resp = self.client.get(
+                f"{self.get_suffix(DataContract)}/name/{fqn}/odcs"
+            )
+            if resp:
+                return ODCSDataContract(**resp)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error exporting data contract {fqn} to ODCS: {err}"
+            )
+        return None
+
+    def export_to_odcs_yaml(
+        self, data_contract_id: Uuid
+    ) -> Optional[str]:
+        """
+        Export a data contract to ODCS YAML format
+
+        Args:
+            data_contract_id: UUID of the data contract to export
+
+        Returns:
+            YAML string if successful, None otherwise
+        """
+        try:
+            resp = self.client.get(
+                f"{self.get_suffix(DataContract)}/{model_str(data_contract_id)}/odcs/yaml"
+            )
+            if resp:
+                if hasattr(resp, "text"):
+                    return resp.text
+                if isinstance(resp, str):
+                    return resp
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error exporting data contract {model_str(data_contract_id)} to ODCS YAML: {err}"
+            )
+        return None
+
+    def export_to_odcs_yaml_by_fqn(
+        self, fqn: str
+    ) -> Optional[str]:
+        """
+        Export a data contract to ODCS YAML format by fully qualified name
+
+        Args:
+            fqn: Fully qualified name of the data contract
+
+        Returns:
+            YAML string if successful, None otherwise
+        """
+        try:
+            resp = self.client.get(
+                f"{self.get_suffix(DataContract)}/name/{fqn}/odcs/yaml"
+            )
+            if resp:
+                if hasattr(resp, "text"):
+                    return resp.text
+                if isinstance(resp, str):
+                    return resp
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error exporting data contract {fqn} to ODCS YAML: {err}"
+            )
+        return None
+
+    def import_from_odcs(
+        self,
+        odcs: ODCSDataContract,
+        entity_id: Uuid,
+        entity_type: str,
+    ) -> Optional[DataContract]:
+        """
+        Import a data contract from ODCS format
+
+        Args:
+            odcs: ODCSDataContract object to import
+            entity_id: UUID of the entity (table/topic) to attach the contract to
+            entity_type: Type of the entity (e.g., 'table', 'topic')
+
+        Returns:
+            DataContract if successful, None otherwise
+        """
+        try:
+            resp = self.client.post(
+                f"{self.get_suffix(DataContract)}/odcs?entityId={model_str(entity_id)}&entityType={entity_type}",
+                data=odcs.model_dump_json(by_alias=True, exclude_none=True),
+            )
+            if resp:
+                return DataContract(**resp)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error importing ODCS contract for entity {model_str(entity_id)}: {err}"
+            )
+        return None
+
+    def import_from_odcs_yaml(
+        self,
+        yaml_content: str,
+        entity_id: Uuid,
+        entity_type: str,
+    ) -> Optional[DataContract]:
+        """
+        Import a data contract from ODCS YAML format
+
+        Args:
+            yaml_content: YAML string containing the ODCS contract
+            entity_id: UUID of the entity (table/topic) to attach the contract to
+            entity_type: Type of the entity (e.g., 'table', 'topic')
+
+        Returns:
+            DataContract if successful, None otherwise
+        """
+        try:
+            resp = self.client.post(
+                f"{self.get_suffix(DataContract)}/odcs/yaml?entityId={model_str(entity_id)}&entityType={entity_type}",
+                data=yaml_content,
+                headers={"Content-Type": "application/x-yaml"},
+            )
+            if resp:
+                return DataContract(**resp)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error importing ODCS YAML contract for entity {model_str(entity_id)}: {err}"
+            )
+        return None
+
+    def create_or_update_from_odcs(
+        self,
+        odcs: ODCSDataContract,
+        entity_id: Uuid,
+        entity_type: str,
+    ) -> Optional[DataContract]:
+        """
+        Create or update a data contract from ODCS format (smart merge)
+
+        If a contract already exists for the entity, this will merge the
+        imported ODCS fields with the existing contract, preserving fields
+        not present in the ODCS format.
+
+        Args:
+            odcs: ODCSDataContract object to import
+            entity_id: UUID of the entity (table/topic) to attach the contract to
+            entity_type: Type of the entity (e.g., 'table', 'topic')
+
+        Returns:
+            DataContract if successful, None otherwise
+        """
+        try:
+            resp = self.client.put(
+                f"{self.get_suffix(DataContract)}/odcs?entityId={model_str(entity_id)}&entityType={entity_type}",
+                data=odcs.model_dump_json(by_alias=True, exclude_none=True),
+            )
+            if resp:
+                return DataContract(**resp)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error creating/updating ODCS contract for entity {model_str(entity_id)}: {err}"
+            )
+        return None
+
+    def create_or_update_from_odcs_yaml(
+        self,
+        yaml_content: str,
+        entity_id: Uuid,
+        entity_type: str,
+    ) -> Optional[DataContract]:
+        """
+        Create or update a data contract from ODCS YAML format (smart merge)
+
+        If a contract already exists for the entity, this will merge the
+        imported ODCS fields with the existing contract, preserving fields
+        not present in the ODCS format.
+
+        Args:
+            yaml_content: YAML string containing the ODCS contract
+            entity_id: UUID of the entity (table/topic) to attach the contract to
+            entity_type: Type of the entity (e.g., 'table', 'topic')
+
+        Returns:
+            DataContract if successful, None otherwise
+        """
+        try:
+            resp = self.client.put(
+                f"{self.get_suffix(DataContract)}/odcs/yaml?entityId={model_str(entity_id)}&entityType={entity_type}",
+                data=yaml_content,
+                headers={"Content-Type": "application/x-yaml"},
+            )
+            if resp:
+                return DataContract(**resp)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error creating/updating ODCS YAML contract for entity {model_str(entity_id)}: {err}"
             )
         return None

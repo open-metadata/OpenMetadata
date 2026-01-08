@@ -222,3 +222,251 @@ export const DATA_CONTRACT_SEMANTIC_OPERATIONS = {
   between: 'Between',
   not_between: 'Not between',
 };
+
+// ODCS Sample YAMLs for Import/Export Testing
+
+// Minimal ODCS contract - just required fields
+export const ODCS_MINIMAL_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: minimal-contract
+name: Minimal ODCS Contract
+version: "1.0.0"
+status: active
+`;
+
+// ODCS with SLA properties
+export const ODCS_WITH_SLA_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: sla-contract
+name: ODCS Contract with SLA
+version: "1.0.0"
+status: active
+slaProperties:
+  - property: freshness
+    value: "24"
+    unit: hour
+  - property: latency
+    value: "30"
+    unit: minute
+  - property: retention
+    value: "365"
+    unit: day
+`;
+
+// ODCS with schema definition (empty schema to avoid column mismatch with dynamic test tables)
+export const ODCS_WITH_SCHEMA_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: schema-contract
+name: ODCS Contract with Schema
+version: "1.0.0"
+status: active
+description:
+  purpose: Contract with schema placeholder
+  usage: For testing schema import
+`;
+
+// ODCS with team/owner information (team is ignored during import as it requires entity resolution)
+export const ODCS_WITH_TEAM_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: team-contract
+name: ODCS Contract with Team
+version: "1.0.0"
+status: active
+team:
+  - name: Data Platform Team
+    role: owner
+  - name: Analytics Team
+    role: consumer
+`;
+
+// ODCS with description fields
+export const ODCS_WITH_DESCRIPTION_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: description-contract
+name: ODCS Contract with Description
+version: "1.0.0"
+status: active
+description:
+  purpose: This contract defines the data quality standards for user data.
+  limitations: Data is refreshed daily, not real-time.
+  usage: Use for analytics and reporting purposes only.
+`;
+
+// Full ODCS contract with all fields (schema removed to avoid validation failures with dynamic test tables)
+export const ODCS_FULL_CONTRACT_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: full-contract
+name: Complete ODCS Contract
+version: "2.0.0"
+status: active
+description:
+  purpose: Comprehensive data contract for customer analytics.
+  limitations: Historical data only, no PII exposed.
+  usage: For internal analytics dashboards and ML models.
+slaProperties:
+  - property: freshness
+    value: "12"
+    unit: hour
+  - property: latency
+    value: "2"
+    unit: hour
+  - property: retention
+    value: "365"
+    unit: day
+team:
+  - name: Customer Data Team
+    role: owner
+  - name: Marketing Analytics
+    role: consumer
+  - name: Data Science Team
+    role: consumer
+`;
+
+// ODCS with v3.0.2 version (backwards compatibility)
+export const ODCS_V302_YAML = `apiVersion: v3.0.2
+kind: DataContract
+id: v302-contract
+name: ODCS v3.0.2 Contract
+version: "1.0.0"
+status: active
+`;
+
+// ODCS with draft status
+export const ODCS_DRAFT_STATUS_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: draft-contract
+name: Draft ODCS Contract
+version: "0.1.0"
+status: draft
+description:
+  purpose: This is a draft contract under review.
+`;
+
+// Invalid ODCS - missing required fields
+export const ODCS_INVALID_MISSING_FIELDS_YAML = `apiVersion: v3.1.0
+kind: DataContract
+name: Invalid Contract
+`;
+
+// Invalid ODCS - malformed YAML
+export const ODCS_INVALID_MALFORMED_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: malformed
+  name: Bad Indentation
+    version: "1.0.0"
+status: active
+`;
+
+// ODCS with v3.1.0 timestamp/time types and timezone
+export const ODCS_WITH_TIMESTAMP_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: timestamp-contract
+name: ODCS Contract with Timestamp Types
+version: "1.0.0"
+status: active
+description:
+  purpose: Contract testing v3.1.0 timestamp and time types
+slaProperties:
+  - property: freshness
+    value: "6"
+    unit: hour
+    timezone: GMT+00:00 UTC
+  - property: latency
+    value: "15"
+    unit: minute
+  - property: availability
+    value: "99.9"
+    unit: percent
+    timezone: GMT-05:00 America/New_York
+`;
+
+// ODCS with quality rules
+export const ODCS_WITH_QUALITY_RULES_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: quality-contract
+name: ODCS Contract with Quality Rules
+version: "1.0.0"
+status: active
+description:
+  purpose: Contract testing quality rules
+quality:
+  - type: library
+    rule: nullValues
+    column: id
+    mustBe: 0
+    description: ID column must not have null values
+  - type: library
+    rule: duplicateValues
+    column: email
+    mustBe: 0
+    description: Email must be unique
+  - type: custom
+    rule: "price >= 0"
+    column: price
+    description: Price must be non-negative
+`;
+
+// ODCS with security/roles
+export const ODCS_WITH_SECURITY_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: security-contract
+name: ODCS Contract with Security
+version: "1.0.0"
+status: active
+description:
+  purpose: Contract testing security roles
+roles:
+  - name: data_admin
+    description: Full access to all data
+    access: readWrite
+  - name: analyst
+    description: Read-only access for analysis
+    access: read
+  - name: auditor
+    description: Audit access for compliance
+    access: read
+`;
+
+// Helper function to generate unique ODCS contract
+export const generateODCSContract = (
+  name: string,
+  options?: {
+    status?: 'active' | 'draft' | 'retired';
+    version?: string;
+    withSla?: boolean;
+    withSchema?: boolean;
+  }
+): string => {
+  const id = `${name.toLowerCase().replace(/\s+/g, '-')}-${uuid()}`;
+  const status = options?.status ?? 'active';
+  const version = options?.version ?? '1.0.0';
+
+  let yaml = `apiVersion: v3.1.0
+kind: DataContract
+id: ${id}
+name: ${name}
+version: "${version}"
+status: ${status}
+`;
+
+  if (options?.withSla) {
+    yaml += `slaProperties:
+  - property: freshness
+    value: "24"
+    unit: hour
+`;
+  }
+
+  if (options?.withSchema) {
+    yaml += `schema:
+  - name: id
+    logicalType: integer
+    required: true
+  - name: name
+    logicalType: string
+    required: true
+`;
+  }
+
+  return yaml;
+};

@@ -1,0 +1,9 @@
+This is not a YAML file at all.
+It's just plain text.
+The import should reject this file type.
+
+Even though it might contain some YAML-like content:
+key: value
+another: thing
+
+It should fail because it's a .txt file, not .yaml or .yml

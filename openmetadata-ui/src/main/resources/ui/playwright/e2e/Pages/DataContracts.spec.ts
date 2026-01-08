@@ -21,6 +21,7 @@ import {
   DATA_CONTRACT_SEMANTICS1,
   DATA_CONTRACT_SEMANTICS2,
   NEW_TABLE_TEST_CASE,
+  ODCS_WITH_SLA_YAML,
 } from '../../constant/dataContracts';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
@@ -616,6 +617,23 @@ test.describe('Data Contracts', () => {
         await download.saveAs('downloads/' + download.suggestedFilename());
       });
 
+      await test.step('Export ODCS YAML', async () => {
+        const downloadPromise = page.waitForEvent('download');
+
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+
+        await page.getByTestId('export-odcs-contract-button').click();
+        const download = await downloadPromise;
+        // Wait for the download process to complete
+        await download.saveAs('downloads/odcs-' + download.suggestedFilename());
+
+        await toastNotification(page, 'ODCS Contract exported successfully');
+      });
+
       await test.step('Edit and Validate Contract data', async () => {
         await page.getByTestId('manage-contract-actions').click();
 
@@ -733,6 +751,59 @@ test.describe('Data Contracts', () => {
 
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
         await expect(page.getByTestId('add-contract-button')).toBeVisible();
+      });
+
+      await test.step('Import contract from ODCS YAML', async () => {
+        await page.getByTestId('add-contract-button').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+
+        const importResponse = page.waitForResponse(
+          '/api/v1/dataContracts/odcs/yaml**'
+        );
+
+        const fileInput = page.getByTestId('odcs-import-file-input');
+        await fileInput.setInputFiles({
+          name: 'contract.yaml',
+          mimeType: 'application/yaml',
+          buffer: Buffer.from(ODCS_WITH_SLA_YAML),
+        });
+
+        await importResponse;
+
+        await toastNotification(page, 'Contract imported successfully');
+
+        await expect(page.getByTestId('contract-title')).toBeVisible();
+
+        await expect(page.getByTestId('contract-sla-card')).toBeVisible();
+      });
+
+      await test.step('Delete imported contract', async () => {
+        const deleteContractResponse = page.waitForResponse(
+          'api/v1/dataContracts/*?hardDelete=true&recursive=true'
+        );
+
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+
+        await page.getByTestId('delete-contract-button').click();
+
+        await page.getByTestId('confirmation-text-input').click();
+        await page.getByTestId('confirmation-text-input').fill('DELETE');
+
+        await expect(page.getByTestId('confirm-button')).toBeEnabled();
+
+        await page.getByTestId('confirm-button').click();
+        await deleteContractResponse;
+
+        await toastNotification(page, '"Contract" deleted successfully!');
+
+        await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
       });
     });
   });

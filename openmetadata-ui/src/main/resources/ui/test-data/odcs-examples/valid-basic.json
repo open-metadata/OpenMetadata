@@ -1,0 +1,12 @@
+{
+  "apiVersion": "v3.1.0",
+  "kind": "DataContract",
+  "id": "orders-contract-json",
+  "name": "Orders Contract (JSON)",
+  "version": "1.0.0",
+  "status": "active",
+  "description": {
+    "purpose": "Basic contract in JSON format",
+    "limitations": "Test data only"
+  }
+}

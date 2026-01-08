@@ -1,0 +1,140 @@
+# Copyright 2026 Collate.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ODCS Valid Example: Full Contract with All Sections
+# Tests schema, SLA, team, and security/roles
+
+apiVersion: v3.1.0
+kind: DataContract
+id: customer-analytics-full
+name: Customer Analytics Full Contract
+version: "2.1.0"
+status: active
+
+description:
+  purpose: Comprehensive customer analytics data contract
+  limitations: PII data requires special handling
+  usage: Used for customer segmentation and retention analysis
+
+# Schema definition with multiple tables
+schema:
+  - name: customers
+    logicalType: object
+    description: Customer master data
+    properties:
+      - name: customer_id
+        logicalType: string
+        description: Unique customer identifier
+        required: true
+        unique: true
+        primaryKey: true
+      - name: email
+        logicalType: string
+        description: Customer email address
+        required: true
+        unique: true
+        classification: PII
+      - name: created_at
+        logicalType: timestamp
+        description: Account creation timestamp
+        required: true
+        logicalTypeOptions:
+          timezone: true
+          defaultTimezone: America/New_York
+      - name: lifetime_value
+        logicalType: decimal
+        description: Customer lifetime value
+        logicalTypeOptions:
+          precision: 10
+          scale: 2
+      - name: segment
+        logicalType: string
+        description: Customer segment
+        enum:
+          - premium
+          - standard
+          - basic
+
+  - name: orders
+    logicalType: object
+    description: Order transactions
+    properties:
+      - name: order_id
+        logicalType: string
+        primaryKey: true
+      - name: customer_id
+        logicalType: string
+        required: true
+      - name: order_date
+        logicalType: date
+        required: true
+      - name: total_amount
+        logicalType: decimal
+        logicalTypeOptions:
+          precision: 12
+          scale: 2
+
+# SLA Properties
+slaProperties:
+  - property: freshness
+    value: "24"
+    unit: hours
+    description: Data must be refreshed within 24 hours
+  - property: latency
+    value: "5"
+    unit: minutes
+    description: Maximum processing latency
+  - property: availability
+    value: "99.9"
+    unit: percent
+    description: Service availability target
+    timezone: GMT+00:00 UTC
+
+# Quality rules
+quality:
+  - type: library
+    rule: nullValues
+    column: customer_id
+    mustBe: 0
+    description: Customer ID cannot be null
+  - type: library
+    rule: duplicateValues
+    column: email
+    mustBe: 0
+    description: Email must be unique
+  - type: custom
+    rule: "total_amount >= 0"
+    column: total_amount
+    description: Order amount must be non-negative
+
+# Team ownership
+team:
+  - name: data-platform-team
+    role: owner
+    email: data-platform@company.com
+  - name: John Smith
+    role: steward
+    email: john.smith@company.com
+  - name: analytics-team
+    role: consumer
+    email: analytics@company.com
+
+# Security roles
+roles:
+  - name: data_admin
+    description: Full access to all customer data
+    access: readWrite
+  - name: analyst
+    description: Read-only access for analysis
+    access: read
+  - name: auditor
+    description: Audit access for compliance
+    access: read
+

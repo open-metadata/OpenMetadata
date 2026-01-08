@@ -1,0 +1,8 @@
+{
+  "apiVersion": "v3.1.0",
+  "kind": "DataContract",
+  "id": "malformed-json",
+  "name": "This JSON is malformed"
+  "version": "1.0.0",
+  "status": "active"
+}

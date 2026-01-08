@@ -1,0 +1,42 @@
+# Copyright 2026 Collate.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+name: data_contract_72ec41d8
+displayName: data_contract_72ec41d8
+description: <p>new data contract description</p>
+createdAt: 1767807366666
+createdBy: admin
+entityStatus: Approved
+entity:
+  id: 3919360d-40af-46d3-990b-2645e0601f2e
+  type: pipeline
+  href: http://localhost:8585/v1/pipelines/3919360d-40af-46d3-990b-2645e0601f2e
+semantics:
+  - name: data_contract_semantic_1_7b04252f
+    description: new data contract semantic description 1
+    rule: >-
+      {"and":[{"some":[{"var":"owners"},{"==":[{"var":"fullyQualifiedName"},"\"bold08324c5e.koalad220db32.1767807355070\""]}]},{"!=":[{"var":"description"},null]}]}
+    enabled: true
+    ignoredEntities: []
+    jsonTree: >-
+      {"id":"aa9a8a88-cdef-4012-b456-719b9987a3b6","type":"group","properties":{"conjunction":"AND","not":false},"children1":[{"type":"rule_group","id":"b8aa89a9-89ab-4cde-b012-319b9987a3b7","properties":{"conjunction":"AND","not":false,"mode":"some","field":"owners","fieldSrc":"field"},"children1":[{"type":"rule","id":"9bb8aaa9-4567-489a-bcde-f19b9987a3b7","properties":{"field":"owners.fullyQualifiedName","operator":"select_equals","value":["\"bold08324c5e.koalad220db32.1767807355070\""],"valueSrc":["value"],"fieldSrc":"field","valueType":["select"],"valueError":[null],"asyncListValues":[{"title":"Bold08324c5eKoalad220db32","value":"\"bold08324c5e.koalad220db32.1767807355070\""}]}}]},{"type":"rule","id":"9b9b8b9a-89ab-4cde-b012-319b9987ace5","properties":{"fieldSrc":"field","field":"description","operator":"is_not_null","value":[],"valueSrc":[],"valueType":[]}}]}
+    provider: user
+termsOfUse: >-
+  <p>This is playwright article body here you can add rich text and block, it
+  also support the slash command.</p>
+owners:
+  - id: 4cf5c05c-b448-4281-a2eb-8ea30c364c0b
+    type: team
+    name: Accounting
+    fullyQualifiedName: Accounting
+    displayName: Accounting
+    deleted: false
+    href: http://localhost:8585/v1/teams/4cf5c05c-b448-4281-a2eb-8ea30c364c0b
+reviewers: []

@@ -894,7 +894,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   @Operation(
       operationId = "exportDataContractToODCS",
       summary = "Export data contract to ODCS format",
-      description = "Export a data contract to Open Data Contract Standard (ODCS) v3.0.2 format.",
+      description = "Export a data contract to Open Data Contract Standard (ODCS) v3.1.0 format.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -928,7 +928,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       operationId = "exportDataContractToODCSYaml",
       summary = "Export data contract to ODCS YAML format",
       description =
-          "Export a data contract to Open Data Contract Standard (ODCS) v3.0.2 YAML format.",
+          "Export a data contract to Open Data Contract Standard (ODCS) v3.1.0 YAML format.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -967,7 +967,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       operationId = "exportDataContractToODCSByFQN",
       summary = "Export data contract to ODCS format by FQN",
       description =
-          "Export a data contract to Open Data Contract Standard (ODCS) v3.0.2 format by fully qualified name.",
+          "Export a data contract to Open Data Contract Standard (ODCS) v3.1.0 format by fully qualified name.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -996,6 +996,48 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     return ODCSConverter.toODCS(dataContract);
   }
 
+  @GET
+  @Path("/name/{fqn}/odcs/yaml")
+  @Produces("application/yaml")
+  @Operation(
+      operationId = "exportDataContractToODCSYamlByFQN",
+      summary = "Export data contract to ODCS YAML format by FQN",
+      description =
+          "Export a data contract to Open Data Contract Standard (ODCS) v3.1.0 YAML format by fully qualified name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "ODCS data contract in YAML format",
+            content = @Content(mediaType = "application/yaml", schema = @Schema(type = "string"))),
+        @ApiResponse(responseCode = "404", description = "Data contract not found")
+      })
+  public Response exportToODCSYamlByFqn(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the data contract",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam) {
+    DataContract dataContract =
+        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, Include.NON_DELETED);
+    ODCSDataContract odcs = ODCSConverter.toODCS(dataContract);
+    try {
+      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      yamlMapper.setSerializationInclusion(
+          com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
+      String yamlContent = yamlMapper.writeValueAsString(odcs);
+      return Response.ok(yamlContent, "application/yaml").build();
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Failed to convert to YAML: " + e.getMessage(), e);
+    }
+  }
+
   @POST
   @Path("/odcs")
   @Consumes(MediaType.APPLICATION_JSON)
@@ -1003,7 +1045,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       operationId = "importDataContractFromODCS",
       summary = "Import data contract from ODCS format",
       description =
-          "Import a data contract from Open Data Contract Standard (ODCS) v3.0.2 JSON format.",
+          "Import a data contract from Open Data Contract Standard (ODCS) v3.1.0 JSON format.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1042,7 +1084,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       operationId = "importDataContractFromODCSYaml",
       summary = "Import data contract from ODCS YAML format",
       description =
-          "Import a data contract from Open Data Contract Standard (ODCS) v3.0.2 YAML format.",
+          "Import a data contract from Open Data Contract Standard (ODCS) v3.1.0 YAML format.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1087,7 +1129,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       operationId = "createOrUpdateDataContractFromODCS",
       summary = "Create or update data contract from ODCS format",
       description =
-          "Create or update a data contract from Open Data Contract Standard (ODCS) v3.0.2 JSON format.",
+          "Create or update a data contract from Open Data Contract Standard (ODCS) v3.1.0 JSON format. When updating, performs smart merge preserving existing fields not in the import.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1113,7 +1155,8 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           String entityType,
       @Valid ODCSDataContract odcs) {
     EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-    DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef);
+    DataContract imported = ODCSConverter.fromODCS(odcs, entityRef);
+    DataContract dataContract = applySmartMerge(entityRef, imported);
     dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
     dataContract.setUpdatedAt(System.currentTimeMillis());
     return createOrUpdate(uriInfo, securityContext, dataContract);
@@ -1126,7 +1169,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       operationId = "createOrUpdateDataContractFromODCSYaml",
       summary = "Create or update data contract from ODCS YAML format",
       description =
-          "Create or update a data contract from Open Data Contract Standard (ODCS) v3.0.2 YAML format.",
+          "Create or update a data contract from Open Data Contract Standard (ODCS) v3.1.0 YAML format. When updating, performs smart merge preserving existing fields not in the import.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1155,13 +1198,35 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
       ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
       EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-      DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef);
+      DataContract imported = ODCSConverter.fromODCS(odcs, entityRef);
+      DataContract dataContract = applySmartMerge(entityRef, imported);
       dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
       dataContract.setUpdatedAt(System.currentTimeMillis());
       return createOrUpdate(uriInfo, securityContext, dataContract);
     } catch (Exception e) {
       throw new IllegalArgumentException("Invalid ODCS YAML content: " + e.getMessage(), e);
     }
+  }
+
+  private DataContract applySmartMerge(EntityReference entityRef, DataContract imported) {
+    DataContract existing = null;
+
+    // Try to find existing contract by entity reference
+    try {
+      existing = repository.loadEntityDataContract(entityRef);
+    } catch (Exception e) {
+      LOG.debug(
+          "Could not load contract by entity ref for {}: {}", entityRef.getId(), e.getMessage());
+    }
+
+    if (existing != null) {
+      LOG.debug("Found existing contract {} for entity {}", existing.getId(), entityRef.getId());
+      return ODCSConverter.smartMerge(existing, imported);
+    }
+
+    // No existing contract found - return imported for new creation
+    LOG.debug("No existing contract found for entity {}, will create new", entityRef.getId());
+    return imported;
   }
 
   public static class DataContractList extends ResultList<DataContract> {

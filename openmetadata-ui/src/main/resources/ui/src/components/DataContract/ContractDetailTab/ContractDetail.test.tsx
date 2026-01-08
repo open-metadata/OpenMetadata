@@ -128,7 +128,7 @@ jest.mock('../../common/Table/Table', () => {
 jest.mock('react-i18next', () => ({
   ...jest.requireActual('react-i18next'),
   useTranslation: () => ({
-    t: (key: string) => {
+    t: (key: string, options?: Record<string, string>) => {
       const translations: Record<string, string> = {
         'label.edit': 'Edit',
         'label.delete': 'Delete',
@@ -143,6 +143,9 @@ jest.mock('react-i18next', () => ({
         'label.last-execution': 'Last Execution',
         'message.no-test-case-found': 'No test cases found',
         'label.security': 'Security',
+        'label.import-odcs': 'Import from ODCS',
+        'label.odcs-contract': 'ODCS Contract',
+        'message.entity-imported-successfully': `${options?.entity} imported successfully`,
       };
 
       return translations[key] || key;
@@ -219,6 +222,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={null}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -232,6 +237,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={mockContract}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -247,6 +254,8 @@ describe('ContractDetail', () => {
       const { getByTestId } = render(
         <ContractDetail
           contract={mockContract}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -260,6 +269,8 @@ describe('ContractDetail', () => {
       const { getByTestId, queryByTestId } = render(
         <ContractDetail
           contract={mockContract}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -285,6 +296,8 @@ describe('ContractDetail', () => {
             createdBy: 'admin',
             createdAt: 1758556706799,
           }}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -304,6 +317,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={mockContract}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -322,6 +337,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={mockContract}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -341,6 +358,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={mockContract}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -367,6 +386,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={mockContract}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -389,6 +410,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={mockContract}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -408,6 +431,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={mockContract}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -425,6 +450,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={mockContract}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -438,6 +465,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={{ ...mockContract, testSuite: undefined }}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -453,6 +482,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={mockContract}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -471,6 +502,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={mockContract}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -485,6 +518,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={mockContract}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -499,6 +534,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={mockContract}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -529,6 +566,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={contractWithSecurity}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -549,6 +588,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={mockContract}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -573,6 +614,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={contractWithEmptySecurity}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -592,6 +635,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={undefined}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -607,6 +652,8 @@ describe('ContractDetail', () => {
       render(
         <ContractDetail
           contract={mockContract}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -616,6 +663,50 @@ describe('ContractDetail', () => {
       // Various loading states would be tested here
       expect(
         screen.getByTestId('contract-execution-chart')
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('ODCS Import', () => {
+    const mockOnContractUpdated = jest.fn();
+
+    it('should show import ODCS option in dropdown menu', async () => {
+      render(
+        <ContractDetail
+          contract={mockContract}
+          entityId="table-1"
+          entityType="table"
+          onContractUpdated={mockOnContractUpdated}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      fireEvent.click(screen.getByTestId('manage-contract-actions'));
+
+      expect(
+        screen.getByTestId('import-odcs-contract-button')
+      ).toBeInTheDocument();
+    });
+
+    it('should show import OpenMetadata option in dropdown menu', async () => {
+      render(
+        <ContractDetail
+          contract={mockContract}
+          entityId="table-1"
+          entityType="table"
+          onContractUpdated={mockOnContractUpdated}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      fireEvent.click(screen.getByTestId('manage-contract-actions'));
+
+      expect(
+        screen.getByTestId('import-openmetadata-contract-button')
       ).toBeInTheDocument();
     });
   });

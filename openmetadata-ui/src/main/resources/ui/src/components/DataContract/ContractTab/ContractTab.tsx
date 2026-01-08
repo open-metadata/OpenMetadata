@@ -107,6 +107,9 @@ export const ContractTab = () => {
         return (
           <ContractDetail
             contract={contract}
+            entityId={id ?? ''}
+            entityType={entityType}
+            onContractUpdated={fetchContract}
             onDelete={handleDelete}
             onEdit={() => {
               setTabMode(
