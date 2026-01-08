@@ -75,6 +75,7 @@ import {
   prepareUserProfileFromClaims,
   validateAuthFields,
 } from '../../../utils/AuthProvider.util';
+import { withDomainFilter } from '../../../utils/DomainUtils';
 import {
   clearOidcToken,
   getOidcToken,
@@ -85,7 +86,6 @@ import {
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
-import { withDomainFilter } from '../../../utils/DomainUtils';
 import Loader from '../../common/Loader/Loader';
 import Auth0Authenticator from '../AppAuthenticators/Auth0Authenticator';
 import BasicAuthAuthenticator from '../AppAuthenticators/BasicAuthAuthenticator';
