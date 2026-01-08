@@ -50,8 +50,17 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
@@ -770,7 +779,7 @@ public final class TestUtils {
         EntityUtil.mergeTags(updatedExpectedList, derived);
       }
     }
-    assertTrue(compareListsIgnoringOrder(updatedExpectedList, actualList));
+    assertTrue(compareTagsIgnoringOrder(updatedExpectedList, actualList));
   }
 
   public static void validateTagLabel(TagLabel label) {
@@ -955,6 +964,25 @@ public final class TestUtils {
     }
 
     return actual.size() == exists;
+  }
+
+  private static List<ImmutableTriple<String, TagSource, TagLabel.LabelType>>
+      convertTagLabelsToComparableTriples(List<TagLabel> tagLabels) {
+    return tagLabels.stream()
+        .map(
+            label ->
+                new ImmutableTriple<>(label.getTagFQN(), label.getSource(), label.getLabelType()))
+        .collect(Collectors.toList());
+  }
+
+  public static boolean compareTagsIgnoringOrder(List<TagLabel> expected, List<TagLabel> actual) {
+    return compareListsIgnoringOrder(
+        convertTagLabelsToComparableTriples(expected), convertTagLabelsToComparableTriples(actual));
+  }
+
+  public static boolean isTagsSuperSet(List<TagLabel> superset, List<TagLabel> subset) {
+    return convertTagLabelsToComparableTriples(superset)
+        .containsAll(convertTagLabelsToComparableTriples(subset));
   }
 
   public static void assertStyle(Style expected, Style actual) {
