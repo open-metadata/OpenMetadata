@@ -189,7 +189,6 @@ authenticationConfiguration:
       entityId: ""
       ssoLoginUrl: ""
       idpX509Certificate: ""
-      authorityUrl: ""
       nameId: ""
     sp:
       entityId: ""

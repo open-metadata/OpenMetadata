@@ -1,5 +1,5 @@
 import pytest
-from dirty_equals import HasAttributes, IsInstance
+from dirty_equals import Contains, HasAttributes, IsInstance
 
 from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -149,24 +149,45 @@ def test_it_returns_the_expected_classifications(
     assert customer_id_column.tags == []
     assert nhs_number_column.tags == [
         IsInstance(TagLabel)
-        & HasAttributes(tagFQN=HasAttributes(root="PII.Sensitive")),
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.Sensitive"),
+            reason=Contains(
+                "Detected by `ContextAwareNhsRecognizer`", "Patterns matched:"
+            ),
+        ),
     ]
     assert dwh_x10_column.tags == [
         IsInstance(TagLabel)
-        & HasAttributes(tagFQN=HasAttributes(root="PII.Sensitive")),
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.Sensitive"),
+            reason=Contains("Detected by `EmailRecognizer`", "Patterns matched:"),
+        ),
     ]
     assert user_name_column.tags == [
         IsInstance(TagLabel)
-        & HasAttributes(tagFQN=HasAttributes(root="PII.Sensitive")),
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.Sensitive"),
+            reason=Contains("Detected by `SpacyRecognizer`"),
+        ),
     ]
     assert address_column.tags == []
     assert dwh_x20_column.tags == [
         IsInstance(TagLabel)
-        & HasAttributes(tagFQN=HasAttributes(root="PII.Sensitive")),
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.Sensitive"),
+            reason=Contains(
+                "Detected by `SanitizedCreditCardRecognizer`", "Patterns matched:"
+            ),
+        ),
     ]
     assert timestamp_column.tags == []
     assert version_column.tags == []
     assert order_date_column.tags == [
         IsInstance(TagLabel)
-        & HasAttributes(tagFQN=HasAttributes(root="PII.NonSensitive")),
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.NonSensitive"),
+            reason=Contains(
+                "Detected by `ValidatedDateRecognizer`", "Patterns matched:"
+            ),
+        ),
     ]

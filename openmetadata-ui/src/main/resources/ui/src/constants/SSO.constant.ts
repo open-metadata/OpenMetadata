@@ -38,9 +38,7 @@ export const GOOGLE_SSO_DEFAULTS = {
 // SAML-specific default values
 export const SAML_SSO_DEFAULTS = {
   authority: getAuthorityUrl(),
-  idp: {
-    authorityUrl: getAuthorityUrl(), // Note: field name is authorityUrl in IDP, not authority
-  },
+  idp: {},
   sp: {
     entityId: getServerUrl(),
     acs: getCallbackUrl(),
@@ -259,10 +257,6 @@ export const SAML_UI_SCHEMA = {
       'ui:title': 'Identity Provider (IdP)',
       entityId: { 'ui:title': 'IdP Entity ID' },
       ssoLoginUrl: { 'ui:title': 'IdP SSO Login URL' },
-      authorityUrl: {
-        'ui:title': 'Authority URL',
-        'ui:placeholder': `Default: ${getAuthorityUrl()}`,
-      },
       idpX509Certificate: {
         'ui:title': 'IdP X.509 Certificate',
         'ui:widget': 'textarea',
