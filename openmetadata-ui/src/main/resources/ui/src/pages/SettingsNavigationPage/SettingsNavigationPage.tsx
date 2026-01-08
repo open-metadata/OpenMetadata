@@ -20,6 +20,7 @@ import { ReactComponent as IconRight } from '../../assets/svg/ic-arrow-right.svg
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { CustomizablePageHeader } from '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import {
   getHiddenKeysFromNavigationItems,
@@ -37,12 +38,15 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
   const { t } = useTranslation();
   const { getNavigation } = useCustomizeStore();
   const currentNavigation = getNavigation();
+  const { plugins = [] } = useApplicationsProvider();
 
   const [hiddenKeys, setHiddenKeys] = useState<string[]>(
-    getHiddenKeysFromNavigationItems(currentNavigation)
+    getHiddenKeysFromNavigationItems(currentNavigation, plugins)
   );
   const [treeData, setTreeData] = useState<TreeDataNode[]>(() =>
-    currentNavigation ? getTreeDataForNavigationItems(currentNavigation) : []
+    currentNavigation
+      ? getTreeDataForNavigationItems(currentNavigation, plugins)
+      : []
   );
 
   const disableSave = useMemo(() => {
@@ -119,7 +123,7 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
   }, []);
 
   const handleReset = () => {
-    setTreeData(getTreeDataForNavigationItems());
+    setTreeData(getTreeDataForNavigationItems(undefined, plugins));
     setHiddenKeys(getHiddenKeysFromNavigationItems());
   };
 
