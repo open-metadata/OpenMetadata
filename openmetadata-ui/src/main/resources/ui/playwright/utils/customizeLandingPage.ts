@@ -194,9 +194,6 @@ export const setUserDefaultPersona = async (
     page.locator('[data-testid="default-persona-select-list"]')
   ).toBeVisible();
 
-  await page.locator('[data-testid="default-persona-select-list"]').click();
-  await page.waitForLoadState('networkidle');
-
   const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
 
   // Click on the persona option by text within the dropdown
