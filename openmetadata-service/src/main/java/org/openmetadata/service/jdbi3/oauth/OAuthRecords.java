@@ -19,7 +19,6 @@ public class OAuthRecords {
   public record OAuthAuthorizationCodeRecord(
       String code,
       String clientId,
-      String connectorName,
       String userName,
       String codeChallenge,
       String codeChallengeMethod,
@@ -33,7 +32,6 @@ public class OAuthRecords {
       String tokenHash,
       String accessTokenEncrypted,
       String clientId,
-      String connectorName,
       String userName,
       List<String> scopes,
       long expiresAt) {}
@@ -43,9 +41,21 @@ public class OAuthRecords {
       String tokenHash,
       String refreshTokenEncrypted,
       String clientId,
-      String connectorName,
       String userName,
       List<String> scopes,
       long expiresAt,
       boolean revoked) {}
+
+  public record McpPendingAuthRequest(
+      String authRequestId,
+      String clientId,
+      String codeChallenge,
+      String codeChallengeMethod,
+      String redirectUri,
+      String mcpState,
+      List<String> scopes,
+      String pac4jState,
+      String pac4jNonce,
+      String pac4jCodeVerifier,
+      long expiresAt) {}
 }

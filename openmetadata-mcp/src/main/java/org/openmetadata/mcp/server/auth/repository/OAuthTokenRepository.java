@@ -36,11 +36,7 @@ public class OAuthTokenRepository {
    * Store an access token.
    */
   public void storeAccessToken(
-      AccessToken token,
-      String clientId,
-      String connectorName,
-      String userName,
-      List<String> scopes) {
+      AccessToken token, String clientId, String userName, List<String> scopes) {
 
     String tokenHash = hashToken(token.getToken());
     String encryptedToken = fernet.encrypt(token.getToken());
@@ -49,7 +45,6 @@ public class OAuthTokenRepository {
         tokenHash,
         encryptedToken,
         clientId,
-        connectorName,
         userName,
         JsonUtils.pojoToJson(scopes),
         token.getExpiresAt());
@@ -80,15 +75,6 @@ public class OAuthTokenRepository {
   }
 
   /**
-   * Get connector name for a given access token.
-   */
-  public String getConnectorNameForToken(String tokenValue) {
-    String tokenHash = hashToken(tokenValue);
-    OAuthAccessTokenRecord record = accessTokenDAO.findByTokenHash(tokenHash);
-    return record != null ? record.connectorName() : null;
-  }
-
-  /**
    * Delete access token.
    */
   public void deleteAccessToken(String tokenValue) {
@@ -101,11 +87,7 @@ public class OAuthTokenRepository {
    * Store a refresh token.
    */
   public void storeRefreshToken(
-      RefreshToken token,
-      String clientId,
-      String connectorName,
-      String userName,
-      List<String> scopes) {
+      RefreshToken token, String clientId, String userName, List<String> scopes) {
 
     String tokenHash = hashToken(token.getToken());
     String encryptedToken = fernet.encrypt(token.getToken());
@@ -114,7 +96,6 @@ public class OAuthTokenRepository {
         tokenHash,
         encryptedToken,
         clientId,
-        connectorName,
         userName,
         JsonUtils.pojoToJson(scopes),
         token.getExpiresAt());
@@ -142,15 +123,6 @@ public class OAuthTokenRepository {
     token.setScopes(record.scopes());
 
     return token;
-  }
-
-  /**
-   * Get connector name for a given refresh token.
-   */
-  public String getConnectorNameForRefreshToken(String tokenValue) {
-    String tokenHash = hashToken(tokenValue);
-    OAuthRefreshTokenRecord record = refreshTokenDAO.findByTokenHash(tokenHash);
-    return record != null ? record.connectorName() : null;
   }
 
   /**

@@ -116,13 +116,12 @@ CREATE TABLE IF NOT EXISTS oauth_refresh_tokens (
     CONSTRAINT oauth_refresh_tokens_fk_client FOREIGN KEY (client_id) REFERENCES oauth_clients(client_id) ON DELETE CASCADE,
     CONSTRAINT oauth_refresh_tokens_expires_check CHECK (expires_at > 0),
     CONSTRAINT oauth_refresh_tokens_hash_check CHECK (char_length(token_hash) > 0),
-    CONSTRAINT oauth_refresh_tokens_user_check CHECK (char_length(connector_name) > 0),
+    CONSTRAINT oauth_refresh_tokens_user_check CHECK (char_length(user_name) > 0),
     CONSTRAINT oauth_refresh_tokens_scopes_check CHECK (jsonb_typeof(scopes) = 'array')
 );
 
 CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_hash ON oauth_refresh_tokens(token_hash);
 CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_client_id ON oauth_refresh_tokens(client_id);
-CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_user ON oauth_refresh_tokens(connector_name);
 CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_user ON oauth_refresh_tokens(user_name);
 CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_revoked ON oauth_refresh_tokens(revoked);
 CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_expires_at ON oauth_refresh_tokens(expires_at);
@@ -131,7 +130,6 @@ CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_created_at ON oauth_refresh_
 COMMENT ON TABLE oauth_refresh_tokens IS 'OAuth 2.0 refresh tokens for obtaining new access tokens';
 COMMENT ON COLUMN oauth_refresh_tokens.token_hash IS 'SHA-256 hash of the refresh token for lookup';
 COMMENT ON COLUMN oauth_refresh_tokens.refresh_token_encrypted IS 'Encrypted refresh token value';
-COMMENT ON COLUMN oauth_refresh_tokens.user_name IS 'Username of the user who authorized the token';
 COMMENT ON COLUMN oauth_refresh_tokens.user_name IS 'Username of the user who authorized the token';
 COMMENT ON COLUMN oauth_refresh_tokens.revoked IS 'Whether the refresh token has been revoked';
 COMMENT ON COLUMN oauth_refresh_tokens.expires_at IS 'Unix timestamp (milliseconds) when token expires';
@@ -173,7 +171,6 @@ CREATE TABLE IF NOT EXISTS oauth_audit_log (
 
 CREATE INDEX IF NOT EXISTS idx_oauth_audit_log_event_type ON oauth_audit_log(event_type);
 CREATE INDEX IF NOT EXISTS idx_oauth_audit_log_client_id ON oauth_audit_log(client_id);
-CREATE INDEX IF NOT EXISTS idx_oauth_audit_log_connector ON oauth_audit_log(connector_name);
 CREATE INDEX IF NOT EXISTS idx_oauth_audit_log_user ON oauth_audit_log(user_name);
 CREATE INDEX IF NOT EXISTS idx_oauth_audit_log_success ON oauth_audit_log(success);
 CREATE INDEX IF NOT EXISTS idx_oauth_audit_log_created_at ON oauth_audit_log(created_at DESC);
@@ -182,7 +179,6 @@ CREATE INDEX IF NOT EXISTS idx_oauth_audit_log_ip_address ON oauth_audit_log(ip_
 COMMENT ON TABLE oauth_audit_log IS 'Audit log for all OAuth 2.0 events and security-related activities';
 COMMENT ON COLUMN oauth_audit_log.event_type IS 'Type of OAuth event (authorize, token_exchange, token_refresh, etc.)';
 COMMENT ON COLUMN oauth_audit_log.client_id IS 'OAuth client that triggered the event';
-COMMENT ON COLUMN oauth_audit_log.connector_name IS 'Connector/service involved in the event';
 COMMENT ON COLUMN oauth_audit_log.user_name IS 'User involved in the event';
 COMMENT ON COLUMN oauth_audit_log.success IS 'Whether the operation succeeded';
 COMMENT ON COLUMN oauth_audit_log.error_message IS 'Error message if operation failed';
@@ -222,9 +218,31 @@ ALTER TABLE oauth_audit_log SET (
 -- Increase statistics for frequently queried columns
 ALTER TABLE oauth_authorization_codes ALTER COLUMN code SET STATISTICS 500;
 ALTER TABLE oauth_authorization_codes ALTER COLUMN client_id SET STATISTICS 200;
-ALTER TABLE oauth_authorization_codes ALTER COLUMN connector_name SET STATISTICS 200;
+ALTER TABLE oauth_authorization_codes ALTER COLUMN user_name SET STATISTICS 200;
 ALTER TABLE oauth_access_tokens ALTER COLUMN token_hash SET STATISTICS 500;
 ALTER TABLE oauth_access_tokens ALTER COLUMN client_id SET STATISTICS 200;
-ALTER TABLE oauth_access_tokens ALTER COLUMN connector_name SET STATISTICS 200;
+ALTER TABLE oauth_access_tokens ALTER COLUMN user_name SET STATISTICS 200;
 ALTER TABLE oauth_refresh_tokens ALTER COLUMN token_hash SET STATISTICS 500;
 ALTER TABLE oauth_refresh_tokens ALTER COLUMN client_id SET STATISTICS 200;
+
+-- MCP Pending Auth Requests Table
+-- Stores pending OAuth authorization requests for SSO flow (survives cross-domain redirects)
+CREATE TABLE IF NOT EXISTS mcp_pending_auth_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    auth_request_id VARCHAR(64) UNIQUE NOT NULL,
+    client_id VARCHAR(255) NOT NULL,
+    code_challenge VARCHAR(255) NOT NULL,
+    code_challenge_method VARCHAR(10) NOT NULL DEFAULT 'S256',
+    redirect_uri TEXT NOT NULL,
+    mcp_state VARCHAR(255),
+    scopes JSONB,
+    pac4j_state VARCHAR(64),
+    pac4j_nonce VARCHAR(255),
+    pac4j_code_verifier VARCHAR(255),
+    expires_at BIGINT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_mcp_pending_auth_request_id ON mcp_pending_auth_requests(auth_request_id);
+CREATE INDEX IF NOT EXISTS idx_mcp_pending_auth_expires ON mcp_pending_auth_requests(expires_at);
+CREATE INDEX IF NOT EXISTS idx_mcp_pending_auth_pac4j_state ON mcp_pending_auth_requests(pac4j_state);

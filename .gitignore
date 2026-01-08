@@ -147,6 +147,9 @@ ingestion/.nox/
 .env.local
 .env.*.local
 
+# Google OAuth test credentials (DO NOT COMMIT)
+conf/google-oauth-test.env
+
 # Temporary files
 *.tmp
 *.temp 

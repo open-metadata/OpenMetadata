@@ -6,7 +6,6 @@ import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.DispatcherType;
-import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -14,21 +13,15 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.ee10.servlet.FilterHolder;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
-import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.mcp.server.auth.jobs.OAuthTokenCleanupScheduler;
-import org.openmetadata.mcp.server.auth.provider.ConnectorOAuthProvider;
-import org.openmetadata.mcp.server.auth.settings.ClientRegistrationOptions;
-import org.openmetadata.mcp.server.auth.settings.RevocationOptions;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
 import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.McpServerProvider;
-import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -74,7 +67,7 @@ public class McpServer implements McpServerProvider {
                 SecurityConfigurationManager.getCurrentAuthzConfig()));
     List<McpSchema.Tool> tools = getTools();
     List<McpSchema.Prompt> prompts = getPrompts();
-    addStatelessTransport(contextHandler, authFilter, tools, prompts);
+    addStatelessTransport(contextHandler, authFilter, tools, prompts, config);
   }
 
   protected List<McpSchema.Tool> getTools() {
@@ -89,7 +82,8 @@ public class McpServer implements McpServerProvider {
       MutableServletContextHandler contextHandler,
       McpAuthFilter authFilter,
       List<McpSchema.Tool> tools,
-      List<McpSchema.Prompt> prompts) {
+      List<McpSchema.Prompt> prompts,
+      OpenMetadataApplicationConfig config) {
     try {
       McpSchema.ServerCapabilities serverCapabilities =
           McpSchema.ServerCapabilities.builder()
@@ -97,63 +91,45 @@ public class McpServer implements McpServerProvider {
               .prompts(true)
               .resources(true, true)
               .build();
-      // Create connector-based OAuth provider (redirect-free, internal OAuth)
+      // Create unified OAuth provider for MCP authentication (supports both SSO and Basic Auth)
       // Get base URL from system settings, fallback to localhost for development
       String baseUrl = getBaseUrlFromSettings();
-      // Get default connector from environment (null in production, set for dev/testing)
-      String defaultConnector = System.getenv("MCP_DEFAULT_CONNECTOR");
-      if (defaultConnector == null || defaultConnector.trim().isEmpty()) {
-        defaultConnector = null; // No default in production
-        LOG.info("MCP OAuth: No default connector configured (production mode)");
-      } else {
+      if (baseUrl == null || baseUrl.trim().isEmpty()) {
+        baseUrl = "http://localhost:8585";
+        LOG.warn("Base URL not configured, using default: {}", baseUrl);
+      }
+
+      org.openmetadata.service.security.AuthenticationCodeFlowHandler ssoHandler = null;
+      try {
+        ssoHandler = org.openmetadata.service.security.AuthenticationCodeFlowHandler.getInstance();
+        LOG.info("SSO AuthenticationCodeFlowHandler initialized for MCP OAuth");
+      } catch (IllegalStateException e) {
         LOG.warn(
-            "MCP OAuth: Using default connector '{}' from MCP_DEFAULT_CONNECTOR (dev/test only)",
-            defaultConnector);
-      }
-      ConnectorOAuthProvider authProvider =
-          new ConnectorOAuthProvider(
-              SecretsManagerFactory.getSecretsManager(),
-              (DatabaseServiceRepository) Entity.getEntityRepository(Entity.DATABASE_SERVICE),
-              baseUrl,
-              defaultConnector);
-
-      // Register default MCP client (for dynamic client registration)
-      // Check if client already exists to avoid duplicate entry errors on server restart
-      OAuthClientInformation existingClient =
-          authProvider.getClient("openmetadata-mcp-client").get();
-      if (existingClient == null) {
-        OAuthClientInformation mcpClient = new OAuthClientInformation();
-        mcpClient.setClientId("openmetadata-mcp-client");
-        // Generate random client secret (not used for public PKCE clients, but required by spec)
-        mcpClient.setClientSecret(java.util.UUID.randomUUID().toString());
-        // TODO: Make redirect URI configurable via MCPConfiguration
-        // This default is for development/testing only
-        mcpClient.setRedirectUris(
-            Collections.singletonList(new URI("http://localhost:3000/callback")));
-        mcpClient.setTokenEndpointAuthMethod("none"); // Public client
-        mcpClient.setGrantTypes(Arrays.asList("authorization_code", "refresh_token"));
-        mcpClient.setResponseTypes(Collections.singletonList("code"));
-        authProvider.registerClient(mcpClient).get();
-        LOG.info("Registered new MCP OAuth client: openmetadata-mcp-client");
-      } else {
-        LOG.info("MCP OAuth client already exists: openmetadata-mcp-client");
+            "SSO AuthenticationCodeFlowHandler not initialized, SSO OAuth flow will not be available. Basic Auth will still work.",
+            e);
       }
 
-      // Create registration options
-      ClientRegistrationOptions registrationOptions = new ClientRegistrationOptions();
-      registrationOptions.setAllowLocalhostRedirect(true);
-      // Don't validate scopes for connector-based OAuth - allow any scope
-      registrationOptions.setValidScopes(null);
+      org.openmetadata.service.security.jwt.JWTTokenGenerator jwtGenerator =
+          org.openmetadata.service.security.jwt.JWTTokenGenerator.getInstance();
+      org.openmetadata.service.security.auth.BasicAuthenticator basicAuthenticator =
+          new org.openmetadata.service.security.auth.BasicAuthenticator();
 
-      // Create revocation options
-      RevocationOptions revocationOptions = new RevocationOptions();
-      revocationOptions.setEnabled(true);
+      basicAuthenticator.init(config);
+      LOG.info("BasicAuthenticator initialized for MCP OAuth with userRepository");
+
+      org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider authProvider =
+          new org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider(
+              ssoHandler, jwtGenerator, basicAuthenticator, baseUrl);
 
       // Configure allowed origins for CORS
-      // Check if we're in development mode (baseUrl contains localhost)
+      // Check if we're in development mode (baseUrl contains localhost or is empty)
       // In production, these should be configured via MCPConfiguration
       List<String> allowedOrigins;
-      boolean isDevelopmentMode = baseUrl.contains("localhost") || baseUrl.contains("127.0.0.1");
+      boolean isDevelopmentMode =
+          baseUrl == null
+              || baseUrl.isEmpty()
+              || baseUrl.contains("localhost")
+              || baseUrl.contains("127.0.0.1");
 
       if (isDevelopmentMode) {
         // Development mode: Allow common localhost ports with warning
@@ -188,8 +164,6 @@ public class McpServer implements McpServerProvider {
               "/mcp",
               new AuthEnrichedMcpContextExtractor(),
               authProvider,
-              registrationOptions,
-              revocationOptions,
               allowedOrigins);
       McpStatelessSyncServer server =
           io.modelcontextprotocol.server.McpServer.sync(statelessOauthTransport)
@@ -203,18 +177,33 @@ public class McpServer implements McpServerProvider {
       ServletHolder servletHolderSSE = new ServletHolder(statelessOauthTransport);
       contextHandler.addServlet(servletHolderSSE, "/mcp/*");
 
-      contextHandler.addFilter(
-          new FilterHolder(authFilter), "/mcp/*", EnumSet.of(DispatcherType.REQUEST));
+      // Note: McpAuthFilter is NOT applied to /mcp/* because
+      // OAuthHttpStatelessServerTransportProvider
+      // handles its own OAuth authentication internally. Applying an external auth filter would
+      // block
+      // the OAuth handshake that happens at the transport layer.
 
-      // Register OAuth setup endpoint (one-time admin setup)
-      // Use /api/v1/mcp/oauth/setup to avoid conflict with /mcp/* wildcard pattern
-      org.openmetadata.mcp.server.auth.handlers.OAuthSetupHandler setupHandler =
-          new org.openmetadata.mcp.server.auth.handlers.OAuthSetupHandler(
-              SecretsManagerFactory.getSecretsManager(),
-              (DatabaseServiceRepository) Entity.getEntityRepository(Entity.DATABASE_SERVICE));
-      ServletHolder setupHolder = new ServletHolder(setupHandler);
-      contextHandler.addServlet(setupHolder, "/api/v1/mcp/oauth/setup");
-      LOG.info("Registered OAuth setup endpoint at /api/v1/mcp/oauth/setup");
+      // Register SSO callback endpoint for user authentication
+      org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType ssoServiceType =
+          org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.GOOGLE; // Default to Google
+      try {
+        org.openmetadata.schema.api.security.AuthenticationConfiguration authConfig =
+            SecurityConfigurationManager.getCurrentAuthConfig();
+        if (authConfig != null && authConfig.getProvider() != null) {
+          String providerStr = authConfig.getProvider().toString().toUpperCase();
+          ssoServiceType =
+              org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.valueOf(providerStr);
+        }
+      } catch (Exception e) {
+        LOG.warn("Could not determine SSO provider type, using default GOOGLE", e);
+      }
+
+      org.openmetadata.mcp.server.auth.handlers.SSOCallbackServlet ssoCallbackServlet =
+          new org.openmetadata.mcp.server.auth.handlers.SSOCallbackServlet(
+              authProvider, ssoHandler, ssoServiceType);
+      ServletHolder ssoCallbackHolder = new ServletHolder(ssoCallbackServlet);
+      contextHandler.addServlet(ssoCallbackHolder, "/mcp/callback");
+      LOG.info("Registered SSO callback endpoint at /mcp/callback");
 
       // Add well-known filter at root level for OAuth discovery (RFC 8414)
       OAuthWellKnownFilter wellKnownFilter = new OAuthWellKnownFilter();
@@ -272,13 +261,18 @@ public class McpServer implements McpServerProvider {
               (org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration)
                   settings.getConfigValue();
           if (urlConfig != null && urlConfig.getOpenMetadataUrl() != null) {
-            return urlConfig.getOpenMetadataUrl();
+            String url = urlConfig.getOpenMetadataUrl();
+            LOG.info("Base URL retrieved from system settings: {}", url);
+            return url;
           }
         }
+      } else {
+        LOG.warn("SystemRepository is null during MCP initialization");
       }
     } catch (Exception e) {
-      LOG.debug("Could not get instance URL from SystemSettings", e);
+      LOG.warn("Could not get instance URL from SystemSettings, using fallback", e);
     }
+    LOG.info("Using fallback base URL: http://localhost:8585");
     return "http://localhost:8585";
   }
 }

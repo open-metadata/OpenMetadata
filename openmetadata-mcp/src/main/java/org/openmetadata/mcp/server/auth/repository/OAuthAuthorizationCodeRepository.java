@@ -25,7 +25,6 @@ public class OAuthAuthorizationCodeRepository {
   public void store(
       String code,
       String clientId,
-      String connectorName,
       String userName,
       String codeChallenge,
       String codeChallengeMethod,
@@ -36,7 +35,6 @@ public class OAuthAuthorizationCodeRepository {
     dao.insert(
         code,
         clientId,
-        connectorName,
         userName,
         codeChallenge,
         codeChallengeMethod,

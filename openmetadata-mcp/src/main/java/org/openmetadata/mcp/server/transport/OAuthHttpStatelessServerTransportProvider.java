@@ -10,7 +10,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;
@@ -21,7 +20,6 @@ import java.util.concurrent.CompletionException;
 import org.openmetadata.mcp.auth.AuthorizationCode;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
-import org.openmetadata.mcp.auth.OAuthClientMetadata;
 import org.openmetadata.mcp.auth.OAuthMetadata;
 import org.openmetadata.mcp.auth.OAuthToken;
 import org.openmetadata.mcp.auth.ProtectedResourceMetadata;
@@ -30,15 +28,9 @@ import org.openmetadata.mcp.auth.exception.TokenException;
 import org.openmetadata.mcp.server.auth.handlers.AuthorizationHandler;
 import org.openmetadata.mcp.server.auth.handlers.MetadataHandler;
 import org.openmetadata.mcp.server.auth.handlers.ProtectedResourceMetadataHandler;
-import org.openmetadata.mcp.server.auth.handlers.RegistrationHandler;
-import org.openmetadata.mcp.server.auth.handlers.RevocationHandler;
-import org.openmetadata.mcp.server.auth.handlers.TokenHandler;
 import org.openmetadata.mcp.server.auth.middleware.AuthContext;
 import org.openmetadata.mcp.server.auth.middleware.BearerAuthenticator;
 import org.openmetadata.mcp.server.auth.middleware.ClientAuthenticator;
-import org.openmetadata.mcp.server.auth.ratelimit.SimpleRateLimiter;
-import org.openmetadata.mcp.server.auth.settings.ClientRegistrationOptions;
-import org.openmetadata.mcp.server.auth.settings.RevocationOptions;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.slf4j.Logger;
@@ -61,12 +53,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   private final AuthorizationHandler authorizationHandler;
 
-  private final TokenHandler tokenHandler;
-
-  private final RegistrationHandler registrationHandler;
-
-  private final RevocationHandler revocationHandler;
-
   private final ClientAuthenticator clientAuthenticator;
 
   private final BearerAuthenticator bearerAuthenticator;
@@ -81,10 +67,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   private final OAuthAuthorizationServerProvider authProvider;
 
-  private final SimpleRateLimiter authorizationRateLimiter;
-
-  private final SimpleRateLimiter tokenRateLimiter;
-
   /**
    * Creates a new OAuthHttpServletSseServerTransportProvider.
    * @param objectMapper The JSON object mapper
@@ -92,8 +74,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
    * @param mcpEndpoint The MCP endpoint path
    * @param contextExtractor The context extractor
    * @param authProvider The OAuth authorization server provider
-   * @param registrationOptions The client registration options
-   * @param revocationOptions The token revocation options
    * @param allowedOrigins List of allowed origins for CORS
    */
   public OAuthHttpStatelessServerTransportProvider(
@@ -102,8 +82,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       String mcpEndpoint,
       McpTransportContextExtractor<HttpServletRequest> contextExtractor,
       OAuthAuthorizationServerProvider authProvider,
-      ClientRegistrationOptions registrationOptions,
-      RevocationOptions revocationOptions,
       List<String> allowedOrigins) {
     super(objectMapper, mcpEndpoint, contextExtractor);
     this.objectMapper = objectMapper;
@@ -128,16 +106,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     metadata.setTokenEndpointAuthMethodsSupported(java.util.Arrays.asList("client_secret_post"));
     metadata.setCodeChallengeMethodsSupported(java.util.Arrays.asList("S256"));
 
-    if (registrationOptions.isEnabled()) {
-      metadata.setRegistrationEndpoint(URI.create(baseUrl + mcpEndpoint + "/register"));
-    }
-
-    if (revocationOptions.isEnabled()) {
-      metadata.setRevocationEndpoint(URI.create(baseUrl + mcpEndpoint + "/revoke"));
-      metadata.setRevocationEndpointAuthMethodsSupported(
-          java.util.Arrays.asList("client_secret_post"));
-    }
-
     // Create Protected Resource metadata (RFC 9728) - MCP requirement
     this.resourceMetadataUrl =
         URI.create(baseUrl + mcpEndpoint + "/.well-known/oauth-protected-resource");
@@ -145,7 +113,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     protectedResourceMetadata.setResource(URI.create(baseUrl));
     protectedResourceMetadata.setAuthorizationServers(
         java.util.Arrays.asList(URI.create(baseUrl + mcpEndpoint)));
-    protectedResourceMetadata.setScopesSupported(registrationOptions.getValidScopes());
+    protectedResourceMetadata.setScopesSupported(
+        List.of("openid", "profile", "email", "offline_access", "api://apiId/.default"));
     protectedResourceMetadata.setResourceDocumentation(URI.create(baseUrl + "/docs"));
 
     // Create handlers
@@ -153,15 +122,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     this.protectedResourceMetadataHandler =
         new ProtectedResourceMetadataHandler(protectedResourceMetadata);
     this.authorizationHandler = new AuthorizationHandler(authProvider);
-    this.tokenHandler = new TokenHandler(authProvider, clientAuthenticator);
-    this.registrationHandler =
-        registrationOptions.isEnabled()
-            ? new RegistrationHandler(authProvider, registrationOptions)
-            : null;
-    this.revocationHandler =
-        revocationOptions.isEnabled()
-            ? new RevocationHandler(authProvider, clientAuthenticator)
-            : null;
 
     this.jwtFilter =
         new JwtFilter(
@@ -170,12 +130,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     this.allowedOrigins = allowedOrigins;
 
-    this.authorizationRateLimiter = new SimpleRateLimiter(10, 60);
-    this.tokenRateLimiter = new SimpleRateLimiter(5, 60);
-
     logger.info("OAuthHttpServletSseServerTransportProvider initialized with base URL: " + baseUrl);
     logger.info("CORS allowed origins: " + allowedOrigins);
-    logger.info("Rate limiting enabled: authorization (10 req/min), token (5 req/min)");
   }
 
   /**
@@ -351,10 +307,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       // Handle OAuth POST routes
       if (path.endsWith("/token")) {
         handleTokenRequest(request, response);
-      } else if (path.endsWith("/register") && registrationHandler != null) {
-        handleRegisterRequest(request, response);
-      } else if (path.endsWith("/revoke") && revocationHandler != null) {
-        handleRevokeRequest(request, response);
       } else if (path.endsWith("/authorize")) {
         handleAuthorizeRequest(request, response);
       } else {
@@ -400,16 +352,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   private void handleAuthorizeRequest(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
-    String clientIp = request.getRemoteAddr();
-    if (!authorizationRateLimiter.allowRequest(clientIp)) {
-      response.setStatus(429);
-      response.setContentType("application/json");
-      response
-          .getWriter()
-          .write("{\"error\":\"too_many_requests\",\"error_description\":\"Rate limit exceeded\"}");
-      return;
-    }
-
     // Extract parameters
     Map<String, String> params = new HashMap<>();
     request
@@ -423,11 +365,23 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     try {
       logger.info("Authorization request params (sanitized): " + sanitizeParamsForLogging(params));
-      String redirectUrl = authorizationHandler.handle(params).join().getRedirectUrl();
-      response.setHeader("Location", redirectUrl);
-      response.setHeader("Cache-Control", "no-store");
-      setCorsHeaders(request, response);
-      response.sendRedirect(redirectUrl);
+
+      if (authProvider instanceof org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider) {
+        ((org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider) authProvider)
+            .setRequestContext(request, response);
+      }
+
+      AuthorizationHandler.AuthorizationResponse authResponse =
+          authorizationHandler.handle(params).join();
+
+      String redirectUrl = authResponse.getRedirectUrl();
+      if (redirectUrl != null) {
+        response.setHeader("Location", redirectUrl);
+        response.setHeader("Cache-Control", "no-store");
+        setCorsHeaders(request, response);
+        response.sendRedirect(redirectUrl);
+      }
+
     } catch (Exception ex) {
       logger.error("Authorization request failed", ex);
       setCorsHeaders(request, response);
@@ -457,20 +411,11 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
               }
             });
 
-    String clientId = params.get("client_id");
-    if (clientId != null && !tokenRateLimiter.allowRequest(clientId)) {
-      response.setStatus(429);
-      response.setContentType("application/json");
-      response
-          .getWriter()
-          .write("{\"error\":\"too_many_requests\",\"error_description\":\"Rate limit exceeded\"}");
-      return;
-    }
-
     logger.info("Token request params (sanitized): " + sanitizeParamsForLogging(params));
 
     try {
       String grantType = params.get("grant_type");
+      String clientId = params.get("client_id");
       OAuthToken token = null;
 
       if ("authorization_code".equals(grantType)) {
@@ -520,7 +465,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
       } else if ("refresh_token".equals(grantType)) {
         // Handle refresh token
-        clientId = params.get("client_id");
         OAuthClientInformation client = authProvider.getClient(clientId).join();
 
         if (client == null) {
@@ -557,80 +501,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
       Map<String, String> error = new HashMap<>();
       error.put("error", "invalid_grant");
-      Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-      error.put(
-          "error_description",
-          cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
-      getObjectMapper().writeValue(response.getOutputStream(), error);
-    }
-  }
-
-  private void handleRegisterRequest(HttpServletRequest request, HttpServletResponse response)
-      throws IOException {
-    // Read request body
-    BufferedReader reader = request.getReader();
-    StringBuilder body = new StringBuilder();
-    String line;
-    while ((line = reader.readLine()) != null) {
-      body.append(line);
-    }
-
-    try {
-      OAuthClientMetadata clientMetadata =
-          getObjectMapper().readValue(body.toString(), OAuthClientMetadata.class);
-
-      logger.debug(
-          "Client registration request received for client: {}",
-          clientMetadata.getClientName() != null ? clientMetadata.getClientName() : "unnamed");
-
-      Object clientInfo = registrationHandler.handle(clientMetadata).join();
-      setCorsHeaders(request, response);
-      response.setContentType("application/json");
-      response.setStatus(201); // Created
-      getObjectMapper().writeValue(response.getOutputStream(), clientInfo);
-    } catch (Exception ex) {
-      logger.error("Client registration failed", ex);
-      setCorsHeaders(request, response);
-      response.setContentType("application/json");
-      response.setStatus(400);
-
-      // Send error response with details
-      Map<String, String> error = new HashMap<>();
-      error.put("error", "invalid_client_metadata");
-      Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-      error.put(
-          "error_description",
-          cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
-      getObjectMapper().writeValue(response.getOutputStream(), error);
-    }
-  }
-
-  private void handleRevokeRequest(HttpServletRequest request, HttpServletResponse response)
-      throws IOException {
-    // Extract parameters
-    Map<String, String> params = new HashMap<>();
-    request
-        .getParameterMap()
-        .forEach(
-            (key, values) -> {
-              if (values.length > 0) {
-                params.put(key, values[0]);
-              }
-            });
-
-    try {
-      logger.info("Revocation request params (sanitized): " + sanitizeParamsForLogging(params));
-      revocationHandler.handle(params).join();
-      setCorsHeaders(request, response);
-      response.setStatus(200);
-    } catch (Exception ex) {
-      logger.error("Revocation request failed", ex);
-      setCorsHeaders(request, response);
-      response.setContentType("application/json");
-      response.setStatus(400);
-
-      Map<String, String> error = new HashMap<>();
-      error.put("error", "invalid_request");
       Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
       error.put(
           "error_description",

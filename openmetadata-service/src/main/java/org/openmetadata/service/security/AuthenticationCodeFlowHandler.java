@@ -316,7 +316,12 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   public void handleLogin(HttpServletRequest req, HttpServletResponse resp) {
     try {
       HttpSession session = getHttpSession(req, true);
-      checkAndStoreRedirectUriInSession(session, req.getParameter(REDIRECT_URI_KEY));
+
+      String overrideCallbackUrl = req.getParameter(REDIRECT_URI_KEY);
+      String effectiveCallbackUrl =
+          overrideCallbackUrl != null ? overrideCallbackUrl : client.getCallbackUrl();
+
+      checkAndStoreRedirectUriInSession(session, effectiveCallbackUrl);
 
       LOG.debug("Performing Auth Login For User Session: {} ", session.getId());
       Optional<OidcCredentials> credentials = getUserCredentialsFromSession(session);
@@ -324,10 +329,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         LOG.debug("Auth Tokens Located from Session: {} ", session.getId());
         sendRedirectWithToken(session, resp, credentials.get());
       } else {
-        LOG.debug("Performing Auth Code Flow to Idp: {} ", session.getId());
+        LOG.debug(
+            "Performing Auth Code Flow to Idp with callback URL: {} ",
+            effectiveCallbackUrl,
+            session.getId());
         Map<String, String> params = buildLoginParams();
 
-        params.put(OidcConfiguration.REDIRECT_URI, client.getCallbackUrl());
+        params.put(OidcConfiguration.REDIRECT_URI, effectiveCallbackUrl);
 
         addStateAndNonceParameters(client, session, params);
 

@@ -37,7 +37,6 @@ public class AuthorizationHandler {
     String codeChallengeMethod = params.get("code_challenge_method");
     String state = params.get("state");
     String scope = params.get("scope");
-    String connectorName = params.get("connector_name");
 
     // Validate required parameters
     if (clientId == null || responseType == null || codeChallenge == null) {
@@ -95,25 +94,38 @@ public class AuthorizationHandler {
               authParams.setCodeChallenge(codeChallenge);
               authParams.setRedirectUri(redirectUri);
               authParams.setRedirectUriProvidedExplicitly(redirectUriStr != null);
-              authParams.setConnectorName(connectorName);
 
               // Let the provider handle the authorization
               try {
                 return provider
                     .authorize(client, authParams)
                     .thenApply(
-                        authCode -> {
-                          // Construct callback URL with authorization code
-                          // (ConnectorOAuthProvider returns auth code directly, not a redirect URL)
-                          Map<String, String> queryParams = new java.util.HashMap<>();
-                          queryParams.put("code", authCode);
-                          if (authParams.getState() != null) {
-                            queryParams.put("state", authParams.getState());
+                        result -> {
+                          // Check if result is a full redirect URL (SSO flow) or an auth code
+                          if (result.startsWith("http://") || result.startsWith("https://")) {
+                            // SSO redirect URL - use directly
+                            return new AuthorizationResponse(result, true, null);
+                          } else if ("SSO_REDIRECT_INITIATED".equals(result)) {
+                            // SSO redirect was already sent by provider - return empty response
+                            return new AuthorizationResponse(null, false, null);
+                          } else if ("LOGIN_FORM_DISPLAYED".equals(result)) {
+                            // Basic Auth login form already rendered - return empty response
+                            return new AuthorizationResponse(null, false, null);
+                          } else if ("CODE_DISPLAYED".equals(result)) {
+                            // Basic Auth code display already rendered - return empty response
+                            return new AuthorizationResponse(null, false, null);
+                          } else {
+                            // Authorization code - construct callback URL
+                            Map<String, String> queryParams = new java.util.HashMap<>();
+                            queryParams.put("code", result);
+                            if (authParams.getState() != null) {
+                              queryParams.put("state", authParams.getState());
+                            }
+                            String callbackUrl =
+                                UriUtils.constructRedirectUri(
+                                    authParams.getRedirectUri().toString(), queryParams);
+                            return new AuthorizationResponse(callbackUrl, true, null);
                           }
-                          String callbackUrl =
-                              UriUtils.constructRedirectUri(
-                                  authParams.getRedirectUri().toString(), queryParams);
-                          return new AuthorizationResponse(callbackUrl, true, null);
                         })
                     .exceptionally(
                         ex -> {

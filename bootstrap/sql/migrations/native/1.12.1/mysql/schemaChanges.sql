@@ -140,3 +140,24 @@ CREATE INDEX idx_oauth_audit_log_user ON oauth_audit_log(user_name);
 CREATE INDEX idx_oauth_audit_log_success ON oauth_audit_log(success);
 CREATE INDEX idx_oauth_audit_log_created_at ON oauth_audit_log(created_at DESC);
 CREATE INDEX idx_oauth_audit_log_ip_address ON oauth_audit_log(ip_address);
+
+-- MCP Pending Auth Requests Table
+-- Stores pending OAuth authorization requests for SSO flow (survives cross-domain redirects)
+CREATE TABLE IF NOT EXISTS mcp_pending_auth_requests (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    auth_request_id VARCHAR(64) UNIQUE NOT NULL,
+    client_id VARCHAR(255) NOT NULL,
+    code_challenge VARCHAR(255) NOT NULL,
+    code_challenge_method VARCHAR(10) NOT NULL DEFAULT 'S256',
+    redirect_uri TEXT NOT NULL,
+    mcp_state VARCHAR(255),
+    scopes JSON,
+    pac4j_state VARCHAR(64),
+    pac4j_nonce VARCHAR(255),
+    pac4j_code_verifier VARCHAR(255),
+    expires_at BIGINT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_mcp_pending_auth_request_id (auth_request_id),
+    INDEX idx_mcp_pending_auth_expires (expires_at),
+    INDEX idx_mcp_pending_auth_pac4j_state (pac4j_state)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
