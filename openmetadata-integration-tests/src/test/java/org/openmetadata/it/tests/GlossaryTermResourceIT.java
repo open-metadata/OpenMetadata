@@ -358,7 +358,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Duplicate term in dotted glossary");
 
-    // 4. Assert that the creation fails
+    // 6. Assert that the creation fails
     assertThrows(
         Exception.class,
         () -> createEntity(request3),
