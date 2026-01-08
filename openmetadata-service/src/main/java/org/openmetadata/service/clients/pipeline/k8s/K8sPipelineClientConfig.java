@@ -52,6 +52,7 @@ public class K8sPipelineClientConfig {
   private static final String RUN_AS_NON_ROOT_KEY = "runAsNonRoot";
   private static final String EXTRA_ENV_VARS_KEY = "extraEnvVars";
   private static final String POD_ANNOTATIONS_KEY = "podAnnotations";
+  private static final String FAILURE_DIAGNOSTICS_KEY = "enableFailureDiagnostics";
 
   // Default resources configuration
   private static final String DEFAULT_REQUESTS_CPU = "500m";
@@ -82,6 +83,7 @@ public class K8sPipelineClientConfig {
   // Extra configuration
   private final Map<String, String> extraEnvVars;
   private final Map<String, String> podAnnotations;
+  private final boolean failureDiagnosticsEnabled;
 
   public K8sPipelineClientConfig(Map<String, Object> params) {
     if (params == null) {
@@ -119,6 +121,8 @@ public class K8sPipelineClientConfig {
     List<String> rawExtraEnvs = parseListSafely(params.get(EXTRA_ENV_VARS_KEY));
     this.extraEnvVars = getConfigMap(rawExtraEnvs, ":");
     this.podAnnotations = parseKeyValuePairs(getStringParam(params, POD_ANNOTATIONS_KEY, ""));
+    this.failureDiagnosticsEnabled =
+        Boolean.parseBoolean(getStringParam(params, FAILURE_DIAGNOSTICS_KEY, "false"));
 
     // Validate configuration
     validateConfiguration();

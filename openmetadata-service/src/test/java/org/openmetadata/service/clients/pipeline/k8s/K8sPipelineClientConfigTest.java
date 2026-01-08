@@ -337,4 +337,33 @@ class K8sPipelineClientConfigTest {
     assertNotNull(config.getExtraEnvVars());
     assertNotNull(config.getPodAnnotations());
   }
+
+  @Test
+  void testFailureDiagnosticsConfiguration() {
+    // Test default value (disabled)
+    K8sPipelineClientConfig config = new K8sPipelineClientConfig(null);
+    assertFalse(config.isFailureDiagnosticsEnabled());
+
+    // Test explicit enable
+    Map<String, Object> params = new HashMap<>();
+    params.put("enableFailureDiagnostics", "true");
+
+    K8sPipelineClientConfig enabledConfig = new K8sPipelineClientConfig(params);
+    assertTrue(enabledConfig.isFailureDiagnosticsEnabled());
+
+    // Test explicit disable
+    params.put("enableFailureDiagnostics", "false");
+    K8sPipelineClientConfig disabledConfig = new K8sPipelineClientConfig(params);
+    assertFalse(disabledConfig.isFailureDiagnosticsEnabled());
+  }
+
+  @Test
+  void testFailureDiagnosticsInvalidValue() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("enableFailureDiagnostics", "invalid-value");
+
+    // Should default to false for invalid values
+    K8sPipelineClientConfig config = new K8sPipelineClientConfig(params);
+    assertFalse(config.isFailureDiagnosticsEnabled());
+  }
 }

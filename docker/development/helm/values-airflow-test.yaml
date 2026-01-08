@@ -1,0 +1,66 @@
+# Test values for migrated Airflow pipeline client validation  
+# Only contains essential overrides for testing the new nested structure
+
+openmetadata:
+  config:
+    # Enable debug logging for testing
+    logLevel: DEBUG
+    
+    # Database configuration (using local PostgreSQL via host machine)
+    database:
+      host: host.docker.internal
+      port: 5433
+      driverClass: org.postgresql.Driver
+      dbScheme: postgresql
+      auth:
+        password:
+          secretRef: postgres-secrets
+          secretKey: openmetadata-postgres-password
+    
+    # Search configuration (using local OpenSearch via host machine)
+    elasticsearch:
+      host: host.docker.internal
+      port: 9200
+      searchType: opensearch
+      scheme: http
+    
+    # Airflow Pipeline Client Configuration (testing new nested structure)
+    pipelineServiceClientConfig:
+      type: "airflow"  # Use traditional Airflow approach
+      airflow:
+        # Airflow connection settings (minimal required)
+        apiEndpoint: http://openmetadata-dependencies-api-server:8080
+        metadataApiEndpoint: http://openmetadata:8585/api
+        verifySsl: "no-ssl"
+        auth:
+          username: admin
+          password:
+            secretRef: airflow-secrets
+            secretKey: openmetadata-airflow-password
+
+# Local image configuration
+image:
+  repository: openmetadata/server
+  tag: "20260107"
+  pullPolicy: IfNotPresent
+
+# Service configuration for local access
+service:
+  type: LoadBalancer  # For minikube tunnel access
+
+# Reduced resources for local testing
+resources:
+  limits:
+    cpu: 2
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+# More relaxed health checks for local testing
+livenessProbe:
+  initialDelaySeconds: 120
+readinessProbe:
+  initialDelaySeconds: 120
+startupProbe:
+  failureThreshold: 10

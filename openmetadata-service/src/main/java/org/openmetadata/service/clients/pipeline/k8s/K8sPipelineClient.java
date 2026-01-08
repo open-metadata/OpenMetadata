@@ -68,6 +68,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
+import org.openmetadata.service.clients.pipeline.config.WorkflowConfigBuilder;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.slf4j.MDC;
 
@@ -132,6 +133,9 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private final K8sPipelineClientConfig k8sConfig;
   private final String metadataApiEndpoint;
 
+  // Failure diagnostics
+  private final K8sFailureDiagnostics failureDiagnostics;
+
   public K8sPipelineClient(PipelineServiceClientConfiguration clientConfig) {
     super(clientConfig);
     this.setPlatform(PLATFORM);
@@ -155,6 +159,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     this.k8sConfig = new K8sPipelineClientConfig(params);
     this.metadataApiEndpoint = clientConfig.getMetadataApiEndpoint();
+
+    // Initialize failure diagnostics
+    this.failureDiagnostics =
+        new K8sFailureDiagnostics(coreApi, batchApi, k8sConfig, metadataApiEndpoint);
 
     // Validate k8sConfig.getNamespace() exists
     if (!skipInit) {
@@ -271,7 +279,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
       try {
         // Create ConfigMap
-        V1ConfigMap configMap = buildConfigMap(ingestionPipeline);
+        V1ConfigMap configMap = buildConfigMap(ingestionPipeline, service);
         boolean created = createOrUpdateConfigMap(configMap);
         if (created) {
           final String configMapName = configMap.getMetadata().getName();
@@ -426,7 +434,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
     try {
       LOG.info("Running pipeline [correlationId={}]", correlationId);
 
-      V1Job job = buildJob(ingestionPipeline, runId, config);
+      V1Job job = buildJob(ingestionPipeline, runId, config, service);
       executeWithRetry(() -> batchApi.createNamespacedJob(k8sConfig.getNamespace(), job).execute());
 
       LOG.info(
@@ -643,16 +651,50 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   @Override
   protected PipelineServiceClientResponse getServiceStatusInternal() {
+    String namespace = k8sConfig.getNamespace();
+    String serviceAccount = k8sConfig.getServiceAccountName();
+
     try {
-      coreApi.listNamespacedPod(k8sConfig.getNamespace()).limit(1).execute();
-      batchApi.listNamespacedJob(k8sConfig.getNamespace()).limit(1).execute();
-      return buildHealthyStatus(getKubernetesVersion());
+      // Test basic namespace access
+      coreApi.listNamespacedPod(namespace).limit(1).execute();
+      batchApi.listNamespacedJob(namespace).limit(1).execute();
+
+      // Test ConfigMap permissions (required for pipeline configuration)
+      try {
+        coreApi.listNamespacedConfigMap(namespace).limit(1).execute();
+      } catch (ApiException e) {
+        String error =
+            String.format(
+                "Kubernetes is available but missing ConfigMap permissions in namespace '%s' for service account '%s': %s",
+                namespace, serviceAccount, e.getMessage());
+        LOG.error(error);
+        return buildUnhealthyStatus(error);
+      }
+
+      // Test Secret permissions (required for pipeline credentials)
+      try {
+        coreApi.listNamespacedSecret(namespace).limit(1).execute();
+      } catch (ApiException e) {
+        String error =
+            String.format(
+                "Kubernetes is available but missing Secret permissions in namespace '%s' for service account '%s': %s",
+                namespace, serviceAccount, e.getMessage());
+        LOG.error(error);
+        return buildUnhealthyStatus(error);
+      }
+
+      String message =
+          String.format(
+              "Kubernetes pipeline client is available in namespace '%s' with service account '%s'",
+              namespace, serviceAccount);
+
+      return buildHealthyStatus(getKubernetesVersion()).withPlatform(message);
 
     } catch (ApiException e) {
       String error =
           String.format(
-              "Failed to connect to Kubernetes API (namespace: %s): %s",
-              k8sConfig.getNamespace(), e.getMessage());
+              "Failed to connect to Kubernetes API (namespace: %s, service account: %s): Message: %s\nHTTP response code: %d\nHTTP response body: %s",
+              namespace, serviceAccount, e.getMessage(), e.getCode(), e.getResponseBody());
       LOG.error(error);
       return buildUnhealthyStatus(error);
     }
@@ -787,9 +829,9 @@ public class K8sPipelineClient extends PipelineServiceClient {
     }
   }
 
-  private V1ConfigMap buildConfigMap(IngestionPipeline pipeline) {
+  private V1ConfigMap buildConfigMap(IngestionPipeline pipeline, ServiceEntityInterface service) {
     String name = CONFIG_MAP_PREFIX + sanitizeName(pipeline.getName());
-    String workflowConfig = buildWorkflowConfig(pipeline);
+    String workflowConfig = buildWorkflowConfig(pipeline, service);
 
     return new V1ConfigMap()
         .metadata(
@@ -842,11 +884,87 @@ public class K8sPipelineClient extends PipelineServiceClient {
                 .jobTemplate(
                     new V1JobTemplateSpec()
                         .metadata(new V1ObjectMeta().labels(buildLabels(pipeline, null)))
-                        .spec(buildJobSpec(pipeline, "scheduled", null))));
+                        .spec(buildJobSpecForCronJob(pipeline))));
+  }
+
+  private V1JobSpec buildJobSpecForCronJob(IngestionPipeline pipeline) {
+    String pipelineName = sanitizeName(pipeline.getName());
+    String configMapName = CONFIG_MAP_PREFIX + pipelineName;
+
+    return new V1JobSpec()
+        .backoffLimit(k8sConfig.getBackoffLimit())
+        .activeDeadlineSeconds(k8sConfig.getActiveDeadlineSeconds())
+        .ttlSecondsAfterFinished(k8sConfig.getTtlSecondsAfterFinished())
+        .template(
+            new V1PodTemplateSpec()
+                .metadata(
+                    new V1ObjectMeta()
+                        .labels(buildLabels(pipeline, "scheduled"))
+                        .annotations(
+                            k8sConfig.getPodAnnotations().isEmpty()
+                                ? null
+                                : k8sConfig.getPodAnnotations()))
+                .spec(
+                    new V1PodSpec()
+                        .serviceAccountName(k8sConfig.getServiceAccountName())
+                        .restartPolicy("Never")
+                        .imagePullSecrets(
+                            k8sConfig.getImagePullSecrets().isEmpty()
+                                ? null
+                                : k8sConfig.getImagePullSecrets())
+                        .nodeSelector(
+                            k8sConfig.getNodeSelector().isEmpty()
+                                ? null
+                                : k8sConfig.getNodeSelector())
+                        .securityContext(buildPodSecurityContext())
+                        .containers(
+                            List.of(
+                                new V1Container()
+                                    .name("ingestion")
+                                    .image(k8sConfig.getIngestionImage())
+                                    .imagePullPolicy(k8sConfig.getImagePullPolicy())
+                                    .command(List.of("python", "main.py"))
+                                    .env(buildEnvVarsForCronJob(pipeline, configMapName))
+                                    .securityContext(buildContainerSecurityContext())
+                                    .resources(
+                                        new V1ResourceRequirements()
+                                            .requests(k8sConfig.getResourceRequests())
+                                            .limits(k8sConfig.getResourceLimits()))))));
+  }
+
+  private List<V1EnvVar> buildEnvVarsForCronJob(IngestionPipeline pipeline, String configMapName) {
+    List<V1EnvVar> envVars = new ArrayList<>();
+
+    envVars.add(new V1EnvVar().name("pipelineType").value(pipeline.getPipelineType().toString()));
+    envVars.add(new V1EnvVar().name("pipelineRunId").value("scheduled"));
+    envVars.add(
+        new V1EnvVar().name("ingestionPipelineFQN").value(pipeline.getFullyQualifiedName()));
+    envVars.add(
+        new V1EnvVar()
+            .name("config")
+            .valueFrom(
+                new V1EnvVarSource()
+                    .configMapKeyRef(
+                        new io.kubernetes.client.openapi.models.V1ConfigMapKeySelector()
+                            .name(configMapName)
+                            .key("config"))));
+    envVars.add(new V1EnvVar().name("OPENMETADATA_SERVER_URL").value(metadataApiEndpoint));
+
+    // Add extra environment variables from configuration
+    if (k8sConfig.getExtraEnvVars() != null && !k8sConfig.getExtraEnvVars().isEmpty()) {
+      k8sConfig
+          .getExtraEnvVars()
+          .forEach((key, value) -> envVars.add(new V1EnvVar().name(key).value(value)));
+    }
+
+    return envVars;
   }
 
   private V1Job buildJob(
-      IngestionPipeline pipeline, String runId, Map<String, Object> configOverride) {
+      IngestionPipeline pipeline,
+      String runId,
+      Map<String, Object> configOverride,
+      ServiceEntityInterface service) {
     String pipelineName = sanitizeName(pipeline.getName());
     String jobName = JOB_PREFIX + pipelineName + "-" + runId.substring(0, 8);
 
@@ -856,12 +974,14 @@ public class K8sPipelineClient extends PipelineServiceClient {
                 .name(jobName)
                 .namespace(k8sConfig.getNamespace())
                 .labels(buildLabels(pipeline, runId)))
-        .spec(buildJobSpec(pipeline, runId, configOverride));
+        .spec(buildJobSpec(pipeline, runId, configOverride, service));
   }
 
   private V1JobSpec buildJobSpec(
-      IngestionPipeline pipeline, String runId, Map<String, Object> configOverride) {
-    String pipelineName = sanitizeName(pipeline.getName());
+      IngestionPipeline pipeline,
+      String runId,
+      Map<String, Object> configOverride,
+      ServiceEntityInterface service) {
 
     return new V1JobSpec()
         .backoffLimit(k8sConfig.getBackoffLimit())
@@ -896,7 +1016,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                                     .image(k8sConfig.getIngestionImage())
                                     .imagePullPolicy(k8sConfig.getImagePullPolicy())
                                     .command(List.of("python", "main.py"))
-                                    .env(buildEnvVars(pipeline, runId, configOverride))
+                                    .env(buildEnvVars(pipeline, runId, configOverride, service))
                                     .securityContext(buildContainerSecurityContext())
                                     .resources(
                                         new V1ResourceRequirements()
@@ -931,10 +1051,11 @@ public class K8sPipelineClient extends PipelineServiceClient {
   }
 
   private List<V1EnvVar> buildEnvVars(
-      IngestionPipeline pipeline, String runId, Map<String, Object> configOverride) {
+      IngestionPipeline pipeline,
+      String runId,
+      Map<String, Object> configOverride,
+      ServiceEntityInterface service) {
     String pipelineName = sanitizeName(pipeline.getName());
-    String configMapName = CONFIG_MAP_PREFIX + pipelineName;
-    String secretName = SECRET_PREFIX + pipelineName;
 
     List<V1EnvVar> envVars = new ArrayList<>();
 
@@ -942,21 +1063,12 @@ public class K8sPipelineClient extends PipelineServiceClient {
     envVars.add(new V1EnvVar().name("pipelineRunId").value(runId));
     envVars.add(
         new V1EnvVar().name("ingestionPipelineFQN").value(pipeline.getFullyQualifiedName()));
-    envVars.add(
-        new V1EnvVar()
-            .name("config")
-            .valueFrom(
-                new V1EnvVarSource()
-                    .configMapKeyRef(
-                        new io.kubernetes.client.openapi.models.V1ConfigMapKeySelector()
-                            .name(configMapName)
-                            .key("config"))));
-    envVars.add(new V1EnvVar().name("OPENMETADATA_SERVER_URL").value(metadataApiEndpoint));
 
-    if (configOverride != null && !configOverride.isEmpty()) {
-      envVars.add(
-          new V1EnvVar().name("configOverride").value(JsonUtils.pojoToJson(configOverride)));
-    }
+    // Build the complete workflow config including any overrides
+    String workflowConfig = buildWorkflowConfigWithOverrides(pipeline, service, configOverride);
+    envVars.add(new V1EnvVar().name("config").value(workflowConfig));
+
+    envVars.add(new V1EnvVar().name("OPENMETADATA_SERVER_URL").value(metadataApiEndpoint));
 
     // P2: Add extra environment variables from configuration
     if (k8sConfig.getExtraEnvVars() != null && !k8sConfig.getExtraEnvVars().isEmpty()) {
@@ -966,6 +1078,21 @@ public class K8sPipelineClient extends PipelineServiceClient {
     }
 
     return envVars;
+  }
+
+  private String buildWorkflowConfigWithOverrides(
+      IngestionPipeline pipeline,
+      ServiceEntityInterface service,
+      Map<String, Object> configOverride) {
+    try {
+      // Ensure the pipeline has proper OpenMetadataServerConnection configured
+      ensureServerConnectionConfigured(pipeline);
+      // Use WorkflowConfigBuilder with the configOverride parameter
+      return WorkflowConfigBuilder.buildIngestionStringYaml(pipeline, service, configOverride);
+    } catch (Exception e) {
+      LOG.error("Failed to build workflow config with overrides: {}", e.getMessage(), e);
+      throw new RuntimeException("Workflow configuration building failed", e);
+    }
   }
 
   private V1Job buildAutomationJob(Workflow workflow, String runId, String jobName) {
@@ -1072,28 +1199,151 @@ public class K8sPipelineClient extends PipelineServiceClient {
                                                     .limits(k8sConfig.getResourceLimits())))))));
   }
 
-  private String buildWorkflowConfig(IngestionPipeline pipeline) {
-    Map<String, Object> config = new HashMap<>();
+  private String buildWorkflowConfig(IngestionPipeline pipeline, ServiceEntityInterface service) {
+    try {
+      // Ensure the pipeline has proper OpenMetadataServerConnection configured
+      ensureServerConnectionConfigured(pipeline);
+      return WorkflowConfigBuilder.buildIngestionStringYaml(pipeline, service, null);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to build workflow config using WorkflowConfigBuilder: {}", e.getMessage(), e);
+      throw new RuntimeException("Workflow configuration building failed", e);
+    }
+  }
 
-    Map<String, Object> source = new HashMap<>();
-    source.put("type", pipeline.getPipelineType().toString().toLowerCase());
-    source.put("serviceName", pipeline.getService().getName());
-    source.put("sourceConfig", pipeline.getSourceConfig());
-    config.put("source", source);
+  /**
+   * Ensures that the IngestionPipeline has a properly configured OpenMetadataServerConnection
+   * with security configuration. This is critical for the Python ingestion to authenticate.
+   *
+   * If the pipeline doesn't have a server connection configured, this method will create one
+   * based on the client configuration. This ensures backward compatibility and proper
+   * authentication even when the service layer doesn't set the connection.
+   */
+  private void ensureServerConnectionConfigured(IngestionPipeline pipeline) {
+    if (pipeline.getOpenMetadataServerConnection() == null) {
+      LOG.warn(
+          "Pipeline {} missing OpenMetadataServerConnection - creating default configuration from client config",
+          pipeline.getName());
 
-    Map<String, Object> sink = new HashMap<>();
-    sink.put("type", "metadata-rest");
-    sink.put("config", Map.of());
-    config.put("sink", sink);
+      // Create a default server connection based on client configuration
+      // This ensures the pipeline can authenticate with the OpenMetadata server
+      org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection
+          serverConnection = createDefaultServerConnection();
 
-    Map<String, Object> workflowConfig = new HashMap<>();
-    workflowConfig.put(
-        "loggerLevel",
-        pipeline.getLoggerLevel() != null ? pipeline.getLoggerLevel().toString() : "INFO");
-    workflowConfig.put("openMetadataServerConfig", Map.of("hostPort", metadataApiEndpoint));
-    config.put("workflowConfig", workflowConfig);
+      pipeline.setOpenMetadataServerConnection(serverConnection);
+      LOG.info(
+          "Set default OpenMetadataServerConnection for pipeline {} with endpoint {}",
+          pipeline.getName(),
+          serverConnection.getHostPort());
+      return;
+    }
 
-    return JsonUtils.pojoToJson(config);
+    if (pipeline.getOpenMetadataServerConnection().getSecurityConfig() == null) {
+      LOG.error(
+          "Pipeline {} has OpenMetadataServerConnection but missing securityConfig. "
+              + "The JWT token and authentication config are required for ingestion to work.",
+          pipeline.getName());
+      throw new IllegalStateException(
+          "Pipeline OpenMetadataServerConnection.securityConfig is required but not set. "
+              + "This indicates the JWT token or authentication configuration is missing.");
+    }
+
+    LOG.debug(
+        "Pipeline {} has proper OpenMetadataServerConnection with security config",
+        pipeline.getName());
+  }
+
+  /**
+   * Creates a default OpenMetadataConnection based on the client configuration.
+   * This is used when the pipeline doesn't have a server connection configured.
+   * This includes retrieving the ingestion bot token for authentication.
+   *
+   * @return A properly configured OpenMetadataConnection with ingestion bot authentication
+   */
+  private org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection
+      createDefaultServerConnection() {
+    String jwtToken = getIngestionBotToken();
+    if (jwtToken == null) {
+      throw new IllegalStateException(
+          "Failed to retrieve ingestion-bot JWT token. "
+              + "The ingestion-bot user must exist and have a valid JWT authentication mechanism.");
+    }
+
+    LOG.info("Retrieved ingestion-bot JWT token for pipeline authentication");
+
+    return new org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection()
+        .withHostPort(metadataApiEndpoint)
+        .withAuthProvider(
+            org.openmetadata.schema.services.connections.metadata.AuthProvider.OPENMETADATA)
+        .withSecurityConfig(
+            new org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig()
+                .withJwtToken(jwtToken))
+        .withVerifySSL(org.openmetadata.schema.security.ssl.VerifySSL.NO_SSL)
+        .withSecretsManagerLoader(
+            org.openmetadata.schema.security.secrets.SecretsManagerClientLoader.NOOP)
+        .withSecretsManagerProvider(
+            org.openmetadata.schema.security.secrets.SecretsManagerProvider.DB);
+  }
+
+  /**
+   * Retrieves the JWT token for the ingestion-bot user.
+   * This follows the same pattern as OpenMetadataOperations.getIngestionBotToken().
+   *
+   * @return The JWT token string, or null if not available
+   */
+  private String getIngestionBotToken() {
+    try {
+      // Use the same pattern as OpenMetadataOperations
+      org.openmetadata.service.jdbi3.BotRepository botRepository =
+          (org.openmetadata.service.jdbi3.BotRepository)
+              org.openmetadata.service.Entity.getEntityRepository(
+                  org.openmetadata.service.Entity.BOT);
+      org.openmetadata.service.jdbi3.UserRepository userRepository =
+          (org.openmetadata.service.jdbi3.UserRepository)
+              org.openmetadata.service.Entity.getEntityRepository(
+                  org.openmetadata.service.Entity.USER);
+
+      // First get the bot entity
+      org.openmetadata.schema.entity.Bot bot =
+          botRepository.getByName(
+              null,
+              org.openmetadata.service.Entity.INGESTION_BOT_NAME,
+              new org.openmetadata.service.util.EntityUtil.Fields(java.util.Set.of()));
+      if (bot == null || bot.getBotUser() == null) {
+        LOG.error("Ingestion bot not found or bot has no associated user");
+        return null;
+      }
+
+      // Get the bot user with authentication mechanism
+      org.openmetadata.schema.entity.teams.User botUser =
+          userRepository.getByName(
+              null,
+              bot.getBotUser().getFullyQualifiedName(),
+              new org.openmetadata.service.util.EntityUtil.Fields(
+                  java.util.Set.of("authenticationMechanism")));
+
+      if (botUser == null || botUser.getAuthenticationMechanism() == null) {
+        LOG.error("Bot user not found or has no authentication mechanism");
+        return null;
+      }
+
+      // Extract JWT token from authentication mechanism
+      org.openmetadata.schema.entity.teams.AuthenticationMechanism authMechanism =
+          botUser.getAuthenticationMechanism();
+      if (authMechanism.getAuthType()
+          != org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT) {
+        LOG.error("Bot user authentication mechanism is not JWT: {}", authMechanism.getAuthType());
+        return null;
+      }
+
+      org.openmetadata.schema.auth.JWTAuthMechanism jwtAuth =
+          (org.openmetadata.schema.auth.JWTAuthMechanism) authMechanism.getConfig();
+      return jwtAuth.getJWTToken();
+
+    } catch (Exception e) {
+      LOG.error("Failed to retrieve ingestion-bot token", e);
+      return null;
+    }
   }
 
   private Map<String, String> buildLabels(IngestionPipeline pipeline, String runId) {
@@ -1256,12 +1506,39 @@ public class K8sPipelineClient extends PipelineServiceClient {
             ? job.getStatus().getCompletionTime().toInstant().toEpochMilli()
             : null;
 
-    return new PipelineStatus()
-        .withRunId(runId)
-        .withPipelineState(state)
-        .withStartDate(startTime)
-        .withEndDate(endTime)
-        .withTimestamp(startTime);
+    PipelineStatus pipelineStatus =
+        new PipelineStatus()
+            .withRunId(runId)
+            .withPipelineState(state)
+            .withStartDate(startTime)
+            .withEndDate(endTime)
+            .withTimestamp(startTime);
+
+    // Gather failure diagnostics for failed jobs
+    if (state == PipelineStatusType.FAILED && k8sConfig.isFailureDiagnosticsEnabled()) {
+      try {
+        String pipelineName =
+            job.getMetadata().getLabels() != null
+                ? job.getMetadata().getLabels().get(LABEL_PIPELINE)
+                : "unknown";
+        IngestionPipeline mockPipeline = createMockPipelineForDiagnostics(pipelineName);
+
+        failureDiagnostics
+            .gatherFailureDiagnostics(job, mockPipeline, runId)
+            .ifPresent(
+                diagnostics ->
+                    failureDiagnostics.updatePipelineStatusWithDiagnostics(
+                        pipelineStatus, diagnostics));
+
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to gather diagnostics for failed job {}: {}",
+            job.getMetadata().getName(),
+            e.getMessage());
+      }
+    }
+
+    return pipelineStatus;
   }
 
   private PipelineStatusType mapJobStatusType(V1Job job) {
@@ -1377,5 +1654,16 @@ public class K8sPipelineClient extends PipelineServiceClient {
   @VisibleForTesting
   void setCoreApi(CoreV1Api coreApi) {
     this.coreApi = coreApi;
+  }
+
+  /**
+   * Creates a minimal IngestionPipeline object for diagnostics gathering.
+   * This is needed because the diagnostics system requires pipeline context.
+   */
+  private IngestionPipeline createMockPipelineForDiagnostics(String pipelineName) {
+    IngestionPipeline mockPipeline = new IngestionPipeline();
+    mockPipeline.setName(pipelineName);
+    mockPipeline.setFullyQualifiedName(pipelineName); // Simplified FQN
+    return mockPipeline;
   }
 }

@@ -1,0 +1,85 @@
+# Test values for K8s native pipeline client validation
+# Only contains essential overrides for testing
+
+openmetadata:
+  config:
+    # Enable debug logging for testing
+    logLevel: DEBUG
+    
+    # Database configuration (using local PostgreSQL via host machine)
+    database:
+      host: host.docker.internal
+      port: 5433
+      driverClass: org.postgresql.Driver
+      dbScheme: postgresql
+      auth:
+        password:
+          secretRef: postgres-secrets
+          secretKey: openmetadata-postgres-password
+    
+    # Search configuration (using local OpenSearch via host machine)
+    elasticsearch:
+      host: host.docker.internal
+      port: 9200
+      searchType: opensearch
+      scheme: http
+    
+    # K8s Pipeline Client Configuration - This is what we're testing!
+    pipelineServiceClientConfig:
+      type: "k8s"  # Use Kubernetes native instead of Airflow
+      k8s:
+        # Override metadataApiEndpoint for cross-namespace access (default uses service name only)
+        metadataApiEndpoint: "http://openmetadata.openmetadata-ingestion.svc.cluster.local:8585/api"
+        # Test namespace
+        namespace: "openmetadata-pipelines-test"
+        serviceAccountName: "openmetadata-ingestion-test"
+        
+        # Local ingestion image
+        ingestionImage: "openmetadata/ingestion-base:20260107"
+        imagePullPolicy: "IfNotPresent"
+        
+        # Reduced resources for local testing
+        resources:
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+          requests:
+            cpu: "100m"
+            memory: "512Mi"
+        
+        # Shorter timeouts for faster testing
+        ttlSecondsAfterFinished: 3600  # 1 hour
+        activeDeadlineSeconds: 1800    # 30 minutes
+        backoffLimit: 1                # Fewer retries
+        
+        # Testing environment variables
+        extraEnvVars:
+          - "LOG_LEVEL:DEBUG"
+          - "PYTHONDONTWRITEBYTECODE:1"
+
+# Local image configuration
+image:
+  repository: openmetadata/server
+  tag: "20260108-5"
+  pullPolicy: IfNotPresent
+
+# Service configuration for local access
+service:
+  type: LoadBalancer  # For minikube tunnel access
+
+# Reduced resources for local testing
+resources:
+  limits:
+    cpu: 2
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+# More relaxed health checks for local testing
+livenessProbe:
+  initialDelaySeconds: 120
+readinessProbe:
+  initialDelaySeconds: 120
+startupProbe:
+  failureThreshold: 10

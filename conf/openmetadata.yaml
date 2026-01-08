@@ -481,7 +481,7 @@ pipelineServiceClientConfiguration:
     truststorePassword: ${AIRFLOW_TRUST_STORE_PASSWORD:-""}
     ## Kubernetes client parameters
     namespace: ${K8S_NAMESPACE:-"openmetadata-pipelines"}
-    ingestionImage: ${K8S_INGESTION_IMAGE:-"docker.getcollate.io/openmetadata/ingestion:latest"}
+    ingestionImage: ${K8S_INGESTION_IMAGE:-"docker.getcollate.io/openmetadata/ingestion-base:latest"}
     imagePullPolicy: ${K8S_IMAGE_PULL_POLICY:-"IfNotPresent"}
     imagePullSecrets: ${K8S_IMAGE_PULL_SECRETS:-""}
     serviceAccountName: ${K8S_SERVICE_ACCOUNT_NAME:-"openmetadata-ingestion"}
@@ -494,10 +494,10 @@ pipelineServiceClientConfiguration:
         cpu: ${K8S_REQUESTS_CPU:-"500m"}
         memory: ${K8S_REQUESTS_MEMORY:-"1Gi"}
     ttlSecondsAfterFinished: ${K8S_TTL_SECONDS_AFTER_FINISHED:-86400}
-    activeDeadlineSeconds: ${K8S_ACTIVE_DEADLINE_SECONDS:-7200}
+    activeDeadlineSeconds: ${K8S_ACTIVE_DEADLINE_SECONDS:-86400}
     backoffLimit: ${K8S_BACKOFF_LIMIT:-3}
     successfulJobsHistoryLimit: ${K8S_SUCCESSFUL_JOBS_HISTORY_LIMIT:-3}
-    failedJobsHistoryLimit: ${K8S_FAILED_JOBS_HISTORY_LIMIT:-3}
+    failedJobsHistoryLimit: ${K8S_FAILED_JOBS_HISTORY_LIMIT:-1}
     nodeSelector: ${K8S_NODE_SELECTOR:-""}
     runAsUser: ${K8S_RUN_AS_USER:-1000}
     runAsGroup: ${K8S_RUN_AS_GROUP:-1000}
@@ -505,6 +505,7 @@ pipelineServiceClientConfiguration:
     runAsNonRoot: ${K8S_RUN_AS_NON_ROOT:-"true"}
     extraEnvVars: ${K8S_EXTRA_ENV_VARS:-[]}
     podAnnotations: ${K8S_POD_ANNOTATIONS:-""}
+    enableFailureDiagnostics: ${K8S_ENABLE_FAILURE_DIAGNOSTICS:-"true"}
 
 
 # no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how
