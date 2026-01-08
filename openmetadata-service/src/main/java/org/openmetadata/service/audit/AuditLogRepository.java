@@ -1,14 +1,18 @@
 package org.openmetadata.service.audit;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.formatter.field.DefaultFieldFormatter.getFieldValue;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -76,7 +80,7 @@ public class AuditLogRepository {
 
       AuditLogRecord record =
           AuditLogRecord.builder()
-              .changeEventId(changeEventId.toString())
+              .changeEventId(changeEventId)
               .eventTs(
                   changeEvent.getTimestamp() != null
                       ? changeEvent.getTimestamp()
@@ -87,8 +91,7 @@ public class AuditLogRepository {
               .impersonatedBy(changeEvent.getImpersonatedBy())
               .serviceName(serviceName)
               .entityType(changeEvent.getEntityType())
-              .entityId(
-                  changeEvent.getEntityId() != null ? changeEvent.getEntityId().toString() : null)
+              .entityId(changeEvent.getEntityId())
               .entityFQN(entityFqn)
               .entityFQNHash(entityFqnHash)
               .eventJson(JsonUtils.pojoToJson(changeEvent))
@@ -127,13 +130,13 @@ public class AuditLogRepository {
             long now = System.currentTimeMillis();
             AuditLogRecord record =
                 AuditLogRecord.builder()
-                    .changeEventId(UUID.randomUUID().toString())
+                    .changeEventId(UUID.randomUUID())
                     .eventTs(now)
                     .eventType(eventType)
                     .userName(userName)
                     .actorType(AuditLogRecord.ActorType.USER.name())
                     .entityType(Entity.USER)
-                    .entityId(userId != null ? userId.toString() : null)
+                    .entityId(userId)
                     .createdAt(now)
                     .build();
             auditLogDAO.insert(record);
@@ -187,6 +190,142 @@ public class AuditLogRepository {
     }
   }
 
+  private static final int EXPORT_BATCH_SIZE = 1000;
+  private static final long EXPORT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes timeout
+
+  /** Functional interface for export progress callbacks. */
+  @FunctionalInterface
+  public interface ExportProgressCallback {
+    void onProgress(int fetched, int total, String message);
+  }
+
+  /**
+   * Export audit logs in batches to avoid long-running queries that could cause resource
+   * contention with concurrent writes. Uses cursor-based pagination for efficient batching.
+   *
+   * @param progressCallback Optional callback for progress notifications (can be null)
+   */
+  public List<AuditLogEntry> exportInBatches(
+      String userName,
+      String actorType,
+      String serviceName,
+      String entityType,
+      String eventType,
+      Long startTs,
+      Long endTs,
+      String searchTerm,
+      int totalLimit,
+      ExportProgressCallback progressCallback) {
+
+    long startTime = System.currentTimeMillis();
+    List<AuditLogEntry> allResults = new ArrayList<>();
+    String afterCursor = null;
+    int remaining = totalLimit;
+
+    // Get total count for progress reporting
+    String baseCondition = buildBaseCondition(searchTerm);
+    String entityFqnHash = null;
+    String searchPattern = nullOrEmpty(searchTerm) ? null : "%" + searchTerm.toLowerCase() + "%";
+    int estimatedTotal =
+        auditLogDAO.count(
+            baseCondition,
+            userName,
+            actorType,
+            serviceName,
+            entityType,
+            null,
+            entityFqnHash,
+            eventType,
+            startTs,
+            endTs,
+            searchPattern);
+    int actualTotal = Math.min(estimatedTotal, totalLimit);
+
+    // Send initial progress
+    if (progressCallback != null) {
+      progressCallback.onProgress(0, actualTotal, "Starting export...");
+    }
+
+    int batchNumber = 0;
+    while (remaining > 0) {
+      // Check timeout
+      if (System.currentTimeMillis() - startTime > EXPORT_TIMEOUT_MS) {
+        LOG.warn(
+            "Export timed out after {} ms, returning {} records fetched so far",
+            EXPORT_TIMEOUT_MS,
+            allResults.size());
+        break;
+      }
+
+      int batchSize = Math.min(EXPORT_BATCH_SIZE, remaining);
+
+      ResultList<AuditLogEntry> batch =
+          list(
+              userName,
+              actorType,
+              serviceName,
+              entityType,
+              null, // entityFqn
+              eventType,
+              startTs,
+              endTs,
+              searchTerm,
+              batchSize,
+              null, // before
+              afterCursor);
+
+      if (batch.getData().isEmpty()) {
+        break;
+      }
+
+      allResults.addAll(batch.getData());
+      remaining -= batch.getData().size();
+      batchNumber++;
+
+      // Send progress update every batch
+      if (progressCallback != null) {
+        String message =
+            String.format(
+                "Fetched %d of %d records (batch %d)", allResults.size(), actualTotal, batchNumber);
+        progressCallback.onProgress(allResults.size(), actualTotal, message);
+      }
+
+      // Get cursor for next batch
+      afterCursor = batch.getPaging().getAfter();
+      if (afterCursor == null) {
+        break;
+      }
+    }
+
+    return allResults;
+  }
+
+  /**
+   * Export audit logs in batches without progress callback (backwards compatibility).
+   */
+  public List<AuditLogEntry> exportInBatches(
+      String userName,
+      String actorType,
+      String serviceName,
+      String entityType,
+      String eventType,
+      Long startTs,
+      Long endTs,
+      String searchTerm,
+      int totalLimit) {
+    return exportInBatches(
+        userName,
+        actorType,
+        serviceName,
+        entityType,
+        eventType,
+        startTs,
+        endTs,
+        searchTerm,
+        totalLimit,
+        null);
+  }
+
   public ResultList<AuditLogEntry> list(
       String userName,
       String actorType,
@@ -196,6 +335,7 @@ public class AuditLogRepository {
       String eventType,
       Long startTs,
       Long endTs,
+      String searchTerm,
       int limitParam,
       String before,
       String after) {
@@ -206,8 +346,10 @@ public class AuditLogRepository {
     AuditLogCursor beforeCursor = AuditLogCursor.fromEncoded(before);
     AuditLogCursor afterCursor = AuditLogCursor.fromEncoded(after);
 
-    String baseCondition = buildBaseCondition();
+    String baseCondition = buildBaseCondition(searchTerm);
     String entityFqnHash = nullOrEmpty(entityFqn) ? null : FullyQualifiedName.buildHash(entityFqn);
+    // Lowercase the search pattern for case-insensitive matching (works with LOWER() in SQL)
+    String searchPattern = nullOrEmpty(searchTerm) ? null : "%" + searchTerm.toLowerCase() + "%";
 
     List<AuditLogRecord> records;
     boolean isBackward = beforeCursor != null;
@@ -230,6 +372,7 @@ public class AuditLogRepository {
               eventType,
               startTs,
               endTs,
+              searchPattern,
               beforeCursor.eventTs(),
               beforeCursor.id(),
               limit + 1);
@@ -255,6 +398,7 @@ public class AuditLogRepository {
               eventType,
               startTs,
               endTs,
+              searchPattern,
               afterCursor != null ? afterCursor.eventTs() : null,
               afterCursor != null ? afterCursor.id() : null,
               limit + 1);
@@ -282,7 +426,8 @@ public class AuditLogRepository {
             entityFqnHash,
             eventType,
             startTs,
-            endTs);
+            endTs,
+            searchPattern);
 
     List<AuditLogEntry> resultEntries = records.stream().map(this::toAuditLogEntry).toList();
 
@@ -316,7 +461,7 @@ public class AuditLogRepository {
 
     return AuditLogEntry.builder()
         .id(record.getId())
-        .changeEventId(parseUuid(record.getChangeEventId()))
+        .changeEventId(record.getChangeEventId())
         .eventTs(record.getEventTs())
         .eventType(record.getEventType())
         .userName(record.getUserName())
@@ -324,11 +469,121 @@ public class AuditLogRepository {
         .impersonatedBy(record.getImpersonatedBy())
         .serviceName(record.getServiceName())
         .entityType(record.getEntityType())
-        .entityId(parseUuid(record.getEntityId()))
+        .entityId(record.getEntityId())
         .entityFQN(record.getEntityFQN())
         .createdAt(record.getCreatedAt())
         .changeEvent(changeEvent)
+        .summary(computeSummary(changeEvent, record))
+        .rawEventJson(record.getEventJson())
         .build();
+  }
+
+  /** Compute a human-readable summary of the change event. */
+  private String computeSummary(ChangeEvent changeEvent, AuditLogRecord record) {
+    if (changeEvent == null) {
+      return formatAuthEventSummary(record);
+    }
+
+    EventType eventType = changeEvent.getEventType();
+    String entityType = changeEvent.getEntityType();
+    String entityFqn = changeEvent.getEntityFullyQualifiedName();
+
+    switch (eventType) {
+      case ENTITY_CREATED:
+        return String.format("Created %s: %s", entityType, entityFqn);
+      case ENTITY_DELETED:
+        return String.format("Deleted %s: %s", entityType, entityFqn);
+      case ENTITY_SOFT_DELETED:
+        return String.format("Soft deleted %s: %s", entityType, entityFqn);
+      case ENTITY_RESTORED:
+        return String.format("Restored %s: %s", entityType, entityFqn);
+      case ENTITY_UPDATED:
+      case ENTITY_FIELDS_CHANGED:
+        return formatChangeDescription(changeEvent.getChangeDescription());
+      default:
+        return eventType.value();
+    }
+  }
+
+  private String formatAuthEventSummary(AuditLogRecord record) {
+    String eventType = record.getEventType();
+    if (AUTH_EVENT_LOGIN.equals(eventType)) {
+      return "User logged in";
+    } else if (AUTH_EVENT_LOGOUT.equals(eventType)) {
+      return "User logged out";
+    }
+    return eventType;
+  }
+
+  private String formatChangeDescription(ChangeDescription desc) {
+    if (desc == null) {
+      return "Entity updated";
+    }
+
+    List<String> changes = new ArrayList<>();
+
+    for (FieldChange field : desc.getFieldsAdded()) {
+      changes.add(formatFieldChange("Added", field));
+    }
+    for (FieldChange field : desc.getFieldsUpdated()) {
+      changes.add(formatFieldChange("Updated", field));
+    }
+    for (FieldChange field : desc.getFieldsDeleted()) {
+      changes.add(formatFieldChange("Deleted", field));
+    }
+
+    if (changes.isEmpty()) {
+      return "Entity updated";
+    }
+    return String.join(", ", changes);
+  }
+
+  private String formatFieldChange(String action, FieldChange field) {
+    String fieldName = getReadableFieldName(field.getName());
+    String value = extractFieldValue(field);
+    if (nullOrEmpty(value)) {
+      return String.format("%s %s", action, fieldName);
+    }
+    return String.format("%s %s: %s", action, fieldName, value);
+  }
+
+  private String getReadableFieldName(String fieldName) {
+    if (nullOrEmpty(fieldName)) {
+      return "field";
+    }
+    // Handle nested field names like "columns.description" or "tags"
+    if (fieldName.contains(".")) {
+      String[] parts = fieldName.split("\\.");
+      return parts[parts.length - 1];
+    }
+    return fieldName;
+  }
+
+  /**
+   * Extract a human-readable value from a field change. Reuses the existing formatting logic from
+   * {@link org.openmetadata.service.formatter.field.DefaultFieldFormatter#getFieldValue}.
+   */
+  private String extractFieldValue(FieldChange field) {
+    Object newValue = field.getNewValue();
+    Object oldValue = field.getOldValue();
+
+    // For deletes, use oldValue since newValue will be empty
+    Object value = newValue != null ? newValue : oldValue;
+    if (value == null) {
+      return null;
+    }
+
+    // Reuse the existing formatter logic that handles tags, entity references, etc.
+    String formattedValue = getFieldValue(value);
+    if (nullOrEmpty(formattedValue)) {
+      return null;
+    }
+
+    // Truncate long values for summary display
+    if (formattedValue.length() > 80) {
+      return formattedValue.substring(0, 77) + "...";
+    }
+    return formattedValue;
   }
 
   private ChangeEvent deserializeChangeEvent(AuditLogRecord record) {
@@ -356,7 +611,7 @@ public class AuditLogRepository {
             record.getEntityType(), record.getEntityFQN(), Include.NON_DELETED);
       } else if (record.getEntityId() != null) {
         return Entity.getEntityReferenceById(
-            record.getEntityType(), UUID.fromString(record.getEntityId()), Include.NON_DELETED);
+            record.getEntityType(), record.getEntityId(), Include.NON_DELETED);
       }
     } catch (Exception ex) {
       LOG.debug(
@@ -386,16 +641,32 @@ public class AuditLogRepository {
     }
   }
 
-  private String buildBaseCondition() {
-    return "WHERE (:userName IS NULL OR user_name = :userName) "
-        + "AND (:actorType IS NULL OR actor_type = :actorType) "
-        + "AND (:serviceName IS NULL OR service_name = :serviceName) "
-        + "AND (:entityType IS NULL OR entity_type = :entityType) "
-        + "AND (:entityFQN IS NULL OR entity_fqn = :entityFQN) "
-        + "AND (:entityFQNHASH IS NULL OR entity_fqn_hash = :entityFQNHASH) "
-        + "AND (:eventType IS NULL OR event_type = :eventType) "
-        + "AND (:startTs IS NULL OR event_ts >= :startTs) "
-        + "AND (:endTs IS NULL OR event_ts <= :endTs)";
+  private String buildBaseCondition(String searchTerm) {
+    StringBuilder condition =
+        new StringBuilder(
+            "WHERE (:userName IS NULL OR user_name = :userName) "
+                + "AND (:actorType IS NULL OR actor_type = :actorType) "
+                + "AND (:serviceName IS NULL OR service_name = :serviceName) "
+                + "AND (:entityType IS NULL OR entity_type = :entityType) "
+                + "AND (:entityFQN IS NULL OR entity_fqn = :entityFQN) "
+                + "AND (:entityFQNHASH IS NULL OR entity_fqn_hash = :entityFQNHASH) "
+                + "AND (:eventType IS NULL OR event_type = :eventType) "
+                + "AND (:startTs IS NULL OR event_ts >= :startTs) "
+                + "AND (:endTs IS NULL OR event_ts <= :endTs)");
+
+    // Add search condition if searchTerm is provided
+    // Uses LOWER() + LIKE for case-insensitive search across multiple columns
+    // Works consistently on both MySQL and PostgreSQL
+    if (!nullOrEmpty(searchTerm)) {
+      condition.append(
+          " AND (:searchPattern IS NULL OR "
+              + "LOWER(user_name) LIKE :searchPattern OR "
+              + "LOWER(entity_fqn) LIKE :searchPattern OR "
+              + "LOWER(service_name) LIKE :searchPattern OR "
+              + "LOWER(entity_type) LIKE :searchPattern OR "
+              + "LOWER(event_json) LIKE :searchPattern)");
+    }
+    return condition.toString();
   }
 
   private String buildAfterCondition() {
@@ -417,16 +688,72 @@ public class AuditLogRepository {
 
   /** Cursor for keyset pagination - uses Java 21 record for immutability and conciseness. */
   private record AuditLogCursor(long eventTs, long id) {
+    /**
+     * Decode an encoded cursor string, handling potential double-encoding issues. The method is
+     * robust against: - Single base64 encoding (normal case) - Double base64 encoding (can happen
+     * in some API chains) - Invalid/corrupted cursors (returns null instead of throwing)
+     */
     static AuditLogCursor fromEncoded(String encoded) {
       if (nullOrEmpty(encoded)) {
         return null;
       }
       try {
-        String decoded = RestUtil.decodeCursor(encoded);
-        CursorPayload payload = JsonUtils.readValue(decoded, CursorPayload.class);
-        return new AuditLogCursor(payload.eventTs(), payload.id());
+        String decoded = encoded;
+
+        // Try to decode and parse, handling potential double-encoding
+        // Maximum 3 decode attempts to prevent infinite loops with malformed data
+        for (int attempt = 0; attempt < 3; attempt++) {
+          // First, try to parse as JSON directly
+          CursorPayload payload = tryParsePayload(decoded);
+          if (payload != null) {
+            return new AuditLogCursor(payload.eventTs(), payload.id());
+          }
+
+          // If not valid JSON, try to base64 decode
+          String nextDecoded = tryBase64Decode(decoded);
+          if (nextDecoded == null || nextDecoded.equals(decoded)) {
+            // Decoding failed or didn't change the string - stop trying
+            break;
+          }
+          decoded = nextDecoded;
+        }
+
+        LOG.warn(
+            "Could not parse audit log cursor after decode attempts: original={}, final={}",
+            encoded,
+            decoded);
+        return null;
       } catch (Exception ex) {
         LOG.warn("Failed to parse audit log cursor {}", encoded, ex);
+        return null;
+      }
+    }
+
+    /** Try to parse a string as CursorPayload JSON. Returns null if parsing fails. */
+    private static CursorPayload tryParsePayload(String value) {
+      if (nullOrEmpty(value) || !value.trim().startsWith("{")) {
+        return null;
+      }
+      try {
+        CursorPayload payload = JsonUtils.readValue(value, CursorPayload.class);
+        // Validate that we got valid data
+        if (payload != null && payload.eventTs() != null && payload.id() != null) {
+          return payload;
+        }
+      } catch (Exception ignored) {
+        // Not valid JSON, return null
+      }
+      return null;
+    }
+
+    /** Try to base64 decode a string. Returns null if decoding fails. */
+    private static String tryBase64Decode(String value) {
+      if (nullOrEmpty(value)) {
+        return null;
+      }
+      try {
+        return RestUtil.decodeCursor(value);
+      } catch (Exception ignored) {
         return null;
       }
     }
