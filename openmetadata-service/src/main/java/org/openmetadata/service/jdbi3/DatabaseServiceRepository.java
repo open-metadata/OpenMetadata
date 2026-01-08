@@ -355,7 +355,9 @@ public class DatabaseServiceRepository
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
       // Store change description in inherited arrays
-      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
         recordFieldChangesArray[recordIndex] = changeDescription;
       }
 
@@ -513,7 +515,9 @@ public class DatabaseServiceRepository
       if (!fieldsUpdated.isEmpty()) {
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
-      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
         recordFieldChangesArray[recordIndex] = changeDescription;
       }
 
@@ -561,21 +565,38 @@ public class DatabaseServiceRepository
       }
 
       DatabaseSchema schema;
-      DatabaseSchemaRepository databaseSchemaRepository =
-          (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
+      DatabaseSchema existingSchema = null;
+      boolean schemaExists = false;
       String schemaFqn = FullyQualifiedName.add(dbFQN, csvRecord.get(0));
       try {
-        schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFqn, "*", Include.NON_DELETED);
-      } catch (Exception ex) {
+        existingSchema =
+            Entity.getEntityByName(DATABASE_SCHEMA, schemaFqn, "*", Include.NON_DELETED);
+        schemaExists = true;
+      } catch (EntityNotFoundException ex) {
         LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
-        schema =
-            new DatabaseSchema()
-                .withDatabase(database.getEntityReference())
-                .withService(database.getService());
       }
 
-      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
-      // sourceUrl, domain
+      schema =
+          existingSchema != null
+              ? existingSchema
+              : new DatabaseSchema()
+                  .withDatabase(database.getEntityReference())
+                  .withService(database.getService());
+
+      // Store create status
+      int recordIndex = getRecordIndex(csvRecord);
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !schemaExists;
+      }
+
+      // Track field changes
+      List<FieldChange> fieldsAdded = new ArrayList<>();
+      List<FieldChange> fieldsUpdated = new ArrayList<>();
+
+      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, certification,
+      // retentionPeriod, sourceUrl, domain
       List<TagLabel> tagLabels =
           getTagLabels(
               printer,
@@ -585,21 +606,106 @@ public class DatabaseServiceRepository
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
       AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      String retentionPeriod = csvRecord.get(8);
+      String sourceUrl = csvRecord.get(9);
+
+      if (!schemaExists) {
+        if (!nullOrEmpty(displayName)) {
+          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
+        }
+        if (!nullOrEmpty(description)) {
+          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
+        }
+        if (!nullOrEmpty(tagLabels)) {
+          fieldsAdded.add(
+              new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tagLabels)));
+        }
+        if (certification != null) {
+          fieldsAdded.add(
+              new FieldChange()
+                  .withName("certification")
+                  .withNewValue(JsonUtils.pojoToJson(certification)));
+        }
+        if (!nullOrEmpty(retentionPeriod)) {
+          fieldsAdded.add(
+              new FieldChange().withName("retentionPeriod").withNewValue(retentionPeriod));
+        }
+        if (!nullOrEmpty(sourceUrl)) {
+          fieldsAdded.add(new FieldChange().withName("sourceUrl").withNewValue(sourceUrl));
+        }
+      } else {
+        if (CommonUtil.isChanged(schema.getDisplayName(), displayName)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("displayName")
+                  .withOldValue(schema.getDisplayName())
+                  .withNewValue(displayName));
+        }
+        if (CommonUtil.isChanged(schema.getDescription(), description)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("description")
+                  .withOldValue(schema.getDescription())
+                  .withNewValue(description));
+        }
+        if (CommonUtil.isChanged(schema.getTags(), tagLabels)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("tags")
+                  .withOldValue(JsonUtils.pojoToJson(schema.getTags()))
+                  .withNewValue(JsonUtils.pojoToJson(tagLabels)));
+        }
+        if (CommonUtil.isChanged(schema.getCertification(), certification)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("certification")
+                  .withOldValue(JsonUtils.pojoToJson(schema.getCertification()))
+                  .withNewValue(JsonUtils.pojoToJson(certification)));
+        }
+        if (CommonUtil.isChanged(schema.getRetentionPeriod(), retentionPeriod)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("retentionPeriod")
+                  .withOldValue(schema.getRetentionPeriod())
+                  .withNewValue(retentionPeriod));
+        }
+        if (CommonUtil.isChanged(schema.getSourceUrl(), sourceUrl)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("sourceUrl")
+                  .withOldValue(schema.getSourceUrl())
+                  .withNewValue(sourceUrl));
+        }
+      }
+
+      ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(null);
+      if (!fieldsAdded.isEmpty()) {
+        changeDescription.setFieldsAdded(fieldsAdded);
+      }
+      if (!fieldsUpdated.isEmpty()) {
+        changeDescription.setFieldsUpdated(fieldsUpdated);
+      }
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
+
       schema
-          .withId(UUID.randomUUID())
           .withName(csvRecord.get(0))
-          .withDisplayName(csvRecord.get(1))
+          .withDisplayName(displayName)
           .withFullyQualifiedName(schemaFqn)
-          .withDescription(csvRecord.get(2))
+          .withDescription(description)
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
           .withCertification(certification)
-          .withRetentionPeriod(csvRecord.get(8))
-          .withSourceUrl(csvRecord.get(9))
+          .withRetentionPeriod(retentionPeriod)
+          .withSourceUrl(sourceUrl)
           .withDomains(getDomains(printer, csvRecord, 10))
-          .withExtension(getExtension(printer, csvRecord, 11))
-          .withUpdatedAt(System.currentTimeMillis())
-          .withUpdatedBy(importedBy);
+          .withExtension(getExtension(printer, csvRecord, 11));
+
       if (processRecord) {
         createEntityWithChangeDescription(printer, csvRecord, schema, DATABASE_SCHEMA);
       }

@@ -1207,7 +1207,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     }
 
-    ChangeDescription changeDescription = new ChangeDescription();
+    ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(null);
     if (!fieldsAdded.isEmpty()) {
       changeDescription.setFieldsAdded(fieldsAdded);
     }
@@ -1431,7 +1431,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     }
 
-    ChangeDescription changeDescription = new ChangeDescription();
+    ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(null);
     if (!fieldsAdded.isEmpty()) {
       changeDescription.setFieldsAdded(fieldsAdded);
     }
@@ -1664,7 +1664,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     }
 
-    ChangeDescription changeDescription = new ChangeDescription();
+    ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(null);
     if (!fieldsAdded.isEmpty()) {
       changeDescription.setFieldsAdded(fieldsAdded);
     }
@@ -1708,7 +1708,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
     try {
       table =
           Entity.getEntityByName(
-              TABLE, tableFQN, "name,displayName,fullyQualifiedName,columns", Include.NON_DELETED);
+              TABLE,
+              tableFQN,
+              "name,displayName,fullyQualifiedName,columns,tags",
+              Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       try {
         schema =
@@ -1900,7 +1903,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     }
 
-    ChangeDescription changeDescription = new ChangeDescription();
+    ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(null);
     if (!fieldsAdded.isEmpty()) {
       changeDescription.setFieldsAdded(fieldsAdded);
     }
@@ -2387,7 +2390,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
             && recordIndex < recordFieldChangesArray.length
             && recordFieldChangesArray[recordIndex] != null
         ? recordFieldChangesArray[recordIndex]
-        : new ChangeDescription();
+        : new ChangeDescription().withPreviousVersion(null);
   }
 
   public record ImportResult(String result, CSVRecord record, String details) {}

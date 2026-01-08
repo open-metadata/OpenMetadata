@@ -431,7 +431,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         }
       }
 
-      ChangeDescription changeDescription = new ChangeDescription();
+      ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(null);
       if (!fieldsAdded.isEmpty()) {
         changeDescription.setFieldsAdded(fieldsAdded);
       }

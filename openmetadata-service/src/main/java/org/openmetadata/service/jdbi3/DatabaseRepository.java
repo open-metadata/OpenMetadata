@@ -766,7 +766,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
       }
 
       // Create ChangeDescription object and store for this record
-      ChangeDescription changeDescription = new ChangeDescription();
+      ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(null);
       if (!fieldsAdded.isEmpty()) {
         changeDescription.setFieldsAdded(fieldsAdded);
       }
