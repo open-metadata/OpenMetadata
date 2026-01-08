@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Segmented, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Segmented, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {} from '../../../constants/constants';
+import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
+import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
@@ -35,7 +36,9 @@ import {
 import { APISchema } from '../../../generated/type/apiSchema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useFqn } from '../../../hooks/useFqn';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -72,8 +75,11 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 }) => {
   const { theme } = useApplicationStore();
   const { t } = useTranslation();
+  const { fqn: entityFqn } = useFqn();
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const [copiedFieldFqn, setCopiedFieldFqn] = useState<string>();
+  const [highlightedFieldFqn, setHighlightedFieldFqn] = useState<string>();
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.REQUEST_SCHEMA
   );
@@ -109,11 +115,11 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 
     const requestSchemaAllRowKeys = getAllRowKeysByKeyName<Field>(
       requestSchemaFields,
-      'name'
+      'fullyQualifiedName'
     );
     const responseSchemaAllRowKeys = getAllRowKeysByKeyName<Field>(
       responseSchemaFields,
-      'name'
+      'fullyQualifiedName'
     );
 
     return {
@@ -185,6 +191,149 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     return activeSchemaDiff?.schemaFields ?? [];
   }, [activeSchema, apiEndpointDetails]);
 
+  // Check if field FQN exists in schema fields (recursive)
+  const findFieldInSchema = useCallback(
+    (fields: Field[], targetFqn: string): boolean => {
+      for (const field of fields) {
+        if (
+          field.fullyQualifiedName === targetFqn ||
+          targetFqn.startsWith((field.fullyQualifiedName ?? '') + '.')
+        ) {
+          return true;
+        }
+        if (field.children?.length) {
+          if (findFieldInSchema(field.children, targetFqn)) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    },
+    []
+  );
+
+  // Get all parent FQNs that need to be expanded to show the target field
+  const getParentKeysToExpand = useCallback(
+    (
+      fields: Field[],
+      targetFqn: string,
+      parentKeys: string[] = []
+    ): string[] => {
+      for (const field of fields) {
+        if (field.fullyQualifiedName === targetFqn) {
+          return parentKeys;
+        }
+        if (
+          field.children?.length &&
+          targetFqn.startsWith((field.fullyQualifiedName ?? '') + '.')
+        ) {
+          const newParentKeys = [...parentKeys, field.fullyQualifiedName ?? ''];
+          const result = getParentKeysToExpand(
+            field.children,
+            targetFqn,
+            newParentKeys
+          );
+          if (
+            result.length > 0 ||
+            field.children.some((c) => c.fullyQualifiedName === targetFqn)
+          ) {
+            return newParentKeys;
+          }
+        }
+      }
+
+      return parentKeys;
+    },
+    []
+  );
+
+  // Detect if URL contains a field FQN and highlight it, also auto-switch view type
+  useEffect(() => {
+    const apiEndpointFqn = apiEndpointDetails?.fullyQualifiedName;
+    if (entityFqn && apiEndpointFqn && entityFqn !== apiEndpointFqn) {
+      // Check if the field is in request or response schema
+      const isInRequestSchema = findFieldInSchema(
+        requestSchemaFields,
+        entityFqn
+      );
+      const isInResponseSchema = findFieldInSchema(
+        responseSchemaFields,
+        entityFqn
+      );
+
+      if (isInRequestSchema) {
+        setViewType(SchemaViewType.REQUEST_SCHEMA);
+        setHighlightedFieldFqn(entityFqn);
+        // Expand parent rows to show the nested field
+        const parentKeys = getParentKeysToExpand(
+          requestSchemaFields,
+          entityFqn
+        );
+        if (parentKeys.length > 0) {
+          setExpandedRowKeys((prev) => [...new Set([...prev, ...parentKeys])]);
+        }
+      } else if (isInResponseSchema) {
+        setViewType(SchemaViewType.RESPONSE_SCHEMA);
+        setHighlightedFieldFqn(entityFqn);
+        // Expand parent rows to show the nested field
+        const parentKeys = getParentKeysToExpand(
+          responseSchemaFields,
+          entityFqn
+        );
+        if (parentKeys.length > 0) {
+          setExpandedRowKeys((prev) => [...new Set([...prev, ...parentKeys])]);
+        }
+      }
+
+      if (isInRequestSchema || isInResponseSchema) {
+        const timer = setTimeout(() => {
+          setHighlightedFieldFqn(undefined);
+        }, 3000);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [
+    entityFqn,
+    apiEndpointDetails?.fullyQualifiedName,
+    requestSchemaFields,
+    responseSchemaFields,
+    findFieldInSchema,
+    getParentKeysToExpand,
+  ]);
+
+  // Scroll to highlighted row when fields are loaded
+  useEffect(() => {
+    if (highlightedFieldFqn && activeSchemaFields?.length > 0) {
+      const scrollTimer = setTimeout(() => {
+        const highlightedRow = document.querySelector('.highlighted-row');
+        if (highlightedRow) {
+          highlightedRow.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
+        }
+      }, 100);
+
+      return () => clearTimeout(scrollTimer);
+    }
+  }, [highlightedFieldFqn, activeSchemaFields]);
+
+  const getRowClassName = useCallback(
+    (record: Field) => {
+      if (highlightedFieldFqn && record.fullyQualifiedName) {
+        // Only highlight the exact target field, not parent rows
+        if (record.fullyQualifiedName === highlightedFieldFqn) {
+          return 'highlighted-row';
+        }
+      }
+
+      return '';
+    },
+    [highlightedFieldFqn]
+  );
+
   const handleExpandedRowsChange = (keys: readonly Key[]) => {
     setExpandedRowKeys(keys as string[]);
   };
@@ -197,9 +346,45 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     }
   };
 
+  const getFieldLink = useCallback((fieldFqn: string) => {
+    const fieldPath = getEntityDetailsPath(EntityType.API_ENDPOINT, fieldFqn);
+
+    return `${window.location.origin}${fieldPath}`;
+  }, []);
+
+  const handleCopyFieldLink = useCallback(
+    async (fieldFqn: string) => {
+      const fieldLink = getFieldLink(fieldFqn);
+      try {
+        await navigator.clipboard.writeText(fieldLink);
+        setCopiedFieldFqn(fieldFqn);
+        setTimeout(() => setCopiedFieldFqn(undefined), 2000);
+      } catch {
+        try {
+          const textArea = document.createElement('textarea');
+          textArea.value = fieldLink;
+          textArea.style.position = 'fixed';
+          textArea.style.opacity = '0';
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          const successful = document.execCommand('copy');
+          document.body.removeChild(textArea);
+          if (successful) {
+            setCopiedFieldFqn(fieldFqn);
+            setTimeout(() => setCopiedFieldFqn(undefined), 2000);
+          }
+        } catch {
+          // Silently fail if both methods don't work
+        }
+      }
+    },
+    [getFieldLink]
+  );
+
   const renderSchemaName = useCallback(
     (_: string, record: Field) => (
-      <div className="d-inline-flex w-max-90 vertical-align-inherit">
+      <div className="d-inline-flex items-center gap-2 hover-icon-group w-max-90 vertical-align-inherit">
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">
             {isVersionView ? (
@@ -209,9 +394,39 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             )}
           </span>
         </Tooltip>
+        {!isVersionView && (
+          <Tooltip
+            placement="top"
+            title={
+              copiedFieldFqn === record.fullyQualifiedName
+                ? t('message.link-copy-to-clipboard')
+                : t('label.copy-item', { item: t('label.url-uppercase') })
+            }>
+            <Button
+              className="cursor-pointer hover-cell-icon flex-center"
+              data-testid="copy-field-link-button"
+              disabled={!record.fullyQualifiedName}
+              style={{
+                color: DE_ACTIVE_COLOR,
+                padding: 0,
+                border: 'none',
+                background: 'transparent',
+                width: '24px',
+                height: '24px',
+              }}
+              onClick={() =>
+                record.fullyQualifiedName &&
+                handleCopyFieldLink(record.fullyQualifiedName)
+              }>
+              <ShareIcon
+                style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+              />
+            </Button>
+          </Tooltip>
+        )}
       </div>
     ),
-    [isVersionView]
+    [isVersionView, copiedFieldFqn, handleCopyFieldLink, t]
   );
 
   const renderDataType = useCallback(
@@ -378,11 +593,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     ]
   );
 
-  // Set expanded row keys to all row keys on initial render
-  useEffect(() => {
-    setExpandedRowKeys(schemaAllRowKeys);
-  }, []);
-
   return (
     <Row gutter={[16, 16]}>
       <Col span={24}>
@@ -418,6 +628,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           }
           key={viewType}
           pagination={false}
+          rowClassName={getRowClassName}
           rowKey="fullyQualifiedName"
           scroll={TABLE_SCROLL_VALUE}
           size="small"

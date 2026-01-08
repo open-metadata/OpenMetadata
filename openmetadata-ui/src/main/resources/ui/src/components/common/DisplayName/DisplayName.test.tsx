@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { EntityType } from '../../../enums/entity.enum';
 import DisplayName from './DisplayName';
 import { DisplayNameProps } from './DisplayName.interface';
 
@@ -32,6 +33,12 @@ jest.mock('../../../constants/constants', () => ({
 jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () =>
   jest.fn().mockImplementation(() => <p>Mocked Modal</p>)
 );
+
+jest.mock('../../../utils/RouterUtils', () => ({
+  getEntityDetailsPath: jest
+    .fn()
+    .mockImplementation((_entityType, fqn) => `/entity/${fqn}`),
+}));
 
 const mockOnEditDisplayName = jest.fn();
 
@@ -135,5 +142,62 @@ describe('Test DisplayName Component', () => {
 
     expect(nameElement).toBeInTheDocument();
     expect(nameElement).toHaveTextContent('Sample Entity');
+  });
+
+  it('Should render copy link button when entityType is provided', async () => {
+    const props = {
+      ...mockProps,
+      entityType: EntityType.DASHBOARD_DATA_MODEL,
+    };
+
+    render(
+      <MemoryRouter>
+        <DisplayName {...props} />
+      </MemoryRouter>
+    );
+
+    const copyButton = screen.getByTestId('copy-column-link-button');
+
+    expect(copyButton).toBeInTheDocument();
+  });
+
+  it('Should not render copy link button when entityType is not provided', async () => {
+    render(
+      <MemoryRouter>
+        <DisplayName {...mockProps} />
+      </MemoryRouter>
+    );
+
+    const copyButton = screen.queryByTestId('copy-column-link-button');
+
+    expect(copyButton).not.toBeInTheDocument();
+  });
+
+  it('Should copy link to clipboard when copy button is clicked', async () => {
+    const mockWriteText = jest.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: mockWriteText,
+      },
+    });
+
+    const props = {
+      ...mockProps,
+      entityType: EntityType.DASHBOARD_DATA_MODEL,
+    };
+
+    render(
+      <MemoryRouter>
+        <DisplayName {...props} />
+      </MemoryRouter>
+    );
+
+    const copyButton = screen.getByTestId('copy-column-link-button');
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    expect(mockWriteText).toHaveBeenCalledWith(expect.stringContaining('1'));
   });
 });

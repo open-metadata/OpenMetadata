@@ -27,6 +27,7 @@ import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHead
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
@@ -73,6 +74,7 @@ import {
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import Fqn from '../../utils/Fqn';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -92,7 +94,20 @@ const ContainerPage = () => {
   const { customizedPage, isLoading: loading } = useCustomPages(
     PageType.Container
   );
-  const { fqn: decodedContainerName } = useFqn();
+  const { fqn: decodedEntityFqn } = useFqn();
+
+  // Extract just the container FQN (service.container) from the URL
+  // The URL might contain column path like: service.container.columnName.nestedColumn
+  const decodedContainerName = useMemo(() => {
+    if (!decodedEntityFqn) {
+      return '';
+    }
+    const splitFqn = Fqn.split(decodedEntityFqn);
+
+    // Container FQN has 2 parts: service, container
+    // Take only the first 2 parts
+    return splitFqn.slice(0, 2).join(FQN_SEPARATOR_CHAR);
+  }, [decodedEntityFqn]);
 
   // Local states
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -262,7 +277,7 @@ const ContainerPage = () => {
         {
           pathname: getEntityDetailsPath(
             EntityType.CONTAINER,
-            decodedContainerName,
+            containerData?.fullyQualifiedName ?? '',
             tabValue
           ),
         },

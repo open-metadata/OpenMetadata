@@ -152,7 +152,13 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
 }));
 
 jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockReturnValue('test-fqn'),
+  useFqn: jest.fn().mockReturnValue({ fqn: 'test-fqn' }),
+}));
+
+jest.mock('../../../utils/RouterUtils', () => ({
+  getEntityDetailsPath: jest
+    .fn()
+    .mockImplementation((_entityType, fqn) => `/topic/${fqn}`),
 }));
 
 describe('Topic Schema', () => {
@@ -234,5 +240,34 @@ describe('Topic Schema', () => {
     const editDescriptionButton = queryByTestId(row1, 'edit-button');
 
     expect(editDescriptionButton).toBeNull();
+  });
+
+  it('Should render copy field link button for each field', async () => {
+    mockTopicDetails.deleted = false;
+    render(<TopicSchema {...mockProps} />);
+
+    const copyButtons = await screen.findAllByTestId('copy-field-link-button');
+
+    expect(copyButtons.length).toBeGreaterThan(0);
+  });
+
+  it('Should copy field link to clipboard when copy button is clicked', async () => {
+    mockTopicDetails.deleted = false;
+    const mockWriteText = jest.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: mockWriteText,
+      },
+    });
+
+    render(<TopicSchema {...mockProps} />);
+
+    const copyButtons = await screen.findAllByTestId('copy-field-link-button');
+
+    await act(async () => {
+      fireEvent.click(copyButtons[0]);
+    });
+
+    expect(mockWriteText).toHaveBeenCalled();
   });
 });

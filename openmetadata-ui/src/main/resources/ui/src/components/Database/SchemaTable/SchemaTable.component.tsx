@@ -112,6 +112,7 @@ const SchemaTable = () => {
   const [searchText, setSearchText] = useState('');
   const [editColumn, setEditColumn] = useState<Column>();
   const [copiedColumnFqn, setCopiedColumnFqn] = useState<string>();
+  const [highlightedColumnFqn, setHighlightedColumnFqn] = useState<string>();
 
   const {
     currentPage,
@@ -155,6 +156,56 @@ const SchemaTable = () => {
         FQN_SEPARATOR_CHAR
       ),
     [decodedEntityFqn]
+  );
+
+  // Detect if URL contains a column FQN and highlight it
+  useEffect(() => {
+    if (decodedEntityFqn && tableFqn && decodedEntityFqn !== tableFqn) {
+      // URL contains more than just the table FQN - likely a column
+      setHighlightedColumnFqn(decodedEntityFqn);
+
+      // Clear highlight after animation completes
+      const timer = setTimeout(() => {
+        setHighlightedColumnFqn(undefined);
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [decodedEntityFqn, tableFqn]);
+
+  // Scroll to highlighted row when columns are loaded
+  useEffect(() => {
+    if (highlightedColumnFqn && tableColumns.length > 0 && !columnsLoading) {
+      // Small delay to ensure DOM is rendered
+      const scrollTimer = setTimeout(() => {
+        const highlightedRow = document.querySelector('.highlighted-row');
+        if (highlightedRow) {
+          highlightedRow.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
+        }
+      }, 100);
+
+      return () => clearTimeout(scrollTimer);
+    }
+  }, [highlightedColumnFqn, tableColumns, columnsLoading]);
+
+  const getRowClassName = useCallback(
+    (record: Column) => {
+      if (highlightedColumnFqn && record.fullyQualifiedName) {
+        // Check if this row matches the highlighted FQN
+        if (
+          record.fullyQualifiedName === highlightedColumnFqn ||
+          highlightedColumnFqn.startsWith(record.fullyQualifiedName + '.')
+        ) {
+          return 'highlighted-row';
+        }
+      }
+
+      return '';
+    },
+    [highlightedColumnFqn]
   );
 
   const {
@@ -537,22 +588,75 @@ const SchemaTable = () => {
 
           return (
             <div className="d-inline-flex flex-column hover-icon-group w-max-90">
-              <div className="d-inline-flex items-baseline">
-                {prepareConstraintIcon({
-                  columnName: name,
-                  columnConstraint: record.constraint,
-                  tableConstraints,
-                })}
-                <Typography.Text
-                  className={classNames('m-b-0 d-block break-word', {
-                    'text-grey-600': !isEmpty(displayName),
+              <div className="d-inline-flex items-center gap-2">
+                <div className="d-inline-flex items-baseline">
+                  {prepareConstraintIcon({
+                    columnName: name,
+                    columnConstraint: record.constraint,
+                    tableConstraints,
                   })}
-                  data-testid="column-name">
-                  {stringToHTML(highlightSearchText(name, searchText))}
-                </Typography.Text>
+                  <Typography.Text
+                    className={classNames('m-b-0 d-block break-word', {
+                      'text-grey-600': !isEmpty(displayName),
+                    })}
+                    data-testid="column-name">
+                    {stringToHTML(highlightSearchText(name, searchText))}
+                  </Typography.Text>
+                </div>
+                <div className="d-flex items-center">
+                  {editDisplayNamePermission && (
+                    <Tooltip placement="top" title={t('label.edit')}>
+                      <Button
+                        className="cursor-pointer hover-cell-icon flex-center"
+                        data-testid="edit-displayName-button"
+                        style={{
+                          color: DE_ACTIVE_COLOR,
+                          padding: 0,
+                          border: 'none',
+                          background: 'transparent',
+                          width: '24px',
+                          height: '24px',
+                        }}
+                        onClick={() => handleEditDisplayNameClick(record)}>
+                        <IconEdit
+                          style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                        />
+                      </Button>
+                    </Tooltip>
+                  )}
+                  <Tooltip
+                    placement="top"
+                    title={
+                      copiedColumnFqn === record.fullyQualifiedName
+                        ? t('message.link-copy-to-clipboard')
+                        : t('label.copy-item', {
+                            item: t('label.url-uppercase'),
+                          })
+                    }>
+                    <Button
+                      className="cursor-pointer hover-cell-icon flex-center"
+                      data-testid="copy-column-link-button"
+                      disabled={!record.fullyQualifiedName}
+                      style={{
+                        color: DE_ACTIVE_COLOR,
+                        padding: 0,
+                        border: 'none',
+                        background: 'transparent',
+                        width: '24px',
+                        height: '24px',
+                      }}
+                      onClick={() =>
+                        record.fullyQualifiedName &&
+                        handleCopyColumnLink(record.fullyQualifiedName)
+                      }>
+                      <ShareIcon
+                        style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                      />
+                    </Button>
+                  </Tooltip>
+                </div>
               </div>
               {isEmpty(displayName) ? null : (
-                // It will render displayName fallback to name
                 <Typography.Text
                   className="m-b-0 d-block break-word"
                   data-testid="column-display-name">
@@ -561,52 +665,6 @@ const SchemaTable = () => {
                   )}
                 </Typography.Text>
               )}
-
-              {editDisplayNamePermission && (
-                <Tooltip placement="right" title={t('label.edit')}>
-                  <Button
-                    className="cursor-pointer hover-cell-icon w-fit-content"
-                    data-testid="edit-displayName-button"
-                    style={{
-                      color: DE_ACTIVE_COLOR,
-                      padding: 0,
-                      border: 'none',
-                      background: 'transparent',
-                    }}
-                    onClick={() => handleEditDisplayNameClick(record)}>
-                    <IconEdit
-                      style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                    />
-                  </Button>
-                </Tooltip>
-              )}
-
-              <Tooltip
-                placement="right"
-                title={
-                  copiedColumnFqn === record.fullyQualifiedName
-                    ? t('message.link-copy-to-clipboard')
-                    : t('label.copy-item', { item: t('label.url-uppercase') })
-                }>
-                <Button
-                  className="cursor-pointer hover-cell-icon w-fit-content"
-                  data-testid="copy-column-link-button"
-                  disabled={!record.fullyQualifiedName}
-                  style={{
-                    color: DE_ACTIVE_COLOR,
-                    padding: 0,
-                    border: 'none',
-                    background: 'transparent',
-                  }}
-                  onClick={() =>
-                    record.fullyQualifiedName &&
-                    handleCopyColumnLink(record.fullyQualifiedName)
-                  }>
-                  <ShareIcon
-                    style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                  />
-                </Button>
-              </Tooltip>
             </div>
           );
         },
@@ -819,6 +877,7 @@ const SchemaTable = () => {
             emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
+          rowClassName={getRowClassName}
           rowKey="fullyQualifiedName"
           scroll={TABLE_SCROLL_VALUE}
           searchProps={searchProps}

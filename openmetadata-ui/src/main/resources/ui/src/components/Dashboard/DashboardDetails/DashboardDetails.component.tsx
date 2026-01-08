@@ -144,7 +144,7 @@ const DashboardDetails = ({
       navigate(
         getEntityDetailsPath(
           EntityType.DASHBOARD,
-          decodedDashboardFQN,
+          dashboardDetails.fullyQualifiedName ?? '',
           activeKey
         ),
         {

@@ -25,7 +25,6 @@ import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreApiEndPoint } from '../../../rest/apiEndpointsAPI';
 import apiEndpointClassBase from '../../../utils/APIEndpoints/APIEndpointClassBase';
@@ -70,7 +69,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedApiEndpointFqn } = useFqn();
   const navigate = useNavigate();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -137,7 +135,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       navigate(
         getEntityDetailsPath(
           EntityType.API_ENDPOINT,
-          decodedApiEndpointFqn,
+          apiEndpointDetails.fullyQualifiedName ?? '',
           activeKey
         )
       );
@@ -172,7 +170,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   const getEntityFeedCount = () =>
     getFeedCounts(
       EntityType.API_ENDPOINT,
-      decodedApiEndpointFqn,
+      apiEndpointDetails.fullyQualifiedName ?? '',
       handleFeedCount
     );
 
@@ -206,8 +204,10 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   );
 
   useEffect(() => {
-    getEntityFeedCount();
-  }, [apiEndpointPermissions, decodedApiEndpointFqn]);
+    if (apiEndpointDetails.fullyQualifiedName) {
+      getEntityFeedCount();
+    }
+  }, [apiEndpointPermissions, apiEndpointDetails.fullyQualifiedName]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

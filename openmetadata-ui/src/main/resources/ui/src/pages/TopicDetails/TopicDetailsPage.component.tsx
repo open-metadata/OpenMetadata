@@ -14,7 +14,13 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import { FunctionComponent, useCallback, useEffect, useState } from 'react';
+import {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -22,6 +28,7 @@ import Loader from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import TopicDetails from '../../components/Topic/TopicDetails/TopicDetails.component';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -47,6 +54,7 @@ import {
   getEntityMissingError,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import Fqn from '../../utils/Fqn';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
@@ -61,7 +69,21 @@ const TopicDetailsPage: FunctionComponent = () => {
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { fqn: topicFQN } = useFqn();
+  const { fqn: decodedEntityFqn } = useFqn();
+
+  // Extract just the topic FQN (service.topic) from the URL
+  // The URL might contain field path like: service.topic.fieldName.nestedField
+  const topicFQN = useMemo(() => {
+    if (!decodedEntityFqn) {
+      return '';
+    }
+    const splitFqn = Fqn.split(decodedEntityFqn);
+
+    // Topic FQN has 2 parts: service, topic
+    // Take only the first 2 parts
+    return splitFqn.slice(0, 2).join(FQN_SEPARATOR_CHAR);
+  }, [decodedEntityFqn]);
+
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState(false);

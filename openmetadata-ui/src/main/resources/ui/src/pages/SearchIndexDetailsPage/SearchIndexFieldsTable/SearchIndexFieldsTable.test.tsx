@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MOCK_SEARCH_INDEX_FIELDS } from '../../../mocks/SearchIndex.mock';
 import SearchIndexFieldsTable from './SearchIndexFieldsTable';
 
@@ -96,6 +96,12 @@ jest.mock('../../../utils/TableUtils', () => ({
   handleUpdateTableColumnSelections: jest.fn(),
 }));
 
+jest.mock('../../../utils/RouterUtils', () => ({
+  getEntityDetailsPath: jest
+    .fn()
+    .mockImplementation((_entityType, fqn) => `/searchIndex/${fqn}`),
+}));
+
 describe('SearchIndexFieldsTable component', () => {
   it('SearchIndexFieldsTable should render a table with proper data', async () => {
     await act(async () => {
@@ -153,5 +159,36 @@ describe('SearchIndexFieldsTable component', () => {
     const dataTypeFieldForColumnName = screen.getByTestId('name-data-type');
 
     expect(dataTypeFieldForColumnName).toHaveTextContent('text');
+  });
+
+  it('Should render copy field link button for each field', async () => {
+    await act(async () => {
+      render(<SearchIndexFieldsTable {...mockProps} />);
+    });
+
+    const copyButtons = await screen.findAllByTestId('copy-field-link-button');
+
+    expect(copyButtons.length).toBeGreaterThan(0);
+  });
+
+  it('Should copy field link to clipboard when copy button is clicked', async () => {
+    const mockWriteText = jest.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: mockWriteText,
+      },
+    });
+
+    await act(async () => {
+      render(<SearchIndexFieldsTable {...mockProps} />);
+    });
+
+    const copyButtons = await screen.findAllByTestId('copy-field-link-button');
+
+    await act(async () => {
+      fireEvent.click(copyButtons[0]);
+    });
+
+    expect(mockWriteText).toHaveBeenCalled();
   });
 });

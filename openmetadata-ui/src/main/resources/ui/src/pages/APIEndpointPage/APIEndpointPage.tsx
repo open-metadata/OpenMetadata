@@ -14,7 +14,7 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import APIEndpointDetails from '../../components/APIEndpoint/APIEndpointDetails/APIEndpointDetails';
@@ -22,6 +22,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -46,6 +47,7 @@ import {
   getEntityMissingError,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import Fqn from '../../utils/Fqn';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -57,7 +59,21 @@ const APIEndpointPage = () => {
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { fqn: apiEndpointFqn } = useFqn();
+  const { fqn: decodedEntityFqn } = useFqn();
+
+  // Extract just the API endpoint FQN (service.collection.endpoint) from the URL
+  // The URL might contain field path like: service.collection.endpoint.requestSchema.fieldName
+  const apiEndpointFqn = useMemo(() => {
+    if (!decodedEntityFqn) {
+      return '';
+    }
+    const splitFqn = Fqn.split(decodedEntityFqn);
+
+    // API endpoint FQN has 3 parts: service, collection, endpoint
+    // Take only the first 3 parts
+    return splitFqn.slice(0, 3).join(FQN_SEPARATOR_CHAR);
+  }, [decodedEntityFqn]);
+
   const [apiEndpointDetails, setApiEndpointDetails] = useState<APIEndpoint>(
     {} as APIEndpoint
   );

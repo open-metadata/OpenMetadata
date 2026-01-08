@@ -13,11 +13,13 @@
 import { Button, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
-import React, { ReactNode, useMemo, useState } from 'react';
+import React, { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -31,10 +33,54 @@ const DisplayName: React.FC<DisplayNameProps> = ({
   link,
   allowRename,
   hasEditPermission = false,
+  entityType,
 }) => {
   const { t } = useTranslation();
 
   const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
+  const [copiedFqn, setCopiedFqn] = useState<string>();
+
+  const getFieldLink = useCallback(
+    (fqn: string) => {
+      if (!entityType) {
+        return '';
+      }
+      const fieldPath = getEntityDetailsPath(entityType, fqn);
+
+      return `${window.location.origin}${fieldPath}`;
+    },
+    [entityType]
+  );
+
+  const handleCopyLink = useCallback(
+    async (fqn: string) => {
+      const fieldLink = getFieldLink(fqn);
+      try {
+        await navigator.clipboard.writeText(fieldLink);
+        setCopiedFqn(fqn);
+        setTimeout(() => setCopiedFqn(undefined), 2000);
+      } catch {
+        try {
+          const textArea = document.createElement('textarea');
+          textArea.value = fieldLink;
+          textArea.style.position = 'fixed';
+          textArea.style.opacity = '0';
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          const successful = document.execCommand('copy');
+          document.body.removeChild(textArea);
+          if (successful) {
+            setCopiedFqn(fqn);
+            setTimeout(() => setCopiedFqn(undefined), 2000);
+          }
+        } catch {
+          // Silently fail if both methods don't work
+        }
+      }
+    },
+    [getFieldLink]
+  );
 
   const handleDisplayNameUpdate = async (data: EntityName) => {
     setIsDisplayNameEditing(true);
@@ -82,22 +128,58 @@ const DisplayName: React.FC<DisplayNameProps> = ({
 
   return (
     <div className="d-inline-flex flex-column hover-icon-group w-max-full vertical-align-inherit">
-      <Typography.Text className="m-b-0 d-block" data-testid="column-name">
-        {renderMainContent}
-      </Typography.Text>
+      <div className="d-inline-flex items-center gap-2">
+        <Typography.Text className="m-b-0 d-block" data-testid="column-name">
+          {renderMainContent}
+        </Typography.Text>
 
-      {hasEditPermission ? (
-        <Tooltip placement="right" title={t('label.edit')}>
-          <Button
-            ghost
-            className="hover-cell-icon"
-            data-testid="edit-displayName-button"
-            icon={<IconEdit color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />}
-            type="text"
-            onClick={() => setIsDisplayNameEditing(true)}
-          />
-        </Tooltip>
-      ) : null}
+        <div className="d-flex items-center">
+          {hasEditPermission ? (
+            <Tooltip placement="top" title={t('label.edit')}>
+              <Button
+                ghost
+                className="hover-cell-icon flex-center"
+                data-testid="edit-displayName-button"
+                icon={<IconEdit color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />}
+                style={{
+                  width: '24px',
+                  height: '24px',
+                }}
+                type="text"
+                onClick={() => setIsDisplayNameEditing(true)}
+              />
+            </Tooltip>
+          ) : null}
+
+          {entityType && id && (
+            <Tooltip
+              placement="top"
+              title={
+                copiedFqn === id
+                  ? t('message.link-copy-to-clipboard')
+                  : t('label.copy-item', { item: t('label.url-uppercase') })
+              }>
+              <Button
+                className="cursor-pointer hover-cell-icon flex-center"
+                data-testid="copy-column-link-button"
+                style={{
+                  color: DE_ACTIVE_COLOR,
+                  padding: 0,
+                  border: 'none',
+                  background: 'transparent',
+                  width: '24px',
+                  height: '24px',
+                }}
+                onClick={() => handleCopyLink(id)}>
+                <ShareIcon
+                  style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                />
+              </Button>
+            </Tooltip>
+          )}
+        </div>
+      </div>
+
       {isDisplayNameEditing && (
         <EntityNameModal
           allowRename={allowRename}

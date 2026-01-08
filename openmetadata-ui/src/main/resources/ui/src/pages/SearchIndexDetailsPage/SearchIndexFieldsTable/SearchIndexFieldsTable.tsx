@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip, Typography } from 'antd';
+import { Button, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
@@ -26,6 +26,7 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
@@ -34,7 +35,11 @@ import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFi
 import TableDescription from '../../../components/Database/TableDescription/TableDescription.component';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+  NO_DATA_PLACEHOLDER,
+} from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
@@ -51,6 +56,7 @@ import {
   highlightSearchArrayElement,
   highlightSearchText,
 } from '../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import {
@@ -88,6 +94,139 @@ const SearchIndexFieldsTable = ({
     []
   );
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const [copiedFieldFqn, setCopiedFieldFqn] = useState<string>();
+  const [highlightedFieldFqn, setHighlightedFieldFqn] = useState<string>();
+
+  // Get all parent keys that need to be expanded to show the target field
+  const getParentKeysToExpand = useCallback(
+    (
+      fields: SearchIndexField[],
+      targetFqn: string,
+      parentKeys: string[] = []
+    ): string[] => {
+      for (const field of fields) {
+        if (field.fullyQualifiedName === targetFqn) {
+          return parentKeys;
+        }
+        if (
+          field.children?.length &&
+          targetFqn.startsWith((field.fullyQualifiedName ?? '') + '.')
+        ) {
+          const newParentKeys = [...parentKeys, field.fullyQualifiedName ?? ''];
+          const result = getParentKeysToExpand(
+            field.children,
+            targetFqn,
+            newParentKeys
+          );
+          if (
+            result.length > 0 ||
+            field.children.some((c) => c.fullyQualifiedName === targetFqn)
+          ) {
+            return newParentKeys;
+          }
+        }
+      }
+
+      return parentKeys;
+    },
+    []
+  );
+
+  // Detect if URL contains a field FQN and highlight it
+  useEffect(() => {
+    // entityFqn from props may include the field FQN when navigating to a specific field
+    const searchIndexFqnPrefix = entityFqn?.split('.').slice(0, -1).join('.');
+    if (entityFqn && searchIndexFqnPrefix && searchIndexFields?.length > 0) {
+      // Check if entityFqn is a field FQN (not just the search index)
+      const fieldMatch = searchIndexFields.some(
+        (field) =>
+          field.fullyQualifiedName === entityFqn ||
+          entityFqn.startsWith((field.fullyQualifiedName ?? '') + '.')
+      );
+      if (fieldMatch) {
+        setHighlightedFieldFqn(entityFqn);
+
+        // Expand parent rows to show the nested field
+        const parentKeys = getParentKeysToExpand(searchIndexFields, entityFqn);
+        if (parentKeys.length > 0) {
+          setExpandedRowKeys((prev) => [...new Set([...prev, ...parentKeys])]);
+        }
+
+        const timer = setTimeout(() => {
+          setHighlightedFieldFqn(undefined);
+        }, 3000);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [entityFqn, searchIndexFields, getParentKeysToExpand]);
+
+  // Scroll to highlighted row when fields are loaded
+  useEffect(() => {
+    if (highlightedFieldFqn && searchedFields?.length > 0) {
+      const scrollTimer = setTimeout(() => {
+        const highlightedRow = document.querySelector('.highlighted-row');
+        if (highlightedRow) {
+          highlightedRow.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
+        }
+      }, 100);
+
+      return () => clearTimeout(scrollTimer);
+    }
+  }, [highlightedFieldFqn, searchedFields]);
+
+  const getRowClassName = useCallback(
+    (record: SearchIndexField) => {
+      if (highlightedFieldFqn && record.fullyQualifiedName) {
+        // Only highlight the exact target field, not parent rows
+        if (record.fullyQualifiedName === highlightedFieldFqn) {
+          return 'highlighted-row';
+        }
+      }
+
+      return '';
+    },
+    [highlightedFieldFqn]
+  );
+
+  const getFieldLink = useCallback((fieldFqn: string) => {
+    const fieldPath = getEntityDetailsPath(EntityType.SEARCH_INDEX, fieldFqn);
+
+    return `${window.location.origin}${fieldPath}`;
+  }, []);
+
+  const handleCopyFieldLink = useCallback(
+    async (fieldFqn: string) => {
+      const fieldLink = getFieldLink(fieldFqn);
+      try {
+        await navigator.clipboard.writeText(fieldLink);
+        setCopiedFieldFqn(fieldFqn);
+        setTimeout(() => setCopiedFieldFqn(undefined), 2000);
+      } catch {
+        try {
+          const textArea = document.createElement('textarea');
+          textArea.value = fieldLink;
+          textArea.style.position = 'fixed';
+          textArea.style.opacity = '0';
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          const successful = document.execCommand('copy');
+          document.body.removeChild(textArea);
+          if (successful) {
+            setCopiedFieldFqn(fieldFqn);
+            setTimeout(() => setCopiedFieldFqn(undefined), 2000);
+          }
+        } catch {
+          // Silently fail if both methods don't work
+        }
+      }
+    },
+    [getFieldLink]
+  );
 
   const sortByOrdinalPosition = useMemo(
     () => sortBy(searchIndexFields, 'ordinalPosition'),
@@ -222,12 +361,40 @@ const SearchIndexFieldsTable = ({
         fixed: 'left',
         sorter: getColumnSorter<SearchIndexField, 'name'>('name'),
         render: (_, record: SearchIndexField) => (
-          <div className="d-inline-flex w-max-90">
+          <div className="d-inline-flex items-center gap-2 hover-icon-group w-max-90">
             <span className="break-word">
               {stringToHTML(
                 highlightSearchText(getEntityName(record), searchText)
               )}
             </span>
+            <Tooltip
+              placement="top"
+              title={
+                copiedFieldFqn === record.fullyQualifiedName
+                  ? t('message.link-copy-to-clipboard')
+                  : t('label.copy-item', { item: t('label.url-uppercase') })
+              }>
+              <Button
+                className="cursor-pointer hover-cell-icon flex-center"
+                data-testid="copy-field-link-button"
+                disabled={!record.fullyQualifiedName}
+                style={{
+                  color: DE_ACTIVE_COLOR,
+                  padding: 0,
+                  border: 'none',
+                  background: 'transparent',
+                  width: '24px',
+                  height: '24px',
+                }}
+                onClick={() =>
+                  record.fullyQualifiedName &&
+                  handleCopyFieldLink(record.fullyQualifiedName)
+                }>
+                <ShareIcon
+                  style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                />
+              </Button>
+            </Tooltip>
           </div>
         ),
       },
@@ -301,6 +468,8 @@ const SearchIndexFieldsTable = ({
       renderDataTypeDisplay,
       renderDescription,
       tagFilter,
+      copiedFieldFqn,
+      handleCopyFieldLink,
     ]
   );
 
@@ -358,6 +527,7 @@ const SearchIndexFieldsTable = ({
           emptyText: <FilterTablePlaceHolder />,
         }}
         pagination={false}
+        rowClassName={getRowClassName}
         rowKey="fullyQualifiedName"
         scroll={TABLE_SCROLL_VALUE}
         searchProps={{

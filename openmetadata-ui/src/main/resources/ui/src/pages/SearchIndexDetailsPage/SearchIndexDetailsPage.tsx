@@ -29,6 +29,7 @@ import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHead
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -61,6 +62,7 @@ import {
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import Fqn from '../../utils/Fqn';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -78,8 +80,21 @@ function SearchIndexDetailsPage() {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab: activeTab = EntityTabs.FIELDS } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedSearchIndexFQN } = useFqn();
+  const { fqn: decodedEntityFqn } = useFqn();
   const { t } = useTranslation();
+
+  // Extract just the search index FQN (service.searchIndex) from the URL
+  // The URL might contain field path like: service.searchIndex.fieldName.nestedField
+  const decodedSearchIndexFQN = useMemo(() => {
+    if (!decodedEntityFqn) {
+      return '';
+    }
+    const splitFqn = Fqn.split(decodedEntityFqn);
+
+    // Search Index FQN has 2 parts: service, searchIndex
+    // Take only the first 2 parts
+    return splitFqn.slice(0, 2).join(FQN_SEPARATOR_CHAR);
+  }, [decodedEntityFqn]);
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
@@ -237,7 +252,7 @@ function SearchIndexDetailsPage() {
       navigate(
         getEntityDetailsPath(
           EntityType.SEARCH_INDEX,
-          decodedSearchIndexFQN,
+          searchIndexDetails?.fullyQualifiedName ?? '',
           activeKey
         ),
         { replace: true }

@@ -504,6 +504,24 @@ a[href].link-text-grey,
   background-color: @trigger-btn-hover-bg;
 }
 
+// Row highlight animation for direct URL navigation
+@keyframes highlight-fade {
+  0% {
+    background-color: rgba(64, 169, 255, 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.highlighted-row {
+  animation: highlight-fade 3s ease-out forwards;
+
+  > td {
+    background-color: rgba(64, 169, 255, 0.15) !important;
+  }
+}
+
 // Rotate
 .rotate-inverse {
   transform: rotate(180deg);

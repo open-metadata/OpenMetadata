@@ -294,6 +294,7 @@ const ModelTab = () => {
           return (
             <DisplayName
               displayName={displayName}
+              entityType={EntityType.DASHBOARD_DATA_MODEL}
               hasEditPermission={editDisplayNamePermission}
               id={record.fullyQualifiedName ?? ''}
               name={record.name}

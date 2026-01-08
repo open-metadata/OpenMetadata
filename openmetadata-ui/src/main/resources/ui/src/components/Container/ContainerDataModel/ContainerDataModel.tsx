@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Button, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import {
   cloneDeep,
@@ -21,8 +21,10 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
+import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
@@ -37,6 +39,7 @@ import {
   updateContainerColumnTags,
 } from '../../../utils/ContainerDetailUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getAllTags,
@@ -68,8 +71,146 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
 
   const [editContainerColumnDescription, setEditContainerColumnDescription] =
     useState<Column>();
+  const [copiedColumnFqn, setCopiedColumnFqn] = useState<string>();
+  const [highlightedColumnFqn, setHighlightedColumnFqn] = useState<string>();
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
   const schema = pruneEmptyChildren(dataModel?.columns ?? []);
+
+  // Get all parent keys that need to be expanded to show the target column
+  const getParentKeysToExpand = useCallback(
+    (
+      columns: Column[],
+      targetFqn: string,
+      parentKeys: string[] = []
+    ): string[] => {
+      for (const column of columns) {
+        if (column.fullyQualifiedName === targetFqn) {
+          return parentKeys;
+        }
+        if (
+          column.children?.length &&
+          targetFqn.startsWith((column.fullyQualifiedName ?? '') + '.')
+        ) {
+          const newParentKeys = [...parentKeys, column.name];
+          const result = getParentKeysToExpand(
+            column.children,
+            targetFqn,
+            newParentKeys
+          );
+          if (
+            result.length > 0 ||
+            column.children.some((c) => c.fullyQualifiedName === targetFqn)
+          ) {
+            return newParentKeys;
+          }
+        }
+      }
+
+      return parentKeys;
+    },
+    []
+  );
+
+  // Detect if URL contains a column FQN and highlight it
+  useEffect(() => {
+    // entityFqn from props is the URL FQN, check if it's different from container FQN
+    const containerFqnPrefix = entityFqn?.split('.').slice(0, -1).join('.');
+    if (
+      entityFqn &&
+      containerFqnPrefix &&
+      entityFqn.includes(containerFqnPrefix + '.')
+    ) {
+      // Check if entityFqn is a column FQN (not just the container)
+      const columnMatch = schema.some(
+        (col) =>
+          col.fullyQualifiedName === entityFqn ||
+          entityFqn.startsWith((col.fullyQualifiedName ?? '') + '.')
+      );
+      if (columnMatch) {
+        setHighlightedColumnFqn(entityFqn);
+
+        // Expand parent rows to show the nested column
+        const parentKeys = getParentKeysToExpand(schema, entityFqn);
+        if (parentKeys.length > 0) {
+          setExpandedRowKeys((prev) => [...new Set([...prev, ...parentKeys])]);
+        }
+
+        const timer = setTimeout(() => {
+          setHighlightedColumnFqn(undefined);
+        }, 3000);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [entityFqn, schema, getParentKeysToExpand]);
+
+  // Scroll to highlighted row when columns are loaded
+  useEffect(() => {
+    if (highlightedColumnFqn && schema.length > 0) {
+      const scrollTimer = setTimeout(() => {
+        const highlightedRow = document.querySelector('.highlighted-row');
+        if (highlightedRow) {
+          highlightedRow.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
+        }
+      }, 100);
+
+      return () => clearTimeout(scrollTimer);
+    }
+  }, [highlightedColumnFqn, schema]);
+
+  const getRowClassName = useCallback(
+    (record: Column) => {
+      if (highlightedColumnFqn && record.fullyQualifiedName) {
+        // Only highlight the exact target column, not parent rows
+        if (record.fullyQualifiedName === highlightedColumnFqn) {
+          return 'highlighted-row';
+        }
+      }
+
+      return '';
+    },
+    [highlightedColumnFqn]
+  );
+
+  const getColumnLink = useCallback((columnFqn: string) => {
+    const columnPath = getEntityDetailsPath(EntityType.CONTAINER, columnFqn);
+
+    return `${window.location.origin}${columnPath}`;
+  }, []);
+
+  const handleCopyColumnLink = useCallback(
+    async (columnFqn: string) => {
+      const columnLink = getColumnLink(columnFqn);
+      try {
+        await navigator.clipboard.writeText(columnLink);
+        setCopiedColumnFqn(columnFqn);
+        setTimeout(() => setCopiedColumnFqn(undefined), 2000);
+      } catch {
+        try {
+          const textArea = document.createElement('textarea');
+          textArea.value = columnLink;
+          textArea.style.position = 'fixed';
+          textArea.style.opacity = '0';
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          const successful = document.execCommand('copy');
+          document.body.removeChild(textArea);
+          if (successful) {
+            setCopiedColumnFqn(columnFqn);
+            setTimeout(() => setCopiedColumnFqn(undefined), 2000);
+          }
+        } catch {
+          // Silently fail if both methods don't work
+        }
+      }
+    },
+    [getColumnLink]
+  );
 
   const handleFieldTagsChange = useCallback(
     async (selectedTags: EntityTags[], editColumnTag: Column) => {
@@ -121,9 +262,39 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         fixed: 'left',
         width: 300,
         render: (_, record: Column) => (
-          <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
-            <Typography.Text>{getEntityName(record)}</Typography.Text>
-          </Tooltip>
+          <div className="d-inline-flex items-center gap-2 hover-icon-group w-max-90">
+            <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
+              <Typography.Text>{getEntityName(record)}</Typography.Text>
+            </Tooltip>
+            <Tooltip
+              placement="top"
+              title={
+                copiedColumnFqn === record.fullyQualifiedName
+                  ? t('message.link-copy-to-clipboard')
+                  : t('label.copy-item', { item: t('label.url-uppercase') })
+              }>
+              <Button
+                className="cursor-pointer hover-cell-icon flex-center"
+                data-testid="copy-column-link-button"
+                disabled={!record.fullyQualifiedName}
+                style={{
+                  color: DE_ACTIVE_COLOR,
+                  padding: 0,
+                  border: 'none',
+                  background: 'transparent',
+                  width: '24px',
+                  height: '24px',
+                }}
+                onClick={() =>
+                  record.fullyQualifiedName &&
+                  handleCopyColumnLink(record.fullyQualifiedName)
+                }>
+                <ShareIcon
+                  style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                />
+              </Button>
+            </Tooltip>
+          </div>
         ),
       },
       {
@@ -228,6 +399,8 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       editContainerColumnDescription,
       getEntityName,
       handleFieldTagsChange,
+      copiedColumnFqn,
+      handleCopyColumnLink,
     ]
   );
 
@@ -246,8 +419,11 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         expandable={{
           ...getTableExpandableConfig<Column>(),
           rowExpandable: (record) => !isEmpty(record.children),
+          expandedRowKeys,
+          onExpandedRowsChange: (keys) => setExpandedRowKeys(keys as string[]),
         }}
         pagination={false}
+        rowClassName={getRowClassName}
         rowKey="name"
         scroll={TABLE_SCROLL_VALUE}
         size="small"
