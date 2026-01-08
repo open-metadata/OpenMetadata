@@ -10,17 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
 import { verifyExportLineagePNG } from '../../utils/lineage';
 import { sidebarClick } from '../../utils/sidebar';
-
-test.use({
-  storageState: 'playwright/.auth/admin.json',
-});
+import { test } from '../fixtures/pages';
 
 test('Verify Platform Lineage View', async ({ page }) => {
+
+  // Need to add more time for AUT and not for PR checks
+  test.slow(process.env.PLAYWRIGHT_IS_OSS !== undefined);
+
   await redirectToHomePage(page);
   const lineageRes = page.waitForResponse(
     '/api/v1/lineage/getPlatformLineage?view=service*'
@@ -34,7 +34,7 @@ test('Verify Platform Lineage View', async ({ page }) => {
   await page.getByTestId('lineage-layer-btn').click();
 
   await page.waitForSelector(
-    '[data-testid="lineage-layer-domain-btn"]:not(.active)'
+    '[data-testid="lineage-layer-domain-btn"]:not(.MUI-selected)'
   );
 
   const domainRes = page.waitForResponse(

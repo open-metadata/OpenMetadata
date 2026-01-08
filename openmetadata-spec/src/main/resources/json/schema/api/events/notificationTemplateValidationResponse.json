@@ -5,35 +5,20 @@
   "description": "Response from notification template validation",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.events.NotificationTemplateValidationResponse",
-  "definitions": {
-    "fieldValidation": {
-      "description": "Validation result for a template field",
-      "type": "object",
-      "javaType": "org.openmetadata.schema.api.events.FieldValidation",
-      "properties": {
-        "passed": {
-          "description": "Whether the field validation passed",
-          "type": "boolean"
-        },
-        "error": {
-          "description": "Error message if validation failed",
-          "type": "string",
-          "default": null
-        }
-      },
-      "required": ["passed"],
-      "additionalProperties": false
-    }
-  },
   "properties": {
-    "templateBody": {
-      "description": "Validation result for template body",
-      "$ref": "#/definitions/fieldValidation"
+    "isValid": {
+      "description": "Whether both subject and body passed validation",
+      "type": "boolean"
     },
-    "templateSubject": {
-      "description": "Validation result for template subject",
-      "$ref": "#/definitions/fieldValidation"
+    "subjectError": {
+      "description": "Error message if subject validation failed, null otherwise",
+      "type": ["string", "null"]
+    },
+    "bodyError": {
+      "description": "Error message if body validation failed, null otherwise",
+      "type": ["string", "null"]
     }
   },
+  "required": ["isValid"],
   "additionalProperties": false
 }

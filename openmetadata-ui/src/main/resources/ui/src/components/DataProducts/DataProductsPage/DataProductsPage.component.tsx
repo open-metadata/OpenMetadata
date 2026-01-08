@@ -18,6 +18,7 @@ import { toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -104,8 +105,7 @@ const DataProductsPage = () => {
           entity: t('label.data-product'),
         })
       );
-      const domainPath = getDomainPath();
-      navigate(domainPath);
+      navigate(ROUTES.DATA_PRODUCT);
     } catch (err) {
       showErrorToast(
         err as AxiosError,
@@ -128,6 +128,7 @@ const DataProductsPage = () => {
           TabSpecificField.EXTENSION,
           TabSpecificField.TAGS,
           TabSpecificField.FOLLOWERS,
+          TabSpecificField.REVIEWERS,
         ],
       });
       setDataProduct(data);
@@ -282,7 +283,7 @@ const DataProductsPage = () => {
         className={classNames('data-product-page-layout', {
           'version-data': version,
         })}
-        pageTitle={t('label.data-product')}>
+        pageTitle={getEntityName(dataProduct)}>
         <DataProductsDetailsPage
           dataProduct={
             version ? selectedVersionData ?? dataProduct : dataProduct

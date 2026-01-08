@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.dqtests;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -62,6 +63,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
@@ -305,7 +307,15 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     List<AuthRequest> authRequests = getAuthRequestsForListOps();
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
     return repository.listFromSearchWithOffset(
-        uriInfo, fields, searchListFilter, limit, offset, searchSortFilter, q, queryString);
+        uriInfo,
+        fields,
+        searchListFilter,
+        limit,
+        offset,
+        searchSortFilter,
+        q,
+        queryString,
+        securityContext);
   }
 
   @GET
@@ -511,14 +521,20 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               description = "Index to perform the aggregation against",
               schema = @Schema(type = "String"))
           @QueryParam("index")
-          String index)
+          String index,
+      @Parameter(
+              description = "Filter by domain fully qualified name",
+              schema = @Schema(type = "String"))
+          @QueryParam("domain")
+          String domain)
       throws IOException {
     List<AuthRequest> authRequests = getAuthRequestsForListOps();
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
     if (nullOrEmpty(aggregationQuery) || nullOrEmpty(index)) {
       throw new IllegalArgumentException("aggregationQuery and index are required parameters");
     }
-    return repository.getDataQualityReport(query, aggregationQuery, index);
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    return repository.getDataQualityReport(query, aggregationQuery, index, domain, subjectContext);
   }
 
   @POST

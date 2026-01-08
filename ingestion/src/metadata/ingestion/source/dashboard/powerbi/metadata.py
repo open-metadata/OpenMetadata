@@ -12,6 +12,7 @@
 
 import re
 import traceback
+from copy import deepcopy
 from typing import Any, Iterable, List, Optional, Union
 
 from pydantic import EmailStr
@@ -51,6 +52,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
+from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -70,6 +72,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     PowerBiMeasureModel,
     PowerBIReport,
     PowerBiTable,
+    ReportPage,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
@@ -87,6 +90,7 @@ logger = ingestion_logger()
 OWNER_ACCESS_RIGHTS_KEYWORDS = ["owner", "write", "admin"]
 SNOWFLAKE_QUERY_EXPRESSION_KW = "Value.NativeQuery(Snowflake.Databases("
 DATABRICKS_QUERY_EXPRESSION_KW = "Value.NativeQuery(Databricks.Catalogs("
+MAX_PROJECT_FILTER_SIZE = 20
 
 
 class PowerbiSource(DashboardServiceSource):
@@ -154,64 +158,88 @@ class PowerbiSource(DashboardServiceSource):
                 )
             yield workspace
 
+    def _paginate_project_filter_pattern(self, filter_pattern):
+        """
+        paginate include filters if more then `20` filters
+        in single call
+        """
+        paginated_include_filters = [filter_pattern]
+        if filter_pattern.includes:
+            include_filters = [
+                filter_pattern.includes[i : i + MAX_PROJECT_FILTER_SIZE]
+                for i in range(0, len(filter_pattern.includes), MAX_PROJECT_FILTER_SIZE)
+            ]
+            paginated_include_filters = []
+            for include_filter in include_filters:
+                filter_pattern_copy = deepcopy(filter_pattern)
+                filter_pattern_copy.includes = include_filter
+                paginated_include_filters.append(filter_pattern_copy)
+        return paginated_include_filters
+
     def get_admin_workspace_data(self) -> Iterable[Optional[Group]]:
         """
         fetch all the workspace data
         """
         filter_pattern = self.source_config.projectFilterPattern
-        workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
-        if workspaces:
-            workspace_id_list = [workspace.id for workspace in workspaces]
+        paginated_filter_patterns = self._paginate_project_filter_pattern(
+            filter_pattern
+        )
+        for filter_pattern in paginated_filter_patterns:
+            workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
+            if workspaces:
+                workspace_id_list = [workspace.id for workspace in workspaces]
 
-            # Start the scan of the available workspaces for dashboard metadata
-            workspace_paginated_list = [
-                workspace_id_list[i : i + self.pagination_entity_per_page]
-                for i in range(
-                    0, len(workspace_id_list), self.pagination_entity_per_page
-                )
-            ]
-            count = 1
-            for workspace_ids_chunk in workspace_paginated_list:
-                logger.info(
-                    f"Scanning {count}/{len(workspace_paginated_list)} set of workspaces"
-                )
-                workspace_scan = self.client.api_client.initiate_workspace_scan(
-                    workspace_ids_chunk
-                )
-                if not workspace_scan:
-                    logger.error(
-                        f"Error initiating workspace scan for ids:{str(workspace_ids_chunk)}\n moving to next set of workspaces"
+                # Start the scan of the available workspaces for dashboard metadata
+                workspace_paginated_list = [
+                    workspace_id_list[i : i + self.pagination_entity_per_page]
+                    for i in range(
+                        0, len(workspace_id_list), self.pagination_entity_per_page
                     )
-                    count += 1
-                    continue
+                ]
+                count = 1
+                for workspace_ids_chunk in workspace_paginated_list:
+                    logger.info(
+                        f"Scanning {count}/{len(workspace_paginated_list)} set of workspaces"
+                    )
+                    workspace_scan = self.client.api_client.initiate_workspace_scan(
+                        workspace_ids_chunk
+                    )
+                    if not workspace_scan:
+                        logger.error(
+                            f"Error initiating workspace scan for ids:{str(workspace_ids_chunk)}\n moving to next set of workspaces"
+                        )
+                        count += 1
+                        continue
 
-                # Keep polling the scan status endpoint to check if scan is succeeded
-                workspace_scan_status = self.client.api_client.wait_for_scan_complete(
-                    scan_id=workspace_scan.id
-                )
-                if not workspace_scan_status:
-                    logger.error(
-                        f"Max poll hit to scan status for scan_id: {workspace_scan.id}, moving to next set of workspaces"
+                    # Keep polling the scan status endpoint to check if scan is succeeded
+                    workspace_scan_status = (
+                        self.client.api_client.wait_for_scan_complete(
+                            scan_id=workspace_scan.id
+                        )
                     )
-                    count += 1
-                    continue
+                    if not workspace_scan_status:
+                        logger.error(
+                            f"Max poll hit to scan status for scan_id: {workspace_scan.id}, moving to next set of workspaces"
+                        )
+                        count += 1
+                        continue
 
-                # Get scan result for successfull scan
-                response = self.client.api_client.fetch_workspace_scan_result(
-                    scan_id=workspace_scan.id
-                )
-                if not response:
-                    logger.error(
-                        f"Error getting workspace scan result for scan_id: {workspace_scan.id}"
+                    # Get scan result for successfull scan
+                    response = self.client.api_client.fetch_workspace_scan_result(
+                        scan_id=workspace_scan.id
                     )
+                    if not response:
+                        logger.error(
+                            f"Error getting workspace scan result for scan_id: {workspace_scan.id}"
+                        )
+                        count += 1
+                        continue
+                    for active_workspace in response.workspaces:
+                        if active_workspace.state == "Active":
+                            yield active_workspace
                     count += 1
-                    continue
-                for active_workspace in response.workspaces:
-                    if active_workspace.state == "Active":
-                        yield active_workspace
-                count += 1
-        else:
-            logger.error("Unable to fetch any PowerBI workspaces")
+            else:
+                logger.error("Unable to fetch any PowerBI workspaces")
 
     @classmethod
     def create(
@@ -304,9 +332,23 @@ class PowerbiSource(DashboardServiceSource):
         """
         Method to build the dashboard url
         """
+        page_id = ""
+        try:
+            pages: Optional[
+                List[ReportPage]
+            ] = self.client.api_client.fetch_report_pages(workspace_id, dashboard_id)
+            if len(pages) >= 1:
+                # get first page out of multiple pages otherwise
+                # get page if of single page
+                page_id = pages[0].name
+            page_id = f"/{page_id}" if page_id else ""
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error building report page url: {exc}")
+        # https://app.powerbi.com/groups/4e57dcbb-***/reports/a2902011-***/098b***?experience=power-bi
         return (
             f"{clean_uri(self.service_connection.hostPort)}/groups/"
-            f"{workspace_id}/reports/{dashboard_id}/ReportSection?experience=power-bi"
+            f"{workspace_id}/reports/{dashboard_id}{page_id}?experience=power-bi"
         )
 
     def _get_dataset_url(self, workspace_id: str, dataset_id: str) -> str:
@@ -315,7 +357,7 @@ class PowerbiSource(DashboardServiceSource):
         """
         return (
             f"{clean_uri(self.service_connection.hostPort)}/groups/"
-            f"{workspace_id}/datasets/{dataset_id}?experience=power-bi"
+            f"{workspace_id}/datasets/{dataset_id}/details?experience=power-bi"
         )
 
     def _get_dataflow_url(self, workspace_id: str, dataflow_id: str) -> str:
@@ -786,7 +828,7 @@ class PowerbiSource(DashboardServiceSource):
                             )
                             continue
                         if dexpression.name == match.group(2):
-                            pattern = r'DefaultValue="([^"]+)"'
+                            pattern = r'^"([^"]+)"\s+meta'
                             kw_match = re.search(pattern, dexpression.expression)
                             if kw_match:
                                 return kw_match.group(1)
@@ -878,6 +920,7 @@ class PowerbiSource(DashboardServiceSource):
                 parser = LineageParser(
                     parser_query, dialect=Dialect.SNOWFLAKE, timeout_seconds=30
                 )
+                query_hash = parser.query_hash
             except Exception as parser_exc:
                 logger.debug(f"LineageParser failed with error: {parser_exc}")
                 logger.debug(f"Failed query was: {parser_query[:200]}...")
@@ -885,11 +928,12 @@ class PowerbiSource(DashboardServiceSource):
 
             if parser.source_tables:
                 logger.debug(
-                    f"LineageParser found {len(parser.source_tables)} source table(s)"
+                    f"[{query_hash}] LineageParser found {len(parser.source_tables)} source table(s)"
                 )
                 for table in parser.source_tables:
+                    schema_name = table.schema if hasattr(table, "schema") else "N/A"
                     logger.debug(
-                        f"source table: {table.raw_name}, schema: {table.schema if hasattr(table, 'schema') else 'N/A'}"
+                        f"[{query_hash}] source table: {table.raw_name}, schema: {schema_name}"
                     )
                 lineage_tables_list = []
                 for source_table in parser.source_tables:
@@ -1006,7 +1050,9 @@ class PowerbiSource(DashboardServiceSource):
         if dataset and dataset.expressions:
             try:
                 if DATABRICKS_QUERY_EXPRESSION_KW in source_expression:
-                    return parse_databricks_native_query_source(source_expression)
+                    return parse_databricks_native_query_source(
+                        source_expression, dataset
+                    )
                 else:
                     return self._parse_catalog_table_definition(
                         source_expression, datamodel_entity
@@ -1056,7 +1102,9 @@ class PowerbiSource(DashboardServiceSource):
                 return table_info_list
 
             # parse databricks source
-            table_info_list = self._parse_databricks_source(source_expression)
+            table_info_list = self._parse_databricks_source(
+                source_expression, datamodel_entity
+            )
             if isinstance(table_info_list, List):
                 return table_info_list
 
@@ -1246,6 +1294,70 @@ class PowerbiSource(DashboardServiceSource):
                     )
                 )
 
+    def _get_downstream_data_model_column_fqn(
+        self, data_model_entity: DashboardDataModel, table_name: str, column: str
+    ) -> Optional[str]:
+        """
+        Get the FQN of the column if it exists in the
+        downstream data model entity's table and column.
+        """
+        try:
+            if not data_model_entity:
+                return None
+            for table in data_model_entity.columns:
+                if table.name.root != table_name:
+                    continue
+                for child_column in table.children or []:
+                    if column.lower() == child_column.name.root.lower():
+                        return child_column.fullyQualifiedName.root
+        except Exception as exc:
+            logger.error(
+                f"Error to get downstream data_model_column_fqn for data_model_entity="
+                f"{data_model_entity.name.root}, table_name={table_name}, column={column}: {exc}"
+            )
+            logger.debug(traceback.format_exc())
+        return None
+
+    def _create_dataset_upstream_dataset_column_lineage(
+        self,
+        datamodel_entity: DashboardDataModel,
+        upstream_dataset_entity: DashboardDataModel,
+    ) -> Optional[List[ColumnLineage]]:
+        """
+        Create column lineage between powerbi dataset/datamodel and
+        its upstream dataset/datamodel
+        """
+        try:
+            target_tables = [table.name.root for table in datamodel_entity.columns]
+            if not target_tables:
+                return []
+            column_lineage = []
+            for table in upstream_dataset_entity.columns:
+                if table.name.root not in target_tables:
+                    continue
+                for column in table.children or []:
+                    source_column = column.fullyQualifiedName.root
+                    target_column = self._get_downstream_data_model_column_fqn(
+                        data_model_entity=datamodel_entity,
+                        table_name=table.name.root,
+                        column=column.name.root,
+                    )
+                    if source_column and target_column:
+                        column_lineage.append(
+                            ColumnLineage(
+                                fromColumns=[source_column], toColumn=target_column
+                            )
+                        )
+            return column_lineage
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                "Error while creating column lineage between dataset = "
+                f"{datamodel_entity.name.root} and upstream dataset = "
+                f"{upstream_dataset_entity.name.root}: {exc}"
+            )
+        return []
+
     def create_dataset_upstream_dataset_lineage(
         self, datamodel: Dataset, datamodel_entity: DashboardDataModel
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -1272,9 +1384,17 @@ class PowerbiSource(DashboardServiceSource):
                     fqn=upstream_dataset_fqn,
                 )
                 if upstream_dataset_entity and datamodel_entity:
+                    # create column lineage between current dataset/datamodel
+                    # and its upstream dataset.
+                    column_lineage = (
+                        self._create_dataset_upstream_dataset_column_lineage(
+                            datamodel_entity, upstream_dataset_entity
+                        )
+                    )
                     yield self._get_add_lineage_request(
                         from_entity=upstream_dataset_entity,
                         to_entity=datamodel_entity,
+                        column_lineage=column_lineage,
                     )
                 else:
                     logger.debug(

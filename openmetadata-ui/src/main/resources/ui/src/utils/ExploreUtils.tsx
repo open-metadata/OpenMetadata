@@ -54,7 +54,7 @@ import {
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
 import { getCountBadge } from './CommonUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
-import { t } from './i18next/LocalUtil';
+import { t, translateWithNestedKeys } from './i18next/LocalUtil';
 import { escapeESReservedCharacters } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -97,7 +97,10 @@ export const getParseValueFromLocation = (
         label: !customLabel
           ? value
           : t('label.no-entity', {
-              entity: dataCategory.label,
+              entity: translateWithNestedKeys(
+                dataCategory.label,
+                dataCategory.labelKeyOptions
+              ),
             }),
       });
     }
@@ -361,10 +364,17 @@ export const getAggregationOptions = async (
   value: string,
   filter: string,
   isIndependent: boolean,
-  deleted = false
+  deleted = false,
+  size = 10
 ) => {
   return isIndependent
-    ? postAggregateFieldOptions(index, key, value, filter)
+    ? postAggregateFieldOptions({
+        index: Array.isArray(index) ? index.join(',') : index,
+        fieldName: key,
+        fieldValue: value,
+        query: filter,
+        size,
+      })
     : getAggregateFieldOptions(index, key, value, filter, undefined, deleted);
 };
 
@@ -634,7 +644,7 @@ export const fetchEntityData = async ({
           pageNumber: page,
           pageSize: size,
           includeDeleted: showDeleted,
-          excludeSourceFields: ['columns'],
+          excludeSourceFields: ['columns', 'queries', 'columnNames'],
         };
 
         try {
@@ -666,7 +676,7 @@ export const fetchEntityData = async ({
         pageNumber: page,
         pageSize: size,
         includeDeleted: showDeleted,
-        excludeSourceFields: ['columns'],
+        excludeSourceFields: ['columns', 'queries', 'columnNames'],
       };
 
       try {

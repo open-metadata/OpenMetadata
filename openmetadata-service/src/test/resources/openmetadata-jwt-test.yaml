@@ -81,7 +81,6 @@ authenticationConfiguration:
       entityId: ""
       ssoLoginUrl: ""
       idpX509Certificate: ""
-      authorityUrl: ""
       nameId: ""
     sp:
       entityId: ""
@@ -118,7 +117,7 @@ eventHandlerConfiguration:
     - "org.openmetadata.service.governance.workflows.WorkflowEventConsumer"
 
 pipelineServiceClientConfiguration:
-  className: "org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"
+  className: "org.openmetadata.service.pipelineService.MockPipelineServiceClient"
   metadataApiEndpoint: http://localhost:8585/api
   apiEndpoint: http://localhost:8080
   hostIp: ""

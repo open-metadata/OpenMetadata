@@ -8,7 +8,7 @@
   "javaType": "org.openmetadata.schema.entity.data.DatabaseSchema",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
 "definitions": {
-   
+
   },
   "properties": {
     "id": {
@@ -173,8 +173,7 @@
     },
     "entityStatus": {
       "description": "Status of the DatabaseSchema.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "database", "service"],

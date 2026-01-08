@@ -56,6 +56,14 @@ const DomainRouter = () => {
         }
         path={ROUTES.DOMAIN_DETAILS_WITH_TAB.replace(ROUTES.DOMAIN, '')}
       />
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={domainPermission}>
+            <DomainDetailPage pageTitle={i18n.t('label.domain-plural')} />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.DOMAIN_DETAILS_WITH_SUBTAB.replace(ROUTES.DOMAIN, '')}
+      />
     </Routes>
   );
 };

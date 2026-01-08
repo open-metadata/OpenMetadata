@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.10.0-SNAPSHOT</version>
+    <version>1.12.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
@@ -16,7 +16,7 @@
     <sonar.junit.reportPaths>${project.basedir}/target/surefire-reports</sonar.junit.reportPaths>
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
-    <org.testcontainers.version>1.20.3</org.testcontainers.version>
+    <org.testcontainers.version>1.20.4</org.testcontainers.version>
     <awssdk.version>2.30.19</awssdk.version>
     <azure-identity.version>1.14.0</azure-identity.version>
     <azure-kv.version>4.10.0</azure-kv.version>
@@ -33,7 +33,7 @@
     <aws.sdk.version>2.31.1</aws.sdk.version>
     <bedrock.runtime.version>2.31.1</bedrock.runtime.version>
     <jetty.version>11.0.25</jetty.version>
-    <logback-core.version>1.5.18</logback-core.version>
+    <logback-core.version>1.5.19</logback-core.version>
     <logback-classic.version>1.5.18</logback-classic.version>
     <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>
     <kubernetes-client.version>24.0.0</kubernetes-client.version>
@@ -55,7 +55,7 @@
       <dependency>
         <groupId>com.google.cloud</groupId>
         <artifactId>libraries-bom</artifactId>
-        <version>26.49.0</version>
+        <version>26.71.0</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -222,6 +222,10 @@
       <artifactId>tomcat-jdbc</artifactId>
     </dependency>
     <dependency>
+      <groupId>com.zaxxer</groupId>
+      <artifactId>HikariCP</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.mysql</groupId>
       <artifactId>mysql-connector-j</artifactId>
     </dependency>
@@ -372,14 +376,6 @@
       <artifactId>commons-cli</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-maven-plugin</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-mysql</artifactId>
-    </dependency>
-    <dependency>
       <groupId>io.github.classgraph</groupId>
       <artifactId>classgraph</artifactId>
     </dependency>
@@ -494,6 +490,16 @@
       <scope>import</scope>
     </dependency>
 
+    <!-- Flyway dependencies - only for SQL parsing, not migration management -->
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-mysql</artifactId>
+    </dependency>
+
     <!-- Micrometer Core -->
     <dependency>
       <groupId>io.micrometer</groupId>
@@ -542,19 +548,19 @@
     <dependency>
       <groupId>io.minio</groupId>
       <artifactId>minio</artifactId>
-      <version>8.5.17</version>
+      <version>8.6.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>
-      <version>1.19.3</version>
+      <version>${org.testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>minio</artifactId>
-      <version>1.19.3</version>
+      <version>${org.testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -632,6 +638,12 @@
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>elasticsearch</artifactId>
+      <version>${org.testcontainers.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>k3s</artifactId>
       <version>${org.testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
@@ -921,6 +933,11 @@
       <version>${resilience4j-ratelimiter.version}</version>
     </dependency>
     <dependency>
+      <groupId>io.github.resilience4j</groupId>
+      <artifactId>resilience4j-retry</artifactId>
+      <version>${resilience4j-ratelimiter.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.junit.platform</groupId>
       <artifactId>junit-platform-commons</artifactId>
       <version>1.9.3</version>
@@ -1057,6 +1074,39 @@
       <artifactId>jsqlparser</artifactId>
       <version>4.9</version>
     </dependency>
+    <!-- CommonMark - Thread-safe markdown parser -->
+    <dependency>
+      <groupId>org.commonmark</groupId>
+      <artifactId>commonmark</artifactId>
+      <version>${commonmark.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.commonmark</groupId>
+      <artifactId>commonmark-ext-gfm-strikethrough</artifactId>
+      <version>${commonmark.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.commonmark</groupId>
+      <artifactId>commonmark-ext-autolink</artifactId>
+      <version>${commonmark.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.commonmark</groupId>
+      <artifactId>commonmark-ext-gfm-tables</artifactId>
+      <version>${commonmark.version}</version>
+    </dependency>
+    <!-- Flexmark HTML to Markdown Converter -->
+    <dependency>
+      <groupId>com.vladsch.flexmark</groupId>
+      <artifactId>flexmark-html2md-converter</artifactId>
+      <version>${flexmark.version}</version>
+    </dependency>
+    <!-- OWASP HTML Sanitizer -->
+    <dependency>
+      <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
+      <artifactId>owasp-java-html-sanitizer</artifactId>
+      <version>${owasp-html-sanitizer.version}</version>
+    </dependency>
   </dependencies>
 
   <profiles>
@@ -1135,6 +1185,7 @@
                   <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
                   <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
                   <runESTestCases>false</runESTestCases>
+                  <api.version>1.44</api.version>
                 </systemPropertyVariables>
               </configuration>
               <executions>
@@ -1175,6 +1226,7 @@
                   <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
                   <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
                   <runESTestCases>false</runESTestCases>
+                  <api.version>1.44</api.version>
                 </systemPropertyVariables>
               </configuration>
               <executions>
@@ -1225,6 +1277,7 @@
                   <runESTestCases>false</runESTestCases>
                   <enableCache>true</enableCache>
                   <cacheType>redis</cacheType>
+                  <api.version>1.44</api.version>
                 </systemPropertyVariables>
               </configuration>
               <executions>
@@ -1245,7 +1298,56 @@
         </build>
       </profile>
       <profile>
-        <id>postgres-rdf-tests</id>
+          <id>postgres-rdf-tests</id>
+          <build>
+              <plugins>
+                  <plugin>
+                      <groupId>org.apache.maven.plugins</groupId>
+                      <artifactId>maven-surefire-plugin</artifactId>
+                      <version>${maven-surefire.version}</version>
+                      <configuration>
+                          <reuseForks>false</reuseForks>
+                          <parallel>classes</parallel>
+                          <forkCount>1C</forkCount>
+                          <argLine>-Xmx2G</argLine>
+                          <systemPropertyVariables>
+                              <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
+                              <jdbcContainerImage>postgres:15</jdbcContainerImage>
+                              <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
+                              <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                              <runESTestCases>false</runESTestCases>
+                              <enableRdf>true</enableRdf>
+                              <rdfContainerImage>stain/jena-fuseki:latest</rdfContainerImage>
+                              <api.version>1.44</api.version>
+                          </systemPropertyVariables>
+                      </configuration>
+                      <executions>
+                          <execution>
+                              <id>postgres-rdf-integration-tests</id>
+                              <phase>test</phase>
+                              <configuration>
+                                  <includes>
+                                      <include>**/*Test.java</include>
+                                      <include>**/*ResourceTest.java</include>
+                                  </includes>
+                              </configuration>
+                          </execution>
+                      </executions>
+                  </plugin>
+              </plugins>
+          </build>
+      </profile>
+      <profile>
+        <id>mysql-redis-tests</id>
+        <dependencies>
+          <!-- Testcontainers Redis module for integration testing -->
+          <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>${org.testcontainers.version}</version>
+            <scope>test</scope>
+          </dependency>
+        </dependencies>
         <build>
           <plugins>
             <plugin>
@@ -1258,23 +1360,27 @@
                 <forkCount>1C</forkCount>
                 <argLine>-Xmx2G</argLine>
                 <systemPropertyVariables>
-                  <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
-                  <jdbcContainerImage>postgres:15</jdbcContainerImage>
+                  <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
+                  <jdbcContainerImage>mysql:8</jdbcContainerImage>
                   <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
                   <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <redisContainerClassName>org.testcontainers.containers.GenericContainer</redisContainerClassName>
+                  <redisContainerImage>redis:7-alpine</redisContainerImage>
                   <runESTestCases>false</runESTestCases>
-                  <enableRdf>true</enableRdf>
-                  <rdfContainerImage>stain/jena-fuseki:latest</rdfContainerImage>
+                  <enableCache>true</enableCache>
+                  <cacheType>redis</cacheType>
+                  <api.version>1.44</api.version>
                 </systemPropertyVariables>
               </configuration>
               <executions>
                 <execution>
-                  <id>postgres-rdf-integration-tests</id>
+                  <id>mysql-redis-integration-tests</id>
                   <phase>test</phase>
                   <configuration>
                     <includes>
                       <include>**/*Test.java</include>
                       <include>**/*ResourceTest.java</include>
+                      <include>**/cache/*Test.java</include>
                     </includes>
                   </configuration>
                 </execution>

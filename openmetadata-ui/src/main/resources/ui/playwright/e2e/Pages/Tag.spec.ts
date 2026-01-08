@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { Domain } from '../../support/domain/Domain';
@@ -46,20 +46,6 @@ const adminUser = new UserClass();
 const dataConsumerUser = new UserClass();
 const dataStewardUser = new UserClass();
 const limitedAccessUser = new UserClass();
-
-const classification = new ClassificationClass({
-  provider: 'system',
-  mutuallyExclusive: true,
-});
-const tag = new TagClass({
-  classification: classification.data.name,
-});
-const classification1 = new ClassificationClass();
-const tag1 = new TagClass({
-  classification: classification1.data.name,
-});
-const user1 = new UserClass();
-const domain = new Domain();
 
 const test = base.extend<{
   adminPage: Page;
@@ -101,32 +87,36 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   await dataStewardUser.create(apiContext);
   await dataStewardUser.setDataStewardRole(apiContext);
   await limitedAccessUser.create(apiContext);
-  await classification.create(apiContext);
-  await classification1.create(apiContext);
-  await tag.create(apiContext);
-  await tag1.create(apiContext);
-  await user1.create(apiContext);
-  await domain.create(apiContext);
-  await afterAction();
-});
-
-base.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
-  await dataConsumerUser.delete(apiContext);
-  await dataStewardUser.delete(apiContext);
-  await limitedAccessUser.delete(apiContext);
-  await classification.delete(apiContext);
-  await classification1.delete(apiContext);
-  await tag.delete(apiContext);
-  await tag1.delete(apiContext);
-  await user1.delete(apiContext);
-  await domain.delete?.(apiContext);
   await afterAction();
 });
 
 test.describe('Tag Page with Admin Roles', () => {
+  const classification = new ClassificationClass({
+    provider: 'system',
+    mutuallyExclusive: true,
+  });
+  const tag = new TagClass({
+    classification: classification.data.name,
+  });
+  const classification1 = new ClassificationClass();
+  const tag1 = new TagClass({
+    classification: classification1.data.name,
+  });
+  const user1 = new UserClass();
+  const domain = new Domain();
+
   test.slow(true);
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await classification.create(apiContext);
+    await classification1.create(apiContext);
+    await tag.create(apiContext);
+    await tag1.create(apiContext);
+    await user1.create(apiContext);
+    await domain.create(apiContext);
+    await afterAction();
+  });
 
   test('Verify Tag UI', async ({ adminPage }) => {
     await verifyTagPageUI(adminPage, classification.data.name, tag);
@@ -177,7 +167,11 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await expect(adminPage.getByRole('dialog')).toBeVisible();
 
-    await adminPage.getByTestId('color-color-input').fill('#6366f1');
+    await adminPage.getByTestId('icon-picker-btn').click();
+    await adminPage.getByRole('button', { name: `Select icon Cube01` }).click();
+    await adminPage
+      .getByRole('button', { name: 'Select color #F14C75' })
+      .click();
 
     const updateColor = adminPage.waitForResponse(`/api/v1/tags/*`);
     await adminPage.locator('button[type="submit"]').click();
@@ -260,11 +254,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await adminPage.click('[data-testid="add-new-tag-button"]');
 
-    await adminPage.waitForSelector('.ant-modal-content', {
-      state: 'visible',
-    });
-
-    await expect(adminPage.locator('.ant-modal-content')).toBeVisible();
+    await expect(adminPage.getByTestId('tags-form')).toBeVisible();
 
     await validateForm(adminPage);
 
@@ -285,13 +275,13 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test('Verify Owner Add Delete', async ({ adminPage }) => {
     await tag1.visitPage(adminPage);
-    const OWNER1 = user1.getUserName();
+    const OWNER1 = user1.getUserDisplayName();
 
     await addMultiOwner({
       page: adminPage,
       ownerNames: [OWNER1],
       activatorBtnDataTestId: 'add-owner',
-      resultTestId: 'tag-owner-name',
+      resultTestId: 'owner-link',
       endpoint: EntityTypeEndpoint.Tag,
       isSelectableInsideForm: false,
       type: 'Users',
@@ -320,13 +310,101 @@ test.describe('Tag Page with Admin Roles', () => {
       endpoint: EntityTypeEndpoint.Tag,
       ownerName: OWNER1,
       type: 'Users',
-      dataTestId: 'tag-owner-name',
+      dataTestId: 'owner-link',
     });
+  });
+
+  test('Verify tag enable/disable toggle', async ({ adminPage }) => {
+    await classification1.visitPage(adminPage);
+
+    // Verify toggle is visible and enabled (tag is enabled by default)
+    const tagToggle = adminPage.getByTestId(
+      `tag-disable-toggle-${tag1.data.name}`
+    ).getByRole('switch');
+
+    await expect(tagToggle).toBeVisible();
+    await expect(tagToggle).toBeChecked();
+
+    // Disable the tag
+    const disableTagResponse = adminPage.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        response.url().includes('/api/v1/tags/')
+    );
+    await tagToggle.click();
+    await disableTagResponse;
+
+    // Verify tag is now disabled
+    await expect(tagToggle).not.toBeChecked();
+
+    // Re-enable the tag
+    const enableTagResponse = adminPage.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        response.url().includes('/api/v1/tags/')
+    );
+    await tagToggle.click();
+    await enableTagResponse;
+
+    // Verify tag is enabled again
+    await expect(tagToggle).toBeChecked();
+  });
+
+  test('Tag toggle should be disabled when classification is disabled', async ({
+    adminPage,
+  }) => {
+    await classification.visitPage(adminPage);
+
+    const tagToggle = adminPage.getByTestId(
+      `tag-disable-toggle-${tag.data.name}`
+    ).getByRole('switch');
+
+    // Verify toggle is enabled when classification is enabled
+    await expect(tagToggle).toBeEnabled();
+
+    // Disable the classification
+    await adminPage.click('[data-testid="manage-button"]');
+
+    const disableClassificationResponse = adminPage.waitForResponse(
+      '/api/v1/classifications/*'
+    );
+    await adminPage.click('[data-testid="enable-disable-title"]');
+    await disableClassificationResponse;
+
+    // Verify toggle is now disabled
+    await expect(tagToggle).toBeDisabled();
+
+    // Re-enable the classification
+    await adminPage.click('[data-testid="manage-button"]');
+
+    const enableClassificationResponse = adminPage.waitForResponse(
+      '/api/v1/classifications/*'
+    );
+    await adminPage.click('[data-testid="enable-disable-title"]');
+    await enableClassificationResponse;
+
+    // Verify toggle is enabled again
+    await expect(tagToggle).toBeEnabled();
   });
 });
 
 test.describe('Tag Page with Data Consumer Roles', () => {
   test.slow(true);
+
+  const classification = new ClassificationClass({
+    provider: 'system',
+    mutuallyExclusive: true,
+  });
+  const tag = new TagClass({
+    classification: classification.data.name,
+  });
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await classification.create(apiContext);
+    await tag.create(apiContext);
+    await afterAction();
+  });
 
   test('Verify Tag UI for Data Consumer', async ({ dataConsumerPage }) => {
     await verifyTagPageUI(
@@ -346,7 +424,7 @@ test.describe('Tag Page with Data Consumer Roles', () => {
   test('Edit Tag Description for Data Consumer', async ({
     dataConsumerPage,
   }) => {
-    await editTagPageDescription(dataConsumerPage, tag1);
+    await editTagPageDescription(dataConsumerPage, tag);
   });
 
   test('Add and Remove Assets for Data Consumer', async ({
@@ -365,10 +443,39 @@ test.describe('Tag Page with Data Consumer Roles', () => {
       await assetCleanup();
     });
   });
+
+  test('Tag toggle should be disabled for user without EditAll permission', async ({
+    dataConsumerPage,
+  }) => {
+    await classification.visitPage(dataConsumerPage);
+
+    // Verify toggle is visible but disabled for data consumer user (no EditAll permission)
+    const tagToggle = dataConsumerPage.getByTestId(
+      `tag-disable-toggle-${tag.data.name}`
+    ).getByRole('switch');
+
+    await expect(tagToggle).toBeVisible();
+    await expect(tagToggle).toBeDisabled();
+  });
 });
 
 test.describe('Tag Page with Data Steward Roles', () => {
   test.slow(true);
+
+  const classification = new ClassificationClass({
+    provider: 'system',
+    mutuallyExclusive: true,
+  });
+  const tag = new TagClass({
+    classification: classification.data.name,
+  });
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await classification.create(apiContext);
+    await tag.create(apiContext);
+    await afterAction();
+  });
 
   test('Verify Tag UI for Data Steward', async ({ dataStewardPage }) => {
     await verifyTagPageUI(dataStewardPage, classification.data.name, tag, true);
@@ -381,7 +488,7 @@ test.describe('Tag Page with Data Steward Roles', () => {
   });
 
   test('Edit Tag Description for Data Steward', async ({ dataStewardPage }) => {
-    await editTagPageDescription(dataStewardPage, tag1);
+    await editTagPageDescription(dataStewardPage, tag);
   });
 
   test('Add and Remove Assets for Data Steward', async ({
@@ -405,33 +512,58 @@ test.describe('Tag Page with Data Steward Roles', () => {
 test.describe('Tag Page with Limited EditTag Permission', () => {
   test.slow(true);
 
+  const classification = new ClassificationClass({
+    provider: 'system',
+    mutuallyExclusive: true,
+  });
+  const tag = new TagClass({
+    classification: classification.data.name,
+  });
+  const id = uuid();
+  const policy = new PolicyClass();
+  const role = new RolesClass();
+  let limitedAccessTeam: TeamClass | null = null;
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await classification.create(apiContext);
+    await tag.create(apiContext);
+    await policy.create(apiContext, LIMITED_USER_RULES);
+    await role.create(apiContext, [policy.responseData.name]);
+
+    limitedAccessTeam = new TeamClass({
+      name: `PW%limited_user_access_team-${id}`,
+      displayName: `PW Limited User Access Team ${id}`,
+      description: 'playwright data steward team description',
+      teamType: 'Group',
+      users: [limitedAccessUser.responseData.id],
+      defaultRoles: role.responseData.id ? [role.responseData.id] : [],
+    });
+    await limitedAccessTeam.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await tag.delete(apiContext);
+    await policy.delete(apiContext);
+    await role.delete(apiContext);
+    if (limitedAccessTeam) {
+      await limitedAccessTeam.delete(apiContext);
+    }
+    await afterAction();
+  });
+
   test('Add and Remove Assets and Check Restricted Entity', async ({
     adminPage,
     limitedAccessPage,
   }) => {
-    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const { afterAction } = await getApiContext(adminPage);
     const { assets, otherAsset, assetCleanup } = await setupAssetsForTag(
       adminPage
     );
-    const id = uuid();
-    const policy = new PolicyClass();
-    const role = new RolesClass();
-    let limitedAccessTeam: TeamClass | null = null;
-
     try {
-      await policy.create(apiContext, LIMITED_USER_RULES);
-      await role.create(apiContext, [policy.responseData.name]);
-
-      limitedAccessTeam = new TeamClass({
-        name: `PW%limited_user_access_team-${id}`,
-        displayName: `PW Limited User Access Team ${id}`,
-        description: 'playwright data steward team description',
-        teamType: 'Group',
-        users: [limitedAccessUser.responseData.id],
-        defaultRoles: role.responseData.id ? [role.responseData.id] : [],
-      });
-      await limitedAccessTeam.create(apiContext);
-
       await redirectToHomePage(limitedAccessPage);
 
       await test.step('Add Asset ', async () => {
@@ -442,12 +574,6 @@ test.describe('Tag Page with Limited EditTag Permission', () => {
         await removeAssetsFromTag(limitedAccessPage, assets, tag);
       });
     } finally {
-      await tag.delete(apiContext);
-      await policy.delete(apiContext);
-      await role.delete(apiContext);
-      if (limitedAccessTeam) {
-        await limitedAccessTeam.delete(apiContext);
-      }
       await assetCleanup();
       await afterAction();
     }

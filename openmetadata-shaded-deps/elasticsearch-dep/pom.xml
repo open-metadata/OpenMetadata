@@ -5,7 +5,7 @@
     <parent>
         <artifactId>openmetadata-shaded-deps</artifactId>
         <groupId>org.open-metadata</groupId>
-        <version>1.10.0-SNAPSHOT</version>
+        <version>1.12.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>elasticsearch-deps</artifactId>
@@ -16,19 +16,8 @@
              https://issues.apache.org/jira/browse/MSHADE-206 which makes it so
              the dependency reduced pom is not reflected in a multi-module build
              correctly. -->
-        <dependency>
-            <groupId>org.elasticsearch.client</groupId>
-            <artifactId>elasticsearch-rest-high-level-client</artifactId>
-            <optional>true</optional>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.yaml</groupId>
-                    <artifactId>snakeyaml</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
 
-        <!-- New Elasticsearch Java API Client -->
+        <!-- Elasticsearch Java API Client -->
         <dependency>
             <groupId>co.elastic.clients</groupId>
             <artifactId>elasticsearch-java</artifactId>

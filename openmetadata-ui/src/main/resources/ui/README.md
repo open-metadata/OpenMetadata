@@ -61,6 +61,27 @@ Once the node and yarn are installed in the system, you can perform the followin
 
 **Step 3**: Visit [localhost:3000](http://localhost:3000/) to access the OpenMetadata UI.
 
+## Developer instructions
+
+This directory contains UI resources and the developer handbook for the OpenMetadata frontend.
+
+Quick links
+- Developer handbook: [DEVELOPER_HANDBOOK.md](./DEVELOPER_HANDBOOK.md)
+  - Purpose: folder/file conventions, styling (LESS), MUI + @untitledui/icons usage, testing rules, and more.
+
+Getting started (for a new developer)
+1. Open this folder in your editor.
+2. Read DEVELOPER_HANDBOOK.md for coding standards and folder structure.
+3. Key technologies:
+   - React + TypeScript
+   - MUI (v5) as primary UI library
+   - @untitledui/icons for icons
+   - LESS (.module.less) for component styles
+   - Jest + React Testing Library for tests
+4. Use absolute imports from @src/ (see tsconfig paths).
+
+If anything in the handbook is unclear or missing, open a PR with suggested edits under this directory so the team can review and keep the guide up to date.
+
 ## How to Add Language Support
 
 To add support for a new language in our internationalization setup using `react-i18next` and `i18next`, please follow the steps below:
@@ -118,6 +139,10 @@ Playwright is already included in the project dependencies. If you need to insta
 ```shell
 npx playwright install
 ```
+
+### Documentation
+
+For a detailed breakdown of all end-to-end tests, including test steps and coverage metrics, please refer to the **[E2E Test Documentation](./playwright/docs/README.md)**.
 
 ### Running Tests
 

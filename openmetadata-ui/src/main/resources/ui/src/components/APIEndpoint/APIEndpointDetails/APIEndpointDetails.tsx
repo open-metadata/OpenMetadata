@@ -20,6 +20,7 @@ import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -35,6 +36,7 @@ import {
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
@@ -183,6 +185,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     editCustomAttributePermission,
     editLineagePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editCustomAttributePermission:
@@ -194,6 +197,10 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           apiEndpointPermissions.EditLineage) &&
         !deleted,
       viewAllPermission: apiEndpointPermissions.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        apiEndpointPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [apiEndpointPermissions, deleted]
   );
@@ -214,6 +221,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       handleFeedCount,
       editCustomAttributePermission,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       editLineagePermission,
     });
 
@@ -231,6 +239,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     handleFeedCount,
     editCustomAttributePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
     editLineagePermission,
     customizedPage,
   ]);
@@ -263,10 +272,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.api-endpoint'),
-      })}>
+    <PageLayoutV1 pageTitle={getEntityName(apiEndpointDetails)}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader

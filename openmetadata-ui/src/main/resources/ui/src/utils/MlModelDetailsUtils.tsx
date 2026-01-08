@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { get } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -19,6 +20,7 @@ import Loader from '../components/common/Loader/Loader';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import MlModelFeaturesList from '../components/MlModel/MlModelDetail/MlModelFeaturesList';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -41,7 +43,7 @@ export const getMlModelDetailsPageTabs = ({
   activeTab,
   editLineagePermission,
   editCustomAttributePermission,
-  viewAllPermission,
+  viewCustomPropertiesPermission,
   fetchMlModel,
   handleFeedCount,
   mlModelDetail,
@@ -125,6 +127,16 @@ export const getMlModelDetailsPageTabs = ({
     {
       label: (
         <TabsLabel
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
+    },
+    {
+      label: (
+        <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
           name={
             labelMap[EntityTabs.CUSTOM_PROPERTIES] ??
@@ -137,7 +149,7 @@ export const getMlModelDetailsPageTabs = ({
         <CustomPropertyTable<EntityType.MLMODEL>
           entityType={EntityType.MLMODEL}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

@@ -12,6 +12,7 @@
  */
 
 import { act, render, screen, waitFor } from '@testing-library/react';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getDatabaseSchemaDetailsByFQN } from '../../rest/databaseAPI';
@@ -89,9 +90,9 @@ jest.mock('../../pages/StoredProcedure/StoredProcedureTab', () => {
   return jest.fn().mockImplementation(() => <div>testStoredProcedureTab</div>);
 });
 
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
-  return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
-});
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <p>{children}</p>)
+);
 
 jest.mock('../../utils/StringsUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
@@ -211,6 +212,26 @@ jest.mock('react-router-dom', () => ({
   })),
   useParams: jest.fn().mockImplementation(() => mockParams),
   useNavigate: jest.fn(),
+}));
+
+jest.mock(
+  '../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
+jest.mock('../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
 }));
 
 describe('Tests for DatabaseSchemaPage', () => {
@@ -376,5 +397,33 @@ describe('Tests for DatabaseSchemaPage', () => {
         expect.any(Function)
       );
     });
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    const mockSchemaData = {
+      name: 'test-database-schema',
+      id: '123',
+    };
+
+    (getDatabaseSchemaDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockSchemaData)
+    );
+
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    await act(async () => {
+      render(<DatabaseSchemaPageComponent />);
+    });
+
+    expect(PageLayoutV1).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageTitle: 'test-database-schema',
+      }),
+      expect.anything()
+    );
   });
 });

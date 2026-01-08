@@ -15,7 +15,8 @@ import { KeyboardArrowDown } from '@mui/icons-material';
 import { Box, Button, Divider, Menu, MenuItem, useTheme } from '@mui/material';
 import { isUndefined, pick } from 'lodash';
 import { DateTime } from 'luxon';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   DEFAULT_SELECTED_RANGE,
   PROFILER_FILTER_RANGE,
@@ -28,6 +29,7 @@ import {
   getDaysCount,
   getTimestampLabel,
 } from '../../../utils/DatePickerMenuUtils';
+import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import MyDatePicker from '../DatePicker/DatePicker';
 import { MuiDatePickerMenuProps } from './MuiDatePickerMenu.interface';
 
@@ -48,8 +50,30 @@ const MuiDatePickerMenu = ({
 }: MuiDatePickerMenuProps) => {
   const theme = useTheme();
 
+  const { t } = useTranslation();
+
+  const translatedProfileFilterRange = useMemo(() => {
+    return Object.fromEntries(
+      Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => [
+        key,
+        {
+          ...value,
+          title: translateWithNestedKeys(value.title, value.titleData),
+        },
+      ])
+    );
+  }, [t]);
+  const translatedDefaultRange = useMemo(() => {
+    return {
+      ...DEFAULT_SELECTED_RANGE,
+      title: translateWithNestedKeys(
+        DEFAULT_SELECTED_RANGE.title,
+        DEFAULT_SELECTED_RANGE.titleData
+      ),
+    };
+  }, [t]);
   const { menuOptions, defaultOptions } = useMemo(() => {
-    const defaultOpts = pick(DEFAULT_SELECTED_RANGE, ['title', 'key']);
+    const defaultOpts = pick(translatedDefaultRange, ['title', 'key']);
 
     if (defaultDateRange?.key) {
       defaultOpts.key = defaultDateRange.key;
@@ -61,14 +85,15 @@ const MuiDatePickerMenu = ({
       ) {
         defaultOpts.title = options[defaultDateRange.key].title;
       } else if (
-        !isUndefined(PROFILER_FILTER_RANGE[defaultDateRange.key]?.title)
+        !isUndefined(translatedProfileFilterRange[defaultDateRange.key]?.title)
       ) {
-        defaultOpts.title = PROFILER_FILTER_RANGE[defaultDateRange.key].title;
+        defaultOpts.title =
+          translatedProfileFilterRange[defaultDateRange.key].title;
       }
     }
 
     return {
-      menuOptions: options ?? PROFILER_FILTER_RANGE,
+      menuOptions: options ?? translatedProfileFilterRange,
       defaultOptions: defaultOpts,
     };
   }, [options]);
@@ -80,6 +105,21 @@ const MuiDatePickerMenu = ({
     defaultOptions.key
   );
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [customDateValue, setCustomDateValue] = useState<
+    [DateTime | null, DateTime | null] | null
+  >(null);
+
+  useEffect(() => {
+    if (
+      defaultDateRange?.key === 'customRange' &&
+      defaultDateRange.startTs &&
+      defaultDateRange.endTs
+    ) {
+      const startDate = DateTime.fromMillis(defaultDateRange.startTs);
+      const endDate = DateTime.fromMillis(defaultDateRange.endTs);
+      setCustomDateValue([startDate, endDate]);
+    }
+  }, [defaultDateRange]);
 
   const menuItemStyles = useMemo(
     () => ({
@@ -130,6 +170,7 @@ const MuiDatePickerMenu = ({
       const startTs = getDayAgoStartGMTinMillis(selectedNumberOfDays);
       const endTs = getCurrentDayEndGMTinMillis();
 
+      setCustomDateValue(null);
       setSelectedTimeRange(filterRange.title);
       setSelectedTimeRangeKey(key);
       setAnchorEl(null);
@@ -148,19 +189,18 @@ const MuiDatePickerMenu = ({
       values: [start: DateTime | null, end: DateTime | null] | null,
       dateStrings: [string, string]
     ) => {
-      if (!values) {
+      if (!values || !values[0] || !values[1]) {
         return;
       }
 
-      const startTs = values[0]?.startOf('day').valueOf() ?? 0;
-      const endTs = values[1]?.endOf('day').valueOf() ?? 0;
+      const startTs = values[0].startOf('day').valueOf();
+      const endTs = values[1].endOf('day').valueOf();
       const daysCount = getDaysCount(dateStrings[0], dateStrings[1]);
-      const selectedRangeLabel = getTimestampLabel(
-        dateStrings[0],
-        dateStrings[1],
-        showSelectedCustomRange
-      );
+      const selectedRangeLabel = showSelectedCustomRange
+        ? `${dateStrings[0]} -> ${dateStrings[1]}`
+        : getTimestampLabel(dateStrings[0], dateStrings[1], false);
 
+      setCustomDateValue(values);
       setSelectedTimeRange(selectedRangeLabel);
       setSelectedTimeRangeKey('customRange');
       setAnchorEl(null);
@@ -240,13 +280,13 @@ const MuiDatePickerMenu = ({
               sx={customRangeMenuItemStyles}>
               <Box sx={{ width: '100%' }}>
                 <MyDatePicker.RangePicker
-                  allowClear
                   bordered={false}
                   clearIcon={<CloseCircleOutlined />}
                   format={(value) => value.toUTC().toFormat('yyyy-MM-dd')}
                   placement="bottomRight"
                   style={{ width: '100%', padding: '8px 16px' }}
                   suffixIcon={null}
+                  value={customDateValue}
                   onChange={handleCustomDateChange}
                 />
               </Box>

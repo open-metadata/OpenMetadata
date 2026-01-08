@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -38,7 +38,12 @@ export interface CreateTestDefinition {
     parameterDefinition?: TestCaseParameterDefinition[];
     provider?:            ProviderType;
     supportedDataTypes?:  DataType[];
-    testPlatforms:        TestPlatform[];
+    /**
+     * List of services that this test definition supports. When empty, it implies all services
+     * are supported.
+     */
+    supportedServices?: string[];
+    testPlatforms:      TestPlatform[];
 }
 
 /**
@@ -295,7 +300,7 @@ export enum DataType {
  * This schema defines the platform where tests are defined and ran.
  */
 export enum TestPlatform {
-    Dbt = "DBT",
+    Dbt = "dbt",
     Deequ = "Deequ",
     GreatExpectations = "GreatExpectations",
     OpenMetadata = "OpenMetadata",

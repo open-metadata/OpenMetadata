@@ -199,6 +199,109 @@ public final class EntityUtil {
   }
 
   public static List<EntityReference> populateEntityReferences(List<EntityReference> list) {
+    if (nullOrEmpty(list)) {
+      return list;
+    }
+
+    long startTime = System.currentTimeMillis();
+
+    // Create a mutable copy to avoid UnsupportedOperationException on immutable lists
+    List<EntityReference> mutableList = new ArrayList<>(list);
+
+    // Group references by type and whether they have ID or need name-based lookup
+    Map<String, List<EntityReference>> byIdByType =
+        mutableList.stream()
+            .filter(ref -> ref.getId() != null)
+            .collect(Collectors.groupingBy(EntityReference::getType));
+
+    Map<String, List<EntityReference>> byNameByType =
+        mutableList.stream()
+            .filter(ref -> ref.getId() == null && ref.getFullyQualifiedName() != null)
+            .collect(Collectors.groupingBy(EntityReference::getType));
+
+    // Track which references were successfully populated (not orphaned)
+    Set<EntityReference> populatedRefs = new HashSet<>();
+    int queryCount = 0;
+
+    // Batch fetch by ID (most common case) - one query per entity type
+    for (Map.Entry<String, List<EntityReference>> entry : byIdByType.entrySet()) {
+      String entityType = entry.getKey();
+      List<UUID> ids =
+          entry.getValue().stream().map(EntityReference::getId).collect(Collectors.toList());
+      queryCount++;
+
+      try {
+        List<EntityReference> fetched = Entity.getEntityReferencesByIds(entityType, ids, ALL);
+        Map<UUID, EntityReference> fetchedMap =
+            fetched.stream()
+                .collect(Collectors.toMap(EntityReference::getId, ref -> ref, (a, b) -> a));
+
+        for (EntityReference ref : entry.getValue()) {
+          EntityReference fetched2 = fetchedMap.get(ref.getId());
+          if (fetched2 != null) {
+            copy(fetched2, ref);
+            populatedRefs.add(ref);
+          } else {
+            LOG.info("Skipping orphaned entity reference: {} {}", ref.getType(), ref.getId());
+          }
+        }
+      } catch (Exception e) {
+        // Fallback to individual fetch on batch failure
+        LOG.warn(
+            "Batch fetch failed for type {}, falling back to individual fetch: {}",
+            entityType,
+            e.getMessage());
+        for (EntityReference ref : entry.getValue()) {
+          try {
+            EntityReference ref2 = Entity.getEntityReference(ref, ALL);
+            copy(ref2, ref);
+            populatedRefs.add(ref);
+          } catch (EntityNotFoundException ex) {
+            LOG.info(
+                "Skipping orphaned entity reference: {} {} - {}",
+                ref.getType(),
+                ref.getId(),
+                ex.getMessage());
+          }
+        }
+      }
+    }
+
+    // Fetch by name (less common path - still individual queries)
+    for (Map.Entry<String, List<EntityReference>> entry : byNameByType.entrySet()) {
+      for (EntityReference ref : entry.getValue()) {
+        queryCount++;
+        try {
+          EntityReference ref2 =
+              Entity.getEntityReferenceByName(ref.getType(), ref.getFullyQualifiedName(), ALL);
+          copy(ref2, ref);
+          populatedRefs.add(ref);
+        } catch (EntityNotFoundException e) {
+          LOG.info(
+              "Skipping orphaned entity reference: {} {} - {}",
+              ref.getType(),
+              ref.getFullyQualifiedName(),
+              e.getMessage());
+        }
+      }
+    }
+
+    // Remove orphaned references (those that weren't successfully populated)
+    mutableList.removeIf(ref -> !populatedRefs.contains(ref));
+
+    mutableList.sort(compareEntityReference);
+
+    LOG.debug(
+        "populateEntityReferences: {} refs -> {} queries in {}ms",
+        mutableList.size(),
+        queryCount,
+        System.currentTimeMillis() - startTime);
+
+    return mutableList;
+  }
+
+  public static List<EntityReference> validateAndPopulateEntityReferences(
+      List<EntityReference> list) {
     if (list != null) {
       for (EntityReference ref : list) {
         EntityReference ref2 = Entity.getEntityReference(ref, ALL);
@@ -213,20 +316,55 @@ public final class EntityUtil {
     if (nullOrEmpty(list)) {
       return Collections.emptyList();
     }
+
+    long startTime = System.currentTimeMillis();
+
+    // Group by entity type for batch fetch - reduces N queries to M queries (where M = unique
+    // types)
+    Map<String, List<UUID>> idsByType =
+        list.stream()
+            .collect(
+                Collectors.groupingBy(
+                    EntityRelationshipRecord::getType,
+                    Collectors.mapping(EntityRelationshipRecord::getId, Collectors.toList())));
+
     List<EntityReference> refs = new ArrayList<>();
-    for (EntityRelationshipRecord ref : list) {
+    int queryCount = 0;
+
+    for (Map.Entry<String, List<UUID>> entry : idsByType.entrySet()) {
+      String entityType = entry.getKey();
+      List<UUID> ids = entry.getValue();
+      queryCount++;
+
       try {
-        refs.add(Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL));
-      } catch (EntityNotFoundException e) {
-        // Skip deleted entities - the relationship exists but the entity was deleted
-        LOG.info(
-            "Skipping deleted entity reference: {} {} - {}",
-            ref.getType(),
-            ref.getId(),
+        List<EntityReference> typeRefs = Entity.getEntityReferencesByIds(entityType, ids, ALL);
+        refs.addAll(typeRefs);
+      } catch (Exception e) {
+        // Fallback for partial failures - fetch individually to handle deleted entities gracefully
+        LOG.warn(
+            "Batch fetch failed for type {}, falling back to individual fetch: {}",
+            entityType,
             e.getMessage());
+        for (UUID id : ids) {
+          try {
+            refs.add(Entity.getEntityReferenceById(entityType, id, ALL));
+          } catch (EntityNotFoundException ex) {
+            LOG.info(
+                "Skipping deleted entity reference: {} {} - {}", entityType, id, ex.getMessage());
+          }
+        }
       }
     }
+
     refs.sort(compareEntityReference);
+
+    LOG.debug(
+        "getEntityReferences: {} records -> {} types -> {} queries in {}ms",
+        list.size(),
+        idsByType.size(),
+        queryCount,
+        System.currentTimeMillis() - startTime);
+
     return refs;
   }
 
@@ -342,6 +480,18 @@ public final class EntityUtil {
     return ids.stream()
         .map(id -> new EntityReference().withId(id).withType(entityType))
         .collect(Collectors.toList());
+  }
+
+  public static List<EntityReference> validateToEntityReferences(
+      List<UUID> ids, String entityType) {
+    if (ids == null) {
+      return null;
+    }
+    List<EntityReference> refs = new ArrayList<>();
+    for (UUID id : ids) {
+      refs.add(Entity.getEntityReferenceById(entityType, id, ALL));
+    }
+    return refs;
   }
 
   public static List<UUID> refToIds(List<EntityReference> refs) {

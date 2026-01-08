@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -38,6 +38,10 @@ export interface DbtPipeline {
      * Optional configuration to toggle the tags ingestion.
      */
     includeTags?: boolean;
+    /**
+     * Set the 'Override Lineage' toggle to control whether to override the existing lineage.
+     */
+    overrideLineage?: boolean;
     /**
      * Configuration to set the timeout for parsing the query in seconds.
      */

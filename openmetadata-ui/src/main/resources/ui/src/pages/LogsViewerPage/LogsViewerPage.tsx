@@ -224,7 +224,7 @@ const LogsViewerPage = () => {
 
   const fetchMoreLogs = useCallback(() => {
     fetchLogs(ingestionDetails?.id, ingestionDetails?.pipelineType);
-  }, [ingestionDetails]);
+  }, [ingestionDetails, fetchLogs]);
 
   const handleScroll = useCallback(
     (scrollValues: {
@@ -349,7 +349,7 @@ const LogsViewerPage = () => {
 
   const logsSkeleton = useMemo(
     () => (
-      <Stack spacing={4}>
+      <Stack data-testid="skeleton-container" spacing={4}>
         <Skeleton variant="text" width="50%" />
         <Skeleton sx={{ fontSize: '28px' }} variant="text" width="30%" />
         <Skeleton height={80} variant="rounded" />
@@ -369,7 +369,7 @@ const LogsViewerPage = () => {
   );
 
   const logsContainer = useMemo(() => {
-    if (isLoading || isLogsLoading) {
+    if (isLoading) {
       return logsSkeleton;
     }
 
@@ -438,7 +438,7 @@ const LogsViewerPage = () => {
           })}
         </Stack>
 
-        {isEmpty(logs) ? (
+        {isEmpty(logs) && !isLogsLoading ? (
           <Stack alignItems="center" height="50vh" justifyContent="center">
             <ErrorPlaceHolder
               className="bg-white"
@@ -488,6 +488,7 @@ const LogsViewerPage = () => {
                 enableSearch
                 selectableLines
                 extraLines={1} // 1 is to be add so that linux users can see last line of the log
+                loading={isLogsLoading}
                 ref={lazyLogRef}
                 text={logs}
                 onScroll={handleScroll}

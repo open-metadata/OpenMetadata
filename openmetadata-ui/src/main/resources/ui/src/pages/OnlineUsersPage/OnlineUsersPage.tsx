@@ -258,7 +258,12 @@ const OnlineUsersPage = () => {
         </Col>
 
         <Col span={24}>
-          <PageHeader data={PAGE_HEADERS.ONLINE_USERS} />
+          <PageHeader
+            data={{
+              header: t(PAGE_HEADERS.ONLINE_USERS.header),
+              subHeader: t(PAGE_HEADERS.ONLINE_USERS.subHeader),
+            }}
+          />
         </Col>
 
         <Col span={24}>
@@ -302,7 +307,7 @@ const OnlineUsersPage = () => {
               placeholder: `${t('label.search-for-type', {
                 type: t('label.user'),
               })}...`,
-              value: searchValue,
+              searchValue: searchValue,
               typingInterval: 400,
               onSearch: handleSearch,
             }}

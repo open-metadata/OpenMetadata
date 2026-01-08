@@ -17,10 +17,10 @@ import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as YellowCalendarIcon } from '../../../../../assets/svg/ic-dq-aborted-widget.svg';
-import { ReactComponent as RedCircleIcon } from '../../../../../assets/svg/ic-dq-failed-widget.svg';
-import { ReactComponent as SuccessTicketIcon } from '../../../../../assets/svg/ic-dq-success-widget.svg';
-import { ReactComponent as AddItemIcon } from '../../../../../assets/svg/ic-dq-total-test-widget.svg';
+import { ReactComponent as AbortedTestIcon } from '../../../../../assets/svg/data-observability/aborted-test.svg';
+import { ReactComponent as FailedTestIcon } from '../../../../../assets/svg/data-observability/failed-test.svg';
+import { ReactComponent as SuccessTestIcon } from '../../../../../assets/svg/data-observability/success-test.svg';
+import { ReactComponent as TotalTestIcon } from '../../../../../assets/svg/data-observability/total-test.svg';
 import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import {
   DEFAULT_SORT_ORDER,
@@ -128,25 +128,25 @@ export const QualityTab = () => {
         title: t('label.test-plural-type', { type: t('label.total') }),
         key: 'total-tests',
         value: tests.total,
-        icon: AddItemIcon,
+        icon: TotalTestIcon,
       },
       {
         title: t('label.test-plural-type', { type: t('label.successful') }),
         key: 'successful-tests',
         value: tests.success,
-        icon: SuccessTicketIcon,
+        icon: SuccessTestIcon,
       },
       {
         title: t('label.test-plural-type', { type: t('label.failed') }),
         key: 'failed-tests',
         value: tests.failed,
-        icon: RedCircleIcon,
+        icon: FailedTestIcon,
       },
       {
         title: t('label.test-plural-type', { type: t('label.aborted') }),
         key: 'aborted-tests',
         value: tests.aborted,
-        icon: YellowCalendarIcon,
+        icon: AbortedTestIcon,
       },
     ];
   }, [testCaseSummary]);

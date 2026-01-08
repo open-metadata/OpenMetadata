@@ -116,7 +116,7 @@ export const setValueForProperty = async (data: {
   await editButton.scrollIntoViewIfNeeded();
   await editButton.click({ force: true });
 
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  const patchRequestPromise = page.waitForResponse(`/api/v1/${endpoint}/*`);
   switch (propertyType) {
     case 'markdown':
       await page.locator(descriptionBox).isVisible();
@@ -247,7 +247,9 @@ export const setValueForProperty = async (data: {
       break;
     }
   }
-  await patchRequest;
+  const patchRequest = await patchRequestPromise;
+
+  expect(patchRequest.status()).toBe(200);
 };
 
 export const validateValueForProperty = async (data: {
@@ -291,6 +293,7 @@ export const validateValueForProperty = async (data: {
       page.getByRole('row', { name: `${values[0]} ${values[1]}` })
     ).toBeVisible();
   } else if (propertyType === 'markdown') {
+    // For markdown, remove * and _ as they are formatting characters
     await expect(
       container.locator(descriptionBoxReadOnly).last()
     ).toContainText(value.replace(/\*|_/gi, ''));
@@ -302,7 +305,23 @@ export const validateValueForProperty = async (data: {
       'dateTime-cp',
     ].includes(propertyType)
   ) {
-    await expect(container).toContainText(value.replace(/\*|_/gi, ''));
+    // For other types (string, integer, number, duration), match exact value without transformation
+    await expect(container.getByTestId('value')).toContainText(value);
+  } else if ('entityReferenceList' === propertyType) {
+    const refValues = value.split(',');
+
+    for (const val of refValues) {
+      await expect(container.getByTestId(val)).toBeVisible();
+      await expect(container.getByTestId('no-data')).not.toBeVisible();
+    }
+  } else if ('entityReference' === propertyType) {
+    await expect(container.getByTestId('entityReference-value')).toContainText(
+      value
+    );
+    await expect(container.getByTestId('no-data')).not.toBeVisible();
+  } else {
+    await expect(container.getByTestId('value')).toBeVisible();
+    await expect(container.getByTestId('no-data')).not.toBeVisible();
   }
 };
 
@@ -446,7 +465,7 @@ export const createCustomPropertyForEntity = async (
 
   // Reduce the users array to a userNames object with keys as user1, user2, etc., and values as the user's names
   const userNames = users.reduce((acc, user, index) => {
-    acc[`user${index + 1}`] = user.getUserName();
+    acc[`user${index + 1}`] = user.getUserDisplayName();
 
     return acc;
   }, {} as Record<string, string>);

@@ -154,10 +154,10 @@ AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credent
 
 ## <span data-id="serverUrl">OIDC Server URL</span>
 
-- **Definition:** Base URL for AWS Cognito authentication server.
-- **Example:** https://cognito-idp.us-east-1.amazonaws.com
-- **Why it matters:** Specifies the Cognito endpoint to use.
-- **Note:** Format: https://cognito-idp.{region}.amazonaws.com
+- **Definition:** Base URL for Collate server.
+- **Example:** https://yourapp.company.com
+- **Why it matters:** Specifies Collate endpoint
+- **Note:** Usually your collate API server
 
 ## <span data-id="maxAge">OIDC Max Age</span>
 
@@ -198,11 +198,12 @@ AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credent
 - **Example:** ["cognito:username", "email", "sub"]
 - **Why it matters:** Determines which claim from the JWT token identifies the user.
 - **Note:** Common Cognito claims: cognito:username, email, sub, preferred_username
+  - Order matters - first matching claim is used
 
 ## <span data-id="jwtPrincipalClaimsMapping">JWT Principal Claims Mapping</span>
 
-- **Definition:** Maps JWT claims to OpenMetadata user attributes.
-- **Example:** ["email:email", "name:name", "firstName:given_name"]
+- **Definition:** Maps JWT claims to OpenMetadata user attributes. (Overrides JWT Principal Claims if set)
+- **Example:** ["email:email", "username:preferred_username"]
 - **Why it matters:** Controls how user information from AWS Cognito maps to OpenMetadata user profiles.
 - **Note:** Format: "openmetadata_field:jwt_claim"
 

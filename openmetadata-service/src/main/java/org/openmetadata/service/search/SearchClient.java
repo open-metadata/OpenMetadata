@@ -2,40 +2,29 @@ package org.openmetadata.service.search;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
 
-import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
-import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
-import org.openmetadata.schema.api.search.SearchSettings;
-import org.openmetadata.schema.dataInsight.DataInsightChartResult;
-import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
-import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
-import org.openmetadata.schema.entity.data.QueryCostSearchResult;
-import org.openmetadata.schema.search.AggregationRequest;
-import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.CustomExceptionMessage;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import os.org.opensearch.action.bulk.BulkRequest;
-import os.org.opensearch.action.bulk.BulkResponse;
-import os.org.opensearch.client.RequestOptions;
 
-public interface SearchClient<T>
-    extends IndexManagementClient, EntityManagementClient, GenericClient {
+public interface SearchClient
+    extends IndexManagementClient,
+        EntityManagementClient,
+        GenericClient,
+        AggregationManagementClient,
+        DataInsightAggregatorClient,
+        SearchManagementClient {
   String UPSTREAM_LINEAGE_FIELD = "upstreamLineage";
   String UPSTREAM_ENTITY_RELATIONSHIP_FIELD = "upstreamEntityRelationship";
   String FQN_FIELD = "fullyQualifiedName";
@@ -53,7 +42,14 @@ public interface SearchClient<T>
   String DEFAULT_UPDATE_SCRIPT =
       """
       for (k in params.keySet()) {
-        ctx._source.put(k, params.get(k))
+        if (k != 'fieldsToRemove') {
+          ctx._source.put(k, params.get(k))
+        }
+      }
+      if (params.containsKey('fieldsToRemove')) {
+        for (field in params.fieldsToRemove) {
+          ctx._source.remove(field)
+        }
       }
       """;
   String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
@@ -118,24 +114,24 @@ public interface SearchClient<T>
 
   String UPDATE_FQN_PREFIX_SCRIPT =
       """
-      String updatedFQN = ctx._source.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
-      ctx._source.fullyQualifiedName = updatedFQN;
-      ctx._source.fqnDepth = updatedFQN.splitOnToken('.').length;
-      if (ctx._source.containsKey('parent')) {
-        if (ctx._source.parent.containsKey('fullyQualifiedName')) {
-          String parentFQN = ctx._source.parent.fullyQualifiedName;
-          ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN);
-        }
-      }
-      if (ctx._source.containsKey('tags')) {
-        for (int i = 0; i < ctx._source.tags.size(); i++) {
-          if (ctx._source.tags[i].containsKey('tagFQN')) {
-            String tagFQN = ctx._source.tags[i].tagFQN;
-            ctx._source.tags[i].tagFQN = tagFQN.replace(params.oldParentFQN, params.newParentFQN);
-          }
-        }
-      }
-      """;
+                  String updatedFQN = ctx._source.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
+                  ctx._source.fullyQualifiedName = updatedFQN;
+                  ctx._source.fqnDepth = updatedFQN.splitOnToken('.').length;
+                  if (ctx._source.containsKey('parent')) {
+                    if (ctx._source.parent.containsKey('fullyQualifiedName')) {
+                      String parentFQN = ctx._source.parent.fullyQualifiedName;
+                      ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN);
+                    }
+                  }
+                  if (ctx._source.containsKey('tags')) {
+                    for (int i = 0; i < ctx._source.tags.size(); i++) {
+                      if (ctx._source.tags[i].containsKey('tagFQN')) {
+                        String tagFQN = ctx._source.tags[i].tagFQN;
+                        ctx._source.tags[i].tagFQN = tagFQN.replace(params.oldParentFQN, params.newParentFQN);
+                      }
+                    }
+                  }
+                  """;
 
   String REMOVE_LINEAGE_SCRIPT =
       "ctx._source.upstreamLineage.removeIf(lineage -> lineage.docUniqueId == params.docUniqueId)";
@@ -398,48 +394,21 @@ public interface SearchClient<T>
           "tier",
           "changeDescription");
 
+  Set<String> FIELDS_TO_REMOVE_WHEN_NULL = Set.of("tier", "certification");
+
   boolean isClientAvailable();
 
   boolean isNewClientAvailable();
 
   ElasticSearchConfiguration.SearchType getSearchType();
 
-  Response previewSearch(
-      SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
-      throws IOException;
+  <T> T getHighLevelClient();
 
-  Response search(SearchRequest request, SubjectContext subjectContext) throws IOException;
-
-  Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) throws IOException;
-
-  Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
-      throws IOException;
+  Object getLowLevelClient();
 
   default ExecutorService getAsyncExecutor() {
     return asyncExecutor;
   }
-
-  SearchResultListMapper listWithOffset(
-      String filter,
-      int limit,
-      int offset,
-      String index,
-      SearchSortFilter searchSortFilter,
-      String q,
-      String queryString)
-      throws IOException;
-
-  SearchResultListMapper listWithDeepPagination(
-      String index,
-      String query,
-      String filter,
-      String[] fields,
-      SearchSortFilter searchSortFilter,
-      int size,
-      Object[] searchAfter)
-      throws IOException;
-
-  Response searchBySourceUrl(String sourceUrl) throws IOException;
 
   SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException;
 
@@ -459,17 +428,6 @@ public interface SearchClient<T>
       throws IOException;
 
   SearchLineageResult searchPlatformLineage(String index, String queryFilter, boolean deleted)
-      throws IOException;
-
-  Response searchEntityRelationship(
-      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
-      throws IOException;
-
-  Response searchDataQualityLineage(
-      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException;
-
-  Response searchSchemaEntityRelationship(
-      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException;
 
   /*
@@ -497,86 +455,28 @@ public interface SearchClient<T>
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
-  Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
-      throws IOException;
-
-  Response aggregate(AggregationRequest request) throws IOException;
-
-  JsonObject aggregate(
-      String query, String index, SearchAggregation searchAggregation, String filters)
-      throws IOException;
-
-  Response getEntityTypeCounts(SearchRequest request, String index) throws IOException;
-
-  DataQualityReport genericAggregation(
-      String query, String index, SearchAggregation aggregationMetadata) throws IOException;
-
   /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
   void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);
 
-  Response listDataInsightChartResult(
-      Long startTs,
-      Long endTs,
-      String tier,
-      String team,
-      DataInsightChartResult.DataInsightChartType dataInsightChartName,
-      Integer size,
-      Integer from,
-      String queryFilter,
-      String dataReportIndex)
-      throws IOException;
+  void close();
 
-  default BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  default es.org.elasticsearch.action.bulk.BulkResponse bulk(
-      es.org.elasticsearch.action.bulk.BulkRequest data,
-      es.org.elasticsearch.client.RequestOptions options)
+  default es.co.elastic.clients.elasticsearch.core.BulkResponse bulkElasticSearch(
+      java.util.List<es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation> operations)
       throws IOException {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
-  void close();
-
-  default DataInsightCustomChartResultList buildDIChart(
-      DataInsightCustomChart diChart, long start, long end, boolean live) throws IOException {
-    return null;
+  default os.org.opensearch.client.opensearch.core.BulkResponse bulkOpenSearch(
+      java.util.List<os.org.opensearch.client.opensearch.core.bulk.BulkOperation> operations)
+      throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
-
-  default DataInsightCustomChartResultList buildDIChart(
-      DataInsightCustomChart diChart, long start, long end) throws IOException {
-    return buildDIChart(diChart, start, end, false);
-  }
-
-  default List<Map<String, String>> fetchDIChartFields() throws IOException {
-    return null;
-  }
-
-  Object getLowLevelClient();
-
-  Object getClient();
-
-  T getHighLevelClient();
-
-  QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException;
 
   SearchEntityRelationshipResult searchEntityRelationship(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;
 
   SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;
-
-  SearchSchemaEntityRelationshipResult getSchemaEntityRelationship(
-      String schemaFqn,
-      String queryFilter,
-      String includeSourceFields,
-      int offset,
-      int limit,
-      int from,
-      int size,
-      boolean deleted)
-      throws IOException;
 }

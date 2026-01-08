@@ -22,7 +22,8 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
+import { ReactComponent as FolderEmptyIcon } from '../../../../assets/svg/folder-empty.svg';
+import { ENTITY_PATH, PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -31,7 +32,7 @@ import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { useFqn } from '../../../../hooks/useFqn';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatDataProductResponse } from '../../../../utils/APIUtils';
-import { getTermQuery } from '../../../../utils/SearchUtils';
+import { getQueryFilterForDataProducts } from '../../../../utils/DomainUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
@@ -42,9 +43,9 @@ import { SourceType } from '../../../SearchedData/SearchedData.interface';
 import { DataProductsTabProps } from './DataProductsTab.interface';
 
 const DataProductsTab = forwardRef(
-  ({ permissions, onAddDataProduct }: DataProductsTabProps, ref) => {
+  ({ permissions, onAddDataProduct, domainFqn }: DataProductsTabProps, ref) => {
     const { t } = useTranslation();
-    const { fqn: domainFqn } = useFqn();
+    const { fqn: urlDomainFqn } = useFqn();
     const [dataProducts, setDataProducts] = useState<
       PagingResponse<DataProduct[]>
     >({
@@ -62,9 +63,9 @@ const DataProductsTab = forwardRef(
           query: '',
           pageNumber: 1,
           pageSize: PAGE_SIZE_LARGE,
-          queryFilter: getTermQuery({
-            'domains.fullyQualifiedName': domainFqn ?? '',
-          }),
+          queryFilter: getQueryFilterForDataProducts(
+            urlDomainFqn || domainFqn || ''
+          ),
           searchIndex: SearchIndex.DATA_PRODUCT,
         });
 
@@ -99,7 +100,7 @@ const DataProductsTab = forwardRef(
 
     useEffect(() => {
       fetchDataProducts();
-    }, [domainFqn]);
+    }, [urlDomainFqn]);
 
     if (loading) {
       return <Loader />;
@@ -108,12 +109,16 @@ const DataProductsTab = forwardRef(
     if (isEmpty(dataProducts.data) && !loading) {
       return (
         <ErrorPlaceHolder
-          heading={t('label.data-product')}
-          permission={permissions.Create}
-          permissionValue={t('label.create-entity', {
+          buttonId="data-product-add-button"
+          buttonTitle={t('label.add-entity', {
             entity: t('label.data-product'),
           })}
-          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+          heading={t('message.no-data-message', {
+            entity: t('label.data-product-lowercase-plural'),
+          })}
+          icon={<FolderEmptyIcon />}
+          permission={permissions.Create}
+          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
           onClick={onAddDataProduct}
         />
       );
@@ -158,6 +163,7 @@ const DataProductsTab = forwardRef(
                 },
               }}
               handleClosePanel={() => setSelectedCard(undefined)}
+              panelPath={ENTITY_PATH.dataProductsTab}
             />
           ),
           ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,

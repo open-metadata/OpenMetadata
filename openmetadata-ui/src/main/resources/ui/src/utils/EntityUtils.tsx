@@ -34,6 +34,11 @@ import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanel/
 import { ProfilerTabPath } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import {
+  CUSTOM_PROPERTIES_TABS_SET,
+  LINEAGE_TABS_SET,
+  SCHEMA_TABS_SET,
+} from '../components/Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
+import {
   EntityServiceUnion,
   EntityWithServices,
 } from '../components/Explore/ExplorePage.interface';
@@ -113,6 +118,7 @@ import { DataInsightTabs } from '../interface/data-insight.interface';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import {
+  formatNumberWithComma,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
@@ -284,7 +290,14 @@ const getCommonOverview = (
       ? [
           {
             name: i18next.t('label.owner-plural'),
-            value: <OwnerLabel hasPermission={false} owners={owners} />,
+            value: (
+              <OwnerLabel
+                hasPermission={false}
+                isCompactView={false}
+                owners={owners}
+                showLabel={false}
+              />
+            ),
             visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
           },
         ]
@@ -402,7 +415,9 @@ const getTableOverview = (
     {
       name: i18next.t('label.row-plural'),
       value:
-        !isUndefined(profile) && profile?.rowCount ? profile.rowCount : NO_DATA,
+        !isUndefined(profile) && profile?.rowCount
+          ? formatNumberWithComma(profile.rowCount)
+          : NO_DATA,
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -954,9 +969,9 @@ const getDatabaseOverview = (databaseDetails: Database) => {
     },
     {
       name: i18next.t('label.service'),
-      value: service.fullyQualifiedName || NO_DATA,
+      value: service?.fullyQualifiedName || NO_DATA,
       url: getServiceDetailsPath(
-        service.fullyQualifiedName ?? '',
+        service?.fullyQualifiedName ?? '',
         ServiceCategory.DATABASE_SERVICES
       ),
       isLink: true,
@@ -995,9 +1010,9 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
     },
     {
       name: i18next.t('label.service'),
-      value: service.fullyQualifiedName ?? NO_DATA,
+      value: service?.fullyQualifiedName ?? NO_DATA,
       url: getServiceDetailsPath(
-        service.fullyQualifiedName ?? '',
+        service?.fullyQualifiedName ?? '',
         ServiceCategory.DATABASE_SERVICES
       ),
       isLink: true,
@@ -1005,10 +1020,10 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
     },
     {
       name: i18next.t('label.database'),
-      value: database.fullyQualifiedName ?? NO_DATA,
+      value: database?.fullyQualifiedName ?? NO_DATA,
       url: getEntityDetailsPath(
         EntityType.DATABASE,
-        database.fullyQualifiedName ?? ''
+        database?.fullyQualifiedName ?? ''
       ),
       isLink: true,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
@@ -1072,9 +1087,9 @@ const getApiCollectionOverview = (apiCollection: APICollection) => {
     },
     {
       name: i18next.t('label.service'),
-      value: service.fullyQualifiedName ?? NO_DATA,
+      value: service?.fullyQualifiedName ?? NO_DATA,
       url: getServiceDetailsPath(
-        service.fullyQualifiedName ?? '',
+        service?.fullyQualifiedName ?? '',
         ServiceCategory.API_SERVICES
       ),
       isLink: true,
@@ -1118,9 +1133,9 @@ const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
     },
     {
       name: i18next.t('label.service'),
-      value: service.fullyQualifiedName ?? '',
+      value: service?.fullyQualifiedName ?? '',
       url: getServiceDetailsPath(
-        service.fullyQualifiedName ?? '',
+        service?.fullyQualifiedName ?? '',
         ServiceCategory.API_SERVICES
       ),
       isLink: true,
@@ -2392,7 +2407,7 @@ export const getEntityBreadcrumbs = (
           url:
             (entity as EventSubscription).alertType === AlertType.Observability
               ? ROUTES.OBSERVABILITY_ALERTS
-              : ROUTES.NOTIFICATION_ALERTS,
+              : ROUTES.NOTIFICATION_ALERT_LIST,
         },
         {
           name: entity.name,
@@ -2904,4 +2919,14 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.FILE]: t('label.file'),
   [EntityType.SPREADSHEET]: t('label.spreadsheet'),
   [EntityType.WORKSHEET]: t('label.worksheet'),
+  [EntityType.NOTIFICATION_TEMPLATE]: t('label.notification-template'),
 };
+
+export const hasSchemaTab = (entityType: EntityType): boolean =>
+  SCHEMA_TABS_SET.has(entityType);
+
+export const hasLineageTab = (entityType: EntityType): boolean =>
+  LINEAGE_TABS_SET.has(entityType);
+
+export const hasCustomPropertiesTab = (entityType: EntityType): boolean =>
+  CUSTOM_PROPERTIES_TABS_SET.has(entityType);

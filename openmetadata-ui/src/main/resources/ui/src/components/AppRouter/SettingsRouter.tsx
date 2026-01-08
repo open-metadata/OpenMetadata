@@ -26,6 +26,7 @@ import AddNotificationPage from '../../pages/AddNotificationPage/AddNotification
 import AlertDetailsPage from '../../pages/AlertDetailsPage/AlertDetailsPage';
 import AppearanceConfigSettingsPage from '../../pages/AppearanceConfigSettingsPage/AppearanceConfigSettingsPage';
 import ApplicationPage from '../../pages/Application/ApplicationPage';
+import AuditLogsPage from '../../pages/AuditLogsPage/AuditLogsPage';
 import BotsPageV1 from '../../pages/BotsPageV1/BotsPageV1.component';
 import ColumnBulkOperations from '../../pages/ColumnBulkOperations/ColumnBulkOperations.component';
 import DataAssetRulesPage from '../../pages/Configuration/DataAssetRules/DataAssetRulesPage';
@@ -202,7 +203,7 @@ const SettingsRouter = () => {
             <NotificationListPage />
           </AdminProtectedRoute>
         }
-        path={getSettingPathRelative(GlobalSettingsMenuCategory.NOTIFICATIONS)}
+        path={ROUTES.NOTIFICATION_ALERT_LIST.replace(ROUTES.SETTINGS, '')}
       />
 
       <Route
@@ -517,6 +518,21 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.PERMISSION_DEBUGGER
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.AUDIT_LOG,
+              permissions
+            )}>
+            <AuditLogsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingOptions.AUDIT_LOGS
         )}
       />
       <Route

@@ -158,20 +158,24 @@ public class LdapAuthenticator implements AuthenticatorHandler {
    * group else, create a new user and assign roles according to it's ldap group
    */
   private User checkAndCreateUser(String userDn, String email, String userName) throws IOException {
+    User finalUser;
+
     // Check if the user exists in OM Database
     try {
       User omUser =
           userRepository.getByEmail(null, email, userRepository.getFields("id,name,email,roles"));
       getRoleForLdap(userDn, omUser, Boolean.TRUE);
-      return omUser;
+      finalUser = omUser;
     } catch (EntityNotFoundException ex) {
       if (isSelfSignUpEnabled) {
-        return userRepository.create(null, getUserForLdap(userDn, email, userName));
+        finalUser = userRepository.create(null, getUserForLdap(userDn, email, userName));
       } else {
         throw new CustomExceptionMessage(
             INTERNAL_SERVER_ERROR, SELF_SIGNUP_NOT_ENABLED, SELF_SIGNUP_DISABLED_MESSAGE);
       }
     }
+    checkAndApplyAdminPrincipals(finalUser);
+    return finalUser;
   }
 
   @Override
@@ -469,6 +473,39 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           "Failed to get user's groups from LDAP server using the DN of the user {} due to {}",
           user.getName(),
           ex.getMessage());
+    }
+  }
+
+  /**
+   * Check if user should be admin based on adminPrincipals configuration
+   */
+  private boolean checkAdminPrincipals(String userName) {
+    try {
+      return SecurityConfigurationManager.getCurrentAuthzConfig()
+          .getAdminPrincipals()
+          .contains(userName);
+    } catch (Exception e) {
+      LOG.warn("Failed to check adminPrincipals for user {}: {}", userName, e.getMessage());
+      return false;
+    }
+  }
+
+  /**
+   * Check and apply adminPrincipals configuration
+   */
+  private void checkAndApplyAdminPrincipals(User user) {
+    try {
+      boolean shouldBeAdminFromPrincipals = checkAdminPrincipals(user.getName());
+
+      if (shouldBeAdminFromPrincipals) {
+        user.setIsAdmin(true);
+        UserUtil.addOrUpdateUser(user);
+        LOG.info(
+            "LDAP user '{}' granted admin privileges via adminPrincipals configuration",
+            user.getName());
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to apply adminPrincipals for user {}: {}", user.getName(), e.getMessage());
     }
   }
 

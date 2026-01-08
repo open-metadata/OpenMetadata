@@ -59,6 +59,7 @@ export class FileClass extends EntityClass {
     name: this.fileName,
     displayName: this.fileName,
     service: this.service.name,
+    description: 'description',
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -89,6 +90,7 @@ export class FileClass extends EntityClass {
       {
         data: {
           name: this.fileName,
+          description: this.entity.description,
           service: this.serviceResponseData.fullyQualifiedName,
         },
       }
@@ -125,18 +127,28 @@ export class FileClass extends EntityClass {
     };
   }
 
-  async get() {
+  get() {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
     };
   }
 
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+  }
+
   async visitEntityPage(page: Page) {
     await visitEntityPage({
       page,
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entityResponseData.name}`,
+      dataTestId: `${
+        this.entityResponseData.service.name ?? this.service.name
+      }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
 

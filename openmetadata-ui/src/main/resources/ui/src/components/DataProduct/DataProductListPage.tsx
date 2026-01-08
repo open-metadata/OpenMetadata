@@ -13,10 +13,14 @@
 
 import { Box, Paper, TableContainer, useTheme } from '@mui/material';
 import { useForm } from 'antd/lib/form/Form';
+import { isEmpty } from 'lodash';
 import { useSnackbar } from 'notistack';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
+import { DRAWER_HEADER_STYLING } from '../../constants/DomainsListPage.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../generated/api/domains/createDomain';
@@ -36,6 +40,7 @@ import { useViewToggle } from '../common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../common/atoms/pagination/usePaginationControls';
 import { useCardView } from '../common/atoms/table/useCardView';
 import { useDataTable } from '../common/atoms/table/useDataTable';
+import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import AddDomainForm from '../Domain/AddDomainForm/AddDomainForm.component';
 import { DomainFormType } from '../Domain/DomainPage.interface';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
@@ -69,6 +74,9 @@ const DataProductListPage = () => {
     anchor: 'right',
     width: 670,
     closeOnEscape: false,
+    header: {
+      sx: DRAWER_HEADER_STYLING,
+    },
     onCancel: () => {
       form.resetFields();
     },
@@ -180,6 +188,75 @@ const DataProductListPage = () => {
     },
   });
 
+  const hasActiveSearchOrFilter = useCallback(() => {
+    const { searchQuery, filters } = dataProductListing.urlState;
+
+    const hasActiveFilters =
+      filters &&
+      Object.values(filters).some(
+        (values) => Array.isArray(values) && values.length > 0
+      );
+
+    return Boolean(searchQuery) || hasActiveFilters;
+  }, [dataProductListing.urlState]);
+
+  const content = useMemo(() => {
+    if (!dataProductListing.loading && isEmpty(dataProductListing.entities)) {
+      if (hasActiveSearchOrFilter()) {
+        return (
+          <ErrorPlaceHolder
+            className="border-none"
+            type={ERROR_PLACEHOLDER_TYPE.FILTER}
+          />
+        );
+      }
+
+      return (
+        <ErrorPlaceHolder
+          buttonId="data-product-add-button"
+          buttonTitle={t('label.add-entity', {
+            entity: t('label.data-product'),
+          })}
+          className="border-none"
+          heading={t('message.no-data-message', {
+            entity: t('label.data-product-lowercase-plural'),
+          })}
+          icon={<FolderEmptyIcon />}
+          permission={permissions.dataProduct?.Create}
+          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
+          onClick={openDrawer}
+        />
+      );
+    }
+
+    if (view === 'table') {
+      return (
+        <>
+          {dataTable}
+          {paginationControls}
+        </>
+      );
+    }
+
+    return (
+      <>
+        {cardView}
+        {paginationControls}
+      </>
+    );
+  }, [
+    dataProductListing.loading,
+    dataProductListing.entities,
+    hasActiveSearchOrFilter,
+    view,
+    dataTable,
+    cardView,
+    paginationControls,
+    openDrawer,
+    t,
+    permissions.dataProduct?.Create,
+  ]);
+
   return (
     <>
       {breadcrumbs}
@@ -206,10 +283,7 @@ const DataProductListPage = () => {
           </Box>
           {filterSelectionDisplay}
         </Box>
-
-        {view === 'table' ? dataTable : cardView}
-
-        {paginationControls}
+        {content}
       </TableContainer>
       {deleteModal}
       {formDrawer}

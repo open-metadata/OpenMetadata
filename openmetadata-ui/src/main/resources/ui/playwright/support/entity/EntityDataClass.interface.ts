@@ -43,3 +43,14 @@ export interface EntityDataClassCreationConfig {
   worksheet?: boolean;
   tier?: boolean;
 }
+export type EntityType =
+  | 'table'
+  | 'database'
+  | 'databaseSchema'
+  | 'dashboard'
+  | 'dashboardDataModel'
+  | 'pipeline'
+  | 'topic'
+  | 'mlmodel'
+  | 'container'
+  | 'searchIndex';

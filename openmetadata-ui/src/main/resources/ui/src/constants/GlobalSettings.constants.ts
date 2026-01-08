@@ -55,7 +55,7 @@ export enum GlobalSettingOptions {
   DATA_INSIGHT = 'dataInsight',
   EMAIL = 'email',
   NOTIFICATIONS = 'notifications',
-  ALERT = 'alert',
+  ALERTS = 'alerts',
   OBSERVABILITY = 'observability',
   GLOSSARY_TERM = 'glossaryTerm',
   ADD_NOTIFICATION = 'add-notification',
@@ -98,4 +98,5 @@ export enum GlobalSettingOptions {
   SPREADSHEETS = 'spreadsheets',
   WORKSHEETS = 'worksheets',
   COLUMN_BULK_OPERATIONS = 'columnBulkOperations',
+  AUDIT_LOGS = 'audit-logs',
 }

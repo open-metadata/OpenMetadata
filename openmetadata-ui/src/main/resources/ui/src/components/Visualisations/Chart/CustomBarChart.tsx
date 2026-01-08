@@ -117,6 +117,7 @@ const CustomBarChart = ({
             />
           }
           cursor={{
+            fill: theme.palette.grey[100],
             stroke: theme.palette.grey[200],
             strokeDasharray: '3 3',
           }}

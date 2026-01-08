@@ -184,6 +184,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateUpdatedByNamespace(workflowDefinition);
     // 5. Node input/output validations
     validateNodeInputOutputMapping(workflowDefinition);
+    // 6. Conditional task validations
+    validateConditionalTasks(workflowDefinition);
   }
 
   /**
@@ -278,15 +280,16 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       if (isEndNode && hasOutgoing) {
         throw BadRequestException.of(
             String.format(
-                "Workflow '%s' has end event node '%s' with outgoing edges", workflowName, nodeId));
+                "Workflow '%s': End node '%s' cannot have outgoing edges",
+                workflowName, node.getNodeDisplayName()));
       }
 
       // Non-end nodes must have outgoing edges
       if (!isEndNode && !hasOutgoing) {
         throw BadRequestException.of(
             String.format(
-                "Workflow '%s' has non-end node '%s' with no outgoing edges",
-                workflowName, nodeId));
+                "Workflow '%s': Node '%s' requires outgoing edges",
+                workflowName, node.getNodeDisplayName()));
       }
     }
 
@@ -357,10 +360,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     return false;
   }
 
-  /**
-   * Suspends a workflow by pausing all active instances in Flowable engine.
-   * @param workflow The workflow definition to suspend
-   */
   public void suspendWorkflow(WorkflowDefinition workflow) {
     String workflowName = workflow.getName();
 
@@ -368,7 +367,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       // Suspend all active process instances for this workflow
       WorkflowHandler.getInstance().suspendWorkflow(workflowName);
 
-      // Log the suspension
+      workflow.setSuspended(true);
+      dao.update(workflow);
       LOG.info("Suspended workflow '{}' in Flowable engine", workflowName);
     } catch (IllegalArgumentException e) {
       // Workflow not deployed to Flowable - this can happen for workflows that haven't been
@@ -383,16 +383,15 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     }
   }
 
-  /**
-   * Resumes a suspended workflow by activating all paused instances in Flowable engine.
-   * @param workflow The workflow definition to resume
-   */
   public void resumeWorkflow(WorkflowDefinition workflow) {
     String workflowName = workflow.getName();
 
     try {
       // Resume all suspended process instances for this workflow
       WorkflowHandler.getInstance().resumeWorkflow(workflowName);
+
+      workflow.setSuspended(false);
+      dao.update(workflow);
 
       // Log the resumption
       LOG.info("Resumed workflow '{}' in Flowable engine", workflowName);
@@ -748,5 +747,64 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
             e.getMessage());
       }
     }
+  }
+
+  private void validateConditionalTasks(WorkflowDefinition workflowDefinition) {
+    if (workflowDefinition.getNodes() == null || workflowDefinition.getEdges() == null) {
+      return;
+    }
+
+    String workflowName = workflowDefinition.getName();
+
+    // Build outgoing edges map for each node
+    Map<String, List<EdgeDefinition>> outgoingEdgesMap = new java.util.HashMap<>();
+    for (EdgeDefinition edge : workflowDefinition.getEdges()) {
+      outgoingEdgesMap.computeIfAbsent(edge.getFrom(), k -> new ArrayList<>()).add(edge);
+    }
+
+    // Check each conditional task node
+    for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+      if (isConditionalTask(node)) {
+        List<EdgeDefinition> outgoingEdges = outgoingEdgesMap.get(node.getName());
+
+        if (outgoingEdges == null || outgoingEdges.isEmpty()) {
+          throw BadRequestException.of(
+              String.format(
+                  "Workflow '%s': Conditional task '%s' must have outgoing sequence flows for both TRUE and FALSE conditions",
+                  workflowName, node.getNodeDisplayName()));
+        }
+
+        // Check if we have both TRUE and FALSE conditions
+        boolean hasTrueCondition = false;
+        boolean hasFalseCondition = false;
+
+        for (EdgeDefinition edge : outgoingEdges) {
+          String condition = edge.getCondition();
+          if (condition != null) {
+            if ("true".equals(condition.trim())) {
+              hasTrueCondition = true;
+            } else if ("false".equals(condition.trim())) {
+              hasFalseCondition = true;
+            }
+          }
+        }
+
+        if (!hasTrueCondition || !hasFalseCondition) {
+          throw BadRequestException.of(
+              String.format(
+                  "Workflow '%s': Conditional task '%s' must have both TRUE and FALSE outgoing sequence flows. "
+                      + "Add sequence flows with conditions for both outcomes to prevent workflow execution errors.",
+                  workflowName, node.getNodeDisplayName()));
+        }
+      }
+    }
+  }
+
+  /**
+   * Checks if a node is a conditional task that requires TRUE/FALSE outputs.
+   */
+  private boolean isConditionalTask(WorkflowNodeDefinitionInterface node) {
+    String nodeType = node.getSubType();
+    return "checkEntityAttributesTask".equals(nodeType) || "userApprovalTask".equals(nodeType);
   }
 }

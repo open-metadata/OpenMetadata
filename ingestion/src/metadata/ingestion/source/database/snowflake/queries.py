@@ -14,6 +14,45 @@ SQL Queries used during ingestion
 
 import textwrap
 
+SNOWFLAKE_GET_TABLE_NAMES = """
+    select
+        TABLE_NAME,
+        NULL as DELETED,
+        CASE
+            WHEN IS_TRANSIENT = 'YES' THEN 'TRANSIENT TABLE'
+            WHEN IS_DYNAMIC = 'YES' THEN 'DYNAMIC TABLE'
+            ELSE TABLE_TYPE
+        END as TABLE_TYPE
+    from information_schema.tables
+    where TABLE_SCHEMA = '{schema}'
+    AND {include_transient_tables}
+    AND {include_views}
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_TABLE_NAMES = """
+select TABLE_NAME, DELETED, COMPUTED_TABLE_TYPE as TABLE_TYPE
+from (
+    select
+        TABLE_NAME,
+        DELETED,
+        CASE
+            WHEN IS_TRANSIENT = 'YES' THEN 'TRANSIENT TABLE'
+            WHEN IS_DYNAMIC = 'YES' THEN 'DYNAMIC TABLE'
+            ELSE TABLE_TYPE
+        END as COMPUTED_TABLE_TYPE,
+        ROW_NUMBER() over (
+            partition by TABLE_NAME order by LAST_DDL desc
+        ) as ROW_NUMBER
+    from {account_usage}.tables
+    where TABLE_CATALOG = '{database}'
+    and TABLE_SCHEMA = '{schema}'
+    and {include_transient_tables}
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+    and {include_views}
+)
+where ROW_NUMBER = 1
+"""
+
 SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
     """
     SELECT
@@ -45,6 +84,7 @@ SNOWFLAKE_FETCH_TABLE_TAGS = textwrap.dedent(
     from {account_usage}.tag_references
     where OBJECT_DATABASE = '{database_name}'
       and OBJECT_SCHEMA = '{schema_name}'
+      and OBJECT_DELETED IS NULL
 """
 )
 
@@ -317,7 +357,7 @@ and table_catalog = '{database_name}'
 """
 )
 
-SNOWFLAKE_GET_STORED_PROCEDURES = textwrap.dedent(
+SNOWFLAKE_GET_STORED_PROCEDURES_AND_FUNCTIONS = textwrap.dedent(
     """
 SELECT
   PROCEDURE_NAME AS name,
@@ -331,11 +371,9 @@ FROM {account_usage}.PROCEDURES
 WHERE PROCEDURE_CATALOG = '{database_name}'
   AND PROCEDURE_SCHEMA = '{schema_name}'
   AND DELETED IS NULL
-    """
-)
 
-SNOWFLAKE_GET_FUNCTIONS = textwrap.dedent(
-    """
+UNION ALL
+
 SELECT
   FUNCTION_NAME AS name,
   FUNCTION_OWNER AS owner,
@@ -447,7 +485,7 @@ SNOWFLAKE_QUERY_LOG_QUERY = """
         ROWS_INSERTED,
         ROWS_UPDATED,
         ROWS_DELETED
-    FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"
+    FROM {account_usage_schema}."QUERY_HISTORY"
     WHERE
     start_time>= DATEADD('DAY', -1, CURRENT_TIMESTAMP)
     AND QUERY_TEXT ILIKE '%{tablename}%'
@@ -458,4 +496,18 @@ SNOWFLAKE_QUERY_LOG_QUERY = """
         '{merge}'
     )
     AND EXECUTION_STATUS = 'SUCCESS';
+"""
+
+SNOWFLAKE_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY = """
+    SELECT
+        name AS TABLE_NAME,
+        refresh_start_time AS START_TIME,
+        statistics:numInsertedRows::INT AS ROWS_INSERTED,
+        statistics:numDeletedRows::INT AS ROWS_DELETED
+    FROM
+        {account_usage_schema}.DYNAMIC_TABLE_REFRESH_HISTORY
+    WHERE
+        state = 'SUCCEEDED'
+        AND name ILIKE '%{tablename}%'
+        AND refresh_start_time >= DATEADD('DAY', -1, CURRENT_TIMESTAMP);
 """

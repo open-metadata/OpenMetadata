@@ -31,12 +31,14 @@ import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
 import { ReactComponent as FileIcon } from '../assets/svg/file-colored-new.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-term-colored-new.svg';
 import { ReactComponent as HealthIcon } from '../assets/svg/health-check.svg';
+import { ReactComponent as IconImport } from '../assets/svg/ic-import.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/lineage-colored.svg';
 import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored-new.svg';
 import { ReactComponent as MetadataIcon } from '../assets/svg/metadata-colored-new.svg';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric-colored-new.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ml-models-colored-new.svg';
+import { ReactComponent as NotificationAlertIcon } from '../assets/svg/notification-alert-colored-new.svg';
 import { ReactComponent as PersonasIcon } from '../assets/svg/persona-colored.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipelines-colored-new.svg';
 import { ReactComponent as PoliciesIcon } from '../assets/svg/policies-colored-new.svg';
@@ -50,7 +52,7 @@ import { ReactComponent as AccessControlIcon } from '../assets/svg/setting-acces
 import { ReactComponent as CustomProperties } from '../assets/svg/setting-custom-properties.svg';
 import { ReactComponent as DataObservability } from '../assets/svg/setting-data-observability.svg';
 import { ReactComponent as ManagementIcon } from '../assets/svg/setting-management.svg';
-import { ReactComponent as NotificationIcon } from '../assets/svg/setting-notification.svg';
+import { ReactComponent as NotificationsIcon } from '../assets/svg/setting-notification.svg';
 import { ReactComponent as ServiceIcon } from '../assets/svg/setting-services-omd.svg';
 import { ReactComponent as SSOIcon } from '../assets/svg/settings-sso.svg';
 import { ReactComponent as SpreadsheetIcon } from '../assets/svg/spreadsheet-colored-new.svg';
@@ -58,7 +60,6 @@ import { ReactComponent as StorageIcon } from '../assets/svg/storage-colored-new
 import { ReactComponent as StoredProcedureIcon } from '../assets/svg/stored-procedures-colored-new.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-colored-new.svg';
 import { ReactComponent as TagIcon } from '../assets/svg/tags-colored.svg';
-import { ReactComponent as IconImport } from '../assets/svg/ic-import.svg';
 import { ReactComponent as TeamsIcon } from '../assets/svg/teams-colored.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/theme-colored-new.svg';
 import { ReactComponent as LinkIcon } from '../assets/svg/url-link-colored.svg';
@@ -274,12 +275,24 @@ class GlobalSettingsClassBase {
       {
         category: t('label.notification-plural'),
         key: GlobalSettingsMenuCategory.NOTIFICATIONS,
-        icon: NotificationIcon,
+        icon: NotificationsIcon,
         description: t('message.notification-description'),
         isProtected: userPermissions.hasViewPermissions(
           ResourceEntity.EVENT_SUBSCRIPTION,
           permissions
         ),
+        items: [
+          {
+            category: t('label.alert-plural'),
+            key: `${GlobalSettingsMenuCategory.NOTIFICATIONS}.${GlobalSettingOptions.ALERTS}`,
+            icon: NotificationAlertIcon,
+            description: t('message.notification-description'),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.EVENT_SUBSCRIPTION,
+              permissions
+            ),
+          },
+        ],
       },
       {
         category: t('label.team-user-management'),
@@ -355,6 +368,16 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.PERMISSION_DEBUGGER}`,
             icon: AccessControlIcon,
           },
+          {
+            label: t('label.audit-log-plural'),
+            description: t('message.page-sub-header-for-audit-logs'),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.AUDIT_LOG,
+              permissions
+            ),
+            key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.AUDIT_LOGS}`,
+            icon: ManagementIcon,
+          },
         ],
       },
       {
@@ -367,7 +390,9 @@ class GlobalSettingsClassBase {
         items: [
           {
             label: t('label.theme'),
-            description: t('message.appearance-configuration-message'),
+            description: t('message.appearance-configuration-message', {
+              brandName: brandClassBase.getPageTitle(),
+            }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APPEARANCE}`,
             icon: AppearanceIcon,
@@ -613,7 +638,9 @@ class GlobalSettingsClassBase {
           },
           {
             label: t('label.open-metadata-url'),
-            description: t('message.om-url-configuration-message'),
+            description: t('message.om-url-configuration-message', {
+              brandName: brandClassBase.getPageTitle(),
+            }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.OM_URL_CONFIG}`,
             icon: LinkIcon,
@@ -693,15 +720,6 @@ class GlobalSettingsClassBase {
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATABASE_SCHEMA}`,
-            icon: SchemaIcon,
-          },
-          {
-            label: t('label.directory'),
-            description: t('message.define-custom-property-for-entity', {
-              entity: t('label.directory'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DIRECTORIES}`,
             icon: SchemaIcon,
           },
           {

@@ -44,10 +44,12 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import ServiceInsightsTab from '../../components/ServiceInsights/ServiceInsightsTab';
 import { WorkflowStatesData } from '../../components/ServiceInsights/ServiceInsightsTab.interface';
+import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import {
   INITIAL_PAGING_VALUE,
+  INITIAL_TABLE_FILTERS,
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
@@ -84,6 +86,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
+import { useTableFilters } from '../../hooks/useTableFilters';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import { getApplicationList } from '../../rest/applicationAPI';
@@ -127,6 +130,11 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../utils/EntityUtils';
+import {
+  EXTENSION_POINTS,
+  PluginEntityDetailsContext,
+  TabContribution,
+} from '../../utils/ExtensionPointTypes';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
@@ -157,6 +165,7 @@ import ServiceMainTabContent from './ServiceMainTabContent';
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  const { extensionRegistry } = useApplicationsProvider();
   const airflowInformation = useAirflowStatus();
   const { isAirflowAvailable } = useMemo(
     () => airflowInformation,
@@ -264,7 +273,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [ingestionPipelines, setIngestionPipelines] = useState<
     IngestionPipeline[]
   >([]);
-  const [showDeleted, setShowDeleted] = useState<boolean>(false);
   const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
   const [servicePermission, setServicePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -277,6 +285,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
   >([]);
   const [isCollateAgentLoading, setIsCollateAgentLoading] = useState(false);
   const [collateAgentsList, setCollateAgentsList] = useState<App[]>([]);
+  const { filters: tableFilters, setFilters } = useTableFilters(
+    INITIAL_TABLE_FILTERS
+  );
+  const { showDeletedTables: showDeleted } = tableFilters;
 
   const { isFollowing, followers = [] } = useMemo(
     () => ({
@@ -358,8 +370,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const handleShowDeleted = useCallback(
     (value: boolean) => {
-      setShowDeleted(value);
-      handlePageChange(INITIAL_PAGING_VALUE);
+      setFilters({ showDeletedTables: value });
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
     },
     [handlePageChange]
   );
@@ -460,7 +475,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
       try {
         setIsCollateAgentLoading(true);
         const { data, paging: pagingRes } = await getApplicationList({
-          agentType: AgentType.CollateAI,
+          agentType: [
+            AgentType.CollateAI,
+            AgentType.CollateAIQualityAgent,
+            AgentType.CollateAITierAgent,
+          ],
           ...paging,
         });
 
@@ -860,6 +879,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       }
     },
     [
+      tab,
       serviceCategory,
       fetchDatabases,
       fetchTopics,
@@ -892,7 +912,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       setServiceDetails(response);
       setConnectionDetails(response.connection?.config as DashboardConnection);
       // show deleted child entities if service is deleted
-      setShowDeleted(response.deleted ?? false);
+      handleShowDeleted(response.deleted ?? false);
     } catch (error) {
       // Error
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
@@ -1121,7 +1141,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           currentPage,
           {
             cursorType: cursorType,
-            cursorValue: ingestionPaging[cursorType]!,
+            cursorValue: ingestionPaging[cursorType],
           },
           ingestionPageSize
         );
@@ -1152,7 +1172,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           currentPage,
           {
             cursorType: cursorType,
-            cursorValue: collateAgentPaging[cursorType]!,
+            cursorValue: collateAgentPaging[cursorType],
           },
           collateAgentPageSize
         );
@@ -1180,18 +1200,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const entityType = useMemo(
     () => getEntityTypeFromServiceCategory(serviceCategory),
     [serviceCategory]
-  );
-
-  const pagingHandler = useCallback(
-    ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        getOtherDetails({
-          [cursorType]: paging[cursorType],
-        });
-      }
-      handlePageChange(currentPage);
-    },
-    [paging, getOtherDetails, handlePageChange]
   );
 
   const onFilesPageChange = useCallback(
@@ -1232,7 +1240,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     });
 
     // toggle showDeleted to show the deleted child entities
-    setShowDeleted((prev) => !prev);
+    handleShowDeleted(!showDeleted);
   }, []);
 
   const afterDeleteAction = useCallback(
@@ -1285,20 +1293,43 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ]
   );
 
-  const disableRunAgentsButton = useMemo(() => {
-    if (isWorkflowStatusLoading) {
-      return true;
-    }
+  const { disableRunAgentsButton, disableRunAgentsButtonMessage } =
+    useMemo(() => {
+      let disableRunAgentsButton = false;
+      let disableRunAgentsButtonMessage: string | undefined;
 
-    return isEmpty(workflowStatesData?.mainInstanceState.status)
-      ? false
-      : workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running;
-  }, [isWorkflowStatusLoading, workflowStatesData?.mainInstanceState.status]);
+      if (isWorkflowStatusLoading) {
+        disableRunAgentsButton = true;
+      }
+
+      if (
+        workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running
+      ) {
+        disableRunAgentsButton = true;
+        disableRunAgentsButtonMessage = t('message.auto-pilot-already-running');
+      }
+
+      return {
+        disableRunAgentsButton,
+        disableRunAgentsButtonMessage,
+      };
+    }, [isWorkflowStatusLoading, workflowStatesData?.mainInstanceState.status]);
 
   useEffect(() => {
-    handlePageChange(INITIAL_PAGING_VALUE);
-    getOtherDetails({ limit: pageSize });
-  }, [showDeleted, deleted, pageSize]);
+    const { cursorType, cursorValue } = pagingInfo?.pagingCursor ?? {};
+    if (cursorType && cursorValue) {
+      getOtherDetails({ limit: pageSize, [cursorType]: paging[cursorType] });
+    } else {
+      getOtherDetails({ limit: pageSize });
+    }
+  }, [showDeleted, deleted, pageSize, pagingInfo?.pagingCursor]);
+
+  useEffect(() => {
+    if (tab === getCountLabel(serviceCategory).toLowerCase()) {
+      handlePageChange(INITIAL_PAGING_VALUE);
+      setFilters({ showDeletedTables: false });
+    }
+  }, [tab]);
 
   useEffect(() => {
     // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active
@@ -1513,6 +1544,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
     const showIngestionTab = userInOwnerTeam || userOwnsService || isAdminUser;
 
+    // Create extension context for plugins
+    const extensionContext: PluginEntityDetailsContext = {
+      serviceCategory: serviceCategory as ServiceCategory,
+      serviceDetails,
+    };
+
     if (!isMetadataService && !isSecurityService) {
       tabs.push(
         {
@@ -1537,14 +1574,16 @@ const ServiceDetailsPage: FunctionComponent = () => {
             <ServiceMainTabContent
               currentPage={currentPage}
               data={data}
+              getServiceDetails={getOtherDetails}
               isServiceLoading={isServiceLoading}
               paging={paging}
-              pagingHandler={pagingHandler}
               pagingInfo={pagingInfo}
               saveUpdatedServiceData={saveUpdatedServiceData}
               serviceDetails={serviceDetails}
               serviceName={serviceCategory}
               servicePermission={servicePermission}
+              setFilters={setFilters}
+              setIsServiceLoading={setIsServiceLoading}
               showDeleted={showDeleted}
               onDataProductUpdate={handleDataProductUpdate}
               onDescriptionUpdate={handleDescriptionUpdate}
@@ -1571,38 +1610,44 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
     if (serviceCategory === ServiceCategory.DRIVE_SERVICES) {
       tabs.push(
-        ...[
-          {
-            name: t('label.file-plural'),
-            key: EntityTabs.FILES,
-            count: filesPaging.total,
-            children: (
-              <FilesTable
-                files={files}
-                handlePageChange={onFilesPageChange}
-                handleShowDeleted={handleShowDeleted}
-                isLoading={isFilesLoading}
-                paging={filesPagingInfo}
-                showDeleted={showDeleted}
-              />
-            ),
-          },
-          {
-            name: t('label.spreadsheet-plural'),
-            key: EntityTabs.SPREADSHEETS,
-            count: spreadsheetsPaging.total,
-            children: (
-              <SpreadsheetsTable
-                handlePageChange={onSpreadsheetsPageChange}
-                handleShowDeleted={handleShowDeleted}
-                isLoading={isSpreadsheetsLoading}
-                paging={spreadsheetsPagingInfo}
-                showDeleted={showDeleted}
-                spreadsheets={spreadsheets}
-              />
-            ),
-          },
-        ]
+        {
+          name: t('label.file-plural'),
+          key: EntityTabs.FILES,
+          count: filesPaging.total,
+          children: (
+            <FilesTable
+              fetchFiles={fetchFiles}
+              files={files}
+              handlePageChange={onFilesPageChange}
+              handleShowDeleted={handleShowDeleted}
+              isLoading={isFilesLoading}
+              paging={filesPagingInfo}
+              serviceFqn={decodedServiceFQN}
+              setFiles={setFiles}
+              setIsLoading={setIsFilesLoading}
+              showDeleted={showDeleted}
+            />
+          ),
+        },
+        {
+          name: t('label.spreadsheet-plural'),
+          key: EntityTabs.SPREADSHEETS,
+          count: spreadsheetsPaging.total,
+          children: (
+            <SpreadsheetsTable
+              fetchSpreadsheets={fetchSpreadsheets}
+              handlePageChange={onSpreadsheetsPageChange}
+              handleShowDeleted={handleShowDeleted}
+              isLoading={isSpreadsheetsLoading}
+              paging={spreadsheetsPagingInfo}
+              serviceFqn={decodedServiceFQN}
+              setIsLoading={setIsSpreadsheetsLoading}
+              setSpreadsheets={setSpreadsheets}
+              showDeleted={showDeleted}
+              spreadsheets={spreadsheets}
+            />
+          ),
+        }
       );
     }
 
@@ -1623,7 +1668,29 @@ const ServiceDetailsPage: FunctionComponent = () => {
       children: testConnectionTab,
     });
 
-    return tabs
+    // Get plugin-contributed tabs
+    const pluginTabs = extensionRegistry
+      .getContributions<TabContribution>(EXTENSION_POINTS.SERVICE_DETAILS_TABS)
+      .filter((tab) => {
+        // Apply condition if provided
+        if (tab.condition) {
+          return tab.condition(extensionContext);
+        }
+
+        return !tab.isHidden;
+      })
+      .map((tab) => ({
+        key: tab.key,
+        name: tab.label,
+        count: tab.count,
+        children: <tab.component {...extensionContext} />,
+        isHidden: false, // Already filtered above
+      }));
+
+    // Merge core tabs and plugin tabs
+    const allTabs = [...tabs, ...pluginTabs];
+
+    return allTabs
       .filter((tab) => !tab.isHidden)
       .map((tab) => ({
         label: (
@@ -1640,7 +1707,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [
     currentUser,
     currentPage,
-    pagingHandler,
     serviceDetails,
     isAdminUser,
     serviceCategory,
@@ -1677,6 +1743,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
     onSpreadsheetsPageChange,
     isFilesLoading,
     isSpreadsheetsLoading,
+    extensionRegistry,
+    decodedServiceFQN,
+    isOpenMetadataService,
   ]);
 
   const afterAutoPilotAppTrigger = useCallback(() => {
@@ -1706,9 +1775,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   return (
     <PageLayoutV1
       className="service-details-page"
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(serviceDetails),
-      })}>
+      pageTitle={getEntityName(serviceDetails)}>
       {isEmpty(serviceDetails) ? (
         <ErrorPlaceHolder className="m-0 h-min-80">
           {getEntityMissingError(serviceCategory as string, decodedServiceFQN)}
@@ -1723,6 +1790,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               afterTriggerAction={afterAutoPilotAppTrigger}
               dataAsset={serviceDetails}
               disableRunAgentsButton={disableRunAgentsButton}
+              disableRunAgentsButtonMessage={disableRunAgentsButtonMessage}
               entityType={entityType}
               extraDropdownContent={extraDropdownContent}
               isAutoPilotWorkflowStatusLoading={isWorkflowStatusLoading}

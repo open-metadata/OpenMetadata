@@ -87,6 +87,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -102,6 +105,7 @@ import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -116,6 +120,7 @@ import org.openmetadata.schema.auth.RevokePersonalTokenRequest;
 import org.openmetadata.schema.auth.RevokeTokenRequest;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType;
 import org.openmetadata.schema.entity.teams.Persona;
@@ -148,10 +153,13 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.teams.UserResource.UserList;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.EntityUtil;
@@ -2710,5 +2718,270 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(schema.getId())));
     assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
     assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+  }
+
+  @Test
+  void test_versionConsolidationWithDeletedDomains(TestInfo test) throws IOException {
+    // Test the fix for version consolidation issue when domain is deleted between user updates
+    // Reproduces the scenario: user created with domain -> domain deleted -> user updated within 10
+    // mins
+
+    DomainResourceTest domainTest = new DomainResourceTest();
+
+    // Step 1: Create a test domain
+    CreateDomain createDomain = domainTest.createRequest(getEntityName(test) + "_domain");
+    Domain testDomain = domainTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+    assertNotNull(testDomain);
+
+    // Step 2: Create a user with the test domain
+    CreateUser createUser =
+        createRequest(getEntityName(test)).withDomains(List.of(testDomain.getFullyQualifiedName()));
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+    assertEquals(1, user.getDomains().size());
+    assertEquals(testDomain.getId(), user.getDomains().get(0).getId());
+
+    // Step 3: Make an initial update to create version history (simulate displayName edit)
+    String originalName = user.getDisplayName();
+    String json = JsonUtils.pojoToJson(user);
+    user.setDisplayName(originalName + " Updated");
+    User updatedUser = patchEntity(user.getId(), json, user, ADMIN_AUTH_HEADERS);
+    assertEquals(originalName + " Updated", updatedUser.getDisplayName());
+
+    // Step 4: Delete the domain (simulates domain deletion while user still references it)
+    domainTest.deleteEntity(testDomain.getId(), ADMIN_AUTH_HEADERS);
+
+    // Step 5: Update user again within consolidation window (< 10 minutes)
+    // This should trigger version consolidation which will try to load previous version
+    // containing the deleted domain reference
+    String finalJson = JsonUtils.pojoToJson(updatedUser);
+    final String expectedDisplayName = originalName + " Updated Again";
+    updatedUser.setDisplayName(expectedDisplayName);
+    final User userToUpdate = updatedUser;
+
+    // Before our fix: This would throw EntityNotFoundException during consolidation
+    // After our fix: This should succeed by filtering out the deleted domain
+    assertDoesNotThrow(
+        () -> {
+          User finalUser =
+              patchEntity(userToUpdate.getId(), finalJson, userToUpdate, ADMIN_AUTH_HEADERS);
+          assertEquals(expectedDisplayName, finalUser.getDisplayName());
+
+          // Verify domains are cleaned up during consolidation
+          User userWithDomains = getEntity(finalUser.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+          // Domain should be automatically removed since it was deleted
+          assertTrue(
+              userWithDomains.getDomains() == null || userWithDomains.getDomains().isEmpty(),
+              "Deleted domain should be automatically removed during version consolidation");
+        });
+  }
+
+  @Test
+  void test_versionConsolidationWithDeletedTeams(TestInfo test) throws IOException {
+    // Test the fix for version consolidation issue when team is deleted between user updates
+    // Reproduces the scenario: user created with team -> team deleted -> user updated within 10
+    // mins
+
+    // Step 1: Create a test team
+    CreateTeam createTeam = TEAM_TEST.createRequest(getEntityName(test) + "_team");
+    Team testTeam = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+    assertNotNull(testTeam);
+
+    // Step 2: Create a user with the test team
+    CreateUser createUser = createRequest(getEntityName(test)).withTeams(List.of(testTeam.getId()));
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+    // Organization team plus our test team
+    assertTrue(user.getTeams().size() >= 1);
+    assertTrue(user.getTeams().stream().anyMatch(team -> team.getId().equals(testTeam.getId())));
+
+    // Step 3: Make an initial update to create version history (simulate displayName edit)
+    String originalName = user.getDisplayName();
+    String json = JsonUtils.pojoToJson(user);
+    user.setDisplayName(originalName + " Updated");
+    User updatedUser = patchEntity(user.getId(), json, user, ADMIN_AUTH_HEADERS);
+    assertEquals(originalName + " Updated", updatedUser.getDisplayName());
+
+    // Step 4: Delete the team (simulates team deletion while user still references it)
+    TEAM_TEST.deleteEntity(testTeam.getId(), ADMIN_AUTH_HEADERS);
+
+    // Step 5: Update user again within consolidation window (< 10 minutes)
+    // This should trigger version consolidation which will try to load previous version
+    // containing the deleted team reference
+    String finalJson = JsonUtils.pojoToJson(updatedUser);
+    final String expectedDisplayName = originalName + " Updated Again";
+    updatedUser.setDisplayName(expectedDisplayName);
+    final User userToUpdate = updatedUser;
+
+    // Before our fix: This would throw EntityNotFoundException during consolidation
+    // After our fix: This should succeed by filtering out the deleted team
+    assertDoesNotThrow(
+        () -> {
+          User finalUser =
+              patchEntity(userToUpdate.getId(), finalJson, userToUpdate, ADMIN_AUTH_HEADERS);
+          assertEquals(expectedDisplayName, finalUser.getDisplayName());
+
+          // Verify teams are cleaned up during consolidation
+          User userWithTeams = getEntity(finalUser.getId(), "teams", ADMIN_AUTH_HEADERS);
+          // Deleted team should be automatically removed
+          assertFalse(
+              userWithTeams.getTeams().stream()
+                  .anyMatch(team -> team.getId().equals(testTeam.getId())),
+              "Deleted team should be automatically removed during version consolidation");
+        });
+  }
+
+  @Test
+  void testUserContextCachePerformance() throws HttpResponseException {
+    // Create a test user with multiple roles and teams to properly test cache performance
+    CreateUser createUser =
+        createRequest("cache-perf-test-user", "", "", null)
+            .withRoles(List.of(DATA_STEWARD_ROLE.getId(), DATA_CONSUMER_ROLE.getId()))
+            .withTeams(List.of(TEAM1.getId(), TEAM21.getId()));
+    User testUser = createEntity(createUser, ADMIN_AUTH_HEADERS);
+    String userName = testUser.getName();
+
+    SubjectCache.invalidateAll();
+
+    LOG.info("Starting User Context Cache Performance Test");
+    LOG.info(
+        "Test user: {} with {} roles and {} teams",
+        userName,
+        testUser.getRoles().size(),
+        testUser.getTeams().size());
+
+    // Warm up JVM (exclude from measurements)
+    for (int i = 0; i < 3; i++) {
+      SubjectContext.getSubjectContext(userName);
+    }
+    SubjectCache.invalidateAll();
+
+    // Test 1: Cache Miss (First call - should be slower)
+    long cacheMissStartTime = System.currentTimeMillis();
+    SubjectContext context1 = SubjectContext.getSubjectContext(userName);
+    long cacheMissTime = System.currentTimeMillis() - cacheMissStartTime;
+    assertNotNull(context1);
+    assertEquals(userName, context1.user().getName());
+
+    LOG.info("Cache MISS time: {}ms (first call - loads from database)", cacheMissTime);
+
+    // Test 2: Cache Hit (Multiple subsequent calls - should be much faster)
+    List<Long> cacheHitTimes = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      long cacheHitStartTime = System.currentTimeMillis();
+      SubjectContext context = SubjectContext.getSubjectContext(userName);
+      long cacheHitTime = System.currentTimeMillis() - cacheHitStartTime;
+
+      cacheHitTimes.add(cacheHitTime);
+      assertNotNull(context);
+      assertEquals(userName, context.user().getName());
+    }
+
+    // Calculate cache hit performance statistics
+    double avgCacheHitTime =
+        cacheHitTimes.stream().mapToLong(Long::longValue).average().orElse(0.0);
+    long maxCacheHitTime = cacheHitTimes.stream().mapToLong(Long::longValue).max().orElse(0);
+    long minCacheHitTime = cacheHitTimes.stream().mapToLong(Long::longValue).min().orElse(0);
+
+    LOG.info(
+        "Cache HIT times - Avg: {:.2f}ms, Min: {}ms, Max: {}ms",
+        avgCacheHitTime,
+        minCacheHitTime,
+        maxCacheHitTime);
+
+    // Performance assertions
+    double performanceImprovement =
+        ((double) cacheMissTime - avgCacheHitTime) / cacheMissTime * 100;
+    LOG.info(
+        "Performance improvement: {:.1f}% ({}ms → {:.1f}ms)",
+        performanceImprovement, cacheMissTime, avgCacheHitTime);
+
+    // Assert significant performance improvement
+    assertTrue(
+        performanceImprovement > 30.0,
+        String.format(
+            "Expected >30%% improvement, got %.1f%% (%dms → %.1fms)",
+            performanceImprovement, cacheMissTime, avgCacheHitTime));
+    assertTrue(
+        avgCacheHitTime < 200,
+        String.format("Cache hits should be <200ms, got %.1fms", avgCacheHitTime));
+
+    // Test 3: Concurrent Access Performance
+    int threadCount = 5;
+    int callsPerThread = 10;
+    ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+
+    LOG.info(
+        "Testing concurrent access with {} threads, {} calls each", threadCount, callsPerThread);
+
+    long concurrentStartTime = System.currentTimeMillis();
+    List<CompletableFuture<List<Long>>> futures = new ArrayList<>();
+
+    for (int threadId = 0; threadId < threadCount; threadId++) {
+      CompletableFuture<List<Long>> future =
+          CompletableFuture.supplyAsync(
+              () -> {
+                List<Long> threadTimes = new ArrayList<>();
+                for (int call = 0; call < callsPerThread; call++) {
+                  long callStart = System.currentTimeMillis();
+                  SubjectContext context = SubjectContext.getSubjectContext(userName);
+                  long callTime = System.currentTimeMillis() - callStart;
+
+                  threadTimes.add(callTime);
+                  assertNotNull(context);
+                  assertEquals(userName, context.user().getName());
+                }
+                return threadTimes;
+              },
+              executor);
+
+      futures.add(future);
+    }
+
+    // Wait for all threads to complete
+    try {
+      CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get();
+    } catch (Exception e) {
+      throw new RuntimeException("Concurrent test failed", e);
+    }
+
+    long totalConcurrentTime = System.currentTimeMillis() - concurrentStartTime;
+    executor.shutdown();
+
+    // Collect all concurrent timing data
+    List<Long> allConcurrentTimes = new ArrayList<>();
+    for (CompletableFuture<List<Long>> future : futures) {
+      try {
+        allConcurrentTimes.addAll(future.get());
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to get concurrent results", e);
+      }
+    }
+
+    double avgConcurrentTime =
+        allConcurrentTimes.stream().mapToLong(Long::longValue).average().orElse(0.0);
+    int totalCalls = threadCount * callsPerThread;
+    double callsPerSecond = (double) totalCalls / (totalConcurrentTime / 1000.0);
+
+    LOG.info("Concurrent test results:");
+    LOG.info("  Total calls: {} across {} threads", totalCalls, threadCount);
+    LOG.info("  Total time: {}ms", totalConcurrentTime);
+    LOG.info("  Calls per second: {:.1f}", callsPerSecond);
+    LOG.info("  Avg concurrent call time: {:.2f}ms", avgConcurrentTime);
+
+    // Performance assertions for concurrent access
+    assertTrue(
+        avgConcurrentTime < 300,
+        String.format(
+            "Average concurrent call time should be <300ms, got %.2fms", avgConcurrentTime));
+    assertTrue(
+        callsPerSecond > 20,
+        String.format("Should handle >20 calls/sec, got %.1f", callsPerSecond));
+
+    // Test 4: Cache Statistics
+    String cacheStats = SubjectCache.getCacheStats();
+    LOG.info("Cache statistics: {}", cacheStats);
+
+    // Cleanup: Remove the test user
+    deleteEntity(testUser.getId(), ADMIN_AUTH_HEADERS);
+    LOG.info("Test completed and user cleaned up: {}", userName);
   }
 }

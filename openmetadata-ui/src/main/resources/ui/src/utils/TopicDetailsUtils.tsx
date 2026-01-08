@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import { get } from 'lodash';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import TopicSchemaFields from '../components/Topic/TopicSchema/TopicSchema';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -34,6 +36,7 @@ export const getTopicDetailsPageTabs = ({
   viewSampleDataPermission,
   activeTab,
   feedCount,
+  labelMap,
 }: TopicDetailPageTabProps) => {
   return [
     {
@@ -68,7 +71,9 @@ export const getTopicDetailsPageTabs = ({
         />
       ),
       key: EntityTabs.SAMPLE_DATA,
-      children: !viewSampleDataPermission ? (
+      children: viewSampleDataPermission ? (
+        sampleDataTab
+      ) : (
         <div className="border-default border-radius-sm p-y-lg">
           <ErrorPlaceHolder
             className="border-none"
@@ -78,8 +83,6 @@ export const getTopicDetailsPageTabs = ({
             type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
           />
         </div>
-      ) : (
-        sampleDataTab
       ),
     },
     {
@@ -93,6 +96,16 @@ export const getTopicDetailsPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: lineageTab,
+    },
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, i18n.t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
     },
     {
       label: (

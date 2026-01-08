@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { ColumnsType } from 'antd/lib/table';
-import { toLower } from 'lodash';
+import { get, toLower } from 'lodash';
 import { Link, NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../assets/svg/ic-import.svg';
@@ -19,12 +19,12 @@ import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/A
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
+import { ContractTab } from '../../components/DataContract/ContractTab/ContractTab';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { ExportTypes } from '../../constants/Export.constants';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -43,7 +43,7 @@ import { exportDatabaseDetailsInCSV } from '../../rest/databaseAPI';
 import { getEntityImportPath, getEntityName } from '../EntityUtils';
 import { t } from '../i18next/LocalUtil';
 import { getEntityDetailsPath } from '../RouterUtils';
-import { ownerTableObject } from '../TableColumn.util';
+import { descriptionTableObject, ownerTableObject } from '../TableColumn.util';
 import { getUsagePercentile } from '../TableUtils';
 import { DatabaseDetailPageTabProps } from './DatabaseClassBase';
 
@@ -96,19 +96,7 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
       </div>
     ),
   },
-  {
-    title: t('label.description'),
-    dataIndex: 'description',
-    key: 'description',
-    render: (text: string) =>
-      text?.trim() ? (
-        <RichTextEditorPreviewerNew markdown={text} />
-      ) : (
-        <span className="text-grey-muted">
-          {t('label.no-entity', { entity: t('label.description') })}
-        </span>
-      ),
-  },
+  ...descriptionTableObject<DatabaseSchema>(),
   ...ownerTableObject<DatabaseSchema>(),
   {
     title: t('label.usage'),
@@ -123,7 +111,7 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
 export const getDatabasePageBaseTabs = ({
   activeTab,
   database,
-  viewAllPermission,
+  viewCustomPropertiesPermission,
   schemaInstanceCount,
   feedCount,
   handleFeedCount,
@@ -171,7 +159,16 @@ export const getDatabasePageBaseTabs = ({
         />
       ),
     },
-
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
+    },
     {
       label: (
         <TabsLabel
@@ -187,7 +184,7 @@ export const getDatabasePageBaseTabs = ({
         <CustomPropertyTable<EntityType.DATABASE>
           entityType={EntityType.DATABASE}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
           isVersionView={false}
         />
       ),

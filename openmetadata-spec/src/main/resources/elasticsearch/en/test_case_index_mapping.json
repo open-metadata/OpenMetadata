@@ -8,8 +8,10 @@
           "max_gram": 20,
           "token_chars": [
             "letter",
-            "digit"
-          ]
+            "digit",
+            "custom"
+          ],
+          "custom_token_chars": "_"
         }
       },
       "normalizer": {
@@ -504,6 +506,14 @@
             "type": "keyword"
           }
         }
+      },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "version": {
         "type": "float"

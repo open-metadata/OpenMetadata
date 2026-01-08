@@ -40,7 +40,7 @@ import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.componen
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
-import { GlossaryStatusBadge } from '../../Glossary/GlossaryStatusBadge/GlossaryStatusBadge.component';
+import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
@@ -291,7 +291,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 )}
 
                 {hasGlossaryTermStatus && (
-                  <GlossaryStatusBadge
+                  <EntityStatusBadge
                     status={
                       (source as GlossaryTerm).entityStatus ??
                       EntityStatus.Approved
@@ -340,9 +340,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             <span>{`${t('label.matches')}:`}</span>
             {matches.map((data, i) => (
               <span className="m-l-xs" key={uniqueId()}>
-                {`${data.value} in ${startCase(data.key)}${
-                  i !== matches.length - 1 ? ',' : ''
-                }`}
+                {`${data.value} ${t('label.in-lowercase')} ${startCase(
+                  data.key
+                )}${i !== matches.length - 1 ? ',' : ''}`}
               </span>
             ))}
           </div>

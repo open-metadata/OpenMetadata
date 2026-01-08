@@ -19,7 +19,10 @@ import {
   exportDatabaseDetailsInCSV,
   exportDatabaseSchemaDetailsInCSV,
 } from '../../rest/databaseAPI';
-import { exportGlossaryInCSVFormat } from '../../rest/glossaryAPI';
+import {
+  exportGlossaryInCSVFormat,
+  exportGlossaryTermsInCSVFormat,
+} from '../../rest/glossaryAPI';
 import { exportDatabaseServiceDetailsInCSV } from '../../rest/serviceAPI';
 import { exportTableDetailsInCSV } from '../../rest/tableAPI';
 import { t } from '../i18next/LocalUtil';
@@ -40,6 +43,9 @@ export const getBulkEditCSVExportEntityApi = (entityType: EntityType) => {
       return exportDatabaseSchemaDetailsInCSV;
 
     case EntityType.GLOSSARY_TERM:
+      return exportGlossaryTermsInCSVFormat;
+
+    case EntityType.GLOSSARY:
       return exportGlossaryInCSVFormat;
 
     case EntityType.TABLE:
