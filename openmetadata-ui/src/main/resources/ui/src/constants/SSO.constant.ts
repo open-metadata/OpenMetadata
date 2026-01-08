@@ -480,7 +480,7 @@ export const COMMON_FIELD_TITLES = {
   jwtPrincipalClaimsMapping: {
     'ui:title': 'JWT Principal Claims Mapping',
     'ui:placeholder':
-      'Enter username:claim_name (e.g. username:preferred_username,email:email) and press ENTER.',
+      'Enter mappings (e.g. username:preferred_username, email:email). Both username and email are required.',
   },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
   enableAutoRedirect: { 'ui:title': 'Enable Auto Redirect' },
