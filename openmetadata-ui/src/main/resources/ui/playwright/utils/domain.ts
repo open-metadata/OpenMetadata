@@ -1168,3 +1168,83 @@ export const setupNoDomainRule = async (apiContext: APIRequestContext) => {
     cleanup,
   };
 };
+
+/**
+ * Creates a data product under a subdomain via direct API call.
+ * Use this when you need to create a data product that belongs to a subdomain
+ * rather than a parent domain.
+ */
+export const createDataProductForSubDomain = async (
+  apiContext: APIRequestContext,
+  subDomain: SubDomain
+) => {
+  const id = uuid();
+  const response = await apiContext.post('/api/v1/dataProducts', {
+    data: {
+      name: `PW%dataProduct.${id}`,
+      displayName: `PW SubDomain Data Product ${id}`,
+      description: 'playwright subdomain data product description',
+      domains: [subDomain.responseData.fullyQualifiedName],
+    },
+  });
+
+  if (!response.ok()) {
+    throw new Error(
+      `Failed to create data product for subdomain: ${response.status()} ${await response.text()}`
+    );
+  }
+
+  const responseData = await response.json();
+
+  return {
+    ...responseData,
+    async delete(deleteContext: APIRequestContext) {
+      await deleteContext.delete(
+        `/api/v1/dataProducts/name/${encodeURIComponent(
+          responseData.fullyQualifiedName
+        )}`
+      );
+    },
+  };
+};
+
+/**
+ * Verifies the data products count displayed in the Data Products tab.
+ * Clicks on the Data Products tab and checks if the count matches the expected value.
+ */
+export const verifyDataProductsCount = async (
+  page: Page,
+  expectedCount: number
+) => {
+  await page.getByTestId('data_products').click();
+  await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('networkidle');
+
+  const dataProductCountElement = page
+    .getByTestId('data_products')
+    .getByTestId('count');
+  const countText = await dataProductCountElement.textContent();
+  const displayedCount = parseInt(countText ?? '0', 10);
+
+  expect(displayedCount).toBe(expectedCount);
+};
+
+/**
+ * Navigates to a subdomain from the current domain/subdomain page.
+ * Clicks on the Sub Domains tab and then clicks on the specified subdomain.
+ */
+export const navigateToSubDomain = async (
+  page: Page,
+  subDomainData: { name: string }
+) => {
+  await page.getByTestId('subdomains').getByText('Sub Domains').click();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await Promise.all([
+    page.getByTestId(subDomainData.name).click(),
+    page.waitForResponse('/api/v1/domains/name/*'),
+  ]);
+};

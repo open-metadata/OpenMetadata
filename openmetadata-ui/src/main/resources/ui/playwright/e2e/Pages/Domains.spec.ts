@@ -52,9 +52,11 @@ import {
   addTagsAndGlossaryToDomain,
   checkAssetsCount,
   createDataProduct,
+  createDataProductForSubDomain,
   createDomain,
   createSubDomain,
   fillDomainForm,
+  navigateToSubDomain,
   removeAssetsFromDataProduct,
   selectDataProduct,
   selectDataProductFromTab,
@@ -64,6 +66,7 @@ import {
   setupDomainOwnershipTest,
   setupNoDomainRule,
   verifyDataProductAssetsAfterDelete,
+  verifyDataProductsCount,
   verifyDomain,
 } from '../../utils/domain';
 import {
@@ -845,6 +848,237 @@ test.describe('Domains', () => {
       await domain.delete(apiContext);
       await domainAssetCleanup();
       await subDomainAssetCleanup();
+      await afterAction();
+    }
+  });
+
+  test('Verify domain data products count includes subdomain data products', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const domainDataProduct = new DataProduct([domain]);
+
+    let subDomain!: SubDomain;
+    let subDomainDataProduct!: Awaited<
+      ReturnType<typeof createDataProductForSubDomain>
+    >;
+
+    try {
+      await test.step('Create domain, subdomain, and data products via API', async () => {
+        await domain.create(apiContext);
+        subDomain = new SubDomain(domain);
+        await subDomain.create(apiContext);
+
+        // Create data product in parent domain
+        await domainDataProduct.create(apiContext);
+
+        // Create data product in subdomain
+        subDomainDataProduct = await createDataProductForSubDomain(
+          apiContext,
+          subDomain
+        );
+      });
+
+      await test.step(
+        'Verify domain data products tab shows both domain and subdomain data products',
+        async () => {
+          await page.reload();
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+
+          // Click on Data Products tab
+          await page.getByTestId('data_products').click();
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          // Verify data products count is 2 (one from domain + one from subdomain)
+          const dataProductCountElement = page
+            .getByTestId('data_products')
+            .getByTestId('count');
+          const countText = await dataProductCountElement.textContent();
+          const displayedCount = parseInt(countText ?? '0', 10);
+
+          expect(displayedCount).toBe(2);
+
+          // Verify both data product cards are visible
+          await expect(
+            page.getByText(domainDataProduct.data.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomainDataProduct.displayName).first()
+          ).toBeVisible();
+        }
+      );
+
+      await test.step(
+        'Verify subdomain data products tab shows only its own data products',
+        async () => {
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+
+          // Navigate to subdomain
+          await page.getByTestId('subdomains').getByText('Sub Domains').click();
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          await Promise.all([
+            page.getByTestId(subDomain.data.name).click(),
+            page.waitForResponse('/api/v1/domains/name/*'),
+          ]);
+
+          // Click on Data Products tab
+          await page.getByTestId('data_products').click();
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          // Verify data products count is 1 (only subdomain's own data product)
+          const dataProductCountElement = page
+            .getByTestId('data_products')
+            .getByTestId('count');
+          const countText = await dataProductCountElement.textContent();
+          const displayedCount = parseInt(countText ?? '0', 10);
+
+          expect(displayedCount).toBe(1);
+
+          // Verify only subdomain data product card is visible
+          await expect(
+            page.getByText(subDomainDataProduct.displayName).first()
+          ).toBeVisible();
+        }
+      );
+
+      await test.step(
+        'Delete subdomain and verify its data products are not visible in domain',
+        async () => {
+          // Delete subdomain (this should cascade delete its data product)
+          await subDomain.delete(apiContext);
+          // Mark as deleted to prevent double-delete in finally block
+          subDomainDataProduct = undefined as unknown as typeof subDomainDataProduct;
+          subDomain = undefined as unknown as typeof subDomain;
+
+          // Navigate to domain and verify
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+
+          // Click on Data Products tab
+          await page.getByTestId('data_products').click();
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          // Verify data products count is now 1 (only domain's own data product)
+          const dataProductCountElement = page
+            .getByTestId('data_products')
+            .getByTestId('count');
+          const countText = await dataProductCountElement.textContent();
+          const displayedCount = parseInt(countText ?? '0', 10);
+
+          expect(displayedCount).toBe(1);
+
+          // Verify only domain data product is visible
+          await expect(
+            page.getByText(domainDataProduct.data.displayName).first()
+          ).toBeVisible();
+        }
+      );
+
+      await test.step(
+        'Verify deeply nested subdomain data products are visible at each level',
+        async () => {
+          // Create nested structure: domain -> nestedSubDomain1 -> nestedSubDomain2 -> nestedSubDomain3
+          const nestedSubDomain1 = new SubDomain(domain);
+          await nestedSubDomain1.create(apiContext);
+
+          const nestedSubDomain2 = new SubDomain(nestedSubDomain1);
+          await nestedSubDomain2.create(apiContext);
+
+          const nestedSubDomain3 = new SubDomain(nestedSubDomain2);
+          await nestedSubDomain3.create(apiContext);
+
+          // Create data products at each subdomain level
+          const subDomain1DataProduct = await createDataProductForSubDomain(
+            apiContext,
+            nestedSubDomain1
+          );
+          const subDomain2DataProduct = await createDataProductForSubDomain(
+            apiContext,
+            nestedSubDomain2
+          );
+          const subDomain3DataProduct = await createDataProductForSubDomain(
+            apiContext,
+            nestedSubDomain3
+          );
+
+          // 1. Verify at domain level: should see 4 data products (domain's own + all nested)
+          await page.reload();
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+          await verifyDataProductsCount(page, 4);
+
+          // Verify all data products are visible at domain level
+          await expect(
+            page.getByText(domainDataProduct.data.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomain1DataProduct.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomain2DataProduct.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomain3DataProduct.displayName).first()
+          ).toBeVisible();
+
+          // 2. Navigate to nestedSubDomain1 and verify: should see 3 data products (its own + subdomain2's + subdomain3's)
+          await navigateToSubDomain(page, nestedSubDomain1.data);
+          await verifyDataProductsCount(page, 3);
+          await expect(
+            page.getByText(subDomain1DataProduct.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomain2DataProduct.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomain3DataProduct.displayName).first()
+          ).toBeVisible();
+
+          // 3. Navigate to nestedSubDomain2 and verify: should see 2 data products (its own + subdomain3's)
+          await navigateToSubDomain(page, nestedSubDomain2.data);
+          await verifyDataProductsCount(page, 2);
+          await expect(
+            page.getByText(subDomain2DataProduct.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomain3DataProduct.displayName).first()
+          ).toBeVisible();
+
+          // 4. Navigate to nestedSubDomain3 and verify: should see 1 data product (its own)
+          await navigateToSubDomain(page, nestedSubDomain3.data);
+          await verifyDataProductsCount(page, 1);
+          await expect(
+            page.getByText(subDomain3DataProduct.displayName).first()
+          ).toBeVisible();
+
+          // Cleanup nested structure (delete data products first, then subdomains from deepest level)
+          await subDomain3DataProduct.delete(apiContext);
+          await subDomain2DataProduct.delete(apiContext);
+          await subDomain1DataProduct.delete(apiContext);
+          await nestedSubDomain3.delete(apiContext);
+          await nestedSubDomain2.delete(apiContext);
+          await nestedSubDomain1.delete(apiContext);
+        }
+      );
+    } finally {
+      await subDomainDataProduct?.delete(apiContext);
+      await domainDataProduct.delete(apiContext);
+      await subDomain?.delete(apiContext);
+      await domain.delete(apiContext);
       await afterAction();
     }
   });

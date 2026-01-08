@@ -25,6 +25,7 @@ import { restoreDriveAsset } from '../../../rest/driveAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import FileDetails from './FileDetails';
 import { FileDetailsProps } from './FileDetails.interface';
 
@@ -93,14 +94,14 @@ jest.mock('../../Lineage/EntityLineageTab/EntityLineageTab', () => ({
   )),
 }));
 
-jest.mock('../../PageLayoutV1/PageLayoutV1', () =>
-  jest.fn(({ children, pageTitle }) => (
+jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn(({ children, pageTitle }) => (
     <div data-testid="page-layout">
       <h1>{pageTitle}</h1>
       {children}
     </div>
-  ))
-);
+  ));
+});
 
 jest.mock('../../../hoc/LimitWrapper', () =>
   jest.fn(({ children }) => <div>{children}</div>)
@@ -176,7 +177,7 @@ const mockFileDetails: File = {
     fieldsAdded: [],
     fieldsUpdated: [],
     fieldsDeleted: [],
-    previousVersion: 1.0,
+    previousVersion: 1,
   },
   service: {
     id: 'service-1',
@@ -761,17 +762,31 @@ describe('FileDetails', () => {
     it('should handle undefined ViewCustomFields permission', async () => {
       const permissionsWithUndefinedViewCustomFields = {
         ...ENTITY_PERMISSIONS,
+        ViewCustomFields: undefined,
       };
-      delete (permissionsWithUndefinedViewCustomFields as any).ViewCustomFields;
 
       renderFileDetails({
-        filePermissions: permissionsWithUndefinedViewCustomFields,
+        filePermissions:
+          permissionsWithUndefinedViewCustomFields as unknown as OperationPermission,
       });
 
       await waitFor(() => {
         expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
         expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
       });
+    });
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    renderFileDetails();
+
+    await waitFor(() => {
+      expect(PageLayoutV1).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: 'Test File',
+        }),
+        expect.anything()
+      );
     });
   });
 });
