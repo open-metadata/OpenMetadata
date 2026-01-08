@@ -275,8 +275,10 @@ const TestDefinitionList = () => {
         dataIndex: 'name',
         key: 'name',
         width: 250,
-        render: (_name: string, record: TestDefinition) => (
-          <Typography.Text>{getEntityName(record)}</Typography.Text>
+        render: (name: string, record: TestDefinition) => (
+          <Typography.Text data-testid={name}>
+            {getEntityName(record)}
+          </Typography.Text>
         ),
       },
       {
@@ -328,6 +330,7 @@ const TestDefinitionList = () => {
               }>
               <Switch
                 checked={enabled ?? true}
+                data-testid={`enable-switch-${record.name}`}
                 disabled={!hasEditPermission}
                 size="small"
                 onChange={(checked) => handleEnableToggle(record, checked)}
