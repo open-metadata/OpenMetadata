@@ -124,7 +124,7 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
 
   const handleReset = () => {
     setTreeData(getTreeDataForNavigationItems(undefined, plugins));
-    setHiddenKeys(getHiddenKeysFromNavigationItems());
+    setHiddenKeys(getHiddenKeysFromNavigationItems(undefined, plugins));
   };
 
   const handleRemoveToggle = (checked: boolean, key: string) => {

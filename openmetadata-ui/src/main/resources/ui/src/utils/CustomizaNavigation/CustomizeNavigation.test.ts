@@ -115,6 +115,89 @@ describe('CustomizeNavigation Utils', () => {
         },
       ]);
     });
+
+    it('should mark items as hidden when not found in navigation map', () => {
+      const limitedNavItems: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+        },
+      ];
+
+      const result = getTreeDataForNavigationItems(limitedNavItems);
+
+      expect((result[0] as { isHidden?: boolean }).isHidden).toBeUndefined();
+      expect((result[1] as { isHidden?: boolean }).isHidden).toBe(true);
+      expect(result[1].key).toBe('explore');
+    });
+
+    it('should handle parent items that are hidden', () => {
+      const hiddenParentItems: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home Custom',
+          isHidden: true,
+          pageId: 'home',
+          children: [
+            {
+              id: 'dashboard',
+              title: 'Dashboard Custom',
+              isHidden: false,
+              pageId: 'dashboard',
+            },
+          ],
+        },
+      ];
+
+      const result = getTreeDataForNavigationItems(hiddenParentItems);
+
+      expect(result[0].title).toBe('Home Custom');
+      expect(result[0].children?.[0].title).toBe('Dashboard Custom');
+    });
+
+    it('should use fallback values for children not in navigation map', () => {
+      const navItemsWithoutChild: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+        },
+      ];
+
+      const result = getTreeDataForNavigationItems(navItemsWithoutChild);
+
+      expect(result[0].children?.[0].title).toBe('Dashboard');
+      expect(result[0].children?.[0].key).toBe('dashboard');
+    });
+
+    it('should handle plugins with navigation items', () => {
+      const mockPlugins = [
+        {
+          name: 'test-plugin',
+          isInstalled: true,
+          getSidebarActions: jest.fn().mockReturnValue([
+            {
+              key: 'plugin-item',
+              title: 'Plugin Item',
+              icon: 'plugin-icon',
+              dataTestId: 'plugin-item',
+            },
+          ]),
+        },
+      ];
+
+      const result = getTreeDataForNavigationItems(
+        mockNavigationItems,
+        mockPlugins
+      );
+
+      expect(result).toHaveLength(3);
+      expect(result[2].key).toBe('plugin-item');
+      expect((result[2] as { isHidden?: boolean }).isHidden).toBe(true);
+    });
   });
 
   describe('getHiddenKeysFromNavigationItems', () => {
@@ -142,6 +225,105 @@ describe('CustomizeNavigation Utils', () => {
       const result = getHiddenKeysFromNavigationItems(items);
 
       expect(result).toEqual([]);
+    });
+
+    it('should return keys for items not in navigation map', () => {
+      const limitedNavItems: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+        },
+      ];
+
+      const result = getHiddenKeysFromNavigationItems(limitedNavItems);
+
+      expect(result).toContain('explore');
+    });
+
+    it('should return keys for parent items that are hidden', () => {
+      const hiddenParentItems: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: true,
+          pageId: 'home',
+          children: [
+            {
+              id: 'dashboard',
+              title: 'Dashboard',
+              isHidden: false,
+              pageId: 'dashboard',
+            },
+          ],
+        },
+        {
+          id: 'explore',
+          title: 'Explore',
+          isHidden: false,
+          pageId: 'explore',
+        },
+      ];
+
+      const result = getHiddenKeysFromNavigationItems(hiddenParentItems);
+
+      expect(result).toContain('home');
+    });
+
+    it('should handle multiple hidden children', () => {
+      const multipleHiddenChildren: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+          children: [
+            {
+              id: 'dashboard',
+              title: 'Dashboard',
+              isHidden: true,
+              pageId: 'dashboard',
+            },
+          ],
+        },
+        {
+          id: 'explore',
+          title: 'Explore',
+          isHidden: true,
+          pageId: 'explore',
+        },
+      ];
+
+      const result = getHiddenKeysFromNavigationItems(multipleHiddenChildren);
+
+      expect(result).toContain('dashboard');
+      expect(result).toContain('explore');
+    });
+
+    it('should handle plugins with hidden items', () => {
+      const mockPlugins = [
+        {
+          name: 'test-plugin',
+          isInstalled: true,
+          getSidebarActions: jest.fn().mockReturnValue([
+            {
+              key: 'plugin-item',
+              title: 'Plugin Item',
+              icon: 'plugin-icon',
+              dataTestId: 'plugin-item',
+            },
+          ]),
+        },
+      ];
+
+      const result = getHiddenKeysFromNavigationItems(
+        mockNavigationItems,
+        mockPlugins
+      );
+
+      expect(result).toContain('dashboard');
+      expect(result).toContain('plugin-item');
     });
   });
 

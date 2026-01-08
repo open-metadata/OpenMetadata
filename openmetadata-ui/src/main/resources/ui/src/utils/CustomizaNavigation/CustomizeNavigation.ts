@@ -69,7 +69,7 @@ export const mergePluginSidebarItems = (
 const extractPluginSidebarItems = (
   plugins: AppPlugin[]
 ): Array<LeftSidebarItem & { index?: number }> => {
-  return plugins?.flatMap((plugin) => plugin.getSidebarActions?.() ?? []) ?? [];
+  return plugins.flatMap((plugin) => plugin.getSidebarActions?.() ?? []);
 };
 
 export const getSidebarItemsWithPlugins = (

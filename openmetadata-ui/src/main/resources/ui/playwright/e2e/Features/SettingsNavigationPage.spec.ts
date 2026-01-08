@@ -247,4 +247,179 @@ test.describe('Settings Navigation Page Tests', () => {
     expect(await domainSwitch.isChecked()).toBeTruthy();
     await expect(page.getByTestId('save-button')).toBeEnabled();
   });
+
+  test('should support drag and drop reordering of navigation items', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await setUserDefaultPersona(page, persona.responseData.displayName);
+    await navigateToPersonaNavigation(page);
+
+    const treeItems = page.locator('.ant-tree-node-content-wrapper');
+    const firstItem = treeItems.first();
+    const secondItem = treeItems.nth(1);
+
+    const firstItemText = await firstItem.textContent();
+
+    const firstItemBox = await firstItem.boundingBox();
+    const secondItemBox = await secondItem.boundingBox();
+
+    if (firstItemBox && secondItemBox) {
+      await page.mouse.move(
+        firstItemBox.x + firstItemBox.width / 2,
+        firstItemBox.y + firstItemBox.height / 2
+      );
+      await page.mouse.down();
+      await page.mouse.move(
+        secondItemBox.x + secondItemBox.width / 2,
+        secondItemBox.y + secondItemBox.height / 2 + 10
+      );
+      await page.mouse.up();
+
+      await page.waitForTimeout(500);
+
+      await expect(page.getByTestId('save-button')).toBeEnabled();
+
+      const newFirstItemText = await treeItems.first().textContent();
+
+      expect(newFirstItemText).not.toBe(firstItemText);
+    }
+  });
+
+  test('should handle multiple items being hidden at once', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await setUserDefaultPersona(page, persona.responseData.displayName);
+    await navigateToPersonaNavigation(page);
+
+    const exploreSwitchLocator = page
+      .locator('.ant-tree-title:has-text("Explore")')
+      .locator('.ant-switch');
+    const insightsSwitchLocator = page
+      .locator('.ant-tree-title:has-text("Insights")')
+      .locator('.ant-switch');
+
+    const exploreSwitch = exploreSwitchLocator.first();
+    const insightsSwitch = insightsSwitchLocator.first();
+
+    await exploreSwitch.click();
+    await insightsSwitch.click();
+
+    await expect(page.getByTestId('save-button')).toBeEnabled();
+
+    const saveResponse = page.waitForResponse('api/v1/docStore');
+    await page.getByTestId('save-button').click();
+    await saveResponse;
+
+    await redirectToHomePage(page);
+
+    await expect(page.getByTestId('app-bar-item-explore')).not.toBeVisible();
+    await expect(page.getByTestId('app-bar-item-insights')).not.toBeVisible();
+
+    await navigateToPersonaNavigation(page);
+    await exploreSwitch.click();
+    await insightsSwitch.click();
+
+    const restoreResponse = page.waitForResponse('api/v1/docStore/*');
+    await page.getByTestId('save-button').click();
+    await restoreResponse;
+  });
+
+  test('should expand and collapse tree nodes correctly', async ({ page }) => {
+    await redirectToHomePage(page);
+    await setUserDefaultPersona(page, persona.responseData.displayName);
+    await navigateToPersonaNavigation(page);
+
+    const observabilityNode = page
+      .locator('.ant-tree-title:has-text("Observability")')
+      .first();
+    const switcher = observabilityNode
+      .locator('..')
+      .locator('.ant-tree-switcher')
+      .first();
+
+    await switcher.click();
+
+    await page.waitForTimeout(300);
+
+    const childNode = page.locator(
+      '[data-testid="page-layout-v1"] .ant-tree-child-tree'
+    );
+
+    const isChildVisible = await childNode.isVisible();
+
+    await switcher.click();
+
+    await page.waitForTimeout(300);
+
+    const isChildVisibleAfter = await childNode.isVisible();
+
+    expect(isChildVisible).not.toBe(isChildVisibleAfter);
+  });
+
+  test('should preserve navigation state when switching between tabs', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await setUserDefaultPersona(page, persona.responseData.displayName);
+    await navigateToPersonaNavigation(page);
+
+    const exploreSwitch = page
+      .locator('.ant-tree-title:has-text("Explore")')
+      .locator('.ant-switch')
+      .first();
+
+    await exploreSwitch.click();
+
+    await page.getByTestId('landing-page').click();
+    await page.waitForLoadState('networkidle');
+
+    await page.getByTestId('navigation').click();
+    await page.waitForLoadState('networkidle');
+
+    const switchStateAfterReturn = await exploreSwitch.isChecked();
+
+    expect(switchStateAfterReturn).toBeFalsy();
+  });
+
+  test('should handle hiding nested child items correctly', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await setUserDefaultPersona(page, persona.responseData.displayName);
+    await navigateToPersonaNavigation(page);
+
+    const observabilityNode = page
+      .locator('.ant-tree-title:has-text("Observability")')
+      .first();
+    const switcher = observabilityNode
+      .locator('..')
+      .locator('.ant-tree-switcher')
+      .first();
+
+    await switcher.click();
+    await page.waitForTimeout(300);
+
+    const childSwitch = page
+      .locator('.ant-tree-child-tree')
+      .locator('.ant-switch')
+      .first();
+
+    if (await childSwitch.isVisible()) {
+      await childSwitch.click();
+
+      await expect(page.getByTestId('save-button')).toBeEnabled();
+
+      const saveResponse = page.waitForResponse('api/v1/docStore');
+      await page.getByTestId('save-button').click();
+      await saveResponse;
+
+      await childSwitch.click();
+
+      const restoreResponse = page.waitForResponse('api/v1/docStore/*');
+      await page.getByTestId('save-button').click();
+      await restoreResponse;
+    }
+  });
 });
