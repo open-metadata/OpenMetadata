@@ -24,7 +24,7 @@ import { deleteTestCase } from '../../../utils/testCases';
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Column Level Data Quality Test Cases', { tag: DOMAIN_TAGS.OBSERVABILITY }, () => {
+test.describe('Column Level Data Quality Test Cases', { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` }, () => {
 
   const table = new TableClass();
   test.beforeAll(async ({ browser }) => {
