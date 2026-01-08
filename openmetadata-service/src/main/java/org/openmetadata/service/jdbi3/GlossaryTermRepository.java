@@ -1352,7 +1352,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
      * This ensures that during change consolidation, we use the correct original FQN.
      */
     public void updateNameAndParent(GlossaryTerm updated) {
-      // Use getOriginalFqn() which was captured at EntityUpdater construction time.
+      UUID oldParentId = getId(original.getParent());
+      UUID newParentId = getId(updated.getParent());
+      final boolean parentChanged = !Objects.equals(oldParentId, newParentId);
+
+      UUID oldGlossaryId = getId(original.getGlossary());
+      UUID newGlossaryId = getId(updated.getGlossary());
+      final boolean glossaryChanged = !Objects.equals(oldGlossaryId, newGlossaryId);
+
       String oldFqn = getOriginalFqn();
       setFullyQualifiedName(updated);
       String newFqn = updated.getFullyQualifiedName();
@@ -1361,7 +1368,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         return;
       }
 
-      // Only process the rename once per update operation.
       if (renameProcessed) {
         return;
       }
@@ -1372,13 +1378,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
       }
 
-      // Check if this is a name change (vs just a parent change)
-      String oldName = FullyQualifiedName.unquoteName(oldFqn);
-      String newName = updated.getName();
-      // Extract just the name part from the FQN for comparison
       String[] oldParts = FullyQualifiedName.split(oldFqn);
-      String oldTermName = oldParts.length > 0 ? oldParts[oldParts.length - 1] : oldName;
-      boolean nameChanged = !oldTermName.equals(newName);
+      String oldTermName = oldParts.length > 0 ? oldParts[oldParts.length - 1] : oldFqn;
+      boolean nameChanged = !oldTermName.equals(updated.getName());
 
       if (nameChanged) {
         checkDuplicateTermsForUpdate(original, updated);
@@ -1388,12 +1390,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
       daoCollection.tagUsageDAO().rename(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
 
-      if (nameChanged) {
-        recordChange("name", oldTermName, newName);
-      }
-      invalidateTerm(updated.getId());
-
-      // update tags
       daoCollection.tagUsageDAO().deleteTagsByTarget(oldFqn);
       List<TagLabel> updatedTags = updated.getTags();
       updatedTags.sort(compareTagLabel);
@@ -1403,6 +1399,29 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           .renameByTargetFQNHash(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
 
       updateEntityLinks(oldFqn, newFqn, updated);
+
+      if (nameChanged) {
+        recordChange("name", oldTermName, updated.getName());
+      }
+
+      if (glossaryChanged) {
+        updateGlossaryRelationship(original, updated);
+        updateChildrenGlossaryRelationships(original, updated);
+        recordChange(
+            "glossary", original.getGlossary(), updated.getGlossary(), true, entityReferenceMatch);
+      }
+
+      if (parentChanged) {
+        updateGlossaryRelationship(original, updated);
+        updateParentRelationship(original, updated);
+        recordChange(
+            "parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
+      }
+
+      if (parentChanged || glossaryChanged || nameChanged) {
+        invalidateTerm(updated.getId());
+        updateAssetIndexes(oldFqn, newFqn);
+      }
     }
 
     /**
