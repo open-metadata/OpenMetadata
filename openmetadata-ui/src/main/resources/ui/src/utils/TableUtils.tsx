@@ -1705,6 +1705,100 @@ export const buildColumnBreadcrumbPath = <
 };
 
 /**
+ * Helper functions to extract columns/fields from specific entity types
+ */
+const extractTableColumns = <T extends Omit<EntityReference, 'type'>>(
+  data: T
+): Column[] => {
+  const table = data as Partial<Table>;
+
+  return (table.columns ?? []).map(
+    (column) => ({ ...column, tags: column.tags ?? [] } as Column)
+  );
+};
+
+const extractApiEndpointFields = <T extends Omit<EntityReference, 'type'>>(
+  data: T
+): Field[] => {
+  const apiEndpoint = data as Partial<APIEndpoint>;
+
+  return [
+    ...(apiEndpoint.requestSchema?.schemaFields ?? []).map(
+      (field) => ({ ...field, tags: field.tags ?? [] } as Field)
+    ),
+    ...(apiEndpoint.responseSchema?.schemaFields ?? []).map(
+      (field) => ({ ...field, tags: field.tags ?? [] } as Field)
+    ),
+  ];
+};
+
+const extractDataModelColumns = <T extends Omit<EntityReference, 'type'>>(
+  data: T
+): Column[] => {
+  const dataModel = data as Partial<DashboardDataModel>;
+
+  return (dataModel.columns ?? []).map(
+    (column) =>
+      ({
+        ...column,
+        tags: column.tags ?? [],
+      } as Column)
+  );
+};
+
+const extractMlModelFeatures = <T extends Omit<EntityReference, 'type'>>(
+  data: T
+): MlFeature[] => {
+  const mlModel = data as Partial<Mlmodel>;
+
+  return mlModel.mlFeatures ?? [];
+};
+
+const extractPipelineTasks = <T extends Omit<EntityReference, 'type'>>(
+  data: T
+): Task[] => {
+  const pipeline = data as Partial<Pipeline>;
+
+  return (pipeline.tasks ?? []).map(
+    (task) => ({ ...task, tags: task.tags ?? [] } as Task)
+  );
+};
+
+const extractTopicFields = <T extends Omit<EntityReference, 'type'>>(
+  data: T
+): Field[] => {
+  const topic = data as Partial<Topic>;
+
+  return (topic.messageSchema?.schemaFields ?? []).map(
+    (field) => field as Field
+  );
+};
+
+const extractContainerColumns = <T extends Omit<EntityReference, 'type'>>(
+  data: T
+): Column[] => {
+  const container = data as Partial<Container>;
+
+  return (container.dataModel?.columns ?? []).map(
+    (column) =>
+      ({
+        ...column,
+        tags: column.tags ?? [],
+      } as Column)
+  );
+};
+
+const extractSearchIndexFields = <T extends Omit<EntityReference, 'type'>>(
+  data: T
+): SearchIndexField[] => {
+  const searchIndex = data as Partial<SearchIndexEntity>;
+
+  return (searchIndex.fields ?? []).map(
+    (field) => ({ ...field, tags: field.tags ?? [] } as SearchIndexField)
+  );
+};
+
+/**
  * Extract columns/fields from entity data based on entity type
  * @param data Entity data
  * @param entityType Type of entity
@@ -1715,113 +1809,23 @@ export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
   entityType: EntityType
 ): Array<Column | SearchIndexField | Field | Task | MlFeature> => {
   switch (entityType) {
-    case EntityType.TABLE: {
-      if ('columns' in data) {
-        const table = data as Partial<Table>;
-
-        return (table.columns ?? []).map(
-          (column) => ({ ...column, tags: column.tags ?? [] } as Column)
-        );
-      }
-
-      break;
-    }
-
-    case EntityType.API_ENDPOINT: {
-      if ('requestSchema' in data || 'responseSchema' in data) {
-        const apiEndpoint = data as Partial<APIEndpoint>;
-
-        return [
-          ...(apiEndpoint.requestSchema?.schemaFields ?? []).map(
-            (field) => ({ ...field, tags: field.tags ?? [] } as Field)
-          ),
-          ...(apiEndpoint.responseSchema?.schemaFields ?? []).map(
-            (field) => ({ ...field, tags: field.tags ?? [] } as Field)
-          ),
-        ];
-      }
-
-      break;
-    }
-
-    case EntityType.DASHBOARD_DATA_MODEL: {
-      if ('columns' in data) {
-        const dataModel = data as Partial<DashboardDataModel>;
-
-        return (dataModel.columns ?? []).map(
-          (column) =>
-            ({
-              ...column,
-              tags: column.tags ?? [],
-            } as Column)
-        );
-      }
-
-      break;
-    }
-
-    case EntityType.MLMODEL: {
-      if ('mlFeatures' in data) {
-        const mlModel = data as Partial<Mlmodel>;
-
-        return (mlModel.mlFeatures ?? []) as MlFeature[];
-      }
-
-      break;
-    }
-
-    case EntityType.PIPELINE: {
-      if ('tasks' in data) {
-        const pipeline = data as Partial<Pipeline>;
-
-        return (pipeline.tasks ?? []).map(
-          (task) => ({ ...task, tags: task.tags ?? [] } as Task)
-        );
-      }
-
-      break;
-    }
-
-    case EntityType.TOPIC: {
-      if ('messageSchema' in data) {
-        const topic = data as Partial<Topic>;
-
-        return (topic.messageSchema?.schemaFields ?? []).map(
-          (field) => field as Field
-        );
-      }
-
-      break;
-    }
-
-    case EntityType.CONTAINER: {
-      if ('dataModel' in data) {
-        const container = data as Partial<Container>;
-
-        return (container.dataModel?.columns ?? []).map(
-          (column) =>
-            ({
-              ...column,
-              tags: column.tags ?? [],
-            } as Column)
-        );
-      }
-
-      break;
-    }
-
-    case EntityType.SEARCH_INDEX: {
-      if ('fields' in data) {
-        const searchIndex = data as Partial<SearchIndexEntity>;
-
-        return (searchIndex.fields ?? []).map(
-          (field) => ({ ...field, tags: field.tags ?? [] } as SearchIndexField)
-        );
-      }
-
-      break;
-    }
+    case EntityType.TABLE:
+      return extractTableColumns(data);
+    case EntityType.API_ENDPOINT:
+      return extractApiEndpointFields(data);
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return extractDataModelColumns(data);
+    case EntityType.MLMODEL:
+      return extractMlModelFeatures(data);
+    case EntityType.PIPELINE:
+      return extractPipelineTasks(data);
+    case EntityType.TOPIC:
+      return extractTopicFields(data);
+    case EntityType.CONTAINER:
+      return extractContainerColumns(data);
+    case EntityType.SEARCH_INDEX:
+      return extractSearchIndexFields(data);
+    default:
+      return [];
   }
-
-  return [];
 };

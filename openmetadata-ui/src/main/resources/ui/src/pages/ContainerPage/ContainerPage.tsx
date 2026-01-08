@@ -14,7 +14,6 @@ import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy, toString } from 'lodash';
-import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -44,8 +43,7 @@ import {
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
-import { Column, Container } from '../../generated/entity/data/container';
-import { Column as TableColumn } from '../../generated/entity/data/table';
+import { Container } from '../../generated/entity/data/container';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
@@ -69,10 +67,6 @@ import {
   getFeedCounts,
 } from '../../utils/CommonUtils';
 import containerDetailsClassBase from '../../utils/ContainerDetailsClassBase';
-import {
-  updateContainerColumnDescription,
-  updateContainerColumnTags,
-} from '../../utils/ContainerDetailUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
