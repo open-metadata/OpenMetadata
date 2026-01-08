@@ -143,15 +143,15 @@ export const navigateToCustomizeLandingPage = async (
 
   await getPersonas;
 
-  const getCustomPageDataResponse = page.waitForResponse(
-    `/api/v1/docStore/name/persona.${encodeURIComponent(personaName)}`
-  );
-
   // Need to find persona card and click as the list might get paginated
   await navigateToPersonaWithPagination(page, personaName, true);
 
   // Navigate to the customize landing page
   await page.getByRole('tab', { name: 'Customize UI' }).click();
+
+  const getCustomPageDataResponse = page.waitForResponse(
+    `/api/v1/docStore/name/persona.${encodeURIComponent(personaName)}`
+  );
 
   await page.getByTestId('LandingPage').click();
   await getCustomPageDataResponse;
@@ -252,8 +252,13 @@ export const removeAndVerifyWidget = async (
     widgetKey,
   });
 
+  const saveLayout = page.waitForResponse((response) =>
+    response.url().includes('/api/v1/docStore')
+  );
+
   await page.locator('[data-testid="save-button"]').click();
-  await page.waitForLoadState('networkidle');
+
+  await saveLayout;
 
   await redirectToHomePage(page);
 
@@ -285,8 +290,11 @@ export const addAndVerifyWidget = async (
     page.getByTestId('page-layout-v1').getByTestId(widgetKey)
   ).toBeVisible();
 
+  const saveLayout = page.waitForResponse((response) =>
+    response.url().includes('/api/v1/docStore')
+  );
   await page.locator('[data-testid="save-button"]').click();
-  await page.waitForLoadState('networkidle');
+  await saveLayout;
 
   await redirectToHomePage(page);
 
