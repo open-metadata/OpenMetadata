@@ -13,6 +13,7 @@
 import { LoginCallback } from '@okta/okta-react';
 import { lazy, useMemo } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
 import { ROUTES } from '../../constants/constants';
 import { AuthProvider } from '../../generated/configuration/authenticationConfiguration';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -41,7 +42,12 @@ const BasicSignupPage = withSuspenseFallback(
 
 export const UnAuthenticatedAppRouter = () => {
   const location = useCustomLocation();
-  const { authConfig, isSigningUp } = useApplicationStore();
+  const { authConfig, isSigningUp } = useApplicationStore(
+    useShallow((state) => ({
+      authConfig: state.authConfig,
+      isSigningUp: state.isSigningUp,
+    }))
+  );
 
   const isBasicAuthProvider =
     authConfig &&

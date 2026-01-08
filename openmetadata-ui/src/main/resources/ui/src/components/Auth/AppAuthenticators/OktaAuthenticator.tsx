@@ -42,10 +42,21 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     const renewToken = async () => {
-      const renewToken = await oktaAuth.token.renewTokens();
-      oktaAuth.tokenManager.setTokens(renewToken);
-      const newToken =
-        renewToken?.idToken?.idToken ?? oktaAuth.getIdToken() ?? '';
+      const existingIdToken = oktaAuth.tokenManager.get('idToken');
+      const existingAccessToken = oktaAuth.tokenManager.get('accessToken');
+
+      // Add fallback if renewToken fails
+      if (!existingIdToken && !existingAccessToken) {
+        await oktaAuth.signInWithRedirect();
+
+        const newToken = oktaAuth.getIdToken() ?? '';
+
+        return newToken;
+      }
+
+      const tokens = await oktaAuth.token.renewTokens();
+      oktaAuth.tokenManager.setTokens(tokens);
+      const newToken = tokens?.idToken?.idToken ?? oktaAuth.getIdToken() ?? '';
       await setOidcToken(newToken);
 
       return newToken;

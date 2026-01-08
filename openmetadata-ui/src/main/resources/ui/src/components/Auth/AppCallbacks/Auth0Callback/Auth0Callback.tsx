@@ -12,7 +12,7 @@
  */
 
 import { useAuth0 } from '@auth0/auth0-react';
-import { VFC } from 'react';
+import { useEffect, useState, VFC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { setOidcToken } from '../../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../../AuthProviders/AuthProvider';
@@ -22,40 +22,43 @@ const Auth0Callback: VFC = () => {
   const { t } = useTranslation();
   const { isAuthenticated, user, getIdTokenClaims, error } = useAuth0();
   const { handleSuccessfulLogin } = useAuthProvider();
-  if (isAuthenticated) {
-    getIdTokenClaims()
-      .then((token) => {
-        setOidcToken(token?.__raw || '').then(() => {
-          const oidcUser: OidcUser = {
-            id_token: token?.__raw || '',
-            scope: '',
-            profile: {
-              email: user?.email || '',
-              name: user?.name || '',
-              picture: user?.picture || '',
-              locale: user?.locale || '',
-              sub: user?.sub || '',
-            },
-          };
-          handleSuccessfulLogin(oidcUser);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      getIdTokenClaims()
+        .then((token) => {
+          setOidcToken(token?.__raw || '').then(() => {
+            const oidcUser: OidcUser = {
+              id_token: token?.__raw || '',
+              scope: '',
+              profile: {
+                email: user?.email || '',
+                name: user?.name || '',
+                picture: user?.picture || '',
+                locale: user?.locale || '',
+                sub: user?.sub || '',
+              },
+            };
+            handleSuccessfulLogin(oidcUser);
+          });
+        })
+        .catch((err) => {
+          setAuthError(`${t('message.error-while-fetching-access-token')} ${err}`);
         });
-      })
-      .catch((err) => {
-        return (
-          <div>
-            {t('message.error-while-fetching-access-token')} {err}
-          </div>
-        );
-      });
-  } else {
-    // user is not authenticated
-    if (error) {
-      return (
-        <div data-testid="auth0-error">
-          {t('server.unexpected-error')} <span>{error.message}</span>
-        </div>
-      );
     }
+  }, [isAuthenticated, user, getIdTokenClaims, handleSuccessfulLogin, t]);
+
+  if (error) {
+    return (
+      <div data-testid="auth0-error">
+        {t('server.unexpected-error')} <span>{error.message}</span>
+      </div>
+    );
+  }
+
+  if (authError) {
+    return <div>{authError}</div>;
   }
 
   return <div>{`${t('message.redirecting-to-home-page')}...`} </div>;
