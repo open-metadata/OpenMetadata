@@ -91,7 +91,9 @@ class AirbyteClient:
         """
         if self._use_public_api:
             # Public API uses GET /connections with workspaceIds query parameter
-            response = self.client.get(f"/connections?workspaceIds={quote(workflow_id)}")
+            response = self.client.get(
+                f"/connections?workspaceIds={quote(workflow_id)}"
+            )
             if response.get("exceptionStack"):
                 raise APIError(response["message"])
             return response.get("data", [])
