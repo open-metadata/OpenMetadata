@@ -619,7 +619,6 @@ export const executeWithRetry = async <T>(
       if (isRetriableError && attempt < maxRetries - 1) {
         // Exponential backoff: 1s, 2s, 4s
         const delay = baseDelay * Math.pow(2, attempt);
-        // eslint-disable-next-line no-console
         console.log(
           `${operationName} attempt ${
             attempt + 1
@@ -629,7 +628,6 @@ export const executeWithRetry = async <T>(
 
         continue;
       } else {
-        // eslint-disable-next-line no-console
         console.error(
           `Failed to ${operationName} after ${attempt + 1} attempts:`,
           errorMessage
@@ -685,7 +683,8 @@ export const readElementInListWithScroll = async (
 
 export const testPaginationNavigation = async (
   page: Page,
-  waitForLoadSelector?: string
+  waitForLoadSelector?: string,
+  dataColumnIndex: number = 0
 ) => {
   await page.waitForLoadState('networkidle');
 
@@ -694,6 +693,21 @@ export const testPaginationNavigation = async (
   }
 
   await waitForAllLoadersToDisappear(page);
+
+  const tableSelector = waitForLoadSelector || 'table';
+  const tableRows = page.locator(`${tableSelector} tbody tr`);
+  const page1RowCount = await tableRows.count();
+
+  const page1RowData: string[] = [];
+  for (let i = 0; i < Math.min(page1RowCount, 3); i++) {
+    const row = tableRows.nth(i);
+    const cell = row.locator('td').nth(dataColumnIndex);
+    const cellText = await cell.textContent();
+    const trimmedText = cellText?.trim();
+    if (trimmedText) {
+      page1RowData.push(trimmedText);
+    }
+  }
 
   const nextButton = page.locator('[data-testid="next"]');
 
@@ -725,6 +739,23 @@ export const testPaginationNavigation = async (
 
   expect(afterValue).toBeTruthy();
 
+  const page2RowCount = await tableRows.count();
+  const page2RowData: string[] = [];
+  for (let i = 0; i < Math.min(page2RowCount, 3); i++) {
+    const row = tableRows.nth(i);
+    const cell = row.locator('td').nth(dataColumnIndex);
+    const cellText = await cell.textContent();
+    const trimmedText = cellText?.trim();
+    if (trimmedText) {
+      page2RowData.push(trimmedText);
+    }
+  }
+
+  expect(page2RowData.length).toBeGreaterThan(0);
+  for (const page2Row of page2RowData) {
+    expect(page1RowData).not.toContain(page2Row);
+  }
+
   await page.reload();
   await page.waitForLoadState('networkidle');
 
@@ -735,8 +766,12 @@ export const testPaginationNavigation = async (
   await waitForAllLoadersToDisappear(page);
 
   const reloadedUrl = page.url();
+  const reloadedUrlObj = new URL(reloadedUrl);
+  const reloadedSearchParams = reloadedUrlObj.searchParams;
 
-  expect(reloadedUrl).toBe(currentUrl);
+  expect(reloadedSearchParams.get('currentPage')).toBe('2');
+  expect(reloadedSearchParams.get('cursorType')).toBe('after');
+  expect(reloadedSearchParams.get('cursorValue')).toBe(afterValue);
 
   const paginationText = page.locator('[data-testid="page-indicator"]');
 

@@ -15,7 +15,7 @@ import { Col, Row, Space, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { EntityTags, PagingWithoutTotal, ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import {
@@ -306,10 +306,14 @@ function ServiceMainTabContent({
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (searchValue) {
         searchService(searchValue, currentPage);
+        pagingInfo.handlePageChange(currentPage);
       } else if (cursorType) {
-        getServiceDetails({ [cursorType]: paging[cursorType] });
+        pagingInfo.handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pagingInfo.pageSize
+        );
       }
-      pagingInfo.handlePageChange(currentPage);
     },
     [searchValue, searchService, pagingInfo]
   );

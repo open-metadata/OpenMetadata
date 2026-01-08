@@ -20,6 +20,7 @@ import {
   testPaginationNavigation,
   uuid,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -47,13 +48,62 @@ test.describe('Pagination tests for all pages', () => {
     await testPaginationNavigation(page, 'table');
   });
 
-  test('should test pagination on Database Services page', async ({ page }) => {
+  test('should test pagination on Database Schema page', async ({ page }) => {
     test.slow(true);
 
     await page.goto(
       '/databaseSchema/sample_data.ecommerce_db.shopify?showDeletedTables=false'
     );
     await testPaginationNavigation(page, 'table');
+  });
+
+  test.describe('Service Databases page pagination', () => {
+    const databases: Array<{ id: string; name: string }> = [];
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      for (let i = 1; i <= 5; i++) {
+        const databaseName = `pw-test-db-${uuid()}-${i}`;
+        const response = await apiContext.put('/api/v1/databases', {
+          data: {
+            name: databaseName,
+            displayName: `PW Test Database ${i}`,
+            description: `Test database ${i} for pagination testing`,
+            service: 'sample_data',
+          },
+        });
+        const data = await response.json();
+        databases.push({ id: data.id, name: data.fullyQualifiedName });
+      }
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      for (const database of databases) {
+        await apiContext.delete(
+          `/api/v1/databases/name/${encodeURIComponent(database.name)}?hardDelete=true&recursive=true`
+        );
+      }
+
+      await afterAction();
+    });
+
+    test('should test pagination on Service Databases page', async ({ page }) => {
+      test.slow(true);
+
+      await page.goto(
+        '/service/databaseServices/sample_data/databases?currentPage=1&pageSize=3'
+      );
+      await testPaginationNavigation(page, 'table');
+      await page.getByTestId('insights').click();
+      await waitForAllLoadersToDisappear(page);
+      await page.getByTestId('databases').click();
+      await testPaginationNavigation(page, 'table');
+    });
   });
 
   test('should test pagination on Bots page', async ({ page }) => {
@@ -111,7 +161,7 @@ test.describe('Pagination tests for Classification Tags page', () => {
     test.slow(true);
 
     await page.goto(`/tags/${classification.responseData.name}`);
-    await testPaginationNavigation(page, 'table');
+    await testPaginationNavigation(page, 'table', 1);
   });
 });
 

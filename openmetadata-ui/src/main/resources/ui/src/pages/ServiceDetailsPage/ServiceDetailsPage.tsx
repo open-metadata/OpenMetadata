@@ -417,7 +417,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
         if (isAgentTab) {
           subTab = ServiceAgentSubTabs.METADATA;
         }
-
+        if (key === getCountLabel(serviceCategory).toLowerCase()) {
+          handlePageChange(INITIAL_PAGING_VALUE);
+          setFilters({ showDeletedTables: false });
+        }
         navigate({
           pathname: getServiceDetailsPath(
             decodedServiceFQN,
@@ -912,7 +915,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       setServiceDetails(response);
       setConnectionDetails(response.connection?.config as DashboardConnection);
       // show deleted child entities if service is deleted
-      handleShowDeleted(response.deleted ?? false);
+      setFilters({ showDeletedTables: response.deleted ?? false });
     } catch (error) {
       // Error
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
@@ -1318,18 +1321,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
   useEffect(() => {
     const { cursorType, cursorValue } = pagingInfo?.pagingCursor ?? {};
     if (cursorType && cursorValue) {
-      getOtherDetails({ limit: pageSize, [cursorType]: paging[cursorType] });
+      getOtherDetails({ limit: pageSize, [cursorType]: cursorValue });
     } else {
       getOtherDetails({ limit: pageSize });
     }
   }, [showDeleted, deleted, pageSize, pagingInfo?.pagingCursor]);
-
-  useEffect(() => {
-    if (tab === getCountLabel(serviceCategory).toLowerCase()) {
-      handlePageChange(INITIAL_PAGING_VALUE);
-      setFilters({ showDeletedTables: false });
-    }
-  }, [tab]);
 
   useEffect(() => {
     // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active
