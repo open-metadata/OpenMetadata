@@ -14,7 +14,7 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { lowerCase } from 'lodash';
 import { EntityType } from '../../../enums/entity.enum';
-import { Column } from '../../../generated/entity/data/table';
+import { Column, Table } from '../../../generated/entity/data/table';
 import { DataType } from '../../../generated/tests/testDefinition';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { listTestCases } from '../../../rest/testAPI';
@@ -337,6 +337,19 @@ jest.mock('../../../rest/testAPI', () => ({
   }),
 }));
 
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockReturnValue({
+    permissions: {
+      EditTags: true,
+      EditGlossaryTerms: true,
+      EditDescription: true,
+      EditAll: false,
+      ViewAll: true,
+      ViewCustomFields: true,
+    },
+  }),
+}));
+
 jest.mock('../../../utils/DataQuality/DataQualityUtils', () => ({
   calculateTestCaseStatusCounts: jest
     .fn()
@@ -383,6 +396,31 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.displayName || entity?.name || ''),
+}));
+
+jest.mock('../../../utils/EntitySummaryPanelUtils', () => ({
+  toEntityData: jest.fn().mockImplementation((column) => {
+    if (!column) {
+      return undefined;
+    }
+
+    const extension =
+      'extension' in column &&
+      typeof column.extension === 'object' &&
+      column.extension !== null
+        ? (column.extension as Table['extension'])
+        : undefined;
+
+    const entityData: {
+      extension?: Table['extension'];
+      [key: string]: unknown;
+    } = {};
+    if (extension) {
+      entityData.extension = extension;
+    }
+
+    return entityData;
+  }),
 }));
 
 jest.mock('../../../utils/StringsUtils', () => ({
@@ -437,6 +475,27 @@ jest.mock('../../../utils/TableUtils', () => ({
 
       return [column];
     }),
+  normalizeTags: jest
+    .fn()
+    .mockImplementation((tags: Array<{ source: TagSource }> | undefined) => {
+      if (!tags || tags.length === 0) {
+        return [];
+      }
+
+      // Remove style property from glossary terms
+      return tags.map((tag) => {
+        if (tag.source === TagSource.Glossary) {
+          const { style: _style, ...tagWithoutStyle } = tag as {
+            source: TagSource;
+            style?: unknown;
+          };
+
+          return tagWithoutStyle;
+        }
+
+        return tag;
+      });
+    }),
 }));
 
 describe('ColumnDetailPanel', () => {
@@ -454,13 +513,6 @@ describe('ColumnDetailPanel', () => {
     tableFqn: 'test_db.test_schema.test_table',
     isOpen: true,
     onClose: jest.fn(),
-    onColumnUpdate: jest.fn(),
-    hasEditPermission: {
-      description: true,
-      tags: true,
-      glossaryTerms: true,
-      customProperties: true,
-    },
     allColumns: [mockColumn],
     tableConstraints: [],
     entityType: EntityType.TABLE,
@@ -508,17 +560,17 @@ describe('ColumnDetailPanel', () => {
 
   describe('Individual Section Loaders', () => {
     it('should show loader only for description section when updating description', async () => {
-      const updateColumnDescription = jest
+      const onColumnFieldUpdate = jest
         .fn()
         .mockImplementation(
-          () =>
+          (_fqn: string, _update: { description: string }) =>
             new Promise((resolve) => setTimeout(() => resolve(mockColumn), 100))
         );
 
       const { getByTestId, queryByTestId } = render(
         <ColumnDetailPanel
           {...mockProps}
-          updateColumnDescription={updateColumnDescription}
+          onColumnFieldUpdate={onColumnFieldUpdate}
         />
       );
 
@@ -556,41 +608,47 @@ describe('ColumnDetailPanel', () => {
     });
 
     it('should not show loader for tags section when updating tags', async () => {
-      const updateColumnTags = jest.fn().mockResolvedValue(mockColumn);
+      const onColumnFieldUpdate = jest.fn().mockResolvedValue(mockColumn);
 
       const { getByTestId } = render(
-        <ColumnDetailPanel {...mockProps} updateColumnTags={updateColumnTags} />
+        <ColumnDetailPanel
+          {...mockProps}
+          onColumnFieldUpdate={onColumnFieldUpdate}
+        />
       );
 
       const updateButton = getByTestId('update-tags');
       fireEvent.click(updateButton);
 
       await waitFor(() => {
-        expect(updateColumnTags).toHaveBeenCalled();
+        expect(onColumnFieldUpdate).toHaveBeenCalled();
       });
 
       expect(getByTestId('description-section')).toBeInTheDocument();
     });
 
     it('should not show loader for glossary terms section when updating glossary terms', async () => {
-      const updateColumnTags = jest.fn().mockResolvedValue(mockColumn);
+      const onColumnFieldUpdate = jest.fn().mockResolvedValue(mockColumn);
 
       const { getByTestId } = render(
-        <ColumnDetailPanel {...mockProps} updateColumnTags={updateColumnTags} />
+        <ColumnDetailPanel
+          {...mockProps}
+          onColumnFieldUpdate={onColumnFieldUpdate}
+        />
       );
 
       const updateButton = getByTestId('update-glossary-terms');
       fireEvent.click(updateButton);
 
       await waitFor(() => {
-        expect(updateColumnTags).toHaveBeenCalled();
+        expect(onColumnFieldUpdate).toHaveBeenCalled();
       });
 
       expect(getByTestId('description-section')).toBeInTheDocument();
     });
 
     it('should show loader for description section and hide it on error', async () => {
-      const updateColumnDescription = jest.fn().mockImplementation(
+      const onColumnFieldUpdate = jest.fn().mockImplementation(
         () =>
           new Promise((_, reject) => {
             setTimeout(() => {
@@ -602,7 +660,7 @@ describe('ColumnDetailPanel', () => {
       const { getByTestId } = render(
         <ColumnDetailPanel
           {...mockProps}
-          updateColumnDescription={updateColumnDescription}
+          onColumnFieldUpdate={onColumnFieldUpdate}
         />
       );
 
@@ -618,7 +676,7 @@ describe('ColumnDetailPanel', () => {
 
       await waitFor(
         () => {
-          expect(updateColumnDescription).toHaveBeenCalled();
+          expect(onColumnFieldUpdate).toHaveBeenCalled();
           expect(showErrorToast).toHaveBeenCalled();
           expect(getByTestId('description-section')).toBeInTheDocument();
         },
@@ -627,19 +685,17 @@ describe('ColumnDetailPanel', () => {
     });
 
     it('should allow multiple sections to be updated independently', async () => {
-      const updateColumnDescription = jest
+      const onColumnFieldUpdate = jest
         .fn()
         .mockImplementation(
-          () =>
+          (_fqn: string, _update: { description?: string; tags?: unknown[] }) =>
             new Promise((resolve) => setTimeout(() => resolve(mockColumn), 100))
         );
-      const updateColumnTags = jest.fn().mockResolvedValue(mockColumn);
 
       const { getByTestId, queryByTestId } = render(
         <ColumnDetailPanel
           {...mockProps}
-          updateColumnDescription={updateColumnDescription}
-          updateColumnTags={updateColumnTags}
+          onColumnFieldUpdate={onColumnFieldUpdate}
         />
       );
 
@@ -701,7 +757,7 @@ describe('ColumnDetailPanel', () => {
 
   describe('Error Handling', () => {
     it('should handle description update error gracefully', async () => {
-      const updateColumnDescription = jest.fn().mockImplementation(
+      const onColumnFieldUpdate = jest.fn().mockImplementation(
         () =>
           new Promise((_, reject) => {
             setTimeout(() => {
@@ -713,7 +769,7 @@ describe('ColumnDetailPanel', () => {
       const { getByTestId } = render(
         <ColumnDetailPanel
           {...mockProps}
-          updateColumnDescription={updateColumnDescription}
+          onColumnFieldUpdate={onColumnFieldUpdate}
         />
       );
 
@@ -729,7 +785,7 @@ describe('ColumnDetailPanel', () => {
 
       await waitFor(
         () => {
-          expect(updateColumnDescription).toHaveBeenCalled();
+          expect(onColumnFieldUpdate).toHaveBeenCalled();
           expect(showErrorToast).toHaveBeenCalled();
           expect(getByTestId('description-section')).toBeInTheDocument();
         },

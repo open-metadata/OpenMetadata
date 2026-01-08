@@ -25,7 +25,9 @@ import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { updateTableColumn } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
+import { toEntityData } from '../../../utils/EntitySummaryPanelUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import {
   buildColumnBreadcrumbPath,
@@ -33,8 +35,8 @@ import {
   flattenColumns,
   generateEntityLink,
   getDataTypeDisplay,
-  mergeGlossaryWithTags,
   mergeTagsWithGlossary,
+  normalizeTags,
 } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import DataQualitySection from '../../common/DataQualitySection/DataQualitySection';
@@ -42,6 +44,7 @@ import DescriptionSection from '../../common/DescriptionSection/DescriptionSecti
 import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
 import Loader from '../../common/Loader/Loader';
 import TagsSection from '../../common/TagsSection/TagsSection';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import CustomPropertiesSection from '../../Explore/EntitySummaryPanel/CustomPropertiesSection/CustomPropertiesSection';
@@ -50,6 +53,7 @@ import { LineageTabContent } from '../../Explore/EntitySummaryPanel/LineageTab';
 import { LineageData } from '../../Lineage/Lineage.interface';
 import {
   ColumnDetailPanelProps,
+  ColumnFieldUpdate,
   ColumnOrTask,
   TestCaseStatusCounts,
 } from './ColumnDetailPanel.interface';
@@ -66,11 +70,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   tableFqn,
   isOpen,
   onClose,
-  onColumnUpdate,
-  updateColumnDescription,
-  updateColumnTags,
-  hasEditPermission = {},
-  hasViewPermission = {},
+  onColumnFieldUpdate,
+  deleted = false,
   allColumns = [],
   onNavigate,
   tableConstraints = [],
@@ -78,8 +79,33 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 }: ColumnDetailPanelProps<T>) => {
   const { t } = useTranslation();
   const theme = useTheme();
+  const { permissions } = useGenericContext();
   const [isDescriptionLoading, setIsDescriptionLoading] = useState(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
+
+  const safePermissions = permissions || DEFAULT_ENTITY_PERMISSION;
+
+  const hasEditPermission = useMemo(
+    () => ({
+      tags: (safePermissions.EditTags || safePermissions.EditAll) && !deleted,
+      glossaryTerms:
+        (safePermissions.EditGlossaryTerms || safePermissions.EditAll) &&
+        !deleted,
+      description:
+        (safePermissions.EditDescription || safePermissions.EditAll) &&
+        !deleted,
+      viewAllPermission: safePermissions.ViewAll,
+    }),
+    [safePermissions, deleted]
+  );
+
+  const hasViewPermission = useMemo(
+    () => ({
+      customProperties:
+        safePermissions.ViewAll || safePermissions.ViewCustomFields,
+    }),
+    [safePermissions]
+  );
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
     EntityRightPanelTab.OVERVIEW
   );
@@ -185,35 +211,40 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     [flattenedColumns, allColumns, onNavigate]
   );
 
-  const handleDescriptionUpdate = useCallback(
-    async (newDescription: string) => {
+  // Common handler for column field updates
+  const performColumnFieldUpdate = useCallback(
+    async (
+      update: ColumnFieldUpdate,
+      successMessageKey: string
+    ): Promise<T | undefined> => {
       if (!column?.fullyQualifiedName) {
-        return;
+        return undefined;
       }
 
+      const response = onColumnFieldUpdate
+        ? await onColumnFieldUpdate(column.fullyQualifiedName, update)
+        : // Fallback to direct API call for Table entities when used outside GenericProvider
+          ((await updateTableColumn(column.fullyQualifiedName, update)) as T);
+
+      showSuccessToast(
+        t('server.update-entity-success', {
+          entity: t(successMessageKey),
+        })
+      );
+
+      return response;
+    },
+    [column?.fullyQualifiedName, t, onColumnFieldUpdate]
+  );
+
+  const handleDescriptionUpdate = useCallback(
+    async (newDescription: string) => {
       try {
         setIsDescriptionLoading(true);
-
-        // Use provided update function or fall back to default table API
-        const updateFn =
-          updateColumnDescription ||
-          ((fqn: string, description: string) =>
-            updateTableColumn(fqn, { description }));
-
-        const response = await updateFn(
-          column.fullyQualifiedName,
-          newDescription
+        await performColumnFieldUpdate(
+          { description: newDescription },
+          'label.description'
         );
-
-        showSuccessToast(
-          t('server.update-entity-success', {
-            entity: t('label.description'),
-          })
-        );
-
-        if (onColumnUpdate) {
-          onColumnUpdate(response as T);
-        }
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -225,41 +256,41 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         setIsDescriptionLoading(false);
       }
     },
-    [column, t, onColumnUpdate, updateColumnDescription]
+    [performColumnFieldUpdate, t]
+  );
+
+  // Prepare tags for classification tag updates (preserve glossary and tier tags)
+  const prepareClassificationTags = useCallback(
+    (updatedTags: TagLabel[]): TagLabel[] => {
+      if (updatedTags.length === 0) {
+        // Clear all classification tags but preserve glossary terms and tier tags
+        return normalizeTags(
+          (column?.tags ?? []).filter(
+            (tag) =>
+              tag.source === TagSource.Glossary ||
+              (tag.tagFQN?.startsWith('Tier.') ?? false)
+          )
+        );
+      }
+
+      // Merge updated classification tags with existing glossary tags
+      return normalizeTags(
+        (mergeTagsWithGlossary(column?.tags, updatedTags) ?? []) as TagLabel[]
+      );
+    },
+    [column?.tags]
   );
 
   const handleTagsUpdate = useCallback(
     async (updatedTags: TagLabel[]) => {
-      if (!column?.fullyQualifiedName) {
-        return;
-      }
-
       try {
-        // Preserve glossary terms when updating classification tags
-        const allTags = mergeTagsWithGlossary(column.tags, updatedTags);
-
-        // Use provided update function or fall back to default table API
-        const updateFn =
-          updateColumnTags ||
-          ((fqn: string, tags: TagLabel[]) =>
-            updateTableColumn(fqn, { tags }) as Promise<T>);
-
-        const response = await updateFn(
-          column.fullyQualifiedName,
-          allTags ?? []
+        const allTags = prepareClassificationTags(updatedTags);
+        const response = await performColumnFieldUpdate(
+          { tags: allTags },
+          'label.tag-plural'
         );
 
-        showSuccessToast(
-          t('server.update-entity-success', {
-            entity: t('label.tag-plural'),
-          })
-        );
-
-        if (onColumnUpdate) {
-          onColumnUpdate(response);
-        }
-
-        return response.tags;
+        return response?.tags;
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -271,43 +302,29 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         throw error;
       }
     },
-    [column, t, onColumnUpdate, updateColumnTags]
+    [prepareClassificationTags, performColumnFieldUpdate, t]
   );
 
   const handleGlossaryTermsUpdate = useCallback(
-    async (updatedGlossaryTerms: TagLabel[]) => {
-      if (!column?.fullyQualifiedName) {
-        return;
-      }
-
+    async (updatedTags: TagLabel[]) => {
       try {
-        const allTags = mergeGlossaryWithTags(
-          column.tags,
-          updatedGlossaryTerms
+        // Merge glossary terms with existing classification tags
+        const classificationAndTierTags = (column?.tags ?? []).filter(
+          (tag) =>
+            tag.source === TagSource.Classification ||
+            (tag.tagFQN?.startsWith('Tier.') ?? false)
+        );
+        const allTags = normalizeTags([
+          ...classificationAndTierTags,
+          ...updatedTags.filter((tag) => tag.source === TagSource.Glossary),
+        ]);
+
+        const response = await performColumnFieldUpdate(
+          { tags: allTags },
+          'label.glossary-term-plural'
         );
 
-        // Use provided update function or fall back to default table API
-        const updateFn =
-          updateColumnTags ||
-          ((fqn: string, tags: TagLabel[]) =>
-            updateTableColumn(fqn, { tags }) as Promise<T>);
-
-        const response = await updateFn(
-          column.fullyQualifiedName,
-          allTags ?? []
-        );
-
-        showSuccessToast(
-          t('server.update-entity-success', {
-            entity: t('label.glossary-term-plural'),
-          })
-        );
-
-        if (onColumnUpdate) {
-          onColumnUpdate(response);
-        }
-
-        return response.tags;
+        return response?.tags;
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -319,7 +336,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         throw error;
       }
     },
-    [column, t, onColumnUpdate, updateColumnTags]
+    [column?.tags, performColumnFieldUpdate, t]
   );
 
   useEffect(() => {
@@ -487,10 +504,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     return (
       <div className="overview-tab-content">
         <CustomPropertiesSection
-          entityData={
-            column as unknown as { extension?: Record<string, unknown> }
-          }
-          entityDetails={{ details: column }}
+          entityData={toEntityData(column)}
           entityType={entityType}
           isEntityDataLoading={false}
           viewCustomPropertiesPermission={
@@ -501,14 +515,15 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     );
   };
   const isPrimaryKey = useMemo(() => {
-    if (!column?.name) {
+    const columnName = column?.name;
+    if (!columnName) {
       return false;
     }
 
     return tableConstraints.some(
       (constraint: TableConstraint) =>
         constraint.constraintType === 'PRIMARY_KEY' &&
-        constraint.columns?.includes(column.name)
+        constraint.columns?.includes(columnName)
     );
   }, [column?.name, tableConstraints]);
 
@@ -542,7 +557,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         <Tooltip
           mouseEnterDelay={0.5}
           placement="topLeft"
-          title={column.displayName || column.name}
+          title={getEntityName(column)}
           trigger="hover">
           <div className="d-flex items-center justify-between w-full">
             <div className="d-flex items-center gap-2">

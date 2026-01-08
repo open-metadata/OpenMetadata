@@ -12,20 +12,18 @@
  */
 
 import { Card, Col, Divider, Row, Space, Typography } from 'antd';
-import { isEmpty, omit } from 'lodash';
+import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import { Fragment, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { MlFeature, Mlmodel } from '../../../generated/entity/data/mlmodel';
-import { Column } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/type/schema';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import { ColumnDetailPanel } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -37,9 +35,8 @@ const MlModelFeaturesList = () => {
     {} as MlFeature
   );
   const [editDescription, setEditDescription] = useState<boolean>(false);
-  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
-  const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
-  const { data, onUpdate, permissions } = useGenericContext<Mlmodel>();
+  const { data, onUpdate, permissions, openColumnDetailPanel } =
+    useGenericContext<Mlmodel>();
 
   const { mlFeatures, isDeleted, entityFqn } = useMemo(() => {
     return {
@@ -56,11 +53,6 @@ const MlModelFeaturesList = () => {
 
   const hasEditGlossaryTermPermission = useMemo(
     () => permissions.EditGlossaryTerms || permissions.EditAll,
-    [permissions]
-  );
-
-  const hasViewCustomPropertiesPermission = useMemo(
-    () => permissions.ViewCustomFields || permissions.ViewAll,
     [permissions]
   );
 
@@ -116,44 +108,12 @@ const MlModelFeaturesList = () => {
     }
   };
 
-  const handleColumnClick = useCallback((feature: MlFeature) => {
-    setSelectedColumn(feature as unknown as Column);
-    setIsColumnDetailOpen(true);
-  }, []);
-
-  const handleCloseColumnDetail = useCallback(() => {
-    setIsColumnDetailOpen(false);
-    setSelectedColumn(null);
-  }, []);
-
-  const handleColumnUpdate = useCallback(
-    (updatedColumn: Column) => {
-      const cleanColumn = isEmpty(updatedColumn.children)
-        ? omit(updatedColumn, 'children')
-        : updatedColumn;
-
-      const feature = cleanColumn as unknown as MlFeature;
-      const updatedFeatures =
-        mlFeatures?.map((f) => {
-          if (f.name === feature.name) {
-            return {
-              ...feature,
-              description: feature.description ?? f.description,
-              tags: feature.tags ?? f.tags,
-            };
-          } else {
-            return f;
-          }
-        }) ?? [];
-      handleFeaturesUpdate(updatedFeatures);
-      setSelectedColumn(cleanColumn);
+  const handleColumnClick = useCallback(
+    (feature: MlFeature) => {
+      openColumnDetailPanel(feature);
     },
-    [mlFeatures, handleFeaturesUpdate]
+    [openColumnDetailPanel]
   );
-
-  const handleColumnNavigate = useCallback((column: Column) => {
-    setSelectedColumn(column);
-  }, []);
 
   if (!isEmpty(mlFeatures)) {
     return (
@@ -324,68 +284,6 @@ const MlModelFeaturesList = () => {
             />
           </EntityAttachmentProvider>
         )}
-
-        <ColumnDetailPanel
-          allColumns={(mlFeatures ?? []).map(
-            (feature) => feature as unknown as Column
-          )}
-          column={selectedColumn}
-          entityType={EntityType.MLMODEL}
-          hasEditPermission={{
-            tags: hasEditPermission,
-            glossaryTerms: hasEditGlossaryTermPermission,
-            description: permissions.EditAll || permissions.EditDescription,
-            viewAllPermission: permissions.ViewAll,
-          }}
-          hasViewPermission={{
-            customProperties: hasViewCustomPropertiesPermission,
-          }}
-          isOpen={isColumnDetailOpen}
-          tableFqn={entityFqn}
-          updateColumnDescription={async (fqn, description) => {
-            const updatedFeatures =
-              mlFeatures?.map((feature) => {
-                if (feature.fullyQualifiedName === fqn) {
-                  return {
-                    ...feature,
-                    description,
-                  };
-                } else {
-                  return feature;
-                }
-              }) ?? [];
-            await handleFeaturesUpdate(updatedFeatures);
-            // Find and return the updated feature
-            const updatedFeature = updatedFeatures.find(
-              (f) => f.fullyQualifiedName === fqn
-            );
-
-            return updatedFeature as unknown as Column;
-          }}
-          updateColumnTags={async (fqn, tags) => {
-            const updatedFeatures =
-              mlFeatures?.map((feature) => {
-                if (feature.fullyQualifiedName === fqn) {
-                  return {
-                    ...feature,
-                    tags: tags ?? [],
-                  };
-                } else {
-                  return feature;
-                }
-              }) ?? [];
-            await handleFeaturesUpdate(updatedFeatures);
-            // Find and return the updated feature
-            const updatedFeature = updatedFeatures.find(
-              (f) => f.fullyQualifiedName === fqn
-            );
-
-            return updatedFeature as unknown as Column;
-          }}
-          onClose={handleCloseColumnDetail}
-          onColumnUpdate={handleColumnUpdate}
-          onNavigate={handleColumnNavigate}
-        />
       </Fragment>
     );
   } else {

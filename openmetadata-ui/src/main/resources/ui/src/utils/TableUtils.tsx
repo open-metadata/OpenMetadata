@@ -152,15 +152,26 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
-import { SearchIndexField } from '../generated/entity/data/searchIndex';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
+import { Container } from '../generated/entity/data/container';
+import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
+import { Pipeline, Task } from '../generated/entity/data/pipeline';
+import {
+  SearchIndex as SearchIndexEntity,
+  SearchIndexField,
+} from '../generated/entity/data/searchIndex';
 import {
   Column,
   ConstraintType,
   DataType,
   JoinedWith,
+  Table,
   TableConstraint,
   TableJoins,
 } from '../generated/entity/data/table';
+import { Topic } from '../generated/entity/data/topic';
+import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../generated/system/ui/uiCustomization';
 import { Field } from '../generated/type/schema';
 import {
@@ -1535,6 +1546,29 @@ export const getDataTypeDisplay = (
 };
 
 /**
+ * Normalize tags to ensure glossary terms don't have style property
+ * This prevents backend JSON patch errors when trying to remove non-existent style properties
+ * @param tags Array of tags to normalize
+ * @returns Normalized tags array
+ */
+export const normalizeTags = (tags: TagLabel[]): TagLabel[] => {
+  // Handle empty array case
+  if (!tags || tags.length === 0) {
+    return [];
+  }
+
+  return tags.map((tag) => {
+    if (tag.source === TagSource.Glossary) {
+      // Remove style property from glossary terms to avoid backend patch errors
+      return omit(tag, 'style') as TagLabel;
+    }
+
+    // Keep style property for classification tags
+    return tag;
+  });
+};
+
+/**
  * Merge tags with glossary terms, preserving existing glossary terms
  * Used when updating classification tags to ensure glossary terms are not lost
  * @param columnTags Existing tags from the column
@@ -1550,7 +1584,11 @@ export const mergeTagsWithGlossary = (
   const updatedTagsWithoutGlossary =
     updatedTags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
 
-  return [...updatedTagsWithoutGlossary, ...existingGlossaryTags];
+  // Normalize existing glossary tags to remove style property before merging
+  const normalizedExistingGlossaryTags = normalizeTags(existingGlossaryTags);
+  const normalizedUpdatedTags = normalizeTags(updatedTagsWithoutGlossary);
+
+  return [...normalizedUpdatedTags, ...normalizedExistingGlossaryTags];
 };
 
 /**
@@ -1567,7 +1605,11 @@ export const mergeGlossaryWithTags = (
   const nonGlossaryTags =
     columnTags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
 
-  return [...nonGlossaryTags, ...(updatedGlossaryTerms || [])];
+  // Normalize both arrays before merging to ensure consistent format
+  const normalizedNonGlossaryTags = normalizeTags(nonGlossaryTags);
+  const normalizedGlossaryTerms = normalizeTags(updatedGlossaryTerms || []);
+
+  return [...normalizedNonGlossaryTags, ...normalizedGlossaryTerms];
 };
 
 /**
@@ -1660,4 +1702,126 @@ export const buildColumnBreadcrumbPath = <
   }
 
   return breadcrumbs;
+};
+
+/**
+ * Extract columns/fields from entity data based on entity type
+ * @param data Entity data
+ * @param entityType Type of entity
+ * @returns Array of columns/fields/tasks/features
+ */
+export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
+  data: T,
+  entityType: EntityType
+): Array<Column | SearchIndexField | Field | Task | MlFeature> => {
+  switch (entityType) {
+    case EntityType.TABLE: {
+      if ('columns' in data) {
+        const table = data as Partial<Table>;
+
+        return (table.columns ?? []).map(
+          (column) => ({ ...column, tags: column.tags ?? [] } as Column)
+        );
+      }
+
+      break;
+    }
+
+    case EntityType.API_ENDPOINT: {
+      if ('requestSchema' in data || 'responseSchema' in data) {
+        const apiEndpoint = data as Partial<APIEndpoint>;
+
+        return [
+          ...(apiEndpoint.requestSchema?.schemaFields ?? []).map(
+            (field) => ({ ...field, tags: field.tags ?? [] } as Field)
+          ),
+          ...(apiEndpoint.responseSchema?.schemaFields ?? []).map(
+            (field) => ({ ...field, tags: field.tags ?? [] } as Field)
+          ),
+        ];
+      }
+
+      break;
+    }
+
+    case EntityType.DASHBOARD_DATA_MODEL: {
+      if ('columns' in data) {
+        const dataModel = data as Partial<DashboardDataModel>;
+
+        return (dataModel.columns ?? []).map(
+          (column) =>
+            ({
+              ...column,
+              tags: column.tags ?? [],
+            } as Column)
+        );
+      }
+
+      break;
+    }
+
+    case EntityType.MLMODEL: {
+      if ('mlFeatures' in data) {
+        const mlModel = data as Partial<Mlmodel>;
+
+        return (mlModel.mlFeatures ?? []) as MlFeature[];
+      }
+
+      break;
+    }
+
+    case EntityType.PIPELINE: {
+      if ('tasks' in data) {
+        const pipeline = data as Partial<Pipeline>;
+
+        return (pipeline.tasks ?? []).map(
+          (task) => ({ ...task, tags: task.tags ?? [] } as Task)
+        );
+      }
+
+      break;
+    }
+
+    case EntityType.TOPIC: {
+      if ('messageSchema' in data) {
+        const topic = data as Partial<Topic>;
+
+        return (topic.messageSchema?.schemaFields ?? []).map(
+          (field) => field as Field
+        );
+      }
+
+      break;
+    }
+
+    case EntityType.CONTAINER: {
+      if ('dataModel' in data) {
+        const container = data as Partial<Container>;
+
+        return (container.dataModel?.columns ?? []).map(
+          (column) =>
+            ({
+              ...column,
+              tags: column.tags ?? [],
+            } as Column)
+        );
+      }
+
+      break;
+    }
+
+    case EntityType.SEARCH_INDEX: {
+      if ('fields' in data) {
+        const searchIndex = data as Partial<SearchIndexEntity>;
+
+        return (searchIndex.fields ?? []).map(
+          (field) => ({ ...field, tags: field.tags ?? [] } as SearchIndexField)
+        );
+      }
+
+      break;
+    }
+  }
+
+  return [];
 };

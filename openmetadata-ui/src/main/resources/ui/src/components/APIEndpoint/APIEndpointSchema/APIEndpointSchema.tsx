@@ -13,7 +13,7 @@
 import { Col, Row, Segmented, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import { cloneDeep, groupBy, isEmpty, isUndefined, omit, uniqBy } from 'lodash';
+import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +32,6 @@ import {
   Field,
   TagSource,
 } from '../../../generated/entity/data/apiEndpoint';
-import { Column } from '../../../generated/entity/data/table';
 import { APISchema } from '../../../generated/type/apiSchema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -44,7 +43,6 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
-  findFieldByFQN,
   getAllRowKeysByKeyName,
   getTableExpandableConfig,
   updateFieldDescription,
@@ -55,7 +53,6 @@ import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEdito
 import Table from '../../common/Table/Table';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import { ColumnDetailPanel } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
@@ -80,12 +77,11 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.REQUEST_SCHEMA
   );
-  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
-  const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
   const {
     data: apiEndpointDetails,
     permissions,
     onUpdate: onApiEndpointUpdate,
+    openColumnDetailPanel,
   } = useGenericContext<APIEndpoint>();
 
   const viewTypeOptions = [
@@ -202,51 +198,12 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     }
   };
 
-  const handleColumnClick = useCallback((field: Field) => {
-    setSelectedColumn(field as unknown as Column);
-    setIsColumnDetailOpen(true);
-  }, []);
-
-  const handleCloseColumnDetail = useCallback(() => {
-    setIsColumnDetailOpen(false);
-    setSelectedColumn(null);
-  }, []);
-
-  const handleColumnUpdate = useCallback(
-    (updatedColumn: Column) => {
-      const cleanColumn = isEmpty(updatedColumn.children)
-        ? omit(updatedColumn, 'children')
-        : updatedColumn;
-
-      if (!isUndefined(onApiEndpointUpdate)) {
-        const schema = cloneDeep(activeSchema);
-        const field = cleanColumn as unknown as Field;
-        updateFieldDescription<Field>(
-          field.fullyQualifiedName ?? '',
-          field.description ?? '',
-          schema?.schemaFields
-        );
-        updateFieldTags<Field>(
-          field.fullyQualifiedName ?? '',
-          field.tags ?? [],
-          schema?.schemaFields
-        );
-        onApiEndpointUpdate(
-          {
-            ...apiEndpointDetails,
-            [activeSchemaKey]: schema,
-          },
-          activeSchemaKey
-        );
-      }
-      setSelectedColumn(cleanColumn);
+  const handleFieldClick = useCallback(
+    (field: Field) => {
+      openColumnDetailPanel(field);
     },
-    [activeSchema, activeSchemaKey, apiEndpointDetails, onApiEndpointUpdate]
+    [openColumnDetailPanel]
   );
-
-  const handleColumnNavigate = useCallback((column: Column) => {
-    setSelectedColumn(column);
-  }, []);
 
   const renderSchemaName = useCallback(
     (_: string, record: Field) => (
@@ -265,7 +222,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           if ((e.target as HTMLElement).closest('button, a')) {
             return;
           }
-          handleColumnClick(record);
+          handleFieldClick(record);
         }}
         onKeyDown={(e) => {
           if (isVersionView) {
@@ -273,7 +230,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           }
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            handleColumnClick(record);
+            handleFieldClick(record);
           }
         }}>
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
@@ -287,7 +244,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         </Tooltip>
       </div>
     ),
-    [isVersionView, handleColumnClick]
+    [isVersionView, handleFieldClick]
   );
 
   const renderDataType = useCallback(
@@ -451,7 +408,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
       tagFilter,
       theme,
       handleFieldTagsChange,
-      handleColumnClick,
+      handleFieldClick,
       permissions,
       isVersionView,
     ]
@@ -521,76 +478,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           />
         </EntityAttachmentProvider>
       )}
-
-      <ColumnDetailPanel
-        allColumns={activeSchemaFields.map(
-          (field) => field as unknown as Column
-        )}
-        column={selectedColumn}
-        entityType={EntityType.API_ENDPOINT}
-        hasEditPermission={{
-          tags: permissions.EditTags || permissions.EditAll,
-          glossaryTerms: permissions.EditGlossaryTerms || permissions.EditAll,
-          description: permissions.EditDescription || permissions.EditAll,
-          viewAllPermission: permissions.ViewAll,
-        }}
-        hasViewPermission={{
-          customProperties: permissions.ViewCustomFields || permissions.ViewAll,
-        }}
-        isOpen={isColumnDetailOpen}
-        tableFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
-        updateColumnDescription={async (fqn, description) => {
-          if (!isUndefined(onApiEndpointUpdate)) {
-            const schema = cloneDeep(activeSchema);
-            updateFieldDescription<Field>(
-              fqn,
-              description,
-              schema?.schemaFields
-            );
-            await onApiEndpointUpdate(
-              {
-                ...apiEndpointDetails,
-                [activeSchemaKey]: schema,
-              },
-              activeSchemaKey
-            );
-            // Find and return the updated field
-            const updatedField = findFieldByFQN<Field>(
-              schema?.schemaFields ?? [],
-              fqn
-            );
-
-            return updatedField as unknown as Column;
-          }
-
-          return selectedColumn as Column;
-        }}
-        updateColumnTags={async (fqn, tags) => {
-          if (!isUndefined(onApiEndpointUpdate)) {
-            const schema = cloneDeep(activeSchema);
-            updateFieldTags<Field>(fqn, tags ?? [], schema?.schemaFields);
-            await onApiEndpointUpdate(
-              {
-                ...apiEndpointDetails,
-                [activeSchemaKey]: schema,
-              },
-              activeSchemaKey
-            );
-            // Find and return the updated field
-            const updatedField = findFieldByFQN<Field>(
-              schema?.schemaFields ?? [],
-              fqn
-            );
-
-            return updatedField as unknown as Column;
-          }
-
-          return selectedColumn as Column;
-        }}
-        onClose={handleCloseColumnDetail}
-        onColumnUpdate={handleColumnUpdate}
-        onNavigate={handleColumnNavigate}
-      />
     </Row>
   );
 };

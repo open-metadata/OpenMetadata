@@ -52,6 +52,25 @@ jest.mock('../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
+jest.mock('../../../utils/TableColumn.util', () => {
+  const React = require('react');
+  return {
+    ownerTableObject: jest.fn().mockReturnValue([]),
+    domainTableObject: jest.fn().mockReturnValue([]),
+    dataProductTableObject: jest.fn().mockReturnValue([]),
+    tagTableObject: jest.fn().mockReturnValue([]),
+    columnFilterIcon: jest.fn(),
+    descriptionTableObject: jest.fn().mockReturnValue([
+      {
+        title: 'label.description',
+        dataIndex: 'description',
+        key: 'description',
+        render: () => React.createElement('div', { 'data-testid': 'viewer-container' }, 'Description'),
+      },
+    ]),
+  };
+});
+
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
@@ -87,8 +106,6 @@ jest.mock(
     return jest.fn().mockImplementation(() => <p>TitleBreadcrumb</p>);
   }
 );
-
-jest.unmock('../../../utils/TableColumn.util');
 
 describe('Test Roles List Page', () => {
   it('Should render the list component', async () => {

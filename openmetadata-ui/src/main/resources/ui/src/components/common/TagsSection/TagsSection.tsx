@@ -133,7 +133,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
       <TagSelectableList
         hasPermission={hasPermission}
         popoverProps={{
-          placement: 'topRight',
+          placement: 'top',
           open: popoverOpen,
           onOpenChange: handlePopoverOpenChange,
           overlayClassName: 'tag-select-popover',

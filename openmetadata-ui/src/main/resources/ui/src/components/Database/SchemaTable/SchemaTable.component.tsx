@@ -97,7 +97,6 @@ import {
   EntityNameWithAdditionFields,
 } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { ColumnDetailPanel } from '../ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
@@ -110,8 +109,6 @@ const SchemaTable = () => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
   const [editColumn, setEditColumn] = useState<Column>();
-  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
-  const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
 
   const {
     currentPage,
@@ -126,7 +123,10 @@ const SchemaTable = () => {
   // Pagination state for columns
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true); // Start with loading state
-
+  const [hasInitialLoad, setHasInitialLoad] = useState(false);
+  const [prevTableColumns, setPrevTableColumns] = useState<
+    Column[] | undefined
+  >();
   const { fqn: decodedEntityFqn } = useFqn();
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
@@ -135,6 +135,7 @@ const SchemaTable = () => {
     permissions: tablePermissions,
     data: table,
     onThreadLinkSelect,
+    openColumnDetailPanel,
   } = useGenericContext<TableType>();
 
   const { testCaseCounts, joins, tableConstraints, deleted } = useMemo(
@@ -161,9 +162,7 @@ const SchemaTable = () => {
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
-    viewCustomPropertiesPermission,
     editDisplayNamePermission,
-    viewAllPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -174,22 +173,6 @@ const SchemaTable = () => {
       editGlossaryTermsPermission:
         (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
         !deleted,
-      viewCustomPropertiesPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewCustomFields,
-      editAllPermission: tablePermissions.EditAll && !deleted,
-      editLineagePermission:
-        (tablePermissions.EditAll || tablePermissions.EditLineage) && !deleted,
-      viewSampleDataPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewSampleData,
-      viewQueriesPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewQueries,
-      viewProfilerPermission:
-        tablePermissions.ViewAll ||
-        tablePermissions.ViewDataProfile ||
-        tablePermissions.ViewTests,
-      viewAllPermission: tablePermissions.ViewAll,
-      viewBasicPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewBasic,
       editDisplayNamePermission:
         (tablePermissions.EditDisplayName || tablePermissions.EditAll) &&
         !deleted,
@@ -266,6 +249,33 @@ const SchemaTable = () => {
       fetchPaginatedColumns(1, searchText || undefined);
     }
   }, [tableFqn, searchText, fetchPaginatedColumns, pageSize]);
+
+  useEffect(() => {
+    if (!isEmpty(tableColumns)) {
+      setHasInitialLoad(true);
+    }
+  }, [tableColumns]);
+
+  useEffect(() => {
+    if (!hasInitialLoad || !table?.columns) {
+      return;
+    }
+
+    const columnsChanged = !isEqual(prevTableColumns, table.columns);
+
+    if (!columnsChanged) {
+      return;
+    }
+
+    fetchPaginatedColumns(currentPage, searchText || undefined);
+    setPrevTableColumns(table.columns);
+  }, [
+    table?.columns,
+    hasInitialLoad,
+    currentPage,
+    searchText,
+    fetchPaginatedColumns,
+  ]);
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {
@@ -490,6 +500,13 @@ const SchemaTable = () => {
     >;
   }, [tableColumns]);
 
+  const handleColumnClick = useCallback(
+    (column: Column) => {
+      openColumnDetailPanel(column);
+    },
+    [openColumnDetailPanel]
+  );
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -683,35 +700,6 @@ const SchemaTable = () => {
     navigate(getEntityBulkEditPath(EntityType.TABLE, decodedEntityFqn));
   };
 
-  const handleColumnClick = (column: Column) => {
-    setSelectedColumn(column);
-    setIsColumnDetailOpen(true);
-  };
-
-  const handleCloseColumnDetail = () => {
-    setIsColumnDetailOpen(false);
-    setSelectedColumn(null);
-  };
-
-  const handleColumnUpdate = (updatedColumn: Column) => {
-    const cleanColumn = isEmpty(updatedColumn.children)
-      ? omit(updatedColumn, 'children')
-      : updatedColumn;
-
-    setTableColumns((prev) =>
-      updateColumnInNestedStructure(
-        prev,
-        updatedColumn.fullyQualifiedName ?? '',
-        cleanColumn
-      )
-    );
-    setSelectedColumn(cleanColumn);
-  };
-
-  const handleColumnNavigate = (column: Column) => {
-    setSelectedColumn(column);
-  };
-
   useEffect(() => {
     setExpandedRowKeys(
       getAllRowKeysByKeyName<Column>(tableColumns ?? [], 'fullyQualifiedName')
@@ -829,25 +817,6 @@ const SchemaTable = () => {
           onSave={handleEditColumnData}
         />
       )}
-      <ColumnDetailPanel
-        allColumns={tableColumns}
-        column={selectedColumn}
-        hasEditPermission={{
-          tags: editTagsPermission,
-          glossaryTerms: editGlossaryTermsPermission,
-          description: editDescriptionPermission,
-          viewAllPermission: viewAllPermission,
-        }}
-        hasViewPermission={{
-          customProperties: viewCustomPropertiesPermission,
-        }}
-        isOpen={isColumnDetailOpen}
-        tableConstraints={table?.tableConstraints}
-        tableFqn={tableFqn}
-        onClose={handleCloseColumnDetail}
-        onColumnUpdate={handleColumnUpdate}
-        onNavigate={handleColumnNavigate}
-      />
     </Row>
   );
 };

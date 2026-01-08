@@ -25,7 +25,10 @@ import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { MlHyperParameter } from '../../../generated/api/data/createMlModel';
 import { Tag } from '../../../generated/entity/classification/tag';
-import { Mlmodel, MlStore } from '../../../generated/entity/data/mlmodel';
+import {
+  Mlmodel,
+  MlStore,
+} from '../../../generated/entity/data/mlmodel';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
@@ -48,7 +51,10 @@ import {
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import {
+  getTagsWithoutTier,
+  getTierTags,
+} from '../../../utils/TableUtils';
 import {
   updateCertificationTag,
   updateTierTag,

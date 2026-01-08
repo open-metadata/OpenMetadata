@@ -37,6 +37,19 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock('../../../../utils/CommonUtils', () => {
+  const actual = jest.requireActual('../../../../utils/CommonUtils');
+
+  return {
+    ...actual,
+    formatNumberWithComma: jest.fn((number: number) => {
+      // Use en-US locale to ensure consistent formatting (1,234,567 not 12,34,567)
+      // This prevents flakiness when i18n.language is set to locales like en-IN
+      return new Intl.NumberFormat('en-US').format(number);
+    }),
+  };
+});
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
@@ -59,7 +72,7 @@ const mockTheme = createTheme({
       },
     },
   } as Palette,
-  spacing: 8,
+  spacing: (value: number) => `${value * 8}px`,
   typography: {
     pxToRem: (px: number) => `${px / 16}rem`,
   } as TypographyVariantsOptions,

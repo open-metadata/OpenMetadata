@@ -38,7 +38,10 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
-import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
+import {
+  SearchIndex,
+  TagLabel,
+} from '../../generated/entity/data/searchIndex';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import LimitWrapper from '../../hoc/LimitWrapper';
@@ -69,7 +72,10 @@ import {
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import searchIndexClassBase from '../../utils/SearchIndexDetailsClassBase';
 import { defaultFields } from '../../utils/SearchIndexUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import {
+  getTagsWithoutTier,
+  getTierTags,
+} from '../../utils/TableUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
