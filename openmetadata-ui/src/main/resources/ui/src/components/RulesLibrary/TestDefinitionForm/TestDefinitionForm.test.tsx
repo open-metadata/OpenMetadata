@@ -53,7 +53,19 @@ jest.mock('../../../rest/testAPI', () => ({
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
-  showErrorToast: jest.fn(),
+}));
+
+jest.mock('../../AlertBar/AlertBar', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ message }) => (
+      <div data-testid="alert-bar">{message}</div>
+    )),
+}));
+
+jest.mock('../../../utils/formUtils', () => ({
+  createScrollToErrorHandler: jest.fn(() => jest.fn()),
 }));
 
 jest.mock('../../Database/SchemaEditor/CodeEditor', () => ({
@@ -111,17 +123,20 @@ describe('TestDefinitionForm Component', () => {
       expect(screen.getByText('label.edit-entity')).toBeInTheDocument();
 
       const nameInput = screen.getByLabelText('label.name') as HTMLInputElement;
+
       expect(nameInput.value).toBe('columnValuesToBeNotNull');
       expect(nameInput).toBeDisabled();
 
       const displayNameInput = screen.getByLabelText(
         'label.display-name'
       ) as HTMLInputElement;
+
       expect(displayNameInput.value).toBe('Column Values To Be Not Null');
 
       const descriptionInput = screen.getByLabelText(
         'label.description'
       ) as HTMLTextAreaElement;
+
       expect(descriptionInput.value).toBe(
         'Ensures that all values in a column are not null'
       );
@@ -143,6 +158,7 @@ describe('TestDefinitionForm Component', () => {
       const addButtons = screen.getAllByRole('button', {
         name: /label.add-entity/i,
       });
+
       expect(addButtons.length).toBeGreaterThan(0);
     });
   });
@@ -158,6 +174,7 @@ describe('TestDefinitionForm Component', () => {
       );
 
       const nameInput = screen.getByLabelText('label.name');
+
       expect(nameInput).toBeDisabled();
     });
 
@@ -167,6 +184,7 @@ describe('TestDefinitionForm Component', () => {
       );
 
       const nameInput = screen.getByLabelText('label.name');
+
       expect(nameInput).not.toBeDisabled();
     });
 
@@ -180,6 +198,7 @@ describe('TestDefinitionForm Component', () => {
       );
 
       const enabledSwitch = screen.getByRole('switch');
+
       expect(enabledSwitch).toBeInTheDocument();
       expect(enabledSwitch).toBeChecked();
     });
@@ -190,6 +209,7 @@ describe('TestDefinitionForm Component', () => {
       );
 
       const switches = screen.queryAllByRole('switch');
+
       expect(switches).toHaveLength(0);
     });
 
@@ -223,6 +243,7 @@ describe('TestDefinitionForm Component', () => {
       );
 
       const sqlEditor = screen.getByTestId('code-editor');
+
       expect(sqlEditor).toHaveValue(
         'SELECT * FROM {table} WHERE {column} IS NOT NULL'
       );
@@ -292,6 +313,7 @@ describe('TestDefinitionForm Component', () => {
 
       await waitFor(() => {
         const errors = screen.getAllByText('message.field-text-is-required');
+
         expect(errors.length).toBeGreaterThan(0);
       });
     });
@@ -304,6 +326,7 @@ describe('TestDefinitionForm Component', () => {
       );
 
       const saveButton = screen.getByTestId('save-test-definition');
+
       expect(saveButton).toBeInTheDocument();
       expect(saveButton).toHaveTextContent('label.save');
     });
@@ -334,6 +357,7 @@ describe('TestDefinitionForm Component', () => {
       const testPlatformField = screen.getByLabelText(
         'label.test-platform-plural'
       );
+
       expect(testPlatformField).toBeInTheDocument();
     });
   });
@@ -356,6 +380,7 @@ describe('TestDefinitionForm Component', () => {
       );
 
       const drawer = screen.getByRole('dialog');
+
       expect(drawer).toBeInTheDocument();
     });
   });
