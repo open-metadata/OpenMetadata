@@ -60,7 +60,7 @@ SERVICE_CONNECTION_CONFIG = MysqlConnection(
         password="test",
     ),
     hostPort="localhost:5432",
-    databaseSchema="mysql_db",
+    databaseSchema="schema",
 )
 
 
@@ -92,7 +92,7 @@ SERVICE_CONNECTION_CONFIG = MysqlConnection(
                 connection=DatabaseConnection(config=SERVICE_CONNECTION_CONFIG),
                 serviceType=DatabaseServiceType.Mysql,
             ),
-            "mysql://test:test@localhost:5432/mysql_db",
+            "mysql://test:test@localhost:5432/schema",
         ),
         (
             DatabaseService(
@@ -141,18 +141,18 @@ SERVICE_CONNECTION_CONFIG = MysqlConnection(
                             password="p@ss]w#rd!",
                         ),
                         hostPort="localhost:3306",
-                        databaseSchema="mysql_db",
+                        databaseSchema="schema",
                     )
                 ),
                 serviceType=DatabaseServiceType.Mysql,
             ),
-            "mysql://test:p%40ss]w#rd!@localhost:3306/mysql_db",
+            "mysql://test:p%40ss]w#rd!@localhost:3306/schema",
             id="mysql_special_chars_in_password",
         ),
     ],
 )
 def test_get_data_diff_url(input, expected):
-    assert expected == BaseTableParameter().get_data_diff_url(
+     assert expected == BaseTableParameter().get_data_diff_url(
         input, "service.database.schema.table"
     )
 
