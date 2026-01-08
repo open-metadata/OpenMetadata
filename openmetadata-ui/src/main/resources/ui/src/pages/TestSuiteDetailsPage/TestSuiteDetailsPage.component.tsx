@@ -281,7 +281,7 @@ const TestSuiteDetailsPage = () => {
 
       await updateTestSuiteData(updatedTestSuite);
     },
-    [testOwners, testSuite]
+    [testSuite]
   );
 
   const handleDomainUpdate = useCallback(
@@ -300,23 +300,26 @@ const TestSuiteDetailsPage = () => {
     [testSuite]
   );
 
-  const onDescriptionUpdate = async (updatedHTML: string) => {
-    if (testSuite?.description !== updatedHTML) {
-      const updatedTestSuite = { ...testSuite, description: updatedHTML };
-      try {
-        const response = await saveAndUpdateTestSuiteData(
-          updatedTestSuite as TestSuite
-        );
-        if (response) {
-          setTestSuite(response);
-        } else {
-          throw t('server.unexpected-response');
+  const onDescriptionUpdate = useCallback(
+    async (updatedHTML: string) => {
+      if (testSuite?.description !== updatedHTML) {
+        const updatedTestSuite = { ...testSuite, description: updatedHTML };
+        try {
+          const response = await saveAndUpdateTestSuiteData(
+            updatedTestSuite as TestSuite
+          );
+          if (response) {
+            setTestSuite(response);
+          } else {
+            throw t('server.unexpected-response');
+          }
+        } catch (error) {
+          showErrorToast(error as AxiosError);
         }
-      } catch (error) {
-        showErrorToast(error as AxiosError);
       }
-    }
-  };
+    },
+    [testSuite]
+  );
 
   const handleDisplayNameChange = async (entityName?: EntityName) => {
     try {
@@ -396,6 +399,19 @@ const TestSuiteDetailsPage = () => {
         }
       : undefined;
 
+    const renderDescription = () => (
+      <Col span={24}>
+        <DescriptionV1
+          wrapInCard
+          description={testSuiteDescription}
+          entityType={EntityType.TEST_SUITE}
+          hasEditAccess={permissions.hasEditDescriptionPermission}
+          showCommentsIcon={false}
+          onDescriptionUpdate={onDescriptionUpdate}
+        />
+      </Col>
+    );
+
     return [
       {
         label: (
@@ -408,16 +424,7 @@ const TestSuiteDetailsPage = () => {
         key: EntityTabs.TEST_CASES,
         children: (
           <Row className="p-md test-suite-content-container" gutter={[0, 20]}>
-            <Col span={24}>
-              <DescriptionV1
-                wrapInCard
-                description={testSuiteDescription}
-                entityType={EntityType.TEST_SUITE}
-                hasEditAccess={permissions.hasEditDescriptionPermission}
-                showCommentsIcon={false}
-                onDescriptionUpdate={onDescriptionUpdate}
-              />
-            </Col>
+            {renderDescription()}
             <Col span={24}>
               <DataQualityTab
                 afterDeleteAction={fetchTestCases}
@@ -446,16 +453,7 @@ const TestSuiteDetailsPage = () => {
         key: EntityTabs.PIPELINE,
         children: (
           <Row className="p-md test-suite-content-container" gutter={[0, 20]}>
-            <Col span={24}>
-              <DescriptionV1
-                wrapInCard
-                description={testSuiteDescription}
-                entityType={EntityType.TEST_SUITE}
-                hasEditAccess={permissions.hasEditDescriptionPermission}
-                showCommentsIcon={false}
-                onDescriptionUpdate={onDescriptionUpdate}
-              />
-            </Col>
+            {renderDescription()}
             <Col span={24}>
               <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
             </Col>
