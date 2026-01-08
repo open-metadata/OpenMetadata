@@ -14,6 +14,7 @@ Client to interact with airbyte apis
 import json
 import time
 from typing import List, Optional, Tuple
+from urllib.parse import quote
 
 import requests
 
@@ -82,7 +83,7 @@ class AirbyteClient:
         response = self.client.post("/workspaces/list")
         if response.get("exceptionStack"):
             raise APIError(response["message"])
-        return response.get("workspaces")
+        return response.get("workspaces", [])
 
     def list_connections(self, workflow_id: str) -> List[dict]:
         """
@@ -90,7 +91,7 @@ class AirbyteClient:
         """
         if self._use_public_api:
             # Public API uses GET /connections with workspaceIds query parameter
-            response = self.client.get(f"/connections?workspaceIds={workflow_id}")
+            response = self.client.get(f"/connections?workspaceIds={quote(workflow_id)}")
             if response.get("exceptionStack"):
                 raise APIError(response["message"])
             return response.get("data", [])
@@ -100,7 +101,7 @@ class AirbyteClient:
         response = self.client.post("/connections/list", data=json.dumps(data))
         if response.get("exceptionStack"):
             raise APIError(response["message"])
-        return response.get("connections")
+        return response.get("connections", [])
 
     def list_jobs(self, connection_id: str) -> List[dict]:
         """
@@ -108,7 +109,7 @@ class AirbyteClient:
         """
         if self._use_public_api:
             # Public API uses GET /jobs with connectionId query parameter
-            response = self.client.get(f"/jobs?connectionId={connection_id}")
+            response = self.client.get(f"/jobs?connectionId={quote(connection_id)}")
             if response.get("exceptionStack"):
                 raise APIError(response["message"])
             return response.get("data", [])
@@ -118,7 +119,7 @@ class AirbyteClient:
         response = self.client.post("/jobs/list", data=json.dumps(data))
         if response.get("exceptionStack"):
             raise APIError(response["message"])
-        return response.get("jobs")
+        return response.get("jobs", [])
 
     def get_source(self, source_id: str) -> dict:
         """
@@ -243,7 +244,7 @@ class AirbyteCloudClient(AirbyteClient):
         Method returns the list of connections for a workspace in Airbyte Cloud.
         Uses GET endpoint with workspaceIds query parameter.
         """
-        response = self.client.get(f"/connections?workspaceIds={workflow_id}")
+        response = self.client.get(f"/connections?workspaceIds={quote(workflow_id)}")
         if response.get("exceptionStack"):
             raise APIError(response["message"])
         return response.get("data", [])
@@ -253,7 +254,7 @@ class AirbyteCloudClient(AirbyteClient):
         Method returns the list of jobs for a connection in Airbyte Cloud.
         Uses GET endpoint with connectionId query parameter.
         """
-        response = self.client.get(f"/jobs?connectionId={connection_id}")
+        response = self.client.get(f"/jobs?connectionId={quote(connection_id)}")
         if response.get("exceptionStack"):
             raise APIError(response["message"])
         return response.get("data", [])
