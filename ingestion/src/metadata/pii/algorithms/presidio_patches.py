@@ -88,3 +88,16 @@ def date_time_patcher(
                 continue
         patched_result.append(result)
     return patched_result
+
+
+class ResultCapturingPatcher:
+    recognizer_results: List[RecognizerResult]
+
+    def __init__(self) -> None:
+        self.recognizer_results = []
+
+    def __call__(
+        self, recognizer_results: Sequence[RecognizerResult], text: str
+    ) -> Sequence[RecognizerResult]:
+        self.recognizer_results.extend(recognizer_results)
+        return recognizer_results
