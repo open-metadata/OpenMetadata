@@ -257,21 +257,25 @@ const SchemaTable = () => {
   }, [tableColumns]);
 
   useEffect(() => {
-    if (
-      !hasInitialLoad ||
-      !table?.columns ||
-      isEqual(prevTableColumns, table.columns)
-    ) {
-      if (!isEqual(prevTableColumns, table.columns)) {
-        setPrevTableColumns(table.columns);
-      }
+    if (!hasInitialLoad || !table?.columns) {
+      return;
+    }
 
+    const columnsChanged = !isEqual(prevTableColumns, table.columns);
+
+    if (!columnsChanged) {
       return;
     }
 
     fetchPaginatedColumns(currentPage, searchText || undefined);
     setPrevTableColumns(table.columns);
-  }, [table?.columns, hasInitialLoad, currentPage, searchText]);
+  }, [
+    table?.columns,
+    hasInitialLoad,
+    currentPage,
+    searchText,
+    fetchPaginatedColumns,
+  ]);
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {

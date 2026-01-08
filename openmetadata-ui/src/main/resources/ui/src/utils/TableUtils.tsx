@@ -18,7 +18,6 @@ import classNames from 'classnames';
 import {
   get,
   isEmpty,
-  isEqual,
   isUndefined,
   lowerCase,
   omit,
@@ -1389,76 +1388,6 @@ export const pruneEmptyChildren = (columns: Column[]): Column[] => {
   });
 };
 
-/**
- * Sync paginated columns with full table columns when updates occur.
- * Only updates columns that exist in the current page, preserving pagination state.
- */
-export const syncPaginatedColumnsWithTable = (
-  paginatedColumns: Column[],
-  fullTableColumns: Column[]
-): Column[] => {
-  if (isEmpty(paginatedColumns) || isEmpty(fullTableColumns)) {
-    return paginatedColumns;
-  }
-
-  const syncColumn = (col: Column): Column => {
-    const updatedColumn = findFieldByFQN<Column>(
-      fullTableColumns,
-      col.fullyQualifiedName ?? ''
-    );
-
-    if (!updatedColumn) {
-      // Column not found in full table, keep original but still sync children
-      if (col.children?.length) {
-        const syncedChildren = col.children.map(syncColumn);
-
-        return { ...col, children: syncedChildren };
-      }
-
-      return col;
-    }
-
-    // Check if description or tags changed
-    const descriptionChanged = updatedColumn.description !== col.description;
-    const tagsChanged = !isEqual(updatedColumn.tags || [], col.tags || []);
-
-    // Sync children from updatedColumn (handles both cases: updatedColumn has children or not)
-    const syncedChildren = updatedColumn.children?.length
-      ? updatedColumn.children.map(syncColumn)
-      : undefined;
-
-    // If nothing changed, return original with synced children (if any)
-    if (!descriptionChanged && !tagsChanged) {
-      if (syncedChildren && syncedChildren.length > 0) {
-        const childrenChanged = !isEqual(syncedChildren, col.children || []);
-
-        return childrenChanged ? { ...col, children: syncedChildren } : col;
-      }
-      // Remove children if they were removed in updatedColumn
-      if (!syncedChildren && col.children?.length) {
-        return omit(col, 'children');
-      }
-
-      return col;
-    }
-
-    // Column has changes, use updated column with synced children
-    return {
-      ...updatedColumn,
-      children: syncedChildren,
-    };
-  };
-
-  const synced = paginatedColumns.map(syncColumn);
-
-  // Check if anything actually changed
-  if (isEqual(synced, paginatedColumns)) {
-    return paginatedColumns;
-  }
-
-  return pruneEmptyChildren(synced);
-};
-
 export const getSchemaFieldCount = <T extends { children?: T[] }>(
   fields: T[]
 ): number => {
@@ -1795,7 +1724,7 @@ export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
         );
       }
 
-      return [];
+      break;
     }
 
     case EntityType.API_ENDPOINT: {
@@ -1812,7 +1741,7 @@ export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
         ];
       }
 
-      return [];
+      break;
     }
 
     case EntityType.DASHBOARD_DATA_MODEL: {
@@ -1828,7 +1757,7 @@ export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
         );
       }
 
-      return [];
+      break;
     }
 
     case EntityType.MLMODEL: {
@@ -1838,7 +1767,7 @@ export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
         return (mlModel.mlFeatures ?? []) as MlFeature[];
       }
 
-      return [];
+      break;
     }
 
     case EntityType.PIPELINE: {
@@ -1850,7 +1779,7 @@ export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
         );
       }
 
-      return [];
+      break;
     }
 
     case EntityType.TOPIC: {
@@ -1862,7 +1791,7 @@ export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
         );
       }
 
-      return [];
+      break;
     }
 
     case EntityType.CONTAINER: {
@@ -1878,7 +1807,7 @@ export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
         );
       }
 
-      return [];
+      break;
     }
 
     case EntityType.SEARCH_INDEX: {
@@ -1890,10 +1819,9 @@ export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
         );
       }
 
-      return [];
+      break;
     }
-
-    default:
-      return [];
   }
+
+  return [];
 };
