@@ -2743,7 +2743,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 targetFQN,
                 tagLabel.getLabelType().ordinal(),
                 tagLabel.getState().ordinal(),
-                tagLabel.getReason());
+                tagLabel.getReason(),
+                tagLabel.getAppliedBy());
 
         // Update RDF store
         org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
@@ -4441,7 +4442,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         applyTagsDelete(deletedTags, fqn);
       }
       if (!addedTags.isEmpty()) {
-        applyTagsAdd(addedTags, fqn);
+        applyTagsAdd(
+            addedTags.stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(), fqn);
       }
 
       // Record changes for audit trail
@@ -5409,7 +5411,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Add tags related to newly added columns
       for (Column added : addedColumns) {
-        applyTags(added.getTags(), added.getFullyQualifiedName());
+        applyTags(
+            added.getTags().stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(),
+            added.getFullyQualifiedName());
       }
 
       // Carry forward the user generated metadata from existing columns to new columns
