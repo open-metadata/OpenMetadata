@@ -26,6 +26,7 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
+  INITIAL_PAGING_VALUE,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
@@ -256,7 +257,10 @@ const SchemaTable = () => {
   useEffect(() => {
     if (tableFqn) {
       // Reset to first page when search changes
-      fetchPaginatedColumns(1, searchText || undefined);
+      fetchPaginatedColumns(
+        searchText ? INITIAL_PAGING_VALUE : currentPage,
+        searchText || undefined
+      );
     }
   }, [tableFqn, searchText, fetchPaginatedColumns, pageSize]);
 

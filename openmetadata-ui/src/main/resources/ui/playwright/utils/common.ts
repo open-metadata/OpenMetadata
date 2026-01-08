@@ -684,7 +684,8 @@ export const readElementInListWithScroll = async (
 export const testPaginationNavigation = async (
   page: Page,
   waitForLoadSelector?: string,
-  dataColumnIndex: number = 0
+  dataColumnIndex: number = 0,
+  validateUrl = true,
 ) => {
   await page.waitForLoadState('networkidle');
 
@@ -728,16 +729,19 @@ export const testPaginationNavigation = async (
   await page.waitForLoadState('networkidle');
   await waitForAllLoadersToDisappear(page);
 
-  const currentUrl = page.url();
-  const urlObj = new URL(currentUrl);
-  const searchParams = urlObj.searchParams;
+  let afterValue: string | null = '';
+  if(validateUrl){
+    const currentUrl = page.url();
+    const urlObj = new URL(currentUrl);
+    const searchParams = urlObj.searchParams;
 
-  expect(searchParams.get('currentPage')).toBe('2');
-  expect(searchParams.get('cursorType')).toBe('after');
+    expect(searchParams.get('currentPage')).toBe('2');
+    expect(searchParams.get('cursorType')).toBe('after');
 
-  const afterValue = searchParams.get('cursorValue');
+    afterValue = searchParams.get('cursorValue');
 
-  expect(afterValue).toBeTruthy();
+    expect(afterValue).toBeTruthy();
+  }
 
   const page2RowCount = await tableRows.count();
   const page2RowData: string[] = [];
@@ -765,13 +769,15 @@ export const testPaginationNavigation = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  const reloadedUrl = page.url();
-  const reloadedUrlObj = new URL(reloadedUrl);
-  const reloadedSearchParams = reloadedUrlObj.searchParams;
-
-  expect(reloadedSearchParams.get('currentPage')).toBe('2');
-  expect(reloadedSearchParams.get('cursorType')).toBe('after');
-  expect(reloadedSearchParams.get('cursorValue')).toBe(afterValue);
+  if(validateUrl){
+    const reloadedUrl = page.url();
+    const reloadedUrlObj = new URL(reloadedUrl);
+    const reloadedSearchParams = reloadedUrlObj.searchParams;
+  
+    expect(reloadedSearchParams.get('currentPage')).toBe('2');
+    expect(reloadedSearchParams.get('cursorType')).toBe('after');
+    expect(reloadedSearchParams.get('cursorValue')).toBe(afterValue);
+  }
 
   const paginationText = page.locator('[data-testid="page-indicator"]');
 

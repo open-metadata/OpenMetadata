@@ -57,6 +57,15 @@ test.describe('Pagination tests for all pages', () => {
     await testPaginationNavigation(page, 'table');
   });
 
+  test('should test pagination on Table columns', async ({ page }) => {
+    test.slow(true);
+
+    await page.goto(
+      '/table/sample_data.ecommerce_db.shopify.customer_features?pageSize=3'
+    );
+    await testPaginationNavigation(page, 'table', 0, false);
+  });
+
   test.describe('Service Databases page pagination', () => {
     const databases: Array<{ id: string; name: string }> = [];
 
