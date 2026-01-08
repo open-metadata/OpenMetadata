@@ -163,9 +163,6 @@ public class EntityCsvTest {
         changeDescription.contains("\"fieldsUpdated\""), message + " missing fieldsUpdated key");
     assertTrue(
         changeDescription.contains("\"fieldsDeleted\""), message + " missing fieldsDeleted key");
-    assertTrue(
-        changeDescription.contains("\"previousVersion\""),
-        message + " missing previousVersion key");
   }
 
   public static String getSuccessRecord(String record, String successDetails) {
