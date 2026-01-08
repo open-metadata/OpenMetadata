@@ -275,24 +275,30 @@ export const getQueryFilterForDomain = (domainFqn: string) => ({
  * Unlike getQueryFilterForDomain, this does not exclude any entity types.
  * @param domainFqn - The fully qualified name of the domain
  */
-export const getQueryFilterForDataProducts = (domainFqn: string) => ({
-  query: {
-    bool: {
-      should: [
-        {
-          term: {
-            'domains.fullyQualifiedName': domainFqn,
+export const getQueryFilterForDataProducts = (domainFqn: string) => {
+  if (!domainFqn) {
+    return { query: { match_none: {} } };
+  }
+
+  return {
+    query: {
+      bool: {
+        should: [
+          {
+            term: {
+              'domains.fullyQualifiedName': domainFqn,
+            },
           },
-        },
-        {
-          prefix: {
-            'domains.fullyQualifiedName': `${domainFqn}.`,
+          {
+            prefix: {
+              'domains.fullyQualifiedName': `${domainFqn}.`,
+            },
           },
-        },
-      ],
+        ],
+      },
     },
-  },
-});
+  };
+};
 
 // Domain type description which will be shown in tooltip
 export const domainTypeTooltipDataRender = () => (
