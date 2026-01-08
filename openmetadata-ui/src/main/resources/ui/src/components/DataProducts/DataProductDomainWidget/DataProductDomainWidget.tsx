@@ -136,7 +136,11 @@ export const DataProductDomainWidget = () => {
 
   return (
     <>
-      <DomainLabelV2 showDomainHeading onUpdate={handleDomainUpdate} />
+      <DomainLabelV2
+        showDomainHeading
+        isClearable={false}
+        onUpdate={handleDomainUpdate}
+      />
 
       <Modal
         centered
