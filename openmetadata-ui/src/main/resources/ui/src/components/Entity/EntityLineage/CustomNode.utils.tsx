@@ -14,7 +14,7 @@ import { Dataflow01, Plus } from '@untitledui/icons';
 import { Button, Col, Row, Skeleton, Typography } from 'antd';
 import classNames from 'classnames';
 import { Fragment, useCallback, useState } from 'react';
-import { Handle, HandleProps, HandleType, Position } from 'reactflow';
+import { Handle, HandleProps, HandleType, Node, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
@@ -315,3 +315,14 @@ export function getNodeClassNames({
     }
   );
 }
+
+export const getCentroidPositionOfNodes = (nodes: Node[]) => {
+  return {
+    x:
+      nodes.reduce((sum, node) => sum + (node.position?.x ?? 0), 0) /
+      nodes.length,
+    y:
+      nodes.reduce((sum, node) => sum + (node.position?.y ?? 0), 0) /
+      nodes.length,
+  };
+};

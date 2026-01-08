@@ -138,7 +138,8 @@ const mockNodeDataProps2 = {
 };
 
 const onMockColumnClick = jest.fn();
-const loadChildNodesHandlerMock = jest.fn();
+const loadChildNodesHandlerMock = jest.fn(() => Promise.resolve());
+const onNodeCollapseMock = jest.fn();
 const updateNodeInternalsMock = jest.fn();
 const useUpdateNodeInternalsMock = jest.fn(() => updateNodeInternalsMock);
 let columnsInCurrentPages: string[] = [];
@@ -154,6 +155,16 @@ let isDataObservabilityLayerActive = false;
 let tracedColumns: string[] = [];
 let columnsHavingLineage: string[] = [];
 let isEditMode = false;
+let mockNodes: unknown[] = [{ mockNodeDataProps }];
+let mockNewlyLoadedNodeIds: string[] = [];
+let mockReactFlowInstance: unknown = undefined;
+let mockZoomValue = 1;
+const focusToCoordinatesMock = jest.fn();
+
+jest.mock('../../../utils/EntityLineageUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityLineageUtils'),
+  focusToCoordinates: jest.fn((...args) => focusToCoordinatesMock(...args)),
+}));
 
 jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn(() => ({
@@ -168,11 +179,9 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
       return isEditMode;
     },
     pipelineStatus: {},
-    nodes: [
-      {
-        mockNodeDataProps,
-      },
-    ],
+    get nodes() {
+      return mockNodes;
+    },
     upstreamDownstreamData: {
       upstreamNodes: [],
       downstreamNodes: [],
@@ -190,9 +199,19 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
     expandAllColumns: true,
     fetchPipelineStatus: jest.fn(),
     onColumnClick: onMockColumnClick,
+    onNodeCollapse: onNodeCollapseMock,
     loadChildNodesHandler: loadChildNodesHandlerMock,
     useUpdateNodeInternals: useUpdateNodeInternalsMock,
     setColumnsInCurrentPages: setColumnsInCurrentPagesMock,
+    get newlyLoadedNodeIds() {
+      return mockNewlyLoadedNodeIds;
+    },
+    get reactFlowInstance() {
+      return mockReactFlowInstance;
+    },
+    get zoomValue() {
+      return mockZoomValue;
+    },
   })),
 }));
 
@@ -228,6 +247,10 @@ describe('CustomNodeV1', () => {
     tracedColumns = [];
     columnsHavingLineage = [];
     isEditMode = false;
+    mockNodes = [{ mockNodeDataProps }];
+    mockNewlyLoadedNodeIds = [];
+    mockReactFlowInstance = undefined;
+    mockZoomValue = 1;
     jest.clearAllMocks();
   });
 
@@ -462,6 +485,87 @@ describe('CustomNodeV1', () => {
       expect.any(Object),
       'Downstream',
       50
+    );
+  });
+
+  it('should call focusToCoordinates when centroid position when expand button is clicked', async () => {
+    mockReactFlowInstance = {
+      setCenter: jest.fn(),
+    };
+
+    mockNodes = [
+      mockNodeDataProps,
+      {
+        id: 'newNode1',
+        position: { x: 100, y: 200 },
+      },
+      {
+        id: 'newNode2',
+        position: { x: 300, y: 400 },
+      },
+      {
+        id: 'newNode3',
+        position: { x: 503, y: 603 },
+      },
+    ];
+
+    mockNewlyLoadedNodeIds = ['newNode1', 'newNode2', 'newNode3'];
+
+    const { rerender } = render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+
+    const expandBtn = screen.getByTestId('plus-icon');
+
+    await act(async () => {
+      fireEvent.click(expandBtn);
+    });
+
+    await act(async () => {
+      rerender(
+        <ReactFlowProvider>
+          <CustomNodeV1Component {...mockNodeDataProps} />
+        </ReactFlowProvider>
+      );
+    });
+
+    expect(focusToCoordinatesMock).toHaveBeenCalledWith(
+      { x: 301, y: 401 },
+      mockReactFlowInstance,
+      1
+    );
+  });
+
+  it('should call focusToCoordinates when collapse button is clicked', () => {
+    mockReactFlowInstance = {
+      setCenter: jest.fn(),
+    };
+
+    const mockNodeWithOutgoers = {
+      ...mockNodeDataProps,
+      data: {
+        ...mockNodeDataProps.data,
+        hasOutgoers: true,
+        isRootNode: true,
+      },
+    };
+
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeWithOutgoers} />
+      </ReactFlowProvider>
+    );
+
+    const collapseBtn = screen.getByTestId('downstream-collapse-handle');
+
+    fireEvent.click(collapseBtn);
+
+    expect(focusToCoordinatesMock).toHaveBeenCalledWith(
+      { x: mockNodeWithOutgoers.xPos, y: mockNodeWithOutgoers.yPos },
+      mockReactFlowInstance,
+      1
     );
   });
 

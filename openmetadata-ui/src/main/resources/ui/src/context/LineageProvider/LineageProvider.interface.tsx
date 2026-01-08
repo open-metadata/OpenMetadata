@@ -122,4 +122,5 @@ export interface LineageContextType {
   useUpdateNodeInternals: () => UpdateNodeInternals;
   columnsInCurrentPages: Record<string, string[]>;
   setColumnsInCurrentPages: Dispatch<SetStateAction<Record<string, string[]>>>;
+  newlyLoadedNodeIds: string[];
 }
