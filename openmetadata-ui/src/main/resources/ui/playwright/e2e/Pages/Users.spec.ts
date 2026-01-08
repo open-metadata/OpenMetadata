@@ -904,9 +904,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     await adminPage.waitForSelector(
       '[data-testid="default-persona-select-list"]'
     );
-    await adminPage
-      .locator('[data-testid="default-persona-select-list"]')
-      .click();
+    
     await adminPage.waitForSelector('.ant-select-dropdown', {
       state: 'visible',
     });
@@ -1149,11 +1147,6 @@ test.describe('User Profile Persona Interactions', () => {
       await adminPage.waitForSelector(
         '[data-testid="default-persona-select-list"]'
       );
-
-      // Open the default persona select dropdown
-      await adminPage
-        .locator('[data-testid="default-persona-select-list"]')
-        .click();
 
       // Wait for dropdown to open and options to load
       await adminPage.waitForSelector('.ant-select-dropdown', {
