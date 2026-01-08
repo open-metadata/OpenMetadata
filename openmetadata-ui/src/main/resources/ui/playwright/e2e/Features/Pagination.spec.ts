@@ -12,6 +12,7 @@
  */
 import test, { expect } from '@playwright/test';
 import { AlertClass } from '../../support/entity/AlertClass';
+import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
@@ -56,13 +57,48 @@ test.describe('Pagination tests for all pages', () => {
     await testPaginationNavigation(page, '/api/v1/tables', 'table');
   });
 
-  test('should test pagination on Table columns', async ({ page }) => {
-    test.slow(true);
+  test.describe('Table columns page pagination', () => {
+    const database = new DatabaseClass();
+    let tableFqn: string;
 
-    await page.goto(
-      '/table/sample_data.ecommerce_db.shopify.customer_features?pageSize=3'
-    );
-    await testPaginationNavigation(page, '/columns', 'table', false);
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      const columns = [];
+      for (let i = 1; i <= 60; i++) {
+        columns.push({
+          name: `pw_test_column_${i}`,
+          dataType: 'VARCHAR',
+          dataLength: 255,
+          dataTypeDisplay: 'varchar',
+          description: `Test column ${i} for pagination testing`,
+        });
+      }
+
+      database.table.columns = columns;
+
+      await database.create(apiContext);
+      tableFqn = database.tableResponseData.fullyQualifiedName;
+
+      if (!tableFqn) {
+        throw new Error('Failed to create table: tableFqn is undefined');
+      }
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await database.delete(apiContext);
+      await afterAction();
+    });
+
+    test('should test pagination on Table columns', async ({ page }) => {
+      test.slow(true);
+
+      await page.goto(`/table/${tableFqn}?pageSize=15`);
+      await testPaginationNavigation(page, '/columns', 'table', false);
+    });
   });
 
   test.describe('Service Databases page pagination', () => {
