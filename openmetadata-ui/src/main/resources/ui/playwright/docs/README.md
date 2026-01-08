@@ -7,39 +7,39 @@
 | Metric | Count |
 |--------|-------|
 | **Components** | 30 |
-| **Test Files** | 139 |
-| **Test Cases** | 2197 |
-| **Total Scenarios** | 3093 🚀 |
+| **Test Files** | 158 |
+| **Test Cases** | 2432 |
+| **Total Scenarios** | 3432 🚀 |
 
 ---
 
 ## Governance
 
-> **6 Components** | **509 Tests** | **939 Scenarios**
+> **6 Components** | **688 Tests** | **1159 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
 | [Custom Properties](./Governance.md#custom-properties) | 5 | 293 | 304 | 0 |
+| [Glossary](./Governance.md#glossary) | 20 | 212 | 249 | 0 |
 | [Data Contracts](./Governance.md#data-contracts) | 2 | 86 | 429 | 0 |
-| [Glossary](./Governance.md#glossary) | 6 | 52 | 84 | 0 |
-| [Domains & Data Products](./Governance.md#domains-data-products) | 4 | 35 | 57 | 0 |
+| [Domains & Data Products](./Governance.md#domains-data-products) | 7 | 54 | 112 | 0 |
 | [Tags](./Governance.md#tags) | 7 | 34 | 49 | 0 |
 | [Metrics](./Governance.md#metrics) | 3 | 9 | 16 | 0 |
 
 ## Platform
 
-> **12 Components** | **1242 Tests** | **1618 Scenarios**
+> **12 Components** | **1274 Tests** | **1668 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
-| [Entities](./Platform.md#entities) | 15 | 926 | 1093 | 0 |
-| [Users & Teams](./Platform.md#users-teams) | 9 | 80 | 100 | 0 |
-| [Other](./Platform.md#other) | 18 | 64 | 75 | 0 |
-| [Personas & Customizations](./Platform.md#personas-customizations) | 5 | 44 | 142 | 0 |
+| [Entities](./Platform.md#entities) | 15 | 927 | 1098 | 0 |
+| [Users & Teams](./Platform.md#users-teams) | 9 | 81 | 101 | 0 |
+| [Other](./Platform.md#other) | 18 | 73 | 94 | 0 |
+| [Lineage (UI)](./Platform.md#lineage-ui-) | 3 | 51 | 107 | 0 |
+| [Personas & Customizations](./Platform.md#personas-customizations) | 5 | 45 | 146 | 0 |
 | [Navigation](./Platform.md#navigation) | 4 | 38 | 38 | 0 |
-| [Lineage (UI)](./Platform.md#lineage-ui-) | 3 | 32 | 87 | 0 |
 | [RBAC](./Platform.md#rbac) | 4 | 19 | 34 | 0 |
-| [Settings](./Platform.md#settings) | 5 | 14 | 18 | 0 |
+| [Settings](./Platform.md#settings) | 5 | 15 | 19 | 0 |
 | [SSO](./Platform.md#sso) | 1 | 10 | 10 | 0 |
 | [Authentication](./Platform.md#authentication) | 2 | 7 | 7 | 0 |
 | [App Marketplace](./Platform.md#app-marketplace) | 2 | 5 | 11 | 0 |
@@ -47,12 +47,12 @@
 
 ## Discovery
 
-> **7 Components** | **355 Tests** | **367 Scenarios**
+> **7 Components** | **356 Tests** | **368 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
 | [Search](./Discovery.md#search) | 5 | 136 | 136 | 0 |
-| [Data Assets](./Discovery.md#data-assets) | 12 | 101 | 105 | 0 |
+| [Data Assets](./Discovery.md#data-assets) | 12 | 102 | 106 | 0 |
 | [Explore](./Discovery.md#explore) | 4 | 56 | 62 | 0 |
 | [Curated Assets](./Discovery.md#curated-assets) | 1 | 23 | 23 | 0 |
 | [Home Page](./Discovery.md#home-page) | 2 | 22 | 22 | 0 |
@@ -61,22 +61,22 @@
 
 ## Observability
 
-> **4 Components** | **39 Tests** | **114 Scenarios**
+> **4 Components** | **61 Tests** | **180 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
-| [Data Quality](./Observability.md#data-quality) | 7 | 13 | 34 | 0 |
+| [Data Quality](./Observability.md#data-quality) | 8 | 35 | 100 | 0 |
 | [Alerts & Notifications](./Observability.md#alerts-notifications) | 2 | 12 | 38 | 0 |
 | [Profiler](./Observability.md#profiler) | 2 | 9 | 24 | 0 |
 | [Incident Manager](./Observability.md#incident-manager) | 1 | 5 | 18 | 0 |
 
 ## Integration
 
-> **1 Components** | **52 Tests** | **55 Scenarios**
+> **1 Components** | **53 Tests** | **57 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
-| [Connectors](./Integration.md#connectors) | 5 | 52 | 55 | 0 |
+| [Connectors](./Integration.md#connectors) | 6 | 53 | 57 | 0 |
 
 
-*Last updated: 2025-12-18*
+*Last updated: 2026-01-07*

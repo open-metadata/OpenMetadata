@@ -291,6 +291,7 @@ authenticationConfiguration:
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
   jwtPrincipalClaimsMapping: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING:-[]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
+  enableAutoRedirect: ${AUTHENTICATION_ENABLE_AUTO_REDIRECT:-false}
   # Force secure flag on session cookies even when not using HTTPS directly.
   # Enable this when running behind a proxy/load balancer that handles SSL termination.
   # Default: false (secure flag only set when HTTPS is detected)
@@ -321,7 +322,6 @@ authenticationConfiguration:
       entityId: ${SAML_IDP_ENTITY_ID:-""}
       ssoLoginUrl: ${SAML_IDP_SSO_LOGIN_URL:-""}
       idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""}
-      authorityUrl: ${SAML_AUTHORITY_URL:-"http://localhost:8585/api/v1/saml/login"}
       nameId: ${SAML_IDP_NAME_ID:-"urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress"}
     sp:
       entityId: ${SAML_SP_ENTITY_ID:-"http://localhost:8585/api/v1/saml/metadata"}

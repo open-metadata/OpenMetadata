@@ -33,6 +33,7 @@ interface BlockEditorMockProps {
   placeholder?: string;
   extensionOptions?: Record<string, unknown>;
   showMenu?: boolean;
+  onFocus?: () => void;
 }
 
 // Store the last props passed to BlockEditor for testing
@@ -41,7 +42,7 @@ let lastBlockEditorProps: BlockEditorMockProps = {};
 jest.mock('../../BlockEditor/BlockEditor', () => {
   const MockBlockEditor = React.forwardRef(
     (props: BlockEditorMockProps, ref) => {
-      const { content, onChange } = props;
+      const { content, onChange, onFocus } = props;
       // Store props for assertions
       lastBlockEditorProps = props;
 
@@ -74,6 +75,7 @@ jest.mock('../../BlockEditor/BlockEditor', () => {
             setValue(e.target.value);
             onChange && onChange(e.target.value);
           }}
+          onFocus={onFocus}
         />
       );
     }
@@ -156,7 +158,7 @@ describe('RichTextEditor', () => {
   it('should apply custom styles', () => {
     const customStyle = { backgroundColor: 'red', padding: '10px' };
     render(
-      <RichTextEditor onTextChange={onTextChangeMock} style={customStyle} />
+      <RichTextEditor style={customStyle} onTextChange={onTextChangeMock} />
     );
 
     const editorElement = screen.getByTestId('editor');
@@ -252,8 +254,8 @@ describe('RichTextEditor', () => {
 
     render(
       <RichTextEditor
-        ref={editorRef}
         initialValue="Something"
+        ref={editorRef}
         onTextChange={onTextChangeMock}
       />
     );
@@ -331,5 +333,22 @@ describe('RichTextEditor', () => {
     render(<RichTextEditor onTextChange={onTextChangeMock} />);
 
     expect(lastBlockEditorProps.editable).toBe(true);
+  });
+
+  it('should pass onFocus prop to BlockEditor', () => {
+    const onFocusMock = jest.fn();
+    render(<RichTextEditor onFocus={onFocusMock} />);
+
+    expect(lastBlockEditorProps.onFocus).toBe(onFocusMock);
+  });
+
+  it('should trigger onFocus when editor receives focus', () => {
+    const onFocusMock = jest.fn();
+    render(<RichTextEditor onFocus={onFocusMock} />);
+
+    const textarea = screen.getByTestId('editor-textarea');
+    fireEvent.focus(textarea);
+
+    expect(onFocusMock).toHaveBeenCalled();
   });
 });

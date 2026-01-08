@@ -187,17 +187,10 @@ export const selectOption = async (
       .locator('.ant-select-selector')
       .click({ force: true });
 
-    await page.waitForSelector('.ant-select-item-empty', {
-      state: 'detached',
-    });
-
     // Clear any existing input and type the new value
     const combobox = dropdownLocator.getByRole('combobox');
     await combobox.clear();
     await combobox.fill(optionTitle);
-    await page.waitForSelector('.ant-select-item-empty', {
-      state: 'detached',
-    });
   } else {
     await dropdownLocator.click();
   }
@@ -413,7 +406,7 @@ export const checkNullPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=15*"exists"*'
+    '/api/v1/search/query?*index=dataAsset&from=0&size=15*%22exists%22*'
   );
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;

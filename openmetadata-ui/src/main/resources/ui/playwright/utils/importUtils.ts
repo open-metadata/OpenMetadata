@@ -335,7 +335,9 @@ const editGlossaryCustomProperty = async (
     await page.locator('[data-testid="update-table-type-property"]').click();
 
     await expect(
-      page.getByTestId(propertyName).getByRole('cell', { name: columns[0] })
+      page
+        .getByTestId(propertyName)
+        .getByRole('columnheader', { name: columns[0] })
     ).toBeVisible();
 
     await expect(
@@ -870,6 +872,14 @@ export const fillColumnDetails = async (
   await page
     .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
+
+  // we need to perform an extra right arrow press if the tag selector is still visible on active cell
+  if (await page.locator(RDG_ACTIVE_CELL_SELECTOR).getByTestId('tag-selector').isVisible()) {
+    await page
+      .locator(RDG_ACTIVE_CELL_SELECTOR)
+      .press('ArrowRight', { delay: 100 });
+  }
+
   await fillGlossaryTermDetails(page, row.glossary);
 };
 

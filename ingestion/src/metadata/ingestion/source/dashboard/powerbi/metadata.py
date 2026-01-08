@@ -1055,6 +1055,7 @@ class PowerbiSource(DashboardServiceSource):
                 if DATABRICKS_QUERY_EXPRESSION_KW in source_expression:
                     return parse_databricks_native_query_source(
                         source_expression,
+                        dataset,
                         parser_type=self.get_query_parser_type(),
                     )
                 else:
