@@ -139,8 +139,8 @@ class TestGetColumnDiff:
                     extra_columns=["first_name"],
                 ),
                 HasAttributes(
-                    removed=IsList(Contains("first_name")),
-                    added=IsList(Contains("last_name")),
+                    removed=IsList(Contains("last_name")),
+                    added=IsList(Contains("first_name")),
                     changed=[],
                 ),
             ),
@@ -158,8 +158,8 @@ class TestGetColumnDiff:
                     extra_columns=["first_name"],
                 ),
                 HasAttributes(
-                    removed=IsList(Contains("first_name")),
-                    added=IsList(Contains("last_name")),
+                    removed=IsList(Contains("last_name")),
+                    added=IsList(Contains("first_name")),
                     changed=[],
                 ),
             ),
@@ -177,8 +177,8 @@ class TestGetColumnDiff:
                     extra_columns=["first_name"],
                 ),
                 HasAttributes(
-                    removed=IsList(Contains("table_id"), Contains("first_name")),
-                    added=IsList(Contains("last_name")),
+                    removed=IsList(Contains("last_name")),
+                    added=IsList(Contains("table_id"), Contains("first_name")),
                     changed=[],
                 ),
             ),

@@ -589,9 +589,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         return TestCaseResult(
             timestamp=self.execution_date,  # type: ignore
             testCaseStatus=self.get_test_case_status(
-                not column_diff
-                or (threshold or total_diffs) == 0
-                or total_diffs < threshold
+                (threshold or total_diffs) == 0 or total_diffs < threshold
             ),
             result=f"Found {total_diffs} different rows which is more than the threshold of {threshold}",
             failedRows=total_diffs,
@@ -649,7 +647,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                     schema={
                         c.name.root: {
                             "type": c.dataTypeDisplay,
-                            "constraints": c.constraint.value,
+                            "constraints": c.constraint.value if c.constraint else "",
                         }
                         for c in self.runtime_params.table2.columns
                     },
