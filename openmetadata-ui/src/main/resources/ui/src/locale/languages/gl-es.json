@@ -1564,6 +1564,7 @@
     "server": "Servidor",
     "server-endpoint": "Punto final do servidor",
     "server-port": "Porto do servidor",
+    "server-stat-plural": "Estatísticas do servidor",
     "service": "Servizo",
     "service-account-email": "Correo electrónico da conta de servizo",
     "service-configuration-lowercase": "configuración do servizo",

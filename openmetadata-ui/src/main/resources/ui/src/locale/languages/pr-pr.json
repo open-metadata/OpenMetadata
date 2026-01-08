@@ -1564,6 +1564,7 @@
     "server": "سرور",
     "server-endpoint": "نقطه انتهایی سرور",
     "server-port": "پورت سرور",
+    "server-stat-plural": "Server Stats",
     "service": "خدمت",
     "service-account-email": "ایمیل حساب خدمت",
     "service-configuration-lowercase": "پیکربندی خدمت",

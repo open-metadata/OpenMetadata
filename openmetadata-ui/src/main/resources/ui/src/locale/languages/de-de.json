@@ -1564,6 +1564,7 @@
     "server": "Server",
     "server-endpoint": "Server-Endpunkt",
     "server-port": "Server-Port",
+    "server-stat-plural": "Serverstatistik",
     "service": "Dienst",
     "service-account-email": "Dienst-Konto-E-Mail",
     "service-configuration-lowercase": "Dienstkonfiguration",

@@ -1564,6 +1564,7 @@
     "server": "サーバー",
     "server-endpoint": "サーバーエンドポイント",
     "server-port": "サーバーポート",
+    "server-stat-plural": "サーバー統計",
     "service": "サービス",
     "service-account-email": "サービスアカウントのメール",
     "service-configuration-lowercase": "サービス設定",

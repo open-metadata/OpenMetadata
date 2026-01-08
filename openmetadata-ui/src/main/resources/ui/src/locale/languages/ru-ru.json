@@ -1564,6 +1564,7 @@
     "server": "Сервер",
     "server-endpoint": "Конечная точка сервера",
     "server-port": "Порт сервера",
+    "server-stat-plural": "Статистика сервера",
     "service": "Сервис",
     "service-account-email": "Электронная почта сервисной учетной записи",
     "service-configuration-lowercase": "конфигурация сервиса",

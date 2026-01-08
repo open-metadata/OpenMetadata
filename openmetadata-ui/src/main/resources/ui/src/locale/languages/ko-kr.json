@@ -1564,6 +1564,7 @@
     "server": "서버",
     "server-endpoint": "서버 엔드포인트",
     "server-port": "서버 포트",
+    "server-stat-plural": "서버 통계",
     "service": "서비스",
     "service-account-email": "서비스 계정 이메일",
     "service-configuration-lowercase": "서비스 구성",

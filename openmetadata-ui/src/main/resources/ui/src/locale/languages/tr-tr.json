@@ -1564,6 +1564,7 @@
     "server": "Sunucu",
     "server-endpoint": "Sunucu Uç Noktası",
     "server-port": "Sunucu Portu",
+    "server-stat-plural": "Sunucu İstatistikleri",
     "service": "Servis",
     "service-account-email": "Servis Hesabı E-postası",
     "service-configuration-lowercase": "servis yapılandırması",

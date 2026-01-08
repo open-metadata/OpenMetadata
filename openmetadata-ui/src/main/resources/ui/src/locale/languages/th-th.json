@@ -1564,6 +1564,7 @@
     "server": "เซิร์ฟเวอร์",
     "server-endpoint": "จุดสิ้นสุดเซิร์ฟเวอร์",
     "server-port": "พอร์ตเซิร์ฟเวอร์",
+    "server-stat-plural": "สถิติเซิร์ฟเวอร์",
     "service": "บริการ",
     "service-account-email": "อีเมลบัญชีบริการ",
     "service-configuration-lowercase": "การตั้งค่าบริการ",

@@ -1564,6 +1564,7 @@
     "server": "伺服器",
     "server-endpoint": "伺服器端點",
     "server-port": "伺服器連接埠",
+    "server-stat-plural": "伺服器統計",
     "service": "服務",
     "service-account-email": "服務帳戶電子郵件",
     "service-configuration-lowercase": "服務組態",

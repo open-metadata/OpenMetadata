@@ -1564,6 +1564,7 @@
     "server": "שרת",
     "server-endpoint": "קצה השרת",
     "server-port": "פורט השרת",
+    "server-stat-plural": "סטטיסטיקות שרת",
     "service": "שירות",
     "service-account-email": "דואר אלקטרוני של חשבון השירות",
     "service-configuration-lowercase": "הגדרות השירות",

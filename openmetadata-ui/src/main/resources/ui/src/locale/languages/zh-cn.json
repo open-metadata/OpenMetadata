@@ -1564,6 +1564,7 @@
     "server": "服务器",
     "server-endpoint": "服务器地址",
     "server-port": "服务器端口",
+    "server-stat-plural": "服务器统计",
     "service": "服务",
     "service-account-email": "服务账号的邮箱",
     "service-configuration-lowercase": "服务配置",
