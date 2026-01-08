@@ -244,31 +244,37 @@ export const getQueryFilterToExcludeDomainTerms = (
  * excluding DataProduct entities. Use this for general domain asset listings.
  * @param domainFqn - The fully qualified name of the domain
  */
-export const getQueryFilterForDomain = (domainFqn: string) => ({
-  query: {
-    bool: {
-      should: [
-        {
-          term: {
-            'domains.fullyQualifiedName': domainFqn,
+export const getQueryFilterForDomain = (domainFqn: string) => {
+  if (!domainFqn) {
+    return { query: { match_none: {} } };
+  }
+
+  return {
+    query: {
+      bool: {
+        should: [
+          {
+            term: {
+              'domains.fullyQualifiedName': domainFqn,
+            },
           },
-        },
-        {
-          prefix: {
-            'domains.fullyQualifiedName': `${domainFqn}.`,
+          {
+            prefix: {
+              'domains.fullyQualifiedName': `${domainFqn}.`,
+            },
           },
-        },
-      ],
-      must_not: [
-        {
-          term: {
-            entityType: 'dataProduct',
+        ],
+        must_not: [
+          {
+            term: {
+              entityType: 'dataProduct',
+            },
           },
-        },
-      ],
+        ],
+      },
     },
-  },
-});
+  };
+};
 
 /**
  * Returns an Elasticsearch query filter for fetching DataProduct entities within a domain.
