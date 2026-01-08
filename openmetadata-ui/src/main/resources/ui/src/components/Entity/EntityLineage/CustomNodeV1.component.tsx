@@ -11,15 +11,24 @@
  *  limitations under the License.
  */
 
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import DownloadIcon from '@mui/icons-material/SaveAlt';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import { Divider, IconButton, Menu, MenuItem, useTheme } from '@mui/material';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Handle, NodeProps, Position } from 'reactflow';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
+import { focusToCoordinates } from '../../../utils/EntityLineageUtils';
 import LineageNodeRemoveButton from '../../Lineage/LineageNodeRemoveButton';
 import './custom-node.less';
 import {
+  getCentroidPositionOfNodes,
   getCollapseHandle,
   getExpandHandle,
   getNodeClassNames,
@@ -142,6 +151,105 @@ const ExpandCollapseHandles = memo(
   }
 );
 
+const NodeMeatballMenu = ({
+  data,
+}: {
+  data: { nodeId: string; xPos: number; yPos: number };
+}) => {
+  const theme = useTheme();
+
+  const { t } = useTranslation();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+  const { onNodeAdd, isAddStreamNodeInProgress } = useLineageProvider();
+
+  const handleClose = useCallback(() => {
+    setAnchorEl(null);
+  }, []);
+
+  const handleAddUpstream = useCallback(() => {
+    handleClose();
+    onNodeAdd(data.nodeId, data.xPos, data.yPos, LineageDirection.Upstream);
+  }, [handleClose, onNodeAdd, data.nodeId, data.xPos, data.yPos]);
+
+  const handleAddDownstream = useCallback(() => {
+    handleClose();
+    onNodeAdd(data.nodeId, data.xPos, data.yPos, LineageDirection.Downstream);
+  }, [handleClose, onNodeAdd, data.nodeId, data.xPos, data.yPos]);
+
+  const handleClickIconButton = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      setAnchorEl(e.currentTarget);
+    },
+    []
+  );
+
+  const handleMenuClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation(),
+    []
+  );
+
+  return (
+    <div className="manage-node">
+      <IconButton
+        aria-controls={open ? 'menu' : undefined}
+        aria-haspopup="true"
+        aria-label="more options"
+        disabled={isAddStreamNodeInProgress}
+        onClick={handleClickIconButton}>
+        <MoreVertIcon sx={{ pointerEvents: 'none' }} />
+      </IconButton>
+
+      <Menu
+        anchorEl={anchorEl}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        className="manage-node-menu"
+        id="menu"
+        open={open}
+        sx={{
+          '.MuiPaper-root': {
+            width: 'max-content',
+            marginLeft: theme.spacing(1.5),
+            marginTop: 0,
+            '.MuiMenuItem-root': {
+              fontWeight: theme.typography.fontWeightRegular,
+              svg: {
+                fontSize: theme.spacing(5),
+              },
+            },
+          },
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+        onClick={handleMenuClick}
+        onClose={handleClose}>
+        <MenuItem onClick={handleAddDownstream}>
+          <ArrowForwardIcon />
+          {t('label.add-downstream')}
+        </MenuItem>
+        <MenuItem onClick={handleAddUpstream}>
+          <ArrowBackIcon />
+          {t('label.add-upstream')}
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={handleClose}>
+          <TrendingDownIcon />
+          {t('label.view-impact')}
+        </MenuItem>
+        <MenuItem onClick={handleClose}>
+          <DownloadIcon /> {t('label.download-impact')}
+        </MenuItem>
+      </Menu>
+    </div>
+  );
+};
+
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
 
@@ -154,6 +262,18 @@ const CustomNodeV1 = (props: NodeProps) => {
     loadChildNodesHandler,
     activeLayer,
     dataQualityLineage,
+    nodes,
+    newlyLoadedNodeIds,
+    reactFlowInstance,
+    zoomValue,
+    addStreamSourceNodeId,
+    addStreamTargetNodeId,
+    addStreamNodeDirection,
+    isAddStreamNodeInProgress,
+    setAddStreamSourceNodeId,
+    setAddStreamTargetNodeId,
+    setIsAddStreamNodeInProgress,
+    onConnect,
   } = useLineageProvider();
 
   const {
@@ -170,12 +290,12 @@ const CustomNodeV1 = (props: NodeProps) => {
   const nodeType = isEditMode ? EntityLineageNodeType.DEFAULT : type;
   const isSelected = selectedNode === node;
   const {
-    id,
     fullyQualifiedName,
     upstreamLineage = [],
     upstreamExpandPerformed = false,
     downstreamExpandPerformed = false,
   } = node;
+  const { id } = props;
   const [isTraced, setIsTraced] = useState(false);
 
   const showDqTracing = useMemo(
@@ -201,6 +321,8 @@ const CustomNodeV1 = (props: NodeProps) => {
     setIsOnlyShowColumnsWithLineageFilterActive,
   ] = useState(false);
 
+  const [isNodeExpanded, setIsNodeExpanded] = useState(false);
+
   const toggleOnlyShowColumnsWithLineageFilterActive = useCallback(() => {
     setIsOnlyShowColumnsWithLineageFilterActive((prev) => !prev);
   }, []);
@@ -215,6 +337,68 @@ const CustomNodeV1 = (props: NodeProps) => {
     );
   }, [isColumnLayerEnabled, isEditMode]);
 
+  useEffect(() => {
+    const newlyLoadedNodes = nodes.filter((node) =>
+      newlyLoadedNodeIds.includes(node.id)
+    );
+
+    if (!isNodeExpanded || newlyLoadedNodes.length === 0) {
+      return;
+    }
+
+    /**
+     * When a node expands one level, new nodes load at the same vertical
+     * position—they share the same x-coordinate but have different y-coordinates.
+     * We can focus on the midpoint of all coordinates, which is the centroid.
+     *
+     * Though for a single level, x-coordinates are identical for all points,
+     * but finding their center helps when users click expand-all.
+     * In that case, nodes open to multiple levels.
+     */
+    const newPositionToFocus =
+      newlyLoadedNodes.length > 0
+        ? getCentroidPositionOfNodes(newlyLoadedNodes)
+        : { x: 0, y: 0 };
+
+    focusToCoordinates(newPositionToFocus, reactFlowInstance, zoomValue);
+    setIsNodeExpanded(false);
+  }, [nodes, newlyLoadedNodeIds, isNodeExpanded, reactFlowInstance, zoomValue]);
+
+  const hasConnectedStreamRef = useRef(false);
+
+  useEffect(() => {
+    // This is to avoid multiple API calls due to component re-rendering
+    if (hasConnectedStreamRef.current || !isAddStreamNodeInProgress) {
+      return;
+    }
+
+    if (
+      (addStreamNodeDirection === LineageDirection.Downstream &&
+        id === addStreamTargetNodeId) ||
+      (addStreamNodeDirection === LineageDirection.Upstream &&
+        id === addStreamSourceNodeId)
+    ) {
+      onConnect({
+        source: addStreamSourceNodeId,
+        sourceHandle: addStreamSourceNodeId,
+        target: addStreamTargetNodeId,
+        targetHandle: addStreamTargetNodeId,
+      });
+
+      hasConnectedStreamRef.current = true;
+      setAddStreamSourceNodeId(null);
+      setAddStreamTargetNodeId(null);
+      setIsAddStreamNodeInProgress(false);
+    }
+  }, [
+    isAddStreamNodeInProgress,
+    addStreamSourceNodeId,
+    addStreamTargetNodeId,
+    addStreamNodeDirection,
+    id,
+    onConnect,
+  ]);
+
   const containerClass = getNodeClassNames({
     isSelected,
     showDqTracing: showDqTracing ?? false,
@@ -225,7 +409,9 @@ const CustomNodeV1 = (props: NodeProps) => {
 
   const onExpand = useCallback(
     (direction: LineageDirection, depth = 1) => {
-      loadChildNodesHandler(node, direction, depth);
+      loadChildNodesHandler(node, direction, depth).then(() =>
+        setIsNodeExpanded(true)
+      );
     },
     [loadChildNodesHandler, node]
   );
@@ -233,8 +419,13 @@ const CustomNodeV1 = (props: NodeProps) => {
   const onCollapse = useCallback(
     (direction = LineageDirection.Downstream) => {
       onNodeCollapse(props, direction);
+      focusToCoordinates(
+        { x: props.xPos, y: props.yPos },
+        reactFlowInstance,
+        zoomValue
+      );
     },
-    [onNodeCollapse, props]
+    [onNodeCollapse, props, reactFlowInstance, zoomValue]
   );
 
   const nodeLabel = useMemo(() => {
@@ -261,19 +452,18 @@ const CustomNodeV1 = (props: NodeProps) => {
       </>
     );
   }, [
-    node.id,
     isNewNode,
     label,
+    isChildrenListExpanded,
+    isOnlyShowColumnsWithLineageFilterActive,
+    node,
+    toggleColumnsList,
+    toggleOnlyShowColumnsWithLineageFilterActive,
     isSelected,
     isEditMode,
     isRootNode,
-    isChildrenListExpanded,
-    toggleColumnsList,
-    toggleOnlyShowColumnsWithLineageFilterActive,
     removeNodeHandler,
     props,
-    isOnlyShowColumnsWithLineageFilterActive,
-    isEditMode,
   ]);
 
   const expandCollapseProps = useMemo<ExpandCollapseHandlesProps>(
@@ -340,6 +530,11 @@ const CustomNodeV1 = (props: NodeProps) => {
           node={node}
         />
       </div>
+      {!isNewNode && (
+        <NodeMeatballMenu
+          data={{ nodeId: id, xPos: props.xPos, yPos: props.yPos }}
+        />
+      )}
     </div>
   );
 };

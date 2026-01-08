@@ -86,6 +86,12 @@ export interface LineageContextType {
   setSelectedQuickFilters: Dispatch<SetStateAction<ExploreQuickFilterField[]>>;
   onDrawerClose: () => void;
   onNodeDrop: (event: DragEvent, reactFlowBounds: DOMRect) => void;
+  onNodeAdd: (
+    sourceNodeId: string,
+    xPos: number,
+    yPos: number,
+    direction: LineageDirection
+  ) => void;
   onNodeCollapse: (node: Node | NodeProps, direction: LineageDirection) => void;
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
@@ -122,4 +128,12 @@ export interface LineageContextType {
   useUpdateNodeInternals: () => UpdateNodeInternals;
   columnsInCurrentPages: Record<string, string[]>;
   setColumnsInCurrentPages: Dispatch<SetStateAction<Record<string, string[]>>>;
+  newlyLoadedNodeIds: string[];
+  addStreamSourceNodeId: string | null;
+  setAddStreamSourceNodeId: Dispatch<SetStateAction<string | null>>;
+  addStreamTargetNodeId: string | null;
+  setAddStreamTargetNodeId: Dispatch<SetStateAction<string | null>>;
+  addStreamNodeDirection: LineageDirection;
+  isAddStreamNodeInProgress: boolean;
+  setIsAddStreamNodeInProgress: Dispatch<SetStateAction<boolean>>;
 }

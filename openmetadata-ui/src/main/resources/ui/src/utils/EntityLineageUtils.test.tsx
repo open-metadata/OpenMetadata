@@ -11,12 +11,16 @@
  *  limitations under the License.
  */
 
-import { Edge, Node } from 'reactflow';
+import { Edge, Node, ReactFlowInstance } from 'reactflow';
 import {
   EdgeDetails,
   LineageData,
 } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import {
+  ZOOM_TRANSITION_DURATION,
+  ZOOM_VALUE,
+} from '../constants/Lineage.constants';
 import { EntityType } from '../enums/entity.enum';
 import { AddLineage, ColumnLineage } from '../generated/api/lineage/addLineage';
 import { LineageDirection } from '../generated/api/lineage/lineageDirection';
@@ -25,6 +29,7 @@ import { addLineage } from '../rest/miscAPI';
 import {
   addLineageHandler,
   createNewEdge,
+  focusToCoordinates,
   getAllTracedEdges,
   getColumnFunctionValue,
   getColumnLineageData,
@@ -909,6 +914,27 @@ describe('Test EntityLineageUtils utility', () => {
         yMin: -220, // y - padding
         xMax: 160, // rightmost x (100) + width (40) + padding
         yMax: 240, // bottom y (200) + height (20) + padding
+      });
+    });
+  });
+
+  describe('focusToCoordinates', () => {
+    let mockReactFlowInstance: ReactFlowInstance;
+
+    beforeEach(() => {
+      mockReactFlowInstance = {
+        setCenter: jest.fn(),
+      } as unknown as ReactFlowInstance;
+    });
+
+    it('should call setCenter with correct coordinates and default zoom', () => {
+      const position = { x: 100, y: 200 };
+
+      focusToCoordinates(position, mockReactFlowInstance);
+
+      expect(mockReactFlowInstance.setCenter).toHaveBeenCalledWith(100, 245, {
+        zoom: ZOOM_VALUE,
+        duration: ZOOM_TRANSITION_DURATION,
       });
     });
   });

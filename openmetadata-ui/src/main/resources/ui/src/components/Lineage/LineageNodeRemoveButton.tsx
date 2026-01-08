@@ -34,7 +34,10 @@ const LineageNodeRemoveButton = ({
         />
       }
       type="link"
-      onClick={onRemove}
+      onClick={(e) => {
+        e.stopPropagation();
+        onRemove();
+      }}
     />
   );
 };
