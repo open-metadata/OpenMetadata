@@ -137,7 +137,6 @@ export const CHART_WIDGET_DAYS_DURATION = 14;
 export const ROUTES = {
   HOME: '/',
   CALLBACK: '/callback',
-  SAML_CALLBACK: '/saml/callback',
   SILENT_CALLBACK: '/silent-callback',
   NOT_FOUND: '/404',
   FORBIDDEN: '/403',

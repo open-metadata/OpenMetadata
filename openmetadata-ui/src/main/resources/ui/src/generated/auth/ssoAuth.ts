@@ -122,10 +122,6 @@ export interface SsoClientConfig {
  */
 export interface Idp {
     /**
-     * Authority URL to redirect the users on Sign In page
-     */
-    authorityUrl?: string;
-    /**
      * Identity Provider Entity ID usually same as the SSO login URL.
      */
     entityId: string;
@@ -134,7 +130,7 @@ export interface Idp {
      */
     idpX509Certificate?: string;
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Name ID format for SAML assertions
      */
     nameId?: string;
     /**
