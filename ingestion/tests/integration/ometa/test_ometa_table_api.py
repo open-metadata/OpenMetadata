@@ -377,6 +377,60 @@ class OMetaTableTest(TestCase):
         res_sample = self.metadata.get_sample_data(table=res).sampleData
         assert res_sample == sample_data
 
+    def test_patch_table_certification(self):
+        """
+        We can patch a Table with certification data
+        """
+        from metadata.generated.schema.type.assetCertification import AssetCertification
+        from metadata.generated.schema.type.tagLabel import (
+            LabelType,
+            State,
+            TagLabel,
+            TagSource,
+        )
+
+        self.metadata.create_or_update(data=self.create)
+
+        # First pick up by name
+        res = self.metadata.get_by_name(
+            entity=Table, fqn=self.entity.fullyQualifiedName
+        )
+
+        # Create certification
+        certification = AssetCertification(
+            tagLabel=TagLabel(
+                tagFQN="Certification.Bronze",
+                name="Bronze",
+                description="Bronze certification indicates the asset meets basic quality standards",
+                source=TagSource.Classification,
+                labelType=LabelType.Manual,
+                state=State.Confirmed,
+            ),
+            appliedDate=1704153600000,  # 2024-01-02
+            expiryDate=1735689600000,  # 2025-01-01
+        )
+
+        # Patch the table with certification
+        destination = res.model_copy(deep=True)
+        destination.certification = certification
+        patched_table = self.metadata.patch(
+            entity=Table, source=res, destination=destination
+        )
+
+        # Verify certification was applied
+        assert patched_table.certification is not None
+        assert patched_table.certification.tagLabel.tagFQN == "Certification.Bronze"
+        assert patched_table.certification.tagLabel.name == "Bronze"
+        assert patched_table.certification.appliedDate == 1704153600000
+        assert patched_table.certification.expiryDate == 1735689600000
+
+        # Retrieve the table again and verify certification persists
+        retrieved_table = self.metadata.get_by_name(
+            entity=Table, fqn=self.entity.fullyQualifiedName
+        )
+        assert retrieved_table.certification is not None
+        assert retrieved_table.certification.tagLabel.tagFQN == "Certification.Bronze"
+
     def test_ingest_table_profile_data(self):
         """
         We can ingest profile data TableProfile

@@ -112,7 +112,6 @@ from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.datacontract.dataContractResult import (
     DataContractResult,
 )
-from metadata.generated.schema.entity.docStore.document import Document
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
@@ -843,7 +842,6 @@ class SampleDataSource(
             logger.debug(f"Traceback: {traceback.format_exc()}")
             self.knowledge_panels = {"documents": []}
 
-
     @classmethod
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
@@ -1283,19 +1281,23 @@ class SampleDataSource(
                     displayName=doc.get("displayName"),
                     entityType=doc["entityType"],
                     description=doc.get("description"),
-                    data=doc.get("data", {})
+                    data=doc.get("data", {}),
                 )
 
                 yield Either(right=document_request)
 
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error creating knowledge panel {doc.get('name')}: {exc}")
-                yield Either(left=StackTraceError(
-                    name=doc.get("name", "unknown"),
-                    error=f"Failed to create knowledge panel: {exc}",
-                    stackTrace=traceback.format_exc()
-                ))
+                logger.warning(
+                    f"Error creating knowledge panel {doc.get('name')}: {exc}"
+                )
+                yield Either(
+                    left=StackTraceError(
+                        name=doc.get("name", "unknown"),
+                        error=f"Failed to create knowledge panel: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
     def ingest_mysql(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Data for mysql database source including ER diagrams metadata"""
@@ -1538,6 +1540,29 @@ class SampleDataSource(
                             CreateCustomMetricRequest(**custom_metric),
                             table_entity.id.root,
                         )
+
+            # Patch certification if present in the sample data
+            if table.get("certification"):
+                try:
+                    from metadata.generated.schema.type.assetCertification import (
+                        AssetCertification,
+                    )
+
+                    destination = table_entity.model_copy(deep=True)
+                    destination.certification = AssetCertification.model_validate(
+                        table["certification"]
+                    )
+
+                    self.metadata.patch(
+                        entity=Table, source=table_entity, destination=destination
+                    )
+                    logger.debug(
+                        f"Patched certification for {table_entity.fullyQualifiedName.root}"
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        f"Failed to patch certification for {table.get('name')}: {exc}"
+                    )
 
     def ingest_stored_procedures(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Stored Procedures"""
