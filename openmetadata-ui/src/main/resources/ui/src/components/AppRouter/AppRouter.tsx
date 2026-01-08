@@ -12,7 +12,7 @@
  */
 
 import { isEmpty, isNil } from 'lodash';
-import { memo, useCallback, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
 import { useShallow } from 'zustand/react/shallow';
@@ -141,4 +141,4 @@ const AppRouter = () => {
   );
 };
 
-export default memo(AppRouter);
+export default AppRouter;
