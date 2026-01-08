@@ -2082,7 +2082,9 @@ public class TableRepository extends EntityRepository<Table> {
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
       // Store change description with null check
-      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
         recordFieldChangesArray[recordIndex] = changeDescription;
       }
 

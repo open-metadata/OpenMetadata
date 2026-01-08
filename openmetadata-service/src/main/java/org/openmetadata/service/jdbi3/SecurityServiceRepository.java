@@ -289,7 +289,9 @@ public class SecurityServiceRepository
       if (!fieldsUpdated.isEmpty()) {
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
-      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
         recordFieldChangesArray[recordIndex] = changeDescription;
       }
 
