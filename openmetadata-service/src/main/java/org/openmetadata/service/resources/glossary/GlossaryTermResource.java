@@ -1141,6 +1141,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fully qualified name of the glossary term",
@@ -1156,7 +1157,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("dryRun")
           boolean dryRun)
       throws IOException {
-    return importCsvInternal(securityContext, fqn, csv, dryRun, false);
+    return importCsvInternal(uriInfo, securityContext, fqn, csv, dryRun, false);
   }
 
   @PUT
@@ -1182,6 +1183,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                                 org.openmetadata.service.util.CSVImportResponse.class)))
       })
   public Response importCsvAsync(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fully qualified name of the glossary term",
@@ -1196,6 +1198,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("dryRun")
           @DefaultValue("true")
           boolean dryRun) {
-    return importCsvInternalAsync(securityContext, fqn, csv, dryRun, false);
+    return importCsvInternalAsync(uriInfo, securityContext, fqn, csv, dryRun, false);
   }
 }

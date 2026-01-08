@@ -582,6 +582,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -595,7 +596,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, false);
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, false);
   }
 
   @PUT
@@ -615,6 +616,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public Response importCsvAsync(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -627,7 +629,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
+    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, false);
   }
 
   @DELETE

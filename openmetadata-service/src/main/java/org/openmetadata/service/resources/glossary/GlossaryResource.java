@@ -591,6 +591,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the glossary", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -604,7 +605,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, false);
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, false);
   }
 
   @PUT
@@ -625,6 +626,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public Response importCsvAsync(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the glossary", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -634,6 +636,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           @QueryParam("dryRun")
           @DefaultValue("true")
           boolean dryRun) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
+    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, false);
   }
 }
