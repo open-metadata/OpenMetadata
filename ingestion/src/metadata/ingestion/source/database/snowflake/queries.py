@@ -15,7 +15,14 @@ SQL Queries used during ingestion
 import textwrap
 
 SNOWFLAKE_GET_TABLE_NAMES = """
-    select TABLE_NAME, NULL, TABLE_TYPE from information_schema.tables
+    select
+        TABLE_NAME,
+        NULL,
+        CASE 
+            WHEN is_dynamic = 'YES' THEN 'DYNAMIC TABLE'
+            ELSE TABLE_TYPE 
+        END AS TABLE_TYPE
+    FROM information_schema.tables
     where TABLE_SCHEMA = '{schema}'
     AND COALESCE(IS_TRANSIENT, 'NO') != '{is_transient}'
     AND {include_views}
@@ -490,11 +497,10 @@ SNOWFLAKE_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY = """
     SELECT
         name AS TABLE_NAME,
         refresh_start_time AS START_TIME,
-        statistics:insertedRowCount::INT AS ROWS_INSERTED,
-        statistics:deletedRowCount::INT AS ROWS_DELETED,
-        statistics:updatedRowCount::INT AS ROWS_UPDATED
+        statistics:numInsertedRows::INT AS ROWS_INSERTED,
+        statistics:numDeletedRows::INT AS ROWS_DELETED
     FROM
-        TABLE({account_usage_schema}.DYNAMIC_TABLE_REFRESH_HISTORY())
+        {account_usage_schema}.DYNAMIC_TABLE_REFRESH_HISTORY
     WHERE
         state = 'SUCCEEDED'
         AND name ILIKE '%{tablename}%'

@@ -189,7 +189,7 @@ def _get_query_parameters(
     """Returns the proper query parameters depending if the extraction is Incremental or Full"""
     parameters = {
         "schema": fqn.unquote_name(schema),
-        "is_transient": "YES" if include_transient_tables else "NO",
+        "is_transient": "TRUE" if include_transient_tables else "COALESCE(IS_TRANSIENT, 'NO') != 'YES'",
         "include_views": "TRUE" if include_views else "TABLE_TYPE != 'VIEW'",
     }
 
