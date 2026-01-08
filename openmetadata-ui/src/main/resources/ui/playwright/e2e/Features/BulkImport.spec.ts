@@ -55,7 +55,6 @@ test.use({
   contextOptions: {
     permissions: ['clipboard-read', 'clipboard-write'],
   },
-  trace: 'retain-on-failure',
 });
 
 const user1 = new UserClass();
