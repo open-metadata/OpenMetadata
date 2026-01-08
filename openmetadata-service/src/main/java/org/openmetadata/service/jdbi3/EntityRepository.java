@@ -133,6 +133,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import lombok.Getter;
 import lombok.NonNull;
@@ -4519,9 +4520,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
 
-      if (!consolidatingChanges && updatedExtension != null) {
-        Object transformedExtension = validateAndTransformExtension(updatedExtension, entityType);
-        updated.setExtension(transformedExtension);
+      if (!consolidatingChanges) {
+        ObjectNode extensionNode = (ObjectNode) JsonUtils.valueToTree(updated.getExtension());
+        for (JsonNode node : Stream.of(addedFields, updatedFields).flatMap(List::stream).toList()) {
+          node.fields()
+              .forEachRemaining(
+                  field -> {
+                    Map<String, Object> singleField = new HashMap<>();
+                    singleField.put(
+                        field.getKey(), JsonUtils.treeToValue(field.getValue(), Object.class));
+                    Object transformedField =
+                        validateAndTransformExtension(singleField, entityType);
+                    JsonNode transformedNode = JsonUtils.valueToTree(transformedField);
+                    extensionNode.set(field.getKey(), transformedNode.get(field.getKey()));
+                  });
+        }
+        updated.setExtension(JsonUtils.treeToValue(extensionNode, Object.class));
       }
       if (!addedFields.isEmpty()) {
         fieldAdded(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(addedFields));
