@@ -302,7 +302,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
             final String cronJobName = cronJob.getMetadata().getName();
             rollbacks.add(() -> safeDeleteCronJob(cronJobName));
           }
-          LOG.info("Created CronJob for scheduled pipeline: {}", pipelineName);
+          LOG.info(
+              "Created CronJob for scheduled pipeline: {} (startingDeadlineSeconds={}s)",
+              pipelineName,
+              k8sConfig.getStartingDeadlineSeconds());
         } else {
           deleteCronJobIfExists(CRONJOB_PREFIX + pipelineName);
           LOG.info("Pipeline {} is on-demand only (no schedule)", pipelineName);
@@ -878,6 +881,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                 .schedule(schedule)
                 .timeZone(pipeline.getAirflowConfig().getPipelineTimezone())
                 .concurrencyPolicy("Forbid")
+                .startingDeadlineSeconds((long) k8sConfig.getStartingDeadlineSeconds())
                 .successfulJobsHistoryLimit(k8sConfig.getSuccessfulJobsHistoryLimit())
                 .failedJobsHistoryLimit(k8sConfig.getFailedJobsHistoryLimit())
                 .suspend(!Boolean.TRUE.equals(pipeline.getEnabled()))

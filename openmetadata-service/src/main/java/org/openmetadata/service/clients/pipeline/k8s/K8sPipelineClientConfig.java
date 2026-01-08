@@ -53,6 +53,7 @@ public class K8sPipelineClientConfig {
   private static final String EXTRA_ENV_VARS_KEY = "extraEnvVars";
   private static final String POD_ANNOTATIONS_KEY = "podAnnotations";
   private static final String FAILURE_DIAGNOSTICS_KEY = "enableFailureDiagnostics";
+  private static final String STARTING_DEADLINE_SECONDS_KEY = "startingDeadlineSeconds";
 
   // Default resources configuration
   private static final String DEFAULT_REQUESTS_CPU = "500m";
@@ -84,6 +85,7 @@ public class K8sPipelineClientConfig {
   private final Map<String, String> extraEnvVars;
   private final Map<String, String> podAnnotations;
   private final boolean failureDiagnosticsEnabled;
+  private final int startingDeadlineSeconds;
 
   public K8sPipelineClientConfig(Map<String, Object> params) {
     if (params == null) {
@@ -123,6 +125,9 @@ public class K8sPipelineClientConfig {
     this.podAnnotations = parseKeyValuePairs(getStringParam(params, POD_ANNOTATIONS_KEY, ""));
     this.failureDiagnosticsEnabled =
         Boolean.parseBoolean(getStringParam(params, FAILURE_DIAGNOSTICS_KEY, "false"));
+    // Default to 0 seconds - prevents CronJobs from trying to catch up any missed executions
+    // This eliminates duplicate executions when AutoPilot deploys pipelines
+    this.startingDeadlineSeconds = getIntParam(params, STARTING_DEADLINE_SECONDS_KEY, 0);
 
     // Validate configuration
     validateConfiguration();
@@ -173,6 +178,10 @@ public class K8sPipelineClientConfig {
     }
     if (backoffLimit < 0) {
       errors.add("backoffLimit must be non-negative");
+    }
+    if (startingDeadlineSeconds < 0) {
+      errors.add(
+          "startingDeadlineSeconds must be non-negative (0 = no catch-up, >0 = catch-up window)");
     }
 
     if (!errors.isEmpty()) {
