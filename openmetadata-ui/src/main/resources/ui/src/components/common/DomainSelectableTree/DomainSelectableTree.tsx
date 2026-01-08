@@ -408,6 +408,10 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
 
   const onSelect = (selectedKeys: React.Key[]) => {
     if (!isMultiple) {
+      if (selectedKeys.length === 0 && value && value.length > 0) {
+        return;
+      }
+
       const selectedData = [];
       for (const item of selectedKeys) {
         const domain = domainMapper[item as string];
