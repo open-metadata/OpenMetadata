@@ -189,7 +189,7 @@ def _get_query_parameters(
     """Returns the proper query parameters depending if the extraction is Incremental or Full"""
     parameters = {
         "schema": fqn.unquote_name(schema),
-        "is_transient": "TRUE" if include_transient_tables else "COALESCE(IS_TRANSIENT, 'NO') != 'YES'",
+        "is_transient": "YES" if include_transient_tables else "NO",
         "include_views": "TRUE" if include_views else "TABLE_TYPE != 'VIEW'",
     }
 
@@ -245,6 +245,7 @@ def _get_table_type(table_type: str) -> TableType:
         "EXTERNAL TABLE": TableType.External,
         "TRANSIENT TABLE": TableType.Transient,
         "DYNAMIC TABLE": TableType.Dynamic,
+        "ICEBERG": TableType.Iceberg,
     }
     return table_type_map.get(table_type, TableType.Regular)
 
