@@ -157,6 +157,44 @@ public abstract class SecretsManager {
     return null;
   }
 
+  public Object encryptQueryRunnerConfig(Object authConfig, String configType, String configId) {
+    if (authConfig == null) {
+      return null;
+    }
+    try {
+      return encryptPasswordFields(
+          authConfig, buildSecretId(true, "queryrunner", configType, configId), true);
+    } catch (Exception e) {
+      throw new SecretsManagerException(
+          Response.Status.BAD_REQUEST,
+          String.format("Failed to encrypt query runner config [%s]", configId));
+    }
+  }
+
+  public Object decryptQueryRunnerConfig(Object authConfig) {
+    if (authConfig == null) {
+      return null;
+    }
+    try {
+      return decryptPasswordFields(authConfig);
+    } catch (Exception e) {
+      throw new SecretsManagerException(
+          Response.Status.BAD_REQUEST, "Failed to decrypt query runner config");
+    }
+  }
+
+  public void deleteQueryRunnerConfigSecrets(Object authConfig, String configType, String configId) {
+    if (authConfig != null) {
+      try {
+        deleteSecrets(authConfig, buildSecretId(true, "queryrunner", configType, configId));
+      } catch (Exception e) {
+        throw new SecretsManagerException(
+            Response.Status.BAD_REQUEST,
+            String.format("Failed to delete secrets for query runner config [%s]", configId));
+      }
+    }
+  }
+
   /**
    * This is used to handle the JWT Token internally, in the JWTFilter, when
    * calling for the auth-mechanism in the UI, etc.
