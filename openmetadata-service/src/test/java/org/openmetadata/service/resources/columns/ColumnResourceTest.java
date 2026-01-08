@@ -3158,5 +3158,4 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
     Type typeEntity = TestUtils.get(target, Type.class, ADMIN_AUTH_HEADERS);
     return typeEntity.getEntityReference();
   }
-
 }

@@ -79,7 +79,7 @@ public class OrphanedEntityReferenceIT {
 
     Entity.getCollectionDAO()
         .tagUsageDAO()
-        .applyTag(1, tagFQN, tagFQNHash, targetFQNHash, 0, 0, null);
+        .applyTag(1, tagFQN, tagFQNHash, targetFQNHash, 0, 0, null, null);
 
     Entity.getCollectionDAO().glossaryTermDAO().delete(glossaryTerm.getId());
 
@@ -128,7 +128,7 @@ public class OrphanedEntityReferenceIT {
       String tagFQNHash = FullyQualifiedName.buildHash(tagFQN);
       Entity.getCollectionDAO()
           .tagUsageDAO()
-          .applyTag(1, tagFQN, tagFQNHash, targetFQNHash, 0, 0, null);
+          .applyTag(1, tagFQN, tagFQNHash, targetFQNHash, 0, 0, null, null);
 
       Entity.getCollectionDAO().glossaryTermDAO().delete(term.getId());
     }
@@ -191,7 +191,7 @@ public class OrphanedEntityReferenceIT {
 
     Entity.getCollectionDAO()
         .tagUsageDAO()
-        .applyTag(1, orphanTagFQN, orphanTagFQNHash, targetFQNHash, 0, 0, null);
+        .applyTag(1, orphanTagFQN, orphanTagFQNHash, targetFQNHash, 0, 0, null, null);
 
     Entity.getCollectionDAO().glossaryTermDAO().delete(orphanTerm.getId());
 

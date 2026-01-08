@@ -622,7 +622,7 @@ public class ColumnRepository {
                 Include.NON_DELETED,
                 false);
         ColumnUtil.setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
-        return findColumnInHierarchy(table.getColumns(), columnFQN);
+        return findColumnInHierarchy(table.getColumns(), columnFQN).orElse(null);
 
       } else if (DASHBOARD_DATA_MODEL.equals(entityType)) {
         DashboardDataModelRepository dataModelRepository =
@@ -635,7 +635,7 @@ public class ColumnRepository {
                 Include.NON_DELETED,
                 false);
         ColumnUtil.setColumnFQN(dataModel.getFullyQualifiedName(), dataModel.getColumns());
-        return findColumnInHierarchy(dataModel.getColumns(), columnFQN);
+        return findColumnInHierarchy(dataModel.getColumns(), columnFQN).orElse(null);
       }
     } catch (Exception e) {
       LOG.warn("Failed to fetch column for preview: {}", columnFQN, e);
