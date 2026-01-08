@@ -17,10 +17,10 @@ import { Task } from '../../../generated/entity/data/pipeline';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
 import { Field as TopicField } from '../../../generated/entity/data/topic';
-import { ColumnFieldUpdate } from '../../../utils/ColumnUpdateUtils';
+import { ColumnFieldUpdate } from '../../../utils/ColumnUpdateUtils.interface';
 
-// Re-export ColumnFieldUpdate from utils for backward compatibility
-export type { ColumnFieldUpdate } from '../../../utils/ColumnUpdateUtils';
+// Re-export ColumnFieldUpdate from interface for backward compatibility
+export type { ColumnFieldUpdate } from '../../../utils/ColumnUpdateUtils.interface';
 
 // Union type for all column-like entities that can be displayed in the detail panel
 export type ColumnOrTask =

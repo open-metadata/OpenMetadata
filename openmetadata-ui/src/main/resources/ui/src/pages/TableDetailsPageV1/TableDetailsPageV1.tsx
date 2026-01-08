@@ -394,21 +394,10 @@ const TableDetailsPageV1: React.FC = () => {
     [tableDetails, tableId]
   );
 
-  const onTableUpdate = async (
-    updatedTable: Table,
-    key?: keyof Table,
-    skipApiCall?: boolean
-  ) => {
+  const onTableUpdate = async (updatedTable: Table, key?: keyof Table) => {
     try {
-      let res: Table;
-
-      if (skipApiCall) {
-        // Backend is already updated, just use the provided table as the response
-        res = updatedTable;
-      } else {
-        // Generate patch and update via API
-        res = await saveUpdatedTableData(updatedTable);
-      }
+      // Generate patch and update via API
+      const res = await saveUpdatedTableData(updatedTable);
 
       setTableDetails((previous) => {
         if (!previous) {

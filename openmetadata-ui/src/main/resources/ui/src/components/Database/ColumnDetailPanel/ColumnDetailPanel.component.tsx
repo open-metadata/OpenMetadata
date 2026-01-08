@@ -27,6 +27,7 @@ import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
 import { toEntityData } from '../../../utils/EntitySummaryPanelUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import {
   buildColumnBreadcrumbPath,
@@ -82,23 +83,28 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   const [isDescriptionLoading, setIsDescriptionLoading] = useState(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
 
+  const safePermissions = permissions || DEFAULT_ENTITY_PERMISSION;
+
   const hasEditPermission = useMemo(
     () => ({
-      tags: (permissions.EditTags || permissions.EditAll) && !deleted,
+      tags: (safePermissions.EditTags || safePermissions.EditAll) && !deleted,
       glossaryTerms:
-        (permissions.EditGlossaryTerms || permissions.EditAll) && !deleted,
+        (safePermissions.EditGlossaryTerms || safePermissions.EditAll) &&
+        !deleted,
       description:
-        (permissions.EditDescription || permissions.EditAll) && !deleted,
-      viewAllPermission: permissions.ViewAll,
+        (safePermissions.EditDescription || safePermissions.EditAll) &&
+        !deleted,
+      viewAllPermission: safePermissions.ViewAll,
     }),
-    [permissions, deleted]
+    [safePermissions, deleted]
   );
 
   const hasViewPermission = useMemo(
     () => ({
-      customProperties: permissions.ViewAll || permissions.ViewCustomFields,
+      customProperties:
+        safePermissions.ViewAll || safePermissions.ViewCustomFields,
     }),
-    [permissions]
+    [safePermissions]
   );
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
     EntityRightPanelTab.OVERVIEW

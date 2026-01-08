@@ -251,11 +251,11 @@ const SearchIndexFieldsTable = ({
             className="d-inline-flex w-max-90"
             data-testid="column-name"
             style={{
-              cursor: isReadOnly || !hasViewPermission ? 'default' : 'pointer',
+              cursor: isReadOnly ? 'default' : 'pointer',
             }}
-            tabIndex={isReadOnly || !hasViewPermission ? -1 : 0}
+            tabIndex={isReadOnly ? -1 : 0}
             onClick={(e) => {
-              if (isReadOnly || !hasViewPermission) {
+              if (isReadOnly) {
                 return;
               }
               // Don't open detail panel if clicking on edit button or link
@@ -265,7 +265,7 @@ const SearchIndexFieldsTable = ({
               handleFieldClick(record);
             }}
             onKeyDown={(e) => {
-              if (isReadOnly || !hasViewPermission) {
+              if (isReadOnly) {
                 return;
               }
               if (e.key === 'Enter' || e.key === ' ') {

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { compare } from 'fast-json-patch';
 import { cloneDeep } from 'lodash';
 import { EntityTags } from 'Models';
 import { EntityType } from '../enums/entity.enum';
@@ -27,13 +26,13 @@ import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Column, Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { TagLabel } from '../generated/type/tagLabel';
-import { updateDataModelColumn } from '../rest/dataModelsAPI';
 import {
-  getTableDetailsByFQN,
-  patchTableDetails,
-  updateTableColumn,
-} from '../rest/tableAPI';
-import { defaultFieldsWithColumns } from './DatasetDetailsUtils';
+  ColumnFieldUpdate,
+  EntityDataMap,
+  EntityDataMapValue,
+  HandleColumnFieldUpdateOptions,
+  HandleColumnFieldUpdateResult,
+} from './ColumnUpdateUtils.interface';
 import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
@@ -46,13 +45,8 @@ import {
   updateFieldTags,
 } from './TableUtils';
 
-/**
- * Column field update payload
- */
-export interface ColumnFieldUpdate {
-  description?: string;
-  tags?: TagLabel[];
-}
+// Re-export for backward compatibility
+export type { ColumnFieldUpdate } from './ColumnUpdateUtils.interface';
 
 /**
  * Result of a column update operation
@@ -64,9 +58,17 @@ export interface ColumnUpdateResult<T> {
 
 /**
  * Convert TagLabel array to EntityTags array
+ * Only adds isRemovable if it doesn't already exist
  */
 const toEntityTags = (tags: TagLabel[]): EntityTags[] =>
-  tags.map((tag) => ({ ...tag, isRemovable: true })) as EntityTags[];
+  tags.map((tag) => {
+    const tagWithRemovable = tag as EntityTags;
+
+    return {
+      ...tag,
+      ...(tagWithRemovable.isRemovable === undefined && { isRemovable: true }),
+    } as EntityTags;
+  });
 
 /**
  * Update Topic schema field
@@ -240,119 +242,66 @@ export const updatePipelineTask = (
 };
 
 /**
- * Update Table column via API
- * Returns the updated table and column
+ * Update Table column
+ * Returns the updated table and column (local data modification only)
  */
-export const updateTableColumnViaApi = async (
+export const updateTableColumn = (
   table: Table,
   fqn: string,
-  update: ColumnFieldUpdate,
-  onUpdate: (
-    updatedTable: Table,
-    key?: keyof Table,
-    skipApiCall?: boolean
-  ) => Promise<void>
-): Promise<Column | undefined> => {
-  const tableId = table.id ?? '';
-
-  // For Table, we update columns via API directly
-  const columnUpdate: Partial<Column> = {};
+  update: ColumnFieldUpdate
+): { updatedTable: Table; updatedColumn: Column | undefined } => {
+  const columns = cloneDeep(table.columns ?? []);
 
   if (update.description !== undefined) {
-    columnUpdate.description = update.description;
+    updateFieldDescription(fqn, update.description, columns);
   }
 
   if (update.tags !== undefined) {
-    // Normalize tags to remove style property from glossary terms
     const normalizedTags = normalizeTags(update.tags);
-
-    // When clearing all tags (empty array), the backend's JSON patch generation
-    // tries to remove tags by index which causes "array item index is out of range" errors.
-    // Workaround: Use table-level update instead of column-level update when clearing all tags
-    if (normalizedTags.length === 0) {
-      // Update via table-level PATCH to avoid index errors
-      const columns = cloneDeep(table.columns ?? []);
-      const updatedColumn = findFieldByFQN<Column>(columns, fqn);
-      if (updatedColumn) {
-        updatedColumn.tags = [];
-      }
-
-      const updatedTable: Table = {
-        ...table,
-        columns: pruneEmptyChildren(columns),
-      };
-
-      // Use compare to generate patch from current table state
-      const jsonPatch = compare(table, updatedTable);
-      const res = await patchTableDetails(tableId, jsonPatch);
-
-      // Update state with the response to ensure consistency
-      await onUpdate(res);
-
-      // Return the updated column from the API response
-      return findFieldByFQN<Column>(res.columns ?? [], fqn);
-    }
-
-    columnUpdate.tags = normalizedTags;
+    updateFieldTags(fqn, toEntityTags(normalizedTags), columns);
   }
 
-  // Update the column via API
-  await updateTableColumn(fqn, columnUpdate);
+  const updatedTable: Table = {
+    ...table,
+    columns: pruneEmptyChildren(columns),
+  };
 
-  // Fetch the full table from the backend to ensure we have the latest state.
-  // This prevents "array item index is out of range" errors when onTableUpdate
-  // generates a patch, because we'll skip the API call since the backend is already updated.
-  // We use defaultFieldsWithColumns to ensure columns with tags are included in the response.
-  const tableFQN = table.fullyQualifiedName ?? '';
-  const fetchedTable = await getTableDetailsByFQN(tableFQN, {
-    fields: defaultFieldsWithColumns,
-  });
+  const updatedColumn = findFieldByFQN<Column>(columns, fqn);
 
-  // Update state with the fetched table, skipping the API call since backend is already updated
-  await onUpdate(fetchedTable, undefined, true);
-
-  // Find and return the updated column from the fetched table
-  return findFieldByFQN<Column>(fetchedTable.columns ?? [], fqn);
+  return { updatedTable, updatedColumn };
 };
 
 /**
- * Update DashboardDataModel column via API
+ * Update DashboardDataModel column
+ * Returns the updated data model and column (local data modification only)
  */
-export const updateDataModelColumnViaApi = async (
+export const updateDataModelColumn = (
   dataModel: DashboardDataModel,
   fqn: string,
-  update: ColumnFieldUpdate,
-  onUpdate: (updatedDataModel: DashboardDataModel) => Promise<void>
-): Promise<DataModelColumn | undefined> => {
-  // For DashboardDataModel, we update columns via API directly
-  const columnUpdate: Partial<DataModelColumn> = {};
+  update: ColumnFieldUpdate
+): {
+  updatedDataModel: DashboardDataModel;
+  updatedColumn: DataModelColumn | undefined;
+} => {
+  const columns = cloneDeep(dataModel.columns ?? []);
 
   if (update.description !== undefined) {
-    columnUpdate.description = update.description;
+    updateFieldDescription(fqn, update.description, columns);
   }
 
   if (update.tags !== undefined) {
-    columnUpdate.tags = normalizeTags(update.tags);
-  }
-
-  const response = await updateDataModelColumn(fqn, columnUpdate);
-
-  // Update local state using recursive findFieldByFQN to handle nested columns
-  const columns = cloneDeep(dataModel.columns ?? []);
-  const updatedColumn = findFieldByFQN<DataModelColumn>(columns, fqn);
-  if (updatedColumn) {
-    Object.assign(updatedColumn, response);
+    const normalizedTags = normalizeTags(update.tags);
+    updateFieldTags(fqn, toEntityTags(normalizedTags), columns);
   }
 
   const updatedDataModel: DashboardDataModel = {
     ...dataModel,
-    columns,
+    columns: pruneEmptyChildren(columns),
   };
 
-  await onUpdate(updatedDataModel);
+  const updatedColumn = findFieldByFQN<DataModelColumn>(columns, fqn);
 
-  // Find the updated column to return
-  return findFieldByFQN<DataModelColumn>(columns, fqn);
+  return { updatedDataModel, updatedColumn };
 };
 
 /**
@@ -376,13 +325,13 @@ export const updateApiEndpointField = (
   const schemaKey = requestField
     ? 'requestSchema'
     : responseField
-      ? 'responseSchema'
-      : null;
+    ? 'responseSchema'
+    : null;
   const schema = requestField
     ? apiEndpoint.requestSchema
     : responseField
-      ? apiEndpoint.responseSchema
-      : null;
+    ? apiEndpoint.responseSchema
+    : null;
 
   if (!schema || !schemaKey) {
     return { updatedApiEndpoint: apiEndpoint, updatedColumn: undefined };
@@ -446,118 +395,133 @@ export const supportsColumnUpdates = (
 };
 
 /**
- * Entity data type mapping for column updates
- */
-type EntityDataMap = {
-  [EntityType.TABLE]: Table;
-  [EntityType.TOPIC]: Topic;
-  [EntityType.SEARCH_INDEX]: SearchIndex;
-  [EntityType.CONTAINER]: Container;
-  [EntityType.MLMODEL]: Mlmodel;
-  [EntityType.PIPELINE]: Pipeline;
-  [EntityType.DASHBOARD_DATA_MODEL]: DashboardDataModel;
-  [EntityType.API_ENDPOINT]: APIEndpoint;
-};
-
-/**
- * Options for handleColumnFieldUpdate
- */
-export interface HandleColumnFieldUpdateOptions<T> {
-  entityType: EntityType;
-  entityData: T;
-  fqn: string;
-  update: ColumnFieldUpdate;
-  onUpdate: (updatedEntity: T, key?: keyof T, skipApiCall?: boolean) => Promise<void>;
-}
-
-/**
  * Unified handler for column field updates across all entity types.
- * Returns the updated column/field after the update is complete.
+ * Returns the updated entity and column/field (local data modification only).
  */
-export const handleColumnFieldUpdate = async <T>({
+export const handleColumnFieldUpdate = <T extends EntityDataMapValue>({
   entityType,
   entityData,
   fqn,
   update,
-  onUpdate,
-}: HandleColumnFieldUpdateOptions<T>): Promise<Column | DataModelColumn | Field | undefined> => {
+}: HandleColumnFieldUpdateOptions<T>): HandleColumnFieldUpdateResult<T> => {
   switch (entityType) {
     case EntityType.TOPIC: {
       const topic = entityData as EntityDataMap[EntityType.TOPIC];
-      const { updatedTopic, updatedColumn } = updateTopicField(topic, fqn, update);
-      await onUpdate(updatedTopic as T);
+      const { updatedTopic, updatedColumn } = updateTopicField(
+        topic,
+        fqn,
+        update
+      );
 
-      return updatedColumn;
+      return {
+        updatedEntity: updatedTopic as T,
+        updatedColumn,
+      };
     }
 
     case EntityType.SEARCH_INDEX: {
       const searchIndex = entityData as EntityDataMap[EntityType.SEARCH_INDEX];
-      const { updatedSearchIndex, updatedColumn } = updateSearchIndexField(searchIndex, fqn, update);
-      await onUpdate(updatedSearchIndex as T);
+      const { updatedSearchIndex, updatedColumn } = updateSearchIndexField(
+        searchIndex,
+        fqn,
+        update
+      );
 
-      return updatedColumn;
+      return {
+        updatedEntity: updatedSearchIndex as T,
+        updatedColumn,
+      };
     }
 
     case EntityType.CONTAINER: {
       const container = entityData as EntityDataMap[EntityType.CONTAINER];
-      const { updatedContainer, updatedColumn } = updateContainerColumn(container, fqn, update);
-      await onUpdate(updatedContainer as T);
+      const { updatedContainer, updatedColumn } = updateContainerColumn(
+        container,
+        fqn,
+        update
+      );
 
-      return updatedColumn;
+      return {
+        updatedEntity: updatedContainer as T,
+        updatedColumn,
+      };
     }
 
     case EntityType.MLMODEL: {
       const mlModel = entityData as EntityDataMap[EntityType.MLMODEL];
-      const { updatedMlModel, updatedColumn } = updateMlModelFeature(mlModel, fqn, update);
-      await onUpdate(updatedMlModel as T);
+      const { updatedMlModel, updatedColumn } = updateMlModelFeature(
+        mlModel,
+        fqn,
+        update
+      );
 
-      return updatedColumn;
+      return {
+        updatedEntity: updatedMlModel as T,
+        updatedColumn,
+      };
     }
 
     case EntityType.PIPELINE: {
       const pipeline = entityData as EntityDataMap[EntityType.PIPELINE];
-      const { updatedPipeline, updatedColumn } = updatePipelineTask(pipeline, fqn, update);
-      await onUpdate(updatedPipeline as T);
+      const { updatedPipeline, updatedColumn } = updatePipelineTask(
+        pipeline,
+        fqn,
+        update
+      );
 
-      return updatedColumn;
+      return {
+        updatedEntity: updatedPipeline as T,
+        updatedColumn,
+      };
     }
 
     case EntityType.TABLE: {
       const table = entityData as EntityDataMap[EntityType.TABLE];
-      const tableOnUpdate = async (
-        updatedTable: Table,
-        key?: keyof Table,
-        skipApiCall?: boolean
-      ) => {
-        await (onUpdate as (entity: Table, key?: keyof Table, skipApiCall?: boolean) => Promise<void>)(
-          updatedTable,
-          key,
-          skipApiCall
-        );
-      };
+      const { updatedTable, updatedColumn } = updateTableColumn(
+        table,
+        fqn,
+        update
+      );
 
-      return updateTableColumnViaApi(table, fqn, update, tableOnUpdate);
+      return {
+        updatedEntity: updatedTable as T,
+        updatedColumn,
+      };
     }
 
     case EntityType.DASHBOARD_DATA_MODEL: {
-      const dataModel = entityData as EntityDataMap[EntityType.DASHBOARD_DATA_MODEL];
-      const dataModelOnUpdate = async (updatedDataModel: DashboardDataModel) => {
-        await onUpdate(updatedDataModel as T);
-      };
+      const dataModel =
+        entityData as EntityDataMap[EntityType.DASHBOARD_DATA_MODEL];
+      const { updatedDataModel, updatedColumn } = updateDataModelColumn(
+        dataModel,
+        fqn,
+        update
+      );
 
-      return updateDataModelColumnViaApi(dataModel, fqn, update, dataModelOnUpdate);
+      return {
+        updatedEntity: updatedDataModel as T,
+        updatedColumn,
+      };
     }
 
     case EntityType.API_ENDPOINT: {
       const apiEndpoint = entityData as EntityDataMap[EntityType.API_ENDPOINT];
-      const { updatedApiEndpoint, updatedColumn } = updateApiEndpointField(apiEndpoint, fqn, update);
-      await onUpdate(updatedApiEndpoint as T);
+      const { updatedApiEndpoint, updatedColumn } = updateApiEndpointField(
+        apiEndpoint,
+        fqn,
+        update
+      );
 
-      return updatedColumn;
+      return {
+        updatedEntity: updatedApiEndpoint as T,
+        updatedColumn,
+      };
     }
 
     default:
-      return undefined;
+      return {
+        updatedEntity: entityData,
+        updatedColumn: undefined,
+      };
   }
 };
-

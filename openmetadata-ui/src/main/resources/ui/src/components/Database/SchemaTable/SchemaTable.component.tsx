@@ -82,7 +82,6 @@ import {
   getTableExpandableConfig,
   prepareConstraintIcon,
   pruneEmptyChildren,
-  syncPaginatedColumnsWithTable,
   updateColumnInNestedStructure,
 } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -124,7 +123,10 @@ const SchemaTable = () => {
   // Pagination state for columns
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true); // Start with loading state
-
+  const [hasInitialLoad, setHasInitialLoad] = useState(false);
+  const [prevTableColumns, setPrevTableColumns] = useState<
+    Column[] | undefined
+  >();
   const { fqn: decodedEntityFqn } = useFqn();
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
@@ -248,20 +250,28 @@ const SchemaTable = () => {
     }
   }, [tableFqn, searchText, fetchPaginatedColumns, pageSize]);
 
-  // Sync tableColumns with table.columns when columns are updated via column detail panel
   useEffect(() => {
-    if (!table?.columns) {
+    if (!isEmpty(tableColumns)) {
+      setHasInitialLoad(true);
+    }
+  }, [tableColumns]);
+
+  useEffect(() => {
+    if (
+      !hasInitialLoad ||
+      !table?.columns ||
+      isEqual(prevTableColumns, table.columns)
+    ) {
+      if (!isEqual(prevTableColumns, table.columns)) {
+        setPrevTableColumns(table.columns);
+      }
+
       return;
     }
 
-    setTableColumns((prev) => {
-      if (isEmpty(prev)) {
-        return prev;
-      }
-
-      return syncPaginatedColumnsWithTable(prev, table.columns ?? []);
-    });
-  }, [table?.columns]);
+    fetchPaginatedColumns(currentPage, searchText || undefined);
+    setPrevTableColumns(table.columns);
+  }, [table?.columns, hasInitialLoad, currentPage, searchText]);
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {

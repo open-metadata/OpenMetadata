@@ -189,41 +189,27 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     setSelectedColumn(null);
   }, []);
 
-  const defaultColumnFieldUpdate = useCallback(
-    async (
-      fqn: string,
-      update: ColumnFieldUpdate
-    ): Promise<ColumnOrTask | undefined> => {
-      const updatedColumn = await handleColumnFieldUpdateUtil({
+  // Wrapper for onColumnFieldUpdate that updates selectedColumn after the update completes
+  const handleColumnFieldUpdate = useCallback(
+    async (fqn: string, update: ColumnFieldUpdate) => {
+      const { updatedEntity, updatedColumn } = handleColumnFieldUpdateUtil({
         entityType: type,
         entityData: data,
         fqn,
         update,
-        onUpdate: onUpdate as (
-          entity: T,
-          key?: keyof T,
-          skipApiCall?: boolean
-        ) => Promise<void>,
       });
 
-      return updatedColumn as ColumnOrTask;
-    },
-    [data, type, onUpdate]
-  );
-
-  // Wrapper for onColumnFieldUpdate that updates selectedColumn after the update completes
-  const handleColumnFieldUpdate = useCallback(
-    async (fqn: string, update: ColumnFieldUpdate) => {
-      const updatedColumn = await defaultColumnFieldUpdate(fqn, update);
+      // Call onUpdate with the updated entity (onUpdate will handle API calls)
+      await onUpdate(updatedEntity);
 
       // Update selected column if it matches the updated one
       if (updatedColumn && selectedColumn?.fullyQualifiedName === fqn) {
-        setSelectedColumn(cleanColumn(updatedColumn));
+        setSelectedColumn(cleanColumn(updatedColumn as ColumnOrTask));
       }
 
-      return updatedColumn;
+      return updatedColumn as ColumnOrTask | undefined;
     },
-    [defaultColumnFieldUpdate, selectedColumn, cleanColumn]
+    [data, type, onUpdate, selectedColumn, cleanColumn]
   );
 
   const handleColumnNavigate = useCallback((column: ColumnOrTask) => {

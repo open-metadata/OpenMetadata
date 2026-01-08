@@ -14,7 +14,7 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { lowerCase } from 'lodash';
 import { EntityType } from '../../../enums/entity.enum';
-import { Column } from '../../../generated/entity/data/table';
+import { Column, Table } from '../../../generated/entity/data/table';
 import { DataType } from '../../../generated/tests/testDefinition';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { listTestCases } from '../../../rest/testAPI';
@@ -405,11 +405,16 @@ jest.mock('../../../utils/EntitySummaryPanelUtils', () => ({
     }
 
     const extension =
-      'extension' in column && typeof column.extension === 'object'
-        ? column.extension
+      'extension' in column &&
+      typeof column.extension === 'object' &&
+      column.extension !== null
+        ? (column.extension as Table['extension'])
         : undefined;
 
-    const entityData: { extension?: unknown; [key: string]: unknown } = {};
+    const entityData: {
+      extension?: Table['extension'];
+      [key: string]: unknown;
+    } = {};
     if (extension) {
       entityData.extension = extension;
     }

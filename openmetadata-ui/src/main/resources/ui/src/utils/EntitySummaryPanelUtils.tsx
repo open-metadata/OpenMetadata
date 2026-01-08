@@ -702,9 +702,13 @@ export const toEntityData = (
   }
 
   // Check if column has extension property and create a new object that satisfies EntityData
+  // extension is typed as 'any' in entity interfaces, but EntityData.extension expects Record<string, unknown>
+  // so we cast it after runtime validation to ensure type safety
   const extension =
-    'extension' in column && typeof column.extension === 'object'
-      ? (column.extension as Record<string, unknown>)
+    'extension' in column &&
+    typeof column.extension === 'object' &&
+    column.extension !== null
+      ? (column.extension as Table['extension'])
       : undefined;
 
   // Create an object that satisfies EntityData interface with index signature
