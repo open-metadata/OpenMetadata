@@ -87,6 +87,9 @@ const ODCS_TEST_FILES = {
   get INVALID_WRONG_KIND_YAML() {
     return loadODCSTestFile('invalid-wrong-kind.yaml');
   },
+  get INVALID_SCHEMA_FIELDS_YAML() {
+    return loadODCSTestFile('invalid-schema-fields.yaml');
+  },
 };
 
 const navigateToContractTab = async (page, table) => {
@@ -142,8 +145,8 @@ const importODCSYaml = async (
     buffer: Buffer.from(yamlContent),
   });
 
-  // Wait for file to be parsed and preview to show
-  await page.waitForSelector('.ant-alert-success', {
+  // Wait for file to be parsed and preview to show (file info card or contract preview)
+  await page.waitForSelector('.file-info-card, .contract-preview-card', {
     state: 'visible',
     timeout: 10000,
   });
@@ -699,11 +702,13 @@ test.describe('ODCS Import/Export', () => {
       });
 
       // Wait for file to be parsed
-      await page.waitForSelector('.ant-alert-success', { state: 'visible' });
+      await page.waitForSelector('.file-info-card, .contract-preview-card', {
+        state: 'visible',
+      });
 
       // Verify merge/replace options are shown
       await expect(
-        page.locator('.ant-alert-warning').filter({ hasText: /existing contract/i })
+        page.locator('.existing-contract-warning')
       ).toBeVisible();
       await expect(page.locator('input[type="radio"][value="merge"]')).toBeVisible();
       await expect(page.locator('input[type="radio"][value="replace"]')).toBeVisible();
@@ -740,7 +745,9 @@ test.describe('ODCS Import/Export', () => {
       });
 
       // Wait for preview
-      await page.waitForSelector('.ant-alert-success', { state: 'visible' });
+      await page.waitForSelector('.file-info-card, .contract-preview-card', {
+        state: 'visible',
+      });
 
       // Verify preview shows contract details
       await expect(page.locator('text=Contract Preview')).toBeVisible();
@@ -1162,6 +1169,192 @@ version: "1.0.0"`;
       const importButton = page.locator('.ant-modal .ant-btn-primary');
 
       await expect(importButton).toBeDisabled();
+
+      // Close modal
+      await page.locator('.ant-modal .ant-btn').filter({ hasText: /cancel/i }).click();
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  // Schema Validation Tests
+
+  test('Schema validation shows warning when fields do not exist in entity', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await clickImportODCSButton(page);
+
+      await page.waitForSelector('.ant-modal', { state: 'visible' });
+
+      const fileInput = page.locator('.ant-upload input[type="file"]');
+      await fileInput.setInputFiles({
+        name: 'invalid-schema-fields.yaml',
+        mimeType: 'application/yaml',
+        buffer: Buffer.from(ODCS_TEST_FILES.INVALID_SCHEMA_FIELDS_YAML),
+      });
+
+      // Wait for file to be parsed and preview to show
+      await page.waitForSelector('.file-info-card, .contract-preview-card', {
+        state: 'visible',
+        timeout: 10000,
+      });
+
+      // Wait for server-side validation to complete - validation panel shows error
+      await expect(
+        page.locator('.validation-panel .validation-title-error')
+      ).toBeVisible({
+        timeout: 15000,
+      });
+
+      // Verify failed fields are listed in the validation panel
+      await expect(page.locator('.failed-fields-list')).toBeVisible();
+      await expect(page.locator('.failed-fields-list >> text=customers')).toBeVisible();
+      await expect(page.locator('.failed-fields-list >> text=orders')).toBeVisible();
+
+      // Close modal
+      await page.locator('.ant-modal .ant-btn').filter({ hasText: /cancel/i }).click();
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  test('Import button disabled when schema validation fails', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await clickImportODCSButton(page);
+
+      await page.waitForSelector('.ant-modal', { state: 'visible' });
+
+      const fileInput = page.locator('.ant-upload input[type="file"]');
+      await fileInput.setInputFiles({
+        name: 'invalid-schema-fields.yaml',
+        mimeType: 'application/yaml',
+        buffer: Buffer.from(ODCS_TEST_FILES.INVALID_SCHEMA_FIELDS_YAML),
+      });
+
+      // Wait for server-side validation to complete - validation panel shows error
+      await expect(
+        page.locator('.validation-panel .validation-title-error')
+      ).toBeVisible({
+        timeout: 15000,
+      });
+
+      // Verify import button is disabled
+      const importButton = page.locator('.ant-modal .ant-btn-primary');
+
+      await expect(importButton).toBeDisabled();
+
+      // Close modal
+      await page.locator('.ant-modal .ant-btn').filter({ hasText: /cancel/i }).click();
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  test('Schema validation shows loading state during validation', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await clickImportODCSButton(page);
+
+      await page.waitForSelector('.ant-modal', { state: 'visible' });
+
+      // Start file upload and immediately check for loading state
+      const fileInput = page.locator('.ant-upload input[type="file"]');
+      await fileInput.setInputFiles({
+        name: 'valid-basic.yaml',
+        mimeType: 'application/yaml',
+        buffer: Buffer.from(ODCS_TEST_FILES.VALID_BASIC_YAML),
+      });
+
+      // Wait for file to be parsed and preview to show
+      await page.waitForSelector('.file-info-card, .contract-preview-card', {
+        state: 'visible',
+        timeout: 10000,
+      });
+
+      // Wait for validation to complete - should show success
+      await expect(
+        page.locator('.validation-panel .validation-title-success')
+      ).toBeVisible({
+        timeout: 15000,
+      });
+
+      // Import button should be enabled for valid contracts without schema
+      const importButton = page.locator('.ant-modal .ant-btn-primary');
+
+      await expect(importButton).toBeEnabled({ timeout: 10000 });
+
+      // Close modal
+      await page.locator('.ant-modal .ant-btn').filter({ hasText: /cancel/i }).click();
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  test('Schema validation passes for contract without schema definition', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await clickImportODCSButton(page);
+
+      await page.waitForSelector('.ant-modal', { state: 'visible' });
+
+      const fileInput = page.locator('.ant-upload input[type="file"]');
+      await fileInput.setInputFiles({
+        name: 'valid-full.yaml',
+        mimeType: 'application/yaml',
+        buffer: Buffer.from(ODCS_TEST_FILES.VALID_FULL_YAML),
+      });
+
+      // Wait for file to be parsed and preview to show
+      await page.waitForSelector('.file-info-card, .contract-preview-card', {
+        state: 'visible',
+        timeout: 10000,
+      });
+
+      // Wait for validation to complete - should show success
+      await expect(
+        page.locator('.validation-panel .validation-title-success')
+      ).toBeVisible({
+        timeout: 15000,
+      });
+
+      // Import button should be enabled (no schema means no schema validation errors)
+      const importButton = page.locator('.ant-modal .ant-btn-primary');
+
+      await expect(importButton).toBeEnabled({ timeout: 10000 });
+
+      // No error state should be visible in the validation panel
+      await expect(
+        page.locator('.validation-panel .validation-title-error')
+      ).not.toBeVisible();
 
       // Close modal
       await page.locator('.ant-modal .ant-btn').filter({ hasText: /cancel/i }).click();

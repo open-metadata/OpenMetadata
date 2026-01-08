@@ -1,0 +1,352 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.odcs-import-modal {
+  .ant-modal-body {
+    padding: 16px 24px;
+    max-height: 70vh;
+    overflow: hidden;
+  }
+
+  .import-content-wrapper {
+    display: flex;
+    gap: 20px;
+    min-height: 400px;
+  }
+
+  .source-panel {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+    padding-right: 8px;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 3px;
+    }
+  }
+
+  .validation-panel {
+    width: 320px;
+    flex-shrink: 0;
+    background: #fafafa;
+    border-radius: 8px;
+    padding: 16px;
+    border: 1px solid #e8e8e8;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 3px;
+    }
+  }
+
+  .validation-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e8e8e8;
+    margin-bottom: 12px;
+
+    .validation-icon {
+      font-size: 20px;
+    }
+
+    .validation-icon-success {
+      color: #52c41a;
+    }
+
+    .validation-icon-error {
+      color: #ff4d4f;
+    }
+
+    .validation-icon-warning {
+      color: #faad14;
+    }
+
+    .validation-icon-loading {
+      color: #1890ff;
+    }
+  }
+
+  .validation-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin: 0;
+  }
+
+  .validation-title-success {
+    color: #52c41a;
+  }
+
+  .validation-title-error {
+    color: #ff4d4f;
+  }
+
+  .validation-title-warning {
+    color: #faad14;
+  }
+
+  .validation-content {
+    flex: 1;
+  }
+
+  .failed-fields-list {
+    background: #fff1f0;
+    border: 1px solid #ffccc7;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 12px 0;
+
+    .failed-field-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0;
+
+      .field-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #ff4d4f;
+        flex-shrink: 0;
+      }
+
+      .field-name {
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo,
+          monospace;
+        font-size: 12px;
+        color: #cf1322;
+        word-break: break-all;
+      }
+    }
+  }
+
+  .validation-summary {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid #e8e8e8;
+
+    .summary-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0;
+      font-size: 13px;
+
+      .summary-icon {
+        font-size: 14px;
+      }
+
+      &.success .summary-icon {
+        color: #52c41a;
+      }
+
+      &.error .summary-icon {
+        color: #ff4d4f;
+      }
+
+      &.pending .summary-icon {
+        color: #d9d9d9;
+      }
+    }
+  }
+
+  .file-info-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f6ffed;
+    border: 1px solid #b7eb8f;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+
+    .file-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .file-icon {
+        color: #52c41a;
+        font-size: 16px;
+      }
+
+      .file-name {
+        font-weight: 500;
+        color: #262626;
+      }
+    }
+
+    .remove-button {
+      color: #8c8c8c;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.2s;
+
+      &:hover {
+        color: #ff4d4f;
+        background: #fff1f0;
+      }
+    }
+  }
+
+  .contract-preview-card {
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 6px;
+    padding: 14px;
+    margin-bottom: 16px;
+
+    .preview-header {
+      font-weight: 600;
+      font-size: 13px;
+      color: #595959;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .preview-row {
+      display: flex;
+      padding: 4px 0;
+      font-size: 13px;
+
+      .preview-label {
+        color: #8c8c8c;
+        width: 80px;
+        flex-shrink: 0;
+      }
+
+      .preview-value {
+        color: #262626;
+        font-weight: 500;
+      }
+    }
+
+    .preview-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+
+      .preview-tag {
+        background: #f5f5f5;
+        border-radius: 4px;
+        padding: 2px 8px;
+        font-size: 12px;
+        color: #595959;
+      }
+    }
+  }
+
+  .import-options-section {
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 6px;
+    padding: 14px;
+
+    .existing-contract-warning {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #fffbe6;
+      border: 1px solid #ffe58f;
+      border-radius: 4px;
+      padding: 8px 12px;
+      margin-bottom: 14px;
+      font-size: 13px;
+      color: #ad6800;
+
+      .warning-icon {
+        color: #faad14;
+      }
+    }
+
+    .import-mode-option {
+      padding: 10px 12px;
+      border: 1px solid #e8e8e8;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        border-color: #1890ff;
+      }
+
+      &.selected {
+        border-color: #1890ff;
+        background: #e6f7ff;
+      }
+
+      .option-title {
+        font-weight: 600;
+        font-size: 13px;
+        margin-bottom: 4px;
+      }
+
+      .option-description {
+        font-size: 12px;
+        color: #8c8c8c;
+        margin: 0;
+      }
+    }
+  }
+
+  .dragger-wrapper {
+    height: 200px;
+
+    .ant-upload-drag {
+      border-radius: 8px;
+    }
+  }
+
+  .empty-validation {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    color: #8c8c8c;
+
+    .empty-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+  }
+}

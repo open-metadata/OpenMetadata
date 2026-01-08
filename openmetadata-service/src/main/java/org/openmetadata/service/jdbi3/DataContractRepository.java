@@ -249,6 +249,15 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
   }
 
+  /**
+   * Public method to validate a data contract's schema against an entity without creating the
+   * contract. This is useful for pre-validation during ODCS import preview.
+   */
+  public SchemaValidation validateContractSchema(
+      DataContract dataContract, EntityReference entityRef) {
+    return validateSchemaFieldsAgainstEntity(dataContract, entityRef);
+  }
+
   private SchemaValidation validateSchemaFieldsAgainstEntity(
       DataContract dataContract, EntityReference entityRef) {
     SchemaValidation validation = new SchemaValidation();

@@ -23,6 +23,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
+import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement;
@@ -35,6 +36,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DataContracts;
 import org.openmetadata.sdk.fluent.DataContracts.FluentDataContract;
 import org.openmetadata.sdk.models.ListParams;
@@ -2034,7 +2036,9 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals(ODCSDataContract.OdcsStatus.ACTIVE, odcs.getStatus());
     assertEquals(3, odcs.getSchema().size());
 
-    assertEquals(ODCSSchemaElement.LogicalType.LONG, odcs.getSchema().get(0).getLogicalType()); // BIGINT maps to LONG
+    assertEquals(
+        ODCSSchemaElement.LogicalType.LONG,
+        odcs.getSchema().get(0).getLogicalType()); // BIGINT maps to LONG
     assertEquals(ODCSSchemaElement.LogicalType.STRING, odcs.getSchema().get(1).getLogicalType());
     assertEquals(ODCSSchemaElement.LogicalType.STRING, odcs.getSchema().get(2).getLogicalType());
 
@@ -2085,12 +2089,18 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     boolean hasFreshness =
         odcs.getSlaProperties().stream()
-            .anyMatch(p -> "freshness".equals(p.getProperty()) && "1".equals(p.getValue())); // ODCS uses "freshness"
+            .anyMatch(
+                p ->
+                    "freshness".equals(p.getProperty())
+                        && "1".equals(p.getValue())); // ODCS uses "freshness"
     assertTrue(hasFreshness);
 
     boolean hasLatency =
         odcs.getSlaProperties().stream()
-            .anyMatch(p -> "latency".equals(p.getProperty()) && "2".equals(p.getValue())); // ODCS uses "latency"
+            .anyMatch(
+                p ->
+                    "latency".equals(p.getProperty())
+                        && "2".equals(p.getValue())); // ODCS uses "latency"
     assertTrue(hasLatency);
   }
 
@@ -3453,7 +3463,10 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     List<Column> tableColumns =
         List.of(
             new Column().withName("id").withDataType(ColumnDataType.BIGINT),
-            new Column().withName("email").withDataType(ColumnDataType.VARCHAR).withDataLength(255));
+            new Column()
+                .withName("email")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255));
     Table table = createTestTable(ns, tableColumns);
 
     ODCSDataContract odcs = new ODCSDataContract();
@@ -3658,7 +3671,9 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals(ColumnDataType.TIMESTAMP, retrieved.getSchema().get(1).getDataType());
 
     assertEquals("amount", retrieved.getSchema().get(2).getName());
-    assertEquals(ColumnDataType.NUMBER, retrieved.getSchema().get(2).getDataType()); // ODCS "number" maps to NUMBER
+    assertEquals(
+        ColumnDataType.NUMBER,
+        retrieved.getSchema().get(2).getDataType()); // ODCS "number" maps to NUMBER
 
     assertEquals("is_active", retrieved.getSchema().get(3).getName());
     assertEquals(ColumnDataType.BOOLEAN, retrieved.getSchema().get(3).getDataType());
@@ -3754,7 +3769,11 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   void testImportODCSV302AndRetrieveAsOpenMetadataFormat(TestNamespace ns) {
     // Create table with columns matching the ODCS schema
     List<Column> tableColumns =
-        List.of(new Column().withName("legacy_field").withDataType(ColumnDataType.VARCHAR).withDataLength(255));
+        List.of(
+            new Column()
+                .withName("legacy_field")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255));
     Table table = createTestTable(ns, tableColumns);
 
     ODCSDataContract odcs = new ODCSDataContract();
@@ -3995,9 +4014,16 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         List.of(
             new Column().withName("email").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
             new Column().withName("ssn").withDataType(ColumnDataType.VARCHAR).withDataLength(20),
-            new Column().withName("public_id").withDataType(ColumnDataType.VARCHAR).withDataLength(255));
+            new Column()
+                .withName("public_id")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255));
     List<Column> tableColumns =
-        List.of(new Column().withName("users").withDataType(ColumnDataType.STRUCT).withChildren(childColumns));
+        List.of(
+            new Column()
+                .withName("users")
+                .withDataType(ColumnDataType.STRUCT)
+                .withChildren(childColumns));
     Table table = createTestTable(ns, tableColumns);
 
     String yamlContent =
@@ -4165,15 +4191,40 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     // Create table with columns matching the ODCS schema (nested data structure)
     List<Column> childColumns =
         List.of(
-            new Column().withName("field_pii").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
-            new Column().withName("field_public").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
-            new Column().withName("field_internal").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
-            new Column().withName("field_confidential").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
-            new Column().withName("field_restricted").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
-            new Column().withName("field_sensitive").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
-            new Column().withName("field_custom").withDataType(ColumnDataType.VARCHAR).withDataLength(255));
+            new Column()
+                .withName("field_pii")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255),
+            new Column()
+                .withName("field_public")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255),
+            new Column()
+                .withName("field_internal")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255),
+            new Column()
+                .withName("field_confidential")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255),
+            new Column()
+                .withName("field_restricted")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255),
+            new Column()
+                .withName("field_sensitive")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255),
+            new Column()
+                .withName("field_custom")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255));
     List<Column> tableColumns =
-        List.of(new Column().withName("data").withDataType(ColumnDataType.STRUCT).withChildren(childColumns));
+        List.of(
+            new Column()
+                .withName("data")
+                .withDataType(ColumnDataType.STRUCT)
+                .withChildren(childColumns));
     Table table = createTestTable(ns, tableColumns);
 
     String yamlContent =
@@ -4229,9 +4280,16 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             new Column().withName("id").withDataType(ColumnDataType.INT),
             new Column().withName("event_time").withDataType(ColumnDataType.TIMESTAMP),
             new Column().withName("duration").withDataType(ColumnDataType.TIME),
-            new Column().withName("user_email").withDataType(ColumnDataType.VARCHAR).withDataLength(255));
+            new Column()
+                .withName("user_email")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255));
     List<Column> tableColumns =
-        List.of(new Column().withName("events").withDataType(ColumnDataType.STRUCT).withChildren(childColumns));
+        List.of(
+            new Column()
+                .withName("events")
+                .withDataType(ColumnDataType.STRUCT)
+                .withChildren(childColumns));
     Table table = createTestTable(ns, tableColumns);
 
     String yamlContent =
@@ -4314,5 +4372,248 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     // Verify schema
     assertNotNull(retrieved.getSchema());
     assertFalse(retrieved.getSchema().isEmpty());
+  }
+
+  // ==================== ODCS Validation Endpoint Tests ====================
+
+  @Test
+  void testValidateODCSYamlValidSchema(TestNamespace ns) {
+    // Create table with columns matching the ODCS schema
+    Table table =
+        createTestTable(
+            ns,
+            List.of(
+                new Column().withName("id").withDataType(ColumnDataType.INT),
+                new Column()
+                    .withName("name")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255),
+                new Column()
+                    .withName("email")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255)));
+
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + ns.prefix("validate_valid")
+            + "\n"
+            + "name: "
+            + ns.prefix("validate_valid")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "schema:\n"
+            + "  - name: id\n"
+            + "    logicalType: integer\n"
+            + "  - name: name\n"
+            + "    logicalType: string\n";
+
+    SchemaValidation validation =
+        SdkClients.adminClient()
+            .dataContracts()
+            .validateODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(validation);
+    assertEquals(2, validation.getTotal());
+    assertEquals(2, validation.getPassed());
+    assertEquals(0, validation.getFailed());
+    assertTrue(validation.getFailedFields() == null || validation.getFailedFields().isEmpty());
+  }
+
+  @Test
+  void testValidateODCSYamlInvalidSchema(TestNamespace ns) {
+    // Create table with columns that DON'T match the ODCS schema
+    Table table =
+        createTestTable(
+            ns,
+            List.of(
+                new Column().withName("id").withDataType(ColumnDataType.INT),
+                new Column()
+                    .withName("name")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255)));
+
+    // Schema refers to columns that don't exist in the table
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + ns.prefix("validate_invalid")
+            + "\n"
+            + "name: "
+            + ns.prefix("validate_invalid")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "schema:\n"
+            + "  - name: customer_id\n"
+            + "    logicalType: integer\n"
+            + "  - name: order_total\n"
+            + "    logicalType: number\n";
+
+    SchemaValidation validation =
+        SdkClients.adminClient()
+            .dataContracts()
+            .validateODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(validation);
+    assertEquals(2, validation.getTotal());
+    assertEquals(0, validation.getPassed());
+    assertEquals(2, validation.getFailed());
+    assertNotNull(validation.getFailedFields());
+    assertEquals(2, validation.getFailedFields().size());
+    assertTrue(validation.getFailedFields().contains("customer_id"));
+    assertTrue(validation.getFailedFields().contains("order_total"));
+  }
+
+  @Test
+  void testValidateODCSYamlPartiallyValidSchema(TestNamespace ns) {
+    // Create table with some matching columns
+    Table table =
+        createTestTable(
+            ns,
+            List.of(
+                new Column().withName("id").withDataType(ColumnDataType.INT),
+                new Column()
+                    .withName("name")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255),
+                new Column()
+                    .withName("email")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255)));
+
+    // Schema has some valid and some invalid columns
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + ns.prefix("validate_partial")
+            + "\n"
+            + "name: "
+            + ns.prefix("validate_partial")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "schema:\n"
+            + "  - name: id\n"
+            + "    logicalType: integer\n"
+            + "  - name: name\n"
+            + "    logicalType: string\n"
+            + "  - name: nonexistent_field\n"
+            + "    logicalType: string\n";
+
+    SchemaValidation validation =
+        SdkClients.adminClient()
+            .dataContracts()
+            .validateODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(validation);
+    assertEquals(3, validation.getTotal());
+    assertEquals(2, validation.getPassed());
+    assertEquals(1, validation.getFailed());
+    assertNotNull(validation.getFailedFields());
+    assertEquals(1, validation.getFailedFields().size());
+    assertTrue(validation.getFailedFields().contains("nonexistent_field"));
+  }
+
+  @Test
+  void testValidateODCSYamlNoSchema(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    // Contract without schema section
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + ns.prefix("validate_no_schema")
+            + "\n"
+            + "name: "
+            + ns.prefix("validate_no_schema")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n";
+
+    SchemaValidation validation =
+        SdkClients.adminClient()
+            .dataContracts()
+            .validateODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(validation);
+    assertEquals(0, validation.getTotal());
+    assertEquals(0, validation.getPassed());
+    assertEquals(0, validation.getFailed());
+  }
+
+  @Test
+  void testValidateODCSYamlInvalidYamlSyntax(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    // Invalid YAML syntax
+    String invalidYaml = "apiVersion: v3.1.0\n  invalid yaml: [\n";
+
+    assertThrows(
+        OpenMetadataException.class,
+        () ->
+            SdkClients.adminClient()
+                .dataContracts()
+                .validateODCSYaml(invalidYaml, table.getId(), "table"),
+        "Validation should fail for invalid YAML syntax");
+  }
+
+  @Test
+  void testValidateODCSYamlMissingRequiredFields(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    // Missing required 'status' field
+    String yamlContent =
+        "apiVersion: v3.1.0\n" + "kind: DataContract\n" + "id: test\n" + "version: '1.0.0'\n";
+
+    assertThrows(
+        OpenMetadataException.class,
+        () ->
+            SdkClients.adminClient()
+                .dataContracts()
+                .validateODCSYaml(yamlContent, table.getId(), "table"),
+        "Validation should fail for missing required fields");
+  }
+
+  @Test
+  void testValidateODCSYamlValidationDoesNotCreateContract(TestNamespace ns) {
+    Table table =
+        createTestTable(ns, List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + ns.prefix("validate_no_create")
+            + "\n"
+            + "name: "
+            + ns.prefix("validate_no_create")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "schema:\n"
+            + "  - name: id\n"
+            + "    logicalType: integer\n";
+
+    // Call validation endpoint
+    SchemaValidation validation =
+        SdkClients.adminClient()
+            .dataContracts()
+            .validateODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(validation);
+    assertEquals(1, validation.getTotal());
+    assertEquals(1, validation.getPassed());
+
+    // Verify that no contract was created
+    assertThrows(
+        OpenMetadataException.class,
+        () -> SdkClients.adminClient().dataContracts().getByEntityId(table.getId(), "table"),
+        "Contract should not exist after validation-only call");
   }
 }

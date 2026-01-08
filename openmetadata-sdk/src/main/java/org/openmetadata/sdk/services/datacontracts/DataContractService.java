@@ -4,6 +4,7 @@ import java.util.UUID;
 import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
+import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpClient;
@@ -216,5 +217,25 @@ public class DataContractService extends EntityServiceBase<DataContract> {
     RequestOptions options = RequestOptions.builder().header("Accept", "application/yaml").build();
     return httpClient.executeForString(
         HttpMethod.GET, basePath + "/name/" + fqn + "/odcs/yaml", null, options);
+  }
+
+  /**
+   * Validate ODCS YAML content against an entity without importing. Returns schema validation
+   * results including any field mismatches.
+   */
+  public SchemaValidation validateODCSYaml(String yamlContent, UUID entityId, String entityType)
+      throws OpenMetadataException {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityId", entityId.toString())
+            .queryParam("entityType", entityType)
+            .header("Content-Type", "application/yaml")
+            .build();
+    return httpClient.execute(
+        HttpMethod.POST,
+        basePath + "/odcs/validate/yaml",
+        yamlContent,
+        SchemaValidation.class,
+        options);
   }
 }

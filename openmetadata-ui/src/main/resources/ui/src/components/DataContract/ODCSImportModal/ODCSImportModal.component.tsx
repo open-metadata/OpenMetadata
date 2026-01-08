@@ -11,12 +11,20 @@
  *  limitations under the License.
  */
 
-import { Alert, Modal, Radio, Space, Typography, Upload } from 'antd';
+import {
+  CheckCircleFilled,
+  CloseCircleFilled,
+  CloseOutlined,
+  FileTextOutlined,
+  LoadingOutlined,
+  WarningFilled,
+} from '@ant-design/icons';
+import { Modal, Radio, Space, Typography, Upload } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { load as yamlLoad } from 'js-yaml';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
 import { CreateDataContract } from '../../../generated/api/data/createDataContract';
@@ -26,7 +34,9 @@ import {
   createOrUpdateContractFromODCSYaml,
   deleteContractById,
   importContractFromODCSYaml,
+  SchemaValidation,
   updateContract,
+  validateODCSYaml,
 } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import {
@@ -35,9 +45,10 @@ import {
   ParsedODCSContract,
   ParsedOpenMetadataContract,
 } from './ODCSImportModal.interface';
+import './ODCSImportModal.less';
 
 const { Dragger } = Upload;
-const { Text, Paragraph } = Typography;
+const { Text } = Typography;
 
 type ParsedContract = ParsedODCSContract | ParsedOpenMetadataContract;
 
@@ -63,8 +74,57 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
   const [parseError, setParseError] = useState<string | null>(null);
   const [importMode, setImportMode] = useState<ImportMode>('merge');
   const [isLoading, setIsLoading] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const [serverValidation, setServerValidation] =
+    useState<SchemaValidation | null>(null);
+  const [serverValidationError, setServerValidationError] = useState<
+    string | null
+  >(null);
 
   const isODCSFormat = format === 'odcs';
+
+  useEffect(() => {
+    if (!yamlContent || !isODCSFormat || parseError) {
+      setServerValidation(null);
+      setServerValidationError(null);
+
+      return;
+    }
+
+    const validateContract = async () => {
+      setIsValidating(true);
+      setServerValidationError(null);
+      try {
+        const validation = await validateODCSYaml(
+          yamlContent,
+          entityId,
+          entityType
+        );
+        setServerValidation(validation);
+      } catch (err) {
+        const error = err as AxiosError<{ message?: string }>;
+        const message =
+          error.response?.data?.message ?? error.message ?? String(err);
+        setServerValidationError(message);
+        setServerValidation(null);
+      } finally {
+        setIsValidating(false);
+      }
+    };
+
+    validateContract();
+  }, [yamlContent, isODCSFormat, entityId, entityType, parseError]);
+
+  const hasValidationErrors = useMemo(() => {
+    if (serverValidationError) {
+      return true;
+    }
+    if (serverValidation?.failed && serverValidation.failed > 0) {
+      return true;
+    }
+
+    return false;
+  }, [serverValidation, serverValidationError]);
 
   const hasExistingContract = useMemo(
     () => Boolean(existingContract?.id),
@@ -169,8 +229,6 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     }
 
     if (hasExistingContract) {
-      // Use the mode parameter to let backend handle merge vs replace
-      // This preserves contract ID and execution history
       return createOrUpdateContractFromODCSYaml(
         yamlContent,
         entityId,
@@ -262,115 +320,336 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     setParsedContract(null);
     setParseError(null);
     setImportMode('merge');
+    setServerValidation(null);
+    setServerValidationError(null);
     onClose();
   }, [onClose]);
 
-  const mergeDescription = useMemo(() => {
-    if (!hasExistingContract) {
-      return null;
-    }
-
-    return (
-      <div className="m-t-md">
-        <Text strong>{t('label.what-will-happen')}:</Text>
-        <ul className="m-t-xs m-l-md">
-          <li>{t('message.import-odcs-merge-preserve-id')}</li>
-          <li>{t('message.import-odcs-merge-update-fields')}</li>
-          <li>{t('message.import-odcs-merge-preserve-reviewers')}</li>
-          <li>{t('message.import-odcs-merge-deep-merge-sla')}</li>
-        </ul>
-      </div>
-    );
-  }, [hasExistingContract, t]);
-
-  const replaceDescription = useMemo(() => {
-    if (!hasExistingContract) {
-      return null;
-    }
-
-    return (
-      <div className="m-t-md">
-        <Text strong>{t('label.what-will-happen')}:</Text>
-        <ul className="m-t-xs m-l-md">
-          <li>{t('message.import-odcs-replace-overwrite-all')}</li>
-          <li>{t('message.import-odcs-replace-preserve-id')}</li>
-          <li>{t('message.import-odcs-replace-preserve-history')}</li>
-        </ul>
-      </div>
-    );
-  }, [hasExistingContract, t]);
+  const handleRemoveFile = useCallback(() => {
+    setYamlContent(null);
+    setParsedRawContent(null);
+    setFileName('');
+    setParsedContract(null);
+    setParseError(null);
+    setServerValidation(null);
+    setServerValidationError(null);
+  }, []);
 
   const renderContractPreview = useCallback(() => {
     if (!parsedContract) {
       return null;
     }
 
+    const includedFeatures: string[] = [];
+
     if (isODCSFormat) {
       const odcsContract = parsedContract as ParsedODCSContract;
+      if (odcsContract.hasSchema) {
+        includedFeatures.push(t('label.schema'));
+      }
+      if (odcsContract.hasSla) {
+        includedFeatures.push(t('label.sla'));
+      }
+      if (odcsContract.hasSecurity) {
+        includedFeatures.push(t('label.security'));
+      }
+      if (odcsContract.hasTeam) {
+        includedFeatures.push(t('label.team'));
+      }
 
       return (
-        <div className="bg-grey-1 p-md rounded-4">
-          <Text strong>{t('label.contract-preview')}:</Text>
-          <div className="m-t-sm">
-            <Space direction="vertical" size="small">
-              <Text>
-                {t('label.name')}:{' '}
-                {odcsContract.name ?? t('label.not-specified')}
-              </Text>
-              <Text>
-                {t('label.version')}: {odcsContract.version}
-              </Text>
-              <Text>
-                {t('label.status')}: {odcsContract.status}
-              </Text>
-              <Text>
-                {t('label.includes')}:{' '}
-                {[
-                  odcsContract.hasSchema && t('label.schema'),
-                  odcsContract.hasSla && t('label.sla'),
-                  odcsContract.hasSecurity && t('label.security'),
-                  odcsContract.hasTeam && t('label.team'),
-                ]
-                  .filter(Boolean)
-                  .join(', ') || t('label.none')}
-              </Text>
-            </Space>
+        <div className="contract-preview-card">
+          <div className="preview-header">{t('label.contract-preview')}</div>
+          <div className="preview-row">
+            <span className="preview-label">{t('label.name')}</span>
+            <span className="preview-value">
+              {odcsContract.name ?? t('label.not-specified')}
+            </span>
           </div>
+          <div className="preview-row">
+            <span className="preview-label">{t('label.version')}</span>
+            <span className="preview-value">{odcsContract.version}</span>
+          </div>
+          <div className="preview-row">
+            <span className="preview-label">{t('label.status')}</span>
+            <span className="preview-value">{odcsContract.status}</span>
+          </div>
+          {includedFeatures.length > 0 && (
+            <div className="preview-tags">
+              {includedFeatures.map((feature) => (
+                <span className="preview-tag" key={feature}>
+                  {feature}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       );
     }
 
     const omContract = parsedContract as ParsedOpenMetadataContract;
+    if (omContract.hasSchema) {
+      includedFeatures.push(t('label.schema'));
+    }
+    if (omContract.hasSla) {
+      includedFeatures.push(t('label.sla'));
+    }
+    if (omContract.hasSecurity) {
+      includedFeatures.push(t('label.security'));
+    }
+    if (omContract.hasSemantics) {
+      includedFeatures.push(t('label.semantic-plural'));
+    }
 
     return (
-      <div className="bg-grey-1 p-md rounded-4">
-        <Text strong>{t('label.contract-preview')}:</Text>
-        <div className="m-t-sm">
-          <Space direction="vertical" size="small">
-            <Text>
-              {t('label.name')}: {omContract.name ?? t('label.not-specified')}
-            </Text>
-            {omContract.displayName && (
-              <Text>
-                {t('label.display-name')}: {omContract.displayName}
-              </Text>
-            )}
-            <Text>
-              {t('label.includes')}:{' '}
-              {[
-                omContract.hasSchema && t('label.schema'),
-                omContract.hasSla && t('label.sla'),
-                omContract.hasSecurity && t('label.security'),
-                omContract.hasSemantics && t('label.semantic-plural'),
-              ]
-                .filter(Boolean)
-                .join(', ') || t('label.none')}
-            </Text>
-          </Space>
+      <div className="contract-preview-card">
+        <div className="preview-header">{t('label.contract-preview')}</div>
+        <div className="preview-row">
+          <span className="preview-label">{t('label.name')}</span>
+          <span className="preview-value">
+            {omContract.name ?? t('label.not-specified')}
+          </span>
         </div>
+        {omContract.displayName && (
+          <div className="preview-row">
+            <span className="preview-label">{t('label.display-name')}</span>
+            <span className="preview-value">{omContract.displayName}</span>
+          </div>
+        )}
+        {includedFeatures.length > 0 && (
+          <div className="preview-tags">
+            {includedFeatures.map((feature) => (
+              <span className="preview-tag" key={feature}>
+                {feature}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     );
   }, [parsedContract, isODCSFormat, t]);
+
+  const renderValidationPanel = useCallback(() => {
+    if (!yamlContent) {
+      return (
+        <div className="empty-validation">
+          <FileTextOutlined className="empty-icon" />
+          <Text type="secondary">{t('message.upload-file-to-validate')}</Text>
+        </div>
+      );
+    }
+
+    if (parseError) {
+      return (
+        <>
+          <div className="validation-panel-header">
+            <CloseCircleFilled className="validation-icon validation-icon-error" />
+            <span className="validation-title validation-title-error">
+              {t('label.parse-error')}
+            </span>
+          </div>
+          <div className="validation-content">
+            <Text type="danger">{parseError}</Text>
+          </div>
+          <div className="validation-summary">
+            <div className="summary-item error">
+              <CloseCircleFilled className="summary-icon" />
+              <span>
+                {t('label.syntax')}: {t('label.invalid')}
+              </span>
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    if (isValidating) {
+      return (
+        <>
+          <div className="validation-panel-header">
+            <LoadingOutlined className="validation-icon validation-icon-loading" />
+            <span className="validation-title">
+              {t('label.validating-ellipsis')}
+            </span>
+          </div>
+          <div className="validation-content">
+            <Text type="secondary">
+              {t('message.validating-contract-schema')}
+            </Text>
+          </div>
+        </>
+      );
+    }
+
+    if (serverValidationError) {
+      return (
+        <>
+          <div className="validation-panel-header">
+            <CloseCircleFilled className="validation-icon validation-icon-error" />
+            <span className="validation-title validation-title-error">
+              {t('label.validation-failed')}
+            </span>
+          </div>
+          <div className="validation-content">
+            <Text type="danger">{serverValidationError}</Text>
+          </div>
+          <div className="validation-summary">
+            <div className="summary-item success">
+              <CheckCircleFilled className="summary-icon" />
+              <span>
+                {t('label.syntax')}: {t('label.valid')}
+              </span>
+            </div>
+            <div className="summary-item error">
+              <CloseCircleFilled className="summary-icon" />
+              <span>
+                {t('label.schema')}: {t('label.error')}
+              </span>
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    if (serverValidation?.failed !== undefined && serverValidation.failed > 0) {
+      return (
+        <>
+          <div className="validation-panel-header">
+            <CloseCircleFilled className="validation-icon validation-icon-error" />
+            <span className="validation-title validation-title-error">
+              {t('message.schema-validation-warning')}
+            </span>
+          </div>
+          <div className="validation-content">
+            <Text>
+              {t('message.schema-fields-not-found-in-entity', {
+                count: serverValidation.failed,
+              })}
+            </Text>
+            <div className="failed-fields-list">
+              {serverValidation.failedFields?.map((field, index) => (
+                <div className="failed-field-item" key={index}>
+                  <span className="field-dot" />
+                  <span className="field-name">{field}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="validation-summary">
+            <div className="summary-item success">
+              <CheckCircleFilled className="summary-icon" />
+              <span>
+                {t('label.syntax')}: {t('label.valid')}
+              </span>
+            </div>
+            <div className="summary-item error">
+              <CloseCircleFilled className="summary-icon" />
+              <span>
+                {t('label.schema')}: {serverValidation.failed}{' '}
+                {t('label.field-plural-lowercase')}{' '}
+                {t('label.not-found-lowercase')}
+              </span>
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <div className="validation-panel-header">
+          <CheckCircleFilled className="validation-icon validation-icon-success" />
+          <span className="validation-title validation-title-success">
+            {t('label.validation-passed')}
+          </span>
+        </div>
+        <div className="validation-content">
+          <Text type="success">
+            {serverValidation?.total && serverValidation.total > 0
+              ? t('message.schema-validation-passed', {
+                  count: serverValidation.passed,
+                })
+              : t('message.contract-syntax-valid')}
+          </Text>
+        </div>
+        <div className="validation-summary">
+          <div className="summary-item success">
+            <CheckCircleFilled className="summary-icon" />
+            <span>
+              {t('label.syntax')}: {t('label.valid')}
+            </span>
+          </div>
+          {serverValidation?.total !== undefined && serverValidation.total > 0 && (
+            <div className="summary-item success">
+              <CheckCircleFilled className="summary-icon" />
+              <span>
+                {t('label.schema')}: {serverValidation.passed}{' '}
+                {t('label.field-plural-lowercase')} {t('label.verified')}
+              </span>
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }, [
+    yamlContent,
+    parseError,
+    isValidating,
+    serverValidationError,
+    serverValidation,
+    t,
+  ]);
+
+  const renderImportOptions = useCallback(() => {
+    if (!hasExistingContract) {
+      return null;
+    }
+
+    return (
+      <div className="import-options-section">
+        <div className="existing-contract-warning">
+          <WarningFilled className="warning-icon" />
+          <span>{t('message.existing-contract-detected')}</span>
+        </div>
+
+        <Radio.Group
+          className="w-full"
+          value={importMode}
+          onChange={(e) => setImportMode(e.target.value)}>
+          <Space className="w-full" direction="vertical" size={0}>
+            <div
+              className={`import-mode-option ${
+                importMode === 'merge' ? 'selected' : ''
+              }`}
+              onClick={() => setImportMode('merge')}>
+              <Radio value="merge">
+                <span className="option-title">
+                  {t('label.merge-with-existing')}
+                </span>
+              </Radio>
+              <p className="option-description">
+                {t('message.import-mode-merge-description')}
+              </p>
+            </div>
+            <div
+              className={`import-mode-option ${
+                importMode === 'replace' ? 'selected' : ''
+              }`}
+              onClick={() => setImportMode('replace')}>
+              <Radio value="replace">
+                <span className="option-title">
+                  {t('label.replace-existing')}
+                </span>
+              </Radio>
+              <p className="option-description">
+                {t('message.import-mode-replace-description')}
+              </p>
+            </div>
+          </Space>
+        </Radio.Group>
+      </div>
+    );
+  }, [hasExistingContract, importMode, t]);
 
   const modalTitle = isODCSFormat
     ? t('label.import-odcs-contract')
@@ -385,86 +664,62 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
       centered
       destroyOnClose
       cancelText={t('label.cancel')}
+      className="odcs-import-modal"
       closable={!isLoading}
       maskClosable={!isLoading}
       okButtonProps={{
-        disabled: !yamlContent || Boolean(parseError),
-        loading: isLoading,
+        disabled:
+          !yamlContent ||
+          Boolean(parseError) ||
+          isValidating ||
+          hasValidationErrors,
+        loading: isLoading || isValidating,
       }}
       okText={t('label.import')}
       open={visible}
       title={modalTitle}
-      width={600}
+      width={900}
       onCancel={handleReset}
       onOk={handleImport}>
-      <Space className="w-full" direction="vertical" size="middle">
-        {!yamlContent ? (
-          <Dragger
-            accept=".yaml,.yml,.json"
-            beforeUpload={handleFileUpload}
-            multiple={false}
-            showUploadList={false}>
-            <p className="ant-upload-drag-icon">
-              <ImportIcon height={48} width={48} />
-            </p>
-            <p className="ant-upload-text">{dragDropMessage}</p>
-            <p className="ant-upload-hint">
-              {t('message.supports-yaml-format')}
-            </p>
-          </Dragger>
-        ) : (
-          <>
-            <Alert
-              message={
-                <Space>
-                  <Text>{t('label.file')}:</Text>
-                  <Text strong>{fileName}</Text>
-                </Space>
-              }
-              type="success"
-            />
-
-            {parseError && <Alert message={parseError} type="error" />}
-
-            {renderContractPreview()}
-
-            {hasExistingContract && (
-              <div className="m-t-md">
-                <Alert
-                  className="m-b-md"
-                  message={t('message.existing-contract-detected')}
-                  type="warning"
+      <div className="import-content-wrapper">
+        <div className="source-panel">
+          {!yamlContent ? (
+            <div className="dragger-wrapper">
+              <Dragger
+                accept=".yaml,.yml,.json"
+                beforeUpload={handleFileUpload}
+                multiple={false}
+                showUploadList={false}>
+                <p className="ant-upload-drag-icon">
+                  <ImportIcon height={48} width={48} />
+                </p>
+                <p className="ant-upload-text">{dragDropMessage}</p>
+                <p className="ant-upload-hint">
+                  {t('message.supports-yaml-format')}
+                </p>
+              </Dragger>
+            </div>
+          ) : (
+            <>
+              <div className="file-info-card">
+                <div className="file-info">
+                  <FileTextOutlined className="file-icon" />
+                  <span className="file-name">{fileName}</span>
+                </div>
+                <CloseOutlined
+                  className="remove-button"
+                  onClick={handleRemoveFile}
                 />
-
-                <Paragraph>{t('message.choose-import-mode')}:</Paragraph>
-
-                <Radio.Group
-                  className="w-full"
-                  value={importMode}
-                  onChange={(e) => setImportMode(e.target.value)}>
-                  <Space className="w-full" direction="vertical">
-                    <Radio value="merge">
-                      <Text strong>{t('label.merge-with-existing')}</Text>
-                      <Paragraph className="m-l-lg text-grey-muted m-b-0">
-                        {t('message.import-mode-merge-description')}
-                      </Paragraph>
-                    </Radio>
-                    <Radio value="replace">
-                      <Text strong>{t('label.replace-existing')}</Text>
-                      <Paragraph className="m-l-lg text-grey-muted m-b-0">
-                        {t('message.import-mode-replace-description')}
-                      </Paragraph>
-                    </Radio>
-                  </Space>
-                </Radio.Group>
-
-                {importMode === 'merge' && mergeDescription}
-                {importMode === 'replace' && replaceDescription}
               </div>
-            )}
-          </>
-        )}
-      </Space>
+
+              {renderContractPreview()}
+              {renderImportOptions()}
+            </>
+          )}
+        </div>
+
+        <div className="validation-panel">{renderValidationPanel()}</div>
+      </div>
     </Modal>
   );
 };

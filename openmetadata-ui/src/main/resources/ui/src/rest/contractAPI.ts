@@ -386,6 +386,37 @@ export const createOrUpdateContractFromODCS = async (
 };
 
 /**
+ * Schema validation result from ODCS validation
+ */
+export interface SchemaValidation {
+  passed?: number;
+  failed?: number;
+  total?: number;
+  failedFields?: string[];
+}
+
+/**
+ * Validate ODCS YAML against an entity without importing
+ * Returns schema validation results including any field mismatches
+ */
+export const validateODCSYaml = async (
+  yamlContent: string,
+  entityId: string,
+  entityType: string
+): Promise<SchemaValidation> => {
+  const response = await APIClient.post<SchemaValidation>(
+    `${BASE_URL}/odcs/validate/yaml`,
+    yamlContent,
+    {
+      params: { entityId, entityType },
+      headers: { 'Content-Type': 'application/yaml' },
+    }
+  );
+
+  return response.data;
+};
+
+/**
  * Create or update a data contract from ODCS v3.1.0 YAML format
  * @param mode 'merge' preserves existing fields, 'replace' overwrites all fields but preserves ID and history
  */

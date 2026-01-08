@@ -53,6 +53,7 @@ import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
+import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -1117,6 +1118,52 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
       dataContract.setUpdatedAt(System.currentTimeMillis());
       return create(uriInfo, securityContext, dataContract);
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Invalid ODCS YAML content: " + e.getMessage(), e);
+    }
+  }
+
+  @POST
+  @Path("/odcs/validate/yaml")
+  @Consumes({"application/yaml", "text/yaml"})
+  @Operation(
+      operationId = "validateODCSYaml",
+      summary = "Validate ODCS YAML without importing",
+      description =
+          "Validate an ODCS YAML contract against the target entity without creating the contract. "
+              + "Returns validation results including any schema field mismatches.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Validation results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SchemaValidation.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid YAML content")
+      })
+  public Response validateODCSYaml(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity ID to validate against",
+              schema = @Schema(type = "string", format = "uuid"))
+          @QueryParam("entityId")
+          UUID entityId,
+      @Parameter(
+              description = "Entity Type (table, topic, etc.)",
+              schema = @Schema(type = "string", example = Entity.TABLE))
+          @QueryParam("entityType")
+          String entityType,
+      String yamlContent) {
+    try {
+      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
+      EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
+      DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef);
+
+      SchemaValidation validation = repository.validateContractSchema(dataContract, entityRef);
+      return Response.ok(validation).build();
     } catch (Exception e) {
       throw new IllegalArgumentException("Invalid ODCS YAML content: " + e.getMessage(), e);
     }
