@@ -93,7 +93,6 @@ import { GenericAuthenticator } from '../AppAuthenticators/GenericAuthenticator'
 import MsalAuthenticator from '../AppAuthenticators/MsalAuthenticator';
 import OidcAuthenticator from '../AppAuthenticators/OidcAuthenticator';
 import OktaAuthenticator from '../AppAuthenticators/OktaAuthenticator';
-import SamlAuthenticator from '../AppAuthenticators/SamlAuthenticator';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import BasicAuthProvider from './BasicAuthProvider';
 import OktaAuthProvider from './OktaAuthProvider';
@@ -591,11 +590,9 @@ export const AuthProvider = ({
           } else {
             // get the user details if token is present and route is not auth callback and saml callback
             if (
-              ![
-                ROUTES.AUTH_CALLBACK,
-                ROUTES.SAML_CALLBACK,
-                ROUTES.SILENT_CALLBACK,
-              ].includes(location.pathname)
+              ![ROUTES.AUTH_CALLBACK, ROUTES.SILENT_CALLBACK].includes(
+                location.pathname
+              )
             ) {
               getLoggedInUserDetails();
             }
@@ -633,7 +630,11 @@ export const AuthProvider = ({
         children
       );
 
-    if (clientType === ClientType.Confidential) {
+    // Handling for SAML moved to GenericAuthenticator
+    if (
+      clientType === ClientType.Confidential ||
+      authConfig?.provider === AuthProviderEnum.Saml
+    ) {
       return (
         <GenericAuthenticator ref={authenticatorRef}>
           {childElement}
@@ -663,13 +664,6 @@ export const AuthProvider = ({
               {childElement}
             </Auth0Authenticator>
           </Auth0Provider>
-        );
-      }
-      case AuthProviderEnum.Saml: {
-        return (
-          <SamlAuthenticator ref={authenticatorRef}>
-            {childElement}
-          </SamlAuthenticator>
         );
       }
       case AuthProviderEnum.Okta: {

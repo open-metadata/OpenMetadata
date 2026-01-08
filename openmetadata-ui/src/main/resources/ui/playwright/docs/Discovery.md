@@ -2,7 +2,7 @@
 
 # Discovery
 
-> **7 Components** | **26 Files** | **355 Tests** | **367 Scenarios** 🚀
+> **7 Components** | **26 Files** | **356 Tests** | **368 Scenarios** 🚀
 
 ## Table of Contents
 - [Feed](#feed)
@@ -456,22 +456,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>Container.spec.ts</b> (3 tests, 3 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/Container.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Container.spec.ts)
-
-### Container entity specific tests 
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Container entity specific tests ** - Container page should show Schema and Children count | Container page should show Schema and Children count |
-| 2 | **Container entity specific tests ** - Container page children pagination | Container page children pagination |
-| 3 | **Container entity specific tests ** - expand / collapse should not appear after updating nested fields for container | Expand / collapse should not appear after updating nested fields for container |
-
-</details>
-
-<details open>
-<summary>📄 <b>Dashboards.spec.ts</b> (3 tests, 3 scenarios)</summary>
+<summary>📄 <b>Dashboards.spec.ts</b> (4 tests, 4 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/Dashboards.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Dashboards.spec.ts)
 
@@ -492,6 +477,27 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Data Model** - expand / collapse should not appear after updating nested fields for dashboardDataModels | Expand / collapse should not appear after updating nested fields for dashboardDataModels |
+
+### Data Model with special characters in name
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Model with special characters in name** - should display data model when service name contains dots | Display data model when service name contains dots |
+
+</details>
+
+<details open>
+<summary>📄 <b>Container.spec.ts</b> (3 tests, 3 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Container.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Container.spec.ts)
+
+### Container entity specific tests 
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Container entity specific tests ** - Container page should show Schema and Children count | Container page should show Schema and Children count |
+| 2 | **Container entity specific tests ** - Container page children pagination | Container page children pagination |
+| 3 | **Container entity specific tests ** - expand / collapse should not appear after updating nested fields for container | Expand / collapse should not appear after updating nested fields for container |
 
 </details>
 

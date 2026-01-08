@@ -24,4 +24,13 @@ public class AuditLogEntry {
   private String entityFQN;
   private Long createdAt;
   private ChangeEvent changeEvent;
+
+  /** Human-readable summary of the change event (computed at query time, not stored). */
+  private String summary;
+
+  /**
+   * Raw JSON of the change event as stored in the database. This is provided as a fallback when
+   * {@link #changeEvent} deserialization fails or when the frontend needs the raw payload.
+   */
+  private String rawEventJson;
 }
