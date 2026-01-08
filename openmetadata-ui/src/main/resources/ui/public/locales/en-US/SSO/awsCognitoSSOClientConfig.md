@@ -198,11 +198,12 @@ AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credent
 - **Example:** ["cognito:username", "email", "sub"]
 - **Why it matters:** Determines which claim from the JWT token identifies the user.
 - **Note:** Common Cognito claims: cognito:username, email, sub, preferred_username
+  - Order matters - first matching claim is used
 
 ## <span data-id="jwtPrincipalClaimsMapping">JWT Principal Claims Mapping</span>
 
-- **Definition:** Maps JWT claims to OpenMetadata user attributes.
-- **Example:** ["email:email", "name:name", "firstName:given_name"]
+- **Definition:** Maps JWT claims to OpenMetadata user attributes. (Overrides JWT Principal Claims if set)
+- **Example:** ["email:email", "username:preferred_username"]
 - **Why it matters:** Controls how user information from AWS Cognito maps to OpenMetadata user profiles.
 - **Note:** Format: "openmetadata_field:jwt_claim"
 

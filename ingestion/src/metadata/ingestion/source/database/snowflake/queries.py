@@ -17,31 +17,40 @@ import textwrap
 SNOWFLAKE_GET_TABLE_NAMES = """
     select
         TABLE_NAME,
-        NULL,
-        CASE 
-            WHEN is_dynamic = 'YES' THEN 'DYNAMIC TABLE'
-            ELSE TABLE_TYPE 
-        END AS TABLE_TYPE
-    FROM information_schema.tables
+        NULL as DELETED,
+        CASE
+            WHEN IS_TRANSIENT = 'YES' THEN 'TRANSIENT TABLE'
+            WHEN IS_DYNAMIC = 'YES' THEN 'DYNAMIC TABLE'
+            ELSE TABLE_TYPE
+        END as TABLE_TYPE
+    from information_schema.tables
     where TABLE_SCHEMA = '{schema}'
-    AND COALESCE(IS_TRANSIENT, 'NO') != '{is_transient}'
+    AND {include_transient_tables}
     AND {include_views}
 """
 
 SNOWFLAKE_INCREMENTAL_GET_TABLE_NAMES = """
-select TABLE_NAME, DELETED, TABLE_TYPE
+select TABLE_NAME, DELETED, COMPUTED_TABLE_TYPE as TABLE_TYPE
 from (
     select
         TABLE_NAME,
         DELETED,
-        TABLE_TYPE,
+        CASE
+            WHEN TABLE_TYPE = 'EXTERNAL TABLE' THEN 'EXTERNAL TABLE'
+            WHEN TABLE_TYPE = 'VIEW' THEN 'VIEW'
+            WHEN TABLE_TYPE = 'MATERIALIZED VIEW' THEN 'MATERIALIZED VIEW'
+            WHEN IS_TRANSIENT = 'YES' THEN 'TRANSIENT TABLE'
+            WHEN IS_DYNAMIC = 'YES' THEN 'DYNAMIC TABLE'
+            WHEN TABLE_TYPE = 'BASE TABLE' THEN 'BASE TABLE'
+            ELSE TABLE_TYPE
+        END as COMPUTED_TABLE_TYPE,
         ROW_NUMBER() over (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
     from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
-    and COALESCE(IS_TRANSIENT, 'NO') != '{is_transient}'
+    and {include_transient_tables}
     and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
     and {include_views}
 )

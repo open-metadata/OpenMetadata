@@ -65,6 +65,10 @@ const DomainSelectableListNew = ({
   const dropdownRef = useRef<BaseSelectRef>(null);
 
   useEffect(() => {
+    setIsDropdownOpen(popupVisible);
+  }, [popupVisible]);
+
+  useEffect(() => {
     const observer = new MutationObserver(() => {
       const dropdown = document.querySelector(
         '.domain-custom-dropdown-class'
@@ -117,6 +121,7 @@ const DomainSelectableListNew = ({
               handleDropdownChange={handleDropdownChange}
               initialDomains={initialDomains}
               isMultiple={multiple}
+              open={isDropdownOpen}
               value={selectedDomainsList as string[]}
               visible={popupVisible}
               onCancel={() => setPopupVisible(false)}

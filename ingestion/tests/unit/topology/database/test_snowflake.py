@@ -558,3 +558,49 @@ class SnowflakeUnitTest(TestCase):
             tag_fqns = [tag.tagFQN.root for tag in table_labels]
             self.assertIn("SnowflakeTag.SCHEMA_TAG", tag_fqns)
             self.assertIn("SnowflakeTag.TABLE_TAG", tag_fqns)
+
+    def test_table_names_full_query_generation(self):
+        """Test complete SQL query generation for full extraction with different parameters"""
+        from snowflake.sqlalchemy.snowdialect import SnowflakeDialect
+
+        from metadata.ingestion.source.database.snowflake.utils import get_table_names
+
+        dialect = SnowflakeDialect()
+
+        mock_cursor_case1 = Mock()
+        mock_cursor_case1.__iter__ = Mock(return_value=iter([]))
+
+        mock_connection = Mock()
+        mock_connection.execute = Mock(return_value=mock_cursor_case1)
+
+        get_table_names(
+            dialect,
+            mock_connection,
+            schema="TEST_SCHEMA",
+            include_transient_tables=False,
+            include_views=True,
+        )
+
+        call_args = mock_connection.execute.call_args
+        executed_query_case1 = call_args[0][0]
+
+        self.assertIn("COALESCE(IS_TRANSIENT, 'NO') != 'YES'", executed_query_case1)
+        self.assertNotIn("TABLE_TYPE != 'VIEW'", executed_query_case1)
+
+        mock_cursor_case2 = Mock()
+        mock_cursor_case2.__iter__ = Mock(return_value=iter([]))
+        mock_connection.execute = Mock(return_value=mock_cursor_case2)
+
+        get_table_names(
+            dialect,
+            mock_connection,
+            schema="TEST_SCHEMA",
+            include_transient_tables=True,
+            include_views=False,
+        )
+
+        call_args = mock_connection.execute.call_args
+        executed_query_case2 = call_args[0][0]
+
+        self.assertIn("TABLE_TYPE != 'VIEW'", executed_query_case2)
+        self.assertNotIn("COALESCE(IS_TRANSIENT, 'NO') != 'YES'", executed_query_case2)
