@@ -440,7 +440,7 @@ test.describe('Rules Library', () => {
     });
 
     // Find a system test definition
-    const systemTestDef = data.data.find(
+    const systemTestDef = data.data.findLast(
       (def: { provider: string }) => def.provider === 'system'
     );
 
