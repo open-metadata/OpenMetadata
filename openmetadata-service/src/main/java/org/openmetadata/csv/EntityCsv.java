@@ -746,9 +746,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
       CSVParser parser =
           CSVFormat.DEFAULT
               .withFirstRecordAsHeader()
-              .withIgnoreSurroundingSpaces()
               .withQuote('"')
-              .withIgnoreEmptyLines() // Ignore empty lines
+              .withIgnoreEmptyLines()
               .parse(in);
 
       List<List<String>> fixedRows = new ArrayList<>();
