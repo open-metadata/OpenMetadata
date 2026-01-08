@@ -71,6 +71,9 @@ class PowerBIReport(BaseModel):
     datasetId: Optional[str] = None
     users: Optional[List[PowerBIUser]] = []
     modifiedBy: Optional[str] = None
+    description: Optional[str] = None
+    webUrl: Optional[str] = None
+    embedUrl: Optional[str] = None
 
 
 class DashboardsResponse(BaseModel):

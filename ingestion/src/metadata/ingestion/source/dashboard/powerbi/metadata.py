@@ -421,6 +421,13 @@ class PowerbiSource(DashboardServiceSource):
                         owners=self.get_owner_ref(dashboard_details=dashboard_details),
                     )
                 else:
+                    report_details = self.client.api_client.fetch_report_details(
+                        group_id=self.context.get().workspace.id,
+                        report_id=dashboard_details.id,
+                    )
+                    description = None
+                    if report_details and report_details.description:
+                        description = Markdown(report_details.description)
                     dashboard_request = CreateDashboardRequest(
                         name=EntityName(dashboard_details.id),
                         dashboardType=DashboardType.Report,
@@ -432,6 +439,7 @@ class PowerbiSource(DashboardServiceSource):
                         ),
                         project=self.get_project_name(dashboard_details),
                         displayName=dashboard_details.name,
+                        description=description,
                         service=self.context.get().dashboard_service,
                         owners=self.get_owner_ref(dashboard_details=dashboard_details),
                     )
