@@ -28,10 +28,13 @@ import io.kubernetes.client.openapi.models.V1CronJob;
 import io.kubernetes.client.openapi.models.V1CronJobSpec;
 import io.kubernetes.client.openapi.models.V1EnvVar;
 import io.kubernetes.client.openapi.models.V1EnvVarSource;
+import io.kubernetes.client.openapi.models.V1ExecAction;
 import io.kubernetes.client.openapi.models.V1Job;
 import io.kubernetes.client.openapi.models.V1JobList;
 import io.kubernetes.client.openapi.models.V1JobSpec;
 import io.kubernetes.client.openapi.models.V1JobTemplateSpec;
+import io.kubernetes.client.openapi.models.V1Lifecycle;
+import io.kubernetes.client.openapi.models.V1LifecycleHandler;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
@@ -593,6 +596,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
       for (V1Job job : jobs.getItems()) {
         if (isJobActive(job)) {
           String jobName = job.getMetadata().getName();
+
+          // Delete the job - preStop hook handles exit status reporting
           executeWithRetry(
               () ->
                   batchApi
@@ -627,8 +632,9 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   @Override
   public List<PipelineStatus> getQueuedPipelineStatusInternal(IngestionPipeline ingestionPipeline) {
+    // READ-ONLY: Check for queued K8s jobs without storing anything
     String pipelineName = sanitizeName(ingestionPipeline.getName());
-    List<PipelineStatus> statuses = new ArrayList<>();
+    List<PipelineStatus> queuedStatuses = new ArrayList<>();
 
     try {
       String labelSelector = LABEL_PIPELINE + "=" + pipelineName;
@@ -639,17 +645,50 @@ public class K8sPipelineClient extends PipelineServiceClient {
               .execute();
 
       for (V1Job job : jobs.getItems()) {
-        PipelineStatus status = mapJobToPipelineStatus(job);
-        if (status != null) {
-          statuses.add(status);
+        // Only return jobs that are QUEUED (created but not started)
+        if (isJobQueued(job)) {
+          String runId =
+              job.getMetadata().getLabels() != null
+                  ? job.getMetadata().getLabels().get(LABEL_RUN_ID)
+                  : job.getMetadata().getName();
+
+          Long startTime =
+              job.getMetadata().getCreationTimestamp() != null
+                  ? job.getMetadata().getCreationTimestamp().toInstant().toEpochMilli()
+                  : null;
+
+          // Create READ-ONLY status object (not persisted)
+          PipelineStatus queuedStatus =
+              new PipelineStatus()
+                  .withRunId(runId)
+                  .withPipelineState(PipelineStatusType.QUEUED)
+                  .withStartDate(startTime)
+                  .withTimestamp(startTime);
+
+          queuedStatuses.add(queuedStatus);
         }
       }
 
     } catch (ApiException e) {
-      LOG.error("Failed to get pipeline status: {}", e.getResponseBody());
+      LOG.error("Failed to check queued pipeline status: {}", e.getResponseBody());
     }
 
-    return statuses;
+    return queuedStatuses;
+  }
+
+  private boolean isJobQueued(V1Job job) {
+    if (job.getStatus() == null) {
+      return true; // Job created but status not yet set = queued
+    }
+
+    Integer active = job.getStatus().getActive();
+    Integer succeeded = job.getStatus().getSucceeded();
+    Integer failed = job.getStatus().getFailed();
+
+    // Queued = no active pods, no completed pods, no failed pods
+    return (active == null || active == 0)
+        && (succeeded == null || succeeded == 0)
+        && (failed == null || failed == 0);
   }
 
   @Override
@@ -1021,11 +1060,25 @@ public class K8sPipelineClient extends PipelineServiceClient {
                                     .imagePullPolicy(k8sConfig.getImagePullPolicy())
                                     .command(List.of("python", "main.py"))
                                     .env(buildEnvVars(pipeline, runId, configOverride, service))
+                                    .lifecycle(buildContainerLifecycle())
                                     .securityContext(buildContainerSecurityContext())
                                     .resources(
                                         new V1ResourceRequirements()
                                             .requests(k8sConfig.getResourceRequests())
                                             .limits(k8sConfig.getResourceLimits()))))));
+  }
+
+  /**
+   * Build container lifecycle with preStop hook to run exit handler.
+   * Ensures proper status reporting when containers terminate for any reason.
+   */
+  private V1Lifecycle buildContainerLifecycle() {
+    return new V1Lifecycle()
+        .preStop(
+            new V1LifecycleHandler()
+                .exec(
+                    new V1ExecAction()
+                        .command(List.of("python", "exit_handler.py"))));
   }
 
   private V1PodSecurityContext buildPodSecurityContext() {
@@ -1072,7 +1125,9 @@ public class K8sPipelineClient extends PipelineServiceClient {
     String workflowConfig = buildWorkflowConfigWithOverrides(pipeline, service, configOverride);
     envVars.add(new V1EnvVar().name("config").value(workflowConfig));
 
-    envVars.add(new V1EnvVar().name("OPENMETADATA_SERVER_URL").value(metadataApiEndpoint));
+    // Add exit handler environment variables for proper status reporting
+    envVars.add(new V1EnvVar().name("jobName").value("om-job-" + pipelineName + "-" + runId));
+    envVars.add(new V1EnvVar().name("namespace").value(k8sConfig.getNamespace()));
 
     // P2: Add extra environment variables from configuration
     if (k8sConfig.getExtraEnvVars() != null && !k8sConfig.getExtraEnvVars().isEmpty()) {
@@ -1489,84 +1544,6 @@ public class K8sPipelineClient extends PipelineServiceClient {
     }
   }
 
-  private PipelineStatus mapJobToPipelineStatus(V1Job job) {
-    if (job.getMetadata() == null || job.getStatus() == null) {
-      return null;
-    }
-
-    String runId =
-        job.getMetadata().getLabels() != null
-            ? job.getMetadata().getLabels().get(LABEL_RUN_ID)
-            : job.getMetadata().getName();
-
-    PipelineStatusType state = mapJobStatusType(job);
-
-    Long startTime =
-        job.getStatus().getStartTime() != null
-            ? job.getStatus().getStartTime().toInstant().toEpochMilli()
-            : null;
-    Long endTime =
-        job.getStatus().getCompletionTime() != null
-            ? job.getStatus().getCompletionTime().toInstant().toEpochMilli()
-            : null;
-
-    PipelineStatus pipelineStatus =
-        new PipelineStatus()
-            .withRunId(runId)
-            .withPipelineState(state)
-            .withStartDate(startTime)
-            .withEndDate(endTime)
-            .withTimestamp(startTime);
-
-    // Gather failure diagnostics for failed jobs
-    if (state == PipelineStatusType.FAILED && k8sConfig.isFailureDiagnosticsEnabled()) {
-      try {
-        String pipelineName =
-            job.getMetadata().getLabels() != null
-                ? job.getMetadata().getLabels().get(LABEL_PIPELINE)
-                : "unknown";
-        IngestionPipeline mockPipeline = createMockPipelineForDiagnostics(pipelineName);
-
-        failureDiagnostics
-            .gatherFailureDiagnostics(job, mockPipeline, runId)
-            .ifPresent(
-                diagnostics ->
-                    failureDiagnostics.updatePipelineStatusWithDiagnostics(
-                        pipelineStatus, diagnostics));
-
-      } catch (Exception e) {
-        LOG.warn(
-            "Failed to gather diagnostics for failed job {}: {}",
-            job.getMetadata().getName(),
-            e.getMessage());
-      }
-    }
-
-    return pipelineStatus;
-  }
-
-  private PipelineStatusType mapJobStatusType(V1Job job) {
-    if (job.getStatus() == null) {
-      return PipelineStatusType.QUEUED;
-    }
-
-    Integer active = job.getStatus().getActive();
-    Integer succeeded = job.getStatus().getSucceeded();
-    Integer failed = job.getStatus().getFailed();
-
-    if (active != null && active > 0) {
-      return PipelineStatusType.RUNNING;
-    }
-    if (succeeded != null && succeeded > 0) {
-      return PipelineStatusType.SUCCESS;
-    }
-    if (failed != null && failed > 0) {
-      return PipelineStatusType.FAILED;
-    }
-
-    return PipelineStatusType.QUEUED;
-  }
-
   private boolean isJobActive(V1Job job) {
     return job.getStatus() != null
         && job.getStatus().getActive() != null
@@ -1658,16 +1635,5 @@ public class K8sPipelineClient extends PipelineServiceClient {
   @VisibleForTesting
   void setCoreApi(CoreV1Api coreApi) {
     this.coreApi = coreApi;
-  }
-
-  /**
-   * Creates a minimal IngestionPipeline object for diagnostics gathering.
-   * This is needed because the diagnostics system requires pipeline context.
-   */
-  private IngestionPipeline createMockPipelineForDiagnostics(String pipelineName) {
-    IngestionPipeline mockPipeline = new IngestionPipeline();
-    mockPipeline.setName(pipelineName);
-    mockPipeline.setFullyQualifiedName(pipelineName); // Simplified FQN
-    return mockPipeline;
   }
 }

@@ -60,7 +60,7 @@ openmetadata:
 # Local image configuration
 image:
   repository: openmetadata/server
-  tag: "20260108-5"
+  tag: "20260108-6"
   pullPolicy: IfNotPresent
 
 # Service configuration for local access
