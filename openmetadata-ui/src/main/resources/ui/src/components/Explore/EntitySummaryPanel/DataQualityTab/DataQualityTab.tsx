@@ -30,6 +30,7 @@ import {
 import { Include } from '../../../../generated/type/include';
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { listTestCases } from '../../../../rest/testAPI';
+import { getTableFQNFromColumnFQN } from '../../../../utils/CommonUtils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -349,34 +350,30 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       );
       const endTs = getCurrentMillis();
 
-      let allIncidents: TestCaseResolutionStatus[] = [];
+      const originFQN = isColumnDetailPanel
+        ? getTableFQNFromColumnFQN(entityFQN)
+        : entityFQN;
+
+      const response = await getListTestCaseIncidentStatus({
+        latest: true,
+        include: Include.NonDeleted,
+        originEntityFQN: originFQN,
+        startTs,
+        endTs,
+        limit: 100,
+      });
+
+      let allIncidents = response.data || [];
 
       if (isColumnDetailPanel && testCases.length > 0) {
-        const allPromises = testCases.map((testCase) =>
-          getListTestCaseIncidentStatus({
-            latest: true,
-            include: Include.NonDeleted,
-            testCaseFQN: testCase.fullyQualifiedName,
-            startTs,
-            endTs,
-            limit: 50,
-          }).catch(() => ({ data: [] }))
+        const testCaseFQNSet = new Set(
+          testCases.map((tc) => tc.fullyQualifiedName)
         );
-
-        const results = await Promise.all(allPromises);
-        allIncidents = results.flatMap((result) => result.data || []);
-      } else {
-        // For table/entity level, use originEntityFQN
-        const response = await getListTestCaseIncidentStatus({
-          latest: true,
-          include: Include.NonDeleted,
-          originEntityFQN: entityFQN,
-          startTs,
-          endTs,
-          limit: 100,
-        });
-
-        allIncidents = response.data || [];
+        allIncidents = allIncidents.filter(
+          (incident) =>
+            incident.testCaseReference?.fullyQualifiedName &&
+            testCaseFQNSet.has(incident.testCaseReference.fullyQualifiedName)
+        );
       }
 
       setIncidents(allIncidents);

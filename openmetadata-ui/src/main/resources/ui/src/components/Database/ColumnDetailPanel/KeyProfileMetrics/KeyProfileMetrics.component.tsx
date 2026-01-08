@@ -50,7 +50,7 @@ export const KeyProfileMetrics = ({
       setIsLoading(true);
       const response = await getTableColumnsByFQN(tableFqn, {
         fields: TabSpecificField.PROFILE,
-        limit: 1000,
+        limit: 50,
       });
 
       const columnData = response.data?.find(
