@@ -227,6 +227,7 @@ public class SearchIndexExecutor implements AutoCloseable {
     initializeSink(effectiveConfig);
 
     if (effectiveConfig.recreateIndex()) {
+      validateClusterCapacity(entities);
       listeners.onIndexRecreationStarted(entities);
       recreateContext = reCreateIndexes(entities);
     }
@@ -299,6 +300,18 @@ public class SearchIndexExecutor implements AutoCloseable {
     } catch (Exception e) {
       LOG.warn("Failed to fetch cluster metrics, using defaults", e);
       return null;
+    }
+  }
+
+  private void validateClusterCapacity(Set<String> entities) {
+    try {
+      SearchIndexClusterValidator validator = new SearchIndexClusterValidator();
+      validator.validateCapacityForRecreate(searchRepository, entities);
+    } catch (InsufficientClusterCapacityException e) {
+      LOG.error("Cluster capacity check failed: {}", e.getMessage());
+      throw e;
+    } catch (Exception e) {
+      LOG.warn("Failed to validate cluster capacity, proceeding with caution: {}", e.getMessage());
     }
   }
 

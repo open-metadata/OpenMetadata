@@ -97,6 +97,24 @@ public class SearchIndexApp extends AbstractNativeApplication {
   public void init(App app) {
     super.init(app);
     jobData = JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class);
+    cleanupOrphanedIndices();
+  }
+
+  private void cleanupOrphanedIndices() {
+    try {
+      OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
+      OrphanedIndexCleaner.CleanupResult result =
+          cleaner.cleanupOrphanedIndices(searchRepository.getSearchClient());
+      if (result.deleted() > 0) {
+        LOG.info(
+            "Cleaned up {} orphaned rebuild indices on startup (found={}, failed={})",
+            result.deleted(),
+            result.found(),
+            result.failed());
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to cleanup orphaned indices on startup: {}", e.getMessage());
+    }
   }
 
   @Override
