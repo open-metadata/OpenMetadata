@@ -330,16 +330,16 @@ test.describe('Test Definition Permissions - Data Steward', () => {
     dataStewardPage,
   }) => {
     await redirectToHomePage(dataStewardPage);
+    // Wait for API response to get test definitions
+    const response = dataStewardPage.waitForResponse((response) =>
+      response.url().includes('/api/v1/dataQuality/testDefinitions')
+    );
 
     // Navigate to Rules Library
     await dataStewardPage.goto('/rules-library');
 
-    // Wait for API response to get test definitions
-    const response = await dataStewardPage.waitForResponse((response) =>
-      response.url().includes('/api/v1/dataQuality/testDefinitions')
-    );
-
-    const data = await response.json();
+    const responseResolved = await response;
+    const data = await responseResolved.json();
 
     // Find a system test definition
     const systemTestDef = data.data.find(
@@ -429,14 +429,15 @@ test.describe('Test Definition Permissions - API Level Validation', () => {
     await redirectToHomePage(adminPage);
     const { apiContext } = await getApiContext(adminPage);
 
-    // Navigate to Rules Library
-    await adminPage.goto('/rules-library');
-
-    const response = await adminPage.waitForResponse((response) =>
+    const response = adminPage.waitForResponse((response) =>
       response.url().includes('/api/v1/dataQuality/testDefinitions')
     );
 
-    const data = await response.json();
+    // Navigate to Rules Library
+    await adminPage.goto('/rules-library');
+
+    const responseResolved = await response;
+    const data = await responseResolved.json();
 
     // Find a system test definition with COLUMN entity type
     const systemTestDef = data.data.find(
