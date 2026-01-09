@@ -15,6 +15,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.powerbi.metadata import PowerbiSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
@@ -923,3 +924,125 @@ class PowerBIUnitTest(TestCase):
             group_id, report_id
         )
         self.assertIsNone(result)
+
+    @pytest.mark.order(15)
+    def test_paginate_project_filter_pattern_none(self):
+        """
+        Test _paginate_project_filter_pattern when filter_pattern is None
+        Should return default filter pattern that includes all workspaces
+        """
+        result = self.powerbi._paginate_project_filter_pattern(None)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].includes, [".*"])
+        self.assertIsNone(result[0].excludes)
+
+    @pytest.mark.order(16)
+    def test_paginate_project_filter_pattern_only_excludes(self):
+        """
+        Test _paginate_project_filter_pattern with only exclude filters
+        Should return the original filter pattern without pagination
+        """
+        filter_pattern = FilterPattern(excludes=["workspace1", "workspace2"])
+
+        result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
+
+        self.assertEqual(len(result), 1)
+        self.assertIsNone(result[0].includes)
+        self.assertEqual(result[0].excludes, ["workspace1", "workspace2"])
+
+    @pytest.mark.order(17)
+    def test_paginate_project_filter_pattern_includes_under_limit(self):
+        """
+        Test _paginate_project_filter_pattern with include filters under the limit (20)
+        Should return a single batch with all include filters
+        """
+        includes = [f"workspace{i}" for i in range(15)]
+        filter_pattern = FilterPattern(includes=includes)
+
+        result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].includes, includes)
+
+    @pytest.mark.order(18)
+    def test_paginate_project_filter_pattern_includes_at_limit(self):
+        """
+        Test _paginate_project_filter_pattern with exactly 20 include filters
+        Should return a single batch
+        """
+        includes = [f"workspace{i}" for i in range(20)]
+        filter_pattern = FilterPattern(includes=includes)
+
+        result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(len(result[0].includes), 20)
+
+    @pytest.mark.order(19)
+    def test_paginate_project_filter_pattern_includes_over_limit(self):
+        """
+        Test _paginate_project_filter_pattern with include filters over the limit (20)
+        Should paginate into multiple batches
+        """
+        includes = [f"workspace{i}" for i in range(45)]
+        filter_pattern = FilterPattern(includes=includes)
+
+        result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
+
+        self.assertEqual(len(result), 3)
+        self.assertEqual(len(result[0].includes), 20)
+        self.assertEqual(len(result[1].includes), 20)
+        self.assertEqual(len(result[2].includes), 5)
+        self.assertEqual(result[0].includes, includes[:20])
+        self.assertEqual(result[1].includes, includes[20:40])
+        self.assertEqual(result[2].includes, includes[40:45])
+
+    @pytest.mark.order(20)
+    def test_paginate_project_filter_pattern_with_includes_and_excludes(self):
+        """
+        Test _paginate_project_filter_pattern with both includes and excludes
+        Excludes should be preserved across all paginated batches
+        """
+        includes = [f"workspace{i}" for i in range(25)]
+        excludes = ["excluded1", "excluded2"]
+        filter_pattern = FilterPattern(includes=includes, excludes=excludes)
+
+        result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(len(result[0].includes), 20)
+        self.assertEqual(len(result[1].includes), 5)
+        self.assertEqual(result[0].excludes, excludes)
+        self.assertEqual(result[1].excludes, excludes)
+
+    @pytest.mark.order(21)
+    def test_paginate_project_filter_pattern_empty_includes(self):
+        """
+        Test _paginate_project_filter_pattern with empty includes list
+        Should return the original filter pattern
+        """
+        filter_pattern = FilterPattern(includes=[], excludes=["excluded1"])
+
+        result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].includes, [])
+        self.assertEqual(result[0].excludes, ["excluded1"])
+
+    @pytest.mark.order(22)
+    def test_paginate_project_filter_pattern_large_batch(self):
+        """
+        Test _paginate_project_filter_pattern with a large number of includes
+        Should correctly paginate into multiple batches
+        """
+        includes = [f"workspace{i}" for i in range(100)]
+        filter_pattern = FilterPattern(includes=includes)
+
+        result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
+
+        self.assertEqual(len(result), 5)
+        for i in range(4):
+            self.assertEqual(len(result[i].includes), 20)
+        total_includes = sum(len(batch.includes) for batch in result)
+        self.assertEqual(total_includes, 100)
