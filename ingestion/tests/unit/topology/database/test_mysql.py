@@ -14,12 +14,20 @@ Test mysql using the topology
 """
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.mysql.metadata import MysqlSource
+from metadata.ingestion.source.database.mysql.models import MysqlStoredProcedure
 
 mock_mysql_config = {
     "source": {
@@ -56,6 +64,25 @@ mock_mysql_config = {
     },
 }
 
+MOCK_DATABASE_SERVICE = DatabaseService(
+    id="85811038-099a-11ed-861d-0242ac120002",
+    name="mysql_source",
+    connection=DatabaseConnection(),
+    serviceType=DatabaseServiceType.Mysql,
+)
+
+MOCK_DATABASE_SCHEMA = DatabaseSchema(
+    id="2aaa012e-099a-11ed-861d-0242ac120056",
+    name="test_schema",
+    fullyQualifiedName="mysql_source.test_db.test_schema",
+    displayName="test_schema",
+    description="",
+    service=EntityReference(
+        id="85811038-099a-11ed-861d-0242ac120002",
+        type="databaseService",
+    ),
+)
+
 
 class MysqlUnitTest(TestCase):
     @patch(
@@ -70,6 +97,14 @@ class MysqlUnitTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
 
+        self.mysql_source.context.get().__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.root
+        self.mysql_source.context.get().__dict__["database"] = "test_db"
+        self.mysql_source.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
+
     @patch("sqlalchemy.engine.base.Engine")
     @patch(
         "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
@@ -77,3 +112,108 @@ class MysqlUnitTest(TestCase):
     def test_close_connection(self, engine, connection):
         connection.return_value = True
         self.mysql_source.close()
+
+    @patch("metadata.ingestion.source.database.mysql.metadata.MysqlSource.engine")
+    def test_get_stored_procedures(self, mock_engine):
+        """Test fetching stored procedures"""
+        # Mock the database results
+        mock_results = [
+            MagicMock(
+                _mapping={
+                    "procedure_name": "test_procedure",
+                    "schema_name": "test_schema",
+                    "definition": "BEGIN SELECT 1; END",
+                    "procedure_type": "StoredProcedure",
+                    "description": "Test stored procedure",
+                }
+            ),
+            MagicMock(
+                _mapping={
+                    "procedure_name": "test_function",
+                    "schema_name": "test_schema",
+                    "definition": "BEGIN RETURN 1; END",
+                    "procedure_type": "Function",
+                    "description": "Test function",
+                }
+            ),
+        ]
+
+        mock_engine.execute.return_value.all.return_value = mock_results
+
+        # Enable stored procedures in config
+        self.mysql_source.source_config.includeStoredProcedures = True
+
+        # Get stored procedures
+        stored_procedures = list(self.mysql_source.get_stored_procedures())
+
+        # Verify results
+        self.assertEqual(
+            len(stored_procedures), 4
+        )  # 2 from procedures query, 2 from functions query
+        self.assertIsInstance(stored_procedures[0], MysqlStoredProcedure)
+        self.assertEqual(stored_procedures[0].name, "test_procedure")
+        self.assertEqual(stored_procedures[0].procedure_type, "StoredProcedure")
+
+    @patch("metadata.ingestion.source.database.mysql.metadata.MysqlSource.engine")
+    def test_get_stored_procedures_disabled(self, mock_engine):
+        """Test that stored procedures are not fetched when disabled"""
+        # Disable stored procedures in config
+        self.mysql_source.source_config.includeStoredProcedures = False
+
+        # Get stored procedures
+        stored_procedures = list(self.mysql_source.get_stored_procedures())
+
+        # Verify no results
+        self.assertEqual(len(stored_procedures), 0)
+        mock_engine.execute.assert_not_called()
+
+    def test_yield_stored_procedure(self):
+        """Test yielding stored procedure request"""
+        # Create a mock stored procedure
+        stored_procedure = MysqlStoredProcedure(
+            procedure_name="test_procedure",
+            schema_name="test_schema",
+            definition="BEGIN SELECT 1; END",
+            language="SQL",
+            procedure_type="StoredProcedure",
+            description="Test stored procedure",
+        )
+
+        # Mock the register_record_stored_proc_request method
+        self.mysql_source.register_record_stored_proc_request = MagicMock()
+
+        # Yield stored procedure
+        results = list(self.mysql_source.yield_stored_procedure(stored_procedure))
+
+        # Verify results
+        self.assertEqual(len(results), 1)
+        self.assertTrue(results[0].right is not None)
+        self.assertEqual(results[0].right.name.root, "test_procedure")
+        self.assertEqual(results[0].right.storedProcedureType, "StoredProcedure")
+        self.mysql_source.register_record_stored_proc_request.assert_called_once()
+
+    def test_yield_stored_procedure_with_error(self):
+        """Test yielding stored procedure with error handling"""
+        # Create a mock stored procedure with invalid data
+        stored_procedure = MysqlStoredProcedure(
+            procedure_name="test_procedure",
+            schema_name="test_schema",
+            definition="BEGIN SELECT 1; END",
+            language="SQL",
+            procedure_type="StoredProcedure",
+            description="Test stored procedure",
+        )
+
+        # Mock the fqn.build to raise an exception
+        with patch(
+            "metadata.ingestion.source.database.mysql.metadata.fqn.build"
+        ) as mock_fqn:
+            mock_fqn.side_effect = Exception("Test error")
+
+            # Yield stored procedure
+            results = list(self.mysql_source.yield_stored_procedure(stored_procedure))
+
+            # Verify error result
+            self.assertEqual(len(results), 1)
+            self.assertTrue(results[0].left is not None)
+            self.assertIn("Test error", results[0].left.error)
