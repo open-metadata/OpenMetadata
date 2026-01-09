@@ -192,7 +192,6 @@ class PowerbiSource(DashboardServiceSource):
                 filter_pattern.includes[i : i + MAX_PROJECT_FILTER_SIZE]
                 for i in range(0, len(filter_pattern.includes), MAX_PROJECT_FILTER_SIZE)
             ]
-            paginated_include_filters = []
             for include_filter in include_filters:
                 filter_pattern_copy = deepcopy(filter_pattern)
                 filter_pattern_copy.includes = include_filter
