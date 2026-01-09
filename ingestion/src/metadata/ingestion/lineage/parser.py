@@ -553,7 +553,7 @@ class LineageParser:
         elapsed = time.time() - start_time
 
         elapsed_str = pretty_print_time_duration(elapsed)
-        logger.info(f"[{self.query_hash}] Evaluated best parser in {elapsed_str}")
+        logger.debug(f"[{self.query_hash}] Evaluated best parser in {elapsed_str}")
 
         return result
 
