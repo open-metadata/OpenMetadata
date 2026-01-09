@@ -236,6 +236,7 @@ class PowerBiApiClient:
                 logger.debug(
                     f"report details could not be fetched from api for report_id = {report_id}"
                 )
+                return None
             return PowerBIReport(**response_data)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
