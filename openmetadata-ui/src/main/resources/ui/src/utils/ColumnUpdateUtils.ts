@@ -322,16 +322,16 @@ export const updateApiEndpointField = (
     fqn
   );
 
-  const schemaKey = requestField
-    ? 'requestSchema'
-    : responseField
-    ? 'responseSchema'
-    : null;
-  const schema = requestField
-    ? apiEndpoint.requestSchema
-    : responseField
-    ? apiEndpoint.responseSchema
-    : null;
+  let schemaKey: 'requestSchema' | 'responseSchema' | null = null;
+  let schema = null;
+
+  if (requestField) {
+    schemaKey = 'requestSchema';
+    schema = apiEndpoint.requestSchema;
+  } else if (responseField) {
+    schemaKey = 'responseSchema';
+    schema = apiEndpoint.responseSchema;
+  }
 
   if (!schema || !schemaKey) {
     return { updatedApiEndpoint: apiEndpoint, updatedColumn: undefined };

@@ -30,9 +30,9 @@ import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import {
   Column,
   ContainerDataModel as ContainerDataModelType,
+  Container,
 } from '../generated/entity/data/container';
 import { PageType } from '../generated/system/ui/uiCustomization';
-import { Container } from '../generated/entity/data/container';
 import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
