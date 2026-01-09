@@ -264,6 +264,9 @@ test.describe('Settings Navigation Page Tests', () => {
     const firstItemBox = await firstItem.boundingBox();
     const secondItemBox = await secondItem.boundingBox();
 
+    expect(firstItemBox).not.toBeNull();
+    expect(secondItemBox).not.toBeNull();
+
     if (firstItemBox && secondItemBox) {
       await page.mouse.move(
         firstItemBox.x + firstItemBox.width / 2,
