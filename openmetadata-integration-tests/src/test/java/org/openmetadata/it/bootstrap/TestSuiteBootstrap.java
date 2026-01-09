@@ -702,6 +702,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       LOG.info("Updated IngestionPipelineRepository with K8s pipeline client");
     } catch (Exception e) {
       LOG.warn("Could not update IngestionPipelineRepository: {}", e.getMessage());
+      throw new RuntimeException("Failed to configure K8s pipeline client", e);
     }
 
     LOG.info("K8s pipeline service client configured and ready");

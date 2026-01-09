@@ -136,9 +136,6 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private final K8sPipelineClientConfig k8sConfig;
   private final String metadataApiEndpoint;
 
-  // Failure diagnostics
-  private final K8sFailureDiagnostics failureDiagnostics;
-
   public K8sPipelineClient(PipelineServiceClientConfiguration clientConfig) {
     super(clientConfig);
     this.setPlatform(PLATFORM);
@@ -162,10 +159,6 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     this.k8sConfig = new K8sPipelineClientConfig(params);
     this.metadataApiEndpoint = clientConfig.getMetadataApiEndpoint();
-
-    // Initialize failure diagnostics
-    this.failureDiagnostics =
-        new K8sFailureDiagnostics(coreApi, batchApi, k8sConfig, metadataApiEndpoint);
 
     // Validate k8sConfig.getNamespace() exists
     if (!skipInit) {
@@ -1139,7 +1132,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
     envVars.add(new V1EnvVar().name("config").value(workflowConfig));
 
     // Add exit handler environment variables for proper status reporting
-    envVars.add(new V1EnvVar().name("jobName").value("om-job-" + pipelineName + "-" + runId));
+    envVars.add(
+        new V1EnvVar()
+            .name("jobName")
+            .value(JOB_PREFIX + pipelineName + "-" + runId.substring(0, 8)));
     envVars.add(new V1EnvVar().name("namespace").value(k8sConfig.getNamespace()));
 
     // P2: Add extra environment variables from configuration

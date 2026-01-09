@@ -504,7 +504,6 @@ pipelineServiceClientConfiguration:
     runAsNonRoot: ${K8S_RUN_AS_NON_ROOT:-"true"}
     extraEnvVars: ${K8S_EXTRA_ENV_VARS:-[]}
     podAnnotations: ${K8S_POD_ANNOTATIONS:-""}
-    enableFailureDiagnostics: ${K8S_ENABLE_FAILURE_DIAGNOSTICS:-"true"}
 
 
 # no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how

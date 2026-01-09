@@ -29,14 +29,14 @@ Managing Pods directly would require implementing:
 
 Jobs encapsulate all this complexity in Kubernetes-native primitives.
 
-### Architecture Choice: Separate Diagnostic Jobs
+### Architecture Choice: PreStop Lifecycle Hooks
 
-The architecture uses separate diagnostic Jobs (similar to Argo's onExit handlers) rather than sidecar containers because:
+The architecture uses Kubernetes `preStop` lifecycle hooks for automatic failure diagnostics rather than separate jobs because:
 
-1. **Resource Isolation**: Diagnostic collection doesn't consume resources from the main ingestion process
-2. **Failure Independence**: Diagnostics can run even if the main container is completely broken
-3. **Extended Timeouts**: Diagnostic jobs can have different timeout policies than main ingestion jobs
-4. **Clean Separation**: Main jobs focus solely on ingestion; diagnostic jobs handle failure analysis
+1. **Immediate Execution**: Diagnostics run immediately when containers terminate (success or failure)
+2. **No Additional Resources**: Runs in the same container without creating separate pods
+3. **Reliable Triggering**: Kubernetes guarantees preStop hook execution before container termination
+4. **Automatic Context**: Has access to all the same environment variables and configuration as the main process
 
 ### Why ConfigMaps for Pipeline Configuration?
 
@@ -95,12 +95,12 @@ The K8s Pipeline Client consists of three main components:
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                K8sFailureDiagnostics                       │
+│                 PreStop Lifecycle Hooks                   │
 ├─────────────────────────────────────────────────────────────┤
-│ • Failure detection and analysis                          │
-│ • Diagnostic job execution                                 │
-│ • Pod logs and status collection                          │
-│ • Error reporting integration                              │
+│ • Automatic execution on container termination            │
+│ • Failure diagnostics and status reporting                │
+│ • Direct integration with exit_handler.py                 │
+│ • No additional resource overhead                         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -157,7 +157,6 @@ Centralized configuration management with validation and type-safe parsing.
 | `runAsGroup` | `1000` | Pod security context group ID |
 | `fsGroup` | `1000` | Pod security context filesystem group |
 | `runAsNonRoot` | `true` | Require non-root execution |
-| `failureDiagnosticsEnabled` | `false` | Enable automatic failure analysis |
 
 #### Resource Configuration:
 ```yaml
@@ -170,30 +169,46 @@ resources:
     memory: "1Gi"
 ```
 
-### 3. K8sFailureDiagnostics
+### 3. PreStop Lifecycle Hooks
 
-Advanced failure analysis system that provides detailed diagnostic information when pipeline jobs fail.
+Automatic failure diagnostics and status reporting using Kubernetes `preStop` lifecycle hooks.
 
-#### Diagnostic Process
+#### How PreStop Hooks Work
 
-When a pipeline job fails and diagnostics are enabled:
+All containers include a `preStop` lifecycle hook that automatically executes when containers terminate:
 
-1. **Detection**: `mapJobToPipelineStatus()` detects `FAILED` job status
-2. **Job Creation**: Creates diagnostic job with environment variables:
-   - `jobName`: Name of the failed job
+```yaml
+lifecycle:
+  preStop:
+    exec:
+      command: ["python", "exit_handler.py"]
+```
+
+This ensures **automatic execution** for all termination scenarios:
+- Normal completion (success or failure)
+- Manual `killIngestion()` calls  
+- Pod evictions (resource pressure, node draining)
+- Job timeouts (`activeDeadlineSeconds`)
+- Cluster scaling events
+- Node failures (SIGTERM/SIGKILL)
+
+#### Exit Handler Process
+
+The `exit_handler.py` script automatically:
+
+1. **Environment Access**: Uses same environment variables as main container:
+   - `config`: Complete pipeline configuration YAML (includes OpenMetadata server connection details)
+   - `jobName`: Kubernetes job name for pod discovery
    - `namespace`: Kubernetes namespace
    - `pipelineRunId`: Unique run identifier
-   - `pipelineStatus`: "Failed"
-   - `config`: Pipeline configuration YAML
 
-3. **exit_handler.py Execution**:
+2. **Diagnostic Collection**:
    - Pod discovery using job-name label selector
-   - Log collection (last 500 lines from ingestion container)
-   - Status analysis (pod phase, reason, message, container states)
-   - Event gathering (if permissions allow)
-   - Error reporting with exit codes and termination reasons
+   - Log collection from failed containers
+   - Status analysis (exit codes, termination reasons)
+   - Error reporting with detailed failure information
 
-4. **Status Update**: Direct update to OpenMetadata with comprehensive diagnostics
+3. **Status Reporting**: Direct update to OpenMetadata with comprehensive diagnostics and failure details
 
 ## Configuration
 
@@ -205,7 +220,6 @@ pipelineServiceClientConfiguration:
   parameters:
     namespace: "openmetadata-pipelines"
     ingestionImage: "docker.getcollate.io/openmetadata/ingestion:1.4.0"
-    failureDiagnosticsEnabled: true
     startingDeadlineSeconds: 0  # Prevents AutoPilot duplicate executions
 ```
 
@@ -256,9 +270,6 @@ pipelineServiceClientConfiguration:
       - "DATABASE_URL:postgresql://postgres.data.svc.cluster.local:5432/metadata"
       - "LOG_LEVEL:DEBUG"
       - "JAVA_OPTS:-Xmx2g -XX:+UseG1GC"
-    
-    # Failure diagnostics
-    failureDiagnosticsEnabled: true
 ```
 
 ## Kubernetes Resources
@@ -550,3 +561,234 @@ The ConfigMap-based configuration approach provides:
 - **Native Kubernetes Integration**: Works seamlessly with K8s RBAC, monitoring, and lifecycle management
 
 This results in a **simpler, more maintainable architecture** that requires less custom code and leverages battle-tested Kubernetes features.
+
+## PreStop Hook Validation and Debugging
+
+The preStop lifecycle hooks provide automatic failure diagnostics for all pipeline runs. This section explains how to validate that the hooks are working correctly and troubleshoot issues.
+
+### How to Verify PreStop Hook Execution
+
+#### 1. Check Pod Lifecycle Configuration
+
+Verify that pods have the preStop hook configured:
+
+```bash
+# Check a specific pod's lifecycle configuration
+kubectl get pod <pod-name> -n <namespace> -o yaml | grep -A 10 -B 5 lifecycle
+
+# Expected output should show:
+# lifecycle:
+#   preStop:
+#     exec:
+#       command:
+#       - python
+#       - exit_handler.py
+```
+
+#### 2. Monitor Kubernetes Events
+
+The most reliable way to check if preStop hooks execute is through Kubernetes events:
+
+```bash
+# Check for preStop hook events (success or failure)
+kubectl get events -n <namespace> --sort-by='.lastTimestamp' | grep -i prestop
+
+# Look for these event types:
+# - Normal: No events (successful execution)
+# - Warning: "FailedPreStopHook" (hook failed to execute)
+```
+
+#### 3. Check Termination Timing
+
+PreStop hooks cause pods to spend more time in `Terminating` status:
+
+```bash
+# Watch pod termination timing
+kubectl describe pod <pod-name> -n <namespace> | grep -A 5 -B 5 "Terminated\|Finished"
+
+# Check termination grace period (should be 60 seconds)
+kubectl get pod <pod-name> -n <namespace> -o yaml | grep terminationGracePeriodSeconds
+```
+
+#### 4. Validate Environment Variables
+
+Ensure pods have required environment variables for exit_handler.py:
+
+```bash
+# Check environment variables in running or failed pods
+kubectl get pod <pod-name> -n <namespace> -o yaml | grep -A 20 "env:"
+
+# Required variables:
+# - config: Pipeline configuration YAML (includes server connection details)
+# - jobName: Kubernetes job name (om-job-{pipeline}-{runId})
+# - namespace: Kubernetes namespace
+# - pipelineRunId: Unique run identifier
+```
+
+### Troubleshooting PreStop Hook Issues
+
+#### Common Problems and Solutions
+
+**1. FailedPreStopHook Events**
+
+```bash
+# Check for failed preStop hooks
+kubectl get events -n <namespace> | grep FailedPreStopHook
+
+# Common causes:
+# - exit_handler.py script missing or not executable
+# - Environment variables not set correctly
+# - Permission issues accessing OpenMetadata server
+# - Network connectivity problems
+```
+
+**2. Missing Environment Variables**
+
+If `exit_handler.py` fails with environment variable errors:
+
+```bash
+# Verify jobName format matches actual job name
+kubectl get jobs -n <namespace> | grep om-job-
+kubectl get pod <pod-name> -n <namespace> -o yaml | grep "jobName\|value:"
+
+# jobName should be: om-job-{pipeline-name}-{8-char-runId}
+# NOT the full UUID runId
+```
+
+**3. Hook Timeout Issues**
+
+PreStop hooks have a maximum execution time based on `terminationGracePeriodSeconds`:
+
+```bash
+# Check if hooks are timing out (default: 60 seconds)
+kubectl describe pod <pod-name> -n <namespace> | grep -i "grace\|timeout"
+
+# If needed, increase termination grace period in job template
+```
+
+**4. Permission Issues**
+
+Verify service account has required permissions:
+
+```bash
+# Check service account permissions
+kubectl auth can-i get pods --as=system:serviceaccount:<namespace>:<service-account>
+kubectl auth can-i list jobs --as=system:serviceaccount:<namespace>:<service-account>
+kubectl auth can-i get pods/log --as=system:serviceaccount:<namespace>:<service-account>
+```
+
+#### Debug PreStop Hook Execution
+
+**1. Test Exit Handler Manually**
+
+```bash
+# Create a test pod with same environment to test exit_handler.py
+kubectl run debug-exit-handler \
+  --image=<ingestion-image> \
+  --restart=Never \
+  -n <namespace> \
+  --env="config=<config-yaml>" \
+  --env="jobName=test-job" \
+  --env="namespace=<namespace>" \
+  --env="pipelineRunId=test-run" \
+  --command -- python exit_handler.py
+
+# Check logs
+kubectl logs debug-exit-handler -n <namespace>
+kubectl delete pod debug-exit-handler -n <namespace>
+```
+
+**2. Verify Exit Handler Script**
+
+```bash
+# Check if exit_handler.py exists in the container
+kubectl run debug-script-check \
+  --image=<ingestion-image> \
+  --restart=Never \
+  -n <namespace> \
+  --rm \
+  --command -- ls -la /ingestion/exit_handler.py
+
+# Verify script is executable
+kubectl run debug-script-exec \
+  --image=<ingestion-image> \
+  --restart=Never \
+  -n <namespace> \
+  --rm \
+  --command -- python -c "import sys; print(sys.executable); import exit_handler"
+```
+
+**3. Test PreStop Hook with Custom Pod**
+
+```yaml
+# test-prestop.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-prestop
+  namespace: <namespace>
+spec:
+  containers:
+  - name: test
+    image: <ingestion-image>
+    command: ["sleep", "30"]
+    env:
+    - name: config
+      value: |
+        workflowConfig:
+          loggerLevel: "INFO"
+        ingestionPipelineFQN: "test.pipeline"
+    - name: jobName
+      value: "test-job"
+    - name: namespace
+      value: "<namespace>"
+    - name: pipelineRunId
+      value: "test-run"
+    lifecycle:
+      preStop:
+        exec:
+          command: ["sh", "-c", "echo 'PreStop starting'; python exit_handler.py; echo 'PreStop done'"]
+  restartPolicy: Never
+```
+
+```bash
+# Deploy test pod
+kubectl apply -f test-prestop.yaml
+
+# Kill pod to trigger preStop hook
+kubectl delete pod test-prestop -n <namespace> --grace-period=30
+
+# Check events for hook execution
+kubectl get events -n <namespace> --sort-by='.lastTimestamp' | tail -10
+```
+
+### Expected Behavior
+
+**Successful PreStop Hook Execution:**
+- No `FailedPreStopHook` events in `kubectl get events`
+- Pod spends ~5-10 seconds in `Terminating` status
+- Exit handler updates pipeline status in OpenMetadata
+- No error logs related to missing environment variables
+
+**Failed PreStop Hook Execution:**
+- `FailedPreStopHook` warning event appears
+- Pod may terminate immediately or after full grace period
+- Pipeline status may not be updated in OpenMetadata
+- Manual status checking required
+
+### Monitoring PreStop Hook Health
+
+Set up monitoring to track preStop hook execution:
+
+```bash
+# Create alert for failed preStop hooks
+kubectl get events --all-namespaces --watch | grep FailedPreStopHook
+
+# Monitor termination grace period usage
+kubectl get events --all-namespaces | grep -i "grace\|terminated" | head -20
+
+# Check for pods stuck in terminating state
+kubectl get pods --all-namespaces | grep Terminating
+```
+
+This ensures reliable pipeline status reporting and early detection of issues with the automatic failure diagnostics system.

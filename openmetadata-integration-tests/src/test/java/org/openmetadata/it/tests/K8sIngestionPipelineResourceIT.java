@@ -17,10 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.apis.BatchV1Api;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
@@ -28,26 +26,20 @@ import io.kubernetes.client.openapi.models.V1ConfigMap;
 import io.kubernetes.client.openapi.models.V1CronJob;
 import io.kubernetes.client.openapi.models.V1CronJobList;
 import io.kubernetes.client.openapi.models.V1JobList;
-import io.kubernetes.client.openapi.models.V1Namespace;
-import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.util.Config;
-import jakarta.ws.rs.client.WebTarget;
-import jakarta.ws.rs.core.Response;
 import java.io.StringReader;
-import java.util.Date;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
-import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.openmetadata.schema.api.services.CreateDatabaseService;
-import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
@@ -57,217 +49,59 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.FilterPattern;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
-import org.openmetadata.schema.services.connections.database.MysqlConnection;
-import org.openmetadata.schema.services.connections.database.common.basicAuth;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.service.OpenMetadataApplication;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.OpenMetadataApplicationTest;
-import org.openmetadata.service.util.TestUtils;
-import org.testcontainers.k3s.K3sContainer;
-import org.testcontainers.utility.DockerImageName;
+import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Integration test for IngestionPipeline API with K8sPipelineClient.
+ * Integration tests for IngestionPipeline REST API with K8s pipeline backend.
  *
- * <p>This test starts the OpenMetadata application with a K3s container and validates that pipeline
- * operations work correctly through the REST API with the Kubernetes backend.
- *
- * <p>Run with: mvn test -Dtest=K8sIngestionPipelineResourceTest -DargLine="-DenableK8s=true"
+ * <p>This test validates that pipeline REST API operations work correctly with the
+ * Kubernetes backend through the OpenMetadata API layer.
+ * 
+ * <p>Tests are enabled via ENABLE_K8S_TESTS environment variable.
+ * Run with: mvn test -Dtest=K8sIngestionPipelineResourceIT -DENABLE_K8S_TESTS=true
  */
-@Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class K8sIngestionPipelineResourceIT extends OpenMetadataApplicationTest {
+public class K8sIngestionPipelineResourceIT {
 
+  private static final Logger LOG = LoggerFactory.getLogger(K8sIngestionPipelineResourceIT.class);
   private static final String K8S_NAMESPACE = "openmetadata-pipelines";
-  private static final DockerImageName K3S_IMAGE =
-      DockerImageName.parse("rancher/k3s:v1.27.4-k3s1");
-  private static final String COLLECTION = "services/ingestionPipelines";
 
-  private static K3sContainer k3sContainer;
+  private static boolean k8sEnabled;
   private static CoreV1Api coreApi;
   private static BatchV1Api batchApi;
-  private static boolean k8sEnabled;
-  private static String kubeConfigYaml;
+  private static DatabaseService testService;
 
-  private static EntityReference testServiceRef;
-  private static SourceConfig DATABASE_METADATA_CONFIG;
-  private static Date START_DATE;
-
-  @Override
-  protected DropwizardAppExtension<OpenMetadataApplicationConfig> getApp(
-      ConfigOverride[] configOverridesArray) {
-    // Check both system property and environment variable for enabling K8s tests
-    k8sEnabled =
-        "true".equals(System.getProperty("enableK8s"))
-            || "true".equalsIgnoreCase(System.getenv("ENABLE_K8S_TESTS"));
-
-    if (!k8sEnabled) {
-      log.info("K8s tests disabled. Set -DenableK8s=true or ENABLE_K8S_TESTS=true to enable.");
-      return super.getApp(configOverridesArray);
+  @BeforeAll
+  static void setupK8s() {
+    // Check if K8s tests are enabled, if not start K8s on-demand
+    if (!TestSuiteBootstrap.isK8sEnabled()) {
+      TestSuiteBootstrap.setupK8s();
     }
 
+    k8sEnabled = TestSuiteBootstrap.isK8sEnabled();
+    assumeTrue(k8sEnabled, "K8s tests disabled. Set ENABLE_K8S_TESTS=true to enable.");
+
     try {
-      // Reset the pipeline service client factory to ensure we create a new K8s client
-      // instead of reusing a cached MockPipelineServiceClient from other tests
-      org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory.reset();
+      String kubeConfigYaml = TestSuiteBootstrap.getKubeConfigYaml();
+      ApiClient apiClient = Config.fromConfig(new StringReader(kubeConfigYaml));
+      apiClient.setReadTimeout(30000);
+      apiClient.setConnectTimeout(10000);
 
-      setupK3sContainer();
+      coreApi = new CoreV1Api(apiClient);
+      batchApi = new BatchV1Api(apiClient);
 
-      ConfigOverride[] k8sOverrides =
-          new ConfigOverride[] {
-            ConfigOverride.config(
-                "pipelineServiceClientConfiguration.className",
-                "org.openmetadata.service.clients.pipeline.k8s.K8sPipelineClient"),
-            ConfigOverride.config(
-                "pipelineServiceClientConfiguration.parameters.namespace", K8S_NAMESPACE),
-            ConfigOverride.config(
-                "pipelineServiceClientConfiguration.parameters.inCluster", "false"),
-            ConfigOverride.config(
-                "pipelineServiceClientConfiguration.parameters.kubeConfigContent", kubeConfigYaml),
-            ConfigOverride.config(
-                "pipelineServiceClientConfiguration.parameters.ingestionImage",
-                "openmetadata/ingestion:latest"),
-            ConfigOverride.config(
-                "pipelineServiceClientConfiguration.parameters.serviceAccountName", "default"),
-            ConfigOverride.config(
-                "pipelineServiceClientConfiguration.parameters.imagePullPolicy", "IfNotPresent")
-          };
+      TestNamespace ns = new TestNamespace("K8sIngestionPipelineResourceIT");
+      testService = DatabaseServiceTestFactory.createPostgres(ns);
 
-      ConfigOverride[] combined =
-          new ConfigOverride[configOverridesArray.length + k8sOverrides.length];
-      System.arraycopy(configOverridesArray, 0, combined, 0, configOverridesArray.length);
-      System.arraycopy(k8sOverrides, 0, combined, configOverridesArray.length, k8sOverrides.length);
-
-      log.info("K8s overrides count: {}", k8sOverrides.length);
-      log.info("Total combined overrides: {}", combined.length);
-      for (ConfigOverride override : k8sOverrides) {
-        log.info("K8s override: {}", override);
-      }
-
-      return new DropwizardAppExtension<>(OpenMetadataApplication.class, CONFIG_PATH, combined);
+      LOG.info("K8s integration test environment initialized successfully");
     } catch (Exception e) {
-      log.error("Failed to setup K3s container", e);
+      LOG.error("Failed to setup K8s test environment", e);
       k8sEnabled = false;
-      return super.getApp(configOverridesArray);
-    }
-  }
-
-  private void setupK3sContainer() throws Exception {
-    log.info("Starting K3s container for integration tests...");
-
-    k3sContainer = new K3sContainer(K3S_IMAGE);
-    k3sContainer.start();
-    kubeConfigYaml = k3sContainer.getKubeConfigYaml();
-
-    ApiClient apiClient = Config.fromConfig(new StringReader(kubeConfigYaml));
-    apiClient.setReadTimeout(30000);
-    apiClient.setConnectTimeout(10000);
-
-    coreApi = new CoreV1Api(apiClient);
-    batchApi = new BatchV1Api(apiClient);
-
-    createK8sNamespace();
-    log.info("K3s container started and namespace created");
-  }
-
-  private void createK8sNamespace() throws Exception {
-    V1Namespace namespace = new V1Namespace().metadata(new V1ObjectMeta().name(K8S_NAMESPACE));
-
-    try {
-      coreApi.createNamespace(namespace).execute();
-      log.info("Created namespace: {}", K8S_NAMESPACE);
-    } catch (Exception e) {
-      if (e.getMessage() != null && e.getMessage().contains("already exists")) {
-        log.info("Namespace {} already exists", K8S_NAMESPACE);
-      } else {
-        throw e;
-      }
-    }
-
-    Awaitility.await()
-        .atMost(30, TimeUnit.SECONDS)
-        .pollInterval(1, TimeUnit.SECONDS)
-        .until(
-            () -> {
-              try {
-                V1Namespace ns = coreApi.readNamespace(K8S_NAMESPACE).execute();
-                return "Active".equals(ns.getStatus().getPhase());
-              } catch (Exception e) {
-                return false;
-              }
-            });
-  }
-
-  @Override
-  @BeforeAll
-  public void createApplication() throws Exception {
-    // Call parent's createApplication which sets up containers, migrations, and starts the app
-    super.createApplication();
-
-    if (k8sEnabled) {
-      // Reset the PipelineServiceClientFactory after the app starts
-      // This is necessary because migrations create a MockPipelineServiceClient before
-      // ConfigOverrides are applied, and it gets cached in the singleton factory
-      log.info("Resetting PipelineServiceClientFactory to use K8sPipelineClient");
-      org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory.reset();
-
-      // Force re-creation of the client by calling any API that uses it
-      // The next call to createPipelineServiceClient will use the overridden config
-    }
-  }
-
-  @BeforeAll
-  public void setupTestData() throws Exception {
-    if (!k8sEnabled) {
-      return;
-    }
-
-    DatabaseServiceMetadataPipeline databaseServiceMetadataPipeline =
-        new DatabaseServiceMetadataPipeline()
-            .withMarkDeletedTables(true)
-            .withIncludeViews(true)
-            .withSchemaFilterPattern(
-                new FilterPattern().withExcludes(List.of("information_schema.*", "test.*")))
-            .withTableFilterPattern(
-                new FilterPattern().withIncludes(List.of("sales.*", "users.*")));
-    DATABASE_METADATA_CONFIG = new SourceConfig().withConfig(databaseServiceMetadataPipeline);
-    START_DATE = new DateTime("2022-06-10T15:06:47+00:00").toDate();
-
-    testServiceRef = createTestDatabaseService();
-  }
-
-  private EntityReference createTestDatabaseService() throws Exception {
-    String serviceName = "k8s-test-service-" + UUID.randomUUID().toString().substring(0, 8);
-
-    MysqlConnection mysqlConnection =
-        new MysqlConnection()
-            .withHostPort("localhost:3306")
-            .withUsername("test")
-            .withAuthType(new basicAuth().withPassword("test"));
-
-    CreateDatabaseService createService =
-        new CreateDatabaseService()
-            .withName(serviceName)
-            .withServiceType(CreateDatabaseService.DatabaseServiceType.Mysql)
-            .withConnection(new DatabaseConnection().withConfig(mysqlConnection));
-
-    WebTarget target = getResource("services/databaseServices");
-    DatabaseService service =
-        TestUtils.post(target, createService, DatabaseService.class, ADMIN_AUTH_HEADERS);
-
-    return new EntityReference()
-        .withId(service.getId())
-        .withName(service.getName())
-        .withType("databaseService");
-  }
-
-  @Override
-  public void stopApplication() throws Exception {
-    super.stopApplication();
-    if (k3sContainer != null && k3sContainer.isRunning()) {
-      log.info("Stopping K3s container...");
-      k3sContainer.stop();
+      assumeTrue(false, "Failed to setup K8s environment");
     }
   }
 
@@ -276,83 +110,127 @@ public class K8sIngestionPipelineResourceIT extends OpenMetadataApplicationTest 
   }
 
   private IngestionPipeline createPipeline(String name, String schedule) throws Exception {
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline()
+            .withMarkDeletedTables(true)
+            .withIncludeViews(true)
+            .withSchemaFilterPattern(
+                new FilterPattern().withExcludes(List.of("information_schema.*", "test.*")))
+            .withTableFilterPattern(
+                new FilterPattern().withIncludes(List.of("sales.*", "users.*")));
+
     CreateIngestionPipeline request =
         new CreateIngestionPipeline()
             .withName(name)
             .withPipelineType(PipelineType.METADATA)
-            .withService(testServiceRef)
-            .withSourceConfig(DATABASE_METADATA_CONFIG)
+            .withService(testService.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
             .withAirflowConfig(
                 schedule != null
-                    ? new AirflowConfig().withStartDate(START_DATE).withScheduleInterval(schedule)
-                    : new AirflowConfig().withStartDate(START_DATE));
+                    ? new AirflowConfig().withScheduleInterval(schedule).withPipelineTimezone("UTC")
+                    : new AirflowConfig().withPipelineTimezone("UTC"));
 
-    WebTarget target = getResource(COLLECTION);
-    return TestUtils.post(target, request, IngestionPipeline.class, ADMIN_AUTH_HEADERS);
+    return SdkClients.adminClient().ingestionPipelines().create(request);
+  }
+
+  private PipelineServiceClientResponse deployPipeline(IngestionPipeline pipeline) throws OpenMetadataException {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path = "/v1/services/ingestionPipelines/deploy/" + pipeline.getId();
+    return client.getHttpClient().execute(HttpMethod.POST, path, null, PipelineServiceClientResponse.class);
+  }
+
+  private PipelineServiceClientResponse triggerPipeline(IngestionPipeline pipeline) throws OpenMetadataException {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path = "/v1/services/ingestionPipelines/trigger/" + pipeline.getId();
+    return client.getHttpClient().execute(HttpMethod.POST, path, null, PipelineServiceClientResponse.class);
+  }
+
+  private IngestionPipeline togglePipeline(IngestionPipeline pipeline) throws OpenMetadataException {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path = "/v1/services/ingestionPipelines/toggleIngestion/" + pipeline.getId();
+    return client.getHttpClient().execute(HttpMethod.POST, path, null, IngestionPipeline.class);
+  }
+
+  private PipelineServiceClientResponse killPipeline(IngestionPipeline pipeline) throws OpenMetadataException {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path = "/v1/services/ingestionPipelines/kill/" + pipeline.getId();
+    return client.getHttpClient().execute(HttpMethod.POST, path, null, PipelineServiceClientResponse.class);
   }
 
   @Test
   @Order(1)
   void test_deployScheduledPipeline_withK8sBackend() throws Exception {
     if (!k8sEnabled) {
-      log.info("Skipping K8s test - not enabled");
+      LOG.info("Skipping K8s test - not enabled");
       return;
     }
 
-    IngestionPipeline pipeline = createPipeline("k8s-scheduled-test", "0 * * * *");
+    LOG.info("Testing scheduled pipeline deployment with K8s backend...");
+
+    String pipelineName = "k8s-scheduled-test-" + System.currentTimeMillis();
+    IngestionPipeline pipeline = createPipeline(pipelineName, "0 * * * *");
     assertNotNull(pipeline);
 
-    WebTarget target = getResource(COLLECTION + "/deploy/" + pipeline.getId());
-    PipelineServiceClientResponse response =
-        TestUtils.post(target, "", PipelineServiceClientResponse.class, 200, ADMIN_AUTH_HEADERS);
+    PipelineServiceClientResponse response = deployPipeline(pipeline);
 
     assertEquals(200, response.getCode());
     assertEquals("Kubernetes", response.getPlatform());
 
-    String sanitizedName = sanitizeName("k8s-scheduled-test");
+    String sanitizedName = sanitizeName(pipelineName);
+
+    // Verify ConfigMap creation
     Awaitility.await()
         .atMost(30, TimeUnit.SECONDS)
         .pollInterval(2, TimeUnit.SECONDS)
         .until(
             () -> {
               try {
-                V1CronJob cronJob =
-                    batchApi
-                        .readNamespacedCronJob("om-cronjob-" + sanitizedName, K8S_NAMESPACE)
+                V1ConfigMap configMap =
+                    coreApi
+                        .readNamespacedConfigMap("om-config-" + sanitizedName, K8S_NAMESPACE)
                         .execute();
-                return cronJob != null;
+                return configMap != null && configMap.getData() != null
+                    && configMap.getData().containsKey("config");
               } catch (Exception e) {
                 return false;
               }
             });
 
+    // Verify CronJob creation
     V1CronJob cronJob =
         batchApi.readNamespacedCronJob("om-cronjob-" + sanitizedName, K8S_NAMESPACE).execute();
     assertNotNull(cronJob);
     assertEquals("0 * * * *", cronJob.getSpec().getSchedule());
+    assertFalse(cronJob.getSpec().getSuspend());
 
-    log.info("Scheduled pipeline deployed successfully with K8s backend");
+    LOG.info("Scheduled pipeline deployed successfully with K8s backend");
   }
 
   @Test
   @Order(2)
   void test_deployOnDemandPipeline_withK8sBackend() throws Exception {
     if (!k8sEnabled) {
-      log.info("Skipping K8s test - not enabled");
+      LOG.info("Skipping K8s test - not enabled");
       return;
     }
 
-    IngestionPipeline pipeline = createPipeline("k8s-ondemand-test", null);
+    LOG.info("Testing on-demand pipeline deployment...");
+
+    String pipelineName = "k8s-ondemand-test-" + System.currentTimeMillis();
+    IngestionPipeline pipeline = createPipeline(pipelineName, null);
     assertNotNull(pipeline);
 
-    WebTarget target = getResource(COLLECTION + "/deploy/" + pipeline.getId());
-    PipelineServiceClientResponse response =
-        TestUtils.post(target, "", PipelineServiceClientResponse.class, 200, ADMIN_AUTH_HEADERS);
-
+    PipelineServiceClientResponse response = deployPipeline(pipeline);
     assertEquals(200, response.getCode());
 
-    String sanitizedName = sanitizeName("k8s-ondemand-test");
+    String sanitizedName = sanitizeName(pipelineName);
 
+    // Verify ConfigMap exists
+    V1ConfigMap configMap =
+        coreApi.readNamespacedConfigMap("om-config-" + sanitizedName, K8S_NAMESPACE).execute();
+    assertNotNull(configMap);
+
+    // Verify NO CronJob is created for on-demand pipeline
     V1CronJobList cronJobs =
         batchApi
             .listNamespacedCronJob(K8S_NAMESPACE)
@@ -360,34 +238,32 @@ public class K8sIngestionPipelineResourceIT extends OpenMetadataApplicationTest 
             .execute();
     assertTrue(cronJobs.getItems().isEmpty());
 
-    V1ConfigMap configMap =
-        coreApi.readNamespacedConfigMap("om-config-" + sanitizedName, K8S_NAMESPACE).execute();
-    assertNotNull(configMap);
-
-    log.info("On-demand pipeline deployed successfully with K8s backend");
+    LOG.info("On-demand pipeline deployed successfully with K8s backend");
   }
 
   @Test
   @Order(3)
   void test_runPipeline_withK8sBackend() throws Exception {
     if (!k8sEnabled) {
-      log.info("Skipping K8s test - not enabled");
+      LOG.info("Skipping K8s test - not enabled");
       return;
     }
 
-    IngestionPipeline pipeline = createPipeline("k8s-run-test", null);
+    LOG.info("Testing pipeline execution...");
 
-    WebTarget deployTarget = getResource(COLLECTION + "/deploy/" + pipeline.getId());
-    TestUtils.post(deployTarget, "", PipelineServiceClientResponse.class, 200, ADMIN_AUTH_HEADERS);
+    String pipelineName = "k8s-run-test-" + System.currentTimeMillis();
+    IngestionPipeline pipeline = createPipeline(pipelineName, null);
 
-    WebTarget runTarget = getResource(COLLECTION + "/trigger/" + pipeline.getId());
-    PipelineServiceClientResponse response =
-        TestUtils.post(runTarget, "", PipelineServiceClientResponse.class, 200, ADMIN_AUTH_HEADERS);
+    deployPipeline(pipeline);
+
+    PipelineServiceClientResponse response = triggerPipeline(pipeline);
 
     assertEquals(200, response.getCode());
     assertTrue(response.getReason().contains("triggered"));
 
-    String sanitizedName = sanitizeName("k8s-run-test");
+    String sanitizedName = sanitizeName(pipelineName);
+
+    // Verify Job creation
     Awaitility.await()
         .atMost(30, TimeUnit.SECONDS)
         .pollInterval(2, TimeUnit.SECONDS)
@@ -405,23 +281,27 @@ public class K8sIngestionPipelineResourceIT extends OpenMetadataApplicationTest 
               }
             });
 
-    log.info("Pipeline run triggered successfully with K8s backend");
+    LOG.info("Pipeline run triggered successfully with K8s backend");
   }
 
   @Test
   @Order(4)
   void test_togglePipeline_withK8sBackend() throws Exception {
     if (!k8sEnabled) {
-      log.info("Skipping K8s test - not enabled");
+      LOG.info("Skipping K8s test - not enabled");
       return;
     }
 
-    IngestionPipeline pipeline = createPipeline("k8s-toggle-test", "0 * * * *");
+    LOG.info("Testing pipeline toggle functionality...");
 
-    WebTarget deployTarget = getResource(COLLECTION + "/deploy/" + pipeline.getId());
-    TestUtils.post(deployTarget, "", PipelineServiceClientResponse.class, 200, ADMIN_AUTH_HEADERS);
+    String pipelineName = "k8s-toggle-test-" + System.currentTimeMillis();
+    IngestionPipeline pipeline = createPipeline(pipelineName, "0 * * * *");
 
-    String sanitizedName = sanitizeName("k8s-toggle-test");
+    deployPipeline(pipeline);
+
+    String sanitizedName = sanitizeName(pipelineName);
+
+    // Wait for CronJob to be created
     Awaitility.await()
         .atMost(30, TimeUnit.SECONDS)
         .pollInterval(2, TimeUnit.SECONDS)
@@ -437,49 +317,44 @@ public class K8sIngestionPipelineResourceIT extends OpenMetadataApplicationTest 
               }
             });
 
-    WebTarget toggleTarget = getResource(COLLECTION + "/toggleIngestion/" + pipeline.getId());
-    TestUtils.post(
-        toggleTarget,
-        "",
-        IngestionPipeline.class,
-        Response.Status.OK.getStatusCode(),
-        ADMIN_AUTH_HEADERS);
+    // Test disable
+    IngestionPipeline updated = togglePipeline(pipeline);
+    assertFalse(updated.getEnabled());
 
     V1CronJob cronJob =
         batchApi.readNamespacedCronJob("om-cronjob-" + sanitizedName, K8S_NAMESPACE).execute();
     assertTrue(cronJob.getSpec().getSuspend());
 
-    TestUtils.post(
-        toggleTarget,
-        "",
-        IngestionPipeline.class,
-        Response.Status.OK.getStatusCode(),
-        ADMIN_AUTH_HEADERS);
+    // Test enable
+    updated = togglePipeline(updated);
+    assertTrue(updated.getEnabled());
 
     cronJob =
         batchApi.readNamespacedCronJob("om-cronjob-" + sanitizedName, K8S_NAMESPACE).execute();
     assertFalse(cronJob.getSpec().getSuspend());
 
-    log.info("Pipeline toggle tested successfully with K8s backend");
+    LOG.info("Pipeline toggle tested successfully with K8s backend");
   }
 
   @Test
   @Order(5)
   void test_killPipeline_withK8sBackend() throws Exception {
     if (!k8sEnabled) {
-      log.info("Skipping K8s test - not enabled");
+      LOG.info("Skipping K8s test - not enabled");
       return;
     }
 
-    IngestionPipeline pipeline = createPipeline("k8s-kill-test", null);
+    LOG.info("Testing pipeline kill functionality...");
 
-    WebTarget deployTarget = getResource(COLLECTION + "/deploy/" + pipeline.getId());
-    TestUtils.post(deployTarget, "", PipelineServiceClientResponse.class, 200, ADMIN_AUTH_HEADERS);
+    String pipelineName = "k8s-kill-test-" + System.currentTimeMillis();
+    IngestionPipeline pipeline = createPipeline(pipelineName, null);
 
-    WebTarget runTarget = getResource(COLLECTION + "/trigger/" + pipeline.getId());
-    TestUtils.post(runTarget, "", PipelineServiceClientResponse.class, 200, ADMIN_AUTH_HEADERS);
+    deployPipeline(pipeline);
+    triggerPipeline(pipeline);
 
-    String sanitizedName = sanitizeName("k8s-kill-test");
+    String sanitizedName = sanitizeName(pipelineName);
+
+    // Wait for job to be created
     Awaitility.await()
         .atMost(30, TimeUnit.SECONDS)
         .pollInterval(2, TimeUnit.SECONDS)
@@ -497,13 +372,10 @@ public class K8sIngestionPipelineResourceIT extends OpenMetadataApplicationTest 
               }
             });
 
-    WebTarget killTarget = getResource(COLLECTION + "/kill/" + pipeline.getId());
-    PipelineServiceClientResponse response =
-        TestUtils.post(
-            killTarget, "", PipelineServiceClientResponse.class, 200, ADMIN_AUTH_HEADERS);
-
+    PipelineServiceClientResponse response = killPipeline(pipeline);
     assertEquals(200, response.getCode());
 
+    // Verify jobs are deleted or no longer active
     Awaitility.await()
         .atMost(60, TimeUnit.SECONDS)
         .pollInterval(2, TimeUnit.SECONDS)
@@ -523,23 +395,27 @@ public class K8sIngestionPipelineResourceIT extends OpenMetadataApplicationTest 
                               && job.getStatus().getActive() > 0);
             });
 
-    log.info("Pipeline kill tested successfully with K8s backend");
+    LOG.info("Pipeline kill tested successfully with K8s backend");
   }
 
   @Test
   @Order(6)
   void test_deletePipeline_withK8sBackend() throws Exception {
     if (!k8sEnabled) {
-      log.info("Skipping K8s test - not enabled");
+      LOG.info("Skipping K8s test - not enabled");
       return;
     }
 
-    IngestionPipeline pipeline = createPipeline("k8s-delete-test", "0 * * * *");
+    LOG.info("Testing pipeline deletion...");
 
-    WebTarget deployTarget = getResource(COLLECTION + "/deploy/" + pipeline.getId());
-    TestUtils.post(deployTarget, "", PipelineServiceClientResponse.class, 200, ADMIN_AUTH_HEADERS);
+    String pipelineName = "k8s-delete-test-" + System.currentTimeMillis();
+    IngestionPipeline pipeline = createPipeline(pipelineName, "0 * * * *");
 
-    String sanitizedName = sanitizeName("k8s-delete-test");
+    deployPipeline(pipeline);
+
+    String sanitizedName = sanitizeName(pipelineName);
+
+    // Wait for resources to be created
     Awaitility.await()
         .atMost(30, TimeUnit.SECONDS)
         .pollInterval(2, TimeUnit.SECONDS)
@@ -555,9 +431,10 @@ public class K8sIngestionPipelineResourceIT extends OpenMetadataApplicationTest 
               }
             });
 
-    WebTarget deleteTarget = getResource(COLLECTION + "/" + pipeline.getId());
-    TestUtils.delete(deleteTarget, ADMIN_AUTH_HEADERS);
+    // Delete pipeline
+    SdkClients.adminClient().ingestionPipelines().delete(pipeline.getId().toString());
 
+    // Verify all resources are cleaned up
     Awaitility.await()
         .atMost(30, TimeUnit.SECONDS)
         .pollInterval(2, TimeUnit.SECONDS)
@@ -573,26 +450,29 @@ public class K8sIngestionPipelineResourceIT extends OpenMetadataApplicationTest 
               }
             });
 
-    log.info("Pipeline delete tested successfully with K8s backend");
+    LOG.info("Pipeline deletion tested successfully with K8s backend");
   }
 
   @Test
   @Order(7)
   void test_getServiceStatus_withK8sBackend() throws Exception {
     if (!k8sEnabled) {
-      log.info("Skipping K8s test - not enabled");
+      LOG.info("Skipping K8s test - not enabled");
       return;
     }
 
-    WebTarget target = getResource(COLLECTION + "/status");
-    PipelineServiceClientResponse response =
-        TestUtils.get(target, PipelineServiceClientResponse.class, ADMIN_AUTH_HEADERS);
+    LOG.info("Testing service status with K8s backend...");
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path = "/v1/services/ingestionPipelines/status";
+    PipelineServiceClientResponse response = 
+        client.getHttpClient().execute(HttpMethod.GET, path, null, PipelineServiceClientResponse.class);
 
     assertEquals(200, response.getCode());
     assertEquals("Kubernetes", response.getPlatform());
     assertNotNull(response.getVersion());
 
-    log.info(
+    LOG.info(
         "Service status: platform={}, version={}", response.getPlatform(), response.getVersion());
   }
 }

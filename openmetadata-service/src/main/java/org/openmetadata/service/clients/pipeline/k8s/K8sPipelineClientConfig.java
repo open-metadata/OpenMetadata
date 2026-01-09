@@ -53,7 +53,6 @@ public class K8sPipelineClientConfig {
   private static final String RUN_AS_NON_ROOT_KEY = "runAsNonRoot";
   private static final String EXTRA_ENV_VARS_KEY = "extraEnvVars";
   private static final String POD_ANNOTATIONS_KEY = "podAnnotations";
-  private static final String FAILURE_DIAGNOSTICS_KEY = "enableFailureDiagnostics";
   private static final String STARTING_DEADLINE_SECONDS_KEY = "startingDeadlineSeconds";
   private static final String SKIP_INIT_KEY = "skipInit";
 
@@ -86,7 +85,6 @@ public class K8sPipelineClientConfig {
   // Extra configuration
   private final Map<String, String> extraEnvVars;
   private final Map<String, String> podAnnotations;
-  private final boolean failureDiagnosticsEnabled;
   private final int startingDeadlineSeconds;
   private final boolean skipInit;
 
@@ -126,8 +124,6 @@ public class K8sPipelineClientConfig {
     List<String> rawExtraEnvs = parseListSafely(params.get(EXTRA_ENV_VARS_KEY));
     this.extraEnvVars = getConfigMap(rawExtraEnvs, ":");
     this.podAnnotations = parseKeyValuePairs(getStringParam(params, POD_ANNOTATIONS_KEY, ""));
-    this.failureDiagnosticsEnabled =
-        Boolean.parseBoolean(getStringParam(params, FAILURE_DIAGNOSTICS_KEY, "false"));
     // Default to 0 seconds - prevents CronJobs from trying to catch up any missed executions
     // This eliminates duplicate executions when AutoPilot deploys pipelines
     this.startingDeadlineSeconds = getIntParam(params, STARTING_DEADLINE_SECONDS_KEY, 0);
