@@ -12,6 +12,7 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getSearchIndexDetailsByFQN } from '../../rest/SearchIndexAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -70,9 +71,9 @@ jest.mock('../../components/common/QueryViewer/QueryViewer.component', () => {
   return jest.fn().mockImplementation(() => <p>testQueryViewer</p>);
 });
 
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
-  return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
-});
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <p>{children}</p>)
+);
 
 jest.mock(
   '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
@@ -226,5 +227,33 @@ describe('SearchIndexDetailsPage component', () => {
     expect(
       await screen.findByText('testSearchIndexFieldsTab')
     ).toBeInTheDocument();
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    const mockSearchIndexData = {
+      name: 'test-search-index',
+      id: '123',
+    };
+
+    (getSearchIndexDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockSearchIndexData)
+    );
+
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    await act(async () => {
+      render(<SearchIndexDetailsPage />);
+    });
+
+    expect(PageLayoutV1).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageTitle: 'test-search-index',
+      }),
+      expect.anything()
+    );
   });
 });
