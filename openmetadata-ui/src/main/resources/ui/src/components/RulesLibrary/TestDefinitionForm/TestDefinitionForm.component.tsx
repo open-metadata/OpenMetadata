@@ -30,7 +30,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { CSMode } from '../../../enums/codemirror.enum';
@@ -47,7 +47,9 @@ import {
   createTestDefinition,
   patchTestDefinition,
 } from '../../../rest/testAPI';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { createScrollToErrorHandler } from '../../../utils/formUtils';
+import { showSuccessToast } from '../../../utils/ToastUtils';
+import AlertBar from '../../AlertBar/AlertBar';
 import FormItemLabel from '../../common/Form/FormItemLabel';
 import CodeEditor from '../../Database/SchemaEditor/CodeEditor';
 
@@ -65,15 +67,16 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
   const isEditMode = Boolean(initialValues);
+  const scrollToError = useMemo(() => createScrollToErrorHandler(), []);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (values: TestDefinition) => {
+    setIsSubmitting(true);
+    setErrorMessage('');
     try {
-      const values = await form.validateFields();
-      setIsSubmitting(true);
-
       if (isEditMode && initialValues) {
-        const updatedValues: TestDefinition = {
+        const updatedValues = {
           ...initialValues,
           ...values,
         };
@@ -92,7 +95,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
           displayName: values.displayName,
           description: values.description,
           sqlExpression: values.sqlExpression,
-          entityType: values.entityType,
+          entityType: values.entityType ?? EntityType.Table,
           testPlatforms: values.testPlatforms,
           dataQualityDimension: values.dataQualityDimension,
           supportedDataTypes: values.supportedDataTypes,
@@ -108,7 +111,16 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
 
       onSuccess();
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      const errorMsg =
+        (error as AxiosError<{ message: string }>)?.response?.data?.message ||
+        (isEditMode
+          ? t('server.update-entity-error', {
+              entity: t('label.test-definition'),
+            })
+          : t('server.create-entity-error', {
+              entity: t('label.test-definition'),
+            }));
+      setErrorMessage(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -134,9 +146,10 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
           <Button onClick={onCancel}>{t('label.cancel')}</Button>
           <Button
             data-testid="save-test-definition"
+            htmlType="submit"
             loading={isSubmitting}
             type="primary"
-            onClick={handleSubmit}>
+            onClick={() => form.submit()}>
             {t('label.save')}
           </Button>
         </Space>
@@ -148,7 +161,18 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
       }
       width={720}
       onClose={onCancel}>
+      {errorMessage && (
+        <div className="m-b-md">
+          <AlertBar
+            defafultExpand
+            className="test-definition-form-alert"
+            message={errorMessage}
+            type="error"
+          />
+        </div>
+      )}
       <Form
+        className="new-form-style"
         form={form}
         initialValues={{
           ...initialValues,
@@ -156,7 +180,9 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
             TestPlatform.OpenMetadata,
           ],
         }}
-        layout="vertical">
+        layout="vertical"
+        onFinish={handleSubmit}
+        onFinishFailed={scrollToError}>
         <Form.Item
           label={t('label.name')}
           name="name"
