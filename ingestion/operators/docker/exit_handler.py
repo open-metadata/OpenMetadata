@@ -385,9 +385,7 @@ def get_or_create_pipeline_status(
     return pipeline_status
 
 
-def gather_failure_diagnostics(
-    job_name: str, namespace: str
-) -> FailureDiagnostics:
+def gather_failure_diagnostics(job_name: str, namespace: str) -> FailureDiagnostics:
     """
     Gather diagnostic information from failed Kubernetes job pods.
     This function is fault-tolerant and will never raise exceptions.

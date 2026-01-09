@@ -27,7 +27,15 @@ public class IngestionLogHandler {
     }
 
     int total = chunks.size();
-    int afterIdx = after == null || after.isEmpty() ? 0 : Integer.parseInt(after);
+    int afterIdx = 0;
+    if (after != null && !after.isEmpty()) {
+      try {
+        afterIdx = Integer.parseInt(after);
+      } catch (NumberFormatException e) {
+        LOG.error("Invalid pagination parameter [{}]: not a valid number", after);
+        return Map.of(taskKey, "Invalid pagination parameter: " + after + " is not a valid number");
+      }
+    }
 
     if (afterIdx >= total) {
       LOG.error("After index [{}] is out of bounds. Total pagination is [{}]", after, total);
