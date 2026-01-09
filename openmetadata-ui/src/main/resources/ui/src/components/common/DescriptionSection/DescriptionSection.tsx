@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box } from '@mui/material';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -18,7 +19,6 @@ import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/Mo
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { DescriptionSectionProps } from './DescriptionSection.interface';
-import './DescriptionSection.less';
 
 const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   description,
@@ -30,7 +30,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditDescription, setIsEditDescription] = useState(false);
   const [shouldShowButton, setShouldShowButton] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLElement>(null);
 
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
@@ -133,9 +133,35 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
 
   if (!description?.trim()) {
     return (
-      <div className="description-section">
-        <div className="description-header">
-          <span className="description-title">{t('label.description')}</span>
+      <Box
+        data-testid="description-section"
+        sx={{
+          marginTop: '12px',
+          paddingLeft: '14px',
+          paddingRight: '14px',
+          borderBottom: (theme) =>
+            `0.6px solid ${theme.palette.allShades.blueGray[100]}`,
+          paddingBottom: '16px',
+          '& .block-editor-wrapper .tiptap.ProseMirror': {
+            fontSize: '12px',
+            fontWeight: 400,
+          },
+        }}>
+        <Box
+          sx={{
+            display: 'flex',
+            gap: '8px',
+            marginBottom: '12px',
+          }}>
+          <Box
+            component="span"
+            sx={{
+              fontWeight: 600,
+              fontSize: '13px',
+              color: (theme) => theme.palette.allShades.gray[900],
+            }}>
+            {t('label.description')}
+          </Box>
           {canShowEditButton && (
             <EditIconButton
               newLook
@@ -149,13 +175,18 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
               onClick={handleEditDescription}
             />
           )}
-        </div>
-        <div className="description-content">
-          <span className="no-data-placeholder">
+        </Box>
+        <Box>
+          <Box
+            component="span"
+            sx={{
+              color: (theme) => theme.palette.allShades.gray[500],
+              fontSize: '12px',
+            }}>
             {t('label.no-entity-added', {
               entity: t('label.description-lowercase'),
             })}
-          </span>
+          </Box>
           <ModalWithMarkdownEditor
             header={t('label.edit-entity', { entity: t('label.description') })}
             placeholder={t('label.enter-entity', {
@@ -166,15 +197,41 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
             onCancel={handleCancelEditDescription}
             onSave={handleDescriptionChange}
           />
-        </div>
-      </div>
+        </Box>
+      </Box>
     );
   }
 
   return (
-    <div className="description-section">
-      <div className="description-header">
-        <span className="description-title">{t('label.description')}</span>
+    <Box
+      data-testid="description-section"
+      sx={{
+        marginTop: '12px',
+        paddingLeft: '14px',
+        paddingRight: '14px',
+        borderBottom: (theme) =>
+          `0.6px solid ${theme.palette.allShades.blueGray[100]}`,
+        paddingBottom: '16px',
+        '& .block-editor-wrapper .tiptap.ProseMirror': {
+          fontSize: '12px',
+          fontWeight: 400,
+        },
+      }}>
+      <Box
+        sx={{
+          display: 'flex',
+          gap: '8px',
+          marginBottom: '12px',
+        }}>
+        <Box
+          component="span"
+          sx={{
+            fontWeight: 600,
+            fontSize: '13px',
+            color: (theme) => theme.palette.allShades.gray[900],
+          }}>
+          {t('label.description')}
+        </Box>
         {canShowEditButton && (
           <EditIconButton
             newLook
@@ -188,27 +245,61 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
             onClick={handleEditDescription}
           />
         )}
-      </div>
-      <div className="description-content">
-        <div className="description-display">
-          <div
-            className={`description-text ${
-              isExpanded ? 'expanded' : 'collapsed'
-            }`}
-            ref={containerRef}>
+      </Box>
+      <Box>
+        <Box>
+          <Box
+            ref={containerRef}
+            sx={{
+              ...(isExpanded
+                ? {
+                    display: 'block',
+                    lineHeight: 1.4,
+                  }
+                : {
+                    '& .rich-text-editor-container .markdown-parser': {
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      maxHeight: '2.8em',
+                      fontSize: '14px',
+                      wordWrap: 'break-word',
+                      wordBreak: 'break-word',
+                      whiteSpace: 'normal',
+                    },
+                  }),
+            }}>
             <RichTextEditorPreviewerV1
               enableSeeMoreVariant={false}
               isDescriptionExpanded={isExpanded}
               markdown={description}
             />
-          </div>
+          </Box>
           {(shouldShowButton || isExpanded) && (
-            <button
-              className="show-more-button"
+            <Box
+              component="button"
+              sx={{
+                background: 'none',
+                border: 'none',
+                color: 'primary.main',
+                cursor: 'pointer',
+                fontSize: '12px',
+                padding: 0,
+                textDecoration: 'none',
+                transition: 'color 0.2s ease',
+                '&:hover': {
+                  textDecoration: 'underline',
+                },
+                '&:focus': {
+                  outline: 'none',
+                },
+              }}
               type="button"
               onClick={toggleExpanded}>
               {isExpanded ? t('label.show-less') : t('label.show-more')}
-            </button>
+            </Box>
           )}
           <ModalWithMarkdownEditor
             header={t('label.edit-entity', { entity: t('label.description') })}
@@ -220,9 +311,9 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
             onCancel={handleCancelEditDescription}
             onSave={handleDescriptionChange}
           />
-        </div>
-      </div>
-    </div>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 

@@ -14,7 +14,6 @@ import { useTranslation } from 'react-i18next';
 import SectionWithEdit from '../SectionWithEdit/SectionWithEdit';
 import CommonEntitySummaryInfoV1 from './CommonEntitySummaryInfoV1';
 import { OverviewSectionProps } from './OverviewSection.interface';
-import './OverviewSection.less';
 
 const EXCLUDED_ITEMS = ['Owners', 'Tier'];
 

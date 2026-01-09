@@ -15,7 +15,6 @@ import { Typography } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import '../../../styles/variables.less';
-import '../OverviewSection/OverviewSection.less';
 import SectionWithEdit from '../SectionWithEdit/SectionWithEdit';
 import { DataQualityLegendItem } from './DataQualityLegendItem';
 import { DataQualityProgressSegment } from './DataQualityProgressSegment';

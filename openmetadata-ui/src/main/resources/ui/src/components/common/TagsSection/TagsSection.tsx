@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Box, Typography, useTheme } from '@mui/material';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
@@ -24,7 +24,6 @@ import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { TagSelectableList } from '../TagSelectableList/TagSelectableList.component';
 import { TagsSectionProps } from './TagsSection.interface';
-import './TagsSection.less';
 
 const TagsSectionV1: React.FC<TagsSectionProps> = ({
   tags = [],
@@ -36,11 +35,11 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
   onTagsUpdate,
 }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const [showAllTags, setShowAllTags] = useState(false);
   const [editingTags, setEditingTags] = useState<TagLabel[]>([]);
 
   const {
-    isEditing,
     isLoading,
     popoverOpen,
     displayData: displayTags,
@@ -65,6 +64,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
   const handleEditClick = () => {
     setEditingTags(nonTierTags);
     startEditing();
+    setPopoverOpen(true);
   };
 
   const handleSaveWithTags = useCallback(
@@ -123,12 +123,18 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
     setPopoverOpen(open);
     if (!open) {
       setEditingTags(nonTierTags);
+      cancelEditing();
     }
+  };
+
+  const handleCancel = () => {
+    setEditingTags(nonTierTags);
+    cancelEditing();
   };
 
   const loadingState = useMemo(() => <Loader size="small" />, []);
 
-  const editingState = useMemo(
+  const editButton = useMemo(
     () => (
       <TagSelectableList
         hasPermission={hasPermission}
@@ -139,26 +145,19 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
           overlayClassName: 'tag-select-popover',
         }}
         selectedTags={editingTags}
-        onCancel={() => {
-          setPopoverOpen(false);
-          cancelEditing();
-        }}
+        onCancel={handleCancel}
         onUpdate={handleTagSelection}>
-        <div className="d-none tag-selector-display">
-          {editingTags.length > 0 && (
-            <div className="selected-tags-list">
-              {editingTags.map((tag) => (
-                <div
-                  className="selected-tag-chip"
-                  data-testid={`tag-${tag.tagFQN}`}
-                  key={tag.tagFQN}>
-                  <ClassificationIcon className="tag-icon" />
-                  <span className="tag-name">{getEntityName(tag)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <EditIconButton
+          newLook
+          data-testid="edit-icon-tags"
+          disabled={false}
+          icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+          size="small"
+          title={t('label.edit-entity', {
+            entity: t('label.tag-plural'),
+          })}
+          onClick={handleEditClick}
+        />
       </TagSelectableList>
     ),
     [
@@ -166,7 +165,10 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
       popoverOpen,
       handlePopoverOpenChange,
       editingTags,
+      handleCancel,
       handleTagSelection,
+      handleEditClick,
+      t,
     ]
   );
 
@@ -174,114 +176,164 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
     if (isLoading) {
       return loadingState;
     }
-    if (isEditing) {
-      return editingState;
-    }
 
     return (
-      <span className="no-data-placeholder">
+      <Box
+        component="span"
+        sx={{
+          color: theme.palette.allShades.gray[500],
+          fontSize: '12px',
+        }}>
         {t('label.no-entity-assigned', {
           entity: t('label.tag-plural'),
         })}
-      </span>
+      </Box>
     );
-  }, [isLoading, isEditing, loadingState, editingState, t]);
+  }, [isLoading, loadingState, t, theme]);
 
   const tagsDisplay = useMemo(
     () => (
-      <div className="tags-display">
-        <div className="tags-list">
+      <Box>
+        <Box display="flex" flexDirection="row" flexWrap="wrap" gap="8px">
           {(showAllTags
             ? nonTierTags
             : nonTierTags.slice(0, maxVisibleTags)
           ).map((tag) => (
-            <div
-              className="tag-item"
+            <Box
+              alignItems="center"
+              borderRadius="8px"
               data-testid={`tag-${tag.tagFQN}`}
-              key={tag.tagFQN}>
+              display="flex"
+              gap="5px"
+              height="26px"
+              key={tag.tagFQN}
+              sx={{
+                backgroundColor: theme.palette.allShades.blueGray[75],
+                padding: '5px 6px',
+                border: `1px solid ${theme.palette.allShades.blueGray[150]}`,
+                minWidth: 0,
+                '& .tag-icon': {
+                  height: '12px',
+                  width: '12px',
+                  flexShrink: 0,
+                },
+              }}>
               <ClassificationIcon className="tag-icon" />
-              <span className="tag-name">{getEntityName(tag)}</span>
-            </div>
+              <Box
+                component="span"
+                sx={{
+                  fontSize: '12px',
+                  fontWeight: 400,
+                  color: theme.palette.allShades.gray[800],
+                  textOverflow: 'ellipsis',
+                }}>
+                {getEntityName(tag)}
+              </Box>
+            </Box>
           ))}
           {nonTierTags.length > maxVisibleTags && (
-            <button
-              className="show-more-tags-button"
+            <Box
+              alignItems="center"
+              component="button"
+              display="flex"
+              height="auto"
+              justifyContent="flex-start"
+              padding={0}
+              sx={{
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: theme.palette.primary.main,
+                fontSize: '12px',
+                fontWeight: 400,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  textDecoration: 'underline',
+                },
+                '&:focus': {
+                  outline: 'none',
+                },
+              }}
               type="button"
+              width="100%"
               onClick={() => setShowAllTags(!showAllTags)}>
               {showAllTags
                 ? t('label.less')
                 : `+${nonTierTags.length - maxVisibleTags} ${t(
                     'label.more-lowercase'
                   )}`}
-            </button>
+            </Box>
           )}
-        </div>
-      </div>
+        </Box>
+      </Box>
     ),
-    [showAllTags, nonTierTags, maxVisibleTags, t]
+    [showAllTags, nonTierTags, maxVisibleTags, t, theme]
   );
 
   const tagsContent = useMemo(() => {
     if (isLoading) {
       return loadingState;
     }
-    if (isEditing) {
-      return editingState;
-    }
 
     return tagsDisplay;
-  }, [isLoading, isEditing, loadingState, editingState, tagsDisplay]);
+  }, [isLoading, loadingState, tagsDisplay]);
 
   const canShowEditButton = showEditButton && hasPermission && !isLoading;
 
   if (!nonTierTags.length) {
     return (
-      <div className="tags-section">
-        <div className="tags-header">
-          <Typography.Text className="tags-title">
+      <Box
+        data-testid="tags-section"
+        sx={{
+          borderBottom: `0.6px solid ${theme.palette.allShades.gray[200]}`,
+          paddingBottom: '16px',
+        }}>
+        <Box
+          alignItems="center"
+          display="flex"
+          gap="8px"
+          marginBottom="12px"
+          paddingX="14px">
+          <Typography
+            sx={{
+              fontWeight: 600,
+              fontSize: '13px',
+              color: theme.palette.allShades.gray[900],
+            }}>
             {t('label.tag-plural')}
-          </Typography.Text>
-          {canShowEditButton && (
-            <EditIconButton
-              newLook
-              data-testid="edit-icon-tags"
-              disabled={false}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-              size="small"
-              title={t('label.edit-entity', {
-                entity: t('label.tag-plural'),
-              })}
-              onClick={handleEditClick}
-            />
-          )}
-        </div>
-        <div className="tags-content">{emptyContent}</div>
-      </div>
+          </Typography>
+          {canShowEditButton && editButton}
+        </Box>
+        <Box paddingX="14px">{emptyContent}</Box>
+      </Box>
     );
   }
 
   return (
-    <div className="tags-section">
-      <div className="tags-header">
-        <Typography.Text className="tags-title">
+    <Box
+      data-testid="tags-section"
+      sx={{
+        borderBottom: `0.6px solid ${theme.palette.allShades.gray[200]}`,
+        paddingBottom: '16px',
+      }}>
+      <Box
+        alignItems="center"
+        display="flex"
+        gap="8px"
+        marginBottom="12px"
+        paddingX="14px">
+        <Typography
+          sx={{
+            fontWeight: 600,
+            fontSize: '13px',
+            color: theme.palette.allShades.gray[900],
+          }}>
           {t('label.tag-plural')}
-        </Typography.Text>
-        {canShowEditButton && (
-          <EditIconButton
-            newLook
-            data-testid="edit-icon-tags"
-            disabled={false}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-            size="small"
-            title={t('label.edit-entity', {
-              entity: t('label.tag-plural'),
-            })}
-            onClick={handleEditClick}
-          />
-        )}
-      </div>
-      <div className="tags-content">{tagsContent}</div>
-    </div>
+        </Typography>
+        {canShowEditButton && editButton}
+      </Box>
+      <Box paddingX="14px">{tagsContent}</Box>
+    </Box>
   );
 };
 

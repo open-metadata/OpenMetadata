@@ -169,7 +169,7 @@ test.describe('Entity Summary Panel', () => {
       .isVisible();
 
     if (hasSummaryPanel) {
-      const descriptionSection = page.locator('.description-section');
+      const descriptionSection = page.getByTestId('description-section');
       if (await descriptionSection.isVisible()) {
         await expect(descriptionSection).toBeVisible();
       }
