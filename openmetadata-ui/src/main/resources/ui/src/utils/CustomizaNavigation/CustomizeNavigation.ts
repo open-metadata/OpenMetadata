@@ -13,7 +13,10 @@
 import { TreeDataNode } from 'antd/lib';
 import { isEmpty } from 'lodash';
 import { LeftSidebarItem } from '../../components/MyData/LeftSidebar/LeftSidebar.interface';
-import { AppPlugin } from '../../components/Settings/Applications/plugins/AppPlugin';
+import {
+  AppPlugin,
+  LeftSidebarItemExample,
+} from '../../components/Settings/Applications/plugins/AppPlugin';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import leftSidebarClassBase from '../LeftSidebarClassBase';
 
@@ -61,7 +64,7 @@ const insertPluginItem = (
 
 export const mergePluginSidebarItems = (
   baseItems: LeftSidebarItem[],
-  pluginItems: Array<LeftSidebarItem & { index?: number }>
+  pluginItems: Array<LeftSidebarItemExample>
 ): LeftSidebarItem[] => {
   if (isEmpty(pluginItems)) {
     return baseItems;
@@ -77,7 +80,7 @@ export const mergePluginSidebarItems = (
 
 const extractPluginSidebarItems = (
   plugins: AppPlugin[]
-): Array<LeftSidebarItem & { index?: number }> =>
+): Array<LeftSidebarItemExample> =>
   plugins.flatMap((plugin) => plugin.getSidebarActions?.() ?? []);
 
 export const getSidebarItemsWithPlugins = (

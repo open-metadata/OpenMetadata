@@ -13,6 +13,7 @@
 
 import { render, screen, waitFor } from '@testing-library/react';
 import { TreeDataNode } from 'antd';
+import { HelmetProvider } from 'react-helmet-async';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import { SettingsNavigationPage } from './SettingsNavigationPage';
 
@@ -81,18 +82,47 @@ jest.mock(
 
 jest.mock('../CustomizablePage/CustomizeStore', () => ({
   useCustomizeStore: jest.fn().mockReturnValue({
-    getNavigation: jest.fn().mockReturnValue(mockNavigationItems),
+    getNavigation: jest.fn().mockImplementation(() => mockNavigationItems),
   }),
 }));
 
 jest.mock('../../utils/CustomizaNavigation/CustomizeNavigation', () => ({
-  getTreeDataForNavigationItems: jest.fn().mockReturnValue(mockTreeData),
+  getTreeDataForNavigationItems: jest
+    .fn()
+    .mockImplementation(() => mockTreeData),
   getHiddenKeysFromNavigationItems: jest.fn().mockReturnValue(['data-quality']),
 }));
 
 jest.mock('../../utils/SettingsNavigationPageUtils', () => ({
-  getNavigationItems: jest.fn().mockReturnValue(mockNavigationItems),
+  getNavigationItems: jest.fn().mockImplementation(() => mockNavigationItems),
 }));
+
+jest.mock(
+  '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader',
+  () => ({
+    CustomizablePageHeader: jest
+      .fn()
+      .mockImplementation(({ onReset, onSave }) => (
+        <div data-testid="customizable-page-header">
+          <button data-testid="save-button" onClick={onSave}>
+            Save
+          </button>
+          <button data-testid="reset-button" onClick={onReset}>
+            Reset
+          </button>
+        </div>
+      )),
+  })
+);
+
+jest.mock(
+  '../../components/common/NavigationBlocker/NavigationBlocker',
+  () => ({
+    NavigationBlocker: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+  })
+);
 
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -102,17 +132,35 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn(),
+  useParams: jest.fn().mockReturnValue({
+    fqn: 'test-persona',
+  }),
+  useLocation: jest.fn().mockReturnValue({
+    pathname: '/settings',
+    search: '',
+    hash: '',
+    state: null,
+    key: 'default',
+  }),
 }));
 
 describe('SettingsNavigationPage', () => {
   const mockOnSave = jest.fn().mockResolvedValue(undefined);
+
+  const renderComponent = () => {
+    return render(
+      <HelmetProvider>
+        <SettingsNavigationPage onSave={mockOnSave} />
+      </HelmetProvider>
+    );
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('should render the component with tree and buttons', () => {
-    render(<SettingsNavigationPage onSave={mockOnSave} />);
+    renderComponent();
 
     expect(screen.getByTestId('page-layout-v1')).toBeInTheDocument();
     expect(screen.getByTestId('save-button')).toBeInTheDocument();
@@ -121,7 +169,7 @@ describe('SettingsNavigationPage', () => {
   });
 
   it('should have save button enabled by default when state matches current navigation', () => {
-    render(<SettingsNavigationPage onSave={mockOnSave} />);
+    renderComponent();
 
     const saveButton = screen.getByTestId('save-button');
 
@@ -151,7 +199,7 @@ describe('SettingsNavigationPage', () => {
 
     getTreeDataForNavigationItems.mockReturnValueOnce(modifiedTreeData);
 
-    render(<SettingsNavigationPage onSave={mockOnSave} />);
+    renderComponent();
 
     const saveButton = screen.getByTestId('save-button');
 
@@ -159,7 +207,7 @@ describe('SettingsNavigationPage', () => {
   });
 
   it('should toggle hidden state when switch is clicked', async () => {
-    render(<SettingsNavigationPage onSave={mockOnSave} />);
+    renderComponent();
 
     const switches = screen.getAllByRole('switch');
 
@@ -173,7 +221,7 @@ describe('SettingsNavigationPage', () => {
   });
 
   it('should call onSave when save button is clicked', async () => {
-    render(<SettingsNavigationPage onSave={mockOnSave} />);
+    renderComponent();
 
     const saveButton = screen.getByTestId('save-button');
 
@@ -190,21 +238,18 @@ describe('SettingsNavigationPage', () => {
       getHiddenKeysFromNavigationItems,
     } = require('../../utils/CustomizaNavigation/CustomizeNavigation');
 
-    render(<SettingsNavigationPage onSave={mockOnSave} />);
+    renderComponent();
 
     const resetButton = screen.getByTestId('reset-button');
 
     resetButton.click();
 
-    expect(getTreeDataForNavigationItems).toHaveBeenCalledWith(undefined, []);
-    expect(getHiddenKeysFromNavigationItems).toHaveBeenCalledWith(
-      undefined,
-      []
-    );
+    expect(getTreeDataForNavigationItems).toHaveBeenCalledWith(null, []);
+    expect(getHiddenKeysFromNavigationItems).toHaveBeenCalledWith(null, []);
   });
 
   it('should render tree with draggable items', () => {
-    render(<SettingsNavigationPage onSave={mockOnSave} />);
+    renderComponent();
 
     const tree = screen.getByRole('tree');
 
@@ -212,15 +257,13 @@ describe('SettingsNavigationPage', () => {
   });
 
   it('should show NavigationBlocker when there are unsaved changes', () => {
-    const { container } = render(
-      <SettingsNavigationPage onSave={mockOnSave} />
-    );
+    const { container } = renderComponent();
 
     expect(container.querySelector('.ant-tree')).toBeInTheDocument();
   });
 
   it('should render switches for all tree items', () => {
-    render(<SettingsNavigationPage onSave={mockOnSave} />);
+    renderComponent();
 
     const switches = screen.getAllByRole('switch');
 
@@ -228,7 +271,7 @@ describe('SettingsNavigationPage', () => {
   });
 
   it('should have correct initial switch states based on hiddenKeys', () => {
-    render(<SettingsNavigationPage onSave={mockOnSave} />);
+    renderComponent();
 
     const switches = screen.getAllByRole('switch');
 

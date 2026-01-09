@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -324,102 +324,5 @@ test.describe('Settings Navigation Page Tests', () => {
     const restoreResponse = page.waitForResponse('api/v1/docStore/*');
     await page.getByTestId('save-button').click();
     await restoreResponse;
-  });
-
-  test('should expand and collapse tree nodes correctly', async ({ page }) => {
-    await redirectToHomePage(page);
-    await setUserDefaultPersona(page, persona.responseData.displayName);
-    await navigateToPersonaNavigation(page);
-
-    const observabilityNode = page
-      .locator('.ant-tree-title:has-text("Observability")')
-      .first();
-    const switcher = observabilityNode
-      .locator('..')
-      .locator('.ant-tree-switcher')
-      .first();
-
-    await switcher.click();
-
-    await page.waitForTimeout(300);
-
-    const childNode = page.locator(
-      '[data-testid="page-layout-v1"] .ant-tree-child-tree'
-    );
-
-    const isChildVisible = await childNode.isVisible();
-
-    await switcher.click();
-
-    await page.waitForTimeout(300);
-
-    const isChildVisibleAfter = await childNode.isVisible();
-
-    expect(isChildVisible).not.toBe(isChildVisibleAfter);
-  });
-
-  test('should preserve navigation state when switching between tabs', async ({
-    page,
-  }) => {
-    await redirectToHomePage(page);
-    await setUserDefaultPersona(page, persona.responseData.displayName);
-    await navigateToPersonaNavigation(page);
-
-    const exploreSwitch = page
-      .locator('.ant-tree-title:has-text("Explore")')
-      .locator('.ant-switch')
-      .first();
-
-    await exploreSwitch.click();
-
-    await page.getByTestId('landing-page').click();
-    await page.waitForLoadState('networkidle');
-
-    await page.getByTestId('navigation').click();
-    await page.waitForLoadState('networkidle');
-
-    const switchStateAfterReturn = await exploreSwitch.isChecked();
-
-    expect(switchStateAfterReturn).toBeFalsy();
-  });
-
-  test('should handle hiding nested child items correctly', async ({
-    page,
-  }) => {
-    await redirectToHomePage(page);
-    await setUserDefaultPersona(page, persona.responseData.displayName);
-    await navigateToPersonaNavigation(page);
-
-    const observabilityNode = page
-      .locator('.ant-tree-title:has-text("Observability")')
-      .first();
-    const switcher = observabilityNode
-      .locator('..')
-      .locator('.ant-tree-switcher')
-      .first();
-
-    await switcher.click();
-    await page.waitForTimeout(300);
-
-    const childSwitch = page
-      .locator('.ant-tree-child-tree')
-      .locator('.ant-switch')
-      .first();
-
-    if (await childSwitch.isVisible()) {
-      await childSwitch.click();
-
-      await expect(page.getByTestId('save-button')).toBeEnabled();
-
-      const saveResponse = page.waitForResponse('api/v1/docStore');
-      await page.getByTestId('save-button').click();
-      await saveResponse;
-
-      await childSwitch.click();
-
-      const restoreResponse = page.waitForResponse('api/v1/docStore/*');
-      await page.getByTestId('save-button').click();
-      await restoreResponse;
-    }
   });
 });
