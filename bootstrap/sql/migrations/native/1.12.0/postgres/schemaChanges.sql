@@ -1,6 +1,6 @@
 -- Update ApplicationBotRole to include Trigger operation
 UPDATE policy_entity
-SET json = jsonb_set(json::jsonb, '{rules,0,operations}', '["Create", "EditAll", "ViewAll", "Delete", "Trigger"]'::jsonb)
+SET json = jsonb_set(json::jsonb, '{rules,0,operations}', (json->'rules'->0->'operations')::jsonb || '["Trigger"]'::jsonb)
 WHERE name = 'ApplicationBotPolicy'
   AND json->'rules'->0->'operations' IS NOT NULL
   AND NOT (json->'rules'->0->'operations' @> '"Trigger"'::jsonb);

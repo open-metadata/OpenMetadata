@@ -1,6 +1,6 @@
 -- Update ApplicationBotRole to include Trigger operation
 UPDATE policy_entity
-SET json = JSON_SET(json, '$.rules[0].operations', JSON_ARRAY('Create', 'EditAll', 'ViewAll', 'Delete', 'Trigger'))
+SET json = JSON_ARRAY_APPEND(json, '$.rules[0].operations', 'Trigger')
 WHERE name = 'ApplicationBotPolicy'
   AND JSON_EXTRACT(json, '$.rules[0].operations') IS NOT NULL
   AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.rules[0].operations'), '"Trigger"');
