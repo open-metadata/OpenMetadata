@@ -12,12 +12,15 @@
  */
 import test, { expect } from '@playwright/test';
 import { AlertClass } from '../../support/entity/AlertClass';
+import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
+import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import {
   createNewPage,
+  testCompletePaginationWithSearch,
   testPaginationNavigation,
   uuid,
 } from '../../utils/common';
@@ -48,13 +51,17 @@ test.describe('Pagination tests for all pages', () => {
     await testPaginationNavigation(page, '/api/v1/policies', 'table');
   });
 
-  test('should test pagination on Database Schema page', async ({ page }) => {
+  test('should test Database Schema page complete pagination flow', async ({ page }) => {
     test.slow(true);
 
-    await page.goto(
-      '/databaseSchema/sample_data.ecommerce_db.shopify?showDeletedTables=false'
-    );
-    await testPaginationNavigation(page, '/api/v1/tables', 'table');
+    await testCompletePaginationWithSearch({
+      page,
+      baseUrl: '/databaseSchema/sample_data.ecommerce_db.shopify?showDeletedTables=false',
+      normalApiPattern: '/api/v1/tables',
+      searchApiPattern: '/api/v1/search/query',
+      searchTestTerm: 'dim_address',
+      waitForLoadSelector: 'table',
+    });
   });
 
   test.describe('Table columns page pagination', () => {
@@ -93,6 +100,19 @@ test.describe('Pagination tests for all pages', () => {
       await page.goto(`/table/${tableFqn}?pageSize=15`);
       await testPaginationNavigation(page, '/columns', 'table', false);
     });
+    test('should test Table columns complete flow with search', async ({ page }) => {
+    test.slow(true);
+
+    await testCompletePaginationWithSearch({
+      page,
+      baseUrl: `/table/${tableFqn}?pageSize=15`,
+      normalApiPattern: '/columns',
+      searchApiPattern: '/columns/search',
+      searchTestTerm: 'pw',
+      searchParamName: 'columnSearch',
+      waitForLoadSelector: 'table',
+    });
+  });
   });
 
   test.describe('Service Databases page pagination', () => {
@@ -337,5 +357,226 @@ test.describe('Pagination tests for Observability Alerts page', () => {
 
     await page.goto('/observability/alerts');
     await testPaginationNavigation(page, '/api/v1/events/subscriptions', 'table');
+  });
+});
+
+test.describe.serial('Pagination tests for API Collection Endpoints page', () => {
+  const apiCollection = new ApiCollectionClass();
+  let apiCollectionFqn: string;
+  const endpointNames: string[] = [];
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    const result = await apiCollection.create(apiContext);
+    apiCollectionFqn = result.entity.fullyQualifiedName;
+
+    for (let i = 1; i <= 25; i++) {
+      const endpointName = `pw-api-endpoint-${uuid()}-${i}`;
+      endpointNames.push(endpointName);
+      await apiContext.post('/api/v1/apiEndpoints', {
+        data: {
+          name: endpointName,
+          apiCollection: apiCollectionFqn,
+          endpointURL: `https://example.com/api/endpoint-${i}`,
+          requestMethod: 'GET',
+        },
+      });
+    }
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await apiCollection.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should test API Collection normal pagination', async ({ page }) => {
+    test.slow(true);
+
+    await page.goto(`/apiCollection/${apiCollectionFqn}?pageSize=15`);
+    await testPaginationNavigation(page, '/api/v1/apiEndpoints', 'table');
+  });
+
+  test('should test API Collection complete flow with search', async ({ page }) => {
+    test.slow(true);
+
+    await testCompletePaginationWithSearch({
+      page,
+      baseUrl: `/apiCollection/${apiCollectionFqn}?showDeletedEndpoints=false`,
+      normalApiPattern: '/api/v1/apiEndpoints',
+      searchApiPattern: '/api/v1/search/query',
+      searchTestTerm: 'pw',
+      waitForLoadSelector: 'table',
+    });
+  });
+});
+
+test.describe.serial('Pagination tests for Stored Procedures page', () => {
+  const database = new DatabaseClass();
+  let schemaFqn: string;
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    await database.create(apiContext);
+    schemaFqn = database.schemaResponseData.fullyQualifiedName;
+
+    for (let i = 1; i <= 25; i++) {
+      await apiContext.post('/api/v1/storedProcedures', {
+        data: {
+          name: `pw_stored_procedure_${uuid()}_${i}`,
+          databaseSchema: schemaFqn,
+          description: `Test stored procedure ${i} for pagination testing`,
+          storedProcedureCode: {
+            code: 'CREATE OR REPLACE PROCEDURE test_proc() BEGIN SELECT 1; END;',
+          },
+        },
+      });
+    }
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await database.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should test Stored Procedures normal pagination', async ({ page }) => {
+    test.slow(true);
+
+    await page.goto(`/databaseSchema/${schemaFqn}/stored_procedure?pageSize=15`);
+    await testPaginationNavigation(page, '/api/v1/storedProcedures', 'table');
+  });
+
+  test('should test Stored Procedures complete flow with search', async ({ page }) => {
+    test.slow(true);
+
+    await testCompletePaginationWithSearch({
+      page,
+      baseUrl: `/databaseSchema/${schemaFqn}/stored_procedure?pageSize=15`,
+      normalApiPattern: '/api/v1/storedProcedures',
+      searchApiPattern: '/api/v1/search/query',
+      searchTestTerm: 'pw',
+      searchParamName: 'schema',
+      waitForLoadSelector: 'table',
+      deleteBtnTestId: 'show-deleted-stored-procedure'
+    });
+  });
+});
+
+test.describe.serial('Pagination tests for Database Schemas page', () => {
+  const database = new DatabaseClass();
+  let databaseFqn: string;
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    await database.create(apiContext);
+    databaseFqn = database.entityResponseData.fullyQualifiedName;
+
+    for (let i = 1; i <= 25; i++) {
+      await apiContext.post('/api/v1/databaseSchemas', {
+        data: {
+          name: `pw_database_schema_${uuid()}_${i}`,
+          database: databaseFqn,
+          description: `Test database schema ${i} for pagination testing`,
+        },
+      });
+    }
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await database.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should test Database Schemas normal pagination', async ({ page }) => {
+    test.slow(true);
+
+    await page.goto(`/database/${databaseFqn}?pageSize=15`);
+    await testPaginationNavigation(page, '/api/v1/databaseSchemas', 'table');
+  });
+
+  test('should test Database Schemas complete flow with search', async ({ page }) => {
+    test.slow(true);
+
+    await testCompletePaginationWithSearch({
+      page,
+      baseUrl: `/database/${databaseFqn}?showDeletedTables=false`,
+      normalApiPattern: '/api/v1/databaseSchemas',
+      searchApiPattern: '/api/v1/search/query',
+      searchTestTerm: 'pw',
+      searchParamName: 'schema',
+      waitForLoadSelector: 'table',
+    });
+  });
+});
+
+test.describe.serial('Pagination tests for Dashboard Data Models page', () => {
+  const dashboardService = new DashboardDataModelClass();
+  let serviceFqn: string;
+
+  test.beforeAll(async ({ browser }) => {
+     const { apiContext, afterAction } = await createNewPage(browser);
+
+    await dashboardService.create(apiContext);
+    serviceFqn = dashboardService.serviceResponseData.fullyQualifiedName;
+
+    for (let i = 1; i <= 25; i++) {
+      await apiContext.post('/api/v1/dashboard/datamodels', {
+        data: {
+          name: `pw_data_model_${uuid()}_${i}`,
+          service: serviceFqn,
+          description: `Test data model ${i} for pagination testing`,
+          columns: [
+            {
+              name: 'test_column',
+              dataType: 'VARCHAR',
+              dataLength: 256,
+              dataTypeDisplay: 'varchar',
+              description: 'Test column',
+            },
+          ],
+          dataModelType: 'SupersetDataModel',
+        },
+      });
+    }
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await dashboardService.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should test Data Models normal pagination', async ({ page }) => {
+    test.slow(true);
+
+    await page.goto(`/service/dashboardServices/${serviceFqn}/data-model?pageSize=15`);
+    await testPaginationNavigation(page, '/api/v1/dashboard/datamodels', 'table');
+  });
+
+  test('should test Data Models complete flow with search', async ({ page }) => {
+    test.slow(true);
+
+    await testCompletePaginationWithSearch({
+      page,
+      baseUrl: `/service/dashboardServices/${serviceFqn}/data-model?pageSize=15`,
+      normalApiPattern: '/api/v1/dashboard/datamodels',
+      searchApiPattern: '/api/v1/search/query',
+      searchTestTerm: 'pw',
+      searchParamName: 'dataModel',
+      waitForLoadSelector: 'table',
+    });
   });
 });

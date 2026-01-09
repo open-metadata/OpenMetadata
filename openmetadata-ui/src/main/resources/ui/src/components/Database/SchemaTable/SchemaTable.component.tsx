@@ -26,6 +26,7 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
+  INITIAL_PAGING_VALUE,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
@@ -53,6 +54,7 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { useSub } from '../../../hooks/usePubSub';
+import { useTableFilters } from '../../../hooks/useTableFilters';
 import {
   getTableColumnsByFQN,
   searchTableColumnsByFQN,
@@ -107,7 +109,6 @@ const SchemaTable = () => {
   const navigate = useNavigate();
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const [searchText, setSearchText] = useState('');
   const [editColumn, setEditColumn] = useState<Column>();
 
   const {
@@ -119,6 +120,12 @@ const SchemaTable = () => {
     paging,
     handlePagingChange,
   } = usePaging(PAGE_SIZE_LARGE);
+
+  const { filters, setFilters } = useTableFilters({
+    columnSearch: undefined as string | undefined,
+  });
+
+  const searchText = filters.columnSearch ?? '';
 
   // Pagination state for columns
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
@@ -190,9 +197,8 @@ const SchemaTable = () => {
     [tablePermissions, deleted]
   );
 
-  // Function to fetch paginated columns or search results
-  const fetchPaginatedColumns = useCallback(
-    async (page = 1, searchQuery?: string) => {
+  const searchTableColumns = useCallback(
+    async (searchQuery: string, page = 1) => {
       if (!tableFqn) {
         return;
       }
@@ -201,34 +207,59 @@ const SchemaTable = () => {
       try {
         const offset = (page - 1) * pageSize;
 
-        // Use search API if there's a search query, otherwise use regular pagination
-        const response = searchQuery
-          ? await searchTableColumnsByFQN(tableFqn, {
-              q: searchQuery,
-              limit: pageSize,
-              offset: offset,
-              fields: 'tags,customMetrics',
-            })
-          : await getTableColumnsByFQN(tableFqn, {
-              limit: pageSize,
-              offset: offset,
-              fields: 'tags,customMetrics',
-            });
+        const response = await searchTableColumnsByFQN(tableFqn, {
+          q: searchQuery,
+          limit: pageSize,
+          offset: offset,
+          fields: 'tags,customMetrics',
+        });
 
         setTableColumns(pruneEmptyChildren(response.data) || []);
         handlePagingChange(response.paging);
       } catch {
-        // Set empty state if API fails
         setTableColumns([]);
         handlePagingChange({
           offset: 1,
           limit: pageSize,
           total: 0,
         });
+      } finally {
+        setColumnsLoading(false);
       }
-      setColumnsLoading(false);
     },
-    [decodedEntityFqn, pageSize]
+    [tableFqn, pageSize, handlePagingChange]
+  );
+
+  const fetchTableColumns = useCallback(
+    async (page = 1) => {
+      if (!tableFqn) {
+        return;
+      }
+
+      setColumnsLoading(true);
+      try {
+        const offset = (page - 1) * pageSize;
+
+        const response = await getTableColumnsByFQN(tableFqn, {
+          limit: pageSize,
+          offset: offset,
+          fields: 'tags,customMetrics',
+        });
+
+        setTableColumns(pruneEmptyChildren(response.data) || []);
+        handlePagingChange(response.paging);
+      } catch {
+        setTableColumns([]);
+        handlePagingChange({
+          offset: 1,
+          limit: pageSize,
+          total: 0,
+        });
+      } finally {
+        setColumnsLoading(false);
+      }
+    },
+    [tableFqn, pageSize, handlePagingChange]
   );
 
   const handleColumnsPageChange = useCallback(
@@ -251,12 +282,18 @@ const SchemaTable = () => {
     fetchTestCaseSummary();
   }, [tableFqn]);
 
-  // Fetch columns when search changes
   useEffect(() => {
-    if (tableFqn) {
-      fetchPaginatedColumns(currentPage, searchText || undefined);
+    if (searchText) {
+      searchTableColumns(searchText, currentPage);
     }
-  }, [tableFqn, searchText, fetchPaginatedColumns, pageSize, currentPage]);
+  }, [searchText, currentPage, searchTableColumns]);
+
+  useEffect(() => {
+    if (searchText) {
+      return;
+    }
+    fetchTableColumns(currentPage);
+  }, [tableFqn, pageSize, currentPage, searchText, fetchTableColumns]);
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {
@@ -696,13 +733,16 @@ const SchemaTable = () => {
   const searchProps = useMemo(
     () => ({
       placeholder: t('message.find-in-table'),
-      value: searchText,
+      searchValue: searchText,
       onSearch: (value: string) => {
-        setSearchText(value);
-        handlePageChange(1);
+        setFilters({ columnSearch: value || undefined });
+        handlePageChange(INITIAL_PAGING_VALUE, {
+          cursorType: null,
+          cursorValue: undefined,
+        });
       },
     }),
-    [searchText, handlePageChange]
+    [searchText, handlePageChange, setFilters]
   );
 
   const paginationProps = useMemo(

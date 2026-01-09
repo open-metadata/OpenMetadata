@@ -22,7 +22,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
-  PAGE_SIZE,
 } from '../../../../constants/constants';
 import { DATABASE_SCHEMAS_DUMMY_DATA } from '../../../../constants/Database.constants';
 import { TABLE_SCROLL_VALUE } from '../../../../constants/Table.constants';
@@ -153,15 +152,11 @@ export const DatabaseSchemaTable = ({
   const searchSchema = useCallback(
     async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
       setIsLoading(true);
-      handlePageChange(pageNumber, {
-        cursorType: null,
-        cursorValue: undefined,
-      });
       try {
         const response = await searchQuery({
           query: '',
           pageNumber,
-          pageSize: PAGE_SIZE,
+          pageSize: pageSize,
           queryFilter: buildSchemaQueryFilter(
             'database.fullyQualifiedName',
             decodedDatabaseFQN,
@@ -195,10 +190,8 @@ export const DatabaseSchemaTable = ({
   const handleSchemaPageChange = useCallback(
     ({ currentPage, cursorType }: PagingHandlerParams) => {
       if (searchValue) {
-        searchSchema(searchValue, currentPage);
         handlePageChange(currentPage);
       } else if (cursorType) {
-        fetchDatabaseSchema({ [cursorType]: paging[cursorType] });
         handlePageChange(
           currentPage,
           { cursorType, cursorValue: paging[cursorType] },
@@ -206,20 +199,18 @@ export const DatabaseSchemaTable = ({
         );
       }
     },
-    [paging, fetchDatabaseSchema, searchSchema, searchValue]
+    [paging, handlePageChange, pageSize]
   );
 
   const onSchemaSearch = useCallback(
     (value: string) => {
       setFilters({ schema: isEmpty(value) ? undefined : value });
-      if (value) {
-        searchSchema(value);
-      } else {
-        fetchDatabaseSchema();
-        handlePageChange(INITIAL_PAGING_VALUE);
-      }
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
     },
-    [setFilters, searchSchema, fetchDatabaseSchema]
+    [setFilters, handlePageChange]
   );
 
   const handleDisplayNameUpdate = useCallback(
@@ -299,6 +290,15 @@ export const DatabaseSchemaTable = ({
   };
 
   useEffect(() => {
+    if (searchValue) {
+      searchSchema(searchValue, currentPage);
+    }
+  }, [searchValue, currentPage, showDeletedSchemas]);
+
+  useEffect(() => {
+    if (searchValue) {
+      return;
+    }
     if (isCustomizationPage) {
       setSchemas(DATABASE_SCHEMAS_DUMMY_DATA);
       setIsLoading(false);
@@ -321,6 +321,7 @@ export const DatabaseSchemaTable = ({
     isDatabaseDeleted,
     isCustomizationPage,
     pagingCursor,
+    searchValue,
   ]);
 
   const searchProps = useMemo(
