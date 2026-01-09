@@ -48,6 +48,8 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
           'accessToken'
         );
 
+        // Add fallback if renewToken fails
+        // Redirect to sign-in if no tokens exist
         if (!existingIdToken && !existingAccessToken) {
           oktaAuth.signInWithRedirect();
 

@@ -37,15 +37,19 @@ const AppRouter = () => {
     applicationRoutesClass.getUnAuthenticatedRouteElements();
 
   const analytics = useAnalytics();
-  const { currentUser, isAuthenticated, isApplicationLoading, isAuthenticating } =
-    useApplicationStore(
-      useShallow((state) => ({
-        currentUser: state.currentUser,
-        isAuthenticated: state.isAuthenticated,
-        isApplicationLoading: state.isApplicationLoading,
-        isAuthenticating: state.isAuthenticating,
-      }))
-    );
+  const {
+    currentUser,
+    isAuthenticated,
+    isApplicationLoading,
+    isAuthenticating,
+  } = useApplicationStore(
+    useShallow((state) => ({
+      currentUser: state.currentUser,
+      isAuthenticated: state.isAuthenticated,
+      isApplicationLoading: state.isApplicationLoading,
+      isAuthenticating: state.isAuthenticating,
+    }))
+  );
   const { plugins = [] } = useApplicationsProvider();
 
   useEffect(() => {
@@ -114,7 +118,6 @@ const AppRouter = () => {
       {/* When authenticating from an SSO provider page (e.g., SAML Apps), if the user is already logged in,
        * the callbacks should be available. This ensures consistent behavior across different authentication scenarios.
        */}
-      <Route element={<SamlCallback />} path={ROUTES.SAML_CALLBACK} />
       <Route element={<SamlCallback />} path={ROUTES.AUTH_CALLBACK} />
 
       {/* Render APP position plugin routes (they handle their own layouts) */}
