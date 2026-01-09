@@ -105,13 +105,14 @@ function FilesTable({
   const onFileSearch = useCallback(
     (value: string) => {
       setFilters({ file: isEmpty(value) ? undefined : value });
-      paging.handlePageChange(INITIAL_PAGING_VALUE, {
-        cursorType: null,
-        cursorValue: undefined,
-      });
+      paging.handlePageChange(INITIAL_PAGING_VALUE);
     },
-    [setFilters, paging]
+    [paging]
   );
+
+  useEffect(() => {
+    paging.handlePageChange(INITIAL_PAGING_VALUE);
+  }, []);
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
     () => [

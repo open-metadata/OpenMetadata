@@ -440,6 +440,18 @@ const ServiceDetailsPage: FunctionComponent = () => {
           });
           setFilters({ showDeletedTables: false });
         }
+        if (key === EntityTabs.FILES) {
+          handleFilesPageChange(INITIAL_PAGING_VALUE, {
+            cursorType: null,
+            cursorValue: undefined,
+          });
+        }
+        if (key === EntityTabs.SPREADSHEETS) {
+          handleSpreadsheetsPageChange(INITIAL_PAGING_VALUE, {
+            cursorType: null,
+            cursorValue: undefined,
+          });
+        }
         navigate({
           pathname: getServiceDetailsPath(
             decodedServiceFQN,
@@ -450,7 +462,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
         });
       }
     },
-    [activeTab, decodedServiceFQN, serviceCategory]
+    [
+      activeTab,
+      decodedServiceFQN,
+      serviceCategory,
+      handleFilesPageChange,
+      handleSpreadsheetsPageChange,
+    ]
   );
 
   const fetchWorkflowInstanceStates = useCallback(async () => {
@@ -1226,37 +1244,26 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const onFilesPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (fileSearchValue) {
-        handleFilesPageChange(currentPage);
-      } else if (cursorType) {
-        handleFilesPageChange(
-          currentPage,
-          { cursorType, cursorValue: filesPaging[cursorType] },
-          filesPageSize
-        );
+      if (cursorType) {
+        fetchFiles({
+          [cursorType]: filesPaging[cursorType],
+        });
       }
+      handleFilesPageChange(currentPage);
     },
-    [filesPaging, handleFilesPageChange, fileSearchValue, filesPageSize]
+    [filesPaging, fetchFiles, handleFilesPageChange]
   );
 
   const onSpreadsheetsPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (spreadSheetSearchValue) {
-        handleSpreadsheetsPageChange(currentPage);
-      } else if (cursorType) {
-        handleSpreadsheetsPageChange(
-          currentPage,
-          { cursorType, cursorValue: spreadsheetsPaging[cursorType] },
-          spreadsheetsPageSize
-        );
+      if (cursorType) {
+        fetchSpreadsheets({
+          [cursorType]: spreadsheetsPaging[cursorType],
+        });
       }
+      handleSpreadsheetsPageChange(currentPage);
     },
-    [
-      spreadsheetsPaging,
-      handleSpreadsheetsPageChange,
-      spreadSheetSearchValue,
-      spreadsheetsPageSize,
-    ]
+    [spreadsheetsPaging, fetchSpreadsheets, handleSpreadsheetsPageChange]
   );
 
   const handleToggleDelete = useCallback((version?: number) => {
@@ -1366,37 +1373,14 @@ const ServiceDetailsPage: FunctionComponent = () => {
       fetchDashboardsDataModel({ limit: 0 });
     }
     if (serviceCategory === ServiceCategory.DRIVE_SERVICES) {
-      if (fileSearchValue || spreadSheetSearchValue) {
-        return;
+      if (isEmpty(fileSearchValue)) {
+        fetchFiles({ limit: filesPageSize });
       }
-      const { cursorType: fileCursorType, cursorValue: fileCursorValue } =
-        filesPagingInfo?.pagingCursor ?? {};
-
-      const {
-        cursorType: spreadSheetCursorType,
-        cursorValue: spreadSheetCursorValue,
-      } = spreadsheetsPagingInfo?.pagingCursor ?? {};
-
-      fetchFiles({
-        limit: filesPageSize,
-        ...(fileCursorType && { [fileCursorType]: fileCursorValue }),
-      });
-      fetchSpreadsheets({
-        limit: spreadsheetsPageSize,
-        ...(spreadSheetCursorType && {
-          [spreadSheetCursorType]: spreadSheetCursorValue,
-        }),
-      });
+      if (isEmpty(spreadSheetSearchValue)) {
+        fetchSpreadsheets({ limit: spreadsheetsPageSize });
+      }
     }
-  }, [
-    showDeleted,
-    filesPagingInfo?.pagingCursor,
-    spreadsheetsPagingInfo?.pagingCursor,
-    filesPageSize,
-    spreadsheetsPageSize,
-    fileSearchValue,
-    spreadSheetSearchValue,
-  ]);
+  }, [showDeleted, fileSearchValue, spreadSheetSearchValue]);
 
   useEffect(() => {
     if (servicePermission.ViewAll || servicePermission.ViewBasic) {
