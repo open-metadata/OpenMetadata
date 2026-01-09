@@ -618,9 +618,21 @@ export const updateDescriptionForChildren = async (
 
   await page.waitForSelector('[role="dialog"]', { state: 'visible' });
 
-  await page.locator(descriptionBox).first().click();
-  await page.locator(descriptionBox).first().clear();
-  await page.locator(descriptionBox).first().fill(description);
+  const descriptionInput = page.locator(descriptionBox).first();
+
+  await descriptionInput.waitFor({ state: 'visible' });
+  await expect(descriptionInput).toBeEditable();
+
+  await descriptionInput.click();
+  await descriptionInput.focus();
+
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.press('Backspace');
+
+  await expect(descriptionInput).toBeEmpty();
+
+  await descriptionInput.fill(description);
+  await expect(descriptionInput).toHaveText(description);
   let updateRequest;
   if (
     entityEndpoint === 'tables' ||
@@ -634,7 +646,8 @@ export const updateDescriptionForChildren = async (
   await updateRequest;
 
   await page.waitForSelector('[role="dialog"]', { state: 'hidden' });
-
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  
   if (isEmpty(description)) {
     await expect(
       page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
