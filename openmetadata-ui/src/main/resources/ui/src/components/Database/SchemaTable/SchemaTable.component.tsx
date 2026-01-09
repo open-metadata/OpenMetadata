@@ -569,7 +569,10 @@ const SchemaTable = () => {
                       border: 'none',
                       background: 'transparent',
                     }}
-                    onClick={() => handleEditDisplayNameClick(record)}>
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditDisplayNameClick(record);
+                    }}>
                     <IconEdit
                       style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
                     />

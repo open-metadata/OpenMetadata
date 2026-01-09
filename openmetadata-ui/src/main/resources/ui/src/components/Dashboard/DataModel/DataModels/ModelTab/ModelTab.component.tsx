@@ -248,11 +248,14 @@ const ModelTab = () => {
   const handleColumnClick = useCallback(
     (column: Column, event: React.MouseEvent) => {
       const target = event.target as HTMLElement;
-      const isExpandIcon = target.closest('.table-expand-icon') !== null;
-
-      if (!isExpandIcon) {
-        openColumnDetailPanel(column);
+      if (
+        target.closest(
+          'button, a, input, textarea, select, .table-expand-icon'
+        ) !== null
+      ) {
+        return;
       }
+      openColumnDetailPanel(column);
     },
     [openColumnDetailPanel]
   );
