@@ -90,8 +90,8 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.gson.Gson;
-import com.networknt.schema.JsonSchema;
-import com.networknt.schema.ValidationMessage;
+import com.networknt.schema.Error;
+import com.networknt.schema.Schema;
 import jakarta.json.JsonPatch;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.NotNull;
@@ -214,7 +214,6 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthorizationException;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -2567,7 +2566,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     String fieldName = field.getKey();
     JsonNode fieldValue = field.getValue();
 
-    JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
+    Schema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
     if (jsonSchema == null) {
       throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
     }
@@ -2575,7 +2574,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
     validateAndUpdateExtensionBasedOnPropertyType(
         entity, (ObjectNode) jsonNode, fieldName, fieldValue, customPropertyType, propertyConfig);
-    Set<ValidationMessage> validationMessages = jsonSchema.validate(fieldValue);
+    List<Error> validationMessages = jsonSchema.validate(fieldValue);
     if (!validationMessages.isEmpty()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
@@ -2596,7 +2595,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       JsonNode fieldValue = entry.getValue();
 
       // Validate the customFields using jsonSchema
-      JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
+      Schema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
       if (jsonSchema == null) {
         throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
       }
@@ -2605,7 +2604,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       validateAndUpdateExtensionBasedOnPropertyType(
           entity, (ObjectNode) jsonNode, fieldName, fieldValue, customPropertyType, propertyConfig);
-      Set<ValidationMessage> validationMessages = jsonSchema.validate(entry.getValue());
+      List<Error> validationMessages = jsonSchema.validate(entry.getValue());
       if (!validationMessages.isEmpty()) {
         throw new IllegalArgumentException(
             CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
