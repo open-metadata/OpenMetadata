@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ReactNode } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { AnalyticsProvider } from 'use-analytics';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getAnalyticInstance } from '../../utils/WebAnalyticsUtils';
@@ -21,10 +21,15 @@ interface WebAnalyticsProps {
 }
 
 const WebAnalyticsProvider = ({ children }: WebAnalyticsProps) => {
-  const { currentUser } = useApplicationStore();
+  const currentUserId = useApplicationStore((state) => state.currentUser?.id);
+
+  const analyticsInstance = useMemo(
+    () => getAnalyticInstance(currentUserId),
+    [currentUserId]
+  );
 
   return (
-    <AnalyticsProvider instance={getAnalyticInstance(currentUser?.id)}>
+    <AnalyticsProvider instance={analyticsInstance}>
       {children}
     </AnalyticsProvider>
   );
