@@ -646,7 +646,6 @@ export const updateDescriptionForChildren = async (
   await updateRequest;
 
   await page.waitForSelector('[role="dialog"]', { state: 'hidden' });
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   
   if (isEmpty(description)) {
     await expect(
