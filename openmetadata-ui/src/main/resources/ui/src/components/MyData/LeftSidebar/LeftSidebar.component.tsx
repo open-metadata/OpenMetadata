@@ -82,10 +82,12 @@ const LeftSidebar = () => {
       key: item.key,
       icon: <Icon component={item.icon} />,
       label: <LeftSidebarItem data={item} />,
+      'data-testid': `side-bar-${item.dataTestId}`,
       children: item.children?.map((child) => ({
         key: child.key,
         icon: <Icon component={child.icon} />,
         label: <LeftSidebarItem data={child} />,
+        'data-testid': `side-bar-${item.dataTestId}`,
       })),
     }));
   }, [sideBarItems]);

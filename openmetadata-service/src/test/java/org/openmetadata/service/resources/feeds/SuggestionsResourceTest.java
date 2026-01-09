@@ -732,7 +732,9 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
       if (column.getName().equals("column50")) {
         assertEquals("Update column 50 description", column.getDescription());
       } else if (column.getName().equals("column100")) {
-        assertEquals(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL), column.getTags());
+        Assertions.assertTrue(
+            TestUtils.compareTagsIgnoringOrder(
+                List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL), column.getTags()));
       }
     }
   }
@@ -887,8 +889,6 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
   }
 
   private void validateAppliedTags(List<TagLabel> appliedTags, List<TagLabel> entityTags) {
-    for (TagLabel tagLabel : appliedTags) {
-      Assertions.assertTrue(entityTags.contains(tagLabel));
-    }
+    Assertions.assertTrue(TestUtils.isTagsSuperSet(entityTags, appliedTags));
   }
 }

@@ -28,6 +28,7 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import { deleteTag, getAllClassifications } from '../../rest/tagAPI';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
@@ -256,7 +257,13 @@ jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () =>
 );
 
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+  withPageLayout: jest.fn().mockImplementation((Component) => {
+    const WrappedComponent = (props: Record<string, unknown>) => (
+      <Component {...props} />
+    );
+
+    return WrappedComponent;
+  }),
 }));
 
 jest.mock(
@@ -663,5 +670,24 @@ describe('Test TagsPage page', () => {
         queryByTitle(container, 'confirmation-modal')
       ).not.toBeInTheDocument();
     });
+  });
+
+  it('should pass classification name as pageTitle to withPageLayout', async () => {
+    (getAllClassifications as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(MOCK_ALL_CLASSIFICATIONS)
+    );
+
+    await act(async () => {
+      render(<TagsPage {...mockProps} />, {
+        wrapper: Wrapper,
+      });
+    });
+
+    expect(ResizableLeftPanels).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageTitle: 'PersonalData',
+      }),
+      expect.anything()
+    );
   });
 });

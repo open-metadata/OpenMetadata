@@ -38,9 +38,7 @@ export const GOOGLE_SSO_DEFAULTS = {
 // SAML-specific default values
 export const SAML_SSO_DEFAULTS = {
   authority: getAuthorityUrl(),
-  idp: {
-    authorityUrl: getAuthorityUrl(), // Note: field name is authorityUrl in IDP, not authority
-  },
+  idp: {},
   sp: {
     entityId: getServerUrl(),
     acs: getCallbackUrl(),
@@ -259,10 +257,6 @@ export const SAML_UI_SCHEMA = {
       'ui:title': 'Identity Provider (IdP)',
       entityId: { 'ui:title': 'IdP Entity ID' },
       ssoLoginUrl: { 'ui:title': 'IdP SSO Login URL' },
-      authorityUrl: {
-        'ui:title': 'Authority URL',
-        'ui:placeholder': `Default: ${getAuthorityUrl()}`,
-      },
       idpX509Certificate: {
         'ui:title': 'IdP X.509 Certificate',
         'ui:widget': 'textarea',
@@ -480,7 +474,7 @@ export const COMMON_FIELD_TITLES = {
   jwtPrincipalClaimsMapping: {
     'ui:title': 'JWT Principal Claims Mapping',
     'ui:placeholder':
-      'Enter username:claim_name (e.g. username:preferred_username,email:email) and press ENTER.',
+      'Enter mappings (e.g. username:preferred_username, email:email). Both username and email are required.',
   },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
   enableAutoRedirect: { 'ui:title': 'Enable Auto Redirect' },

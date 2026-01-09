@@ -57,6 +57,7 @@ export interface ExtensionOptions {
 export interface BlockEditorProps {
   content?: string;
   editable?: boolean;
+  onFocus?: () => void;
   onChange?: (htmlContent: string) => void;
   menuType?: MenuType;
   autoFocus?: boolean;
