@@ -956,6 +956,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     if (!nullOrEmpty(mapping)) {
       String username = mapping.get(USERNAME_CLAIM_KEY);
       String email = mapping.get(EMAIL_CLAIM_KEY);
+
+      // Validate that both username and email are present
       if (nullOrEmpty(username) || nullOrEmpty(email)) {
         throw new IllegalArgumentException(
             "Invalid JWT Principal Claims Mapping. Both username and email should be present");
