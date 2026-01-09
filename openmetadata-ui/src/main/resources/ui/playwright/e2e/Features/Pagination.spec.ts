@@ -16,6 +16,7 @@ import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { MetricClass } from '../../support/entity/MetricClass';
+import { DriveServiceClass } from '../../support/entity/service/DriveServiceClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import {
@@ -556,6 +557,141 @@ test.describe('Pagination tests for Dashboard Data Models page', () => {
       searchApiPattern: '/api/v1/search/query',
       searchTestTerm: 'pw',
       searchParamName: 'dataModel',
+      waitForLoadSelector: 'table',
+    });
+  });
+});
+
+test.describe('Pagination tests for Drive Service Directories page', () => {
+  const driveService = new DriveServiceClass();
+  let serviceFqn: string;
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    await driveService.create(apiContext);
+    serviceFqn = driveService.entityResponseData.fullyQualifiedName;
+
+    for (let i = 1; i <= 25; i++) {
+      await apiContext.post('/api/v1/drives/directories', {
+        data: {
+          name: `pw_directory_${uuid()}_${i}`,
+          service: serviceFqn,
+          description: `Test directory ${i} for pagination testing`,
+        },
+      });
+    }
+
+    await afterAction();
+  });
+
+  test('should test Directories normal pagination', async ({ page }) => {
+    test.slow(true);
+
+    await page.goto(`/service/driveServices/${serviceFqn}/directories?pageSize=15`);
+    await testPaginationNavigation(page, '/api/v1/drives/directories', 'table');
+  });
+
+  test('should test Directories complete flow with search', async ({ page }) => {
+    test.slow(true);
+
+    await testCompletePaginationWithSearch({
+      page,
+      baseUrl: `/service/driveServices/${serviceFqn}/directories?showDeletedTables=false`,
+      normalApiPattern: '/api/v1/drives/directories',
+      searchApiPattern: '/api/v1/search/query',
+      searchTestTerm: 'pw',
+      searchParamName: 'schema',
+      waitForLoadSelector: 'table',
+    });
+  });
+});
+
+test.describe('Pagination tests for Drive Service Files page', () => {
+  const driveService = new DriveServiceClass();
+  let serviceFqn: string;
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    await driveService.create(apiContext);
+    serviceFqn = driveService.entityResponseData.fullyQualifiedName;
+
+    for (let i = 1; i <= 25; i++) {
+      await apiContext.post('/api/v1/drives/files', {
+        data: {
+          name: `pw_file_${uuid()}_${i}`,
+          service: serviceFqn,
+          description: `Test file ${i} for pagination testing`,
+        },
+      });
+    }
+
+    await afterAction();
+  });
+
+  test('should test Files normal pagination', async ({ page }) => {
+    test.slow(true);
+
+    await page.goto(`/service/driveServices/${serviceFqn}/files?pageSize=15`);
+    await testPaginationNavigation(page, '/api/v1/drives/files', 'table');
+  });
+
+  test('should test Files complete flow with search', async ({ page }) => {
+    test.slow(true);
+
+    await testCompletePaginationWithSearch({
+      page,
+      baseUrl: `/service/driveServices/${serviceFqn}/files?showDeletedTables=false`,
+      normalApiPattern: '/api/v1/drives/files',
+      searchApiPattern: '/api/v1/search/query',
+      searchTestTerm: 'pw',
+      searchParamName: 'file',
+      waitForLoadSelector: 'table',
+    });
+  });
+});
+
+test.describe('Pagination tests for Drive Service Spreadsheets page', () => {
+  const driveService = new DriveServiceClass();
+  let serviceFqn: string;
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    await driveService.create(apiContext);
+    serviceFqn = driveService.entityResponseData.fullyQualifiedName;
+
+    for (let i = 1; i <= 25; i++) {
+      await apiContext.post('/api/v1/drives/spreadsheets', {
+        data: {
+          name: `pw_spreadsheet_${uuid()}_${i}`,
+          service: serviceFqn,
+          description: `Test spreadsheet ${i} for pagination testing`,
+        },
+      });
+    }
+
+    await afterAction();
+  });
+
+  test('should test Spreadsheets normal pagination', async ({ page }) => {
+    test.slow(true);
+
+    await page.goto(`/service/driveServices/${serviceFqn}/spreadsheets?pageSize=15`);
+    await testPaginationNavigation(page, '/api/v1/drives/spreadsheets', 'table');
+  });
+
+  test('should test Spreadsheets complete flow with search', async ({ page }) => {
+    test.slow(true);
+
+    await testCompletePaginationWithSearch({
+      page,
+      baseUrl: `/service/driveServices/${serviceFqn}/spreadsheets?showDeletedTables=false`,
+      normalApiPattern: '/api/v1/drives/spreadsheets',
+      searchApiPattern: '/api/v1/search/query',
+      searchTestTerm: 'pw',
+      searchParamName: 'spreadsheet',
       waitForLoadSelector: 'table',
     });
   });

@@ -26,6 +26,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -290,6 +291,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
     INITIAL_TABLE_FILTERS
   );
   const { showDeletedTables: showDeleted } = tableFilters;
+
+  const isInitialLoadRef = useRef(true);
+  const isInitialPaginationLoadRef = useRef(true);
 
   const { isFollowing, followers = [] } = useMemo(
     () => ({
@@ -1244,26 +1248,37 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const onFilesPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        fetchFiles({
-          [cursorType]: filesPaging[cursorType],
-        });
+      if (fileSearchValue) {
+        handleFilesPageChange(currentPage);
+      } else if (cursorType) {
+        handleFilesPageChange(
+          currentPage,
+          { cursorType, cursorValue: filesPaging[cursorType] },
+          filesPageSize
+        );
       }
-      handleFilesPageChange(currentPage);
     },
-    [filesPaging, fetchFiles, handleFilesPageChange]
+    [filesPaging, handleFilesPageChange, fileSearchValue, filesPageSize]
   );
 
   const onSpreadsheetsPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        fetchSpreadsheets({
-          [cursorType]: spreadsheetsPaging[cursorType],
-        });
+      if (spreadSheetSearchValue) {
+        handleSpreadsheetsPageChange(currentPage);
+      } else if (cursorType) {
+        handleSpreadsheetsPageChange(
+          currentPage,
+          { cursorType, cursorValue: spreadsheetsPaging[cursorType] },
+          spreadsheetsPageSize
+        );
       }
-      handleSpreadsheetsPageChange(currentPage);
     },
-    [spreadsheetsPaging, fetchSpreadsheets, handleSpreadsheetsPageChange]
+    [
+      spreadsheetsPaging,
+      handleSpreadsheetsPageChange,
+      spreadSheetSearchValue,
+      spreadsheetsPageSize,
+    ]
   );
 
   const handleToggleDelete = useCallback((version?: number) => {
@@ -1359,28 +1374,85 @@ const ServiceDetailsPage: FunctionComponent = () => {
     if (searchValue) {
       return;
     }
-    const { cursorType, cursorValue } = pagingInfo?.pagingCursor ?? {};
-    if (cursorType && cursorValue) {
-      getOtherDetails({ limit: pageSize, [cursorType]: cursorValue });
-    } else {
-      getOtherDetails({ limit: pageSize });
-    }
-  }, [showDeleted, deleted, pageSize, pagingInfo?.pagingCursor, searchValue]);
+    getOtherDetails({ limit: pageSize });
+    isInitialPaginationLoadRef.current = false;
+  }, [showDeleted, deleted, pageSize, searchValue]);
 
   useEffect(() => {
-    // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active
+    if (
+      isInitialPaginationLoadRef.current ||
+      searchValue ||
+      [EntityTabs.FILES, EntityTabs.SPREADSHEETS].includes(
+        activeTab as EntityTabs
+      )
+    ) {
+      return;
+    }
+    const { cursorType, cursorValue } = pagingInfo?.pagingCursor ?? {};
+    getOtherDetails({
+      limit: pageSize,
+      ...(cursorType && { [cursorType]: cursorValue }),
+    });
+  }, [pagingInfo?.pagingCursor, searchValue, activeTab]);
+
+  useEffect(() => {
     if (serviceCategory === ServiceCategory.DASHBOARD_SERVICES) {
       fetchDashboardsDataModel({ limit: 0 });
     }
-    if (serviceCategory === ServiceCategory.DRIVE_SERVICES) {
+
+    if (
+      serviceCategory === ServiceCategory.DRIVE_SERVICES &&
+      isInitialLoadRef.current
+    ) {
       if (isEmpty(fileSearchValue)) {
         fetchFiles({ limit: filesPageSize });
       }
       if (isEmpty(spreadSheetSearchValue)) {
         fetchSpreadsheets({ limit: spreadsheetsPageSize });
       }
+      isInitialLoadRef.current = false;
     }
-  }, [showDeleted, fileSearchValue, spreadSheetSearchValue]);
+  }, [serviceCategory]);
+
+  useEffect(() => {
+    if (
+      serviceCategory === ServiceCategory.DRIVE_SERVICES &&
+      !isInitialLoadRef.current &&
+      isEmpty(fileSearchValue) &&
+      activeTab === EntityTabs.FILES
+    ) {
+      const { cursorType: fileCursorType, cursorValue: fileCursorValue } =
+        filesPagingInfo?.pagingCursor ?? {};
+      fetchFiles({
+        limit: filesPageSize,
+        ...(fileCursorType && { [fileCursorType]: fileCursorValue }),
+      });
+    }
+  }, [filesPagingInfo?.pagingCursor, filesPageSize, fileSearchValue]);
+
+  useEffect(() => {
+    if (
+      serviceCategory === ServiceCategory.DRIVE_SERVICES &&
+      !isInitialLoadRef.current &&
+      isEmpty(spreadSheetSearchValue) &&
+      activeTab === EntityTabs.SPREADSHEETS
+    ) {
+      const {
+        cursorType: spreadSheetCursorType,
+        cursorValue: spreadSheetCursorValue,
+      } = spreadsheetsPagingInfo?.pagingCursor ?? {};
+      fetchSpreadsheets({
+        limit: spreadsheetsPageSize,
+        ...(spreadSheetCursorType && {
+          [spreadSheetCursorType]: spreadSheetCursorValue,
+        }),
+      });
+    }
+  }, [
+    spreadsheetsPagingInfo?.pagingCursor,
+    spreadsheetsPageSize,
+    spreadSheetSearchValue,
+  ]);
 
   useEffect(() => {
     if (servicePermission.ViewAll || servicePermission.ViewBasic) {
