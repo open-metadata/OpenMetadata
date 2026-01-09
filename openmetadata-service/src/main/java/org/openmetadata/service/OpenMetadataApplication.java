@@ -518,7 +518,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Handle Asset Using Servlet
     OpenMetadataAssetServlet assetServlet =
         new OpenMetadataAssetServlet(
-            config.getBasePath(), "/assets", "/", "index.html", webConfiguration);
+            config.getBasePath(),
+            config.getAssets().get("resourcePath"),
+            config.getAssets().get("uriPath"),
+            "index.html",
+            webConfiguration);
     environment.servlets().addServlet("static", assetServlet).addMapping("/*");
 
     LOG.info("Asset Servlet registered with mapping: /*");
