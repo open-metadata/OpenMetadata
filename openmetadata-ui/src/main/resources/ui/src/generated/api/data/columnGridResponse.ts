@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -61,6 +61,10 @@ export interface ColumnGridItem {
  */
 export interface ColumnMetadataGroup {
     /**
+     * Nested columns for STRUCT, MAP, or UNION data types.
+     */
+    children?: ColumnChild[];
+    /**
      * Data type (common across all columns in this group).
      */
     dataType?: string;
@@ -88,10 +92,6 @@ export interface ColumnMetadataGroup {
      * Tags (common across all columns in this group).
      */
     tags?: TagLabel[];
-    /**
-     * Nested columns for STRUCT, MAP, or UNION data types.
-     */
-    children?: ColumnChild[];
 }
 
 /**
@@ -99,73 +99,47 @@ export interface ColumnMetadataGroup {
  */
 export interface ColumnChild {
     /**
-     * Name of the child column.
+     * Nested children for deeply nested structures.
      */
-    name: string;
-    /**
-     * Fully qualified name of the child column.
-     */
-    fullyQualifiedName?: string;
-    /**
-     * Display name of the child column.
-     */
-    displayName?: string;
-    /**
-     * Description of the child column.
-     */
-    description?: string;
+    children?: ColumnChild[];
     /**
      * Data type of the child column.
      */
     dataType?: string;
     /**
+     * Description of the child column.
+     */
+    description?: string;
+    /**
+     * Display name of the child column.
+     */
+    displayName?: string;
+    /**
+     * Fully qualified name of the child column.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Name of the child column.
+     */
+    name: string;
+    /**
      * Tags on the child column.
      */
     tags?: TagLabel[];
-    /**
-     * Nested children for deeply nested structures.
-     */
-    children?: ColumnChild[];
-}
-
-/**
- * Reference to a column occurrence.
- */
-export interface ColumnOccurrenceRef {
-    /**
-     * Fully qualified name of the column.
-     */
-    columnFQN: string;
-    /**
-     * Name of the database (if applicable).
-     */
-    databaseName?: string;
-    /**
-     * Display name of the parent entity.
-     */
-    entityDisplayName?: string;
-    /**
-     * Fully qualified name of the parent entity.
-     */
-    entityFQN: string;
-    /**
-     * Type of entity containing the column.
-     */
-    entityType: string;
-    /**
-     * Name of the schema (if applicable).
-     */
-    schemaName?: string;
-    /**
-     * Name of the service.
-     */
-    serviceName?: string;
 }
 
 /**
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
     /**
      * Description for the tag label.
      */
@@ -274,4 +248,38 @@ export interface CoverImage {
      * URL of the cover image.
      */
     url?: string;
+}
+
+/**
+ * Reference to a column occurrence.
+ */
+export interface ColumnOccurrenceRef {
+    /**
+     * Fully qualified name of the column.
+     */
+    columnFQN: string;
+    /**
+     * Name of the database (if applicable).
+     */
+    databaseName?: string;
+    /**
+     * Display name of the parent entity.
+     */
+    entityDisplayName?: string;
+    /**
+     * Fully qualified name of the parent entity.
+     */
+    entityFQN: string;
+    /**
+     * Type of entity containing the column.
+     */
+    entityType: string;
+    /**
+     * Name of the schema (if applicable).
+     */
+    schemaName?: string;
+    /**
+     * Name of the service.
+     */
+    serviceName?: string;
 }
