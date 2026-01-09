@@ -21,10 +21,13 @@ import TopicSchemaFields from '../components/Topic/TopicSchema/TopicSchema';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { Topic } from '../generated/entity/data/topic';
 import { PageType } from '../generated/system/ui/page';
+import { EntityReference } from '../generated/type/entityReference';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from './i18next/LocalUtil';
 import { TopicDetailPageTabProps } from './TopicClassBase';
+import { Field } from '../generated/type/schema';
 
 export const getTopicDetailsPageTabs = ({
   schemaCount,
@@ -118,6 +121,16 @@ export const getTopicDetailsPageTabs = ({
       children: customPropertiesTab,
     },
   ];
+};
+
+export const extractTopicFields = <T extends Omit<EntityReference, 'type'>>(
+  data: T
+): Field[] => {
+  const topic = data as Partial<Topic>;
+
+  return (topic.messageSchema?.schemaFields ?? []).map(
+    (field) => field as Field
+  );
 };
 
 export const getTopicWidgetsFromKey = (widgetConfig: WidgetConfig) => {
