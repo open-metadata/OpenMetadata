@@ -1165,6 +1165,10 @@ class PowerbiSource(DashboardServiceSource):
             table_info_list = self._parse_table_info_from_source_exp(
                 table, datamodel_entity
             )
+            if not table_info_list:
+                # if tables are not found from source expression
+                # try establishing lineage using powerbi's table name
+                table_info_list = [{"table": table.name}]
             if isinstance(table_info_list, List):
                 for table_info in table_info_list:
                     table_name = table_info.get("table") or table.name

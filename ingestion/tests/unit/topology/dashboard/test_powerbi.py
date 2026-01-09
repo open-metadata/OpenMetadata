@@ -499,23 +499,6 @@ class PowerBIUnitTest(TestCase):
         )
         self.assertEqual(result, None)
 
-    @pytest.mark.order(11)
-    @patch.object(
-        PowerbiSource,
-        "_fetch_dataset_from_workspace",
-        return_value=MOCK_DATASET_FROM_WORKSPACE_V3,
-    )
-    def test_parse_dataset_expressions_v2(self, *_):
-        # test with valid snowflake source but no
-        # dataset expression value
-        result = self.powerbi._parse_snowflake_source(
-            MOCK_SNOWFLAKE_EXP_V3, MOCK_DASHBOARD_DATA_MODEL
-        )
-        result = result[0]
-        self.assertEqual(result["database"], "MANUFACTURING_BUSINESS_DATA_PRODUCTS")
-        self.assertEqual(result["schema"], "INVENTORY_BY_PURPOSE")
-        self.assertEqual(result["table"], "CUSTOMER_TABLE")
-
     @pytest.mark.order(4)
     @patch.object(
         PowerbiSource,
@@ -694,6 +677,23 @@ class PowerBIUnitTest(TestCase):
 
             # Should return None when exception occurs
             self.assertIsNone(result)
+
+    @pytest.mark.order(11)
+    @patch.object(
+        PowerbiSource,
+        "_fetch_dataset_from_workspace",
+        return_value=MOCK_DATASET_FROM_WORKSPACE_V3,
+    )
+    def test_parse_dataset_expressions_v2(self, *_):
+        # test with valid snowflake source but no
+        # dataset expression value
+        result = self.powerbi._parse_snowflake_source(
+            MOCK_SNOWFLAKE_EXP_V3, MOCK_DASHBOARD_DATA_MODEL
+        )
+        result = result[0]
+        self.assertEqual(result["database"], "MANUFACTURING_BUSINESS_DATA_PRODUCTS")
+        self.assertEqual(result["schema"], "INVENTORY_BY_PURPOSE")
+        self.assertEqual(result["table"], "CUSTOMER_TABLE")
 
     @pytest.mark.order(12)
     def test_create_dataset_upstream_dataset_column_lineage(self):
@@ -1046,3 +1046,99 @@ class PowerBIUnitTest(TestCase):
             self.assertEqual(len(result[i].includes), 20)
         total_includes = sum(len(batch.includes) for batch in result)
         self.assertEqual(total_includes, 100)
+
+    @pytest.mark.order(23)
+    def test_table_name_fallback_when_source_expression_parsing_fails(self):
+        """
+        Test that when _parse_table_info_from_source_exp returns None,
+        the _get_table_and_datamodel_lineage method falls back to using
+        the PowerBI table name for lineage.
+        """
+        from unittest.mock import MagicMock
+
+        table = PowerBiTable(
+            name="my_powerbi_table",
+            source=[],
+            columns=[],
+        )
+
+        mock_table_entity = MagicMock()
+        mock_table_entity.id = uuid.uuid4()
+        mock_table_entity.fullyQualifiedName = (
+            "service.database.schema.my_powerbi_table"
+        )
+
+        with patch.object(
+            self.powerbi, "_parse_table_info_from_source_exp", return_value=None
+        ), patch.object(
+            self.powerbi.metadata,
+            "search_in_any_service",
+            return_value=mock_table_entity,
+        ) as mock_search, patch.object(
+            self.powerbi, "_get_column_lineage", return_value=[]
+        ), patch.object(
+            self.powerbi, "_get_add_lineage_request"
+        ) as mock_lineage_request:
+            mock_lineage_request.return_value = MagicMock()
+
+            list(
+                self.powerbi._get_table_and_datamodel_lineage(
+                    db_service_prefix=None,
+                    table=table,
+                    datamodel_entity=MOCK_DASHBOARD_DATA_MODEL,
+                )
+            )
+
+            mock_search.assert_called_once()
+            call_args = mock_search.call_args
+            fqn_search_string = call_args.kwargs.get("fqn_search_string") or call_args[
+                1
+            ].get("fqn_search_string")
+            self.assertIn("my_powerbi_table", fqn_search_string)
+
+    @pytest.mark.order(24)
+    def test_table_name_fallback_with_valid_source_expression(self):
+        """
+        Test that when _parse_table_info_from_source_exp returns valid table info,
+        the parsed table name is used instead of the PowerBI table name.
+        """
+        from unittest.mock import MagicMock
+
+        table = PowerBiTable(
+            name="powerbi_table_name",
+            source=[PowerBITableSource(expression=MOCK_REDSHIFT_EXP)],
+            columns=[],
+        )
+
+        mock_table_entity = MagicMock()
+        mock_table_entity.id = uuid.uuid4()
+        mock_table_entity.fullyQualifiedName = (
+            "service.dev.demo_dbt_jaffle.customers_clean"
+        )
+
+        with patch.object(
+            self.powerbi.metadata,
+            "search_in_any_service",
+            return_value=mock_table_entity,
+        ) as mock_search, patch.object(
+            self.powerbi, "_get_column_lineage", return_value=[]
+        ), patch.object(
+            self.powerbi, "_get_add_lineage_request"
+        ) as mock_lineage_request:
+            mock_lineage_request.return_value = MagicMock()
+
+            list(
+                self.powerbi._get_table_and_datamodel_lineage(
+                    db_service_prefix=None,
+                    table=table,
+                    datamodel_entity=MOCK_DASHBOARD_DATA_MODEL,
+                )
+            )
+
+            mock_search.assert_called_once()
+            call_args = mock_search.call_args
+            fqn_search_string = call_args.kwargs.get("fqn_search_string") or call_args[
+                1
+            ].get("fqn_search_string")
+            self.assertIn("customers_clean", fqn_search_string)
+            self.assertNotIn("powerbi_table_name", fqn_search_string)
