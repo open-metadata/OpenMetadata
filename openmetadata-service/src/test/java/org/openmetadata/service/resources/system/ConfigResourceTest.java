@@ -201,4 +201,12 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     assertNotNull(jwksKey.getN());
     assertNotNull(jwksKey.getE());
   }
+
+  @Test
+  void get_assets_config_from_yaml() {
+    assertNotNull(config.getAssets());
+    assertEquals("/assets/", config.getAssets().get("resourcePath"));
+    assertEquals("/test-base-path/", config.getAssets().get("uriPath"));
+    assertEquals("/test-base-path/", config.getBasePath());
+  }
 }
