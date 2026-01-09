@@ -1,37 +1,78 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.CreateDashboardDataModel;
+import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.UpdateColumn;
+import org.openmetadata.schema.entity.Type;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.DataModelType;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Columns;
 import org.openmetadata.sdk.fluent.Tables;
+import org.openmetadata.sdk.network.HttpMethod;
 
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class ColumnResourceIT {
 
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final String TABLE = "table";
+  private static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
+  private static final String TABLE_COLUMN = "tableColumn";
+  private static final String DASHBOARD_DATA_MODEL_COLUMN = "dashboardDataModelColumn";
+
+  private static Type STRING_TYPE;
+  private static Type INT_TYPE;
+
   @BeforeAll
-  public static void setup() {
-    Tables.setDefaultClient(SdkClients.adminClient());
-    Columns.setDefaultClient(SdkClients.adminClient());
+  public static void setup() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tables.setDefaultClient(client);
+    Columns.setDefaultClient(client);
+
+    STRING_TYPE = getTypeByName(client, "string");
+    INT_TYPE = getTypeByName(client, "integer");
   }
 
   @Test
@@ -934,5 +975,953 @@ public class ColumnResourceIT {
     assertEquals("User Name", retrievedName.getDisplayName());
     assertNotNull(retrievedName.getFullyQualifiedName());
     assertTrue(retrievedName.getFullyQualifiedName().contains("user_name"));
+  }
+
+  // ========================================================================
+  // COLUMN UPDATE TESTS - BASIC UPDATES
+  // ========================================================================
+
+  @Test
+  void test_updateTableColumn_displayName(TestNamespace ns) throws Exception {
+    Table table = createTestTableForUpdate(ns);
+    String columnFQN = table.getFullyQualifiedName() + ".name";
+
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDisplayName("Full Name");
+
+    Column updatedColumn = updateColumn(SdkClients.adminClient(), columnFQN, TABLE, updateColumn);
+
+    assertEquals("Full Name", updatedColumn.getDisplayName());
+    assertEquals("name", updatedColumn.getName());
+    assertEquals(ColumnDataType.VARCHAR, updatedColumn.getDataType());
+  }
+
+  @Test
+  void test_updateTableColumn_description(TestNamespace ns) throws Exception {
+    Table table = createTestTableForUpdate(ns);
+    String columnFQN = table.getFullyQualifiedName() + ".email";
+
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDescription("User's email address");
+
+    Column updatedColumn = updateColumn(SdkClients.adminClient(), columnFQN, TABLE, updateColumn);
+
+    assertEquals("User's email address", updatedColumn.getDescription());
+  }
+
+  @Test
+  void test_updateTableColumn_tags(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag personalDataTag = createClassificationAndTag(ns, "PersonalDataCol", "PersonalCol");
+
+    Table table = createTestTableForUpdate(ns);
+    String columnFQN = table.getFullyQualifiedName() + ".id";
+
+    UpdateColumn updateColumn = new UpdateColumn();
+    TagLabel personalDataTagLabel =
+        new TagLabel()
+            .withTagFQN(personalDataTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    updateColumn.setTags(List.of(personalDataTagLabel));
+    Column updatedColumn = updateColumn(client, columnFQN, TABLE, updateColumn);
+
+    assertNotNull(updatedColumn.getTags());
+    assertEquals(1, updatedColumn.getTags().size());
+    assertEquals(
+        personalDataTag.getFullyQualifiedName(), updatedColumn.getTags().get(0).getTagFQN());
+  }
+
+  @Test
+  void test_updateTableColumn_constraint(TestNamespace ns) throws Exception {
+    Table table = createTestTableForUpdate(ns);
+    String columnFQN = table.getFullyQualifiedName() + ".email";
+
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setConstraint(ColumnConstraint.UNIQUE);
+
+    Column updatedColumn = updateColumn(SdkClients.adminClient(), columnFQN, TABLE, updateColumn);
+
+    assertEquals(ColumnConstraint.UNIQUE, updatedColumn.getConstraint());
+  }
+
+  // ========================================================================
+  // DASHBOARD DATA MODEL COLUMN TESTS
+  // ========================================================================
+
+  @Test
+  void test_updateDashboardDataModelColumn(TestNamespace ns) throws Exception {
+    DashboardDataModel dataModel = createTestDashboardDataModel(ns);
+    String columnFQN = dataModel.getFullyQualifiedName() + ".metric1";
+
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDisplayName("Sales Metric");
+    updateColumn.setDescription("Total sales amount");
+    updateColumn.setConstraint(ColumnConstraint.PRIMARY_KEY);
+
+    Column updatedColumn =
+        updateColumn(SdkClients.adminClient(), columnFQN, DASHBOARD_DATA_MODEL, updateColumn);
+
+    assertEquals("Sales Metric", updatedColumn.getDisplayName());
+    assertEquals("Total sales amount", updatedColumn.getDescription());
+    assertNull(updatedColumn.getConstraint());
+  }
+
+  @Test
+  void test_updateDashboardDataModelColumn_tagsAndGlossaryTerms(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Tag businessMetricsTag = createClassificationAndTag(ns, "BusinessMetricsCol", "RevenueCol");
+    GlossaryTerm technicalTerm = createGlossaryAndTerm(ns, "TestGlossaryCol", "ContactInfoCol");
+
+    DashboardDataModel dataModel = createTestDashboardDataModel(ns);
+    String columnFQN = dataModel.getFullyQualifiedName() + ".dimension1";
+
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDisplayName("Customer Dimension");
+    updateColumn.setDescription("Customer dimension for analysis");
+
+    TagLabel classificationTag =
+        new TagLabel()
+            .withTagFQN(businessMetricsTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    TagLabel glossaryTermLabel =
+        new TagLabel()
+            .withTagFQN(technicalTerm.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY);
+
+    updateColumn.setTags(List.of(classificationTag, glossaryTermLabel));
+
+    Column updatedColumn = updateColumn(client, columnFQN, DASHBOARD_DATA_MODEL, updateColumn);
+
+    assertEquals("Customer Dimension", updatedColumn.getDisplayName());
+    assertEquals("Customer dimension for analysis", updatedColumn.getDescription());
+    assertNotNull(updatedColumn.getTags());
+    assertEquals(2, updatedColumn.getTags().size());
+  }
+
+  // ========================================================================
+  // MULTIPLE UPDATES AND ERROR HANDLING TESTS
+  // ========================================================================
+
+  @Test
+  void test_updateColumn_multipleUpdatesAtOnce(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag piiTag = createClassificationAndTag(ns, "PIICol", "SensitiveCol");
+
+    Table table = createTestTableForUpdate(ns);
+    String columnFQN = table.getFullyQualifiedName() + ".name";
+
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDisplayName("Customer Name");
+    updateColumn.setDescription("Name of the customer");
+
+    TagLabel piiTagLabel =
+        new TagLabel()
+            .withTagFQN(piiTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    updateColumn.setTags(List.of(piiTagLabel));
+
+    Column updatedColumn = updateColumn(client, columnFQN, TABLE, updateColumn);
+
+    assertEquals("Customer Name", updatedColumn.getDisplayName());
+    assertEquals("Name of the customer", updatedColumn.getDescription());
+    assertEquals(1, updatedColumn.getTags().size());
+  }
+
+  @Test
+  void test_updateColumn_nonExistentColumn_404(TestNamespace ns) throws Exception {
+    Table table = createTestTableForUpdate(ns);
+    String invalidColumnFQN = table.getFullyQualifiedName() + ".nonexistent";
+
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDisplayName("Should Fail");
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () -> updateColumn(SdkClients.adminClient(), invalidColumnFQN, TABLE, updateColumn));
+
+    assertTrue(exception.getMessage().contains("Column not found"));
+  }
+
+  @Test
+  void test_updateColumn_nonExistentTable_404(TestNamespace ns) throws Exception {
+    String invalidFQN = "nonexistent.service.database.schema.table.column";
+
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDisplayName("Should Fail");
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () -> updateColumn(SdkClients.adminClient(), invalidFQN, TABLE, updateColumn));
+
+    assertTrue(exception.getMessage().contains("not found"));
+  }
+
+  // ========================================================================
+  // GLOSSARY TERMS AND MIXED TAGS TESTS
+  // ========================================================================
+
+  @Test
+  void test_updateColumn_glossaryTerms(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    GlossaryTerm businessTerm = createGlossaryAndTerm(ns, "GlossaryA_Col", "CustomerDataCol");
+    GlossaryTerm technicalTerm = createGlossaryAndTerm(ns, "GlossaryB_Col", "ContactInfoTermCol");
+
+    Table table = createTestTableForUpdate(ns);
+    String columnFQN = table.getFullyQualifiedName() + ".email";
+
+    UpdateColumn updateColumn = new UpdateColumn();
+
+    TagLabel glossaryTerm1 =
+        new TagLabel()
+            .withTagFQN(businessTerm.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY);
+
+    TagLabel glossaryTerm2 =
+        new TagLabel()
+            .withTagFQN(technicalTerm.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY);
+
+    updateColumn.setTags(List.of(glossaryTerm1, glossaryTerm2));
+    Column updatedColumn = updateColumn(client, columnFQN, TABLE, updateColumn);
+
+    assertNotNull(updatedColumn.getTags());
+    assertEquals(2, updatedColumn.getTags().size());
+    assertTrue(
+        updatedColumn.getTags().stream()
+            .allMatch(t -> t.getSource() == TagLabel.TagSource.GLOSSARY));
+  }
+
+  @Test
+  void test_updateColumn_mixedTagsAndGlossaryTerms(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Tag personalDataTag = createClassificationAndTag(ns, "PersonalDataMixedCol", "PersonalMixCol");
+    GlossaryTerm identifierTerm =
+        createGlossaryAndTerm(ns, "TestGlossaryMixedCol", "IdentifierCol");
+
+    Table table = createTestTableForUpdate(ns);
+    String columnFQN = table.getFullyQualifiedName() + ".id";
+
+    UpdateColumn updateColumn = new UpdateColumn();
+
+    TagLabel classificationTag =
+        new TagLabel()
+            .withTagFQN(personalDataTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    TagLabel glossaryTermLabel =
+        new TagLabel()
+            .withTagFQN(identifierTerm.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY);
+
+    updateColumn.setTags(List.of(classificationTag, glossaryTermLabel));
+    Column updatedColumn = updateColumn(client, columnFQN, TABLE, updateColumn);
+
+    assertNotNull(updatedColumn.getTags());
+    assertEquals(2, updatedColumn.getTags().size());
+
+    boolean hasClassification =
+        updatedColumn.getTags().stream()
+            .anyMatch(tag -> tag.getSource() == TagLabel.TagSource.CLASSIFICATION);
+    boolean hasGlossary =
+        updatedColumn.getTags().stream()
+            .anyMatch(tag -> tag.getSource() == TagLabel.TagSource.GLOSSARY);
+
+    assertTrue(hasClassification);
+    assertTrue(hasGlossary);
+  }
+
+  // ========================================================================
+  // EMPTY STRING AND TAG REMOVAL TESTS
+  // ========================================================================
+
+  @Test
+  void test_updateColumn_emptyStringValuesDeleteFields(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag testTag = createClassificationAndTag(ns, "EmptyTestCol", "TestTagCol");
+
+    Table table = createTestTableForUpdate(ns);
+    String columnFQN = table.getFullyQualifiedName() + ".name";
+
+    UpdateColumn initialUpdate = new UpdateColumn();
+    initialUpdate.setDisplayName("Initial Display Name");
+    initialUpdate.setDescription("Initial description");
+    TagLabel tagLabel =
+        new TagLabel()
+            .withTagFQN(testTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+    initialUpdate.setTags(List.of(tagLabel));
+    updateColumn(client, columnFQN, TABLE, initialUpdate);
+
+    UpdateColumn emptyUpdate = new UpdateColumn();
+    emptyUpdate.setDisplayName("");
+    emptyUpdate.setDescription("   ");
+
+    Column updatedColumn = updateColumn(client, columnFQN, TABLE, emptyUpdate);
+
+    assertNull(updatedColumn.getDisplayName());
+    assertNull(updatedColumn.getDescription());
+    assertEquals(1, updatedColumn.getTags().size());
+  }
+
+  @Test
+  void test_updateColumn_tagRemovalSupport(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag personalDataTag = createClassificationAndTag(ns, "RemovalTestCol", "PersonalRemCol");
+
+    Table table = createTestTableForUpdate(ns);
+    String columnFQN = table.getFullyQualifiedName() + ".email";
+
+    UpdateColumn addTagsUpdate = new UpdateColumn();
+    TagLabel testTag =
+        new TagLabel()
+            .withTagFQN(personalDataTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+    addTagsUpdate.setTags(List.of(testTag));
+    Column columnWithTags = updateColumn(client, columnFQN, TABLE, addTagsUpdate);
+    assertEquals(1, columnWithTags.getTags().size());
+
+    UpdateColumn removeTagsUpdate = new UpdateColumn();
+    removeTagsUpdate.setTags(new ArrayList<>());
+    Column columnWithoutTags = updateColumn(client, columnFQN, TABLE, removeTagsUpdate);
+
+    assertTrue(columnWithoutTags.getTags() == null || columnWithoutTags.getTags().isEmpty());
+  }
+
+  @Test
+  void test_updateColumn_selectiveTagRemoval(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Tag tag1 = createClassificationAndTag(ns, "SelectiveRemoval1Col", "Tag1Col");
+    Tag tag2 = createClassificationAndTag(ns, "SelectiveRemoval2Col", "Tag2Col");
+
+    Table table = createTestTableForUpdate(ns);
+    String columnFQN = table.getFullyQualifiedName() + ".name";
+
+    TagLabel tagLabel1 =
+        new TagLabel()
+            .withTagFQN(tag1.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+    TagLabel tagLabel2 =
+        new TagLabel()
+            .withTagFQN(tag2.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    UpdateColumn addAllUpdate = new UpdateColumn();
+    addAllUpdate.setTags(List.of(tagLabel1, tagLabel2));
+    Column columnWithAll = updateColumn(client, columnFQN, TABLE, addAllUpdate);
+    assertEquals(2, columnWithAll.getTags().size());
+
+    UpdateColumn removeOneUpdate = new UpdateColumn();
+    removeOneUpdate.setTags(List.of(tagLabel1));
+    Column columnWithOne = updateColumn(client, columnFQN, TABLE, removeOneUpdate);
+    assertEquals(1, columnWithOne.getTags().size());
+    assertEquals(tag1.getFullyQualifiedName(), columnWithOne.getTags().get(0).getTagFQN());
+  }
+
+  // ========================================================================
+  // DELETE FIELD TESTS
+  // ========================================================================
+
+  @Test
+  void test_deleteTableColumn_displayName(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Table table = createTestTableForUpdate(ns);
+    String columnFQN = table.getFullyQualifiedName() + ".name";
+
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDisplayName("Full Name");
+    updateColumn(client, columnFQN, TABLE, updateColumn);
+
+    UpdateColumn deleteDisplayName = new UpdateColumn();
+    deleteDisplayName.setDisplayName("");
+    Column updatedColumn = updateColumn(client, columnFQN, TABLE, deleteDisplayName);
+
+    assertNull(updatedColumn.getDisplayName());
+  }
+
+  @Test
+  void test_deleteTableColumn_description(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Table table = createTestTableForUpdate(ns);
+    String columnFQN = table.getFullyQualifiedName() + ".email";
+
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDescription("User's email address");
+    updateColumn(client, columnFQN, TABLE, updateColumn);
+
+    UpdateColumn deleteDescription = new UpdateColumn();
+    deleteDescription.setDescription("");
+    Column updatedColumn = updateColumn(client, columnFQN, TABLE, deleteDescription);
+
+    assertNull(updatedColumn.getDescription());
+  }
+
+  @Test
+  void test_deleteTableColumn_constraint(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Table table = createTestTableForUpdate(ns);
+    String columnFQN = table.getFullyQualifiedName() + ".email";
+
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setConstraint(ColumnConstraint.UNIQUE);
+    updateColumn(client, columnFQN, TABLE, updateColumn);
+
+    UpdateColumn deleteConstraint = new UpdateColumn();
+    deleteConstraint.setRemoveConstraint(true);
+    Column updatedColumn = updateColumn(client, columnFQN, TABLE, deleteConstraint);
+
+    assertNull(updatedColumn.getConstraint());
+  }
+
+  @Test
+  void test_deleteDashboardDataModelColumn_displayName(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DashboardDataModel dataModel = createTestDashboardDataModel(ns);
+    String columnFQN = dataModel.getFullyQualifiedName() + ".metric1";
+
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDisplayName("Sales Metric");
+    updateColumn(client, columnFQN, DASHBOARD_DATA_MODEL, updateColumn);
+
+    UpdateColumn deleteDisplayName = new UpdateColumn();
+    deleteDisplayName.setDisplayName("");
+    Column updatedColumn = updateColumn(client, columnFQN, DASHBOARD_DATA_MODEL, deleteDisplayName);
+
+    assertNull(updatedColumn.getDisplayName());
+  }
+
+  // ========================================================================
+  // CUSTOM PROPERTIES TESTS
+  // ========================================================================
+
+  @Test
+  void test_tableColumnCustomProperties_completeLifecycle(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String testPropName = ns.prefix("tablePropCL");
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, testPropName + "_str", STRING_TYPE);
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, testPropName + "_int", INT_TYPE);
+
+      Table table = createTestTableForUpdate(ns);
+      String columnFQN = table.getFullyQualifiedName() + ".name";
+
+      UpdateColumn addValues = new UpdateColumn();
+      Map<String, Object> extension = new HashMap<>();
+      extension.put(testPropName + "_str", "test-value");
+      extension.put(testPropName + "_int", 42);
+      addValues.setExtension(extension);
+
+      Column columnWithValues = updateColumn(client, columnFQN, TABLE, addValues);
+
+      if (columnWithValues.getExtension() != null) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> addedExt = (Map<String, Object>) columnWithValues.getExtension();
+        assertEquals("test-value", addedExt.get(testPropName + "_str"));
+        assertEquals(42, addedExt.get(testPropName + "_int"));
+      }
+
+      UpdateColumn removeValues = new UpdateColumn();
+      removeValues.setExtension(new HashMap<>());
+      Column columnWithoutValues = updateColumn(client, columnFQN, TABLE, removeValues);
+
+      if (columnWithoutValues.getExtension() != null) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> removedExt = (Map<String, Object>) columnWithoutValues.getExtension();
+        assertFalse(removedExt.containsKey(testPropName + "_str"));
+        assertFalse(removedExt.containsKey(testPropName + "_int"));
+      }
+
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, testPropName + "_str");
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, testPropName + "_int");
+    }
+  }
+
+  @Test
+  void test_dashboardDataModelColumnCustomProperties(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String stringPropName = ns.prefix("dashStrPropCL");
+    String intPropName = ns.prefix("dashIntPropCL");
+
+    try {
+      addCustomPropertyToColumnType(
+          client, DASHBOARD_DATA_MODEL_COLUMN, stringPropName, STRING_TYPE);
+      addCustomPropertyToColumnType(client, DASHBOARD_DATA_MODEL_COLUMN, intPropName, INT_TYPE);
+
+      DashboardDataModel dataModel = createTestDashboardDataModel(ns);
+      String columnFQN = dataModel.getFullyQualifiedName() + ".metric1";
+
+      UpdateColumn addValues = new UpdateColumn();
+      Map<String, Object> extension = new HashMap<>();
+      extension.put(stringPropName, "dashboard-value");
+      extension.put(intPropName, 999);
+      addValues.setExtension(extension);
+
+      Column columnWithValues = updateColumn(client, columnFQN, DASHBOARD_DATA_MODEL, addValues);
+
+      assertNotNull(columnWithValues.getExtension());
+      @SuppressWarnings("unchecked")
+      Map<String, Object> addedExt = (Map<String, Object>) columnWithValues.getExtension();
+      assertEquals("dashboard-value", addedExt.get(stringPropName));
+      assertEquals(999, addedExt.get(intPropName));
+
+    } finally {
+      deleteCustomPropertyFromColumnType(client, DASHBOARD_DATA_MODEL_COLUMN, stringPropName);
+      deleteCustomPropertyFromColumnType(client, DASHBOARD_DATA_MODEL_COLUMN, intPropName);
+    }
+  }
+
+  @Test
+  void test_tableColumnCustomProperties_validation(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Table table = createTestTableForUpdate(ns);
+    String columnFQN = table.getFullyQualifiedName() + ".name";
+
+    UpdateColumn invalidUpdate = new UpdateColumn();
+    Map<String, Object> invalidExtension = new HashMap<>();
+    invalidExtension.put("undefinedProperty", "should-fail");
+    invalidUpdate.setExtension(invalidExtension);
+
+    Exception exception =
+        assertThrows(Exception.class, () -> updateColumn(client, columnFQN, TABLE, invalidUpdate));
+
+    assertTrue(exception.getMessage().contains("Unknown custom field"));
+  }
+
+  @Test
+  void test_customProperties_crossEntityTypeIsolation(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String uniquePropName = ns.prefix("isolationTestCL");
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, uniquePropName, STRING_TYPE);
+      addCustomPropertyToColumnType(client, DASHBOARD_DATA_MODEL_COLUMN, uniquePropName, INT_TYPE);
+
+      Table table = createTestTableForUpdate(ns);
+      String tableColumnFQN = table.getFullyQualifiedName() + ".email";
+
+      UpdateColumn tableUpdate = new UpdateColumn();
+      Map<String, Object> tableExtension = new HashMap<>();
+      tableExtension.put(uniquePropName, "table-string-value");
+      tableUpdate.setExtension(tableExtension);
+
+      Column updatedTableColumn = updateColumn(client, tableColumnFQN, TABLE, tableUpdate);
+      @SuppressWarnings("unchecked")
+      Map<String, Object> tableExt = (Map<String, Object>) updatedTableColumn.getExtension();
+      assertEquals("table-string-value", tableExt.get(uniquePropName));
+
+      DashboardDataModel dataModel = createTestDashboardDataModel(ns);
+      String dashColumnFQN = dataModel.getFullyQualifiedName() + ".dimension1";
+
+      UpdateColumn dashUpdate = new UpdateColumn();
+      Map<String, Object> dashExtension = new HashMap<>();
+      dashExtension.put(uniquePropName, 456);
+      dashUpdate.setExtension(dashExtension);
+
+      Column updatedDashColumn =
+          updateColumn(client, dashColumnFQN, DASHBOARD_DATA_MODEL, dashUpdate);
+      @SuppressWarnings("unchecked")
+      Map<String, Object> dashExt = (Map<String, Object>) updatedDashColumn.getExtension();
+      assertEquals(456, dashExt.get(uniquePropName));
+
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, uniquePropName);
+      deleteCustomPropertyFromColumnType(client, DASHBOARD_DATA_MODEL_COLUMN, uniquePropName);
+    }
+  }
+
+  @Test
+  void test_customProperties_wrongEntityTypeError(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String tableOnlyProp = ns.prefix("tableOnlyPropCL");
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, tableOnlyProp, STRING_TYPE);
+
+      DashboardDataModel dataModel = createTestDashboardDataModel(ns);
+      String dashColumnFQN = dataModel.getFullyQualifiedName() + ".metric1";
+
+      UpdateColumn dashUpdate = new UpdateColumn();
+      Map<String, Object> dashExtension = new HashMap<>();
+      dashExtension.put(tableOnlyProp, "wrong-entity-type");
+      dashUpdate.setExtension(dashExtension);
+
+      Exception exception =
+          assertThrows(
+              Exception.class,
+              () -> updateColumn(client, dashColumnFQN, DASHBOARD_DATA_MODEL, dashUpdate));
+
+      assertTrue(exception.getMessage().contains("Unknown custom field"));
+
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, tableOnlyProp);
+    }
+  }
+
+  // ========================================================================
+  // ENTITY TYPE VALIDATION TESTS
+  // ========================================================================
+
+  @Test
+  void test_updateColumn_entityType_validation(TestNamespace ns) throws Exception {
+    Table table = createTestTableForUpdate(ns);
+    String columnFQN = table.getFullyQualifiedName() + ".name";
+
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDisplayName("Test Display Name");
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () ->
+                updateColumn(
+                    SdkClients.adminClient(), columnFQN, "invalidEntityType", updateColumn));
+
+    assertTrue(exception.getMessage().contains("Unsupported entity type"));
+  }
+
+  @Test
+  void test_updateNestedTableColumn_description(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    List<Column> innerNestedColumns =
+        List.of(new Column().withName("personal_details").withDataType(ColumnDataType.STRING));
+    List<Column> customerInfoChildren =
+        List.of(
+            new Column()
+                .withName("personal_details")
+                .withDataType(ColumnDataType.STRUCT)
+                .withChildren(innerNestedColumns));
+    List<Column> deeplyNestedDataChildren =
+        List.of(
+            new Column()
+                .withName("customer_info")
+                .withDataType(ColumnDataType.STRUCT)
+                .withChildren(customerInfoChildren));
+    List<Column> columns =
+        List.of(
+            new Column()
+                .withName("deeply_nested_data")
+                .withDataType(ColumnDataType.STRUCT)
+                .withChildren(deeplyNestedDataChildren));
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName(ns.prefix("nestedTable"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(columns);
+    Table nestedTable = client.tables().create(createTable);
+
+    String columnFQN =
+        nestedTable.getFullyQualifiedName() + ".deeply_nested_data.customer_info.personal_details";
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDescription("<p>Personal details nested structure updated</p>");
+
+    Column updatedColumn = updateColumn(client, columnFQN, TABLE, updateColumn);
+
+    assertEquals(
+        "<p>Personal details nested structure updated</p>", updatedColumn.getDescription());
+  }
+
+  @Test
+  void test_nestedTableColumnCustomProperties(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String nestedPropName = ns.prefix("nestedTestCL");
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, nestedPropName, STRING_TYPE);
+
+      List<Column> nestedColumns =
+          List.of(new Column().withName("nested_field").withDataType(ColumnDataType.STRING));
+      List<Column> structColumns =
+          List.of(
+              new Column()
+                  .withName("struct_column")
+                  .withDataType(ColumnDataType.STRUCT)
+                  .withChildren(nestedColumns));
+
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+      CreateTable createNestedTable =
+          new CreateTable()
+              .withName(ns.prefix("nestedCPTable"))
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(structColumns);
+      Table nestedTable = client.tables().create(createNestedTable);
+
+      String nestedColumnFQN = nestedTable.getFullyQualifiedName() + ".struct_column.nested_field";
+      UpdateColumn updateNested = new UpdateColumn();
+      Map<String, Object> nestedExtension = new HashMap<>();
+      nestedExtension.put(nestedPropName, "nested-custom-value");
+      updateNested.setExtension(nestedExtension);
+
+      Column updatedNestedColumn = updateColumn(client, nestedColumnFQN, TABLE, updateNested);
+
+      if (updatedNestedColumn.getExtension() != null) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> nestedExt = (Map<String, Object>) updatedNestedColumn.getExtension();
+        assertEquals("nested-custom-value", nestedExt.get(nestedPropName));
+      }
+
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, nestedPropName);
+    }
+  }
+
+  // ========================================================================
+  // DERIVED TAGS TESTS
+  // ========================================================================
+
+  @Test
+  void test_updateColumnWithDerivedTags(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Classification tierClassification = createClassification(client, ns, "TierDerivedCol");
+    Tag tierTag = createTag(client, tierClassification, "Tier1Col");
+
+    Glossary glossary = createGlossary(client, ns, "DerivedTagGlossaryCol");
+
+    CreateGlossaryTerm createGlossaryTerm =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("CustomerDataDerivedCol"))
+            .withDescription("Customer data term")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withTags(
+                List.of(
+                    new TagLabel()
+                        .withTagFQN(tierTag.getFullyQualifiedName())
+                        .withName(tierTag.getName())
+                        .withSource(TagLabel.TagSource.CLASSIFICATION)
+                        .withState(TagLabel.State.CONFIRMED)));
+    GlossaryTerm glossaryTerm = client.glossaryTerms().create(createGlossaryTerm);
+
+    Table table = createTestTableForUpdate(ns);
+    String columnFQN = table.getFullyQualifiedName() + ".id";
+
+    UpdateColumn updateColumnWithTags =
+        new UpdateColumn()
+            .withTags(
+                List.of(
+                    new TagLabel()
+                        .withTagFQN(glossaryTerm.getFullyQualifiedName())
+                        .withName(glossaryTerm.getName())
+                        .withSource(TagLabel.TagSource.GLOSSARY)
+                        .withState(TagLabel.State.CONFIRMED)));
+
+    Column updatedColumn = updateColumn(client, columnFQN, TABLE, updateColumnWithTags);
+
+    assertNotNull(updatedColumn.getTags());
+    assertEquals(2, updatedColumn.getTags().size());
+
+    TagLabel glossaryTag =
+        updatedColumn.getTags().stream()
+            .filter(tag -> tag.getSource() == TagLabel.TagSource.GLOSSARY)
+            .findFirst()
+            .orElse(null);
+    assertNotNull(glossaryTag);
+    assertEquals(glossaryTerm.getFullyQualifiedName(), glossaryTag.getTagFQN());
+    assertEquals(TagLabel.LabelType.MANUAL, glossaryTag.getLabelType());
+
+    TagLabel derivedTag =
+        updatedColumn.getTags().stream()
+            .filter(tag -> tag.getSource() == TagLabel.TagSource.CLASSIFICATION)
+            .findFirst()
+            .orElse(null);
+    assertNotNull(derivedTag);
+    assertEquals(tierTag.getFullyQualifiedName(), derivedTag.getTagFQN());
+    assertEquals(TagLabel.LabelType.DERIVED, derivedTag.getLabelType());
+  }
+
+  // ========================================================================
+  // HELPER METHODS
+  // ========================================================================
+
+  private Table createTestTableForUpdate(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column idColumn = Columns.build("id").withType(ColumnDataType.BIGINT).primaryKey().create();
+    Column nameColumn =
+        Columns.build("name").withType(ColumnDataType.VARCHAR).withLength(255).create();
+    Column emailColumn =
+        Columns.build("email").withType(ColumnDataType.VARCHAR).withLength(255).create();
+
+    return Tables.create()
+        .name(ns.prefix("updateTestTable"))
+        .inSchema(schema.getFullyQualifiedName())
+        .withColumns(List.of(idColumn, nameColumn, emailColumn))
+        .withDescription("Test table for column update operations")
+        .execute();
+  }
+
+  private DashboardDataModel createTestDashboardDataModel(TestNamespace ns) {
+    DashboardService service = DashboardServiceTestFactory.createLooker(ns);
+
+    List<Column> columns =
+        Arrays.asList(
+            new Column().withName("metric1").withDataType(ColumnDataType.BIGINT),
+            new Column()
+                .withName("dimension1")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(256));
+
+    CreateDashboardDataModel request =
+        new CreateDashboardDataModel()
+            .withName(ns.prefix("testDataModel"))
+            .withDescription("Test data model for column operations")
+            .withService(service.getFullyQualifiedName())
+            .withDataModelType(DataModelType.LookMlView)
+            .withColumns(columns);
+
+    return SdkClients.adminClient().dashboardDataModels().create(request);
+  }
+
+  private static Type getTypeByName(OpenMetadataClient client, String name) throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/metadata/types/name/" + name, null);
+    return OBJECT_MAPPER.readValue(response, Type.class);
+  }
+
+  private static Type getColumnType(OpenMetadataClient client, String columnTypeName)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/metadata/types/name/" + columnTypeName + "?fields=customProperties",
+                null);
+    return OBJECT_MAPPER.readValue(response, Type.class);
+  }
+
+  private void addCustomPropertyToColumnType(
+      OpenMetadataClient client, String columnTypeName, String propertyName, Type propertyType)
+      throws Exception {
+    Type columnType = getColumnType(client, columnTypeName);
+
+    CustomProperty customProperty =
+        new CustomProperty()
+            .withName(propertyName)
+            .withDescription("Test custom property: " + propertyName)
+            .withPropertyType(propertyType.getEntityReference());
+
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/metadata/types/" + columnType.getId().toString(),
+            customProperty,
+            Type.class);
+  }
+
+  private void deleteCustomPropertyFromColumnType(
+      OpenMetadataClient client, String columnTypeName, String propertyName) {
+    try {
+      Type columnType = getColumnType(client, columnTypeName);
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.DELETE,
+              "/v1/metadata/types/" + columnType.getId().toString() + "/" + propertyName,
+              null,
+              Void.class);
+    } catch (Exception e) {
+      // Ignore cleanup errors
+    }
+  }
+
+  private Column updateColumn(
+      OpenMetadataClient client, String columnFQN, String entityType, UpdateColumn updateColumn)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/columns/name/" + encodeURIComponent(columnFQN) + "?entityType=" + entityType,
+                updateColumn);
+
+    return OBJECT_MAPPER.readValue(response, Column.class);
+  }
+
+  private Tag createClassificationAndTag(
+      TestNamespace ns, String classificationName, String tagName) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Classification classification = createClassification(client, ns, classificationName);
+    return createTag(client, classification, tagName);
+  }
+
+  private Classification createClassification(
+      OpenMetadataClient client, TestNamespace ns, String classificationName) {
+    CreateClassification createClassification =
+        new CreateClassification()
+            .withName(ns.prefix(classificationName))
+            .withDescription("Test classification for " + classificationName);
+    return client.classifications().create(createClassification);
+  }
+
+  private Tag createTag(OpenMetadataClient client, Classification classification, String tagName) {
+    CreateTag createTag =
+        new CreateTag()
+            .withName(tagName)
+            .withDescription("Test tag: " + tagName)
+            .withClassification(classification.getFullyQualifiedName());
+    return client.tags().create(createTag);
+  }
+
+  private GlossaryTerm createGlossaryAndTerm(TestNamespace ns, String glossaryName, String termName)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Glossary glossary = createGlossary(client, ns, glossaryName);
+    return createGlossaryTerm(client, glossary, ns, termName);
+  }
+
+  private Glossary createGlossary(
+      OpenMetadataClient client, TestNamespace ns, String glossaryName) {
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName(ns.prefix(glossaryName))
+            .withDescription("Test glossary for " + glossaryName);
+    return client.glossaries().create(createGlossary);
+  }
+
+  private GlossaryTerm createGlossaryTerm(
+      OpenMetadataClient client, Glossary glossary, TestNamespace ns, String termName) {
+    CreateGlossaryTerm createGlossaryTerm =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix(termName))
+            .withDescription("Test term: " + termName)
+            .withGlossary(glossary.getFullyQualifiedName());
+    return client.glossaryTerms().create(createGlossaryTerm);
+  }
+
+  private static String encodeURIComponent(String value) {
+    try {
+      return java.net.URLEncoder.encode(value, "UTF-8").replace("+", "%20");
+    } catch (java.io.UnsupportedEncodingException e) {
+      throw new RuntimeException(e);
+    }
   }
 }
