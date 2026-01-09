@@ -31,6 +31,10 @@ export interface UpdateColumn {
      */
     displayName?: string;
     /**
+     * Entity extension data with custom attributes added to the column.
+     */
+    extension?: any;
+    /**
      * Set to true to remove the existing column constraint. Only applicable to table columns,
      * ignored for dashboard data model columns. If both 'constraint' and 'removeConstraint' are
      * provided, 'removeConstraint' takes precedence.
