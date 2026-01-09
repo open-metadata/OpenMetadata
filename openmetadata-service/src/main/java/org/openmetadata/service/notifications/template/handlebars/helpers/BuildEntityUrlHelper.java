@@ -133,7 +133,7 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
    * Builds the entity URL following the same logic as MessageDecorator.buildEntityUrl()
    * Handles special cases for different entity types.
    */
-  private String buildEntityUrl(String entityType, String fqn, Map<String, Object> entityMap) {
+  public String buildEntityUrl(String entityType, String fqn, Map<String, Object> entityMap) {
     String baseUrl = EmailUtil.getOMBaseURL();
     if (nullOrEmpty(baseUrl)) {
       LOG.warn("Base URL is null or empty, cannot build entity URL");

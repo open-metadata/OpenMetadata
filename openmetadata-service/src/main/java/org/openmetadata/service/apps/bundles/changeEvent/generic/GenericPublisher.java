@@ -23,6 +23,7 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation;
 import java.net.UnknownHostException;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import lombok.Getter;
@@ -39,6 +40,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
+import org.openmetadata.service.notifications.template.handlebars.helpers.BuildEntityUrlHelper;
 
 @Slf4j
 public class GenericPublisher implements Destination<ChangeEvent> {
@@ -74,7 +76,8 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     try {
-      String eventJson = JsonUtils.pojoToJson(event);
+      Map<String, Object> payload = enrichWebhookPayload(event);
+      String eventJson = JsonUtils.pojoToJson(payload);
 
       // Resolve recipients using new RecipientResolver framework
       RecipientResolver recipientResolver = new RecipientResolver();
@@ -134,6 +137,42 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   @Override
   public boolean getEnabled() {
     return subscriptionDestination.getEnabled();
+  }
+
+  private Map<String, Object> enrichWebhookPayload(ChangeEvent event) {
+    Map<String, Object> payload = JsonUtils.getMap(event);
+
+    String entityUrl = generateEntityUrl(event);
+    if (entityUrl != null) {
+      payload.put("entityUrl", entityUrl);
+    }
+
+    return payload;
+  }
+
+  private String generateEntityUrl(ChangeEvent event) {
+    if (event.getEntityType() == null
+        || event.getEntityFullyQualifiedName() == null
+        || event.getEntityFullyQualifiedName().isEmpty()) {
+      return null;
+    }
+
+    try {
+      Map<String, Object> entityMap =
+          event.getEntity() != null
+              ? JsonUtils.getMap(event.getEntity())
+              : Map.of("fullyQualifiedName", event.getEntityFullyQualifiedName());
+
+      return new BuildEntityUrlHelper()
+          .buildEntityUrl(event.getEntityType(), event.getEntityFullyQualifiedName(), entityMap);
+    } catch (Exception e) {
+      LOG.debug(
+          "Failed to generate entity URL for type={}, fqn={}",
+          event.getEntityType(),
+          event.getEntityFullyQualifiedName(),
+          e);
+      return null;
+    }
   }
 
   public void close() {
