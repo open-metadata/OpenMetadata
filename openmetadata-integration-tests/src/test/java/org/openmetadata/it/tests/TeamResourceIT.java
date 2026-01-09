@@ -37,9 +37,12 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for Team entity operations.
@@ -943,6 +946,96 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
         Exception.class, () -> createEntity(createBu2), "Business Unit can only have one parent");
   }
 
+  @Test
+  void test_bulkAddRemoveAssets_withPermission(TestNamespace ns) throws Exception {
+    CreateTeam create =
+        new CreateTeam()
+            .withName(ns.prefix("bulkAssetsTeam"))
+            .withTeamType(TeamType.GROUP)
+            .withDescription("Team for bulk assets test");
+
+    Team team = createEntity(create);
+
+    User user1 = createTestUser(ns, "bulkUser1");
+    User user2 = createTestUser(ns, "bulkUser2");
+    User user3 = createTestUser(ns, "bulkUser3");
+
+    BulkAssets addRequest =
+        new BulkAssets()
+            .withAssets(
+                List.of(
+                    user1.getEntityReference(),
+                    user2.getEntityReference(),
+                    user3.getEntityReference()));
+
+    BulkOperationResult addResult =
+        bulkAddAssetsWithResult(SdkClients.adminClient(), team.getName(), addRequest);
+
+    assertNotNull(addResult);
+    assertEquals(3, addResult.getNumberOfRowsProcessed());
+    assertEquals(3, addResult.getNumberOfRowsPassed());
+
+    Team fetched = SdkClients.adminClient().teams().get(team.getId().toString(), "users");
+    assertNotNull(fetched.getUsers());
+    assertEquals(3, fetched.getUsers().size());
+
+    BulkAssets removeRequest =
+        new BulkAssets()
+            .withAssets(
+                List.of(
+                    user1.getEntityReference(),
+                    user2.getEntityReference(),
+                    user3.getEntityReference()));
+
+    BulkOperationResult removeResult =
+        bulkRemoveAssetsWithResult(SdkClients.adminClient(), team.getName(), removeRequest);
+
+    assertNotNull(removeResult);
+    assertEquals(3, removeResult.getNumberOfRowsProcessed());
+    assertEquals(3, removeResult.getNumberOfRowsPassed());
+
+    Team fetchedAfterRemove =
+        SdkClients.adminClient().teams().get(team.getId().toString(), "users");
+    assertTrue(fetchedAfterRemove.getUsers() == null || fetchedAfterRemove.getUsers().isEmpty());
+  }
+
+  @Test
+  void test_bulkAddRemoveAssets_withoutPermission(TestNamespace ns) throws Exception {
+    CreateTeam create =
+        new CreateTeam()
+            .withName(ns.prefix("bulkAssetsNoPermTeam"))
+            .withTeamType(TeamType.GROUP)
+            .withDescription("Team for bulk assets permission test");
+
+    Team team = createEntity(create);
+
+    User user1 = createTestUser(ns, "bulkNoPermUser1");
+    User user2 = createTestUser(ns, "bulkNoPermUser2");
+
+    BulkAssets addRequest =
+        new BulkAssets()
+            .withAssets(List.of(user1.getEntityReference(), user2.getEntityReference()));
+
+    assertThrows(
+        Exception.class,
+        () -> bulkAddAssets(SdkClients.dataConsumerClient(), team.getName(), addRequest),
+        "Bulk add should fail without EDIT_ALL permission");
+
+    BulkAssets addRequestAdmin =
+        new BulkAssets()
+            .withAssets(List.of(user1.getEntityReference(), user2.getEntityReference()));
+    bulkAddAssets(SdkClients.adminClient(), team.getName(), addRequestAdmin);
+
+    BulkAssets removeRequest =
+        new BulkAssets()
+            .withAssets(List.of(user1.getEntityReference(), user2.getEntityReference()));
+
+    assertThrows(
+        Exception.class,
+        () -> bulkRemoveAssets(SdkClients.dataConsumerClient(), team.getName(), removeRequest),
+        "Bulk remove should fail without EDIT_ALL permission");
+  }
+
   private User createTestUser(TestNamespace ns, String suffix) {
     String name = ns.prefix(suffix);
     String sanitized = name.replaceAll("[^a-zA-Z0-9._-]", "");
@@ -958,6 +1051,30 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withDescription("Test user for team tests");
 
     return SdkClients.adminClient().users().create(createUser);
+  }
+
+  private void bulkAddAssets(OpenMetadataClient client, String teamName, BulkAssets request)
+      throws Exception {
+    String path = "/v1/teams/" + teamName + "/assets/add";
+    client.getHttpClient().execute(HttpMethod.PUT, path, request, Void.class);
+  }
+
+  private void bulkRemoveAssets(OpenMetadataClient client, String teamName, BulkAssets request)
+      throws Exception {
+    String path = "/v1/teams/" + teamName + "/assets/remove";
+    client.getHttpClient().execute(HttpMethod.PUT, path, request, Void.class);
+  }
+
+  private BulkOperationResult bulkAddAssetsWithResult(
+      OpenMetadataClient client, String teamName, BulkAssets request) throws Exception {
+    String path = "/v1/teams/" + teamName + "/assets/add";
+    return client.getHttpClient().execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
+  }
+
+  private BulkOperationResult bulkRemoveAssetsWithResult(
+      OpenMetadataClient client, String teamName, BulkAssets request) throws Exception {
+    String path = "/v1/teams/" + teamName + "/assets/remove";
+    return client.getHttpClient().execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
   }
 
   // ===================================================================
