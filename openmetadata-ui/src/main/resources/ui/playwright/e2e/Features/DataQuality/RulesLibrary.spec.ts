@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import { redirectToHomePage, uuid } from '../../../utils/common';
+
 
 const TEST_DEFINITION_NAME = `aCustomTestDefinition${uuid()}`;
 const TEST_DEFINITION_DISPLAY_NAME = `Custom Test Definition ${uuid()}`;
 const UPDATE_TEST_DEFINITION_DISPLAY_NAME = `Updated Custom Test Definition ${uuid()}`;
 const TEST_DEFINITION_DESCRIPTION =
   'A This is a custom test definition for E2E testing';
-
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
