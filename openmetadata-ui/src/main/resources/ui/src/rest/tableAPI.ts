@@ -274,6 +274,8 @@ export type GetTableColumnsParams = {
   offset?: number;
   fields?: string;
   include?: Include;
+  sortBy?: 'name' | 'ordinalPosition';
+  sortOrder?: 'asc' | 'desc';
 };
 
 export const getTableColumnsById = async (
