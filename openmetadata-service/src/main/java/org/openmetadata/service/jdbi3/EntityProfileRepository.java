@@ -25,7 +25,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
 public class EntityProfileRepository extends EntityTimeSeriesRepository<EntityProfile> {
-  public static final String COLLECTION_PATH = "v1/entity/profiles";
+  public static final String COLLECTION_PATH = "/v1/entity/profiles";
   public static final EntityProfileMapper entityProfileMapper = new EntityProfileMapper();
 
   public EntityProfileRepository() {

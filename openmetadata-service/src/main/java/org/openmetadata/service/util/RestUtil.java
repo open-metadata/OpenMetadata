@@ -77,6 +77,7 @@ public final class RestUtil {
         nullOrEmpty(urlConfiguration.getOpenMetadataUrl())
             ? uriInfo.getBaseUri().toString()
             : urlConfiguration.getOpenMetadataUrl();
+    url = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     return URI.create(url + "/" + collectionPath);
   }
 
