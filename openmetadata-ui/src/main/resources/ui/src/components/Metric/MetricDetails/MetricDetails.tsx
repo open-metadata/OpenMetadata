@@ -285,7 +285,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader
-            allowRename
             isDqAlertSupported
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
