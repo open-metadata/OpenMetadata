@@ -160,7 +160,7 @@ export const ROUTES = {
   SETTINGS_WITH_TAB_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_FQN}`,
   SETTINGS_WITH_TAB_FQN_ACTION: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ACTION}`,
   SETTINGS_EDIT_EMAIL_CONFIG: `/settings/OpenMetadata/email/edit-email-configuration`,
-  COLUMN_BULK_OPERATIONS: `/settings/preferences/columnBulkOperations`,
+  COLUMN_BULK_OPERATIONS: `/column-bulk-operations`,
   STORE: '/store',
   FEEDS: '/feeds',
   DUMMY: '/dummy',

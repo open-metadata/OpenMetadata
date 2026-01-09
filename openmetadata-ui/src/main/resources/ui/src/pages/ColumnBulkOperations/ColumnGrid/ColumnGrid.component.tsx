@@ -11,29 +11,57 @@
  *  limitations under the License.
  */
 
-import { DownOutlined, EditOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons';
-import { Button, Card, Checkbox, Col, Drawer, Form, Input, Modal, Row, Select, Space, Spin, Statistic, Tag, Tooltip, Typography } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import DataGrid, { Column, RenderCellProps, RenderHeaderCellProps } from 'react-data-grid';
+import {
+  DownOutlined,
+  EditOutlined,
+  RightOutlined,
+  SearchOutlined,
+} from '@ant-design/icons';
+import {
+  Button,
+  Checkbox,
+  Drawer,
+  Form,
+  Input,
+  Select,
+  Spin,
+  Switch,
+  Tag,
+  Typography,
+} from 'antd';
+import { debounce } from 'lodash';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import DataGrid, { Column, RenderCellProps } from 'react-data-grid';
+import 'react-data-grid/lib/styles.css';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
+import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
+  ColumnChild,
   ColumnGridItem,
-  ColumnMetadataGroup,
+  ColumnOccurrenceRef,
 } from '../../../generated/api/data/columnGridResponse';
-import { TagLabel } from '../../../generated/type/tagLabel';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import {
   BulkColumnUpdateRequest,
+  bulkUpdateColumnsAsync,
   ColumnUpdate,
   getColumnGrid,
-  bulkUpdateColumnsAsync,
 } from '../../../rest/columnAPI';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import {
   ColumnGridFilters,
@@ -41,19 +69,25 @@ import {
   ColumnGridRowData,
   ColumnGridState,
 } from './ColumnGrid.interface';
-import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
-import { TagSource } from '../../../generated/type/tagLabel';
-import tagClassBase from '../../../utils/TagClassBase';
-import 'react-data-grid/lib/styles.css';
 import './ColumnGrid.less';
+import {
+  OccurrencesIcon,
+  PendingChangesIcon,
+  TagIcon,
+  UniqueColumnsIcon,
+} from './ColumnGridIcons';
 
 const { Text } = Typography;
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 25; // Reduced from 100 to minimize OpenSearch load
 
-const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => {
+const ColumnGrid: React.FC<ColumnGridProps> = ({
+  filters: externalFilters,
+}) => {
   const { t } = useTranslation();
-  const [serverFilters, setServerFilters] = useState<ColumnGridFilters>(externalFilters || {});
+  const [serverFilters, setServerFilters] = useState<ColumnGridFilters>(
+    externalFilters || {}
+  );
   const [gridState, setGridState] = useState<ColumnGridState>({
     rows: [],
     loading: false,
@@ -63,10 +97,13 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
     selectedRows: new Set(),
     columnFilters: {},
     quickFilter: '',
+    viewSelectedOnly: false,
   });
 
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [expandedStructRows, setExpandedStructRows] = useState<Set<string>>(
+    new Set()
+  );
   const [isUpdating, setIsUpdating] = useState(false);
   const [renderVersion, setRenderVersion] = useState(0);
   const [allRows, setAllRows] = useState<ColumnGridRowData[]>([]);
@@ -80,16 +117,142 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
   });
   const editorRef = React.useRef<EditorContentRef>(null);
   const gridWrapperRef = React.useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const [containerWidth, setContainerWidth] = useState(1200);
 
-  const handleColumnFilterChange = useCallback((column: string, value: string) => {
-    setGridState((prev) => ({
-      ...prev,
-      columnFilters: {
-        ...prev.columnFilters,
-        [column]: value,
-      },
-    }));
+  // Track container width for responsive columns
+  useLayoutEffect(() => {
+    const gridWrapper = gridWrapperRef.current;
+    if (!gridWrapper) {
+      return;
+    }
+
+    const updateWidth = () => {
+      const width = gridWrapper.clientWidth;
+      if (width > 0) {
+        setContainerWidth(width);
+      }
+    };
+
+    // Initial measurement
+    updateWidth();
+
+    // Use ResizeObserver to track size changes
+    const resizeObserver = new ResizeObserver(updateWidth);
+    resizeObserver.observe(gridWrapper);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, []);
+
+  // Helper function to build path from occurrence
+  const buildPath = (occurrence: ColumnOccurrenceRef): string => {
+    const parts: string[] = [];
+    if (occurrence.serviceName) {
+      parts.push(occurrence.serviceName);
+    }
+    if (occurrence.databaseName) {
+      parts.push(occurrence.databaseName);
+    }
+    if (occurrence.schemaName) {
+      parts.push(occurrence.schemaName);
+    }
+
+    return parts.join(' / ');
+  };
+
+  // Helper function to get unique paths from occurrences
+  const getUniquePaths = (
+    occurrences: ColumnOccurrenceRef[]
+  ): { primary: string; additionalCount: number } => {
+    const paths = new Set<string>();
+    occurrences.forEach((occ) => {
+      const path = buildPath(occ);
+      if (path) {
+        paths.add(path);
+      }
+    });
+    const pathArray = Array.from(paths);
+
+    return {
+      primary: pathArray[0] || '',
+      additionalCount: Math.max(0, pathArray.length - 1),
+    };
+  };
+
+  // Calculate coverage for description
+  const calculateCoverage = (
+    item: ColumnGridItem
+  ): { covered: number; total: number } => {
+    let covered = 0;
+    let total = 0;
+    for (const group of item.groups) {
+      total += group.occurrenceCount;
+      if (group.description && group.description.trim()) {
+        covered += group.occurrenceCount;
+      }
+    }
+
+    return { covered, total };
+  };
+
+  // Aggregate tags from all groups for parent rows
+  const aggregateTags = (item: ColumnGridItem): TagLabel[] => {
+    const tagMap = new Map<string, TagLabel>();
+    for (const group of item.groups) {
+      if (group.tags) {
+        for (const tag of group.tags) {
+          if (!tagMap.has(tag.tagFQN)) {
+            tagMap.set(tag.tagFQN, tag);
+          }
+        }
+      }
+    }
+
+    return Array.from(tagMap.values());
+  };
+
+  // Create rows for STRUCT children recursively
+  const createStructChildRows = (
+    children: ColumnChild[],
+    parentRowId: string,
+    nestingLevel: number
+  ): ColumnGridRowData[] => {
+    const rows: ColumnGridRowData[] = [];
+    for (const child of children) {
+      const childId = `${parentRowId}-struct-${child.name}`;
+      const isStructExpanded = expandedStructRows.has(childId);
+      const hasChildren = child.children && child.children.length > 0;
+
+      const childRow: ColumnGridRowData = {
+        id: childId,
+        columnName: child.name || '',
+        displayName: child.displayName,
+        description: child.description,
+        dataType: child.dataType,
+        tags: child.tags,
+        occurrenceCount: 1,
+        hasVariations: false,
+        isGroup: false,
+        isStructChild: true,
+        structParentId: parentRowId,
+        nestingLevel,
+        children: child.children,
+        isExpanded: isStructExpanded,
+      };
+      rows.push(childRow);
+
+      // Recursively add nested children if expanded
+      if (isStructExpanded && hasChildren && child.children) {
+        rows.push(
+          ...createStructChildRows(child.children, childId, nestingLevel + 1)
+        );
+      }
+    }
+
+    return rows;
+  };
 
   const handleQuickFilterChange = useCallback((value: string) => {
     setGridState((prev) => ({
@@ -101,41 +264,25 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
   const filteredRows = useMemo(() => {
     let filtered = allRows;
 
+    // If viewing selected only, filter to selected rows and their children
+    if (gridState.viewSelectedOnly) {
+      filtered = filtered.filter((row) => {
+        if (row.parentId) {
+          return gridState.selectedRows.has(row.parentId);
+        }
+
+        return gridState.selectedRows.has(row.id);
+      });
+    }
+
     if (gridState.quickFilter) {
       const searchLower = gridState.quickFilter.toLowerCase();
-      filtered = filtered.filter((row) =>
-        row.columnName?.toLowerCase().includes(searchLower) ||
-        row.displayName?.toLowerCase().includes(searchLower) ||
-        row.description?.toLowerCase().includes(searchLower) ||
-        row.dataType?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    if (gridState.columnFilters.columnName) {
-      const searchLower = gridState.columnFilters.columnName.toLowerCase();
-      filtered = filtered.filter((row) =>
-        row.columnName?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    if (gridState.columnFilters.displayName) {
-      const searchLower = gridState.columnFilters.displayName.toLowerCase();
-      filtered = filtered.filter((row) =>
-        row.displayName?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    if (gridState.columnFilters.description) {
-      const searchLower = gridState.columnFilters.description.toLowerCase();
-      filtered = filtered.filter((row) =>
-        row.description?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    if (gridState.columnFilters.dataType) {
-      const searchLower = gridState.columnFilters.dataType.toLowerCase();
-      filtered = filtered.filter((row) =>
-        row.dataType?.toLowerCase().includes(searchLower)
+      filtered = filtered.filter(
+        (row) =>
+          row.columnName?.toLowerCase().includes(searchLower) ||
+          row.displayName?.toLowerCase().includes(searchLower) ||
+          row.description?.toLowerCase().includes(searchLower) ||
+          row.dataType?.toLowerCase().includes(searchLower)
       );
     }
 
@@ -143,20 +290,24 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
     const parentRows = filtered.filter((row) => !row.parentId);
     const childRows = filtered.filter((row) => row.parentId);
 
-    // Sort parent rows alphabetically
     parentRows.sort((a, b) => a.columnName.localeCompare(b.columnName));
 
-    // Rebuild the list with children immediately following their parents
     const sorted: ColumnGridRowData[] = [];
     for (const parent of parentRows) {
       sorted.push(parent);
-      // Add children of this parent in order
-      const children = childRows.filter((child) => child.parentId === parent.id);
+      const children = childRows.filter(
+        (child) => child.parentId === parent.id
+      );
       sorted.push(...children);
     }
 
     return sorted;
-  }, [allRows, gridState.quickFilter, gridState.columnFilters]);
+  }, [
+    allRows,
+    gridState.quickFilter,
+    gridState.viewSelectedOnly,
+    gridState.selectedRows,
+  ]);
 
   const transformGridItemsToRows = useCallback(
     (items: ColumnGridItem[]): ColumnGridRowData[] => {
@@ -164,9 +315,16 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
 
       for (const item of items) {
         const hasMultipleOccurrences = item.totalOccurrences > 1;
+        const coverage = calculateCoverage(item);
+
+        // Collect all occurrences for path calculation
+        const allOccurrences: ColumnOccurrenceRef[] = [];
+        item.groups.forEach((g) => allOccurrences.push(...g.occurrences));
+        const pathInfo = getUniquePaths(allOccurrences);
 
         if (item.hasVariations && item.groups.length > 1) {
           const isExpanded = expandedRows.has(item.columnName);
+          const aggregatedTags = aggregateTags(item);
           const parentRow: ColumnGridRowData = {
             id: item.columnName,
             columnName: item.columnName,
@@ -175,13 +333,24 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
             isExpanded,
             isGroup: true,
             gridItem: item,
+            tags: aggregatedTags,
+            path: pathInfo.primary,
+            additionalPathsCount: pathInfo.additionalCount,
+            coverageCount: coverage.covered,
+            totalCount: coverage.total,
+            hasCoverage: true,
           };
           rows.push(parentRow);
 
           if (isExpanded) {
             for (const group of item.groups) {
+              const groupPathInfo = getUniquePaths(group.occurrences);
+              const childRowId = `${item.columnName}-${group.groupId}`;
+              const hasStructChildren =
+                group.children && group.children.length > 0;
+              const isStructExpanded = expandedStructRows.has(childRowId);
               const childRow: ColumnGridRowData = {
-                id: `${item.columnName}-${group.groupId}`,
+                id: childRowId,
                 columnName: item.columnName,
                 displayName: group.displayName,
                 description: group.description,
@@ -193,33 +362,62 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
                 isGroup: false,
                 parentId: item.columnName,
                 group,
+                path: groupPathInfo.primary,
+                additionalPathsCount: groupPathInfo.additionalCount,
+                children: group.children,
+                isExpanded: isStructExpanded,
               };
               rows.push(childRow);
+
+              // Add STRUCT children if expanded
+              if (isStructExpanded && hasStructChildren && group.children) {
+                rows.push(
+                  ...createStructChildRows(group.children, childRowId, 1)
+                );
+              }
             }
           }
         } else if (hasMultipleOccurrences) {
           const isExpanded = expandedRows.has(item.columnName);
           const group = item.groups[0];
+          const aggregatedTags = aggregateTags(item);
+          const hasStructChildren =
+            group?.children && group.children.length > 0;
+          const isStructExpanded = expandedStructRows.has(item.columnName);
           const parentRow: ColumnGridRowData = {
             id: item.columnName,
             columnName: item.columnName,
             displayName: group?.displayName,
             description: group?.description,
             dataType: group?.dataType,
-            tags: group?.tags,
+            tags: aggregatedTags.length > 0 ? aggregatedTags : group?.tags,
             occurrenceCount: item.totalOccurrences,
             hasVariations: false,
             isExpanded,
             isGroup: true,
             gridItem: item,
+            path: pathInfo.primary,
+            additionalPathsCount: pathInfo.additionalCount,
+            coverageCount: coverage.covered,
+            totalCount: coverage.total,
+            hasCoverage: true,
+            children: group?.children,
           };
           rows.push(parentRow);
 
+          // Add STRUCT children if expanded (for the parent row before occurrence rows)
+          if (isStructExpanded && hasStructChildren && group?.children) {
+            rows.push(
+              ...createStructChildRows(group.children, item.columnName, 1)
+            );
+          }
+
           if (isExpanded && group) {
             for (const occurrence of group.occurrences) {
+              const occPath = buildPath(occurrence);
               const occurrenceRow: ColumnGridRowData = {
                 id: `${item.columnName}-${occurrence.columnFQN}`,
-                columnName: occurrence.columnFQN,
+                columnName: item.columnName,
                 displayName: group.displayName,
                 description: group.description,
                 dataType: group.dataType,
@@ -229,12 +427,18 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
                 isGroup: false,
                 parentId: item.columnName,
                 group,
+                path: occPath,
+                additionalPathsCount: 0,
+                children: group.children,
               };
               rows.push(occurrenceRow);
             }
           }
         } else {
           const group = item.groups[0];
+          const hasStructChildren =
+            group?.children && group.children.length > 0;
+          const isStructExpanded = expandedStructRows.has(item.columnName);
           const row: ColumnGridRowData = {
             id: item.columnName,
             columnName: item.columnName,
@@ -247,18 +451,38 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
             isGroup: false,
             gridItem: item,
             group,
+            path: pathInfo.primary,
+            additionalPathsCount: pathInfo.additionalCount,
+            coverageCount: coverage.covered,
+            totalCount: coverage.total,
+            hasCoverage: true,
+            children: group?.children,
+            isExpanded: isStructExpanded,
           };
           rows.push(row);
+
+          // Add STRUCT children if expanded
+          if (isStructExpanded && hasStructChildren && group?.children) {
+            rows.push(
+              ...createStructChildRows(group.children, item.columnName, 1)
+            );
+          }
         }
       }
 
       return rows;
     },
-    [expandedRows]
+    [expandedRows, expandedStructRows]
   );
 
   const loadMoreData = useCallback(
     async (cursor?: string) => {
+      // Cancel any pending request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+
       setGridState((prev) => ({ ...prev, loading: true, error: undefined }));
 
       try {
@@ -268,16 +492,14 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
           ...serverFilters,
         });
 
-        // eslint-disable-next-line no-console
-        console.log('API Response:', {
-          columnsReturned: response.columns.length,
-          totalUniqueColumns: response.totalUniqueColumns,
-          totalOccurrences: response.totalOccurrences,
-          hasCursor: !!response.cursor,
-          cursor: response.cursor,
-        });
+        // Check if request was aborted
+        if (abortControllerRef.current?.signal.aborted) {
+          return;
+        }
 
-        setGridItems((prev) => cursor ? [...prev, ...response.columns] : response.columns);
+        setGridItems((prev) =>
+          cursor ? [...prev, ...response.columns] : response.columns
+        );
 
         setGridState((prev) => ({
           ...prev,
@@ -288,18 +510,31 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
           loading: false,
         }));
       } catch (error) {
-        showErrorToast(
-          error as Error,
-          t('server.entity-fetch-error', { entity: t('label.column-plural') })
-        );
+        // Ignore abort errors
+        if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
+        const message = t('server.entity-fetch-error', {
+          entity: t('label.column-plural'),
+        });
+        showErrorToast(message);
         setGridState((prev) => ({
           ...prev,
           loading: false,
-          error: (error as Error).message,
+          error: message,
         }));
       }
     },
     [serverFilters, t]
+  );
+
+  // Debounced server filter update to prevent rapid API calls
+  const debouncedSetServerFilters = useMemo(
+    () =>
+      debounce((newFilters: ColumnGridFilters) => {
+        setServerFilters(newFilters);
+      }, 300),
+    []
   );
 
   useEffect(() => {
@@ -310,6 +545,13 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
       hasMore: false,
     }));
     loadMoreData();
+
+    // Cleanup on unmount
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [serverFilters, loadMoreData]);
 
   useEffect(() => {
@@ -339,40 +581,85 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
         if (edits) {
           return { ...row, ...edits };
         }
+
         return row;
       });
     });
-  }, [gridItems, expandedRows, transformGridItemsToRows]);
+  }, [gridItems, expandedRows, expandedStructRows, transformGridItemsToRows]);
 
   useEffect(() => {
     const gridWrapper = gridWrapperRef.current;
-    if (!gridWrapper) return;
+    if (!gridWrapper) {
+      return;
+    }
 
-    const rdgElement = gridWrapper.querySelector('.rdg');
-    if (!rdgElement) return;
-
-    const handleScrollEvent = (event: Event) => {
-      const target = event.target as HTMLElement;
-      const scrollThreshold = target.scrollHeight - target.clientHeight - 100;
-
-      if (
-        target.scrollTop >= scrollThreshold &&
-        !gridState.loading &&
-        gridState.hasMore
-      ) {
-        loadMoreData(gridState.cursor);
+    const setupScrollListener = () => {
+      // React-data-grid uses the .rdg element itself as the scroll container
+      const rdgElement = gridWrapper.querySelector('.rdg') as HTMLElement;
+      if (!rdgElement) {
+        return null;
       }
+
+      const handleScrollEvent = () => {
+        const { scrollTop, scrollHeight, clientHeight } = rdgElement;
+        const scrollThreshold = scrollHeight - clientHeight - 150;
+
+        if (
+          scrollTop >= scrollThreshold &&
+          !gridState.loading &&
+          gridState.hasMore &&
+          gridState.cursor
+        ) {
+          loadMoreData(gridState.cursor);
+        }
+      };
+
+      rdgElement.addEventListener('scroll', handleScrollEvent);
+
+      return () => {
+        rdgElement.removeEventListener('scroll', handleScrollEvent);
+      };
     };
 
-    rdgElement.addEventListener('scroll', handleScrollEvent);
+    // Try to set up immediately
+    let cleanup = setupScrollListener();
 
-    return () => {
-      rdgElement.removeEventListener('scroll', handleScrollEvent);
-    };
-  }, [gridState.loading, gridState.hasMore, gridState.cursor, loadMoreData]);
+    // If element not found, wait a bit and try again
+    if (!cleanup) {
+      const timeoutId = setTimeout(() => {
+        cleanup = setupScrollListener();
+      }, 100);
+
+      return () => {
+        clearTimeout(timeoutId);
+        cleanup?.();
+      };
+    }
+
+    return cleanup;
+  }, [
+    gridState.loading,
+    gridState.hasMore,
+    gridState.cursor,
+    loadMoreData,
+    filteredRows.length,
+  ]);
 
   const toggleRowExpansion = useCallback((rowId: string) => {
     setExpandedRows((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(rowId)) {
+        newSet.delete(rowId);
+      } else {
+        newSet.add(rowId);
+      }
+
+      return newSet;
+    });
+  }, []);
+
+  const toggleStructExpansion = useCallback((rowId: string) => {
+    setExpandedStructRows((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(rowId)) {
         newSet.delete(rowId);
@@ -400,7 +687,9 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
   const toggleSelectAll = useCallback(() => {
     setGridState((prev) => {
       const selectableRows = filteredRows.filter((r) => !r.parentId);
-      const allSelected = selectableRows.every((r) => prev.selectedRows.has(r.id));
+      const allSelected = selectableRows.every((r) =>
+        prev.selectedRows.has(r.id)
+      );
 
       if (allSelected) {
         return { ...prev, selectedRows: new Set() };
@@ -412,11 +701,30 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
     });
   }, [filteredRows]);
 
+  const clearSelection = useCallback(() => {
+    setGridState((prev) => ({
+      ...prev,
+      selectedRows: new Set(),
+      viewSelectedOnly: false,
+    }));
+  }, []);
+
+  const toggleViewSelectedOnly = useCallback((checked: boolean) => {
+    setGridState((prev) => ({
+      ...prev,
+      viewSelectedOnly: checked,
+    }));
+  }, []);
+
   const updateRowField = useCallback(
-    (rowId: string, field: 'displayName' | 'description' | 'tags', value: string | TagLabel[]) => {
-      const fieldName = `edited${field.charAt(0).toUpperCase()}${field.slice(1)}`;
-      // eslint-disable-next-line no-console
-      console.log(`updateRowField called: rowId=${rowId}, field=${field}, fieldName=${fieldName}, value=`, value);
+    (
+      rowId: string,
+      field: 'displayName' | 'description' | 'tags',
+      value: string | TagLabel[]
+    ) => {
+      const fieldName = `edited${field.charAt(0).toUpperCase()}${field.slice(
+        1
+      )}`;
 
       setAllRows((prev) => {
         const updated = prev.map((row) =>
@@ -427,282 +735,379 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
               }
             : row
         );
-        // eslint-disable-next-line no-console
-        console.log('Updated allRows, finding row:', updated.find(r => r.id === rowId));
+
         return updated;
       });
 
       setGridState((prev) => {
         const newSelectedRows = new Set(prev.selectedRows);
         newSelectedRows.add(rowId);
+
         return { ...prev, selectedRows: newSelectedRows };
       });
 
-      // Force re-render by incrementing version
-      setRenderVersion(v => v + 1);
+      setRenderVersion((v) => v + 1);
     },
     []
   );
 
-  const renderTagsCell = useCallback((props: RenderCellProps<ColumnGridRowData>) => {
-    const { tags } = props.row;
-    if (!tags || tags.length === 0) {
-      return <span>-</span>;
+  const getColumnLink = useCallback((row: ColumnGridRowData) => {
+    let occurrence = null;
+
+    if (row.group?.occurrences && row.group.occurrences.length > 0) {
+      occurrence = row.group.occurrences[0];
+    } else if (
+      row.gridItem?.groups &&
+      row.gridItem.groups.length > 0 &&
+      row.gridItem.groups[0].occurrences.length > 0
+    ) {
+      occurrence = row.gridItem.groups[0].occurrences[0];
     }
 
-    return (
-      <Space size={4} wrap>
-        {tags.map((tag: TagLabel) => (
-          <Tag key={tag.tagFQN} className="column-grid-tag">
-            {tag.tagFQN}
-          </Tag>
-        ))}
-      </Space>
+    if (!occurrence) {
+      return null;
+    }
+
+    const entityTypeLower = occurrence.entityType.toLowerCase();
+    let entityType: EntityType;
+    let tab: string;
+
+    switch (entityTypeLower) {
+      case 'dashboarddatamodel':
+        entityType = EntityType.DASHBOARD_DATA_MODEL;
+        tab = EntityTabs.MODEL;
+
+        break;
+      case 'table':
+        entityType = EntityType.TABLE;
+        tab = EntityTabs.SCHEMA;
+
+        break;
+      case 'topic':
+        entityType = EntityType.TOPIC;
+        tab = EntityTabs.SCHEMA;
+
+        break;
+      case 'container':
+        entityType = EntityType.CONTAINER;
+        tab = EntityTabs.SCHEMA;
+
+        break;
+      case 'searchindex':
+        entityType = EntityType.SEARCH_INDEX;
+        tab = EntityTabs.FIELDS;
+
+        break;
+      default:
+        entityType = entityTypeLower as EntityType;
+        tab = EntityTabs.SCHEMA;
+    }
+
+    const columnName = occurrence.columnFQN.split('.').pop() || '';
+
+    return getEntityDetailsPath(
+      entityType,
+      occurrence.entityFQN,
+      tab,
+      columnName
     );
   }, []);
 
   const renderColumnNameCell = useCallback(
     (props: RenderCellProps<ColumnGridRowData>) => {
       const { row } = props;
+      const link = getColumnLink(row);
+      const hasStructChildren = row.children && row.children.length > 0;
+      const isStructType =
+        row.dataType?.toUpperCase() === 'STRUCT' ||
+        row.dataType?.toUpperCase() === 'MAP' ||
+        row.dataType?.toUpperCase() === 'UNION' ||
+        hasStructChildren;
 
-      const getColumnLink = () => {
-        // Try to get occurrence from the row's group, or from gridItem's first group
-        let occurrence = null;
-
-        if (row.group?.occurrences && row.group.occurrences.length > 0) {
-          occurrence = row.group.occurrences[0];
-        } else if (row.gridItem?.groups && row.gridItem.groups.length > 0 && row.gridItem.groups[0].occurrences.length > 0) {
-          occurrence = row.gridItem.groups[0].occurrences[0];
-        }
-
-        if (!occurrence) return null;
-
-        const entityTypeLower = occurrence.entityType.toLowerCase();
-        let entityType: EntityType;
-        let tab: string;
-
-        // Map entity type to correct EntityType enum value and tab
-        switch (entityTypeLower) {
-          case 'dashboarddatamodel':
-            entityType = EntityType.DASHBOARD_DATA_MODEL;
-            tab = EntityTabs.MODEL;
-            break;
-          case 'table':
-            entityType = EntityType.TABLE;
-            tab = EntityTabs.SCHEMA;
-            break;
-          case 'topic':
-            entityType = EntityType.TOPIC;
-            tab = EntityTabs.SCHEMA;
-            break;
-          case 'container':
-            entityType = EntityType.CONTAINER;
-            tab = EntityTabs.SCHEMA;
-            break;
-          case 'searchindex':
-            entityType = EntityType.SEARCH_INDEX;
-            tab = EntityTabs.FIELDS;
-            break;
-          default:
-            entityType = entityTypeLower as EntityType;
-            tab = EntityTabs.SCHEMA;
-        }
-
-        const columnName = occurrence.columnFQN.split('.').pop() || '';
-
-        return getEntityDetailsPath(
-          entityType,
-          occurrence.entityFQN,
-          tab,
-          columnName
-        );
-      };
-
-      if (row.isGroup) {
-        const link = getColumnLink();
-        const expandButton = (
-          <Button
-            size="small"
-            type="text"
-            icon={row.isExpanded ? <DownOutlined /> : <RightOutlined />}
-            onClick={() => toggleRowExpansion(row.id)}
-            style={{ marginRight: '4px', padding: '0' }}
-          />
-        );
-
-        const nameContent = <Text strong>{row.columnName}</Text>;
+      // STRUCT child rows - show with proper indentation
+      if (row.isStructChild) {
+        const nestingLevel = row.nestingLevel || 1;
+        const indentStyle = { paddingLeft: `${nestingLevel * 20}px` };
+        const structExpandButton =
+          row.children && row.children.length > 0 ? (
+            <Button
+              className="expand-button"
+              icon={row.isExpanded ? <DownOutlined /> : <RightOutlined />}
+              size="small"
+              type="text"
+              onClick={() => toggleStructExpansion(row.id)}
+            />
+          ) : null;
 
         return (
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            {expandButton}
-            {link ? (
-              <Link to={link} style={{ color: '#1890ff' }}>
-                {nameContent}
-              </Link>
-            ) : nameContent}
+          <div
+            className="column-name-cell struct-child-row"
+            style={indentStyle}>
+            {structExpandButton}
+            <Text type="secondary">{row.columnName}</Text>
           </div>
         );
       }
 
-      const link = getColumnLink();
-      const content = (
-        <span style={{ paddingLeft: row.parentId ? '32px' : '0' }}>
-          {row.columnName}
-        </span>
-      );
+      if (row.isGroup && row.occurrenceCount > 1) {
+        const expandButton = (
+          <Button
+            className="expand-button"
+            icon={row.isExpanded ? <DownOutlined /> : <RightOutlined />}
+            size="small"
+            type="text"
+            onClick={() => toggleRowExpansion(row.id)}
+          />
+        );
 
-      return link ? (
-        <Link to={link} style={{ color: '#1890ff' }}>
-          {content}
-        </Link>
-      ) : content;
-    },
-    [toggleRowExpansion]
-  );
+        const nameWithCount = `${row.columnName} (${row.occurrenceCount})`;
 
-  const renderColumnFQNCell = useCallback(
-    (props: RenderCellProps<ColumnGridRowData>) => {
-      const { row } = props;
-
-      // For child rows that are individual occurrences, the columnName is the FQN
-      if (row.parentId && row.columnName && row.columnName.includes('.')) {
-        return (
-          <Text
-            style={{
-              wordBreak: 'break-word',
-              whiteSpace: 'normal',
-              fontSize: '13px',
-              color: '#6b7280'
+        // Also show STRUCT expansion button if applicable
+        const structButton = isStructType ? (
+          <Button
+            className="expand-button struct-expand"
+            icon={
+              expandedStructRows.has(row.id) ? (
+                <DownOutlined />
+              ) : (
+                <RightOutlined />
+              )
+            }
+            size="small"
+            title="Expand nested fields"
+            type="text"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleStructExpansion(row.id);
             }}
-          >
-            {row.columnName}
-          </Text>
+          />
+        ) : null;
+
+        return (
+          <div className="column-name-cell">
+            {expandButton}
+            {link ? (
+              <Link className="column-link" to={link}>
+                {nameWithCount}
+              </Link>
+            ) : (
+              <Text strong>{nameWithCount}</Text>
+            )}
+            {structButton}
+          </div>
         );
       }
 
-      // Try to get occurrence from the row's group, or from gridItem's first group
-      let occurrence = null;
+      // Child row or single occurrence
+      const indent = row.parentId ? 'child-row' : '';
 
-      if (row.group?.occurrences && row.group.occurrences.length > 0) {
-        occurrence = row.group.occurrences[0];
-      } else if (row.gridItem?.groups && row.gridItem.groups.length > 0 && row.gridItem.groups[0].occurrences.length > 0) {
-        occurrence = row.gridItem.groups[0].occurrences[0];
-      }
+      // Show STRUCT expansion button for single occurrence STRUCT columns
+      const structExpandButton =
+        isStructType && !row.parentId ? (
+          <Button
+            className="expand-button"
+            icon={row.isExpanded ? <DownOutlined /> : <RightOutlined />}
+            size="small"
+            title="Expand nested fields"
+            type="text"
+            onClick={() => toggleStructExpansion(row.id)}
+          />
+        ) : null;
 
-      if (!occurrence) {
-        return <span>-</span>;
+      const content = (
+        <span className={indent}>
+          {link ? (
+            <Link className="column-link" to={link}>
+              {row.columnName}
+            </Link>
+          ) : (
+            row.columnName
+          )}
+        </span>
+      );
+
+      return (
+        <div className="column-name-cell">
+          {structExpandButton}
+          {content}
+        </div>
+      );
+    },
+    [
+      getColumnLink,
+      toggleRowExpansion,
+      toggleStructExpansion,
+      expandedStructRows,
+    ]
+  );
+
+  const renderPathCell = useCallback(
+    (props: RenderCellProps<ColumnGridRowData>) => {
+      const { row } = props;
+
+      if (!row.path) {
+        return <Text type="secondary">-</Text>;
       }
 
       return (
-        <Text
-          style={{
-            wordBreak: 'break-word',
-            whiteSpace: 'normal',
-            fontSize: '13px',
-            color: '#6b7280'
-          }}
-        >
-          {occurrence.columnFQN}
-        </Text>
+        <div className="path-cell">
+          <Text className="path-text">{row.path}</Text>
+          {row.additionalPathsCount && row.additionalPathsCount > 0 && (
+            <Text className="path-more" type="secondary">
+              +{row.additionalPathsCount} more
+            </Text>
+          )}
+        </div>
       );
     },
     []
   );
 
-  const renderOccurrencesCell = useCallback(
+  const renderDescriptionCell = useCallback(
     (props: RenderCellProps<ColumnGridRowData>) => {
       const { row } = props;
-      if (row.isGroup && !row.isExpanded && row.occurrenceCount > 1) {
-        const buttonText = row.hasVariations
-          ? `${row.occurrenceCount.toLocaleString()} (View Groups)`
-          : `${row.occurrenceCount.toLocaleString()} (View All)`;
+      const description = row.editedDescription ?? row.description ?? '';
+      const hasEdit = row.editedDescription !== undefined;
+
+      // Show coverage status for parent rows
+      if (
+        row.hasCoverage &&
+        row.coverageCount !== undefined &&
+        row.totalCount !== undefined
+      ) {
+        const isFull = row.coverageCount === row.totalCount;
+        const coverageText = isFull
+          ? `Full Coverage (${row.coverageCount}/${row.totalCount})`
+          : `Partial Coverage (${row.coverageCount}/${row.totalCount})`;
+
         return (
-          <Button type="link" size="small" onClick={() => toggleRowExpansion(row.id)}>
-            {buttonText}
-          </Button>
+          <Text className={isFull ? 'coverage-full' : 'coverage-partial'}>
+            {coverageText}
+          </Text>
         );
       }
 
-      return <Text>{row.occurrenceCount.toLocaleString()}</Text>;
+      // Show actual description for child rows or single occurrences
+      const displayValue = description.replace(/<[^>]*>/g, '').slice(0, 100);
+
+      return (
+        <div className={`description-cell ${hasEdit ? 'has-edit' : ''}`}>
+          <Text ellipsis>{displayValue || '-'}</Text>
+        </div>
+      );
     },
-    [toggleRowExpansion]
+    []
+  );
+
+  const renderTagsCell = useCallback(
+    (props: RenderCellProps<ColumnGridRowData>) => {
+      const { row } = props;
+      const currentTags = row.editedTags ?? row.tags ?? [];
+      const classificationTags = currentTags.filter(
+        (tag) => tag.source !== TagSource.Glossary
+      );
+
+      if (classificationTags.length === 0) {
+        return <Text type="secondary">-</Text>;
+      }
+
+      const visibleTags = classificationTags.slice(0, 2);
+      const remainingCount = classificationTags.length - 2;
+
+      return (
+        <div className="tags-cell">
+          {visibleTags.map((tag: TagLabel, index: number) => (
+            <Tag
+              className={`grid-tag ${
+                index === 0 ? 'grid-tag-primary' : 'grid-tag-secondary'
+              }`}
+              key={tag.tagFQN}>
+              {index === 0 && <TagIcon className="tag-icon" />}
+              {tag.name || tag.tagFQN.split('.').pop()}
+            </Tag>
+          ))}
+          {remainingCount > 0 && (
+            <span className="grid-tag-count">+{remainingCount}</span>
+          )}
+        </div>
+      );
+    },
+    []
+  );
+
+  const renderGlossaryTermsCell = useCallback(
+    (props: RenderCellProps<ColumnGridRowData>) => {
+      const { row } = props;
+      const currentTags = row.editedTags ?? row.tags ?? [];
+      const glossaryTerms = currentTags.filter(
+        (tag) => tag.source === TagSource.Glossary
+      );
+
+      if (glossaryTerms.length === 0) {
+        return <Text type="secondary">-</Text>;
+      }
+
+      const visibleTerms = glossaryTerms.slice(0, 1);
+      const remainingCount = glossaryTerms.length - 1;
+
+      return (
+        <div className="tags-cell">
+          {visibleTerms.map((tag: TagLabel) => (
+            <Tag className="glossary-tag" key={tag.tagFQN}>
+              {tag.name || tag.tagFQN.split('.').pop()}
+            </Tag>
+          ))}
+          {remainingCount > 0 && (
+            <span className="grid-tag-count">+{remainingCount}</span>
+          )}
+        </div>
+      );
+    },
+    []
   );
 
   const renderCheckboxCell = useCallback(
     (props: RenderCellProps<ColumnGridRowData>) => {
       const { row } = props;
-      if (row.parentId) {
-        return null;
-      }
+      // Show checkbox for both parent and child rows
+      const isSelected = row.parentId
+        ? gridState.selectedRows.has(row.parentId) ||
+          gridState.selectedRows.has(row.id)
+        : gridState.selectedRows.has(row.id);
 
       return (
         <Checkbox
-          checked={gridState.selectedRows.has(row.id)}
-          onChange={() => toggleRowSelection(row.id)}
+          checked={isSelected}
+          className={row.parentId ? 'child-checkbox' : ''}
+          onChange={() => toggleRowSelection(row.parentId || row.id)}
         />
       );
     },
     [gridState.selectedRows, toggleRowSelection]
   );
 
-  const renderCheckboxHeader = useCallback(
-    (props: RenderHeaderCellProps<ColumnGridRowData>) => {
-      const selectableRows = filteredRows.filter((r) => !r.parentId);
-      const allSelected =
-        selectableRows.length > 0 &&
-        selectableRows.every((r) => gridState.selectedRows.has(r.id));
-      const someSelected =
-        selectableRows.some((r) => gridState.selectedRows.has(r.id)) && !allSelected;
+  const renderCheckboxHeader = useCallback(() => {
+    const selectableRows = filteredRows.filter((r) => !r.parentId);
+    const allSelected =
+      selectableRows.length > 0 &&
+      selectableRows.every((r) => gridState.selectedRows.has(r.id));
+    const someSelected =
+      selectableRows.some((r) => gridState.selectedRows.has(r.id)) &&
+      !allSelected;
 
-      return (
-        <Checkbox
-          checked={allSelected}
-          indeterminate={someSelected}
-          onChange={toggleSelectAll}
-        />
-      );
-    },
-    [filteredRows, gridState.selectedRows, toggleSelectAll]
-  );
+    return (
+      <Checkbox
+        checked={allSelected}
+        indeterminate={someSelected}
+        onChange={toggleSelectAll}
+      />
+    );
+  }, [filteredRows, gridState.selectedRows, toggleSelectAll]);
 
-  const renderSimpleHeader = useCallback(
-    (columnName: string) => {
-      return () => {
-        return <div>{columnName}</div>;
-      };
-    },
-    []
-  );
-
-  const renderEditableDisplayNameCell = useCallback(
-    (props: RenderCellProps<ColumnGridRowData>) => {
-      const { row } = props;
-      const value = row.editedDisplayName ?? row.displayName ?? '';
-      const hasEdit = row.editedDisplayName !== undefined;
-
-      return (
-        <Input
-          size="small"
-          style={{ backgroundColor: hasEdit ? '#fff7e6' : 'transparent' }}
-          value={value}
-          onChange={(e) => updateRowField(row.id, 'displayName', e.target.value)}
-          placeholder="-"
-        />
-      );
-    },
-    [updateRowField]
-  );
-
-  const openEditDrawer = useCallback((row: ColumnGridRowData) => {
+  const openEditDrawer = useCallback(() => {
     setEditDrawer({
       open: true,
-      rowId: row.id,
-    });
-    // Automatically select the row when editing
-    setGridState((prev) => {
-      const newSelected = new Set(prev.selectedRows);
-      newSelected.add(row.id);
-      return { ...prev, selectedRows: newSelected };
+      rowId: null, // We'll edit all selected rows
     });
   }, []);
 
@@ -713,145 +1118,62 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
     });
   }, []);
 
-  const saveEditDrawer = useCallback(() => {
-    if (!editDrawer.rowId) return;
+  const columns: readonly Column<ColumnGridRowData>[] = useMemo(() => {
+    // Fixed widths for checkbox and minimum column widths
+    const checkboxWidth = 50;
+    const minColumnName = 150;
+    const minPath = 180;
+    const minDescription = 150;
+    const minDataType = 100;
+    const minTags = 140;
+    const minGlossary = 140;
 
-    const row = allRows.find((r) => r.id === editDrawer.rowId);
-    if (!row) return;
+    // Total minimum width
+    const totalMinWidth =
+      checkboxWidth +
+      minColumnName +
+      minPath +
+      minDescription +
+      minDataType +
+      minTags +
+      minGlossary;
 
-    const description = editorRef.current?.getEditorContent() || row.editedDescription || row.description || '';
-    updateRowField(editDrawer.rowId, 'description', description);
-    closeEditDrawer();
-  }, [editDrawer.rowId, allRows, updateRowField, closeEditDrawer]);
+    // Available width for distribution (subtract some padding)
+    const availableWidth = Math.max(containerWidth - 20, totalMinWidth);
 
-  const renderEditableDescriptionCell = useCallback(
-    (props: RenderCellProps<ColumnGridRowData>) => {
-      const { row } = props;
-      const value = row.editedDescription ?? row.description ?? '';
-      const hasEdit = row.editedDescription !== undefined;
-      const displayValue = value.replace(/<[^>]*>/g, '').slice(0, 100);
+    // Calculate proportional widths based on ratios
+    const flexibleWidth = availableWidth - checkboxWidth;
+    const columnNameWidth = Math.max(
+      minColumnName,
+      Math.floor(flexibleWidth * 0.15)
+    );
+    const pathWidth = Math.max(minPath, Math.floor(flexibleWidth * 0.2));
+    const descriptionWidth = Math.max(
+      minDescription,
+      Math.floor(flexibleWidth * 0.2)
+    );
+    const dataTypeWidth = Math.max(
+      minDataType,
+      Math.floor(flexibleWidth * 0.1)
+    );
+    const tagsWidth = Math.max(minTags, Math.floor(flexibleWidth * 0.17));
+    const glossaryWidth = Math.max(
+      minGlossary,
+      flexibleWidth -
+        columnNameWidth -
+        pathWidth -
+        descriptionWidth -
+        dataTypeWidth -
+        tagsWidth
+    );
 
-      return (
-        <div
-          style={{
-            backgroundColor: hasEdit ? '#fff7e6' : 'transparent',
-            padding: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            width: '100%',
-          }}>
-          <Text ellipsis style={{ flex: 1 }}>
-            {displayValue || '-'}
-          </Text>
-          <Button
-            size="small"
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => openEditDrawer(row)}
-          />
-        </div>
-      );
-    },
-    [openEditDrawer]
-  );
-
-  const renderEditableTagsCell = useCallback(
-    (props: RenderCellProps<ColumnGridRowData>) => {
-      const { row } = props;
-      const currentTags = row.editedTags ?? row.tags ?? [];
-      const hasEdit = row.editedTags !== undefined;
-
-      // eslint-disable-next-line no-console
-      console.log(`renderEditableTagsCell for ${row.columnName}:`, {
-        editedTags: row.editedTags,
-        tags: row.tags,
-        currentTags,
-        hasEdit
-      });
-
-      const classificationTags = currentTags.filter((tag) => tag.source !== TagSource.Glossary);
-
-      return (
-        <div
-          style={{
-            backgroundColor: hasEdit ? '#fff7e6' : 'transparent',
-            padding: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            width: '100%',
-          }}>
-          {classificationTags.length > 0 ? (
-            <Space size={4} wrap>
-              {classificationTags.map((tag: TagLabel) => (
-                <Tag key={tag.tagFQN} className="column-grid-tag">
-                  {tag.tagFQN}
-                </Tag>
-              ))}
-            </Space>
-          ) : (
-            <Text type="secondary">-</Text>
-          )}
-          <Button
-            size="small"
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => openEditDrawer(row)}
-          />
-        </div>
-      );
-    },
-    [openEditDrawer]
-  );
-
-  const renderEditableGlossaryTermsCell = useCallback(
-    (props: RenderCellProps<ColumnGridRowData>) => {
-      const { row } = props;
-      const currentTags = row.editedTags ?? row.tags ?? [];
-      const hasEdit = row.editedTags !== undefined;
-
-      const glossaryTerms = currentTags.filter((tag) => tag.source === TagSource.Glossary);
-
-      return (
-        <div
-          style={{
-            backgroundColor: hasEdit ? '#fff7e6' : 'transparent',
-            padding: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            width: '100%',
-          }}>
-          {glossaryTerms.length > 0 ? (
-            <Space size={4} wrap>
-              {glossaryTerms.map((tag: TagLabel) => (
-                <Tag key={tag.tagFQN} className="column-grid-tag">
-                  {tag.tagFQN}
-                </Tag>
-              ))}
-            </Space>
-          ) : (
-            <Text type="secondary">-</Text>
-          )}
-          <Button
-            size="small"
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => openEditDrawer(row)}
-          />
-        </div>
-      );
-    },
-    [openEditDrawer]
-  );
-
-  const columns: readonly Column<ColumnGridRowData>[] = useMemo(
-    () => [
+    return [
       {
         key: 'select',
         name: '',
-        width: 50,
+        width: checkboxWidth,
+        minWidth: checkboxWidth,
+        maxWidth: checkboxWidth,
         frozen: true,
         renderCell: renderCheckboxCell,
         renderHeaderCell: renderCheckboxHeader,
@@ -859,67 +1181,68 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
       {
         key: 'columnName',
         name: t('label.column-name'),
-        width: 200,
-        frozen: true,
+        width: columnNameWidth,
+        minWidth: minColumnName,
+        resizable: true,
         renderCell: renderColumnNameCell,
       },
       {
-        key: 'columnFQN',
-        name: t('label.fully-qualified-name'),
-        width: 350,
-        renderCell: renderColumnFQNCell,
+        key: 'path',
+        name: t('label.path'),
+        width: pathWidth,
+        minWidth: minPath,
+        resizable: true,
+        renderCell: renderPathCell,
       },
       {
         key: 'description',
         name: t('label.description'),
-        width: 300,
-        renderCell: renderEditableDescriptionCell,
+        width: descriptionWidth,
+        minWidth: minDescription,
+        resizable: true,
+        renderCell: renderDescriptionCell,
       },
       {
         key: 'dataType',
         name: t('label.data-type'),
-        width: 120,
+        width: dataTypeWidth,
+        minWidth: minDataType,
+        resizable: true,
         renderCell: (props) => props.row.dataType || '-',
       },
       {
         key: 'tags',
         name: t('label.tag-plural'),
-        width: 250,
-        renderCell: renderEditableTagsCell,
+        width: tagsWidth,
+        minWidth: minTags,
+        resizable: true,
+        renderCell: renderTagsCell,
       },
       {
         key: 'glossaryTerms',
         name: t('label.glossary-term-plural'),
-        width: 250,
-        renderCell: renderEditableGlossaryTermsCell,
+        width: glossaryWidth,
+        minWidth: minGlossary,
+        resizable: true,
+        renderCell: renderGlossaryTermsCell,
       },
-      {
-        key: 'occurrenceCount',
-        name: t('label.occurrences'),
-        width: 120,
-        renderCell: renderOccurrencesCell,
-      },
-    ],
-    [
-      t,
-      renderCheckboxCell,
-      renderCheckboxHeader,
-      renderColumnNameCell,
-      renderColumnFQNCell,
-      renderEditableDescriptionCell,
-      renderEditableTagsCell,
-      renderEditableGlossaryTermsCell,
-      renderOccurrencesCell,
-    ]
-  );
+    ];
+  }, [
+    t,
+    containerWidth,
+    renderCheckboxCell,
+    renderCheckboxHeader,
+    renderColumnNameCell,
+    renderPathCell,
+    renderDescriptionCell,
+    renderTagsCell,
+    renderGlossaryTermsCell,
+  ]);
 
   const handleBulkUpdate = useCallback(async () => {
     const selectedRowsData = allRows.filter((r) =>
       gridState.selectedRows.has(r.id)
     );
-
-    // eslint-disable-next-line no-console
-    console.log('handleBulkUpdate - selectedRowsData:', selectedRowsData);
 
     const updatesCount = selectedRowsData.filter(
       (r) =>
@@ -929,10 +1252,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
     ).length;
 
     if (updatesCount === 0) {
-      showErrorToast(
-        new Error(t('message.no-changes-to-save')),
-        t('message.no-changes-to-save')
-      );
+      showErrorToast(t('message.no-changes-to-save'));
 
       return;
     }
@@ -943,14 +1263,6 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
       const columnUpdates: ColumnUpdate[] = [];
 
       for (const row of selectedRowsData) {
-        // eslint-disable-next-line no-console
-        console.log('Processing row:', {
-          id: row.id,
-          editedDisplayName: row.editedDisplayName,
-          editedDescription: row.editedDescription,
-          editedTags: row.editedTags,
-        });
-
         if (
           row.editedDisplayName === undefined &&
           row.editedDescription === undefined &&
@@ -959,18 +1271,23 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
           continue;
         }
 
-        const occurrences = row.group?.occurrences || [];
+        // Collect all occurrences from the row
+        const allOccurrences: { columnFQN: string; entityType: string }[] = [];
 
-        if (occurrences.length === 0) {
-          if (row.gridItem && row.gridItem.groups.length > 0) {
-            const firstGroup = row.gridItem.groups[0];
-            if (firstGroup.occurrences && firstGroup.occurrences.length > 0) {
-              occurrences.push(...firstGroup.occurrences);
+        // If this is a child row with a specific group, use that group's occurrences
+        if (row.group?.occurrences && row.group.occurrences.length > 0) {
+          allOccurrences.push(...row.group.occurrences);
+        }
+        // If this is a parent row (gridItem), iterate through ALL groups
+        else if (row.gridItem && row.gridItem.groups.length > 0) {
+          for (const group of row.gridItem.groups) {
+            if (group.occurrences && group.occurrences.length > 0) {
+              allOccurrences.push(...group.occurrences);
             }
           }
         }
 
-        for (const occurrence of occurrences) {
+        for (const occurrence of allOccurrences) {
           const update: ColumnUpdate = {
             columnFQN: occurrence.columnFQN,
             entityType: occurrence.entityType,
@@ -991,24 +1308,24 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
       }
 
       if (columnUpdates.length === 0) {
-        showErrorToast(
-          new Error(t('message.no-changes-to-save')),
-          t('message.no-changes-to-save')
-        );
+        showErrorToast(t('message.no-changes-to-save'));
         setIsUpdating(false);
 
         return;
       }
 
-      // Clean up tags to only include fields expected by the backend
       const cleanedUpdates = columnUpdates.map((update) => ({
         columnFQN: update.columnFQN,
         entityType: update.entityType,
-        ...(update.displayName !== undefined && { displayName: update.displayName }),
-        ...(update.description !== undefined && { description: update.description }),
+        ...(update.displayName !== undefined && {
+          displayName: update.displayName,
+        }),
+        ...(update.description !== undefined && {
+          description: update.description,
+        }),
         ...(update.tags !== undefined && {
           tags: update.tags
-            .filter((tag) => tag.tagFQN) // Only include tags with valid tagFQN
+            .filter((tag) => tag.tagFQN)
             .map((tag) => ({
               tagFQN: tag.tagFQN,
               source: tag.source,
@@ -1022,10 +1339,15 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
         columnUpdates: cleanedUpdates,
       };
 
+      // Log the request for debugging
       // eslint-disable-next-line no-console
-      console.log('Sending bulk update request:', JSON.stringify(request, null, 2));
+      console.log('Bulk update request:', JSON.stringify(request, null, 2));
 
       const response = await bulkUpdateColumnsAsync(request);
+
+      // Log the response for debugging
+      // eslint-disable-next-line no-console
+      console.log('Bulk update response:', response);
 
       showSuccessToast(
         t('message.bulk-update-initiated', {
@@ -1035,43 +1357,35 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
       );
 
       setIsUpdating(false);
+      closeEditDrawer();
       setGridState((prev) => ({
         ...prev,
         selectedRows: new Set(),
+        viewSelectedOnly: false,
       }));
 
+      // Clear edited state and refresh data from server after a delay
+      // to allow the async backend operation to complete
       setAllRows((prev) =>
-        prev.map((r) => {
-          if (gridState.selectedRows.has(r.id)) {
-            return {
-              ...r,
-              displayName: r.editedDisplayName !== undefined ? r.editedDisplayName : r.displayName,
-              description: r.editedDescription !== undefined ? r.editedDescription : r.description,
-              tags: r.editedTags !== undefined ? r.editedTags : r.tags,
-              editedDisplayName: undefined,
-              editedDescription: undefined,
-              editedTags: undefined,
-            };
-          }
-          return r;
-        })
+        prev.map((r) => ({
+          ...r,
+          editedDisplayName: undefined,
+          editedDescription: undefined,
+          editedTags: undefined,
+        }))
       );
+
+      // Refresh grid data from server after backend processes updates
+      setTimeout(() => {
+        setGridItems([]);
+        setExpandedRows(new Set());
+        loadMoreData();
+      }, 2000);
     } catch (error) {
-      showErrorToast(error as Error, t('server.entity-updating-error'));
+      showErrorToast(t('server.entity-updating-error'));
       setIsUpdating(false);
     }
-  }, [allRows, gridState.selectedRows, t]);
-
-
-  const hasEdits = useMemo(() => {
-    return allRows.some(
-      (r) =>
-        gridState.selectedRows.has(r.id) &&
-        (r.editedDisplayName !== undefined ||
-          r.editedDescription !== undefined ||
-          r.editedTags !== undefined)
-    );
-  }, [allRows, gridState.selectedRows]);
+  }, [allRows, gridState.selectedRows, t, loadMoreData]);
 
   const editedCount = useMemo(() => {
     return allRows.filter(
@@ -1082,166 +1396,174 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
     ).length;
   }, [allRows]);
 
+  const selectedCount = gridState.selectedRows.size;
+  const hasSelection = selectedCount > 0;
+
   return (
     <div className="column-grid-container">
-      {/* Summary Cards */}
-      <Row gutter={[16, 16]} className="column-grid-summary">
-        <Col span={8}>
-          <Card>
-            <Statistic
-              title={t('label.total-unique-columns')}
-              value={gridState.totalUniqueColumns}
-              valueStyle={{ color: '#3f8600' }}
-            />
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card>
-            <Statistic
-              title={t('label.total-occurrences')}
-              value={gridState.totalOccurrences}
-              valueStyle={{ color: '#1890ff' }}
-            />
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card>
-            <Statistic
-              title={t('label.edited-columns')}
-              value={editedCount}
-              valueStyle={{ color: '#cf1322' }}
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Filter Bar */}
-      <div className="column-grid-filter-bar">
-        <Space size={8} wrap>
-          <Input
-            size="middle"
-            placeholder={t('label.search-entity', { entity: t('label.column-plural') })}
-            prefix={<SearchOutlined />}
-            value={gridState.quickFilter}
-            onChange={(e) => handleQuickFilterChange(e.target.value)}
-            allowClear
-            style={{ width: '250px' }}
-          />
-          <Select
-            mode="multiple"
-            placeholder="Asset Type"
-            style={{ minWidth: '150px' }}
-            allowClear
-            value={serverFilters.entityTypes}
-            onChange={(value) => {
-              setServerFilters((prev) => ({ ...prev, entityTypes: value }));
-            }}
-          >
-            <Select.Option value="table">{t('label.table')}</Select.Option>
-            <Select.Option value="dashboard">{t('label.dashboard')}</Select.Option>
-            <Select.Option value="topic">{t('label.topic')}</Select.Option>
-            <Select.Option value="container">{t('label.container')}</Select.Option>
-            <Select.Option value="search_index">{t('label.search-index')}</Select.Option>
-          </Select>
-          <Input
-            size="middle"
-            placeholder="Service"
-            value={serverFilters.serviceName}
-            onChange={(e) => {
-              setServerFilters((prev) => ({ ...prev, serviceName: e.target.value }));
-            }}
-            allowClear
-            style={{ width: '150px' }}
-          />
-          {serverFilters.serviceName && (
-            <>
-              <Input
-                size="middle"
-                placeholder="Database"
-                value={serverFilters.databaseName}
-                onChange={(e) => {
-                  setServerFilters((prev) => ({ ...prev, databaseName: e.target.value }));
-                }}
-                allowClear
-                style={{ width: '150px' }}
-              />
-              <Input
-                size="middle"
-                placeholder="Schema"
-                value={serverFilters.schemaName}
-                onChange={(e) => {
-                  setServerFilters((prev) => ({ ...prev, schemaName: e.target.value }));
-                }}
-                allowClear
-                style={{ width: '150px' }}
-              />
-            </>
-          )}
-          {gridState.selectedRows.size > 0 && (
-            <Text type="secondary">
-              Selected: {gridState.selectedRows.size}
-            </Text>
-          )}
-        </Space>
-        <Button
-          disabled={!hasEdits || isUpdating}
-          loading={isUpdating}
-          type="primary"
-          onClick={handleBulkUpdate}>
-          {t('label.update')} {gridState.selectedRows.size > 0 ? `(${gridState.selectedRows.size})` : ''}
-        </Button>
+      {/* Summary Stats Cards */}
+      <div className="stats-row">
+        <div className="stat-card">
+          <UniqueColumnsIcon className="stat-icon" />
+          <div className="stat-content">
+            <div className="stat-value">
+              {gridState.totalUniqueColumns.toLocaleString()}
+            </div>
+            <div className="stat-label">{t('label.total-unique-columns')}</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <OccurrencesIcon className="stat-icon" />
+          <div className="stat-content">
+            <div className="stat-value">
+              {gridState.totalOccurrences.toLocaleString()}
+            </div>
+            <div className="stat-label">{t('label.total-occurrences')}</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <PendingChangesIcon className="stat-icon" />
+          <div className="stat-content">
+            <div className="stat-value">
+              {editedCount > 0
+                ? `${editedCount}/${selectedCount || editedCount}`
+                : '0'}
+            </div>
+            <div className="stat-label">{t('label.pending-changes')}</div>
+          </div>
+        </div>
       </div>
 
-      {/* Loaded columns indicator */}
-      {gridItems.length > 0 && (
-        <div style={{
-          padding: '8px 16px',
-          background: '#fafafa',
-          border: '1px solid #e5e7eb',
-          borderRadius: '4px',
-          marginBottom: '8px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <Text type="secondary">
-            {gridState.hasMore
-              ? `Loaded ${gridItems.length} columns (more available - scroll or click below to load more)`
-              : `Loaded ${gridItems.length} columns (all loaded)`
+      {/* Filter Bar */}
+      <div className="filter-bar">
+        <div className="filter-left">
+          <Input
+            allowClear
+            className="search-input"
+            placeholder={t('label.search-columns')}
+            prefix={<SearchOutlined className="search-icon" />}
+            value={gridState.quickFilter}
+            onChange={(e) => handleQuickFilterChange(e.target.value)}
+          />
+          <Select
+            allowClear
+            className="filter-dropdown"
+            dropdownMatchSelectWidth={false}
+            mode="multiple"
+            placeholder={t('label.asset-type')}
+            suffixIcon={<DownOutlined />}
+            value={serverFilters.entityTypes}
+            onChange={(value) =>
+              debouncedSetServerFilters({
+                ...serverFilters,
+                entityTypes: value,
+              })
+            }>
+            <Select.Option value="table">{t('label.table')}</Select.Option>
+            <Select.Option value="dashboardDataModel">
+              {t('label.dashboard-data-model')}
+            </Select.Option>
+            <Select.Option value="topic">{t('label.topic')}</Select.Option>
+            <Select.Option value="container">
+              {t('label.container')}
+            </Select.Option>
+            <Select.Option value="searchIndex">
+              {t('label.search-index')}
+            </Select.Option>
+          </Select>
+          <Select
+            allowClear
+            showSearch
+            className="filter-dropdown"
+            dropdownMatchSelectWidth={false}
+            placeholder={t('label.service')}
+            suffixIcon={<DownOutlined />}
+            value={serverFilters.serviceName}
+            onChange={(value) =>
+              debouncedSetServerFilters({
+                ...serverFilters,
+                serviceName: value,
+              })
             }
-          </Text>
-          {gridState.hasMore && !gridState.loading && (
+          />
+          <Select
+            allowClear
+            className="filter-dropdown"
+            dropdownMatchSelectWidth={false}
+            placeholder={t('label.data-type')}
+            suffixIcon={<DownOutlined />}>
+            <Select.Option value="VARCHAR">VARCHAR</Select.Option>
+            <Select.Option value="INT">INT</Select.Option>
+            <Select.Option value="BOOLEAN">BOOLEAN</Select.Option>
+            <Select.Option value="TIMESTAMP">TIMESTAMP</Select.Option>
+          </Select>
+          <Select
+            allowClear
+            className="filter-dropdown"
+            dropdownMatchSelectWidth={false}
+            placeholder={t('label.metadata-status')}
+            suffixIcon={<DownOutlined />}>
+            <Select.Option value="complete">
+              {t('label.complete')}
+            </Select.Option>
+            <Select.Option value="partial">{t('label.partial')}</Select.Option>
+            <Select.Option value="missing">{t('label.missing')}</Select.Option>
+          </Select>
+        </div>
+        <div className="filter-right">
+          {hasSelection ? (
+            <>
+              <span className="view-selected-label">
+                {t('label.view-selected')} ({selectedCount})
+              </span>
+              <Switch
+                checked={gridState.viewSelectedOnly}
+                size="small"
+                onChange={toggleViewSelectedOnly}
+              />
+              <Button
+                className="edit-button-primary"
+                icon={<EditOutlined />}
+                loading={isUpdating}
+                type="primary"
+                onClick={openEditDrawer}>
+                {t('label.edit')}
+              </Button>
+              <Button
+                className="cancel-button"
+                type="link"
+                onClick={clearSelection}>
+                {t('label.cancel')}
+              </Button>
+            </>
+          ) : (
             <Button
-              size="small"
-              onClick={() => loadMoreData(gridState.cursor)}
-            >
-              Load More
+              className="edit-button"
+              icon={<EditOutlined />}
+              type="text"
+              onClick={openEditDrawer}>
+              {t('label.edit')}
             </Button>
           )}
         </div>
-      )}
+      </div>
 
       {/* Grid Table */}
       <div className="column-grid-wrapper" ref={gridWrapperRef}>
         {gridState.loading && filteredRows.length === 0 ? (
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: '600px'
-          }}>
+          <div className="loading-container">
             <Spin size="large" tip={t('label.loading')} />
           </div>
         ) : (
           <>
             <DataGrid
-              key={renderVersion}
-              className="column-grid rdg-light"
+              className="column-grid rdg-light fill-grid"
               columns={columns}
-              rows={filteredRows}
+              key={renderVersion}
+              rowHeight={72}
               rowKeyGetter={(row) => row.id}
-              style={{ height: '600px', minWidth: '100%' }}
-              rowHeight={50}
+              rows={filteredRows}
+              style={{ height: 'calc(100vh - 300px)', minHeight: '400px' }}
             />
             {gridState.loading && filteredRows.length > 0 && (
               <div className="column-grid-loading">
@@ -1258,143 +1580,163 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({ filters: externalFilters }) => 
         </div>
       )}
 
-      {/* Unified Edit Drawer */}
+      {/* Edit Drawer */}
       <Drawer
-        title={t('label.edit-entity', { entity: t('label.column') })}
-        placement="right"
-        width={720}
-        open={editDrawer.open}
-        onClose={closeEditDrawer}
+        className="edit-column-drawer"
+        extra={
+          <Button icon={<span>×</span>} type="text" onClick={closeEditDrawer} />
+        }
         footer={
-          <Space style={{ float: 'right' }}>
+          <div className="drawer-footer">
             <Button onClick={closeEditDrawer}>{t('label.cancel')}</Button>
-            <Button type="primary" onClick={saveEditDrawer}>
-              {t('label.save')}
+            <Button
+              loading={isUpdating}
+              type="primary"
+              onClick={handleBulkUpdate}>
+              {t('label.update')}
             </Button>
-          </Space>
-        }>
+          </div>
+        }
+        open={editDrawer.open}
+        placement="right"
+        title={`${t('label.edit-entity', { entity: t('label.column') })} ${
+          selectedCount > 0 ? String(selectedCount).padStart(2, '0') : ''
+        }`}
+        width="33vw"
+        onClose={closeEditDrawer}>
         {(() => {
-          const currentRow = editDrawer.rowId ? allRows.find((r) => r.id === editDrawer.rowId) : null;
-          if (!currentRow) return null;
+          const selectedRows = allRows.filter((r) =>
+            gridState.selectedRows.has(r.id)
+          );
+          const firstRow = selectedRows[0];
+          if (!firstRow && selectedCount === 0) {
+            return (
+              <Text type="secondary">
+                {t('message.select-columns-to-edit')}
+              </Text>
+            );
+          }
 
           return (
-            <Space direction="vertical" size={24} style={{ width: '100%' }}>
+            <div className="drawer-content">
               {/* Column Name */}
-              <div>
-                <Text strong>{t('label.column-name')}:</Text>
-                <div style={{ marginTop: 8 }}>
-                  <Text>{currentRow.columnName}</Text>
-                </div>
+              <div className="form-field">
+                <label className="field-label">{t('label.column-name')}</label>
+                <Input
+                  disabled
+                  className="readonly-input"
+                  value={
+                    selectedCount === 1
+                      ? firstRow?.columnName
+                      : `${selectedCount} columns selected`
+                  }
+                />
               </div>
 
               {/* Display Name */}
-              <div>
-                <Text strong>{t('label.display-name')}:</Text>
+              <div className="form-field">
+                <label className="field-label">{t('label.display-name')}</label>
                 <Input
-                  style={{ marginTop: 8 }}
-                  value={currentRow.editedDisplayName ?? currentRow.displayName ?? ''}
-                  onChange={(e) => updateRowField(currentRow.id, 'displayName', e.target.value)}
-                  placeholder={t('label.add-entity', { entity: t('label.display-name') })}
+                  placeholder={t('label.enter-display-name')}
+                  onChange={(e) => {
+                    gridState.selectedRows.forEach((rowId) => {
+                      updateRowField(rowId, 'displayName', e.target.value);
+                    });
+                  }}
                 />
               </div>
 
               {/* Description */}
-              <div>
-                <Text strong>{t('label.description')}:</Text>
-                <div style={{ marginTop: 8 }}>
-                  <RichTextEditor
-                    key={currentRow.id}
-                    ref={editorRef}
-                    initialValue={currentRow.editedDescription ?? currentRow.description ?? ''}
-                    placeHolder={t('label.add-entity', { entity: t('label.description') })}
-                  />
-                </div>
+              <div className="form-field">
+                <label className="field-label">{t('label.description')}</label>
+                <RichTextEditor
+                  initialValue=""
+                  placeHolder={t('label.add-entity', {
+                    entity: t('label.description'),
+                  })}
+                  ref={editorRef}
+                  onTextChange={(value) => {
+                    gridState.selectedRows.forEach((rowId) => {
+                      updateRowField(rowId, 'description', value);
+                    });
+                  }}
+                />
               </div>
 
               {/* Tags */}
-              <div>
-                <Text strong>{t('label.tag-plural')}:</Text>
-                <div style={{ marginTop: 8 }}>
-                  <Form>
-                    <AsyncSelectList
-                      mode="multiple"
-                      placeholder={t('label.add-entity', { entity: t('label.tag-plural') })}
-                      initialOptions={(currentRow.editedTags ?? currentRow.tags ?? [])
-                        .filter((tag) => tag.source !== TagSource.Glossary)
-                        .map((tag) => ({
-                          label: tag.tagFQN,
-                          value: tag.tagFQN,
-                          data: tag,
-                        }))}
-                      fetchOptions={tagClassBase.getTags}
-                      onChange={(selectedTags) => {
-                        // eslint-disable-next-line no-console
-                        console.log('Classification tags changed:', selectedTags);
-                        const currentTags = currentRow.editedTags ?? currentRow.tags ?? [];
-                        const glossaryTerms = currentTags.filter((tag) => tag.source === TagSource.Glossary);
-                        const newClassificationTags = selectedTags
-                          .filter((option) => option.data)
-                          .map((option) => option.data as TagLabel);
-                        const allTags = [...newClassificationTags, ...glossaryTerms];
-                        // eslint-disable-next-line no-console
-                        console.log('Updated all tags:', allTags);
-                        updateRowField(currentRow.id, 'tags', allTags);
-                      }}
-                      hasNoActionButtons
-                    />
-                  </Form>
-                </div>
+              <div className="form-field">
+                <label className="field-label">{t('label.tag-plural')}</label>
+                <Form>
+                  <AsyncSelectList
+                    hasNoActionButtons
+                    fetchOptions={tagClassBase.getTags}
+                    initialOptions={[]}
+                    mode="multiple"
+                    placeholder={t('label.select-tags')}
+                    onChange={(selectedTags) => {
+                      const options = (
+                        Array.isArray(selectedTags)
+                          ? selectedTags
+                          : [selectedTags]
+                      ) as SelectOption[];
+                      const newTags = options
+                        .filter((option: SelectOption) => option.data)
+                        .map((option: SelectOption) => option.data as TagLabel);
+                      gridState.selectedRows.forEach((rowId) => {
+                        const row = allRows.find((r) => r.id === rowId);
+                        if (row) {
+                          const currentTags = row.editedTags ?? row.tags ?? [];
+                          const glossaryTerms = currentTags.filter(
+                            (t) => t.source === TagSource.Glossary
+                          );
+                          updateRowField(rowId, 'tags', [
+                            ...newTags,
+                            ...glossaryTerms,
+                          ]);
+                        }
+                      });
+                    }}
+                  />
+                </Form>
               </div>
 
               {/* Glossary Terms */}
-              <div>
-                <Text strong>{t('label.glossary-term-plural')}:</Text>
-                <div style={{ marginTop: 8 }}>
-                  <Form>
-                    <TreeAsyncSelectList
-                      placeholder={t('label.add-entity', { entity: t('label.glossary-term-plural') })}
-                      initialOptions={(currentRow.editedTags ?? currentRow.tags ?? [])
-                        .filter((tag) => tag.source === TagSource.Glossary)
-                        .map((tag) => ({
-                          label: tag.tagFQN,
-                          value: tag.tagFQN,
-                          data: tag,
-                        }))}
-                      onChange={(selectedTerms) => {
-                        // eslint-disable-next-line no-console
-                        console.log('Glossary terms changed:', selectedTerms);
-                        const currentTags = currentRow.editedTags ?? currentRow.tags ?? [];
-                        const classificationTags = currentTags.filter((tag) => tag.source !== TagSource.Glossary);
-                        const newGlossaryTerms = selectedTerms
-                          .filter((option) => option.data)
-                          .map((option) => option.data as TagLabel);
-                        const allTags = [...classificationTags, ...newGlossaryTerms];
-                        // eslint-disable-next-line no-console
-                        console.log('Updated all tags:', allTags);
-                        updateRowField(currentRow.id, 'tags', allTags);
-                      }}
-                      hasNoActionButtons
-                    />
-                  </Form>
-                </div>
+              <div className="form-field">
+                <label className="field-label">
+                  {t('label.glossary-term-plural')}
+                </label>
+                <Form>
+                  <TreeAsyncSelectList
+                    hasNoActionButtons
+                    initialOptions={[]}
+                    placeholder={t('label.select-tags')}
+                    onChange={(selectedTerms) => {
+                      const options = (
+                        Array.isArray(selectedTerms)
+                          ? selectedTerms
+                          : [selectedTerms]
+                      ) as SelectOption[];
+                      const newTerms = options
+                        .filter((option: SelectOption) => option.data)
+                        .map((option: SelectOption) => option.data as TagLabel);
+                      gridState.selectedRows.forEach((rowId) => {
+                        const row = allRows.find((r) => r.id === rowId);
+                        if (row) {
+                          const currentTags = row.editedTags ?? row.tags ?? [];
+                          const classificationTags = currentTags.filter(
+                            (t) => t.source !== TagSource.Glossary
+                          );
+                          updateRowField(rowId, 'tags', [
+                            ...classificationTags,
+                            ...newTerms,
+                          ]);
+                        }
+                      });
+                    }}
+                  />
+                </Form>
               </div>
-
-              {/* Data Type (read-only) */}
-              <div>
-                <Text strong>{t('label.data-type')}:</Text>
-                <div style={{ marginTop: 8 }}>
-                  <Text type="secondary">{currentRow.dataType || '-'}</Text>
-                </div>
-              </div>
-
-              {/* Occurrences (read-only) */}
-              <div>
-                <Text strong>{t('label.occurrences')}:</Text>
-                <div style={{ marginTop: 8 }}>
-                  <Text type="secondary">{currentRow.occurrenceCount}</Text>
-                </div>
-              </div>
-            </Space>
+            </div>
           );
         })()}
       </Drawer>

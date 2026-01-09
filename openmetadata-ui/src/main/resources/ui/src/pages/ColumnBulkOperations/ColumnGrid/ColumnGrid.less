@@ -13,119 +13,279 @@
 
 .column-grid-container {
   width: 100%;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  padding: 0;
+  overflow: hidden;
 }
 
-.column-grid-summary {
-  margin-bottom: 0;
+// Stats Row - 3 cards in a row matching Figma design
+.stats-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 8px;
 
-  .ant-card {
+  .stat-card {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    background: #ffffff;
     border: 1px solid #e5e7eb;
-    border-radius: 4px;
+    border-radius: 8px;
 
-    .ant-card-body {
-      padding: 16px;
+    .stat-icon {
+      flex-shrink: 0;
     }
 
-    .ant-statistic-title {
-      font-size: 14px;
-      color: #6b7280;
-      margin-bottom: 8px;
-      font-weight: 400;
-    }
+    .stat-content {
+      .stat-value {
+        font-size: 24px;
+        font-weight: 600;
+        color: #1f2937;
+        line-height: 1.2;
+      }
 
-    .ant-statistic-content {
-      font-size: 24px;
-      font-weight: 600;
-      color: #1f2937;
+      .stat-label {
+        font-size: 14px;
+        color: #6b7280;
+        margin-top: 4px;
+      }
     }
   }
 }
 
-.column-grid-filter-bar {
+// Filter Bar - matching Figma design
+.filter-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 4px;
-  margin-bottom: 16px;
-}
+  border-radius: 8px;
+  gap: 24px;
 
-.column-grid-filters-collapse {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
+  .filter-left {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
 
-  .ant-collapse-header {
-    padding: 16px !important;
-    font-weight: 500;
+    .search-input {
+      width: 220px;
+      height: 40px;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      padding: 8px 12px;
+
+      .ant-input {
+        font-size: 14px;
+      }
+
+      .search-icon {
+        color: #9ca3af;
+        font-size: 16px;
+      }
+
+      &:hover,
+      &:focus-within {
+        border-color: #3b82f6;
+      }
+    }
+
+    .filter-dropdown {
+      min-width: auto;
+
+      .ant-select-selector {
+        border: none !important;
+        background: transparent !important;
+        padding: 4px 8px !important;
+        height: 36px !important;
+        box-shadow: none !important;
+
+        .ant-select-selection-placeholder {
+          color: #1f2937;
+          font-weight: 500;
+          font-size: 14px;
+        }
+
+        .ant-select-selection-item {
+          color: #1f2937;
+          font-weight: 500;
+          font-size: 14px;
+        }
+      }
+
+      .ant-select-arrow {
+        color: #1f2937;
+        font-size: 10px;
+        right: 4px;
+      }
+
+      &:hover {
+        .ant-select-selector {
+          background: #f9fafb !important;
+          border-radius: 6px;
+        }
+      }
+
+      // Show count for selected filters
+      &.ant-select-multiple {
+        .ant-select-selection-overflow {
+          display: none;
+        }
+
+        .ant-select-selection-placeholder {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+
+        // Show selection count badge
+        &.ant-select-open,
+        &:not(.ant-select-customize-input) {
+          .ant-select-selector::after {
+            display: none;
+          }
+        }
+      }
+    }
   }
 
-  .ant-collapse-content-box {
-    padding: 16px;
-    background: #fafafa;
-  }
+  .filter-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
 
-  .ant-form-inline .ant-form-item {
-    margin-bottom: 16px;
+    .view-selected-label {
+      font-size: 14px;
+      color: #374151;
+      font-weight: 500;
+    }
+
+    .ant-switch {
+      margin-right: 4px;
+
+      &.ant-switch-checked {
+        background: #3b82f6;
+      }
+    }
+
+    .edit-button {
+      color: #6b7280;
+      font-weight: 500;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+
+      &:hover {
+        color: #374151;
+        background: #f3f4f6;
+      }
+    }
+
+    .edit-button-primary {
+      background: #3b82f6;
+      border-color: #3b82f6;
+      border-radius: 6px;
+      font-weight: 500;
+      height: 36px;
+
+      &:hover {
+        background: #2563eb;
+        border-color: #2563eb;
+      }
+    }
+
+    .cancel-button {
+      color: #ef4444;
+      font-weight: 500;
+      padding: 4px 8px;
+
+      &:hover {
+        color: #dc2626;
+      }
+    }
   }
 }
 
-.column-grid-stats {
-  padding: 16px 20px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
-  margin-bottom: 16px;
-}
-
+// Grid Wrapper - full width
 .column-grid-wrapper {
   position: relative;
   flex: 1;
   overflow: hidden;
   width: 100%;
   border: 1px solid #e5e7eb;
-  border-radius: 4px;
+  border-radius: 8px;
   background: #ffffff;
 
   .rdg {
-    overflow-x: auto;
     border: none;
+    overflow: auto !important;
+  }
+
+  .fill-grid {
+    block-size: 100%;
+    inline-size: 100%;
   }
 }
 
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 600px;
+}
+
+// Grid Styles
 .column-grid {
   height: 100%;
   border: none;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', sans-serif;
   --rdg-selection-color: transparent;
+  --rdg-row-height: 72px;
+  --rdg-header-row-height: 48px;
+  --rdg-background-color: #ffffff;
+  --rdg-header-background-color: #fafafa;
 
   .rdg-cell {
-    padding: 12px 16px;
+    padding: 16px 16px;
     display: flex;
     align-items: center;
     border-right: none;
     border-bottom: 1px solid #f0f0f0;
+    background-color: inherit;
+  }
+
+  // Ensure frozen columns have proper background and z-index
+  .rdg-cell-frozen {
+    background-color: #ffffff;
+    z-index: 1;
   }
 
   .rdg-header-row {
     font-weight: 500;
     background-color: #fafafa;
     border-bottom: 1px solid #e5e7eb;
-    min-height: 40px;
 
     .rdg-cell {
       background-color: #fafafa;
       padding: 12px 16px;
       align-items: center;
-      color: rgba(0, 0, 0, 0.85);
+      color: #6b7280;
       font-size: 14px;
       font-weight: 500;
       border-bottom: 1px solid #e5e7eb;
+    }
+
+    .rdg-cell-frozen {
+      background-color: #fafafa;
     }
   }
 
@@ -134,45 +294,176 @@
 
     &:hover {
       background-color: #fafafa;
+
+      .rdg-cell-frozen {
+        background-color: #fafafa;
+      }
     }
 
     &.rdg-row-selected {
-      background-color: #f0f9ff;
+      background-color: #eff6ff;
+
+      .rdg-cell-frozen {
+        background-color: #eff6ff;
+      }
     }
 
     .rdg-cell {
       font-size: 14px;
-      color: #37352f;
+      color: #374151;
       line-height: 20px;
     }
   }
+}
 
-  .ant-btn {
-    &.ant-btn-text {
-      color: #6b7280;
-      font-size: 13px;
+// Column Name Cell
+.column-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 
-      &:hover {
-        color: #1f2937;
-        background-color: #f3f4f6;
-      }
+  .expand-button {
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    color: #9ca3af;
+    font-size: 10px;
+
+    &:hover {
+      color: #374151;
+      background: #f3f4f6;
     }
   }
 
-  .tag-suggestion-container {
-    .ant-btn-text {
-      padding: 0 4px;
-      height: 24px;
-      line-height: 22px;
+  .column-link {
+    color: #3b82f6;
+    font-weight: 500;
+
+    &:hover {
+      color: #2563eb;
+      text-decoration: underline;
+    }
+  }
+
+  .child-row {
+    padding-left: 28px;
+  }
+
+  .struct-child-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #6b7280;
+  }
+
+  .struct-expand {
+    margin-left: 4px;
+    color: #9ca3af;
+    font-size: 8px;
+
+    &:hover {
+      color: #3b82f6;
     }
   }
 }
 
-.column-grid-tag {
-  margin: 2px;
-  font-size: 12px;
+// Path Cell
+.path-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  .path-text {
+    font-size: 14px;
+    color: #374151;
+  }
+
+  .path-more {
+    font-size: 12px;
+    color: #3b82f6;
+  }
 }
 
+// Description Cell
+.description-cell {
+  &.has-edit {
+    background-color: #fef3c7;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+}
+
+// Coverage status in description column
+.coverage-full {
+  color: #10b981;
+  font-weight: 500;
+}
+
+.coverage-partial {
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+// Tags Cell - matching Figma design
+.tags-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+
+  .grid-tag {
+    margin: 0;
+    padding: 2px 8px;
+    font-size: 12px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    line-height: 18px;
+
+    .tag-icon {
+      width: 12px;
+      height: 12px;
+    }
+
+    &.grid-tag-primary {
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      color: #374151;
+    }
+
+    &.grid-tag-secondary {
+      background: #4b5563;
+      border: none;
+      color: #ffffff;
+    }
+  }
+
+  .glossary-tag {
+    margin: 0;
+    padding: 2px 10px;
+    font-size: 12px;
+    border-radius: 4px;
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    color: #374151;
+    line-height: 18px;
+  }
+
+  .grid-tag-count {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+  }
+}
+
+// Checkbox styling - no indent for child rows, checkboxes stay aligned
+.child-checkbox {
+  // Keep checkbox aligned with parent rows
+}
+
+// Loading indicator
 .column-grid-loading {
   position: absolute;
   bottom: 20px;
@@ -184,9 +475,138 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
+// Error message
 .column-grid-error {
   padding: 12px 16px;
-  background: #fff2f0;
-  border: 1px solid #ffccc7;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
   border-radius: 8px;
+}
+
+// Edit Drawer - matching Figma design
+.edit-column-drawer {
+  .ant-drawer-content-wrapper {
+    min-width: 380px;
+    max-width: 600px;
+  }
+
+  .ant-drawer-header {
+    border-bottom: 1px solid #e5e7eb;
+    padding: 16px 24px;
+
+    .ant-drawer-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .ant-drawer-extra {
+      .ant-btn {
+        padding: 4px;
+        font-size: 18px;
+        color: #6b7280;
+
+        &:hover {
+          color: #374151;
+        }
+      }
+    }
+  }
+
+  .ant-drawer-body {
+    padding: 20px 24px;
+  }
+
+  .drawer-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    .field-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #374151;
+    }
+
+    .readonly-input {
+      background: #f9fafb;
+      color: #374151;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      height: 40px;
+    }
+
+    .ant-input {
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      height: 40px;
+
+      &::placeholder {
+        color: #9ca3af;
+      }
+
+      &:hover,
+      &:focus {
+        border-color: #3b82f6;
+      }
+    }
+
+    .ant-select {
+      .ant-select-selector {
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
+        min-height: 40px;
+
+        &:hover {
+          border-color: #3b82f6;
+        }
+      }
+    }
+  }
+
+  .ant-drawer-footer {
+    border-top: 1px solid #e5e7eb;
+    padding: 16px 24px;
+  }
+
+  .drawer-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+
+    .ant-btn {
+      min-width: 80px;
+      height: 36px;
+      border-radius: 6px;
+      font-weight: 500;
+    }
+
+    .ant-btn-default {
+      color: #3b82f6;
+      border: none;
+      box-shadow: none;
+      background: transparent;
+
+      &:hover {
+        color: #2563eb;
+        background: transparent;
+      }
+    }
+
+    .ant-btn-primary {
+      background: #3b82f6;
+      border-color: #3b82f6;
+
+      &:hover {
+        background: #2563eb;
+        border-color: #2563eb;
+      }
+    }
+  }
 }

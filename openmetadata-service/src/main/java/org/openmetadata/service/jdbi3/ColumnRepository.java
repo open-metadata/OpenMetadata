@@ -202,6 +202,21 @@ public class ColumnRepository {
     applyColumnUpdates(column, updateColumn, TABLE_COLUMN, true);
 
     JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalTable, updatedTable);
+
+    // Debug logging
+    LOG.info(
+        "Column update - columnFQN: {}, updateColumn: displayName={}, description={}, tags={}",
+        columnFQN,
+        updateColumn.getDisplayName(),
+        updateColumn.getDescription(),
+        updateColumn.getTags() != null ? updateColumn.getTags().size() : "null");
+    LOG.info(
+        "Column after update - displayName={}, description={}, tags={}",
+        column.getDisplayName(),
+        column.getDescription(),
+        column.getTags() != null ? column.getTags().size() : "null");
+    LOG.info("JSON Patch operations: {}", jsonPatch.toJsonArray().toString());
+
     authorizeAndPatch(securityContext, TABLE, parentEntityRef, jsonPatch);
 
     RestUtil.PatchResponse<Table> patchResponse =
@@ -761,7 +776,7 @@ public class ColumnRepository {
       }
     }
 
-    result.setNumberOfRowsProcessed((int) request.getColumnUpdates().size());
+    result.setNumberOfRowsProcessed(columnUpdatesToProcess.size());
     result.setNumberOfRowsPassed((int) successCount.get());
     result.setNumberOfRowsFailed((int) failureCount.get());
     result.setSuccessRequest(successResponses);
@@ -769,7 +784,7 @@ public class ColumnRepository {
 
     if (failureCount.get() == 0) {
       result.setStatus(ApiStatus.SUCCESS);
-    } else if (failureCount.get() == request.getColumnUpdates().size()) {
+    } else if (failureCount.get() == columnUpdatesToProcess.size()) {
       result.setStatus(ApiStatus.FAILURE);
     } else {
       result.setStatus(ApiStatus.PARTIAL_SUCCESS);

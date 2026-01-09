@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
+import org.openmetadata.schema.api.data.ColumnChild;
 import org.openmetadata.schema.api.data.ColumnGridItem;
 import org.openmetadata.schema.api.data.ColumnMetadataGroup;
 import org.openmetadata.schema.api.data.ColumnOccurrenceRef;
@@ -59,6 +60,11 @@ public class ColumnMetadataGrouper {
                           : null);
                   newGroup.setOccurrenceCount(0);
                   newGroup.setOccurrences(new ArrayList<>());
+                  // Set children for STRUCT, MAP, or UNION types
+                  if (columnCtx.column.getChildren() != null
+                      && !columnCtx.column.getChildren().isEmpty()) {
+                    newGroup.setChildren(convertToColumnChildren(columnCtx.column.getChildren()));
+                  }
                   return newGroup;
                 });
 
@@ -85,6 +91,25 @@ public class ColumnMetadataGrouper {
     }
 
     return gridItems;
+  }
+
+  private static List<ColumnChild> convertToColumnChildren(List<Column> columns) {
+    List<ColumnChild> children = new ArrayList<>();
+    for (Column col : columns) {
+      ColumnChild child = new ColumnChild();
+      child.setName(col.getName());
+      child.setFullyQualifiedName(col.getFullyQualifiedName());
+      child.setDisplayName(col.getDisplayName());
+      child.setDescription(col.getDescription());
+      child.setDataType(col.getDataType() != null ? col.getDataType().toString() : null);
+      child.setTags(col.getTags());
+      // Recursively convert nested children
+      if (col.getChildren() != null && !col.getChildren().isEmpty()) {
+        child.setChildren(convertToColumnChildren(col.getChildren()));
+      }
+      children.add(child);
+    }
+    return children;
   }
 
   private static String generateMetadataHash(Column column) {

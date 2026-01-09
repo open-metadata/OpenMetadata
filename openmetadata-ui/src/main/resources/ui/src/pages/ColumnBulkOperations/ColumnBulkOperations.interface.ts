@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-export interface ColumnBulkOperationsProps {
-  // Empty for now, can add props if needed
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface ColumnBulkOperationsProps {}
 
 export interface ColumnSearchFilters {
   columnName?: string;

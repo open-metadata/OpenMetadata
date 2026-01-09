@@ -17,6 +17,7 @@ import { ReactComponent as ClassificationIcon } from '../assets/svg/classificati
 import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
+import { ReactComponent as ColumnBulkIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
@@ -155,6 +156,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         redirect_url: ROUTES.METRICS,
         icon: MetricIcon,
         dataTestId: `app-bar-item-${SidebarItem.METRICS}`,
+      },
+      {
+        key: ROUTES.COLUMN_BULK_OPERATIONS,
+        title: 'label.column-bulk-operations',
+        redirect_url: ROUTES.COLUMN_BULK_OPERATIONS,
+        icon: ColumnBulkIcon,
+        dataTestId: `app-bar-item-${SidebarItem.COLUMN_BULK_OPERATIONS}`,
       },
     ],
   },

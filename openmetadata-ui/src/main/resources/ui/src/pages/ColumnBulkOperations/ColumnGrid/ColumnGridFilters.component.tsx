@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Input, Row, Select, Space } from 'antd';
+import { Button, Card, Form, Input, Select, Space } from 'antd';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ColumnGridFilters } from './ColumnGrid.interface';
@@ -41,17 +41,17 @@ const ColumnGridFiltersComponent: React.FC<ColumnGridFiltersProps> = ({
   return (
     <Card>
       <Form
+        className="gap-3"
         form={form}
         initialValues={filters}
-        layout="inline"
-        className="gap-3">
+        layout="inline">
         <Form.Item
           label={t('label.column-name-pattern')}
           name="columnNamePattern"
           style={{ minWidth: '200px' }}>
           <Input
-            placeholder={t('message.column-name-pattern-placeholder')}
             allowClear
+            placeholder={t('message.column-name-pattern-placeholder')}
           />
         </Form.Item>
         <Form.Item
@@ -64,15 +64,11 @@ const ColumnGridFiltersComponent: React.FC<ColumnGridFiltersProps> = ({
             placeholder={t('label.select-field', {
               field: t('label.entity-type-plural'),
             })}>
-            <Select.Option value="table">
-              {t('label.table')}
-            </Select.Option>
+            <Select.Option value="table">{t('label.table')}</Select.Option>
             <Select.Option value="dashboard">
               {t('label.dashboard')}
             </Select.Option>
-            <Select.Option value="topic">
-              {t('label.topic')}
-            </Select.Option>
+            <Select.Option value="topic">{t('label.topic')}</Select.Option>
             <Select.Option value="container">
               {t('label.container')}
             </Select.Option>
@@ -86,10 +82,10 @@ const ColumnGridFiltersComponent: React.FC<ColumnGridFiltersProps> = ({
           name="serviceName"
           style={{ minWidth: '180px' }}>
           <Input
+            allowClear
             placeholder={t('label.select-field', {
               field: t('label.service'),
             })}
-            allowClear
           />
         </Form.Item>
         <Form.Item
@@ -97,10 +93,10 @@ const ColumnGridFiltersComponent: React.FC<ColumnGridFiltersProps> = ({
           name="databaseName"
           style={{ minWidth: '180px' }}>
           <Input
+            allowClear
             placeholder={t('label.select-field', {
               field: t('label.database'),
             })}
-            allowClear
           />
         </Form.Item>
         <Form.Item
@@ -108,10 +104,10 @@ const ColumnGridFiltersComponent: React.FC<ColumnGridFiltersProps> = ({
           name="schemaName"
           style={{ minWidth: '180px' }}>
           <Input
+            allowClear
             placeholder={t('label.select-field', {
               field: t('label.schema'),
             })}
-            allowClear
           />
         </Form.Item>
         <Form.Item>
@@ -119,9 +115,7 @@ const ColumnGridFiltersComponent: React.FC<ColumnGridFiltersProps> = ({
             <Button type="primary" onClick={handleApplyFilters}>
               {t('label.apply-filter-plural')}
             </Button>
-            <Button onClick={handleResetFilters}>
-              {t('label.reset')}
-            </Button>
+            <Button onClick={handleResetFilters}>{t('label.reset')}</Button>
           </Space>
         </Form.Item>
       </Form>

@@ -135,12 +135,24 @@ export const searchColumns = async (
 ): Promise<GroupedColumnsResponse[]> => {
   const queryParams = new URLSearchParams();
 
-  if (params.columnName) queryParams.append('columnName', params.columnName);
-  if (params.entityTypes) queryParams.append('entityTypes', params.entityTypes);
-  if (params.serviceName) queryParams.append('serviceName', params.serviceName);
-  if (params.databaseName) queryParams.append('databaseName', params.databaseName);
-  if (params.schemaName) queryParams.append('schemaName', params.schemaName);
-  if (params.domainId) queryParams.append('domainId', params.domainId);
+  if (params.columnName) {
+    queryParams.append('columnName', params.columnName);
+  }
+  if (params.entityTypes) {
+    queryParams.append('entityTypes', params.entityTypes);
+  }
+  if (params.serviceName) {
+    queryParams.append('serviceName', params.serviceName);
+  }
+  if (params.databaseName) {
+    queryParams.append('databaseName', params.databaseName);
+  }
+  if (params.schemaName) {
+    queryParams.append('schemaName', params.schemaName);
+  }
+  if (params.domainId) {
+    queryParams.append('domainId', params.domainId);
+  }
 
   const response = await APIClient.get<GroupedColumnsResponse[]>(
     `/columns/search?${queryParams.toString()}`
@@ -176,12 +188,24 @@ export const exportColumnsCSV = async (
 ): Promise<string> => {
   const queryParams = new URLSearchParams();
 
-  if (params.columnName) queryParams.append('columnName', params.columnName);
-  if (params.entityTypes) queryParams.append('entityTypes', params.entityTypes);
-  if (params.serviceName) queryParams.append('serviceName', params.serviceName);
-  if (params.databaseName) queryParams.append('databaseName', params.databaseName);
-  if (params.schemaName) queryParams.append('schemaName', params.schemaName);
-  if (params.domainId) queryParams.append('domainId', params.domainId);
+  if (params.columnName) {
+    queryParams.append('columnName', params.columnName);
+  }
+  if (params.entityTypes) {
+    queryParams.append('entityTypes', params.entityTypes);
+  }
+  if (params.serviceName) {
+    queryParams.append('serviceName', params.serviceName);
+  }
+  if (params.databaseName) {
+    queryParams.append('databaseName', params.databaseName);
+  }
+  if (params.schemaName) {
+    queryParams.append('schemaName', params.schemaName);
+  }
+  if (params.domainId) {
+    queryParams.append('domainId', params.domainId);
+  }
 
   const response = await APIClient.get<string>(
     `/columns/export?${queryParams.toString()}`,
@@ -198,12 +222,24 @@ export const importColumnsCSV = async (
 ): Promise<CsvImportResult> => {
   const queryParams = new URLSearchParams();
 
-  if (params.dryRun !== undefined) queryParams.append('dryRun', String(params.dryRun));
-  if (params.entityTypes) queryParams.append('entityTypes', params.entityTypes);
-  if (params.serviceName) queryParams.append('serviceName', params.serviceName);
-  if (params.databaseName) queryParams.append('databaseName', params.databaseName);
-  if (params.schemaName) queryParams.append('schemaName', params.schemaName);
-  if (params.domainId) queryParams.append('domainId', params.domainId);
+  if (params.dryRun !== undefined) {
+    queryParams.append('dryRun', String(params.dryRun));
+  }
+  if (params.entityTypes) {
+    queryParams.append('entityTypes', params.entityTypes);
+  }
+  if (params.serviceName) {
+    queryParams.append('serviceName', params.serviceName);
+  }
+  if (params.databaseName) {
+    queryParams.append('databaseName', params.databaseName);
+  }
+  if (params.schemaName) {
+    queryParams.append('schemaName', params.schemaName);
+  }
+  if (params.domainId) {
+    queryParams.append('domainId', params.domainId);
+  }
 
   const response = await APIClient.post<string, AxiosResponse<CsvImportResult>>(
     `/columns/import?${queryParams.toString()}`,
@@ -221,19 +257,28 @@ export const importColumnsCSVAsync = async (
 ): Promise<CSVImportResponse> => {
   const queryParams = new URLSearchParams();
 
-  if (params.entityTypes) queryParams.append('entityTypes', params.entityTypes);
-  if (params.serviceName) queryParams.append('serviceName', params.serviceName);
-  if (params.databaseName) queryParams.append('databaseName', params.databaseName);
-  if (params.schemaName) queryParams.append('schemaName', params.schemaName);
-  if (params.domainId) queryParams.append('domainId', params.domainId);
+  if (params.entityTypes) {
+    queryParams.append('entityTypes', params.entityTypes);
+  }
+  if (params.serviceName) {
+    queryParams.append('serviceName', params.serviceName);
+  }
+  if (params.databaseName) {
+    queryParams.append('databaseName', params.databaseName);
+  }
+  if (params.schemaName) {
+    queryParams.append('schemaName', params.schemaName);
+  }
+  if (params.domainId) {
+    queryParams.append('domainId', params.domainId);
+  }
 
-  const response = await APIClient.post<string, AxiosResponse<CSVImportResponse>>(
-    `/columns/import-async?${queryParams.toString()}`,
-    params.csv,
-    {
-      headers: { 'Content-Type': 'text/plain' },
-    }
-  );
+  const response = await APIClient.post<
+    string,
+    AxiosResponse<CSVImportResponse>
+  >(`/columns/import-async?${queryParams.toString()}`, params.csv, {
+    headers: { 'Content-Type': 'text/plain' },
+  });
 
   return response.data;
 };
@@ -253,14 +298,24 @@ export const getColumnGrid = async (
 ): Promise<ColumnGridResponse> => {
   const queryParams = new URLSearchParams();
 
-  if (params.size) queryParams.append('size', String(params.size));
-  if (params.cursor) queryParams.append('cursor', params.cursor);
+  if (params.size) {
+    queryParams.append('size', String(params.size));
+  }
+  if (params.cursor) {
+    queryParams.append('cursor', params.cursor);
+  }
   if (params.entityTypes && params.entityTypes.length > 0) {
     queryParams.append('entityTypes', params.entityTypes.join(','));
   }
-  if (params.serviceName) queryParams.append('serviceName', params.serviceName);
-  if (params.databaseName) queryParams.append('databaseName', params.databaseName);
-  if (params.schemaName) queryParams.append('schemaName', params.schemaName);
+  if (params.serviceName) {
+    queryParams.append('serviceName', params.serviceName);
+  }
+  if (params.databaseName) {
+    queryParams.append('databaseName', params.databaseName);
+  }
+  if (params.schemaName) {
+    queryParams.append('schemaName', params.schemaName);
+  }
   if (params.columnNamePattern) {
     queryParams.append('columnNamePattern', params.columnNamePattern);
   }

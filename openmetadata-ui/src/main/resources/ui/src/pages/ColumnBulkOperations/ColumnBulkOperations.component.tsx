@@ -10,17 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space, Typography } from 'antd';
-import React from 'react';
+import { Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { ColumnBulkOperationsProps } from './ColumnBulkOperations.interface';
 import './ColumnBulkOperations.less';
 import ColumnGrid from './ColumnGrid/ColumnGrid.component';
 
 const { Title, Paragraph } = Typography;
 
-const ColumnBulkOperations = (props: ColumnBulkOperationsProps) => {
+const ColumnBulkOperations = () => {
   const { t } = useTranslation();
 
   return (
@@ -28,7 +26,7 @@ const ColumnBulkOperations = (props: ColumnBulkOperationsProps) => {
       <div className="column-bulk-operations-container">
         <div className="column-bulk-operations-header">
           <div>
-            <Title level={3} className="m-b-xs">
+            <Title className="m-b-xs" level={3}>
               {t('label.column-bulk-operations')}
             </Title>
             <Paragraph className="text-grey-muted m-b-0">

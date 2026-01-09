@@ -88,6 +88,44 @@ export interface ColumnMetadataGroup {
      * Tags (common across all columns in this group).
      */
     tags?: TagLabel[];
+    /**
+     * Nested columns for STRUCT, MAP, or UNION data types.
+     */
+    children?: ColumnChild[];
+}
+
+/**
+ * A child column within a STRUCT, MAP, or UNION type.
+ */
+export interface ColumnChild {
+    /**
+     * Name of the child column.
+     */
+    name: string;
+    /**
+     * Fully qualified name of the child column.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Display name of the child column.
+     */
+    displayName?: string;
+    /**
+     * Description of the child column.
+     */
+    description?: string;
+    /**
+     * Data type of the child column.
+     */
+    dataType?: string;
+    /**
+     * Tags on the child column.
+     */
+    tags?: TagLabel[];
+    /**
+     * Nested children for deeply nested structures.
+     */
+    children?: ColumnChild[];
 }
 
 /**

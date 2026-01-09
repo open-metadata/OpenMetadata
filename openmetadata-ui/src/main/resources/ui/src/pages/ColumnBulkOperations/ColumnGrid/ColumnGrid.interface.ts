@@ -12,6 +12,7 @@
  */
 
 import {
+  ColumnChild,
   ColumnGridItem,
   ColumnMetadataGroup,
 } from '../../../generated/api/data/columnGridResponse';
@@ -48,6 +49,18 @@ export interface ColumnGridRowData {
   editedDisplayName?: string;
   editedDescription?: string;
   editedTags?: TagLabel[];
+  // Path information for display
+  path?: string;
+  additionalPathsCount?: number;
+  // Coverage information
+  coverageCount?: number;
+  totalCount?: number;
+  hasCoverage?: boolean;
+  // STRUCT nested children
+  children?: ColumnChild[];
+  isStructChild?: boolean;
+  structParentId?: string;
+  nestingLevel?: number;
 }
 
 export interface ColumnGridState {
@@ -61,6 +74,7 @@ export interface ColumnGridState {
   selectedRows: Set<string>;
   columnFilters: ColumnFilters;
   quickFilter: string;
+  viewSelectedOnly: boolean;
 }
 
 export interface ColumnFilters {

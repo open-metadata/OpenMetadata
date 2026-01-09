@@ -329,6 +329,17 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
       column.setTags(tags);
     }
 
+    // Parse children for STRUCT, MAP, or UNION data types
+    JsonNode childrenData = columnData.get("children");
+    if (childrenData != null && childrenData.isArray() && !childrenData.isEmpty()) {
+      List<Column> children = new ArrayList<>();
+      for (JsonNode childData : childrenData) {
+        Column childColumn = parseColumn(childData, columnFQN);
+        children.add(childColumn);
+      }
+      column.setChildren(children);
+    }
+
     return column;
   }
 

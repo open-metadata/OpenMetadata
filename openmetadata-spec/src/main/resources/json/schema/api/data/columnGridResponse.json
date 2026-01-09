@@ -98,9 +98,59 @@
           "items": {
             "$ref": "#/definitions/columnOccurrenceRef"
           }
+        },
+        "children": {
+          "description": "Nested columns for STRUCT, MAP, or UNION data types.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnChild"
+          }
         }
       },
       "required": ["groupId", "occurrenceCount", "occurrences"],
+      "additionalProperties": false
+    },
+    "columnChild": {
+      "javaType": "org.openmetadata.schema.api.data.ColumnChild",
+      "description": "A child column within a STRUCT, MAP, or UNION type.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name of the child column.",
+          "type": "string"
+        },
+        "fullyQualifiedName": {
+          "description": "Fully qualified name of the child column.",
+          "type": "string"
+        },
+        "displayName": {
+          "description": "Display name of the child column.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Description of the child column.",
+          "$ref": "../../type/basic.json#/definitions/markdown"
+        },
+        "dataType": {
+          "description": "Data type of the child column.",
+          "type": "string"
+        },
+        "tags": {
+          "description": "Tags on the child column.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          }
+        },
+        "children": {
+          "description": "Nested children for deeply nested structures.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnChild"
+          }
+        }
+      },
+      "required": ["name"],
       "additionalProperties": false
     },
     "columnOccurrenceRef": {
