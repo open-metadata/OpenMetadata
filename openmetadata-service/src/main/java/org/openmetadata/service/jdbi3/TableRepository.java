@@ -1911,19 +1911,19 @@ public class TableRepository extends EntityRepository<Table> {
         dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
       }
 
-        for (int i = 1; i < records.size(); i++) {
-          CSVRecord record = records.get(i);
-          int arrayIndex = getRecordIndex(record);
-          boolean isCreated =
-              recordCreateStatusArray != null
-                  && arrayIndex >= 0
-                  && arrayIndex < recordCreateStatusArray.length
-                  && recordCreateStatusArray[arrayIndex];
-          ChangeDescription changeDescription =
-              recordFieldChangesArray != null
-                      && arrayIndex >= 0
-                      && arrayIndex < recordFieldChangesArray.length
-                      && recordFieldChangesArray[arrayIndex] != null
+      for (int i = 1; i < records.size(); i++) {
+        CSVRecord record = records.get(i);
+        int arrayIndex = getRecordIndex(record);
+        boolean isCreated =
+            recordCreateStatusArray != null
+                && arrayIndex >= 0
+                && arrayIndex < recordCreateStatusArray.length
+                && recordCreateStatusArray[arrayIndex];
+        ChangeDescription changeDescription =
+            recordFieldChangesArray != null
+                    && arrayIndex >= 0
+                    && arrayIndex < recordFieldChangesArray.length
+                    && recordFieldChangesArray[arrayIndex] != null
                 ? recordFieldChangesArray[arrayIndex]
                 : new ChangeDescription();
         String status;

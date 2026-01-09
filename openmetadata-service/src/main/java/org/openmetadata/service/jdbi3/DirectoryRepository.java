@@ -505,12 +505,12 @@ public class DirectoryRepository extends EntityRepository<Directory> {
       if (!fieldsUpdated.isEmpty()) {
         changeDescription.setFieldsUpdated(fieldsUpdated);
       }
-        // Store change description with null check
-        if (recordFieldChangesArray != null
-            && recordIndex >= 0
-            && recordIndex < recordFieldChangesArray.length) {
-          recordFieldChangesArray[recordIndex] = changeDescription;
-        }
+      // Store change description with null check
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
 
       newDirectory
           .withParent(parentRef)
