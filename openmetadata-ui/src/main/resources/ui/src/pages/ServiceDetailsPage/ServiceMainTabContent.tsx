@@ -16,7 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import { EntityTags, PagingWithoutTotal, ServiceTypes } from 'Models';
+import { EntityTags, ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import {
   Dispatch,
@@ -87,7 +87,6 @@ interface ServiceMainTabContentProps {
   paging: Paging;
   currentPage: number;
   setFilters: (val: { [key: string]: string | undefined }) => void;
-  getServiceDetails: (paging?: PagingWithoutTotal) => void;
   saveUpdatedServiceData: (updatedData: ServicesType) => Promise<void>;
   pagingInfo: UsePagingInterface;
   isVersionPage?: boolean;
@@ -111,7 +110,6 @@ function ServiceMainTabContent({
   isVersionPage = false,
   onDataProductUpdate,
   setFilters,
-  getServiceDetails,
   setIsServiceLoading,
 }: Readonly<ServiceMainTabContentProps>) {
   const { t } = useTranslation();
@@ -254,10 +252,6 @@ function ServiceMainTabContent({
       }
       try {
         setIsServiceLoading(true);
-        pagingInfo.handlePageChange(pageNumber, {
-          cursorType: null,
-          cursorValue: undefined,
-        });
         const res = await searchQuery({
           pageNumber,
           pageSize: pagingInfo.pageSize,
@@ -293,11 +287,10 @@ function ServiceMainTabContent({
   const onServiceSearch = useCallback(
     (value: string) => {
       setFilters({ schema: isEmpty(value) ? undefined : value });
-      if (value) {
-        searchService(value);
-      } else {
-        getServiceDetails({ limit: paging.limit });
-      }
+      pagingInfo.handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
     },
     [searchService, pagingInfo]
   );
@@ -305,7 +298,6 @@ function ServiceMainTabContent({
   const tablePaginationHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (searchValue) {
-        searchService(searchValue, currentPage);
         pagingInfo.handlePageChange(currentPage);
       } else if (cursorType) {
         pagingInfo.handlePageChange(
@@ -315,7 +307,7 @@ function ServiceMainTabContent({
         );
       }
     },
-    [searchValue, searchService, pagingInfo]
+    [searchValue, pagingInfo]
   );
 
   const searchProps = useMemo(
@@ -375,6 +367,12 @@ function ServiceMainTabContent({
   useEffect(() => {
     setPageData(data);
   }, [data]);
+
+  useEffect(() => {
+    if (searchValue) {
+      searchService(searchValue, currentPage);
+    }
+  }, [searchValue, currentPage, showDeleted]);
 
   return (
     <Row className="main-tab-content" gutter={[0, 16]} wrap={false}>

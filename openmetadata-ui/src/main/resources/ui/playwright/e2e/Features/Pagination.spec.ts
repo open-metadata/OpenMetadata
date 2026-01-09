@@ -162,11 +162,13 @@ test.describe('Pagination tests for all pages', () => {
   });
 
   test.describe('Service Databases page pagination', () => {
-
+    const database = new DatabaseClass();
+    let databaseFqn: string;
     test.beforeAll(async ({ browser }) => {
   
       const { apiContext, afterAction } = await createNewPage(browser);
-
+      await database.create(apiContext);
+      databaseFqn = database.serviceResponseData.fullyQualifiedName
       for (let i = 1; i <= 20; i++) {
         const databaseName = `pw-test-db-${uuid()}-${i}`;
         await apiContext.put('/api/v1/databases', {
@@ -174,7 +176,7 @@ test.describe('Pagination tests for all pages', () => {
             name: databaseName,
             displayName: `PW Test Database ${i}`,
             description: `Test database ${i} for pagination testing`,
-            service: 'sample_data',
+            service: databaseFqn,
           },
         });
       }
@@ -186,7 +188,7 @@ test.describe('Pagination tests for all pages', () => {
       test.slow(true);
 
       await page.goto(
-        '/service/databaseServices/sample_data/databases'
+        `/service/databaseServices/${databaseFqn}/databases`
       );
       await testPaginationNavigation(page, '/api/v1/databases', 'table');
 
@@ -206,6 +208,19 @@ test.describe('Pagination tests for all pages', () => {
 
       const paginationTextContent = await paginationText.textContent();
       expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
+    });
+    test('should test Service Database Tables complete flow with search', async ({ page }) => {
+      test.slow(true);
+
+      await testCompletePaginationWithSearch({
+        page,
+        baseUrl: `/service/databaseServices/${databaseFqn}/databases`,
+        normalApiPattern: '/api/v1/databases',
+        searchApiPattern: '/api/v1/search/query',
+        searchTestTerm: 'pw',
+        searchParamName: 'schema',
+        waitForLoadSelector: 'table',
+      });
     });
   });
 

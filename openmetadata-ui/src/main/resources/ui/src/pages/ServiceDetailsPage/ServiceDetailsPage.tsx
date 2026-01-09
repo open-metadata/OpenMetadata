@@ -20,6 +20,7 @@ import {
   ServicesUpdateRequest,
   ServiceTypes,
 } from 'Models';
+import QueryString from 'qs';
 import {
   FunctionComponent,
   useCallback,
@@ -311,6 +312,21 @@ const ServiceDetailsPage: FunctionComponent = () => {
     () => !isUndefined(CollateAIAgentsWidget) && isDBService,
     [CollateAIAgentsWidget, isDBService]
   );
+
+  const { searchValue, fileSearchValue, spreadSheetSearchValue } =
+    useMemo(() => {
+      const param = location.search;
+      const searchData = QueryString.parse(
+        param.startsWith('?') ? param.substring(1) : param
+      );
+
+      return {
+        searchValue: searchData.schema,
+        fileSearchValue: searchData.file,
+        spreadSheetSearchValue: searchData.spreadsheet,
+      };
+    }, [location.search]);
+
   const handleTypeFilterChange = useCallback(
     (type: Array<{ key: string; label: string }>) => {
       setTypeFilter(type);
@@ -418,7 +434,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
           subTab = ServiceAgentSubTabs.METADATA;
         }
         if (key === getCountLabel(serviceCategory).toLowerCase()) {
-          handlePageChange(INITIAL_PAGING_VALUE);
+          handlePageChange(INITIAL_PAGING_VALUE, {
+            cursorType: null,
+            cursorValue: undefined,
+          });
           setFilters({ showDeletedTables: false });
         }
         navigate({
@@ -1207,26 +1226,37 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const onFilesPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        fetchFiles({
-          [cursorType]: filesPaging[cursorType],
-        });
+      if (fileSearchValue) {
+        handleFilesPageChange(currentPage);
+      } else if (cursorType) {
+        handleFilesPageChange(
+          currentPage,
+          { cursorType, cursorValue: filesPaging[cursorType] },
+          filesPageSize
+        );
       }
-      handleFilesPageChange(currentPage);
     },
-    [filesPaging, fetchFiles, handleFilesPageChange]
+    [filesPaging, handleFilesPageChange, fileSearchValue, filesPageSize]
   );
 
   const onSpreadsheetsPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        fetchSpreadsheets({
-          [cursorType]: spreadsheetsPaging[cursorType],
-        });
+      if (spreadSheetSearchValue) {
+        handleSpreadsheetsPageChange(currentPage);
+      } else if (cursorType) {
+        handleSpreadsheetsPageChange(
+          currentPage,
+          { cursorType, cursorValue: spreadsheetsPaging[cursorType] },
+          spreadsheetsPageSize
+        );
       }
-      handleSpreadsheetsPageChange(currentPage);
     },
-    [spreadsheetsPaging, fetchSpreadsheets, handleSpreadsheetsPageChange]
+    [
+      spreadsheetsPaging,
+      handleSpreadsheetsPageChange,
+      spreadSheetSearchValue,
+      spreadsheetsPageSize,
+    ]
   );
 
   const handleToggleDelete = useCallback((version?: number) => {
@@ -1319,13 +1349,16 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }, [isWorkflowStatusLoading, workflowStatesData?.mainInstanceState.status]);
 
   useEffect(() => {
+    if (searchValue) {
+      return;
+    }
     const { cursorType, cursorValue } = pagingInfo?.pagingCursor ?? {};
     if (cursorType && cursorValue) {
       getOtherDetails({ limit: pageSize, [cursorType]: cursorValue });
     } else {
       getOtherDetails({ limit: pageSize });
     }
-  }, [showDeleted, deleted, pageSize, pagingInfo?.pagingCursor]);
+  }, [showDeleted, deleted, pageSize, pagingInfo?.pagingCursor, searchValue]);
 
   useEffect(() => {
     // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active
@@ -1333,10 +1366,37 @@ const ServiceDetailsPage: FunctionComponent = () => {
       fetchDashboardsDataModel({ limit: 0 });
     }
     if (serviceCategory === ServiceCategory.DRIVE_SERVICES) {
-      fetchFiles({ limit: filesPageSize });
-      fetchSpreadsheets({ limit: spreadsheetsPageSize });
+      if (fileSearchValue || spreadSheetSearchValue) {
+        return;
+      }
+      const { cursorType: fileCursorType, cursorValue: fileCursorValue } =
+        filesPagingInfo?.pagingCursor ?? {};
+
+      const {
+        cursorType: spreadSheetCursorType,
+        cursorValue: spreadSheetCursorValue,
+      } = spreadsheetsPagingInfo?.pagingCursor ?? {};
+
+      fetchFiles({
+        limit: filesPageSize,
+        ...(fileCursorType && { [fileCursorType]: fileCursorValue }),
+      });
+      fetchSpreadsheets({
+        limit: spreadsheetsPageSize,
+        ...(spreadSheetCursorType && {
+          [spreadSheetCursorType]: spreadSheetCursorValue,
+        }),
+      });
     }
-  }, [showDeleted]);
+  }, [
+    showDeleted,
+    filesPagingInfo?.pagingCursor,
+    spreadsheetsPagingInfo?.pagingCursor,
+    filesPageSize,
+    spreadsheetsPageSize,
+    fileSearchValue,
+    spreadSheetSearchValue,
+  ]);
 
   useEffect(() => {
     if (servicePermission.ViewAll || servicePermission.ViewBasic) {
@@ -1570,7 +1630,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
             <ServiceMainTabContent
               currentPage={currentPage}
               data={data}
-              getServiceDetails={getOtherDetails}
               isServiceLoading={isServiceLoading}
               paging={paging}
               pagingInfo={pagingInfo}
@@ -1612,7 +1671,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
           count: filesPaging.total,
           children: (
             <FilesTable
-              fetchFiles={fetchFiles}
               files={files}
               handlePageChange={onFilesPageChange}
               handleShowDeleted={handleShowDeleted}
@@ -1631,7 +1689,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
           count: spreadsheetsPaging.total,
           children: (
             <SpreadsheetsTable
-              fetchSpreadsheets={fetchSpreadsheets}
               handlePageChange={onSpreadsheetsPageChange}
               handleShowDeleted={handleShowDeleted}
               isLoading={isSpreadsheetsLoading}
