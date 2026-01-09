@@ -352,7 +352,7 @@ test.describe('Test Definition Permissions - Data Steward', () => {
       `edit-test-definition-${systemTestDef.name}`
     );
 
-    await expect(editButton).not.toBeVisible();
+    await expect(editButton).toBeDisabled();
 
     // Verify enabled switch exists and can be toggled
     const row = dataStewardPage.locator(
