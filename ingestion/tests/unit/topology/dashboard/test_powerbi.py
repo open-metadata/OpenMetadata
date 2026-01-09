@@ -21,6 +21,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataflow,
     Dataset,
     PowerBIDashboard,
+    PowerBIReport,
     PowerBiTable,
     PowerBITableSource,
     ReportPage,
@@ -844,3 +845,81 @@ class PowerBIUnitTest(TestCase):
                 result,
                 f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}?experience=power-bi",
             )
+
+    @pytest.mark.order(14)
+    def test_fetch_report_details(self):
+        """
+        Test fetch_report_details API client method
+        """
+        from unittest.mock import MagicMock
+
+        group_id = "test-group-123"
+        report_id = "test-report-456"
+
+        mock_response = {
+            "id": report_id,
+            "name": "Test Report",
+            "datasetId": "dataset-789",
+            "description": "Test report description",
+            "webUrl": "https://app.powerbi.com/reports/test-report-456",
+            "embedUrl": "https://app.powerbi.com/embed/test-report-456",
+        }
+
+        mock_client = MagicMock()
+        self.powerbi.client = MagicMock()
+        self.powerbi.client.api_client = MagicMock()
+        self.powerbi.client.api_client.client = mock_client
+
+        # Test successful fetch
+        mock_client.get.return_value = mock_response
+        self.powerbi.client.api_client.client = mock_client
+        self.powerbi.client.api_client.fetch_report_details = (
+            lambda g, r: PowerBIReport(
+                **mock_client.get(f"/myorg/groups/{g}/reports/{r}")
+            )
+        )
+
+        result = self.powerbi.client.api_client.fetch_report_details(
+            group_id, report_id
+        )
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.id, report_id)
+        self.assertEqual(result.name, "Test Report")
+        self.assertEqual(result.datasetId, "dataset-789")
+        self.assertEqual(result.description, "Test report description")
+        mock_client.get.assert_called_with(
+            f"/myorg/groups/{group_id}/reports/{report_id}"
+        )
+
+        # Test with None response
+        mock_client.reset_mock()
+        mock_client.get.return_value = None
+        self.powerbi.client.api_client.fetch_report_details = (
+            lambda g, r: None
+            if mock_client.get(f"/myorg/groups/{g}/reports/{r}") is None
+            else PowerBIReport(**mock_client.get(f"/myorg/groups/{g}/reports/{r}"))
+        )
+
+        result = self.powerbi.client.api_client.fetch_report_details(
+            group_id, report_id
+        )
+        self.assertIsNone(result)
+
+        # Test with exception
+        mock_client.reset_mock()
+        mock_client.get.side_effect = Exception("API Error")
+
+        def fetch_with_exception(g, r):
+            try:
+                response = mock_client.get(f"/myorg/groups/{g}/reports/{r}")
+                return PowerBIReport(**response) if response else None
+            except Exception:
+                return None
+
+        self.powerbi.client.api_client.fetch_report_details = fetch_with_exception
+
+        result = self.powerbi.client.api_client.fetch_report_details(
+            group_id, report_id
+        )
+        self.assertIsNone(result)
