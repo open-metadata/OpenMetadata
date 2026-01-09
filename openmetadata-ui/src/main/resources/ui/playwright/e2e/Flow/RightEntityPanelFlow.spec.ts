@@ -24,6 +24,7 @@ import { TagClass } from '../../support/tag/TagClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
+import { MlModelClass } from '../../support/entity/MlModelClass';
 import { getApiContext, uuid } from '../../utils/common';
 import {
   createCustomPropertyForEntity,
@@ -1433,6 +1434,48 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         'target',
         '_blank'
       );
+    }
+  });
+
+  test('Admin - Overview Tab - ML Model - Add Tags, Glossary and Description', async ({
+    adminPage,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const testMlModel = new MlModelClass();
+
+    try {
+      await testMlModel.create(apiContext);
+      await testMlModel.visitEntityPage(adminPage);
+
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+
+      // Add Tag
+      // ML model uses different structure so we need to ensure we target the right panel area if needed
+      // but editTags handles specific ML model selectors now.
+      await editTags(adminPage, sharedTestTag.getTagDisplayName());
+      await expect(
+        summaryPanel.getByTestId(
+          `tag-${sharedTestClassification.data.name}.${sharedTestTag.data.name}`
+        )
+      ).toBeVisible();
+
+      // Add Glossary Term
+      await editGlossaryTerms(adminPage, sharedTestGlossaryTerm.getTermDisplayName());
+      await expect(
+        summaryPanel.getByTestId(
+          `tag-${sharedTestGlossary.data.name}.${sharedTestGlossaryTerm.data.name}`
+        )
+      ).toBeVisible();
+
+      // Add Description
+      const description = 'Updated ML Model Description';
+      // updateDescription now handles edit-button for ML models
+      await updateDescription(adminPage, description);
+      await expect(adminPage.getByText(description)).toBeVisible();
+
+    } finally {
+      await testMlModel.delete(apiContext);
+      await afterAction();
     }
   });
 

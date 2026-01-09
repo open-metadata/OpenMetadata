@@ -578,7 +578,13 @@ export const updateDescription = async (
   isModal = false,
   validationContainerTestId = 'asset-description-container'
 ) => {
-  await page.getByTestId('edit-description').click();
+  const editButton = page.locator('[data-testid="edit-description"]');
+  if (await editButton.isVisible()) {
+    await editButton.click();
+  } else {
+    // Fallback for ML Model which uses 'edit-button'
+    await page.getByTestId('edit-button').click();
+  }
   await page.locator(descriptionBox).first().click();
   await page.locator(descriptionBox).first().clear();
   await page.locator(descriptionBox).first().fill(description);
@@ -921,7 +927,7 @@ export const openColumnDetailPanel = async ({
   columnNameTestId?: string;
   entityType?: EntityType;
 }) => {
-  if (entityType === 'mlmodel') {
+  if (entityType === 'MlModel') {
     const columnName = page
       .locator(`[${rowSelector}="${columnId}"]`)
       .getByTestId(columnNameTestId)
