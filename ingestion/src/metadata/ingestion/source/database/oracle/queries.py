@@ -31,16 +31,34 @@ ORACLE_ALL_VIEW_DEFINITIONS = textwrap.dedent(
 SELECT
 LOWER(view_name) AS "view_name",
 LOWER(owner) AS "schema",
-text AS view_def
+DBMS_METADATA.GET_DDL('VIEW', view_name, owner) AS view_def
 FROM DBA_VIEWS
 WHERE owner NOT IN ('SYSTEM', 'SYS')
 UNION ALL
 SELECT
 LOWER(mview_name) AS "view_name",
 LOWER(owner) AS "schema",
-query AS view_def
+DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner) AS view_def
 FROM DBA_MVIEWS
 WHERE owner NOT IN ('SYSTEM', 'SYS')
+"""
+)
+
+ORACLE_VIEW_DEFINITIONS_BY_SCHEMA = textwrap.dedent(
+    """
+SELECT
+LOWER(view_name) AS "view_name",
+LOWER(owner) AS "schema",
+DBMS_METADATA.GET_DDL('VIEW', view_name, owner) AS view_def
+FROM DBA_VIEWS
+WHERE owner = :owner
+UNION ALL
+SELECT
+LOWER(mview_name) AS "view_name",
+LOWER(owner) AS "schema",
+DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner) AS view_def
+FROM DBA_MVIEWS
+WHERE owner = :owner
 """
 )
 
