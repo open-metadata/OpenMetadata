@@ -102,20 +102,25 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   }),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
-  getTableExpandableConfig: jest.fn(),
-  getTableColumnConfigSelections: jest
-    .fn()
-    .mockReturnValue([
-      'name',
-      'description',
-      'dataTypeDisplay',
-      'tags',
-      'glossary',
-    ]),
-  handleUpdateTableColumnSelections: jest.fn(),
-  pruneEmptyChildren: jest.fn().mockImplementation((value) => value),
-}));
+jest.mock('../../../utils/TableUtils', () => {
+  const actual = jest.requireActual('../../../utils/TableUtils');
+
+  return {
+    ...actual,
+    getTableExpandableConfig: jest.fn(),
+    getTableColumnConfigSelections: jest
+      .fn()
+      .mockReturnValue([
+        'name',
+        'description',
+        'dataTypeDisplay',
+        'tags',
+        'glossary',
+      ]),
+    handleUpdateTableColumnSelections: jest.fn(),
+    pruneEmptyChildren: jest.fn().mockImplementation((value) => value),
+  };
+});
 
 jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
   ...jest.requireActual('../../../utils/TableTags/TableTags.utils'),
@@ -163,6 +168,30 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
     .mockImplementation(() => (
       <div data-testid="error-placeholder">ErrorPlaceHolder</div>
     ))
+);
+
+jest.mock(
+  '../../Database/ColumnDetailPanel/ColumnDetailPanel.component',
+  () => ({
+    ColumnDetailPanel: jest
+      .fn()
+      .mockImplementation(() => <div data-testid="column-detail-panel" />),
+  })
+);
+
+jest.mock('../../Database/ColumnFilter/ColumnFilter.component', () => ({
+  ColumnFilter: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="column-filter" />),
+}));
+
+jest.mock(
+  '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider',
+  () => ({
+    EntityAttachmentProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+  })
 );
 
 describe('ContainerDataModel', () => {
