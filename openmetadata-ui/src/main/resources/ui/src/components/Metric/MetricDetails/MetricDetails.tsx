@@ -36,6 +36,7 @@ import {
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import metricDetailsClassBase from '../../../utils/MetricEntityUtils/MetricDetailsClassBase';
 import {
   getPrioritizedEditPermission,
@@ -270,10 +271,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.metric'),
-      })}>
+    <PageLayoutV1 pageTitle={getEntityName(metricDetails)}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader

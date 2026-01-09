@@ -2,7 +2,7 @@
 
 # Platform
 
-> **12 Components** | **68 Files** | **1246 Tests** | **1628 Scenarios** 🚀
+> **12 Components** | **69 Files** | **1274 Tests** | **1668 Scenarios** 🚀
 
 ## Table of Contents
 - [Other](#other)
@@ -104,6 +104,45 @@
 |---|-----------|-------------|
 | 1 | **Airflow** - Create Service and check the AutoPilot status | Create Service and check the AutoPilot status |
 | 2 | **Airflow** - Agents created by AutoPilot should be deleted | Agents created by AutoPilot should be deleted |
+
+</details>
+
+<details open>
+<summary>📄 <b>AuditLogs.spec.ts</b> (8 tests, 19 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/AuditLogs.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/AuditLogs.spec.ts)
+
+### Audit Logs Page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Audit Logs Page** - should display page header with correct title and subtitle | Display page header with correct title and subtitle |
+| | ↳ *Verify page header* | |
+| | ↳ *Verify page sub-header* | |
+| 2 | **Audit Logs Page** - should display all filter buttons | Display all filter buttons |
+| | ↳ *Verify User filter is visible* | |
+| | ↳ *Verify Bot filter is visible* | |
+| | ↳ *Verify Service filter is visible* | |
+| | ↳ *Verify Asset filter is visible* | |
+| 3 | **Audit Logs Page** - should display audit logs table with correct columns | Display audit logs table with correct columns |
+| | ↳ *Verify table is visible* | |
+| | ↳ *Verify table has correct columns* | |
+| 4 | **Audit Logs Page** - should open and close User filter popover | Open and close User filter popover |
+| | ↳ *Verify filter popover opens with search input* | |
+| | ↳ *Close popover by clicking filter button again* | |
+| 5 | **Audit Logs Page** - should open and close Bot filter popover | Open and close Bot filter popover |
+| | ↳ *Verify filter popover opens* | |
+| | ↳ *Close popover by clicking filter button again* | |
+| 6 | **Audit Logs Page** - should open and close Service filter popover | Open and close Service filter popover |
+| | ↳ *Verify filter popover opens* | |
+| | ↳ *Close popover by clicking filter button again* | |
+| 7 | **Audit Logs Page** - should open and close Asset filter popover | Open and close Asset filter popover |
+| | ↳ *Verify filter popover opens* | |
+| | ↳ *Close popover by clicking filter button again* | |
+| 8 | **Audit Logs Page** - should show Clear button when filter is active and clear filters | Show Clear button when filter is active and clear filters |
+| | ↳ *Clear button should not be visible initially* | |
+| | ↳ *Select a user from filter* | |
+| | ↳ *Verify Clear button appears and works* | |
 
 </details>
 
@@ -2603,7 +2642,7 @@
 ## Lineage (UI)
 
 <details open>
-<summary>📄 <b>Lineage.spec.ts</b> (22 tests, 77 scenarios)</summary>
+<summary>📄 <b>Lineage.spec.ts</b> (41 tests, 97 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Lineage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Lineage.spec.ts)
 
@@ -2634,6 +2673,33 @@
 | | ↳ *5. Enable the filter for table2 by clicking filter button* | |
 | | ↳ *6. Verify that only columns with lineage are visible in table2* | |
 | | ↳ *7. Verify new edges are now visible.* | |
+
+### Verify custom properties tab visibility logic for supported entity types
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: table | Custom properties tab IS visible for supported type: table |
+| 2 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: topic | Custom properties tab IS visible for supported type: topic |
+| 3 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: dashboard | Custom properties tab IS visible for supported type: dashboard |
+| 4 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: pipeline | Custom properties tab IS visible for supported type: pipeline |
+| 5 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: mlmodel | Custom properties tab IS visible for supported type: mlmodel |
+| 6 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: container | Custom properties tab IS visible for supported type: container |
+| 7 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: searchIndex | Custom properties tab IS visible for supported type: searchIndex |
+| 8 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: apiEndpoint | Custom properties tab IS visible for supported type: apiEndpoint |
+| 9 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: metric | Custom properties tab IS visible for supported type: metric |
+| 10 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: chart | Custom properties tab IS visible for supported type: chart |
+
+### Verify custom properties tab is NOT visible for unsupported entity types in platform lineage
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Verify custom properties tab is NOT visible for unsupported entity types in platform lineage** - Verify custom properties tab is NOT visible for databaseService in platform lineage | Custom properties tab is NOT visible for databaseService in platform lineage |
+| 2 | **Verify custom properties tab is NOT visible for unsupported entity types in platform lineage** - Verify custom properties tab is NOT visible for messagingService in platform lineage | Custom properties tab is NOT visible for messagingService in platform lineage |
+| 3 | **Verify custom properties tab is NOT visible for unsupported entity types in platform lineage** - Verify custom properties tab is NOT visible for dashboardService in platform lineage | Custom properties tab is NOT visible for dashboardService in platform lineage |
+| 4 | **Verify custom properties tab is NOT visible for unsupported entity types in platform lineage** - Verify custom properties tab is NOT visible for pipelineService in platform lineage | Custom properties tab is NOT visible for pipelineService in platform lineage |
+| 5 | **Verify custom properties tab is NOT visible for unsupported entity types in platform lineage** - Verify custom properties tab is NOT visible for mlmodelService in platform lineage | Custom properties tab is NOT visible for mlmodelService in platform lineage |
+| 6 | **Verify custom properties tab is NOT visible for unsupported entity types in platform lineage** - Verify custom properties tab is NOT visible for storageService in platform lineage | Custom properties tab is NOT visible for storageService in platform lineage |
+| 7 | **Verify custom properties tab is NOT visible for unsupported entity types in platform lineage** - Verify custom properties tab is NOT visible for apiService in platform lineage | Custom properties tab is NOT visible for apiService in platform lineage |
 
 ### Standalone Tests
 
@@ -2708,6 +2774,10 @@
 | 17 | Verify there is no traced nodes and columns on exiting edit mode | There is no traced nodes and columns on exiting edit mode |
 | | ↳ *Verify node tracing is cleared on exiting edit mode* | |
 | | ↳ *Verify column tracing is cleared on exiting edit mode* | |
+| 18 | Verify node full path is present as breadcrumb in lineage node | Node full path is present as breadcrumb in lineage node |
+| 19 | Verify custom properties tab visibility in lineage sidebar | Custom properties tab visibility in lineage sidebar |
+| | ↳ *Create lineage connections* | |
+| | ↳ *Navigate to lineage tab and verify custom properties tab in sidebar* | |
 
 </details>
 
@@ -2912,7 +2982,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>UserDetails.spec.ts</b> (8 tests, 8 scenarios)</summary>
+<summary>📄 <b>UserDetails.spec.ts</b> (9 tests, 9 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/UserDetails.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/UserDetails.spec.ts)
 
@@ -2928,6 +2998,7 @@
 | 6 | **User with different Roles** - Admin user can get all the roles hierarchy and edit roles | Admin user can get all the roles hierarchy and edit roles |
 | 7 | **User with different Roles** - Non admin user should be able to edit display name and description on own profile | Non admin user should be able to edit display name and description on own profile |
 | 8 | **User with different Roles** - Non admin user should not be able to edit the persona or roles | Non admin user should not be able to edit the persona or roles |
+| 9 | **User with different Roles** - My Data Tab - AssetsTabs search functionality | My Data Tab - AssetsTabs search functionality |
 
 </details>
 

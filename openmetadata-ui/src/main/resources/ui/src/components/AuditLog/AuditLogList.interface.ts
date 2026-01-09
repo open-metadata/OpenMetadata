@@ -11,19 +11,13 @@
  *  limitations under the License.
  */
 
-export interface ChipOption {
-  value: string;
-  label: string;
+import { AuditLogEntry } from '../../types/auditLogs.interface';
+
+export interface AuditLogListProps {
+  logs: AuditLogEntry[];
+  isLoading?: boolean;
 }
 
-export interface ChipSelectProps {
-  options: ChipOption[];
-  value: string;
-  onChange: (value: string) => void;
-  label?: string;
-  required?: boolean;
-  error?: boolean;
-  helperText?: string;
-  disabled?: boolean;
-  dataTestId?: string;
+export interface AuditLogListItemProps {
+  log: AuditLogEntry;
 }

@@ -425,7 +425,6 @@ test.describe('Teams Page', () => {
     await page.waitForLoadState('networkidle');
 
     await page.getByTestId('edit-teams-button').click();
-    await page.getByTestId('team-select').click();
 
     await expect(page.getByTestId('profile-teams-edit-popover')).toBeVisible();
 

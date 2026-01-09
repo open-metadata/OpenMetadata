@@ -12,6 +12,8 @@
  */
 export const DEFAULT_THEME = {
   primaryColor: '#1570ef',
+  hoverColor: '#d1e9ff',
+  selectedColor: '#175cd3',
   infoColor: '#84caff',
   successColor: '#039855',
   warningColor: '#DC6803',

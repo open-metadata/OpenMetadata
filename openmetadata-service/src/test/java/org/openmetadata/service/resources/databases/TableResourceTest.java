@@ -71,6 +71,7 @@ import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.FullyQualifiedName.build;
 import static org.openmetadata.service.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType;
@@ -5622,7 +5623,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     table = table.withColumns(List.of(columnWithAutoClassification));
 
-    Table patchedTable = patchEntity(table.getId(), originalTable, table, ADMIN_AUTH_HEADERS);
+    Table patchResponse =
+        patchEntity(table.getId(), originalTable, table, INGESTION_BOT_AUTH_HEADERS);
+    Table patchedTable = getEntity(table.getId(), ADMIN_AUTH_HEADERS);
 
     assertNotNull(patchedTable.getColumns());
     assertEquals(1, patchedTable.getColumns().size());
@@ -5636,15 +5639,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals("Sensitive", piiTag.getName());
     assertEquals("PII.Sensitive", piiTag.getTagFQN());
     assertEquals("Classified with score 1.0", piiTag.getReason());
+    assertNotNull(piiTag.getAppliedAt());
+    assertEquals(INGESTION_BOT, piiTag.getAppliedBy());
 
     // Now add personal tag manually
-    Column columnWithBothTags = column.withTags(List.of(sensitiveTagLabel, personalTagLabel));
+    Column columnWithBothTags = column.withTags(List.of(piiTag, personalTagLabel));
 
-    originalTable = JsonUtils.pojoToJson(patchedTable);
+    originalTable = JsonUtils.pojoToJson(patchResponse);
 
-    table = patchedTable.withColumns(List.of(columnWithBothTags));
+    table = patchResponse.withColumns(List.of(columnWithBothTags));
 
-    patchedTable = patchEntity(table.getId(), originalTable, table, ADMIN_AUTH_HEADERS);
+    patchEntity(table.getId(), originalTable, table, INGESTION_BOT_AUTH_HEADERS);
+
+    patchedTable = getEntity(table.getId(), ADMIN_AUTH_HEADERS);
 
     assertNotNull(patchedTable.getColumns());
     assertEquals(1, patchedTable.getColumns().size());
@@ -5658,12 +5665,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals("Sensitive", piiTag.getName());
     assertEquals("PII.Sensitive", piiTag.getTagFQN());
     assertEquals("Classified with score 1.0", piiTag.getReason());
+    assertNotNull(piiTag.getAppliedAt());
+    assertEquals(INGESTION_BOT, piiTag.getAppliedBy());
 
     TagLabel personalTag = tags.getLast();
     assertNotNull(personalTag);
     assertEquals("Personal", personalTag.getName());
     assertEquals("PersonalData.Personal", personalTag.getTagFQN());
     assertNull(personalTag.getReason());
+    assertNotNull(personalTag.getAppliedAt());
+    assertEquals(INGESTION_BOT, personalTag.getAppliedBy());
   }
 
   @Test
