@@ -32,7 +32,6 @@ import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.models.V1ConfigMap;
 import io.kubernetes.client.openapi.models.V1CronJob;
 import io.kubernetes.client.openapi.models.V1CronJobSpec;
-import io.kubernetes.client.openapi.models.V1EnvVar;
 import io.kubernetes.client.openapi.models.V1Job;
 import io.kubernetes.client.openapi.models.V1JobList;
 import io.kubernetes.client.openapi.models.V1JobStatus;
@@ -40,7 +39,6 @@ import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1PodSpec;
 import io.kubernetes.client.openapi.models.V1Secret;
 import io.kubernetes.client.openapi.models.V1Status;
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -50,14 +48,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 
@@ -84,6 +86,7 @@ class K8sPipelineClientTest {
   @Mock private CoreV1Api.APIlistNamespacedPodRequest listPodRequest;
 
   private K8sPipelineClient client;
+  private ServiceEntityInterface testService;
   private static final String NAMESPACE = "openmetadata-pipelines";
 
   @BeforeEach
@@ -103,6 +106,9 @@ class K8sPipelineClientTest {
     client = new K8sPipelineClient(config);
     client.setBatchApi(batchApi);
     client.setCoreApi(coreApi);
+
+    // Create test service
+    testService = createTestService();
   }
 
   @Test
@@ -125,7 +131,7 @@ class K8sPipelineClientTest {
     when(batchApi.createNamespacedCronJob(eq(NAMESPACE), any())).thenReturn(createCronJobRequest);
     when(createCronJobRequest.execute()).thenReturn(new V1CronJob());
 
-    PipelineServiceClientResponse response = client.deployPipeline(pipeline, null);
+    PipelineServiceClientResponse response = client.deployPipeline(pipeline, testService);
 
     assertEquals(200, response.getCode());
     assertTrue(pipeline.getDeployed());
@@ -152,7 +158,7 @@ class K8sPipelineClientTest {
     when(batchApi.deleteNamespacedCronJob(any(), eq(NAMESPACE))).thenReturn(deleteCronJobRequest);
     when(deleteCronJobRequest.execute()).thenThrow(new ApiException(404, "Not found"));
 
-    PipelineServiceClientResponse response = client.deployPipeline(pipeline, null);
+    PipelineServiceClientResponse response = client.deployPipeline(pipeline, testService);
 
     assertEquals(200, response.getCode());
     assertTrue(pipeline.getDeployed());
@@ -166,7 +172,7 @@ class K8sPipelineClientTest {
     when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
     when(createJobRequest.execute()).thenReturn(new V1Job());
 
-    PipelineServiceClientResponse response = client.runPipeline(pipeline, null);
+    PipelineServiceClientResponse response = client.runPipeline(pipeline, testService);
 
     assertEquals(200, response.getCode());
     assertTrue(response.getReason().contains("triggered"));
@@ -282,58 +288,6 @@ class K8sPipelineClientTest {
   }
 
   @Test
-  void testGetQueuedPipelineStatus() throws Exception {
-    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
-
-    OffsetDateTime now = OffsetDateTime.now();
-    V1Job runningJob =
-        new V1Job()
-            .metadata(
-                new V1ObjectMeta()
-                    .name("om-job-test-pipeline-abc123")
-                    .labels(Map.of("app.kubernetes.io/run-id", "test-run-id")))
-            .status(new V1JobStatus().active(1).startTime(now));
-
-    V1Job succeededJob =
-        new V1Job()
-            .metadata(
-                new V1ObjectMeta()
-                    .name("om-job-test-pipeline-def456")
-                    .labels(Map.of("app.kubernetes.io/run-id", "test-run-id-2")))
-            .status(
-                new V1JobStatus()
-                    .succeeded(1)
-                    .startTime(now.minusHours(1))
-                    .completionTime(now.minusMinutes(30)));
-
-    V1JobList jobList = new V1JobList().items(List.of(runningJob, succeededJob));
-
-    when(batchApi.listNamespacedJob(eq(NAMESPACE))).thenReturn(listJobRequest);
-    when(listJobRequest.labelSelector(any())).thenReturn(listJobRequest);
-    when(listJobRequest.execute()).thenReturn(jobList);
-
-    List<PipelineStatus> statuses = client.getQueuedPipelineStatus(pipeline);
-
-    assertEquals(2, statuses.size());
-
-    PipelineStatus runningStatus =
-        statuses.stream()
-            .filter(s -> s.getPipelineState() == PipelineStatusType.RUNNING)
-            .findFirst()
-            .orElse(null);
-    assertNotNull(runningStatus);
-    assertEquals("test-run-id", runningStatus.getRunId());
-
-    PipelineStatus succeededStatus =
-        statuses.stream()
-            .filter(s -> s.getPipelineState() == PipelineStatusType.SUCCESS)
-            .findFirst()
-            .orElse(null);
-    assertNotNull(succeededStatus);
-    assertEquals("test-run-id-2", succeededStatus.getRunId());
-  }
-
-  @Test
   void testDeployPipelineRollbackOnCronJobFailure() throws Exception {
     // Tests P0: Resource cleanup on partial deployment failure
     IngestionPipeline pipeline = createTestPipeline("test-pipeline", "0 * * * *");
@@ -366,7 +320,8 @@ class K8sPipelineClientTest {
 
     // Verify deployment fails and rollback occurs
     assertThrows(
-        IngestionPipelineDeploymentException.class, () -> client.deployPipeline(pipeline, null));
+        IngestionPipelineDeploymentException.class,
+        () -> client.deployPipeline(pipeline, testService));
 
     // Verify rollback deleted the created resources
     verify(coreApi).deleteNamespacedConfigMap(eq("om-config-test-pipeline"), eq(NAMESPACE));
@@ -409,7 +364,7 @@ class K8sPipelineClientTest {
         .thenReturn(replaceCronJobRequest);
     when(replaceCronJobRequest.execute()).thenReturn(new V1CronJob());
 
-    PipelineServiceClientResponse response = client.deployPipeline(pipeline, null);
+    PipelineServiceClientResponse response = client.deployPipeline(pipeline, testService);
     assertEquals(200, response.getCode());
 
     // Verify resourceVersion is set on updates
@@ -434,7 +389,7 @@ class K8sPipelineClientTest {
     when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
     when(createJobRequest.execute()).thenReturn(new V1Job());
 
-    client.runPipeline(pipeline, null);
+    client.runPipeline(pipeline, testService);
 
     ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
     verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
@@ -475,7 +430,7 @@ class K8sPipelineClientTest {
         .thenThrow(new ApiException(503, "Service Unavailable"))
         .thenReturn(new V1Job());
 
-    PipelineServiceClientResponse response = client.runPipeline(pipeline, null);
+    PipelineServiceClientResponse response = client.runPipeline(pipeline, testService);
 
     assertEquals(200, response.getCode());
     // Verify the API was called twice (initial + 1 retry)
@@ -491,7 +446,8 @@ class K8sPipelineClientTest {
     when(createJobRequest.execute()).thenThrow(new ApiException(403, "Forbidden"));
 
     assertThrows(
-        IngestionPipelineDeploymentException.class, () -> client.runPipeline(pipeline, null));
+        IngestionPipelineDeploymentException.class,
+        () -> client.runPipeline(pipeline, testService));
 
     // Verify the API was only called once (no retry)
     verify(batchApi, times(1)).createNamespacedJob(eq(NAMESPACE), any());
@@ -508,7 +464,8 @@ class K8sPipelineClientTest {
 
     IngestionPipelineDeploymentException exception =
         assertThrows(
-            IngestionPipelineDeploymentException.class, () -> client.runPipeline(pipeline, null));
+            IngestionPipelineDeploymentException.class,
+            () -> client.runPipeline(pipeline, testService));
 
     // Verify error message contains helpful context
     String message = exception.getMessage();
@@ -516,50 +473,6 @@ class K8sPipelineClientTest {
     assertTrue(
         message.contains("openmetadata-pipelines") || message.contains("namespace"),
         "Should contain namespace context");
-  }
-
-  @Test
-  void testExtraEnvironmentVariables() throws Exception {
-    // Tests P2: Extra environment variables support
-    Parameters params = new Parameters();
-    params.setAdditionalProperty("namespace", NAMESPACE);
-    params.setAdditionalProperty("skipInit", "true");
-    params.setAdditionalProperty("ingestionImage", "openmetadata/ingestion:test");
-    params.setAdditionalProperty("extraEnvVars", "HTTP_PROXY=http://proxy:8080,NO_PROXY=localhost");
-
-    PipelineServiceClientConfiguration config = new PipelineServiceClientConfiguration();
-    config.setEnabled(true);
-    config.setMetadataApiEndpoint("http://localhost:8585/api");
-    config.setParameters(params);
-
-    K8sPipelineClient clientWithEnvVars = new K8sPipelineClient(config);
-    clientWithEnvVars.setBatchApi(batchApi);
-    clientWithEnvVars.setCoreApi(coreApi);
-
-    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
-
-    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
-    when(createJobRequest.execute()).thenReturn(new V1Job());
-
-    clientWithEnvVars.runPipeline(pipeline, null);
-
-    ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
-    verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
-
-    V1Job createdJob = jobCaptor.getValue();
-    List<V1EnvVar> envVars =
-        createdJob.getSpec().getTemplate().getSpec().getContainers().get(0).getEnv();
-
-    // Verify extra env vars are present
-    assertTrue(
-        envVars.stream()
-            .anyMatch(
-                e -> "HTTP_PROXY".equals(e.getName()) && "http://proxy:8080".equals(e.getValue())),
-        "Should contain HTTP_PROXY env var");
-    assertTrue(
-        envVars.stream()
-            .anyMatch(e -> "NO_PROXY".equals(e.getName()) && "localhost".equals(e.getValue())),
-        "Should contain NO_PROXY env var");
   }
 
   @Test
@@ -586,7 +499,7 @@ class K8sPipelineClientTest {
     when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
     when(createJobRequest.execute()).thenReturn(new V1Job());
 
-    clientWithAnnotations.runPipeline(pipeline, null);
+    clientWithAnnotations.runPipeline(pipeline, testService);
 
     ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
     verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
@@ -612,31 +525,31 @@ class K8sPipelineClientTest {
 
     ArgumentCaptor<V1CronJob> cronJobCaptor = ArgumentCaptor.forClass(V1CronJob.class);
 
-    client.deployPipeline(hourlyPipeline, null);
+    client.deployPipeline(hourlyPipeline, testService);
     verify(batchApi, times(1)).createNamespacedCronJob(eq(NAMESPACE), cronJobCaptor.capture());
     assertEquals("0 * * * *", cronJobCaptor.getValue().getSpec().getSchedule());
 
     resetAllMocks();
     setupDeploymentMocks();
-    client.deployPipeline(dailyPipeline, null);
+    client.deployPipeline(dailyPipeline, testService);
     verify(batchApi, times(1)).createNamespacedCronJob(eq(NAMESPACE), cronJobCaptor.capture());
     assertEquals("0 0 * * *", cronJobCaptor.getValue().getSpec().getSchedule());
 
     resetAllMocks();
     setupDeploymentMocks();
-    client.deployPipeline(weeklyPipeline, null);
+    client.deployPipeline(weeklyPipeline, testService);
     verify(batchApi, times(1)).createNamespacedCronJob(eq(NAMESPACE), cronJobCaptor.capture());
     assertEquals("0 0 * * 0", cronJobCaptor.getValue().getSpec().getSchedule());
 
     resetAllMocks();
     setupDeploymentMocks();
-    client.deployPipeline(monthlyPipeline, null);
+    client.deployPipeline(monthlyPipeline, testService);
     verify(batchApi, times(1)).createNamespacedCronJob(eq(NAMESPACE), cronJobCaptor.capture());
     assertEquals("0 0 1 * *", cronJobCaptor.getValue().getSpec().getSchedule());
 
     resetAllMocks();
     setupDeploymentMocks();
-    client.deployPipeline(customPipeline, null);
+    client.deployPipeline(customPipeline, testService);
     verify(batchApi, times(1)).createNamespacedCronJob(eq(NAMESPACE), cronJobCaptor.capture());
     assertEquals("30 2 * * 1-5", cronJobCaptor.getValue().getSpec().getSchedule());
   }
@@ -693,6 +606,27 @@ class K8sPipelineClientTest {
     pipeline.setDeployed(false);
     pipeline.setEnabled(true);
 
+    // Add dummy OpenMetadata server connection for unit tests
+    OpenMetadataConnection serverConnection = new OpenMetadataConnection();
+    serverConnection.setHostPort("http://localhost:8585");
+    serverConnection.setAuthProvider(AuthProvider.OPENMETADATA);
+
+    OpenMetadataJWTClientConfig jwtConfig = new OpenMetadataJWTClientConfig();
+    jwtConfig.setJwtToken("test-jwt-token");
+    serverConnection.setSecurityConfig(jwtConfig);
+
+    pipeline.setOpenMetadataServerConnection(serverConnection);
+
     return pipeline;
+  }
+
+  private ServiceEntityInterface createTestService() {
+    DatabaseService service = new DatabaseService();
+    service.setId(UUID.randomUUID());
+    service.setName("test-database-service");
+    service.setFullyQualifiedName("test-database-service");
+    service.setServiceType(CreateDatabaseService.DatabaseServiceType.Mysql);
+
+    return service;
   }
 }

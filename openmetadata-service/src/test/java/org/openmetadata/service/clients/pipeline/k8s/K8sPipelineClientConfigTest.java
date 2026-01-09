@@ -37,7 +37,7 @@ class K8sPipelineClientConfigTest {
     assertEquals("docker.getcollate.io/openmetadata/ingestion:latest", config.getIngestionImage());
     assertEquals("IfNotPresent", config.getImagePullPolicy());
     assertEquals("openmetadata-ingestion", config.getServiceAccountName());
-    assertEquals(86400, config.getTtlSecondsAfterFinished());
+    assertEquals(604800, config.getTtlSecondsAfterFinished()); // 1 week
     assertEquals(7200L, config.getActiveDeadlineSeconds());
     assertEquals(3, config.getBackoffLimit());
     assertEquals(3, config.getSuccessfulJobsHistoryLimit());
@@ -283,7 +283,7 @@ class K8sPipelineClientConfigTest {
 
     // Should use default value when parsing fails
     K8sPipelineClientConfig config = new K8sPipelineClientConfig(params);
-    assertEquals(86400, config.getTtlSecondsAfterFinished());
+    assertEquals(604800, config.getTtlSecondsAfterFinished()); // 1 week
   }
 
   @Test

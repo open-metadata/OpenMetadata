@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import io.kubernetes.client.custom.Quantity;
 import io.kubernetes.client.openapi.models.V1LocalObjectReference;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -54,6 +55,7 @@ public class K8sPipelineClientConfig {
   private static final String POD_ANNOTATIONS_KEY = "podAnnotations";
   private static final String FAILURE_DIAGNOSTICS_KEY = "enableFailureDiagnostics";
   private static final String STARTING_DEADLINE_SECONDS_KEY = "startingDeadlineSeconds";
+  private static final String SKIP_INIT_KEY = "skipInit";
 
   // Default resources configuration
   private static final String DEFAULT_REQUESTS_CPU = "500m";
@@ -86,6 +88,7 @@ public class K8sPipelineClientConfig {
   private final Map<String, String> podAnnotations;
   private final boolean failureDiagnosticsEnabled;
   private final int startingDeadlineSeconds;
+  private final boolean skipInit;
 
   public K8sPipelineClientConfig(Map<String, Object> params) {
     if (params == null) {
@@ -106,7 +109,7 @@ public class K8sPipelineClientConfig {
         parseLinkedHashMapSafely(params.get(RESOURCES_KEY));
     this.resources = parseResourcesConfiguration(rawResources);
 
-    this.ttlSecondsAfterFinished = getIntParam(params, TTL_SECONDS_KEY, 86400);
+    this.ttlSecondsAfterFinished = getIntParam(params, TTL_SECONDS_KEY, 604800); // 1 week
     this.activeDeadlineSeconds = getIntParam(params, ACTIVE_DEADLINE_KEY, 7200);
     this.backoffLimit = getIntParam(params, BACKOFF_LIMIT_KEY, 3);
     this.successfulJobsHistoryLimit = getIntParam(params, SUCCESS_HISTORY_KEY, 3);
@@ -128,6 +131,7 @@ public class K8sPipelineClientConfig {
     // Default to 0 seconds - prevents CronJobs from trying to catch up any missed executions
     // This eliminates duplicate executions when AutoPilot deploys pipelines
     this.startingDeadlineSeconds = getIntParam(params, STARTING_DEADLINE_SECONDS_KEY, 0);
+    this.skipInit = Boolean.parseBoolean(getStringParam(params, SKIP_INIT_KEY, "false"));
 
     // Validate configuration
     validateConfiguration();
@@ -328,8 +332,18 @@ public class K8sPipelineClientConfig {
             .map(Object::toString)
             .filter(s -> !nullOrEmpty(s))
             .collect(Collectors.toList());
+      } else if (value instanceof String) {
+        // Handle case where Parameters serializes Lists to comma-separated strings
+        String strValue = (String) value;
+        if (strValue.trim().isEmpty()) {
+          return List.of();
+        }
+        return Arrays.stream(strValue.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .collect(Collectors.toList());
       } else {
-        LOG.warn("Expected List but got {}, using empty list", value.getClass());
+        LOG.warn("Expected List or String but got {}, using empty list", value.getClass());
         return List.of();
       }
     } catch (Exception e) {
@@ -371,5 +385,13 @@ public class K8sPipelineClientConfig {
     limits.put("cpu", new Quantity(resources.limits().cpu()));
     limits.put("memory", new Quantity(resources.limits().memory()));
     return limits;
+  }
+
+  public boolean isSkipInit() {
+    return skipInit;
+  }
+
+  public Map<String, String> getExtraEnvVars() {
+    return extraEnvVars;
   }
 }

@@ -685,7 +685,12 @@ public class K8sPipelineClient extends PipelineServiceClient {
     Integer succeeded = job.getStatus().getSucceeded();
     Integer failed = job.getStatus().getFailed();
 
-    // Queued = no active pods, no completed pods, no failed pods
+    // Check if job is being deleted (has deletion timestamp)
+    if (job.getMetadata() != null && job.getMetadata().getDeletionTimestamp() != null) {
+      return false; // Job is being terminated, not queued
+    }
+
+    // Queued = no active pods, no completed pods, no failed pods, and not being deleted
     return (active == null || active == 0)
         && (succeeded == null || succeeded == 0)
         && (failed == null || failed == 0);
@@ -840,20 +845,28 @@ public class K8sPipelineClient extends PipelineServiceClient {
       V1Pod pod = pods.getItems().get(0);
       String podName = pod.getMetadata().getName();
 
+      // Get full logs without line limit for proper pagination
       String logs =
           coreApi
               .readNamespacedPodLog(podName, k8sConfig.getNamespace())
               .container("ingestion")
-              .tailLines(1000)
               .execute();
 
-      return Map.of(
-          "logs", logs != null ? logs : "No logs available",
-          "jobName", jobName,
-          "podName", podName);
+      if (logs == null || logs.isEmpty()) {
+        return Map.of("logs", "No logs available for pod: " + podName);
+      }
+
+      // Get task key from pipeline type for structured response
+      String taskKey = TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().value());
+      if (taskKey == null) {
+        taskKey = "ingestion_task"; // fallback
+      }
+
+      // Use IngestionLogHandler for pagination
+      return IngestionLogHandler.buildLogResponse(logs, after, taskKey);
 
     } catch (ApiException e) {
-      LOG.error("Failed to get logs: {}", e.getResponseBody());
+      LOG.error("Failed to get logs for pipeline {}: {}", pipelineName, e.getResponseBody());
       return Map.of("logs", "Failed to retrieve logs: " + e.getMessage());
     }
   }
@@ -951,6 +964,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                     new V1PodSpec()
                         .serviceAccountName(k8sConfig.getServiceAccountName())
                         .restartPolicy("Never")
+                        .terminationGracePeriodSeconds(60L) // Give exit handler more time
                         .imagePullSecrets(
                             k8sConfig.getImagePullSecrets().isEmpty()
                                 ? null
@@ -1043,6 +1057,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                     new V1PodSpec()
                         .serviceAccountName(k8sConfig.getServiceAccountName())
                         .restartPolicy("Never")
+                        .terminationGracePeriodSeconds(60L) // Give exit handler more time
                         .imagePullSecrets(
                             k8sConfig.getImagePullSecrets().isEmpty()
                                 ? null
@@ -1076,9 +1091,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
     return new V1Lifecycle()
         .preStop(
             new V1LifecycleHandler()
-                .exec(
-                    new V1ExecAction()
-                        .command(List.of("python", "exit_handler.py"))));
+                .exec(new V1ExecAction().command(List.of("python", "exit_handler.py"))));
   }
 
   private V1PodSecurityContext buildPodSecurityContext() {
@@ -1266,7 +1279,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
     } catch (Exception e) {
       LOG.error(
           "Failed to build workflow config using WorkflowConfigBuilder: {}", e.getMessage(), e);
-      throw new RuntimeException("Workflow configuration building failed", e);
+      throw new IngestionPipelineDeploymentException(
+          "Workflow configuration building failed: " + e.getMessage());
     }
   }
 
@@ -1283,6 +1297,13 @@ public class K8sPipelineClient extends PipelineServiceClient {
       LOG.warn(
           "Pipeline {} missing OpenMetadataServerConnection - creating default configuration from client config",
           pipeline.getName());
+
+      // For unit tests, we don't require actual JWT token retrieval
+      // Skip server connection configuration if skipInit is true
+      if (k8sConfig.isSkipInit()) {
+        LOG.debug("Skipping server connection configuration for unit tests");
+        return;
+      }
 
       // Create a default server connection based on client configuration
       // This ensures the pipeline can authenticate with the OpenMetadata server

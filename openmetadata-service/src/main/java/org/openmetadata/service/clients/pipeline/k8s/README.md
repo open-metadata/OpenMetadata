@@ -80,7 +80,7 @@ Centralized configuration management with validation and type-safe parsing.
 | `ingestionImage` | `docker.getcollate.io/openmetadata/ingestion:latest` | Container image for ingestion jobs |
 | `imagePullPolicy` | `IfNotPresent` | Image pull policy |
 | `serviceAccountName` | `openmetadata-ingestion` | Service account for pods |
-| `ttlSecondsAfterFinished` | `86400` | Time to keep completed jobs (24h) |
+| `ttlSecondsAfterFinished` | `604800` | Time to keep completed jobs (1 week) |
 | `activeDeadlineSeconds` | `7200` | Maximum job runtime (2h) |
 | `backoffLimit` | `3` | Maximum retry attempts |
 | `startingDeadlineSeconds` | `0` | CronJob catch-up prevention (0 = no catch-up) |
@@ -326,6 +326,38 @@ The K8s Pipeline Client prevents duplicate executions when used with AutoPilot b
 - **On-demand executions**: Run immediately when triggered by AutoPilot
 - **No catch-up behavior**: CronJobs don't attempt to run missed schedules
 
+## Log Management
+
+### Log Retrieval with Pagination
+
+The K8s Pipeline Client provides paginated log retrieval for better performance with large log files:
+
+- **Chunked Response**: Logs are split into chunks (approximately 1MB each) for efficient transfer
+- **Pagination Support**: Uses `after` parameter to retrieve subsequent chunks
+- **Task-specific Keys**: Logs are returned with pipeline-type-specific task keys (e.g., `ingestion_task`, `profiler_task`)
+- **Long Retention**: Pods are retained for 1 week (configurable via `ttlSecondsAfterFinished`) to ensure log availability
+
+### Log Response Format
+
+```json
+{
+  "ingestion_task": "log content chunk",
+  "total": "5",
+  "after": "1"
+}
+```
+
+- `<task_key>`: Log content for the current chunk
+- `total`: Total number of chunks available
+- `after`: Next chunk index (only present if more chunks available)
+
+### Log Availability
+
+Logs are available for pipelines in all states:
+- **Running**: Live logs retrieved directly from pod
+- **Success**: Historical logs from completed pods
+- **Failed**: Error logs and failure diagnostics
+
 ## Environment Variables
 
 All containers receive these environment variables:
@@ -336,6 +368,7 @@ All containers receive these environment variables:
 - `ingestionPipelineFQN`: Pipeline fully qualified name
 - `jobName`: Kubernetes job name for diagnostics
 - `namespace`: Kubernetes namespace
+- `pipelineStatus`: "Failed" (set for exit handler when containers terminate)
 
 ## Best Practices
 
