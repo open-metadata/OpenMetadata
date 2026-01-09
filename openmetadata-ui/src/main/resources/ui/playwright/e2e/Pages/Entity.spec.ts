@@ -58,6 +58,7 @@ import {
   removeOwnersFromList,
 } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
+import { EntityType } from '../../support/entity/EntityDataClass.interface';
 
 const entities = {
   'Api Endpoint': ApiEndpointClass,
@@ -446,6 +447,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               rowSelector,
               columnId: entity.childrenSelectorId ?? '',
               columnNameTestId,
+              entityType: entity.type as EntityType,
             });
 
             // Add tag via panel
@@ -511,6 +513,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               rowSelector,
               columnId: entity.childrenSelectorId ?? '',
               columnNameTestId,
+              entityType: entity.type as EntityType,
             });
 
             // Step 1: Add a glossary term first
@@ -617,6 +620,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               rowSelector,
               columnId: entity.childrenSelectorId ?? '',
               columnNameTestId,
+              entityType: entity.type as EntityType,
             });
 
             // Verify data type is displayed (if available)
@@ -761,6 +765,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               rowSelector: 'data-row-key',
               columnId: nestedParentFQN,
               columnNameTestId: 'column-name',
+              entityType: entity.type as EntityType,
             });
 
             // Wait for any loaders to disappear
@@ -1087,6 +1092,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               rowSelector: 'data-row-key',
               columnId: arrayColumnId ?? '',
               columnNameTestId: 'column-name',
+              entityType: entity.type as EntityType,
             });
 
             const nestedColumnLinks = panelContainer.locator(
@@ -1143,6 +1149,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
                 rowSelector: 'data-row-key',
                 columnId: nestedColumnId ?? nestedParentFQN,
                 columnNameTestId: 'column-name',
+                entityType: entity.type as EntityType,
               });
               const nestedColumnLinks = panelContainer.locator(
                 '.nested-column-name'
@@ -1210,6 +1217,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               rowSelector,
               columnId: entity.childrenSelectorId ?? '',
               columnNameTestId,
+              entityType: entity.type as EntityType,
             });
 
             // Add glossary term via panel
@@ -1301,6 +1309,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               rowSelector,
               columnId: entity.childrenSelectorId ?? '',
               columnNameTestId,
+              entityType: entity.type as EntityType,
             });
 
             // Verify panel displays correct column information
