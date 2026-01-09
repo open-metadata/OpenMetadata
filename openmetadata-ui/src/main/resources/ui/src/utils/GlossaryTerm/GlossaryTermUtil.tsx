@@ -78,7 +78,7 @@ const GlossaryTermDomainWidget = () => {
   return (
     <DomainLabelV2
       showDomainHeading
-      multiple={entityRules.canAddMultipleDomains}
+      multiple={entityRules?.canAddMultipleDomains ?? true}
     />
   );
 };
