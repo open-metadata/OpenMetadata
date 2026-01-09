@@ -49,11 +49,13 @@ test.describe('API docs should work properly', () => {
 
     // Validate authentication part
     await page.locator('#link-auth').click();
-    await expect(page.getByPlaceholder('api-token')).toBeVisible();
+    await expect(
+      page.locator('#apiKey-_rapidoc_api_key-api-key-input')
+    ).toBeVisible();
 
     // ensure token is set when visiting API page
-    await expect(page.getByPlaceholder('api-token')).toHaveValue(
-      /^Bearer\s+[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/
-    );
+    await expect(
+      page.locator('#apiKey-_rapidoc_api_key-api-key-input')
+    ).toHaveValue(/^Bearer\s+[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
   });
 });
