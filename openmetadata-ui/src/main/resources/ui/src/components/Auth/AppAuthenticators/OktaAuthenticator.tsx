@@ -42,24 +42,32 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     const renewToken = async () => {
-      const existingIdToken = oktaAuth.tokenManager.get('idToken');
-      const existingAccessToken = oktaAuth.tokenManager.get('accessToken');
+      try {
+        const existingIdToken = await oktaAuth.tokenManager.get('idToken');
+        const existingAccessToken = await oktaAuth.tokenManager.get(
+          'accessToken'
+        );
 
-      // Add fallback if renewToken fails
-      if (!existingIdToken && !existingAccessToken) {
-        await oktaAuth.signInWithRedirect();
+        if (!existingIdToken && !existingAccessToken) {
+          oktaAuth.signInWithRedirect();
 
-        const newToken = oktaAuth.getIdToken() ?? '';
+          return '';
+        }
+
+        const tokens = await oktaAuth.token.renewTokens();
+        oktaAuth.tokenManager.setTokens(tokens);
+        const newToken =
+          tokens?.idToken?.idToken ?? oktaAuth.getIdToken() ?? '';
+        await setOidcToken(newToken);
 
         return newToken;
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Error renewing Okta token:', error);
+        oktaAuth.signInWithRedirect();
       }
 
-      const tokens = await oktaAuth.token.renewTokens();
-      oktaAuth.tokenManager.setTokens(tokens);
-      const newToken = tokens?.idToken?.idToken ?? oktaAuth.getIdToken() ?? '';
-      await setOidcToken(newToken);
-
-      return newToken;
+      return '';
     };
 
     useImperativeHandle(ref, () => ({
