@@ -47,10 +47,10 @@ public class UsageWorkflowConfig implements WorkflowConfigTypeStrategy {
             ingestionPipeline.getSourceConfig().getConfig(),
             DatabaseServiceQueryUsagePipeline.class);
 
-      if (usageConfig.getStageFileLocation() == null) {
-        usageConfig.setStageFileLocation(
-            "/tmp/openmetadata/" + StringUtils.left(UUID.randomUUID().toString(), 6));
-      }
+    if (usageConfig.getStageFileLocation() == null) {
+      usageConfig.setStageFileLocation(
+          "/tmp/openmetadata/" + StringUtils.left(UUID.randomUUID().toString(), 6));
+    }
 
     ComponentConfig componentConfig =
         new ComponentConfig()
