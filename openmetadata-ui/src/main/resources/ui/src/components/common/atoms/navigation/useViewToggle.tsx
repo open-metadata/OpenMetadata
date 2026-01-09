@@ -128,6 +128,7 @@ export const useViewToggle = ({
 
           return (
             <Button
+              data-testid={`${mode}-view-toggle`}
               key={mode}
               sx={{
                 backgroundColor: isActive
