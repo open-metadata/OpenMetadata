@@ -91,8 +91,8 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.gson.Gson;
-import com.networknt.schema.JsonSchema;
-import com.networknt.schema.ValidationMessage;
+import com.networknt.schema.Error;
+import com.networknt.schema.Schema;
 import jakarta.json.JsonPatch;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.NotNull;
@@ -2462,13 +2462,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       JsonNode fieldValue = entry.getValue();
 
       // Validate that the custom property exists for this entity type
-      JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityTypeName, fieldName);
+      Schema jsonSchema = TypeRegistry.instance().getSchema(entityTypeName, fieldName);
       if (jsonSchema == null) {
         throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
       }
 
       // Validate against JSON schema - this handles all validation including type-specific rules
-      Set<ValidationMessage> validationMessages = jsonSchema.validate(fieldValue);
+      List<Error> validationMessages = jsonSchema.validate(fieldValue);
       if (!validationMessages.isEmpty()) {
         throw new IllegalArgumentException(
             CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
