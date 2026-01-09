@@ -330,7 +330,7 @@ const TestSuiteDetailsPage = () => {
         }
       }
     },
-    [testSuite]
+    [testSuite, t]
   );
 
   const handleDisplayNameChange = async (entityName?: EntityName) => {
