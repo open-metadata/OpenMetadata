@@ -1020,7 +1020,20 @@ export interface ConfigObject {
     /**
      * License file name to connect to DB2.
      */
-    licenseFileName?:               string;
+    licenseFileName?: string;
+    /**
+     * SSL Configuration details for DB2 connection. Provide CA certificate for server
+     * validation, and optionally client certificate and key for mutual TLS authentication.
+     *
+     * SSL Configuration details.
+     *
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
+     *
+     * SSL Configuration for OpenMetadata Server
+     */
+    sslConfig?:                     SSLConfigObject;
+    sslMode?:                       SSLMode;
     supportsViewLineageExtraction?: boolean;
     /**
      * Available sources to fetch the metadata.
@@ -1051,15 +1064,6 @@ export interface ConfigObject {
      * Hive Metastore Connection Details
      */
     metastoreConnection?: HiveMetastoreConnectionDetails;
-    /**
-     * SSL Configuration details.
-     *
-     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
-     * client certificate, and private key for mutual TLS authentication.
-     *
-     * SSL Configuration for OpenMetadata Server
-     */
-    sslConfig?: SSLConfigObject;
     /**
      * Enable SSL connection to Hive server. When enabled, SSL transport will be used for secure
      * communication.
@@ -1105,7 +1109,6 @@ export interface ConfigObject {
      * Custom OpenMetadata Classification name for TimescaleDB policy tags.
      */
     classificationName?: string;
-    sslMode?:            SSLMode;
     /**
      * Protocol ( Connection Argument ) to connect to Presto.
      */
@@ -2786,6 +2789,9 @@ export interface QlikCertificatesBy {
 }
 
 /**
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
+ *
  * Client SSL configuration
  *
  * SSL Configuration details.
@@ -3421,6 +3427,9 @@ export enum ConnectionScheme {
  * Client SSL configuration
  *
  * OpenMetadata Client configured to validate SSL certificates.
+ *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
  *
  * SSL Configuration details.
  *
@@ -4166,6 +4175,9 @@ export enum SpaceType {
 }
 
 /**
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
+ *
  * Client SSL configuration
  *
  * SSL Configuration details.
