@@ -78,6 +78,10 @@ Okta SSO enables users to log in with their Okta credentials using OAuth 2.0 and
 - **Example:** ["email:email", "username:preferred_username"]
 - **Why it matters:** Controls how user information from Okta maps to OpenMetadata user profiles.
 - **Note:** Format: "openmetadata_field:jwt_claim"
+- **Validation Requirements:**
+  - Both `username` and `email` mappings must be present when this field is used
+  - Only `username` and `email` keys are allowed; no other keys are permitted
+  - If validation fails, errors will be displayed on this specific field
 
 ### <span data-id="tokenValidation">Token Validation Algorithm</span>
 
