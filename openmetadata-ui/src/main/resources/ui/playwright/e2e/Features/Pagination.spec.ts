@@ -82,12 +82,6 @@ test.describe('Pagination tests for all pages', () => {
       await afterAction();
     });
 
-    test.afterAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
-      await database.delete(apiContext);
-      await afterAction();
-    });
-
     test('should test Database Schema Tables normal pagination', async ({ page }) => {
       test.slow(true);
 
@@ -261,17 +255,6 @@ test.describe('Pagination tests for Classification Tags page', () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    tags.reverse();
-    for (const tag of tags) {
-      await tag.delete(apiContext);
-    }
-    await classification.delete(apiContext);
-
-    await afterAction();
-  });
 
   test('should test pagination on Classification Tags page', async ({
     page,
@@ -298,16 +281,6 @@ test.describe('Pagination tests for Metrics page', () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    metrics.reverse();
-    for (const metric of metrics) {
-      await metric.delete(apiContext);
-    }
-
-    await afterAction();
-  });
 
   test('should test pagination on Metrics page', async ({ page }) => {
     test.slow(true);
@@ -348,16 +321,6 @@ test.describe('Pagination tests for Notification Alerts page', () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    alerts.reverse();
-    for (const alert of alerts) {
-      await alert.delete(apiContext);
-    }
-
-    await afterAction();
-  });
 
   test('should test pagination on Notification Alerts page', async ({
     page,
@@ -400,16 +363,6 @@ test.describe('Pagination tests for Observability Alerts page', () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    alerts.reverse();
-    for (const alert of alerts) {
-      await alert.delete(apiContext);
-    }
-
-    await afterAction();
-  });
 
   test('should test pagination on Observability Alerts page', async ({
     page,
@@ -445,12 +398,6 @@ test.describe.serial('Pagination tests for API Collection Endpoints page', () =>
       });
     }
 
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await apiCollection.delete(apiContext);
     await afterAction();
   });
 
@@ -501,12 +448,6 @@ test.describe.serial('Pagination tests for Stored Procedures page', () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await database.delete(apiContext);
-    await afterAction();
-  });
-
   test('should test Stored Procedures normal pagination', async ({ page }) => {
     test.slow(true);
 
@@ -550,12 +491,6 @@ test.describe.serial('Pagination tests for Database Schemas page', () => {
       });
     }
 
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await database.delete(apiContext);
     await afterAction();
   });
 
@@ -611,12 +546,6 @@ test.describe.serial('Pagination tests for Dashboard Data Models page', () => {
       });
     }
 
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await dashboardService.delete(apiContext);
     await afterAction();
   });
 
