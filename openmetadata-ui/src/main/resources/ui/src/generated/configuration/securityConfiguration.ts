@@ -64,7 +64,8 @@ export interface AuthenticationConfiguration {
      */
     jwtPrincipalClaims: string[];
     /**
-     * Jwt Principal Claim Mapping
+     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
+     * 'email'. Both username and email mappings are required.
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
@@ -430,6 +431,10 @@ export interface SamlSSOClientConfig {
  * This schema defines defines the identity provider config.
  */
 export interface Idp {
+    /**
+     * Authority URL (deprecated, use entityId instead).
+     */
+    authorityUrl?: string;
     /**
      * Identity Provider Entity ID usually same as the SSO login URL.
      */

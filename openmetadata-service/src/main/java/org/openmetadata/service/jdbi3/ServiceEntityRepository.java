@@ -105,11 +105,12 @@ public abstract class ServiceEntityRepository<
     return service;
   }
 
-  /** Remove the secrets from the secret manager */
+  /** Remove the secrets from the secret manager only on hard delete */
   @Override
   protected void postDelete(T service, boolean hardDelete) {
     super.postDelete(service, hardDelete);
-    if (service.getConnection() != null) {
+    // Only delete secrets on hard delete to allow soft delete to be reversible
+    if (hardDelete && service.getConnection() != null) {
       SecretsManagerFactory.getSecretsManager()
           .deleteSecretsFromServiceConnectionConfig(
               service.getConnection().getConfig(),
