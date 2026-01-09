@@ -55,6 +55,7 @@ import java.security.cert.CertificateException;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import javax.naming.ConfigurationException;
 import lombok.SneakyThrows;
@@ -515,14 +516,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     LOG.info("Registering Asset Servlet with basePath: {}", config.getBasePath());
     LOG.info("Application Context Path: {}", environment.getApplicationContext().getContextPath());
 
-    // Handle Asset Using Servlet
+    // Handle Asset Using Servlet with null-safe config access
+    Map<String, String> assets = config.getAssets();
+    String resourcePath =
+        assets != null ? assets.getOrDefault("resourcePath", "/assets/") : "/assets/";
+    String uriPath = assets != null ? assets.getOrDefault("uriPath", "/") : "/";
+
     OpenMetadataAssetServlet assetServlet =
         new OpenMetadataAssetServlet(
-            config.getBasePath(),
-            config.getAssets().get("resourcePath"),
-            config.getAssets().get("uriPath"),
-            "index.html",
-            webConfiguration);
+            config.getBasePath(), resourcePath, uriPath, "index.html", webConfiguration);
     environment.servlets().addServlet("static", assetServlet).addMapping("/*");
 
     LOG.info("Asset Servlet registered with mapping: /*");
