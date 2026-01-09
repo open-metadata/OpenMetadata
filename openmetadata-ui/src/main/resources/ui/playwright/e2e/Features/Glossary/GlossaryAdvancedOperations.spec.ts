@@ -28,7 +28,7 @@ import {
   removeSingleSelectDomain,
 } from '../../../utils/common';
 import { DATA_ASSET_RULES } from '../../../utils/dataAssetRules';
-import { addMultiOwner } from '../../../utils/entity';
+import { addMultiOwner, waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   addMultiOwnerInDialog,
   openAddGlossaryTermModal,
@@ -497,8 +497,9 @@ test.describe('Glossary Advanced Operations', () => {
           `/glossary/${encodeURIComponent(glossaryTerm.responseData.fullyQualifiedName)}`
         );
 
-        // Wait for entity rules to be fetched
-        await page.waitForLoadState('networkidle');
+        // Wait for page to be fully loaded
+        await page.waitForLoadState('domcontentloaded');
+        await waitForAllLoadersToDisappear(page);
 
         // Open domain selector to verify multi-select mode (checkboxes visible)
         await page.getByTestId('add-domain').click();
@@ -584,7 +585,8 @@ test.describe('Glossary Advanced Operations', () => {
           `/glossary/${encodeURIComponent(glossaryTerm.responseData.fullyQualifiedName)}`
         );
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
+        await waitForAllLoadersToDisappear(page);
 
         // Open domain selector to verify single-select mode (no checkboxes)
         await page.getByTestId('add-domain').click();
