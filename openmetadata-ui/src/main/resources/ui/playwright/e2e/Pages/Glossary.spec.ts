@@ -1845,7 +1845,7 @@ test.describe('Glossary tests', () => {
     }
   });
 
-  test('Check for duplicate Glossary Term with dot', async ({ browser }) => {
+  test('Check for duplicate Glossary Term with Glossary having dot in name', async ({ browser }) => {
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(
@@ -1884,7 +1884,7 @@ test.describe('Glossary tests', () => {
         await glossaryTermResponse;
 
         await expect(page.locator('#name_help')).toHaveText(
-          `A term with the name '${glossaryTerm2.data.name}' already exists in '${glossary1.data.name}' glossary.`
+          `A term with the name '${glossaryTerm2.data.name}' already exists in '${glossary1.responseData.name}' glossary.`
         );
       });
     } finally {
