@@ -44,9 +44,7 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
     getHiddenKeysFromNavigationItems(currentNavigation, plugins)
   );
   const [treeData, setTreeData] = useState<TreeDataNode[]>(() =>
-    currentNavigation
-      ? getTreeDataForNavigationItems(currentNavigation, plugins)
-      : []
+    getTreeDataForNavigationItems(currentNavigation, plugins)
   );
 
   const disableSave = useMemo(() => {
@@ -123,8 +121,8 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
   }, []);
 
   const handleReset = () => {
-    setTreeData(getTreeDataForNavigationItems(undefined, plugins));
-    setHiddenKeys(getHiddenKeysFromNavigationItems(undefined, plugins));
+    setTreeData(getTreeDataForNavigationItems(null, plugins));
+    setHiddenKeys(getHiddenKeysFromNavigationItems(null, plugins));
   };
 
   const handleRemoveToggle = (checked: boolean, key: string) => {

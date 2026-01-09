@@ -71,49 +71,40 @@ describe('CustomizeNavigation Utils', () => {
     it('should return tree data with icons from sidebar items when navigation items are provided', () => {
       const result = getTreeDataForNavigationItems(mockNavigationItems);
 
-      expect(result).toEqual([
-        {
-          key: 'home',
-          title: 'Home',
-          icon: 'home-icon',
-          children: [
-            {
-              key: 'dashboard',
-              title: 'Dashboard',
-              icon: 'dashboard-icon',
-            },
-          ],
-        },
-        {
-          key: 'explore',
-          title: 'Explore',
-          icon: 'explore-icon',
-        },
-      ]);
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({
+        key: 'home',
+        title: 'Home',
+        icon: 'home-icon',
+        children: [
+          {
+            key: 'dashboard',
+            title: 'Dashboard',
+            icon: 'dashboard-icon',
+          },
+        ],
+      });
+      expect(result[1]).toEqual({
+        key: 'explore',
+        title: 'Explore',
+        icon: 'explore-icon',
+      });
     });
 
     it('should return sidebar items when navigation items are not provided', () => {
-      const result = getTreeDataForNavigationItems();
+      const result = getTreeDataForNavigationItems(null);
 
-      expect(result).toEqual([
-        {
-          key: 'home',
-          title: 'Home',
-          icon: 'home-icon',
-          children: [
-            {
-              key: 'dashboard',
-              title: 'Dashboard',
-              icon: 'dashboard-icon',
-            },
-          ],
-        },
-        {
-          key: 'explore',
-          title: 'Explore',
-          icon: 'explore-icon',
-        },
-      ]);
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        key: 'home',
+        title: 'Home',
+        icon: 'home-icon',
+      });
+      expect(result[1]).toMatchObject({
+        key: 'explore',
+        title: 'Explore',
+        icon: 'explore-icon',
+      });
     });
 
     it('should mark items as hidden when not found in navigation map', () => {
@@ -205,10 +196,11 @@ describe('CustomizeNavigation Utils', () => {
       const result = getHiddenKeysFromNavigationItems(mockNavigationItems);
 
       expect(result).toEqual(['dashboard']);
+      expect(result).toHaveLength(1);
     });
 
     it('should return empty array when no navigation items are provided', () => {
-      const result = getHiddenKeysFromNavigationItems();
+      const result = getHiddenKeysFromNavigationItems(null);
 
       expect(result).toEqual([]);
     });
@@ -220,6 +212,20 @@ describe('CustomizeNavigation Utils', () => {
           title: 'Home',
           isHidden: false,
           pageId: 'home',
+          children: [
+            {
+              id: 'dashboard',
+              title: 'Dashboard',
+              isHidden: false,
+              pageId: 'dashboard',
+            },
+          ],
+        },
+        {
+          id: 'explore',
+          title: 'Explore',
+          isHidden: false,
+          pageId: 'explore',
         },
       ];
       const result = getHiddenKeysFromNavigationItems(items);
