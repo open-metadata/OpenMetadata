@@ -79,7 +79,7 @@
         <dependency>
             <groupId>com.networknt</groupId>
             <artifactId>json-schema-validator</artifactId>
-            <version>1.5.2</version>
+            <version>${json-schema-validator.version}</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>
