@@ -19,7 +19,6 @@
         <assertj-core.version>3.26.3</assertj-core.version>
         <okhttp.version>4.12.0</okhttp.version>
         <awaitility.version>4.2.2</awaitility.version>
-        <mcp-sdk.version>0.17.0</mcp-sdk.version>
         <testcontainers.version>1.20.4</testcontainers.version>
         <jetty.version>11.0.25</jetty.version>
     </properties>
@@ -61,12 +60,10 @@
         <dependency>
             <groupId>io.modelcontextprotocol.sdk</groupId>
             <artifactId>mcp</artifactId>
-            <version>${mcp-sdk.version}</version>
         </dependency>
         <dependency>
             <groupId>io.modelcontextprotocol.sdk</groupId>
             <artifactId>mcp-json-jackson2</artifactId>
-            <version>${mcp-sdk.version}</version>
         </dependency>
         <dependency>
             <groupId>org.open-metadata</groupId>
