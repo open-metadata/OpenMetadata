@@ -1309,6 +1309,10 @@ export interface SamlSSOClientConfig {
  */
 export interface Idp {
     /**
+     * Authority URL (deprecated, use entityId instead).
+     */
+    authorityUrl?: string;
+    /**
      * Identity Provider Entity ID usually same as the SSO login URL.
      */
     entityId: string;
