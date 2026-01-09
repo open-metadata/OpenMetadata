@@ -51,7 +51,7 @@ test.describe('Pagination tests for all pages', () => {
     await testPaginationNavigation(page, '/api/v1/policies', 'table');
   });
 
-  test.describe.serial('Database Schema Tables page pagination', () => {
+  test.describe('Database Schema Tables page pagination', () => {
     const database = new DatabaseClass();
     let schemaFqn: string;
 
@@ -235,7 +235,6 @@ test.describe('Pagination tests for all pages', () => {
 
 test.describe('Pagination tests for Classification Tags page', () => {
   const classification = new ClassificationClass();
-  const tags: TagClass[] = [];
 
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
@@ -249,7 +248,6 @@ test.describe('Pagination tests for Classification Tags page', () => {
         description: `Tag ${i} for pagination testing`,
       });
       await tag.create(apiContext);
-      tags.push(tag);
     }
 
     await afterAction();
@@ -267,7 +265,6 @@ test.describe('Pagination tests for Classification Tags page', () => {
 });
 
 test.describe('Pagination tests for Metrics page', () => {
-  const metrics: MetricClass[] = [];
 
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
@@ -275,7 +272,6 @@ test.describe('Pagination tests for Metrics page', () => {
     for (let i = 1; i <= 20; i++) {
       const metric = new MetricClass();
       await metric.create(apiContext);
-      metrics.push(metric);
     }
 
     await afterAction();
@@ -291,7 +287,6 @@ test.describe('Pagination tests for Metrics page', () => {
 });
 
 test.describe('Pagination tests for Notification Alerts page', () => {
-  const alerts: AlertClass[] = [];
 
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
@@ -315,7 +310,6 @@ test.describe('Pagination tests for Notification Alerts page', () => {
       });
 
       await alert.create(apiContext);
-      alerts.push(alert);
     }
 
     await afterAction();
@@ -333,7 +327,6 @@ test.describe('Pagination tests for Notification Alerts page', () => {
 });
 
 test.describe('Pagination tests for Observability Alerts page', () => {
-  const alerts: AlertClass[] = [];
 
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
@@ -357,7 +350,6 @@ test.describe('Pagination tests for Observability Alerts page', () => {
       });
 
       await alert.create(apiContext);
-      alerts.push(alert);
     }
 
     await afterAction();
@@ -374,10 +366,9 @@ test.describe('Pagination tests for Observability Alerts page', () => {
   });
 });
 
-test.describe.serial('Pagination tests for API Collection Endpoints page', () => {
+test.describe('Pagination tests for API Collection Endpoints page', () => {
   const apiCollection = new ApiCollectionClass();
   let apiCollectionFqn: string;
-  const endpointNames: string[] = [];
 
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
@@ -387,7 +378,6 @@ test.describe.serial('Pagination tests for API Collection Endpoints page', () =>
 
     for (let i = 1; i <= 25; i++) {
       const endpointName = `pw-api-endpoint-${uuid()}-${i}`;
-      endpointNames.push(endpointName);
       await apiContext.post('/api/v1/apiEndpoints', {
         data: {
           name: endpointName,
@@ -422,7 +412,7 @@ test.describe.serial('Pagination tests for API Collection Endpoints page', () =>
   });
 });
 
-test.describe.serial('Pagination tests for Stored Procedures page', () => {
+test.describe('Pagination tests for Stored Procedures page', () => {
   const database = new DatabaseClass();
   let schemaFqn: string;
 
@@ -471,7 +461,7 @@ test.describe.serial('Pagination tests for Stored Procedures page', () => {
   });
 });
 
-test.describe.serial('Pagination tests for Database Schemas page', () => {
+test.describe('Pagination tests for Database Schemas page', () => {
   const database = new DatabaseClass();
   let databaseFqn: string;
 
@@ -516,7 +506,7 @@ test.describe.serial('Pagination tests for Database Schemas page', () => {
   });
 });
 
-test.describe.serial('Pagination tests for Dashboard Data Models page', () => {
+test.describe('Pagination tests for Dashboard Data Models page', () => {
   const dashboardService = new DashboardDataModelClass();
   let serviceFqn: string;
 

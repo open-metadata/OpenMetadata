@@ -687,10 +687,9 @@ export const testPaginationNavigation = async (
   waitForLoadSelector?: string,
   validateUrl = true,
 ) => {
-  const responseMatcher = (response: { url: () => string; status: () => number }) => {
+  const responseMatcher = (response: { url: () => string }) => {
     const url = response.url();
     return (
-      response.status() === 200 &&
       url.includes(apiEndpointPattern) &&
       (url.includes('limit=') || url.includes('after=') || url.includes('before='))
     );
@@ -698,14 +697,14 @@ export const testPaginationNavigation = async (
 
   const page1ResponsePromise = page.waitForResponse(responseMatcher);
 
-  await page1ResponsePromise;
+  const page1Response = await page1ResponsePromise;
+  expect(page1Response.status()).toBe(200);
 
   if (waitForLoadSelector) {
     await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
   }
   await waitForAllLoadersToDisappear(page);
 
-  const page1Response = await page1ResponsePromise;
   const page1Data = await page1Response.json();
   const page1Items = page1Data.data?.map((item: { fullyQualifiedName: string }) => item.fullyQualifiedName) || [];
 
@@ -744,11 +743,11 @@ export const testPaginationNavigation = async (
   }
 
   const page2Response = await page2ResponsePromise;
+  expect(page2Response.status()).toBe(200);
   const page2Data = await page2Response.json();
   const page2Items = page2Data.data?.map((item: { fullyQualifiedName: string }) => item.fullyQualifiedName) || [];
 
   expect(page2Items.length).toBeGreaterThan(0);
-  console.log(page1Items, page2Items);
   const hasOverlap = page1Items.some((fqn: string) => page2Items.includes(fqn));
   expect(hasOverlap).toBe(false);
 
@@ -756,7 +755,8 @@ export const testPaginationNavigation = async (
 
   await page.reload();
 
-  await reloadResponsePromise;
+  const reloadResponse = await reloadResponsePromise;
+  expect(reloadResponse.status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
 
   if (validateUrl) {
@@ -810,11 +810,12 @@ export const testCompletePaginationWithSearch = async (config: PaginationTestCon
 
   if (isNextEnabled) {
     const page2ResponsePromise = page.waitForResponse(
-      (response) => response.url().includes(normalApiPattern) && response.status() === 200
+      (response) => response.url().includes(normalApiPattern)
     );
 
     await nextButton.click();
-    await page2ResponsePromise;
+    const page2Response = await page2ResponsePromise;
+    expect(page2Response.status()).toBe(200);
     await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
 
     const paginationPage2 = page.locator('[data-testid="page-indicator"]');
@@ -824,11 +825,12 @@ export const testCompletePaginationWithSearch = async (config: PaginationTestCon
   }
 
   const searchResponsePromise = page.waitForResponse(
-    (response) => response.url().includes(searchApiPattern) && response.status() === 200
+    (response) => response.url().includes(searchApiPattern)
   );
 
   await page.getByTestId('searchbar').fill(searchTestTerm || '');
-  await searchResponsePromise;
+  const searchResponse = await searchResponsePromise;
+  expect(searchResponse.status()).toBe(200);
   await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
 
   const urlAfterSearch = new URL(page.url());
@@ -844,11 +846,12 @@ export const testCompletePaginationWithSearch = async (config: PaginationTestCon
 
   if (isNextEnabledAfterSearch) {
     const searchPage2Promise = page.waitForResponse(
-      (response) => response.url().includes(searchApiPattern) && response.status() === 200
+      (response) => response.url().includes(searchApiPattern)
     );
 
     await nextButtonAfterSearch.click();
-    await searchPage2Promise;
+    const searchPage2Response = await searchPage2Promise;
+    expect(searchPage2Response.status()).toBe(200);
     await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
 
     const paginationSearchPage2 = page.locator('[data-testid="page-indicator"]');
@@ -857,11 +860,12 @@ export const testCompletePaginationWithSearch = async (config: PaginationTestCon
     expect(searchPage2Content).toMatch(/2\s*of\s*\d+/);
 
     const reloadPromise = page.waitForResponse(
-      (response) => response.url().includes(searchApiPattern) && response.status() === 200
+      (response) => response.url().includes(searchApiPattern)
     );
 
     await page.reload();
-    await reloadPromise;
+    const reloadResponse = await reloadPromise;
+    expect(reloadResponse.status()).toBe(200);
     await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
 
     const urlAfterRefresh = new URL(page.url());
@@ -879,16 +883,22 @@ export const testCompletePaginationWithSearch = async (config: PaginationTestCon
     const isDeleteTogglePresent = await deleteToggle.count();
 
     if (isDeleteTogglePresent > 0) {
-      const searchApiPromiseWithToggle = page.waitForResponse(
-        (response) => response.url().includes(searchApiPattern) && response.status() === 200
+      const searchApiPromiseWithToggle1 = page.waitForResponse(
+        (response) => response.url().includes(searchApiPattern)
       );
 
       await deleteToggle.click();
-      await searchApiPromiseWithToggle;
+      const searchApiResponseWithToggle1 = await searchApiPromiseWithToggle1;
+      expect(searchApiResponseWithToggle1.status()).toBe(200);
       await waitForAllLoadersToDisappear(page);
 
+      const searchApiPromiseWithToggle2 = page.waitForResponse(
+        (response) => response.url().includes(searchApiPattern)
+      );
+
       await deleteToggle.click();
-      await searchApiPromiseWithToggle;
+      const searchApiResponseWithToggle2 = await searchApiPromiseWithToggle2;
+      expect(searchApiResponseWithToggle2.status()).toBe(200);
       await waitForAllLoadersToDisappear(page);
 
       const paginationAfterToggleWithSearch = page.locator('[data-testid="page-indicator"]');
