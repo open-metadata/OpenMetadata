@@ -323,6 +323,22 @@ describe('GlossaryTermsSection', () => {
         )
       ).toBeInTheDocument();
     });
+
+    it('keeps showing no glossary terms placeholder while the popup is open', async () => {
+      render(<GlossaryTermsSection hasPermission showEditButton />);
+
+      clickHeaderEdit();
+
+      expect(screen.getByTestId('tag-select-form')).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            'label.no-entity-assigned - {"entity":"label.glossary-term-plural"}'
+          )
+        ).toBeInTheDocument();
+      });
+    });
   });
 
   describe('Rendering - With Terms', () => {

@@ -71,8 +71,16 @@ export const navigateToEntityPanelTab = async (page: Page, tabName: string) => {
   });
 };
 
-export const editTags = async (page: Page, tagName: string) => {
-  await page.locator('[data-testid="edit-icon-tags"]').click();
+export const editTags = async (
+  page: Page,
+  tagName: string) => {
+  const editIcon = page.locator('[data-testid="edit-icon-tags"]');
+  if (await editIcon.isVisible()) {
+    await editIcon.click();
+  } else {
+    // Fallback for ML Model which uses an 'Add' chip
+    await page.locator('[data-testid="entity-tags"] [data-testid="add-tag"]').click();
+  }
 
   await page
     .locator('[data-testid="selectable-list"]')
@@ -115,11 +123,17 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
   await page
     .locator('[data-testid="edit-glossary-terms"]')
     .scrollIntoViewIfNeeded();
-  await page.waitForSelector('[data-testid="edit-glossary-terms"]', {
+  await page.waitForSelector('[data-testid="edit-glossary-terms"], [data-testid="glossary-container"] [data-testid="add-tag"]', {
     state: 'visible',
   });
 
-  await page.locator('[data-testid="edit-glossary-terms"]').click();
+  const editIcon = page.locator('[data-testid="edit-glossary-terms"]');
+  if (await editIcon.isVisible()) {
+    await editIcon.click();
+  } else {
+    // Fallback for ML Model which uses an 'Add' chip
+    await page.locator('[data-testid="glossary-container"] [data-testid="add-tag"]').click();
+  }
 
   await page
     .locator('[data-testid="selectable-list"]')
