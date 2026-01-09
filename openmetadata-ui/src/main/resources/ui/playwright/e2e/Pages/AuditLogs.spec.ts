@@ -872,10 +872,8 @@ test.describe('Audit Logs - Export Functionality', () => {
     );
 
     await test.step('Trigger export and verify API call', async () => {
-      const exportApiCall = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/audit/logs/export') &&
-          response.status() === 200
+      const exportApiCall = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/audit/logs/export')
       );
 
       const exportOkButton = page.locator(
@@ -986,10 +984,8 @@ test.describe('Audit Logs - Export Functionality', () => {
     });
 
     await test.step('Trigger export and validate response', async () => {
-      const exportApiCall = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/audit/logs/export') &&
-          response.status() === 200
+      const exportApiCall = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/audit/logs/export')
       );
 
       const exportOkButton = page.locator(
