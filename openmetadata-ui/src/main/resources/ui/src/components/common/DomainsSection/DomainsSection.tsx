@@ -34,7 +34,7 @@ import { useEntityRules } from '../../../hooks/useEntityRules';
 interface DomainsSectionProps {
   domains?: EntityReference[];
   showEditButton?: boolean;
-  entityType?: EntityType;
+  entityType: EntityType;
   entityFqn?: string;
   entityId?: string;
   hasPermission?: boolean;
@@ -57,7 +57,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
   const [activeDomains, setActiveDomains] = useState<EntityReference[]>([]);
   const [showAllDomains, setShowAllDomains] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
-  const { entityRules } = useEntityRules(entityType as EntityType);
+  const { entityRules } = useEntityRules(entityType);
 
   // Sync activeDomains with domains prop, similar to DomainLabel
   useEffect(() => {
