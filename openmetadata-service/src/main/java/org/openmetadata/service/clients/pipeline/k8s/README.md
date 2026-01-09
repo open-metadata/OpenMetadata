@@ -2,6 +2,73 @@
 
 This module provides Kubernetes-native pipeline execution for OpenMetadata ingestion pipelines. It implements the `PipelineServiceClient` interface to run ingestion workflows as Kubernetes Jobs instead of using external orchestrators like Airflow.
 
+## Why Kubernetes-Native Architecture?
+
+### Design Philosophy: Jobs > Pods
+
+The K8s Pipeline Client uses **Jobs triggering Pods** rather than direct Pod management for several critical reasons:
+
+1. **Built-in Retry Logic**: Jobs provide automatic retry mechanisms with backoff policies, eliminating the need to implement custom retry logic for transient failures (network issues, node problems, resource constraints).
+
+2. **Lifecycle Management**: Jobs handle Pod lifecycle automatically - if a Pod fails, gets evicted, or terminates unexpectedly, the Job controller recreates it according to the retry policy. This provides resilience against infrastructure failures.
+
+3. **Completion Tracking**: Jobs track completion status (Succeeded/Failed/Active) natively, making it easier to map to OpenMetadata's pipeline states without complex Pod phase monitoring.
+
+4. **Resource Cleanup**: Jobs provide TTL-based cleanup (`ttlSecondsAfterFinished`) and history limits, preventing resource accumulation over time.
+
+5. **Scheduling Semantics**: CronJobs provide cron-like scheduling with proper timezone support and prevent overlapping executions, making them ideal for scheduled ingestion pipelines.
+
+### Why Not Direct Pod Management?
+
+Managing Pods directly would require implementing:
+- Custom retry logic for failures
+- Pod lifecycle monitoring 
+- Manual cleanup mechanisms
+- Complex state tracking for pipeline status
+- Error handling for Pod evictions and node failures
+
+Jobs encapsulate all this complexity in Kubernetes-native primitives.
+
+### Architecture Choice: Separate Diagnostic Jobs
+
+The architecture uses separate diagnostic Jobs (similar to Argo's onExit handlers) rather than sidecar containers because:
+
+1. **Resource Isolation**: Diagnostic collection doesn't consume resources from the main ingestion process
+2. **Failure Independence**: Diagnostics can run even if the main container is completely broken
+3. **Extended Timeouts**: Diagnostic jobs can have different timeout policies than main ingestion jobs
+4. **Clean Separation**: Main jobs focus solely on ingestion; diagnostic jobs handle failure analysis
+
+### Why ConfigMaps for Pipeline Configuration?
+
+The K8s Pipeline Client leverages **ConfigMaps** as the primary mechanism for storing pipeline configurations, following Kubernetes-native patterns:
+
+**Problem Solved**: Ingestion pipelines need complex configuration data (database connections, processing rules, OpenMetadata server details) that must be:
+- Accessible to multiple Job runs
+- Updatable without rebuilding container images
+- Separate from sensitive credentials
+- Versioned and trackable
+
+**ConfigMap Benefits**:
+
+1. **Immutable Configuration**: Each pipeline gets its own ConfigMap (`om-config-{pipeline-name}`) containing the complete workflow YAML configuration
+2. **Environment Variable Injection**: Configuration is injected via `configMapKeyRef`, making it available as the `config` environment variable
+3. **Atomic Updates**: ConfigMaps support optimistic locking (resourceVersion) for safe concurrent updates
+4. **Separation of Concerns**: Non-sensitive configuration in ConfigMaps, secrets in Kubernetes Secrets
+5. **Native Kubernetes Pattern**: Follows standard K8s configuration management practices
+
+**Configuration Flow**:
+```
+Pipeline Definition → WorkflowConfigBuilder → ConfigMap → Job Pod → Ingestion Process
+```
+
+**Why Not Alternatives?**:
+- **Environment Variables**: Limited size, not suitable for large YAML configs
+- **Volume Mounts**: More complex, unnecessary for simple key-value configuration
+- **Init Containers**: Adds complexity and startup time
+- **Image Embedding**: Requires rebuilding images for config changes
+
+This approach provides **declarative configuration management** that integrates seamlessly with Kubernetes' configuration lifecycle.
+
 ## Architecture Overview
 
 The K8s Pipeline Client consists of three main components:
@@ -196,6 +263,45 @@ pipelineServiceClientConfiguration:
 
 ## Kubernetes Resources
 
+### ConfigMap Template
+
+Each pipeline creates a dedicated ConfigMap containing its complete workflow configuration:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: om-config-{pipeline-name}
+  namespace: openmetadata-pipelines
+  labels:
+    app.kubernetes.io/name: openmetadata
+    app.kubernetes.io/component: ingestion
+    app.kubernetes.io/pipeline: {pipelineName}
+data:
+  config: |
+    workflowConfig:
+      openMetadataServerConfig:
+        hostPort: "http://openmetadata-server:8585/api"
+        authProvider: openmetadata
+        securityConfig:
+          jwtToken: "<from-secret>"
+      source:
+        type: database
+        serviceName: "mysql-service"
+        sourceConfig:
+          config:
+            type: Database
+            # ... database-specific configuration
+      processor:
+        type: orm-profiler
+        # ... processor configuration
+      sink:
+        type: metadata-rest
+        config:
+          api_endpoint: "http://openmetadata-server:8585/api"
+    ingestionPipelineFQN: "mysql-service.ingestion_pipeline"
+```
+
 ### Job Template
 
 ```yaml
@@ -245,6 +351,19 @@ spec:
           capabilities:
             drop: ["ALL"]
         env:
+        # Configuration injected from ConfigMap
+        - name: config
+          valueFrom:
+            configMapKeyRef:
+              name: om-config-{pipeline-name}
+              key: config
+        # Job metadata
+        - name: pipelineType
+          value: "metadata"
+        - name: pipelineRunId
+          value: "{runId}"
+        - name: ingestionPipelineFQN
+          value: "{pipeline-fqn}"
         - name: jobName
           value: "om-job-{name}-{runId}"
         - name: namespace  
@@ -320,20 +439,32 @@ roleRef:
 
 ## AutoPilot Integration
 
-The K8s Pipeline Client prevents duplicate executions when used with AutoPilot by setting `startingDeadlineSeconds: 0` on CronJobs. This ensures:
+### Why `startingDeadlineSeconds: 0`?
 
-- **Scheduled pipelines**: Run only at their configured schedule
+The K8s Pipeline Client prevents duplicate executions when used with AutoPilot by setting `startingDeadlineSeconds: 0` on CronJobs. This design choice addresses a critical problem:
+
+**Problem**: Without this setting, CronJobs have "catch-up" behavior where they attempt to run missed schedules if the cluster was down or the CronJob controller wasn't running. When AutoPilot also triggers "missed" pipelines, this creates duplicate executions.
+
+**Solution**: Setting `startingDeadlineSeconds: 0` tells the CronJob controller to never run missed schedules - only run at the exact scheduled time if the cluster is available. This ensures:
+
+- **Scheduled pipelines**: Run only at their configured schedule (no catch-up)
 - **On-demand executions**: Run immediately when triggered by AutoPilot
-- **No catch-up behavior**: CronJobs don't attempt to run missed schedules
+- **No duplicates**: AutoPilot handles missed executions, not the CronJob controller
 
 ## Log Management
 
-### Log Retrieval with Pagination
+### Why Paginated Log Retrieval?
 
 The K8s Pipeline Client provides paginated log retrieval for better performance with large log files:
 
-- **Chunked Response**: Logs are split into chunks (approximately 1MB each) for efficient transfer
-- **Pagination Support**: Uses `after` parameter to retrieve subsequent chunks
+**Problem**: Ingestion jobs can generate multi-gigabyte logs (especially for large databases), which can:
+- Cause memory issues when transferring via HTTP
+- Lead to timeouts in the UI
+- Create poor user experience with slow loading
+
+**Solution**: Chunked pagination approach:
+- **Chunked Response**: Logs are split into ~1MB chunks for efficient transfer
+- **Pagination Support**: Uses `after` parameter to retrieve subsequent chunks  
 - **Task-specific Keys**: Logs are returned with pipeline-type-specific task keys (e.g., `ingestion_task`, `profiler_task`)
 - **Long Retention**: Pods are retained for 1 week (configurable via `ttlSecondsAfterFinished`) to ensure log availability
 
@@ -395,3 +526,27 @@ All containers receive these environment variables:
 - Keep sensitive data in Kubernetes Secrets
 - Use ConfigMaps for non-sensitive configuration
 - Test configuration changes in staging environments
+
+## Architecture Validation
+
+The K8s Pipeline Client architecture has been designed to be **simple and robust** by leveraging Kubernetes primitives instead of reinventing them:
+
+✅ **Jobs over custom Pod management** - Uses built-in retry, lifecycle, and cleanup  
+✅ **CronJobs over custom schedulers** - Leverages proven cron scheduling with timezone support  
+✅ **Separate diagnostic jobs** - Clean separation of concerns and resource isolation  
+✅ **ConfigMaps for configuration** - Immutable, versioned config with atomic updates and optimistic locking  
+✅ **Secrets for sensitive data** - Proper separation of credentials from configuration  
+✅ **Native log access** - Direct pod log access without additional infrastructure  
+✅ **Label-based resource tracking** - Standard Kubernetes resource management  
+
+### ConfigMap Architecture Benefits
+
+The ConfigMap-based configuration approach provides:
+
+- **No Custom Config Server**: Eliminates need for external configuration management systems
+- **Atomic Configuration Updates**: Uses Kubernetes' optimistic locking for safe concurrent updates
+- **Immutable Deployments**: Each Job gets a consistent configuration snapshot
+- **Easy Rollbacks**: Previous ConfigMap versions enable quick rollbacks
+- **Native Kubernetes Integration**: Works seamlessly with K8s RBAC, monitoring, and lifecycle management
+
+This results in a **simpler, more maintainable architecture** that requires less custom code and leverages battle-tested Kubernetes features.

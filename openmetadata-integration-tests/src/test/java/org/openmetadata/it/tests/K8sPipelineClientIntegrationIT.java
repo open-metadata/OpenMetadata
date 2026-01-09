@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.clients.pipeline.k8s;
+package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -55,6 +55,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.clients.pipeline.k8s.K8sPipelineClient;
 import org.testcontainers.k3s.K3sContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -93,12 +94,12 @@ class K8sPipelineClientIntegrationTest {
 
   @BeforeAll
   void setUp() throws Exception {
-    LOG.info("Starting K3s container for integration tests...");
+    log.info("Starting K3s container for integration tests...");
 
     k3sContainer = new K3sContainer(K3S_IMAGE);
     k3sContainer.start();
 
-    LOG.info("K3s container started successfully");
+    log.info("K3s container started successfully");
 
     String kubeconfig = k3sContainer.getKubeConfigYaml();
     ApiClient apiClient = Config.fromConfig(new StringReader(kubeconfig));
@@ -133,13 +134,13 @@ class K8sPipelineClientIntegrationTest {
     scheduledPipeline = createTestPipeline("scheduled-pipeline", "0 * * * *");
     onDemandPipeline = createTestPipeline("ondemand-pipeline", null);
 
-    LOG.info("K8sPipelineClient integration test setup complete");
+    log.info("K8sPipelineClient integration test setup complete");
   }
 
   @AfterAll
   void tearDown() {
     if (k3sContainer != null) {
-      LOG.info("Stopping K3s container...");
+      log.info("Stopping K3s container...");
       k3sContainer.stop();
     }
   }
@@ -149,10 +150,10 @@ class K8sPipelineClientIntegrationTest {
 
     try {
       coreApi.createNamespace(namespace).execute();
-      LOG.info("Created namespace: {}", NAMESPACE);
+      log.info("Created namespace: {}", NAMESPACE);
     } catch (Exception e) {
       if (e.getMessage() != null && e.getMessage().contains("already exists")) {
-        LOG.info("Namespace {} already exists", NAMESPACE);
+        log.info("Namespace {} already exists", NAMESPACE);
       } else {
         throw e;
       }
@@ -175,7 +176,7 @@ class K8sPipelineClientIntegrationTest {
   @Test
   @Order(1)
   void testDeployScheduledPipeline() throws Exception {
-    LOG.info("Testing deployment of scheduled pipeline...");
+    log.info("Testing deployment of scheduled pipeline...");
 
     PipelineServiceClientResponse response = client.deployPipeline(scheduledPipeline, testService);
 
@@ -198,13 +199,13 @@ class K8sPipelineClientIntegrationTest {
     assertEquals("0 * * * *", cronJob.getSpec().getSchedule());
     assertFalse(cronJob.getSpec().getSuspend());
 
-    LOG.info("Scheduled pipeline deployed successfully");
+    log.info("Scheduled pipeline deployed successfully");
   }
 
   @Test
   @Order(2)
   void testDeployOnDemandPipeline() throws Exception {
-    LOG.info("Testing deployment of on-demand pipeline...");
+    log.info("Testing deployment of on-demand pipeline...");
 
     PipelineServiceClientResponse response = client.deployPipeline(onDemandPipeline, testService);
 
@@ -226,13 +227,13 @@ class K8sPipelineClientIntegrationTest {
             .execute();
     assertTrue(cronJobs.getItems().isEmpty());
 
-    LOG.info("On-demand pipeline deployed successfully");
+    log.info("On-demand pipeline deployed successfully");
   }
 
   @Test
   @Order(3)
   void testRunPipeline() throws Exception {
-    LOG.info("Testing running a pipeline...");
+    log.info("Testing running a pipeline...");
 
     PipelineServiceClientResponse response = client.runPipeline(onDemandPipeline, testService);
 
@@ -262,13 +263,13 @@ class K8sPipelineClientIntegrationTest {
     V1Job job = jobs.getItems().get(0);
     assertTrue(job.getMetadata().getName().startsWith("om-job-ondemand-pipeline-"));
 
-    LOG.info("Pipeline run triggered successfully, job: {}", job.getMetadata().getName());
+    log.info("Pipeline run triggered successfully, job: {}", job.getMetadata().getName());
   }
 
   @Test
   @Order(4)
   void testGetQueuedPipelineStatus() throws Exception {
-    LOG.info("Testing getting pipeline status...");
+    log.info("Testing getting pipeline status...");
 
     List<PipelineStatus> statuses = client.getQueuedPipelineStatus(onDemandPipeline);
 
@@ -279,13 +280,13 @@ class K8sPipelineClientIntegrationTest {
     assertNotNull(status.getRunId());
     assertNotNull(status.getPipelineState());
 
-    LOG.info("Got {} pipeline status(es)", statuses.size());
+    log.info("Got {} pipeline status(es)", statuses.size());
   }
 
   @Test
   @Order(5)
   void testToggleIngestionDisable() throws Exception {
-    LOG.info("Testing disabling scheduled pipeline...");
+    log.info("Testing disabling scheduled pipeline...");
 
     scheduledPipeline.setEnabled(true);
     PipelineServiceClientResponse response = client.toggleIngestion(scheduledPipeline);
@@ -298,13 +299,13 @@ class K8sPipelineClientIntegrationTest {
         batchApi.readNamespacedCronJob("om-cronjob-scheduled-pipeline", NAMESPACE).execute();
     assertTrue(cronJob.getSpec().getSuspend());
 
-    LOG.info("Scheduled pipeline disabled successfully");
+    log.info("Scheduled pipeline disabled successfully");
   }
 
   @Test
   @Order(6)
   void testToggleIngestionEnable() throws Exception {
-    LOG.info("Testing enabling scheduled pipeline...");
+    log.info("Testing enabling scheduled pipeline...");
 
     scheduledPipeline.setEnabled(false);
     PipelineServiceClientResponse response = client.toggleIngestion(scheduledPipeline);
@@ -317,13 +318,13 @@ class K8sPipelineClientIntegrationTest {
         batchApi.readNamespacedCronJob("om-cronjob-scheduled-pipeline", NAMESPACE).execute();
     assertFalse(cronJob.getSpec().getSuspend());
 
-    LOG.info("Scheduled pipeline enabled successfully");
+    log.info("Scheduled pipeline enabled successfully");
   }
 
   @Test
   @Order(7)
   void testKillIngestion() throws Exception {
-    LOG.info("Testing killing pipeline jobs...");
+    log.info("Testing killing pipeline jobs...");
 
     client.runPipeline(onDemandPipeline, testService);
 
@@ -365,13 +366,13 @@ class K8sPipelineClientIntegrationTest {
                               && job.getStatus().getActive() > 0);
             });
 
-    LOG.info("Pipeline jobs killed successfully");
+    log.info("Pipeline jobs killed successfully");
   }
 
   @Test
   @Order(8)
   void testRedeployPipelineUpdatesConfig() throws Exception {
-    LOG.info("Testing redeployment updates config...");
+    log.info("Testing redeployment updates config...");
 
     scheduledPipeline.getAirflowConfig().setScheduleInterval("30 * * * *");
     PipelineServiceClientResponse response = client.deployPipeline(scheduledPipeline, testService);
@@ -382,13 +383,13 @@ class K8sPipelineClientIntegrationTest {
         batchApi.readNamespacedCronJob("om-cronjob-scheduled-pipeline", NAMESPACE).execute();
     assertEquals("30 * * * *", cronJob.getSpec().getSchedule());
 
-    LOG.info("Pipeline redeployed with updated config successfully");
+    log.info("Pipeline redeployed with updated config successfully");
   }
 
   @Test
   @Order(9)
   void testDeleteScheduledPipeline() throws Exception {
-    LOG.info("Testing deletion of scheduled pipeline...");
+    log.info("Testing deletion of scheduled pipeline...");
 
     PipelineServiceClientResponse response = client.deletePipeline(scheduledPipeline);
 
@@ -409,13 +410,13 @@ class K8sPipelineClientIntegrationTest {
               }
             });
 
-    LOG.info("Scheduled pipeline deleted successfully");
+    log.info("Scheduled pipeline deleted successfully");
   }
 
   @Test
   @Order(10)
   void testDeleteOnDemandPipeline() throws Exception {
-    LOG.info("Testing deletion of on-demand pipeline...");
+    log.info("Testing deletion of on-demand pipeline...");
 
     PipelineServiceClientResponse response = client.deletePipeline(onDemandPipeline);
 
@@ -434,13 +435,13 @@ class K8sPipelineClientIntegrationTest {
               }
             });
 
-    LOG.info("On-demand pipeline deleted successfully");
+    log.info("On-demand pipeline deleted successfully");
   }
 
   @Test
   @Order(11)
   void testLogRetrievalNoPipeline() {
-    LOG.info("Testing log retrieval for non-existent pipeline...");
+    log.info("Testing log retrieval for non-existent pipeline...");
 
     IngestionPipeline nonExistentPipeline = createTestPipeline("non-existent-pipeline", null);
 
@@ -450,13 +451,13 @@ class K8sPipelineClientIntegrationTest {
     assertTrue(logs.containsKey("logs"));
     assertEquals("No jobs found for this pipeline", logs.get("logs"));
 
-    LOG.info("Log retrieval for non-existent pipeline handled correctly");
+    log.info("Log retrieval for non-existent pipeline handled correctly");
   }
 
   @Test
   @Order(12)
   void testLogRetrievalWithPagination() throws Exception {
-    LOG.info("Testing log retrieval with pagination...");
+    log.info("Testing log retrieval with pagination...");
 
     // Create a test pipeline with a job that will generate logs
     IngestionPipeline logTestPipeline = createTestPipeline("log-test-pipeline", null);
@@ -499,13 +500,13 @@ class K8sPipelineClientIntegrationTest {
           // Second chunk should have different content
           assertFalse(firstChunk.get("ingestion_task").equals(secondChunk.get("ingestion_task")));
 
-          LOG.info("Pagination test successful - retrieved {} total chunks", totalChunks);
+          log.info("Pagination test successful - retrieved {} total chunks", totalChunks);
         } else {
-          LOG.info("Single chunk response - pagination not needed");
+          log.info("Single chunk response - pagination not needed");
         }
       } else {
         // Fallback case - logs were empty or job hasn't started yet
-        LOG.info("Got fallback log response: {}", firstChunk.get("logs"));
+        log.info("Got fallback log response: {}", firstChunk.get("logs"));
       }
 
     } finally {
@@ -513,13 +514,13 @@ class K8sPipelineClientIntegrationTest {
       client.deletePipeline(logTestPipeline);
     }
 
-    LOG.info("Log retrieval with pagination test completed");
+    log.info("Log retrieval with pagination test completed");
   }
 
   @Test
   @Order(13)
   void testLogRetrievalDifferentPipelineTypes() throws Exception {
-    LOG.info("Testing log retrieval for different pipeline types...");
+    log.info("Testing log retrieval for different pipeline types...");
 
     // Test metadata pipeline (already covered above, but verify task key)
     IngestionPipeline metadataPipeline = createTestPipeline("metadata-log-test", null);
@@ -550,17 +551,17 @@ class K8sPipelineClientIntegrationTest {
       // Test task keys for different pipeline types
       Map<String, String> metadataLogs = client.getLastIngestionLogs(metadataPipeline, null);
       if (metadataLogs.containsKey("ingestion_task")) {
-        LOG.info("Metadata pipeline correctly uses 'ingestion_task' key");
+        log.info("Metadata pipeline correctly uses 'ingestion_task' key");
       }
 
       Map<String, String> profilerLogs = client.getLastIngestionLogs(profilerPipeline, null);
       if (profilerLogs.containsKey("profiler_task")) {
-        LOG.info("Profiler pipeline correctly uses 'profiler_task' key");
+        log.info("Profiler pipeline correctly uses 'profiler_task' key");
       }
 
       Map<String, String> lineageLogs = client.getLastIngestionLogs(lineagePipeline, null);
       if (lineageLogs.containsKey("lineage_task")) {
-        LOG.info("Lineage pipeline correctly uses 'lineage_task' key");
+        log.info("Lineage pipeline correctly uses 'lineage_task' key");
       }
 
     } finally {
@@ -570,13 +571,13 @@ class K8sPipelineClientIntegrationTest {
       client.deletePipeline(lineagePipeline);
     }
 
-    LOG.info("Different pipeline types log retrieval test completed");
+    log.info("Different pipeline types log retrieval test completed");
   }
 
   @Test
   @Order(14)
   void testPodTTLConfiguration() throws Exception {
-    LOG.info("Testing pod TTL configuration...");
+    log.info("Testing pod TTL configuration...");
 
     // Create a short-lived test pipeline to verify TTL
     IngestionPipeline ttlTestPipeline = createTestPipeline("ttl-test-pipeline", null);
@@ -604,19 +605,19 @@ class K8sPipelineClientIntegrationTest {
       // Should be 1 week (604800 seconds)
       assertEquals(Integer.valueOf(604800), ttl, "TTL should be 1 week for log retention");
 
-      LOG.info("Pod TTL correctly configured to {} seconds (1 week)", ttl);
+      log.info("Pod TTL correctly configured to {} seconds (1 week)", ttl);
 
     } finally {
       client.deletePipeline(ttlTestPipeline);
     }
 
-    LOG.info("Pod TTL configuration test completed");
+    log.info("Pod TTL configuration test completed");
   }
 
   @Test
   @Order(15)
   void testGetServiceStatus() {
-    LOG.info("Testing service status...");
+    log.info("Testing service status...");
 
     PipelineServiceClientResponse status = client.getServiceStatus();
 
@@ -626,7 +627,7 @@ class K8sPipelineClientIntegrationTest {
         status.getPlatform());
     assertNotNull(status.getVersion());
 
-    LOG.info("Service status: platform={}, version={}", status.getPlatform(), status.getVersion());
+    log.info("Service status: platform={}, version={}", status.getPlatform(), status.getVersion());
   }
 
   private ServiceEntityInterface createTestService() {

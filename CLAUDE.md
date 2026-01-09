@@ -195,6 +195,7 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - Use clear, descriptive variable and method names instead of comments
 - Follow existing project patterns and conventions
 - Generate production-ready code, not tutorial code
+- Create integration tests in openmetadata-integration-tests
 
 ### TypeScript/Frontend Code Requirements
 - **NEVER use `any` type** in TypeScript code - always use proper types

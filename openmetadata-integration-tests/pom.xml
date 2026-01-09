@@ -81,6 +81,14 @@
       <scope>test</scope>
     </dependency>
 
+    <!-- Kubernetes client for K8s integration tests -->
+    <dependency>
+      <groupId>io.kubernetes</groupId>
+      <artifactId>client-java</artifactId>
+      <version>24.0.0</version>
+      <scope>test</scope>
+    </dependency>
+
     <!-- Dropwizard testing harness -->
     <dependency>
       <groupId>io.dropwizard</groupId>

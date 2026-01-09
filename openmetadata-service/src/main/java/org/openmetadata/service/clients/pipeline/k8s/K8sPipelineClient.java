@@ -1649,12 +1649,12 @@ public class K8sPipelineClient extends PipelineServiceClient {
   }
 
   @VisibleForTesting
-  void setBatchApi(BatchV1Api batchApi) {
+  public void setBatchApi(BatchV1Api batchApi) {
     this.batchApi = batchApi;
   }
 
   @VisibleForTesting
-  void setCoreApi(CoreV1Api coreApi) {
+  public void setCoreApi(CoreV1Api coreApi) {
     this.coreApi = coreApi;
   }
 }
