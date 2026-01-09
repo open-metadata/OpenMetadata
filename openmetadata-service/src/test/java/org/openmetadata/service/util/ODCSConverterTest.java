@@ -14,6 +14,7 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -98,6 +99,7 @@ class ODCSConverterTest {
     EntityReference entity = new EntityReference();
     entity.setId(UUID.randomUUID());
     entity.setType("table");
+    entity.setName("my_table");
     contract.setEntity(entity);
 
     List<Column> columns = new ArrayList<>();
@@ -107,10 +109,20 @@ class ODCSConverterTest {
 
     ODCSDataContract odcs = ODCSConverter.toODCS(contract);
 
+    // Schema is now wrapped in an object (table)
     assertNotNull(odcs.getSchema());
-    assertEquals(2, odcs.getSchema().size());
-    assertEquals(ODCSSchemaElement.LogicalType.TIMESTAMP, odcs.getSchema().get(0).getLogicalType());
-    assertEquals(ODCSSchemaElement.LogicalType.TIMESTAMP, odcs.getSchema().get(1).getLogicalType());
+    assertEquals(1, odcs.getSchema().size());
+    ODCSSchemaElement tableObject = odcs.getSchema().get(0);
+    assertEquals("my_table", tableObject.getName());
+    assertEquals(ODCSSchemaElement.LogicalType.OBJECT, tableObject.getLogicalType());
+    assertNotNull(tableObject.getProperties());
+    assertEquals(2, tableObject.getProperties().size());
+    assertEquals(
+        ODCSSchemaElement.LogicalType.TIMESTAMP,
+        tableObject.getProperties().get(0).getLogicalType());
+    assertEquals(
+        ODCSSchemaElement.LogicalType.TIMESTAMP,
+        tableObject.getProperties().get(1).getLogicalType());
   }
 
   @Test
@@ -123,6 +135,7 @@ class ODCSConverterTest {
     EntityReference entity = new EntityReference();
     entity.setId(UUID.randomUUID());
     entity.setType("table");
+    entity.setName("time_table");
     contract.setEntity(entity);
 
     List<Column> columns = new ArrayList<>();
@@ -131,9 +144,15 @@ class ODCSConverterTest {
 
     ODCSDataContract odcs = ODCSConverter.toODCS(contract);
 
+    // Schema is now wrapped in an object (table)
     assertNotNull(odcs.getSchema());
     assertEquals(1, odcs.getSchema().size());
-    assertEquals(ODCSSchemaElement.LogicalType.TIME, odcs.getSchema().get(0).getLogicalType());
+    ODCSSchemaElement tableObject = odcs.getSchema().get(0);
+    assertEquals("time_table", tableObject.getName());
+    assertNotNull(tableObject.getProperties());
+    assertEquals(1, tableObject.getProperties().size());
+    assertEquals(
+        ODCSSchemaElement.LogicalType.TIME, tableObject.getProperties().get(0).getLogicalType());
   }
 
   @Test
@@ -145,16 +164,21 @@ class ODCSConverterTest {
     odcs.setVersion("1.0.0");
     odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
 
-    List<ODCSSchemaElement> schema = new ArrayList<>();
-    schema.add(
-        new ODCSSchemaElement()
-            .withName("event_ts")
-            .withLogicalType(ODCSSchemaElement.LogicalType.TIMESTAMP));
-    odcs.setSchema(schema);
+    // Schema wrapped in object (table)
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName("events");
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    tableObject.setProperties(
+        List.of(
+            new ODCSSchemaElement()
+                .withName("event_ts")
+                .withLogicalType(ODCSSchemaElement.LogicalType.TIMESTAMP)));
+    odcs.setSchema(List.of(tableObject));
 
     EntityReference entityRef = new EntityReference();
     entityRef.setId(UUID.randomUUID());
     entityRef.setType("table");
+    entityRef.setName("events");
 
     DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
 
@@ -172,16 +196,21 @@ class ODCSConverterTest {
     odcs.setVersion("1.0.0");
     odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
 
-    List<ODCSSchemaElement> schema = new ArrayList<>();
-    schema.add(
-        new ODCSSchemaElement()
-            .withName("schedule_time")
-            .withLogicalType(ODCSSchemaElement.LogicalType.TIME));
-    odcs.setSchema(schema);
+    // Schema wrapped in object (table)
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName("schedules");
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    tableObject.setProperties(
+        List.of(
+            new ODCSSchemaElement()
+                .withName("schedule_time")
+                .withLogicalType(ODCSSchemaElement.LogicalType.TIME)));
+    odcs.setSchema(List.of(tableObject));
 
     EntityReference entityRef = new EntityReference();
     entityRef.setId(UUID.randomUUID());
     entityRef.setType("table");
+    entityRef.setName("schedules");
 
     DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
 
@@ -200,16 +229,21 @@ class ODCSConverterTest {
     odcs.setVersion("1.0.0");
     odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
 
-    List<ODCSSchemaElement> schema = new ArrayList<>();
-    schema.add(
-        new ODCSSchemaElement()
-            .withName("date_col")
-            .withLogicalType(ODCSSchemaElement.LogicalType.DATE));
-    odcs.setSchema(schema);
+    // Schema wrapped in object (table) for v3.0.2 compatibility
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName("dates_table");
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    tableObject.setProperties(
+        List.of(
+            new ODCSSchemaElement()
+                .withName("date_col")
+                .withLogicalType(ODCSSchemaElement.LogicalType.DATE)));
+    odcs.setSchema(List.of(tableObject));
 
     EntityReference entityRef = new EntityReference();
     entityRef.setId(UUID.randomUUID());
     entityRef.setType("table");
+    entityRef.setName("dates_table");
 
     DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
 
@@ -229,6 +263,7 @@ class ODCSConverterTest {
     EntityReference entity = new EntityReference();
     entity.setId(UUID.randomUUID());
     entity.setType("table");
+    entity.setName("users");
     contract.setEntity(entity);
 
     List<Column> columns = new ArrayList<>();
@@ -252,15 +287,22 @@ class ODCSConverterTest {
 
     assertNotNull(odcs);
     assertNotNull(odcs.getSchema());
-    assertEquals(2, odcs.getSchema().size());
+    // Schema is now wrapped in an object (table)
+    assertEquals(1, odcs.getSchema().size());
+    ODCSSchemaElement tableObject = odcs.getSchema().get(0);
+    assertEquals("users", tableObject.getName());
+    assertEquals(ODCSSchemaElement.LogicalType.OBJECT, tableObject.getLogicalType());
+    assertEquals("table", tableObject.getPhysicalType());
+    assertNotNull(tableObject.getProperties());
+    assertEquals(2, tableObject.getProperties().size());
 
-    ODCSSchemaElement idElement = odcs.getSchema().get(0);
+    ODCSSchemaElement idElement = tableObject.getProperties().get(0);
     assertEquals("id", idElement.getName());
     assertEquals(ODCSSchemaElement.LogicalType.INTEGER, idElement.getLogicalType());
     assertEquals("INT", idElement.getPhysicalType());
     assertTrue(idElement.getPrimaryKey());
 
-    ODCSSchemaElement nameElement = odcs.getSchema().get(1);
+    ODCSSchemaElement nameElement = tableObject.getProperties().get(1);
     assertEquals("name", nameElement.getName());
     assertEquals(ODCSSchemaElement.LogicalType.STRING, nameElement.getLogicalType());
     assertNotNull(nameElement.getLogicalTypeOptions());
@@ -340,26 +382,33 @@ class ODCSConverterTest {
     odcs.setVersion("1.0.0");
     odcs.setStatus(ODCSDataContract.OdcsStatus.DRAFT);
 
-    List<ODCSSchemaElement> schema = new ArrayList<>();
+    // Schema wrapped in object (table)
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName("users");
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+
+    List<ODCSSchemaElement> properties = new ArrayList<>();
 
     ODCSSchemaElement idElement = new ODCSSchemaElement();
     idElement.setName("id");
     idElement.setLogicalType(ODCSSchemaElement.LogicalType.INTEGER);
     idElement.setDescription("Primary key column");
     idElement.setPrimaryKey(true);
-    schema.add(idElement);
+    properties.add(idElement);
 
     ODCSSchemaElement emailElement = new ODCSSchemaElement();
     emailElement.setName("email");
     emailElement.setLogicalType(ODCSSchemaElement.LogicalType.STRING);
     emailElement.setRequired(true);
-    schema.add(emailElement);
+    properties.add(emailElement);
 
-    odcs.setSchema(schema);
+    tableObject.setProperties(properties);
+    odcs.setSchema(List.of(tableObject));
 
     EntityReference entityRef = new EntityReference();
     entityRef.setId(UUID.randomUUID());
     entityRef.setType("table");
+    entityRef.setName("users");
 
     DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
 
@@ -525,6 +574,7 @@ class ODCSConverterTest {
     EntityReference entity = new EntityReference();
     entity.setId(UUID.randomUUID());
     entity.setType("table");
+    entity.setName("all_types_table");
     contract.setEntity(entity);
 
     List<Column> columns = new ArrayList<>();
@@ -547,33 +597,27 @@ class ODCSConverterTest {
     ODCSDataContract odcs = ODCSConverter.toODCS(contract);
 
     assertNotNull(odcs.getSchema());
-    assertEquals(12, odcs.getSchema().size());
+    // Schema is wrapped in object
+    assertEquals(1, odcs.getSchema().size());
+    ODCSSchemaElement tableObject = odcs.getSchema().get(0);
+    assertEquals("all_types_table", tableObject.getName());
+    assertNotNull(tableObject.getProperties());
+    assertEquals(12, tableObject.getProperties().size());
+    List<ODCSSchemaElement> props = tableObject.getProperties();
 
+    assertEquals(ODCSSchemaElement.LogicalType.INTEGER, props.get(0).getLogicalType()); // INT
+    assertEquals(ODCSSchemaElement.LogicalType.LONG, props.get(1).getLogicalType()); // BIGINT
+    assertEquals(ODCSSchemaElement.LogicalType.FLOAT, props.get(2).getLogicalType()); // FLOAT
+    assertEquals(ODCSSchemaElement.LogicalType.DOUBLE, props.get(3).getLogicalType()); // DOUBLE
+    assertEquals(ODCSSchemaElement.LogicalType.DECIMAL, props.get(4).getLogicalType()); // DECIMAL
+    assertEquals(ODCSSchemaElement.LogicalType.BOOLEAN, props.get(5).getLogicalType()); // BOOLEAN
+    assertEquals(ODCSSchemaElement.LogicalType.STRING, props.get(6).getLogicalType()); // STRING
+    assertEquals(ODCSSchemaElement.LogicalType.DATE, props.get(7).getLogicalType()); // DATE
     assertEquals(
-        ODCSSchemaElement.LogicalType.INTEGER, odcs.getSchema().get(0).getLogicalType()); // INT
-    assertEquals(
-        ODCSSchemaElement.LogicalType.LONG, odcs.getSchema().get(1).getLogicalType()); // BIGINT
-    assertEquals(
-        ODCSSchemaElement.LogicalType.FLOAT, odcs.getSchema().get(2).getLogicalType()); // FLOAT
-    assertEquals(
-        ODCSSchemaElement.LogicalType.DOUBLE, odcs.getSchema().get(3).getLogicalType()); // DOUBLE
-    assertEquals(
-        ODCSSchemaElement.LogicalType.DECIMAL, odcs.getSchema().get(4).getLogicalType()); // DECIMAL
-    assertEquals(
-        ODCSSchemaElement.LogicalType.BOOLEAN, odcs.getSchema().get(5).getLogicalType()); // BOOLEAN
-    assertEquals(
-        ODCSSchemaElement.LogicalType.STRING, odcs.getSchema().get(6).getLogicalType()); // STRING
-    assertEquals(
-        ODCSSchemaElement.LogicalType.DATE, odcs.getSchema().get(7).getLogicalType()); // DATE
-    assertEquals(
-        ODCSSchemaElement.LogicalType.TIMESTAMP,
-        odcs.getSchema().get(8).getLogicalType()); // TIMESTAMP
-    assertEquals(
-        ODCSSchemaElement.LogicalType.ARRAY, odcs.getSchema().get(9).getLogicalType()); // ARRAY
-    assertEquals(
-        ODCSSchemaElement.LogicalType.OBJECT, odcs.getSchema().get(10).getLogicalType()); // JSON
-    assertEquals(
-        ODCSSchemaElement.LogicalType.OBJECT, odcs.getSchema().get(11).getLogicalType()); // STRUCT
+        ODCSSchemaElement.LogicalType.TIMESTAMP, props.get(8).getLogicalType()); // TIMESTAMP
+    assertEquals(ODCSSchemaElement.LogicalType.ARRAY, props.get(9).getLogicalType()); // ARRAY
+    assertEquals(ODCSSchemaElement.LogicalType.OBJECT, props.get(10).getLogicalType()); // JSON
+    assertEquals(ODCSSchemaElement.LogicalType.OBJECT, props.get(11).getLogicalType()); // STRUCT
   }
 
   @Test
@@ -585,42 +629,55 @@ class ODCSConverterTest {
     odcs.setVersion("1.0.0");
     odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
 
-    List<ODCSSchemaElement> schema = new ArrayList<>();
+    // Schema wrapped in object (table)
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName("all_types");
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
 
-    schema.add(
+    List<ODCSSchemaElement> properties = new ArrayList<>();
+
+    properties.add(
         new ODCSSchemaElement()
             .withName("int_col")
             .withLogicalType(ODCSSchemaElement.LogicalType.INTEGER));
-    schema.add(
+    properties.add(
         new ODCSSchemaElement()
             .withName("num_col")
             .withLogicalType(ODCSSchemaElement.LogicalType.NUMBER));
-    schema.add(
+    properties.add(
         new ODCSSchemaElement()
             .withName("bool_col")
             .withLogicalType(ODCSSchemaElement.LogicalType.BOOLEAN));
-    schema.add(
+    properties.add(
         new ODCSSchemaElement()
             .withName("str_col")
             .withLogicalType(ODCSSchemaElement.LogicalType.STRING));
-    schema.add(
+    properties.add(
         new ODCSSchemaElement()
             .withName("date_col")
             .withLogicalType(ODCSSchemaElement.LogicalType.DATE));
-    schema.add(
+    properties.add(
         new ODCSSchemaElement()
             .withName("arr_col")
             .withLogicalType(ODCSSchemaElement.LogicalType.ARRAY));
-    schema.add(
-        new ODCSSchemaElement()
-            .withName("obj_col")
-            .withLogicalType(ODCSSchemaElement.LogicalType.OBJECT));
+    // Note: nested OBJECT types (without properties) get treated as STRUCT columns
+    ODCSSchemaElement nestedObj = new ODCSSchemaElement();
+    nestedObj.setName("obj_col");
+    nestedObj.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    nestedObj.setProperties(
+        List.of(
+            new ODCSSchemaElement()
+                .withName("nested_field")
+                .withLogicalType(ODCSSchemaElement.LogicalType.STRING)));
+    properties.add(nestedObj);
 
-    odcs.setSchema(schema);
+    tableObject.setProperties(properties);
+    odcs.setSchema(List.of(tableObject));
 
     EntityReference entityRef = new EntityReference();
     entityRef.setId(UUID.randomUUID());
     entityRef.setType("table");
+    entityRef.setName("all_types");
 
     DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
 
@@ -647,19 +704,23 @@ class ODCSConverterTest {
     odcs.setVersion("1.0.0");
     odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
 
-    List<ODCSSchemaElement> schema = new ArrayList<>();
+    // Schema wrapped in object (table)
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName("custom_table");
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
 
     ODCSSchemaElement element = new ODCSSchemaElement();
     element.setName("custom_col");
     element.setLogicalType(ODCSSchemaElement.LogicalType.STRING); // This would map to STRING
     element.setPhysicalType("VARCHAR"); // But physical type should override
-    schema.add(element);
 
-    odcs.setSchema(schema);
+    tableObject.setProperties(List.of(element));
+    odcs.setSchema(List.of(tableObject));
 
     EntityReference entityRef = new EntityReference();
     entityRef.setId(UUID.randomUUID());
     entityRef.setType("table");
+    entityRef.setName("custom_table");
 
     DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
 
@@ -678,6 +739,7 @@ class ODCSConverterTest {
     EntityReference entity = new EntityReference();
     entity.setId(UUID.randomUUID());
     entity.setType("table");
+    entity.setName("customers");
     contract.setEntity(entity);
 
     List<Column> columns = new ArrayList<>();
@@ -697,9 +759,16 @@ class ODCSConverterTest {
     ODCSDataContract odcs = ODCSConverter.toODCS(contract);
 
     assertNotNull(odcs.getSchema());
+    // Schema is wrapped in object (table)
     assertEquals(1, odcs.getSchema().size());
+    ODCSSchemaElement tableObject = odcs.getSchema().get(0);
+    assertEquals("customers", tableObject.getName());
+    assertEquals(ODCSSchemaElement.LogicalType.OBJECT, tableObject.getLogicalType());
+    assertNotNull(tableObject.getProperties());
+    assertEquals(1, tableObject.getProperties().size());
 
-    ODCSSchemaElement addressElement = odcs.getSchema().get(0);
+    // The address column is nested inside the table object
+    ODCSSchemaElement addressElement = tableObject.getProperties().get(0);
     assertEquals("address", addressElement.getName());
     assertEquals(ODCSSchemaElement.LogicalType.OBJECT, addressElement.getLogicalType());
     assertNotNull(addressElement.getProperties());
@@ -718,29 +787,34 @@ class ODCSConverterTest {
     odcs.setVersion("1.0.0");
     odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
 
-    List<ODCSSchemaElement> schema = new ArrayList<>();
+    // Schema wrapped in outer object (table)
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName("customers");
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
 
+    // Nested object (struct column)
     ODCSSchemaElement addressElement = new ODCSSchemaElement();
     addressElement.setName("address");
     addressElement.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
 
-    List<ODCSSchemaElement> properties = new ArrayList<>();
-    properties.add(
+    List<ODCSSchemaElement> addressProperties = new ArrayList<>();
+    addressProperties.add(
         new ODCSSchemaElement()
             .withName("street")
             .withLogicalType(ODCSSchemaElement.LogicalType.STRING));
-    properties.add(
+    addressProperties.add(
         new ODCSSchemaElement()
             .withName("city")
             .withLogicalType(ODCSSchemaElement.LogicalType.STRING));
-    addressElement.setProperties(properties);
+    addressElement.setProperties(addressProperties);
 
-    schema.add(addressElement);
-    odcs.setSchema(schema);
+    tableObject.setProperties(List.of(addressElement));
+    odcs.setSchema(List.of(tableObject));
 
     EntityReference entityRef = new EntityReference();
     entityRef.setId(UUID.randomUUID());
     entityRef.setType("table");
+    entityRef.setName("customers");
 
     DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
 
@@ -1658,5 +1732,339 @@ class ODCSConverterTest {
     List<Map<String, Object>> rules =
         (List<Map<String, Object>>) mergedExtension.get("odcsQualityRules");
     assertEquals("new_rule", rules.get(0).get("name"));
+  }
+
+  @Test
+  void testGetSchemaObjectNames_SingleObject() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    List<ODCSSchemaElement> schema = new ArrayList<>();
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName("orders");
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    tableObject.setProperties(
+        List.of(
+            new ODCSSchemaElement()
+                .withName("id")
+                .withLogicalType(ODCSSchemaElement.LogicalType.INTEGER)));
+    schema.add(tableObject);
+    odcs.setSchema(schema);
+
+    List<String> objectNames = ODCSConverter.getSchemaObjectNames(odcs);
+
+    assertEquals(1, objectNames.size());
+    assertEquals("orders", objectNames.get(0));
+    assertFalse(ODCSConverter.hasMultipleSchemaObjects(odcs));
+  }
+
+  @Test
+  void testGetSchemaObjectNames_MultipleObjects() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    List<ODCSSchemaElement> schema = new ArrayList<>();
+
+    ODCSSchemaElement ordersTable = new ODCSSchemaElement();
+    ordersTable.setName("orders");
+    ordersTable.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    ordersTable.setProperties(
+        List.of(
+            new ODCSSchemaElement()
+                .withName("order_id")
+                .withLogicalType(ODCSSchemaElement.LogicalType.INTEGER)));
+    schema.add(ordersTable);
+
+    ODCSSchemaElement customersTable = new ODCSSchemaElement();
+    customersTable.setName("customers");
+    customersTable.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    customersTable.setProperties(
+        List.of(
+            new ODCSSchemaElement()
+                .withName("customer_id")
+                .withLogicalType(ODCSSchemaElement.LogicalType.INTEGER)));
+    schema.add(customersTable);
+
+    ODCSSchemaElement productsTable = new ODCSSchemaElement();
+    productsTable.setName("products");
+    productsTable.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    productsTable.setProperties(
+        List.of(
+            new ODCSSchemaElement()
+                .withName("product_id")
+                .withLogicalType(ODCSSchemaElement.LogicalType.INTEGER)));
+    schema.add(productsTable);
+
+    odcs.setSchema(schema);
+
+    List<String> objectNames = ODCSConverter.getSchemaObjectNames(odcs);
+
+    assertEquals(3, objectNames.size());
+    assertTrue(objectNames.contains("orders"));
+    assertTrue(objectNames.contains("customers"));
+    assertTrue(objectNames.contains("products"));
+    assertTrue(ODCSConverter.hasMultipleSchemaObjects(odcs));
+  }
+
+  @Test
+  void testFromODCS_MultiObjectWithEntityNameMatch() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    List<ODCSSchemaElement> schema = new ArrayList<>();
+
+    ODCSSchemaElement ordersTable = new ODCSSchemaElement();
+    ordersTable.setName("orders");
+    ordersTable.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    ordersTable.setProperties(
+        List.of(
+            new ODCSSchemaElement()
+                .withName("order_id")
+                .withLogicalType(ODCSSchemaElement.LogicalType.INTEGER),
+            new ODCSSchemaElement()
+                .withName("amount")
+                .withLogicalType(ODCSSchemaElement.LogicalType.DECIMAL)));
+    schema.add(ordersTable);
+
+    ODCSSchemaElement customersTable = new ODCSSchemaElement();
+    customersTable.setName("customers");
+    customersTable.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    customersTable.setProperties(
+        List.of(
+            new ODCSSchemaElement()
+                .withName("customer_id")
+                .withLogicalType(ODCSSchemaElement.LogicalType.INTEGER),
+            new ODCSSchemaElement()
+                .withName("email")
+                .withLogicalType(ODCSSchemaElement.LogicalType.STRING)));
+    schema.add(customersTable);
+
+    odcs.setSchema(schema);
+
+    EntityReference entityRef = new EntityReference();
+    entityRef.setId(UUID.randomUUID());
+    entityRef.setType("table");
+    entityRef.setName("customers"); // Entity name matches one of the objects
+
+    DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
+
+    assertNotNull(contract.getSchema());
+    assertEquals(2, contract.getSchema().size());
+    assertEquals("customer_id", contract.getSchema().get(0).getName());
+    assertEquals("email", contract.getSchema().get(1).getName());
+  }
+
+  @Test
+  void testFromODCS_MultiObjectWithExplicitObjectName() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    List<ODCSSchemaElement> schema = new ArrayList<>();
+
+    ODCSSchemaElement ordersTable = new ODCSSchemaElement();
+    ordersTable.setName("orders");
+    ordersTable.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    ordersTable.setProperties(
+        List.of(
+            new ODCSSchemaElement()
+                .withName("order_id")
+                .withLogicalType(ODCSSchemaElement.LogicalType.INTEGER)));
+    schema.add(ordersTable);
+
+    ODCSSchemaElement customersTable = new ODCSSchemaElement();
+    customersTable.setName("customers");
+    customersTable.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    customersTable.setProperties(
+        List.of(
+            new ODCSSchemaElement()
+                .withName("customer_id")
+                .withLogicalType(ODCSSchemaElement.LogicalType.INTEGER)));
+    schema.add(customersTable);
+
+    odcs.setSchema(schema);
+
+    EntityReference entityRef = new EntityReference();
+    entityRef.setId(UUID.randomUUID());
+    entityRef.setType("table");
+    entityRef.setName("some_other_table"); // Does not match any object
+
+    // Explicitly specify orders as the object to import
+    DataContract contract = ODCSConverter.fromODCS(odcs, entityRef, "orders");
+
+    assertNotNull(contract.getSchema());
+    assertEquals(1, contract.getSchema().size());
+    assertEquals("order_id", contract.getSchema().get(0).getName());
+  }
+
+  @Test
+  void testFromODCS_MultiObjectWithInvalidObjectName() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    List<ODCSSchemaElement> schema = new ArrayList<>();
+
+    ODCSSchemaElement ordersTable = new ODCSSchemaElement();
+    ordersTable.setName("orders");
+    ordersTable.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    ordersTable.setProperties(
+        List.of(
+            new ODCSSchemaElement()
+                .withName("order_id")
+                .withLogicalType(ODCSSchemaElement.LogicalType.INTEGER)));
+    schema.add(ordersTable);
+
+    odcs.setSchema(schema);
+
+    EntityReference entityRef = new EntityReference();
+    entityRef.setId(UUID.randomUUID());
+    entityRef.setType("table");
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> ODCSConverter.fromODCS(odcs, entityRef, "nonexistent_table"));
+    assertTrue(exception.getMessage().contains("not found"));
+    assertTrue(exception.getMessage().contains("orders"));
+  }
+
+  @Test
+  void testFromODCS_MultiObjectUsesFirstWhenNoMatch() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    List<ODCSSchemaElement> schema = new ArrayList<>();
+
+    ODCSSchemaElement firstTable = new ODCSSchemaElement();
+    firstTable.setName("first_table");
+    firstTable.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    firstTable.setProperties(
+        List.of(
+            new ODCSSchemaElement()
+                .withName("first_col")
+                .withLogicalType(ODCSSchemaElement.LogicalType.STRING)));
+    schema.add(firstTable);
+
+    ODCSSchemaElement secondTable = new ODCSSchemaElement();
+    secondTable.setName("second_table");
+    secondTable.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    secondTable.setProperties(
+        List.of(
+            new ODCSSchemaElement()
+                .withName("second_col")
+                .withLogicalType(ODCSSchemaElement.LogicalType.STRING)));
+    schema.add(secondTable);
+
+    odcs.setSchema(schema);
+
+    EntityReference entityRef = new EntityReference();
+    entityRef.setId(UUID.randomUUID());
+    entityRef.setType("table");
+    entityRef.setName("unrelated_table"); // No match
+
+    DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
+
+    assertNotNull(contract.getSchema());
+    assertEquals(1, contract.getSchema().size());
+    assertEquals("first_col", contract.getSchema().get(0).getName()); // Uses first object
+  }
+
+  @Test
+  void testFromODCS_LegacyFlatSchema() {
+    // Test that legacy contracts without object wrappers still work
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_0_2);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    List<ODCSSchemaElement> schema = new ArrayList<>();
+    schema.add(
+        new ODCSSchemaElement()
+            .withName("id")
+            .withLogicalType(ODCSSchemaElement.LogicalType.INTEGER));
+    schema.add(
+        new ODCSSchemaElement()
+            .withName("name")
+            .withLogicalType(ODCSSchemaElement.LogicalType.STRING));
+    odcs.setSchema(schema);
+
+    EntityReference entityRef = new EntityReference();
+    entityRef.setId(UUID.randomUUID());
+    entityRef.setType("table");
+
+    DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
+
+    assertNotNull(contract.getSchema());
+    assertEquals(2, contract.getSchema().size());
+    assertEquals("id", contract.getSchema().get(0).getName());
+    assertEquals("name", contract.getSchema().get(1).getName());
+  }
+
+  @Test
+  void testRoundTrip_WithMultiObjectAwareness() {
+    DataContract original = new DataContract();
+    original.setId(UUID.randomUUID());
+    original.setName("roundtrip_multi_test");
+    original.setDescription("Multi-object aware round trip");
+    original.setEntityStatus(EntityStatus.APPROVED);
+
+    EntityReference entity = new EntityReference();
+    entity.setId(UUID.randomUUID());
+    entity.setType("table");
+    entity.setName("test_table");
+    entity.setFullyQualifiedName("db.schema.test_table");
+    original.setEntity(entity);
+
+    List<Column> columns = new ArrayList<>();
+    columns.add(new Column().withName("col1").withDataType(ColumnDataType.INT));
+    columns.add(new Column().withName("col2").withDataType(ColumnDataType.STRING));
+    original.setSchema(columns);
+
+    // Export to ODCS
+    ODCSDataContract odcs = ODCSConverter.toODCS(original);
+
+    // Verify wrapped structure
+    assertEquals(1, odcs.getSchema().size());
+    assertEquals("test_table", odcs.getSchema().get(0).getName());
+    assertEquals(2, odcs.getSchema().get(0).getProperties().size());
+
+    // Import back
+    EntityReference newEntityRef = new EntityReference();
+    newEntityRef.setId(UUID.randomUUID());
+    newEntityRef.setType("table");
+    newEntityRef.setName("test_table");
+
+    DataContract converted = ODCSConverter.fromODCS(odcs, newEntityRef);
+
+    // Verify columns are correctly extracted
+    assertEquals(original.getName(), converted.getName());
+    assertEquals(original.getSchema().size(), converted.getSchema().size());
+    assertEquals("col1", converted.getSchema().get(0).getName());
+    assertEquals("col2", converted.getSchema().get(1).getName());
   }
 }

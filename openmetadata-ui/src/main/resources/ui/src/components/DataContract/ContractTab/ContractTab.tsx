@@ -40,7 +40,7 @@ export const ContractTab = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
-  const { id } = entityData ?? {};
+  const { id, name: entityName } = entityData ?? {};
 
   const fetchContract = async () => {
     try {
@@ -108,6 +108,7 @@ export const ContractTab = () => {
           <ContractDetail
             contract={contract}
             entityId={id ?? ''}
+            entityName={entityName}
             entityType={entityType}
             onContractUpdated={fetchContract}
             onDelete={handleDelete}
@@ -119,7 +120,7 @@ export const ContractTab = () => {
           />
         );
     }
-  }, [tabMode, contract]);
+  }, [tabMode, contract, entityName]);
 
   return isLoading ? (
     <Loader />

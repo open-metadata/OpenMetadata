@@ -8,20 +8,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ODCS Valid Example: Draft Contract
-# Tests non-active status (no schema to avoid validation issues with dynamic test tables)
+# ODCS Valid Example: Contract with Team/Owner Definition
 
 apiVersion: v3.1.0
 kind: DataContract
-id: new-feature-contract
-name: New Feature Data Contract
-version: "0.1.0"
-status: draft
+id: team-owner-contract
+name: Team Owner Contract
+version: "1.0.0"
+status: active
 
 description:
-  purpose: Contract under development for new feature
-  limitations: Not yet approved for production use
+  purpose: Test team/owner resolution during import
 
 team:
-  - username: feature-team
+  - username: admin
+    name: Admin User
     role: owner
+  - username: developer1
+    name: Developer One
+    role: developer
+  - username: reviewer1
+    name: Reviewer One
+    role: reviewer

@@ -20,6 +20,7 @@ export interface ContractImportModalProps {
   visible: boolean;
   entityId: string;
   entityType: string;
+  entityName?: string;
   format: ContractImportFormat;
   existingContract?: DataContract | null;
   onClose: () => void;

@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.data;
 
 import static org.openmetadata.service.jdbi3.DataContractRepository.RESULT_EXTENSION;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -1070,9 +1071,16 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string", example = Entity.TABLE))
           @QueryParam("entityType")
           String entityType,
+      @Parameter(
+              description =
+                  "Schema object name to import (for multi-object ODCS contracts). "
+                      + "If not specified, auto-selects based on entity name or uses first object.",
+              schema = @Schema(type = "string"))
+          @QueryParam("objectName")
+          String objectName,
       @Valid ODCSDataContract odcs) {
     EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-    DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef);
+    DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef, objectName);
     dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
     dataContract.setUpdatedAt(System.currentTimeMillis());
     return create(uriInfo, securityContext, dataContract);
@@ -1109,16 +1117,61 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string", example = Entity.TABLE))
           @QueryParam("entityType")
           String entityType,
+      @Parameter(
+              description =
+                  "Schema object name to import (for multi-object ODCS contracts). "
+                      + "If not specified, auto-selects based on entity name or uses first object.",
+              schema = @Schema(type = "string"))
+          @QueryParam("objectName")
+          String objectName,
       String yamlContent) {
     try {
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
       ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
       EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-      DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef);
+      DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef, objectName);
       dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
       dataContract.setUpdatedAt(System.currentTimeMillis());
       return create(uriInfo, securityContext, dataContract);
-    } catch (Exception e) {
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException("Invalid ODCS YAML content: " + e.getMessage(), e);
+    }
+  }
+
+  @POST
+  @Path("/odcs/parse/yaml")
+  @Consumes({"application/yaml", "text/yaml"})
+  @Operation(
+      operationId = "parseODCSYaml",
+      summary = "Parse ODCS YAML and return metadata",
+      description =
+          "Parse an ODCS YAML contract and return metadata including the list of schema objects. "
+              + "Use this to determine available objects for multi-object contracts before importing.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Parsed ODCS metadata",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ODCSParseResult.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid YAML content")
+      })
+  public Response parseODCSYaml(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
+    try {
+      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
+
+      ODCSParseResult result = new ODCSParseResult();
+      result.setName(odcs.getName());
+      result.setVersion(odcs.getVersion());
+      result.setStatus(odcs.getStatus() != null ? odcs.getStatus().value() : null);
+      result.setSchemaObjects(ODCSConverter.getSchemaObjectNames(odcs));
+      result.setHasMultipleObjects(ODCSConverter.hasMultipleSchemaObjects(odcs));
+
+      return Response.ok(result).build();
+    } catch (JsonProcessingException e) {
       throw new IllegalArgumentException("Invalid ODCS YAML content: " + e.getMessage(), e);
     }
   }
@@ -1155,16 +1208,23 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string", example = Entity.TABLE))
           @QueryParam("entityType")
           String entityType,
+      @Parameter(
+              description =
+                  "Schema object name to validate (for multi-object ODCS contracts). "
+                      + "If not specified, auto-selects based on entity name or uses first object.",
+              schema = @Schema(type = "string"))
+          @QueryParam("objectName")
+          String objectName,
       String yamlContent) {
     try {
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
       ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
       EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-      DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef);
+      DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef, objectName);
 
       SchemaValidation validation = repository.validateContractSchema(dataContract, entityRef);
       return Response.ok(validation).build();
-    } catch (Exception e) {
+    } catch (JsonProcessingException e) {
       throw new IllegalArgumentException("Invalid ODCS YAML content: " + e.getMessage(), e);
     }
   }
@@ -1200,9 +1260,16 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string", example = Entity.TABLE))
           @QueryParam("entityType")
           String entityType,
+      @Parameter(
+              description =
+                  "Schema object name to import (for multi-object ODCS contracts). "
+                      + "If not specified, auto-selects based on entity name or uses first object.",
+              schema = @Schema(type = "string"))
+          @QueryParam("objectName")
+          String objectName,
       @Valid ODCSDataContract odcs) {
     EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-    DataContract imported = ODCSConverter.fromODCS(odcs, entityRef);
+    DataContract imported = ODCSConverter.fromODCS(odcs, entityRef, objectName);
     DataContract dataContract = applySmartMerge(entityRef, imported);
     dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
     dataContract.setUpdatedAt(System.currentTimeMillis());
@@ -1252,12 +1319,19 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           @QueryParam("mode")
           @DefaultValue("merge")
           String mode,
+      @Parameter(
+              description =
+                  "Schema object name to import (for multi-object ODCS contracts). "
+                      + "If not specified, auto-selects based on entity name or uses first object.",
+              schema = @Schema(type = "string"))
+          @QueryParam("objectName")
+          String objectName,
       String yamlContent) {
     try {
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
       ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
       EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-      DataContract imported = ODCSConverter.fromODCS(odcs, entityRef);
+      DataContract imported = ODCSConverter.fromODCS(odcs, entityRef, objectName);
       DataContract dataContract =
           "replace".equalsIgnoreCase(mode)
               ? applyFullReplace(entityRef, imported)
@@ -1265,7 +1339,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
       dataContract.setUpdatedAt(System.currentTimeMillis());
       return createOrUpdate(uriInfo, securityContext, dataContract);
-    } catch (Exception e) {
+    } catch (JsonProcessingException e) {
       throw new IllegalArgumentException("Invalid ODCS YAML content: " + e.getMessage(), e);
     }
   }
@@ -1319,6 +1393,55 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     @SuppressWarnings("unused")
     public DataContractList() {
       /* Required for serde */
+    }
+  }
+
+  /** Response object for ODCS parse endpoint containing metadata about the parsed contract. */
+  public static class ODCSParseResult {
+    private String name;
+    private String version;
+    private String status;
+    private List<String> schemaObjects;
+    private boolean hasMultipleObjects;
+
+    public String getName() {
+      return name;
+    }
+
+    public void setName(String name) {
+      this.name = name;
+    }
+
+    public String getVersion() {
+      return version;
+    }
+
+    public void setVersion(String version) {
+      this.version = version;
+    }
+
+    public String getStatus() {
+      return status;
+    }
+
+    public void setStatus(String status) {
+      this.status = status;
+    }
+
+    public List<String> getSchemaObjects() {
+      return schemaObjects;
+    }
+
+    public void setSchemaObjects(List<String> schemaObjects) {
+      this.schemaObjects = schemaObjects;
+    }
+
+    public boolean isHasMultipleObjects() {
+      return hasMultipleObjects;
+    }
+
+    public void setHasMultipleObjects(boolean hasMultipleObjects) {
+      this.hasMultipleObjects = hasMultipleObjects;
     }
   }
 }

@@ -83,6 +83,7 @@ const ContractDetail: React.FC<{
   contract?: DataContract | null;
   entityId: string;
   entityType: string;
+  entityName?: string;
   onEdit: () => void;
   onDelete: () => void;
   onContractUpdated?: () => void;
@@ -90,6 +91,7 @@ const ContractDetail: React.FC<{
   contract,
   entityId,
   entityType,
+  entityName,
   onEdit,
   onDelete,
   onContractUpdated,
@@ -551,6 +553,7 @@ const ContractDetail: React.FC<{
       <>
         <ContractImportModal
           entityId={entityId}
+          entityName={entityName}
           entityType={entityType}
           existingContract={null}
           format={importFormat}
@@ -595,6 +598,7 @@ const ContractDetail: React.FC<{
     <>
       <ContractImportModal
         entityId={entityId}
+        entityName={entityName}
         entityType={entityType}
         existingContract={contract}
         format={importFormat}

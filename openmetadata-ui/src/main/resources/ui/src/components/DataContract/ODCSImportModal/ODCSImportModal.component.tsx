@@ -16,10 +16,11 @@ import {
   CloseCircleFilled,
   CloseOutlined,
   FileTextOutlined,
+  InfoCircleOutlined,
   LoadingOutlined,
   WarningFilled,
 } from '@ant-design/icons';
-import { Modal, Radio, Space, Typography, Upload } from 'antd';
+import { Modal, Radio, Select, Space, Typography, Upload } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { load as yamlLoad } from 'js-yaml';
@@ -34,6 +35,8 @@ import {
   createOrUpdateContractFromODCSYaml,
   deleteContractById,
   importContractFromODCSYaml,
+  ODCSParseResult,
+  parseODCSYaml,
   SchemaValidation,
   updateContract,
   validateODCSYaml,
@@ -56,6 +59,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
   visible,
   entityId,
   entityType,
+  entityName,
   format,
   existingContract,
   onClose,
@@ -80,11 +84,23 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
   const [serverValidationError, setServerValidationError] = useState<
     string | null
   >(null);
+  const [schemaObjects, setSchemaObjects] = useState<string[]>([]);
+  const [selectedObjectName, setSelectedObjectName] = useState<
+    string | undefined
+  >(undefined);
+  const [hasMultipleObjects, setHasMultipleObjects] = useState(false);
 
   const isODCSFormat = format === 'odcs';
 
   useEffect(() => {
     if (!yamlContent || !isODCSFormat || parseError) {
+      setServerValidation(null);
+      setServerValidationError(null);
+
+      return;
+    }
+
+    if (hasMultipleObjects && !selectedObjectName) {
       setServerValidation(null);
       setServerValidationError(null);
 
@@ -98,7 +114,8 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         const validation = await validateODCSYaml(
           yamlContent,
           entityId,
-          entityType
+          entityType,
+          selectedObjectName
         );
         setServerValidation(validation);
       } catch (err) {
@@ -113,7 +130,15 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     };
 
     validateContract();
-  }, [yamlContent, isODCSFormat, entityId, entityType, parseError]);
+  }, [
+    yamlContent,
+    isODCSFormat,
+    entityId,
+    entityType,
+    parseError,
+    hasMultipleObjects,
+    selectedObjectName,
+  ]);
 
   const hasValidationErrors = useMemo(() => {
     if (serverValidationError) {
@@ -198,7 +223,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
   const handleFileUpload = useCallback(
     (file: File) => {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         const content = e.target?.result as string;
         setYamlContent(content);
         setFileName(file.name);
@@ -207,6 +232,31 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         if (parsed) {
           setParsedContract(parsed);
           setParseError(null);
+
+          if (isODCSFormat) {
+            try {
+              const parseResult: ODCSParseResult = await parseODCSYaml(content);
+              const objects = parseResult.schemaObjects ?? [];
+              setSchemaObjects(objects);
+              setHasMultipleObjects(parseResult.hasMultipleObjects ?? false);
+
+              if (objects.length === 1) {
+                setSelectedObjectName(objects[0]);
+              } else if (objects.length > 1) {
+                // Auto-select matching object based on entity name (case-insensitive)
+                const matchingObject = entityName
+                  ? objects.find(
+                      (obj) => obj.toLowerCase() === entityName.toLowerCase()
+                    )
+                  : undefined;
+                setSelectedObjectName(matchingObject);
+              }
+            } catch {
+              setSchemaObjects([]);
+              setHasMultipleObjects(false);
+              setSelectedObjectName(undefined);
+            }
+          }
         } else {
           setParsedContract(null);
           setParseError(
@@ -214,13 +264,16 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               ? t('message.invalid-odcs-contract-format')
               : t('message.invalid-openmetadata-contract-format')
           );
+          setSchemaObjects([]);
+          setHasMultipleObjects(false);
+          setSelectedObjectName(undefined);
         }
       };
       reader.readAsText(file);
 
       return false;
     },
-    [parseYamlContent, isODCSFormat, t]
+    [parseYamlContent, isODCSFormat, entityName, t]
   );
 
   const handleODCSImport = useCallback(async (): Promise<DataContract> => {
@@ -233,12 +286,25 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         yamlContent,
         entityId,
         entityType,
-        importMode
+        importMode,
+        selectedObjectName
       );
     }
 
-    return importContractFromODCSYaml(yamlContent, entityId, entityType);
-  }, [yamlContent, hasExistingContract, importMode, entityId, entityType]);
+    return importContractFromODCSYaml(
+      yamlContent,
+      entityId,
+      entityType,
+      selectedObjectName
+    );
+  }, [
+    yamlContent,
+    hasExistingContract,
+    importMode,
+    entityId,
+    entityType,
+    selectedObjectName,
+  ]);
 
   const handleOpenMetadataImport =
     useCallback(async (): Promise<DataContract> => {
@@ -322,6 +388,9 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     setImportMode('merge');
     setServerValidation(null);
     setServerValidationError(null);
+    setSchemaObjects([]);
+    setSelectedObjectName(undefined);
+    setHasMultipleObjects(false);
     onClose();
   }, [onClose]);
 
@@ -333,6 +402,9 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     setParseError(null);
     setServerValidation(null);
     setServerValidationError(null);
+    setSchemaObjects([]);
+    setSelectedObjectName(undefined);
+    setHasMultipleObjects(false);
   }, []);
 
   const renderContractPreview = useCallback(() => {
@@ -651,6 +723,37 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     );
   }, [hasExistingContract, importMode, t]);
 
+  const renderObjectSelector = useCallback(() => {
+    if (!isODCSFormat || schemaObjects.length <= 1) {
+      return null;
+    }
+
+    return (
+      <div className="object-selector-section">
+        <div className="object-selector-header">
+          <InfoCircleOutlined className="info-icon" />
+          <span>{t('message.multi-object-contract-detected')}</span>
+        </div>
+        <div className="object-selector-content">
+          <Text type="secondary">
+            {t('message.select-schema-object-to-import')}
+          </Text>
+          <Select
+            className="object-selector-dropdown"
+            placeholder={t('label.select-schema-object')}
+            value={selectedObjectName}
+            onChange={(value) => setSelectedObjectName(value)}>
+            {schemaObjects.map((obj) => (
+              <Select.Option key={obj} value={obj}>
+                {obj}
+              </Select.Option>
+            ))}
+          </Select>
+        </div>
+      </div>
+    );
+  }, [isODCSFormat, schemaObjects, selectedObjectName, t]);
+
   const modalTitle = isODCSFormat
     ? t('label.import-odcs-contract')
     : t('label.import-contract');
@@ -672,7 +775,8 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           !yamlContent ||
           Boolean(parseError) ||
           isValidating ||
-          hasValidationErrors,
+          hasValidationErrors ||
+          (hasMultipleObjects && !selectedObjectName),
         loading: isLoading || isValidating,
       }}
       okText={t('label.import')}
@@ -695,7 +799,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                 </p>
                 <p className="ant-upload-text">{dragDropMessage}</p>
                 <p className="ant-upload-hint">
-                  {t('message.supports-yaml-format')}
+                  {t('label.supports-yaml-format')}
                 </p>
               </Dragger>
             </div>
@@ -712,6 +816,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                 />
               </div>
 
+              {renderObjectSelector()}
               {renderContractPreview()}
               {renderImportOptions()}
             </>

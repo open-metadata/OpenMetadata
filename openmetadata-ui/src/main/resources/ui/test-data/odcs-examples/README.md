@@ -13,6 +13,17 @@ This folder contains example ODCS (Open Data Contract Standard) files for manual
 | `valid-draft-status.yaml` | Contract in draft status | Non-active status handling |
 | `valid-basic.json` | Basic contract in JSON format | JSON parsing support |
 | `valid-full.json` | Full contract in JSON format | JSON with all sections |
+| `valid-multi-object.yaml` | Contract with multiple schema objects | Multi-object selection |
+
+## Sample Data Compatible Examples
+
+These files match the actual sample_data tables in OpenMetadata. Use when testing against the sample_data service.
+
+| File | Description | Target Table |
+|------|-------------|--------------|
+| `sample-data-dim-address.yaml` | Contract for dim_address table | `sample_data.ecommerce_db.shopify.dim_address` |
+| `sample-data-dim-customer.yaml` | Contract for dim_customer table | `sample_data.ecommerce_db.shopify.dim_customer` |
+| `sample-data-multi-object.yaml` | Multi-object contract (address, customer, location) | Any matching sample_data table |
 
 ## Invalid Examples
 
@@ -65,6 +76,25 @@ This folder contains example ODCS (Open Data Contract Standard) files for manual
 ### 5. File Type Validation
 1. Try uploading `invalid-not-yaml.txt`
 2. Verify file is rejected (only .yaml/.yml accepted)
+
+### 6. Multi-Object Contract Import
+1. Navigate to a table (e.g., dim_address from sample_data)
+2. Click "Add Contract" > "Import from ODCS"
+3. Upload `valid-multi-object.yaml` or `sample-data-multi-object.yaml`
+4. Verify "This contract contains multiple schema objects" message appears
+5. Verify object selector dropdown shows all schema objects (dim_address, dim_customer, dim_location)
+6. Verify Import button is disabled until an object is selected
+7. Select the matching schema object (e.g., dim_address for dim_address table)
+8. Verify validation runs with the selected object
+9. Click Import
+10. Verify contract is created with schema from the selected object only
+
+### 7. Testing with Sample Data
+1. Start OpenMetadata with sample data loaded
+2. Navigate to `sample_data.ecommerce_db.shopify.dim_address`
+3. Upload `sample-data-dim-address.yaml`
+4. Verify schema validation passes (all columns match)
+5. Import and verify contract has correct schema definition
 
 ## ODCS v3.1.0 Features to Test
 

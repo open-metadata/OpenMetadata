@@ -15,9 +15,7 @@ package org.openmetadata.service.util;
 
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.ContractSLA;
@@ -85,8 +83,23 @@ public class ODCSConverter {
       odcs.setDataProduct(contract.getEntity().getFullyQualifiedName());
     }
 
+    // ODCS v3.1.0: Schema is an array of objects (tables/datasets), each with properties (columns)
+    // Wrap columns in a parent object representing the entity
     if (contract.getSchema() != null && !contract.getSchema().isEmpty()) {
-      odcs.setSchema(convertSchemaToODCS(contract.getSchema()));
+      ODCSSchemaElement tableObject = new ODCSSchemaElement();
+      String entityName =
+          contract.getEntity() != null ? contract.getEntity().getName() : contract.getName();
+      tableObject.setName(entityName);
+      tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+      tableObject.setPhysicalType("table");
+      if (contract.getEntity() != null && contract.getEntity().getDescription() != null) {
+        tableObject.setDescription(contract.getEntity().getDescription());
+      }
+      tableObject.setProperties(convertSchemaToODCS(contract.getSchema()));
+
+      List<ODCSSchemaElement> schemaObjects = new ArrayList<>();
+      schemaObjects.add(tableObject);
+      odcs.setSchema(schemaObjects);
     }
 
     if (contract.getOwners() != null && !contract.getOwners().isEmpty()) {
@@ -113,10 +126,9 @@ public class ODCSConverter {
       odcs.setTags(tags);
     }
 
-    // Export quality rules from extension if stored
-    List<ODCSQualityRule> qualityRules = extractQualityRulesFromExtension(contract);
-    if (qualityRules != null && !qualityRules.isEmpty()) {
-      odcs.setQuality(qualityRules);
+    // Export quality rules from dedicated field
+    if (contract.getOdcsQualityRules() != null && !contract.getOdcsQualityRules().isEmpty()) {
+      odcs.setQuality(contract.getOdcsQualityRules());
     }
 
     return odcs;
@@ -124,6 +136,8 @@ public class ODCSConverter {
 
   /**
    * Import an ODCS data contract to OpenMetadata DataContract format. Supports v3.0.2 and v3.1.0.
+   * Automatically selects the schema object matching the entity name, or the first object if no
+   * match is found.
    *
    * @param odcs The ODCS data contract to import
    * @param entityRef Reference to the target entity (table, topic, etc.)
@@ -131,6 +145,21 @@ public class ODCSConverter {
    * @throws IllegalArgumentException if required ODCS fields are missing
    */
   public static DataContract fromODCS(ODCSDataContract odcs, EntityReference entityRef) {
+    return fromODCS(odcs, entityRef, null);
+  }
+
+  /**
+   * Import an ODCS data contract to OpenMetadata DataContract format. Supports v3.0.2 and v3.1.0.
+   * For multi-object ODCS contracts, use objectName to specify which object to import.
+   *
+   * @param odcs The ODCS data contract to import
+   * @param entityRef Reference to the target entity (table, topic, etc.)
+   * @param objectName Name of the schema object to import (null for auto-selection)
+   * @return OpenMetadata DataContract
+   * @throws IllegalArgumentException if required ODCS fields are missing or objectName not found
+   */
+  public static DataContract fromODCS(
+      ODCSDataContract odcs, EntityReference entityRef, String objectName) {
     validateRequiredODCSFields(odcs);
 
     DataContract contract = new DataContract();
@@ -157,8 +186,10 @@ public class ODCSConverter {
 
     contract.setEntity(entityRef);
 
+    // Handle multi-object ODCS schema
     if (odcs.getSchema() != null && !odcs.getSchema().isEmpty()) {
-      contract.setSchema(convertODCSSchemaToColumns(odcs.getSchema()));
+      List<Column> columns = extractColumnsFromODCSSchema(odcs.getSchema(), entityRef, objectName);
+      contract.setSchema(columns);
     }
 
     if (odcs.getTeam() != null && !odcs.getTeam().isEmpty()) {
@@ -173,12 +204,120 @@ public class ODCSConverter {
       contract.setSla(convertODCSSLAToContract(odcs.getSlaProperties()));
     }
 
-    // Store ODCS quality rules in extension for round-trip compatibility
+    // Store ODCS quality rules in dedicated field for round-trip compatibility
     if (odcs.getQuality() != null && !odcs.getQuality().isEmpty()) {
-      storeQualityRulesInExtension(contract, odcs.getQuality());
+      contract.setOdcsQualityRules(odcs.getQuality());
     }
 
     return contract;
+  }
+
+  /**
+   * Extract the list of schema object names from an ODCS contract. Used by UI to let users select
+   * which object to import when the contract contains multiple objects.
+   *
+   * @param odcs The ODCS data contract
+   * @return List of object names in the schema
+   */
+  public static List<String> getSchemaObjectNames(ODCSDataContract odcs) {
+    if (odcs == null || odcs.getSchema() == null || odcs.getSchema().isEmpty()) {
+      return new ArrayList<>();
+    }
+
+    return odcs.getSchema().stream()
+        .filter(element -> element.getName() != null)
+        .filter(
+            element ->
+                element.getLogicalType() == ODCSSchemaElement.LogicalType.OBJECT
+                    || (element.getProperties() != null && !element.getProperties().isEmpty()))
+        .map(ODCSSchemaElement::getName)
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * Check if an ODCS contract has multiple schema objects (tables/datasets).
+   *
+   * @param odcs The ODCS data contract
+   * @return true if the contract has more than one schema object
+   */
+  public static boolean hasMultipleSchemaObjects(ODCSDataContract odcs) {
+    return getSchemaObjectNames(odcs).size() > 1;
+  }
+
+  /**
+   * Extract columns from ODCS schema, handling both single-object and multi-object schemas. For
+   * multi-object schemas, selects the object matching entityRef name or objectName parameter.
+   */
+  private static List<Column> extractColumnsFromODCSSchema(
+      List<ODCSSchemaElement> schema, EntityReference entityRef, String objectName) {
+    if (schema == null || schema.isEmpty()) {
+      return new ArrayList<>();
+    }
+
+    // Check if schema contains object-type elements (tables/datasets)
+    // Note: properties is initialized to empty ArrayList by default, so check for non-empty
+    List<ODCSSchemaElement> objectElements =
+        schema.stream()
+            .filter(
+                e ->
+                    e.getLogicalType() == ODCSSchemaElement.LogicalType.OBJECT
+                        || (e.getProperties() != null && !e.getProperties().isEmpty()))
+            .collect(Collectors.toList());
+
+    if (objectElements.isEmpty()) {
+      // Legacy format: schema contains columns directly (not wrapped in objects)
+      return convertODCSSchemaToColumns(schema);
+    }
+
+    // Multi-object or single-object schema: find the right object
+    ODCSSchemaElement targetObject = null;
+
+    // If objectName is explicitly specified, use it
+    if (objectName != null && !objectName.isEmpty()) {
+      targetObject =
+          objectElements.stream()
+              .filter(e -> objectName.equalsIgnoreCase(e.getName()))
+              .findFirst()
+              .orElse(null);
+
+      if (targetObject == null) {
+        throw new IllegalArgumentException(
+            "Schema object '"
+                + objectName
+                + "' not found in ODCS contract. "
+                + "Available objects: "
+                + objectElements.stream().map(ODCSSchemaElement::getName).toList());
+      }
+    }
+
+    // Try to match by entity name
+    if (targetObject == null && entityRef != null && entityRef.getName() != null) {
+      String entityName = entityRef.getName();
+      targetObject =
+          objectElements.stream()
+              .filter(e -> entityName.equalsIgnoreCase(e.getName()))
+              .findFirst()
+              .orElse(null);
+    }
+
+    // Fall back to first object
+    if (targetObject == null) {
+      targetObject = objectElements.get(0);
+      if (objectElements.size() > 1) {
+        LOG.info(
+            "ODCS contract has {} schema objects. Using first object '{}'. "
+                + "Use objectName parameter to select a specific object.",
+            objectElements.size(),
+            targetObject.getName());
+      }
+    }
+
+    // Extract properties (columns) from the selected object
+    if (targetObject.getProperties() != null) {
+      return convertODCSSchemaToColumns(targetObject.getProperties());
+    }
+
+    return new ArrayList<>();
   }
 
   private static ODCSDataContract.OdcsStatus mapContractStatusToODCS(EntityStatus status) {
@@ -683,6 +822,11 @@ public class ODCSConverter {
     merged.setExtension(
         imported.getExtension() != null ? imported.getExtension() : existing.getExtension());
 
+    merged.setOdcsQualityRules(
+        imported.getOdcsQualityRules() != null && !imported.getOdcsQualityRules().isEmpty()
+            ? imported.getOdcsQualityRules()
+            : existing.getOdcsQualityRules());
+
     merged.setVersion(existing.getVersion());
     merged.setCreatedAt(existing.getCreatedAt());
     merged.setCreatedBy(existing.getCreatedBy());
@@ -730,6 +874,7 @@ public class ODCSConverter {
     replaced.setTermsOfUse(imported.getTermsOfUse());
     replaced.setExtension(imported.getExtension());
     replaced.setSemantics(imported.getSemantics());
+    replaced.setOdcsQualityRules(imported.getOdcsQualityRules());
 
     return replaced;
   }
@@ -756,139 +901,6 @@ public class ODCSConverter {
         imported.getTimezone() != null ? imported.getTimezone() : existing.getTimezone());
 
     return merged;
-  }
-
-  private static final String ODCS_QUALITY_RULES_KEY = "odcsQualityRules";
-
-  /**
-   * Store ODCS quality rules in the DataContract extension field for round-trip compatibility.
-   * Quality rules are stored as a list of maps representing the ODCS quality rule structure.
-   */
-  @SuppressWarnings("unchecked")
-  private static void storeQualityRulesInExtension(
-      DataContract contract, List<ODCSQualityRule> qualityRules) {
-    if (qualityRules == null || qualityRules.isEmpty()) {
-      return;
-    }
-
-    List<Map<String, Object>> rulesData = new ArrayList<>();
-    for (ODCSQualityRule rule : qualityRules) {
-      Map<String, Object> ruleMap = new HashMap<>();
-      if (rule.getType() != null) {
-        ruleMap.put("type", rule.getType().value());
-      }
-      if (rule.getName() != null) {
-        ruleMap.put("name", rule.getName());
-      }
-      if (rule.getDescription() != null) {
-        ruleMap.put("description", rule.getDescription());
-      }
-      if (rule.getRule() != null) {
-        ruleMap.put("rule", rule.getRule());
-      }
-      if (rule.getMetric() != null) {
-        ruleMap.put("metric", rule.getMetric().value());
-      }
-      if (rule.getColumn() != null) {
-        ruleMap.put("column", rule.getColumn());
-      }
-      if (rule.getQuery() != null) {
-        ruleMap.put("query", rule.getQuery());
-      }
-      if (rule.getEngine() != null) {
-        ruleMap.put("engine", rule.getEngine());
-      }
-      if (rule.getDimension() != null) {
-        ruleMap.put("dimension", rule.getDimension().value());
-      }
-      if (rule.getScheduler() != null) {
-        ruleMap.put("scheduler", rule.getScheduler());
-      }
-      if (rule.getSchedule() != null) {
-        ruleMap.put("schedule", rule.getSchedule());
-      }
-      rulesData.add(ruleMap);
-    }
-
-    Object extension = contract.getExtension();
-    Map<String, Object> extMap;
-    if (extension instanceof Map) {
-      extMap = new HashMap<>((Map<String, Object>) extension);
-    } else {
-      extMap = new HashMap<>();
-    }
-    extMap.put(ODCS_QUALITY_RULES_KEY, rulesData);
-    contract.setExtension(extMap);
-
-    LOG.debug("Stored {} ODCS quality rules in contract extension", qualityRules.size());
-  }
-
-  /**
-   * Extract ODCS quality rules from the DataContract extension field.
-   *
-   * @return List of ODCSQualityRule or null if none found
-   */
-  @SuppressWarnings("unchecked")
-  private static List<ODCSQualityRule> extractQualityRulesFromExtension(DataContract contract) {
-    Object extension = contract.getExtension();
-    if (!(extension instanceof Map)) {
-      return null;
-    }
-
-    Map<String, Object> extMap = (Map<String, Object>) extension;
-    Object rulesData = extMap.get(ODCS_QUALITY_RULES_KEY);
-    if (!(rulesData instanceof List)) {
-      return null;
-    }
-
-    List<Map<String, Object>> rulesList = (List<Map<String, Object>>) rulesData;
-    List<ODCSQualityRule> qualityRules = new ArrayList<>();
-
-    for (Map<String, Object> ruleMap : rulesList) {
-      ODCSQualityRule rule = new ODCSQualityRule();
-
-      String type = (String) ruleMap.get("type");
-      if (type != null) {
-        try {
-          rule.setType(ODCSQualityRule.Type.fromValue(type));
-        } catch (IllegalArgumentException e) {
-          LOG.debug("Unknown quality rule type: {}", type);
-        }
-      }
-
-      rule.setName((String) ruleMap.get("name"));
-      rule.setDescription((String) ruleMap.get("description"));
-      rule.setRule((String) ruleMap.get("rule"));
-
-      String metric = (String) ruleMap.get("metric");
-      if (metric != null) {
-        try {
-          rule.setMetric(ODCSQualityRule.OdcsQualityMetric.fromValue(metric));
-        } catch (IllegalArgumentException e) {
-          LOG.debug("Unknown quality metric: {}", metric);
-        }
-      }
-
-      rule.setColumn((String) ruleMap.get("column"));
-      rule.setQuery((String) ruleMap.get("query"));
-      rule.setEngine((String) ruleMap.get("engine"));
-
-      String dimension = (String) ruleMap.get("dimension");
-      if (dimension != null) {
-        try {
-          rule.setDimension(ODCSQualityRule.Dimension.fromValue(dimension));
-        } catch (IllegalArgumentException e) {
-          LOG.debug("Unknown dimension: {}", dimension);
-        }
-      }
-
-      rule.setScheduler((String) ruleMap.get("scheduler"));
-      rule.setSchedule((String) ruleMap.get("schedule"));
-
-      qualityRules.add(rule);
-    }
-
-    return qualityRules;
   }
 
   /**

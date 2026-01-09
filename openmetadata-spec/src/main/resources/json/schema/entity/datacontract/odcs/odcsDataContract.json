@@ -363,7 +363,8 @@
             "type": "number"
           },
           "minItems": 2,
-          "maxItems": 2
+          "maxItems": 2,
+          "default": null
         },
         "mustNotBeBetween": {
           "description": "Value must not be between [min, max].",
@@ -372,7 +373,8 @@
             "type": "number"
           },
           "minItems": 2,
-          "maxItems": 2
+          "maxItems": 2,
+          "default": null
         },
         "validValues": {
           "description": "Static value list.",

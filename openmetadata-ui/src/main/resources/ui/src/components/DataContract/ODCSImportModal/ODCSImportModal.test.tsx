@@ -25,6 +25,8 @@ import {
   createOrUpdateContractFromODCSYaml,
   deleteContractById,
   importContractFromODCSYaml,
+  parseODCSYaml,
+  validateODCSYaml,
 } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ContractImportModal from './ODCSImportModal.component';
@@ -33,6 +35,8 @@ jest.mock('../../../rest/contractAPI', () => ({
   createOrUpdateContractFromODCSYaml: jest.fn(),
   deleteContractById: jest.fn(),
   importContractFromODCSYaml: jest.fn(),
+  parseODCSYaml: jest.fn(),
+  validateODCSYaml: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -70,7 +74,7 @@ jest.mock('react-i18next', () => ({
         'message.drag-drop-odcs-file': 'Drag and drop ODCS file here',
         'message.drag-drop-openmetadata-file':
           'Drag and drop OpenMetadata file here',
-        'message.supports-yaml-format': 'Supports YAML format',
+        'label.supports-yaml-format': 'Supports YAML format',
         'message.invalid-odcs-contract-format': 'Invalid ODCS contract format',
         'message.invalid-openmetadata-contract-format':
           'Invalid OpenMetadata contract format',
@@ -94,6 +98,11 @@ jest.mock('react-i18next', () => ({
         'message.import-odcs-replace-preserve-history':
           'Execution history will be preserved',
         'message.entity-imported-successfully': `${options?.entity} imported successfully`,
+        'message.multi-object-contract-detected':
+          'This contract contains multiple schema objects',
+        'message.select-schema-object-to-import':
+          'Select which schema object to import',
+        'label.select-schema-object': 'Select Schema Object',
       };
 
       return translations[key] || key;
@@ -157,6 +166,16 @@ kind: DataContract
 describe('ContractImportModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (parseODCSYaml as jest.Mock).mockResolvedValue({
+      schemaObjects: ['users'],
+      hasMultipleObjects: false,
+    });
+    (validateODCSYaml as jest.Mock).mockResolvedValue({
+      passed: 1,
+      failed: 0,
+      total: 1,
+      failedFields: [],
+    });
   });
 
   describe('Rendering', () => {
@@ -283,7 +302,7 @@ describe('ContractImportModal', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Contract Preview:')).toBeInTheDocument();
+        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
         expect(screen.getByText(/Test Contract/)).toBeInTheDocument();
         expect(screen.getByText(/1.0.0/)).toBeInTheDocument();
         expect(screen.getByText(/active/)).toBeInTheDocument();
@@ -315,10 +334,10 @@ describe('ContractImportModal', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText(/Schema/)).toBeInTheDocument();
-        expect(screen.getByText(/SLA/)).toBeInTheDocument();
-        expect(screen.getByText(/Security/)).toBeInTheDocument();
-        expect(screen.getByText(/Team/)).toBeInTheDocument();
+        const previewTags = document.querySelector('.preview-tags');
+
+        expect(previewTags).toBeInTheDocument();
+        expect(screen.getByText('Schema')).toBeInTheDocument();
       });
     });
 
@@ -446,7 +465,6 @@ describe('ContractImportModal', () => {
         expect(
           screen.getByText('Existing contract detected')
         ).toBeInTheDocument();
-        expect(screen.getByText('Choose import mode:')).toBeInTheDocument();
         expect(screen.getByText('Merge with existing')).toBeInTheDocument();
         expect(screen.getByText('Replace existing')).toBeInTheDocument();
       });
@@ -547,12 +565,8 @@ describe('ContractImportModal', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText('What will happen:')).toBeInTheDocument();
         expect(
-          screen.getByText('Preserve existing contract ID')
-        ).toBeInTheDocument();
-        expect(
-          screen.getByText('Update fields from imported contract')
+          screen.getByText('Merge imported data with existing contract')
         ).toBeInTheDocument();
       });
     });
@@ -591,13 +605,7 @@ describe('ContractImportModal', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('All contract fields will be overwritten')
-        ).toBeInTheDocument();
-        expect(
-          screen.getByText('Contract ID will be preserved')
-        ).toBeInTheDocument();
-        expect(
-          screen.getByText('Execution history will be preserved')
+          screen.getByText('Overwrite all contract fields with imported ODCS')
         ).toBeInTheDocument();
       });
     });
@@ -642,7 +650,8 @@ describe('ContractImportModal', () => {
         expect(importContractFromODCSYaml).toHaveBeenCalledWith(
           validODCSYaml,
           'table-1',
-          'table'
+          'table',
+          'users'
         );
       });
     });
@@ -686,7 +695,8 @@ describe('ContractImportModal', () => {
           validODCSYaml,
           'table-1',
           'table',
-          'merge'
+          'merge',
+          'users'
         );
         expect(deleteContractById).not.toHaveBeenCalled();
       });
@@ -738,7 +748,8 @@ describe('ContractImportModal', () => {
           validODCSYaml,
           'table-1',
           'table',
-          'replace'
+          'replace',
+          'users'
         );
         expect(deleteContractById).not.toHaveBeenCalled();
       });
@@ -992,7 +1003,9 @@ status: active`;
       });
 
       await waitFor(() => {
-        expect(screen.getByText(/None/)).toBeInTheDocument();
+        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
+        expect(screen.queryByText('Schema')).not.toBeInTheDocument();
+        expect(screen.queryByText('SLA')).not.toBeInTheDocument();
       });
     });
 

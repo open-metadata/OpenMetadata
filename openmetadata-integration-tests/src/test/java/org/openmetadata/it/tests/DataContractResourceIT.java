@@ -26,8 +26,10 @@ import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSlaProperty;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSTeamMember;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -1883,8 +1885,16 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertNotNull(odcs.getDescription());
     assertEquals("Test contract for ODCS export", odcs.getDescription().getPurpose());
 
+    // ODCS v3.1.0: Schema is wrapped in object (table)
     assertNotNull(odcs.getSchema());
-    assertEquals(2, odcs.getSchema().size());
+    assertEquals(1, odcs.getSchema().size());
+    ODCSSchemaElement tableObject = odcs.getSchema().get(0);
+    assertEquals(ODCSSchemaElement.LogicalType.OBJECT, tableObject.getLogicalType());
+    assertEquals("table", tableObject.getPhysicalType());
+    assertNotNull(tableObject.getProperties());
+    assertEquals(2, tableObject.getProperties().size());
+    assertEquals("id", tableObject.getProperties().get(0).getName());
+    assertEquals("name", tableObject.getProperties().get(1).getName());
   }
 
   @Test
@@ -1927,19 +1937,25 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     desc.setPurpose("Imported from ODCS");
     odcs.setDescription(desc);
 
-    List<ODCSSchemaElement> schema = new java.util.ArrayList<>();
+    // ODCS v3.1.0: Schema is wrapped in object (table)
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName(table.getName());
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+
+    List<ODCSSchemaElement> properties = new java.util.ArrayList<>();
     ODCSSchemaElement col1 = new ODCSSchemaElement();
     col1.setName("id");
     col1.setLogicalType(ODCSSchemaElement.LogicalType.INTEGER);
     col1.setPrimaryKey(true);
-    schema.add(col1);
+    properties.add(col1);
 
     ODCSSchemaElement col2 = new ODCSSchemaElement();
     col2.setName("email");
     col2.setLogicalType(ODCSSchemaElement.LogicalType.STRING);
-    schema.add(col2);
+    properties.add(col2);
 
-    odcs.setSchema(schema);
+    tableObject.setProperties(properties);
+    odcs.setSchema(List.of(tableObject));
 
     DataContract imported =
         SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
@@ -2034,13 +2050,21 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertNotNull(odcs);
     assertEquals(original.getName(), odcs.getName());
     assertEquals(ODCSDataContract.OdcsStatus.ACTIVE, odcs.getStatus());
-    assertEquals(3, odcs.getSchema().size());
+
+    // ODCS v3.1.0: Schema is wrapped in object (table)
+    assertEquals(1, odcs.getSchema().size());
+    ODCSSchemaElement tableObject = odcs.getSchema().get(0);
+    assertEquals(ODCSSchemaElement.LogicalType.OBJECT, tableObject.getLogicalType());
+    assertNotNull(tableObject.getProperties());
+    assertEquals(3, tableObject.getProperties().size());
 
     assertEquals(
         ODCSSchemaElement.LogicalType.LONG,
-        odcs.getSchema().get(0).getLogicalType()); // BIGINT maps to LONG
-    assertEquals(ODCSSchemaElement.LogicalType.STRING, odcs.getSchema().get(1).getLogicalType());
-    assertEquals(ODCSSchemaElement.LogicalType.STRING, odcs.getSchema().get(2).getLogicalType());
+        tableObject.getProperties().get(0).getLogicalType()); // BIGINT maps to LONG
+    assertEquals(
+        ODCSSchemaElement.LogicalType.STRING, tableObject.getProperties().get(1).getLogicalType());
+    assertEquals(
+        ODCSSchemaElement.LogicalType.STRING, tableObject.getProperties().get(2).getLogicalType());
 
     Table newTable = createTestTable(ns);
     odcs.setId(UUID.randomUUID().toString());
@@ -2760,11 +2784,20 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     assertNotNull(odcs);
     assertEquals(ODCSDataContract.OdcsApiVersion.V_3_1_0, odcs.getApiVersion());
-    assertNotNull(odcs.getSchema());
-    assertEquals(3, odcs.getSchema().size());
 
-    assertEquals(ODCSSchemaElement.LogicalType.TIMESTAMP, odcs.getSchema().get(1).getLogicalType());
-    assertEquals(ODCSSchemaElement.LogicalType.TIMESTAMP, odcs.getSchema().get(2).getLogicalType());
+    // ODCS v3.1.0: Schema is wrapped in object (table)
+    assertNotNull(odcs.getSchema());
+    assertEquals(1, odcs.getSchema().size());
+    ODCSSchemaElement tableObject = odcs.getSchema().get(0);
+    assertNotNull(tableObject.getProperties());
+    assertEquals(3, tableObject.getProperties().size());
+
+    assertEquals(
+        ODCSSchemaElement.LogicalType.TIMESTAMP,
+        tableObject.getProperties().get(1).getLogicalType());
+    assertEquals(
+        ODCSSchemaElement.LogicalType.TIMESTAMP,
+        tableObject.getProperties().get(2).getLogicalType());
   }
 
   @Test
@@ -2798,10 +2831,16 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     ODCSDataContract odcs = SdkClients.adminClient().dataContracts().exportToODCS(contract.getId());
 
     assertNotNull(odcs);
-    assertNotNull(odcs.getSchema());
-    assertEquals(2, odcs.getSchema().size());
 
-    assertEquals(ODCSSchemaElement.LogicalType.TIME, odcs.getSchema().get(1).getLogicalType());
+    // ODCS v3.1.0: Schema is wrapped in object (table)
+    assertNotNull(odcs.getSchema());
+    assertEquals(1, odcs.getSchema().size());
+    ODCSSchemaElement tableObject = odcs.getSchema().get(0);
+    assertNotNull(tableObject.getProperties());
+    assertEquals(2, tableObject.getProperties().size());
+
+    assertEquals(
+        ODCSSchemaElement.LogicalType.TIME, tableObject.getProperties().get(1).getLogicalType());
   }
 
   @Test
@@ -2820,19 +2859,25 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     odcs.setVersion("1.0.0");
     odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
 
-    List<ODCSSchemaElement> schema = new java.util.ArrayList<>();
+    // ODCS v3.1.0: Schema is wrapped in object (table)
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName(table.getName());
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+
+    List<ODCSSchemaElement> properties = new java.util.ArrayList<>();
 
     ODCSSchemaElement timestampCol = new ODCSSchemaElement();
     timestampCol.setName("event_timestamp");
     timestampCol.setLogicalType(ODCSSchemaElement.LogicalType.TIMESTAMP);
-    schema.add(timestampCol);
+    properties.add(timestampCol);
 
     ODCSSchemaElement timeCol = new ODCSSchemaElement();
     timeCol.setName("event_time");
     timeCol.setLogicalType(ODCSSchemaElement.LogicalType.TIME);
-    schema.add(timeCol);
+    properties.add(timeCol);
 
-    odcs.setSchema(schema);
+    tableObject.setProperties(properties);
+    odcs.setSchema(List.of(tableObject));
 
     DataContract imported =
         SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
@@ -3189,8 +3234,16 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertNotNull(odcs);
     assertEquals(ODCSDataContract.OdcsApiVersion.V_3_1_0, odcs.getApiVersion());
     assertEquals(original.getName(), odcs.getName());
-    assertEquals(3, odcs.getSchema().size());
-    assertEquals(ODCSSchemaElement.LogicalType.TIMESTAMP, odcs.getSchema().get(1).getLogicalType());
+
+    // ODCS v3.1.0: Schema is wrapped in object (table)
+    assertEquals(1, odcs.getSchema().size());
+    ODCSSchemaElement tableObject = odcs.getSchema().get(0);
+    assertNotNull(tableObject.getProperties());
+    assertEquals(3, tableObject.getProperties().size());
+    assertEquals(
+        ODCSSchemaElement.LogicalType.TIMESTAMP,
+        tableObject.getProperties().get(1).getLogicalType());
+
     assertNotNull(odcs.getSlaProperties());
     assertTrue(odcs.getSlaProperties().size() >= 3);
     assertNotNull(odcs.getRoles());
@@ -4615,5 +4668,753 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         OpenMetadataException.class,
         () -> SdkClients.adminClient().dataContracts().getByEntityId(table.getId(), "table"),
         "Contract should not exist after validation-only call");
+  }
+
+  // ===================================================================
+  // ODCS QUALITY RULES TESTS (v3.1.0 Feature)
+  // ===================================================================
+
+  @Test
+  void testImportODCSWithQualityRules(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName(ns.prefix("quality_rules_import"));
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    // Add quality rules
+    java.util.List<ODCSQualityRule> qualityRules = new java.util.ArrayList<>();
+
+    ODCSQualityRule sqlRule = new ODCSQualityRule();
+    sqlRule.setType(ODCSQualityRule.Type.SQL);
+    sqlRule.setName("check_positive_values");
+    sqlRule.setDescription("Ensure all values are positive");
+    sqlRule.setQuery("SELECT COUNT(*) FROM table WHERE value < 0");
+    sqlRule.setDimension(ODCSQualityRule.Dimension.ACCURACY);
+    qualityRules.add(sqlRule);
+
+    ODCSQualityRule libraryRule = new ODCSQualityRule();
+    libraryRule.setType(ODCSQualityRule.Type.LIBRARY);
+    libraryRule.setMetric(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES);
+    libraryRule.setColumn("id");
+    libraryRule.setDescription("Check for null values in id column");
+    qualityRules.add(libraryRule);
+
+    odcs.setQuality(qualityRules);
+
+    DataContract imported =
+        SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertNotNull(imported.getOdcsQualityRules());
+    assertEquals(2, imported.getOdcsQualityRules().size());
+
+    ODCSQualityRule importedSqlRule = imported.getOdcsQualityRules().get(0);
+    assertEquals(ODCSQualityRule.Type.SQL, importedSqlRule.getType());
+    assertEquals("check_positive_values", importedSqlRule.getName());
+    assertEquals("SELECT COUNT(*) FROM table WHERE value < 0", importedSqlRule.getQuery());
+    assertEquals(ODCSQualityRule.Dimension.ACCURACY, importedSqlRule.getDimension());
+
+    ODCSQualityRule importedLibraryRule = imported.getOdcsQualityRules().get(1);
+    assertEquals(ODCSQualityRule.Type.LIBRARY, importedLibraryRule.getType());
+    assertEquals(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES, importedLibraryRule.getMetric());
+    assertEquals("id", importedLibraryRule.getColumn());
+  }
+
+  @Test
+  void testExportODCSWithQualityRules(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    // Create contract with quality rules
+    java.util.List<ODCSQualityRule> qualityRules = new java.util.ArrayList<>();
+
+    ODCSQualityRule rule = new ODCSQualityRule();
+    rule.setType(ODCSQualityRule.Type.LIBRARY);
+    rule.setMetric(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT);
+    rule.setDescription("Check row count");
+    rule.setMustBeGreaterThan(0.0);
+    qualityRules.add(rule);
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("quality_rules_export"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Contract with quality rules for export test")
+            .withOdcsQualityRules(qualityRules);
+
+    DataContract contract = createEntity(request);
+
+    ODCSDataContract odcs = SdkClients.adminClient().dataContracts().exportToODCS(contract.getId());
+
+    assertNotNull(odcs);
+    assertNotNull(odcs.getQuality());
+    assertEquals(1, odcs.getQuality().size());
+
+    ODCSQualityRule exportedRule = odcs.getQuality().get(0);
+    assertEquals(ODCSQualityRule.Type.LIBRARY, exportedRule.getType());
+    assertEquals(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT, exportedRule.getMetric());
+    assertEquals(0.0, exportedRule.getMustBeGreaterThan());
+  }
+
+  @Test
+  void testQualityRulesRoundTrip(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    // Create ODCS contract with various quality rule types
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName(ns.prefix("quality_roundtrip"));
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    java.util.List<ODCSQualityRule> qualityRules = new java.util.ArrayList<>();
+
+    // SQL rule
+    ODCSQualityRule sqlRule = new ODCSQualityRule();
+    sqlRule.setType(ODCSQualityRule.Type.SQL);
+    sqlRule.setName("data_freshness_check");
+    sqlRule.setQuery("SELECT MAX(updated_at) FROM data");
+    sqlRule.setDimension(ODCSQualityRule.Dimension.TIMELINESS);
+    sqlRule.setSeverity("critical");
+    qualityRules.add(sqlRule);
+
+    // Library rule with metric
+    ODCSQualityRule libraryRule = new ODCSQualityRule();
+    libraryRule.setType(ODCSQualityRule.Type.LIBRARY);
+    libraryRule.setMetric(ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES);
+    libraryRule.setColumn("email");
+    libraryRule.setDimension(ODCSQualityRule.Dimension.UNIQUENESS);
+    qualityRules.add(libraryRule);
+
+    // Custom rule
+    ODCSQualityRule customRule = new ODCSQualityRule();
+    customRule.setType(ODCSQualityRule.Type.CUSTOM);
+    customRule.setEngine("great_expectations");
+    customRule.setImplementation("{\"expectation_type\": \"expect_column_values_to_be_unique\"}");
+    qualityRules.add(customRule);
+
+    odcs.setQuality(qualityRules);
+
+    // Import
+    DataContract imported =
+        SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
+    assertNotNull(imported.getOdcsQualityRules());
+    assertEquals(3, imported.getOdcsQualityRules().size());
+
+    // Export and verify round-trip preservation
+    ODCSDataContract exported =
+        SdkClients.adminClient().dataContracts().exportToODCS(imported.getId());
+
+    assertNotNull(exported.getQuality());
+    assertEquals(3, exported.getQuality().size());
+
+    // Verify SQL rule
+    ODCSQualityRule exportedSqlRule =
+        exported.getQuality().stream()
+            .filter(r -> r.getType() == ODCSQualityRule.Type.SQL)
+            .findFirst()
+            .orElseThrow();
+    assertEquals("data_freshness_check", exportedSqlRule.getName());
+    assertEquals("SELECT MAX(updated_at) FROM data", exportedSqlRule.getQuery());
+    assertEquals(ODCSQualityRule.Dimension.TIMELINESS, exportedSqlRule.getDimension());
+
+    // Verify library rule
+    ODCSQualityRule exportedLibraryRule =
+        exported.getQuality().stream()
+            .filter(r -> r.getType() == ODCSQualityRule.Type.LIBRARY)
+            .findFirst()
+            .orElseThrow();
+    assertEquals(ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES, exportedLibraryRule.getMetric());
+    assertEquals("email", exportedLibraryRule.getColumn());
+
+    // Verify custom rule
+    ODCSQualityRule exportedCustomRule =
+        exported.getQuality().stream()
+            .filter(r -> r.getType() == ODCSQualityRule.Type.CUSTOM)
+            .findFirst()
+            .orElseThrow();
+    assertEquals("great_expectations", exportedCustomRule.getEngine());
+  }
+
+  @Test
+  void testMergeModePreservesQualityRules(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    // Create initial contract with quality rules
+    ODCSDataContract initialOdcs = new ODCSDataContract();
+    initialOdcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    initialOdcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    initialOdcs.setId(UUID.randomUUID().toString());
+    initialOdcs.setName(ns.prefix("merge_quality"));
+    initialOdcs.setVersion("1.0.0");
+    initialOdcs.setStatus(ODCSDataContract.OdcsStatus.DRAFT);
+
+    java.util.List<ODCSQualityRule> initialRules = new java.util.ArrayList<>();
+    ODCSQualityRule rule = new ODCSQualityRule();
+    rule.setType(ODCSQualityRule.Type.LIBRARY);
+    rule.setMetric(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES);
+    rule.setColumn("id");
+    initialRules.add(rule);
+    initialOdcs.setQuality(initialRules);
+
+    DataContract created =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCS(initialOdcs, table.getId(), "table");
+
+    assertNotNull(created.getOdcsQualityRules());
+    assertEquals(1, created.getOdcsQualityRules().size());
+
+    // Merge with update that has no quality rules
+    ODCSDataContract updateOdcs = new ODCSDataContract();
+    updateOdcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    updateOdcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    updateOdcs.setId(UUID.randomUUID().toString());
+    updateOdcs.setName(ns.prefix("merge_quality"));
+    updateOdcs.setVersion("2.0.0");
+    updateOdcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    ODCSDescription desc = new ODCSDescription();
+    desc.setPurpose("Updated description");
+    updateOdcs.setDescription(desc);
+
+    DataContract merged =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCS(updateOdcs, table.getId(), "table", "merge");
+
+    // Quality rules should be preserved from original
+    assertNotNull(merged.getOdcsQualityRules());
+    assertEquals(1, merged.getOdcsQualityRules().size());
+    assertEquals(
+        ODCSQualityRule.OdcsQualityMetric.NULL_VALUES,
+        merged.getOdcsQualityRules().get(0).getMetric());
+  }
+
+  @Test
+  void testReplaceModeReplacesQualityRules(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    // Create initial contract with quality rules
+    ODCSDataContract initialOdcs = new ODCSDataContract();
+    initialOdcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    initialOdcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    initialOdcs.setId(UUID.randomUUID().toString());
+    initialOdcs.setName(ns.prefix("replace_quality"));
+    initialOdcs.setVersion("1.0.0");
+    initialOdcs.setStatus(ODCSDataContract.OdcsStatus.DRAFT);
+
+    java.util.List<ODCSQualityRule> initialRules = new java.util.ArrayList<>();
+    ODCSQualityRule rule1 = new ODCSQualityRule();
+    rule1.setType(ODCSQualityRule.Type.LIBRARY);
+    rule1.setMetric(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES);
+    initialRules.add(rule1);
+    ODCSQualityRule rule2 = new ODCSQualityRule();
+    rule2.setType(ODCSQualityRule.Type.SQL);
+    rule2.setQuery("SELECT 1");
+    initialRules.add(rule2);
+    initialOdcs.setQuality(initialRules);
+
+    DataContract created =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCS(initialOdcs, table.getId(), "table");
+
+    assertEquals(2, created.getOdcsQualityRules().size());
+
+    // Replace with contract that has no quality rules
+    ODCSDataContract replaceOdcs = new ODCSDataContract();
+    replaceOdcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    replaceOdcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    replaceOdcs.setId(UUID.randomUUID().toString());
+    replaceOdcs.setName(ns.prefix("replace_quality"));
+    replaceOdcs.setVersion("2.0.0");
+    replaceOdcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    DataContract replaced =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCS(replaceOdcs, table.getId(), "table", "replace");
+
+    // Quality rules should be replaced (null since new contract has none)
+    assertTrue(replaced.getOdcsQualityRules() == null || replaced.getOdcsQualityRules().isEmpty());
+  }
+
+  @Test
+  void testImportODCSYamlWithQualityRules(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("yaml_quality")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "quality:\n"
+            + "  - type: sql\n"
+            + "    name: freshness_check\n"
+            + "    query: SELECT MAX(updated_at) FROM orders\n"
+            + "    dimension: timeliness\n"
+            + "  - type: library\n"
+            + "    metric: nullValues\n"
+            + "    column: customer_id\n"
+            + "    description: Customer ID must not be null\n";
+
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertNotNull(imported.getOdcsQualityRules());
+    assertEquals(2, imported.getOdcsQualityRules().size());
+
+    // Verify SQL rule
+    ODCSQualityRule sqlRule =
+        imported.getOdcsQualityRules().stream()
+            .filter(r -> r.getType() == ODCSQualityRule.Type.SQL)
+            .findFirst()
+            .orElseThrow();
+    assertEquals("freshness_check", sqlRule.getName());
+    assertEquals("SELECT MAX(updated_at) FROM orders", sqlRule.getQuery());
+
+    // Verify library rule
+    ODCSQualityRule libraryRule =
+        imported.getOdcsQualityRules().stream()
+            .filter(r -> r.getType() == ODCSQualityRule.Type.LIBRARY)
+            .findFirst()
+            .orElseThrow();
+    assertEquals(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES, libraryRule.getMetric());
+    assertEquals("customer_id", libraryRule.getColumn());
+  }
+
+  @Test
+  void testQualityRulesWithSchedule(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName(ns.prefix("quality_schedule"));
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    java.util.List<ODCSQualityRule> qualityRules = new java.util.ArrayList<>();
+    ODCSQualityRule rule = new ODCSQualityRule();
+    rule.setType(ODCSQualityRule.Type.LIBRARY);
+    rule.setMetric(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT);
+    rule.setScheduler("cron");
+    rule.setSchedule("0 0 * * *");
+    qualityRules.add(rule);
+
+    odcs.setQuality(qualityRules);
+
+    DataContract imported =
+        SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
+
+    assertNotNull(imported.getOdcsQualityRules());
+    assertEquals(1, imported.getOdcsQualityRules().size());
+
+    ODCSQualityRule importedRule = imported.getOdcsQualityRules().get(0);
+    assertEquals("cron", importedRule.getScheduler());
+    assertEquals("0 0 * * *", importedRule.getSchedule());
+
+    // Export and verify schedule is preserved
+    ODCSDataContract exported =
+        SdkClients.adminClient().dataContracts().exportToODCS(imported.getId());
+
+    assertNotNull(exported.getQuality());
+    assertEquals("cron", exported.getQuality().get(0).getScheduler());
+    assertEquals("0 0 * * *", exported.getQuality().get(0).getSchedule());
+  }
+
+  @Test
+  void testQualityRulesWithMustBeBetween(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName(ns.prefix("quality_between"));
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    java.util.List<ODCSQualityRule> qualityRules = new java.util.ArrayList<>();
+
+    // Rule with mustBeBetween
+    ODCSQualityRule betweenRule = new ODCSQualityRule();
+    betweenRule.setType(ODCSQualityRule.Type.LIBRARY);
+    betweenRule.setMetric(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT);
+    betweenRule.setDescription("Row count must be between 100 and 10000");
+    betweenRule.setMustBeBetween(java.util.Arrays.asList(100.0, 10000.0));
+    qualityRules.add(betweenRule);
+
+    // Rule with mustNotBeBetween
+    ODCSQualityRule notBetweenRule = new ODCSQualityRule();
+    notBetweenRule.setType(ODCSQualityRule.Type.LIBRARY);
+    notBetweenRule.setMetric(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES);
+    notBetweenRule.setColumn("status");
+    notBetweenRule.setDescription("Null percentage must not be between 10 and 90");
+    notBetweenRule.setMustNotBeBetween(java.util.Arrays.asList(10.0, 90.0));
+    qualityRules.add(notBetweenRule);
+
+    // Rule with multiple assertions
+    ODCSQualityRule multiAssertRule = new ODCSQualityRule();
+    multiAssertRule.setType(ODCSQualityRule.Type.LIBRARY);
+    multiAssertRule.setMetric(ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES);
+    multiAssertRule.setColumn("id");
+    multiAssertRule.setMustBeGreaterThan(0.0);
+    multiAssertRule.setMustBeLessThan(1000000.0);
+    qualityRules.add(multiAssertRule);
+
+    odcs.setQuality(qualityRules);
+
+    DataContract imported =
+        SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertNotNull(imported.getOdcsQualityRules());
+    assertEquals(3, imported.getOdcsQualityRules().size());
+
+    // Verify mustBeBetween rule
+    ODCSQualityRule importedBetweenRule = imported.getOdcsQualityRules().get(0);
+    assertNotNull(importedBetweenRule.getMustBeBetween());
+    assertEquals(2, importedBetweenRule.getMustBeBetween().size());
+    assertEquals(100.0, importedBetweenRule.getMustBeBetween().get(0));
+    assertEquals(10000.0, importedBetweenRule.getMustBeBetween().get(1));
+
+    // Verify mustNotBeBetween rule
+    ODCSQualityRule importedNotBetweenRule = imported.getOdcsQualityRules().get(1);
+    assertNotNull(importedNotBetweenRule.getMustNotBeBetween());
+    assertEquals(2, importedNotBetweenRule.getMustNotBeBetween().size());
+    assertEquals(10.0, importedNotBetweenRule.getMustNotBeBetween().get(0));
+    assertEquals(90.0, importedNotBetweenRule.getMustNotBeBetween().get(1));
+
+    // Export and verify round-trip
+    ODCSDataContract exported =
+        SdkClients.adminClient().dataContracts().exportToODCS(imported.getId());
+
+    assertNotNull(exported.getQuality());
+    assertEquals(3, exported.getQuality().size());
+
+    ODCSQualityRule exportedBetweenRule = exported.getQuality().get(0);
+    assertNotNull(exportedBetweenRule.getMustBeBetween());
+    assertEquals(100.0, exportedBetweenRule.getMustBeBetween().get(0));
+    assertEquals(10000.0, exportedBetweenRule.getMustBeBetween().get(1));
+
+    ODCSQualityRule exportedNotBetweenRule = exported.getQuality().get(1);
+    assertNotNull(exportedNotBetweenRule.getMustNotBeBetween());
+    assertEquals(10.0, exportedNotBetweenRule.getMustNotBeBetween().get(0));
+    assertEquals(90.0, exportedNotBetweenRule.getMustNotBeBetween().get(1));
+  }
+
+  @Test
+  void testQualityRulesWithMustBeBetweenYaml(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("yaml_between")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "quality:\n"
+            + "  - type: library\n"
+            + "    metric: rowCount\n"
+            + "    mustBeBetween:\n"
+            + "      - 100\n"
+            + "      - 10000\n"
+            + "  - type: library\n"
+            + "    metric: nullValues\n"
+            + "    column: email\n"
+            + "    mustNotBeBetween:\n"
+            + "      - 5\n"
+            + "      - 95\n";
+
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertNotNull(imported.getOdcsQualityRules());
+    assertEquals(2, imported.getOdcsQualityRules().size());
+
+    // Verify mustBeBetween from YAML
+    ODCSQualityRule betweenRule = imported.getOdcsQualityRules().get(0);
+    assertNotNull(betweenRule.getMustBeBetween());
+    assertEquals(100.0, betweenRule.getMustBeBetween().get(0));
+    assertEquals(10000.0, betweenRule.getMustBeBetween().get(1));
+
+    // Verify mustNotBeBetween from YAML
+    ODCSQualityRule notBetweenRule = imported.getOdcsQualityRules().get(1);
+    assertNotNull(notBetweenRule.getMustNotBeBetween());
+    assertEquals(5.0, notBetweenRule.getMustNotBeBetween().get(0));
+    assertEquals(95.0, notBetweenRule.getMustNotBeBetween().get(1));
+  }
+
+  // ===================================================================
+  // ODCS TEAM/OWNER RESOLUTION TESTS
+  // ===================================================================
+
+  @Test
+  void testImportODCSWithTeamOwner(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName(ns.prefix("team_owner"));
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    // Add team member with role "owner" using admin user
+    java.util.List<ODCSTeamMember> team = new java.util.ArrayList<>();
+    ODCSTeamMember owner = new ODCSTeamMember();
+    owner.setUsername("admin");
+    owner.setName("Admin User");
+    owner.setRole("owner");
+    team.add(owner);
+    odcs.setTeam(team);
+
+    DataContract imported =
+        SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertNotNull(imported.getOwners());
+    assertFalse(imported.getOwners().isEmpty());
+    assertEquals("admin", imported.getOwners().get(0).getName());
+  }
+
+  @Test
+  void testImportODCSWithMultipleTeamMembers(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName(ns.prefix("multi_team"));
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    // Add multiple team members - only "owner" role should be imported
+    java.util.List<ODCSTeamMember> team = new java.util.ArrayList<>();
+
+    ODCSTeamMember owner = new ODCSTeamMember();
+    owner.setUsername("admin");
+    owner.setRole("owner");
+    team.add(owner);
+
+    ODCSTeamMember developer = new ODCSTeamMember();
+    developer.setUsername("developer1");
+    developer.setRole("developer");
+    team.add(developer);
+
+    ODCSTeamMember reviewer = new ODCSTeamMember();
+    reviewer.setUsername("reviewer1");
+    reviewer.setRole("reviewer");
+    team.add(reviewer);
+
+    odcs.setTeam(team);
+
+    DataContract imported =
+        SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertNotNull(imported.getOwners());
+    // Only the "owner" role member should be imported as owner
+    assertEquals(1, imported.getOwners().size());
+    assertEquals("admin", imported.getOwners().get(0).getName());
+  }
+
+  @Test
+  void testExportODCSWithOwners(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    // Create contract with owners
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("export_owners"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Contract with owners for export test");
+
+    DataContract contract = createEntity(request);
+
+    // Update contract to add owner
+    ODCSDataContract odcsWithOwner = new ODCSDataContract();
+    odcsWithOwner.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcsWithOwner.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcsWithOwner.setId(UUID.randomUUID().toString());
+    odcsWithOwner.setName(ns.prefix("export_owners"));
+    odcsWithOwner.setVersion("1.0.0");
+    odcsWithOwner.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    java.util.List<ODCSTeamMember> team = new java.util.ArrayList<>();
+    ODCSTeamMember owner = new ODCSTeamMember();
+    owner.setUsername("admin");
+    owner.setRole("owner");
+    team.add(owner);
+    odcsWithOwner.setTeam(team);
+
+    DataContract updated =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCS(odcsWithOwner, table.getId(), "table", "replace");
+
+    // Export and verify team is present
+    ODCSDataContract exported =
+        SdkClients.adminClient().dataContracts().exportToODCS(updated.getId());
+
+    assertNotNull(exported);
+    assertNotNull(exported.getTeam());
+    assertFalse(exported.getTeam().isEmpty());
+
+    ODCSTeamMember exportedOwner = exported.getTeam().get(0);
+    assertEquals("admin", exportedOwner.getUsername());
+    assertEquals("owner", exportedOwner.getRole());
+  }
+
+  @Test
+  void testTeamOwnerRoundTrip(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName(ns.prefix("owner_roundtrip"));
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    java.util.List<ODCSTeamMember> team = new java.util.ArrayList<>();
+    ODCSTeamMember owner = new ODCSTeamMember();
+    owner.setUsername("admin");
+    owner.setName("Admin User");
+    owner.setRole("owner");
+    team.add(owner);
+    odcs.setTeam(team);
+
+    // Import
+    DataContract imported =
+        SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
+
+    assertNotNull(imported.getOwners());
+    assertEquals(1, imported.getOwners().size());
+
+    // Export
+    ODCSDataContract exported =
+        SdkClients.adminClient().dataContracts().exportToODCS(imported.getId());
+
+    assertNotNull(exported.getTeam());
+    assertEquals(1, exported.getTeam().size());
+    assertEquals("admin", exported.getTeam().get(0).getUsername());
+    assertEquals("owner", exported.getTeam().get(0).getRole());
+  }
+
+  @Test
+  void testImportODCSYamlWithTeam(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("yaml_team")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "team:\n"
+            + "  - username: admin\n"
+            + "    name: Admin User\n"
+            + "    role: owner\n"
+            + "  - username: dev1\n"
+            + "    name: Developer One\n"
+            + "    role: developer\n";
+
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertNotNull(imported.getOwners());
+    // Only owner role should be imported
+    assertEquals(1, imported.getOwners().size());
+    assertEquals("admin", imported.getOwners().get(0).getName());
+  }
+
+  @Test
+  void testMergeModePreservesOwners(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    // Create initial contract with owner
+    ODCSDataContract initialOdcs = new ODCSDataContract();
+    initialOdcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    initialOdcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    initialOdcs.setId(UUID.randomUUID().toString());
+    initialOdcs.setName(ns.prefix("merge_owners"));
+    initialOdcs.setVersion("1.0.0");
+    initialOdcs.setStatus(ODCSDataContract.OdcsStatus.DRAFT);
+
+    java.util.List<ODCSTeamMember> team = new java.util.ArrayList<>();
+    ODCSTeamMember owner = new ODCSTeamMember();
+    owner.setUsername("admin");
+    owner.setRole("owner");
+    team.add(owner);
+    initialOdcs.setTeam(team);
+
+    DataContract created =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCS(initialOdcs, table.getId(), "table");
+
+    assertNotNull(created.getOwners());
+    assertEquals(1, created.getOwners().size());
+
+    // Merge with update that has no team
+    ODCSDataContract updateOdcs = new ODCSDataContract();
+    updateOdcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    updateOdcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    updateOdcs.setId(UUID.randomUUID().toString());
+    updateOdcs.setName(ns.prefix("merge_owners"));
+    updateOdcs.setVersion("2.0.0");
+    updateOdcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    ODCSDescription desc = new ODCSDescription();
+    desc.setPurpose("Updated description");
+    updateOdcs.setDescription(desc);
+
+    DataContract merged =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCS(updateOdcs, table.getId(), "table", "merge");
+
+    // Owners should be preserved from original
+    assertNotNull(merged.getOwners());
+    assertEquals(1, merged.getOwners().size());
+    assertEquals("admin", merged.getOwners().get(0).getName());
   }
 }
