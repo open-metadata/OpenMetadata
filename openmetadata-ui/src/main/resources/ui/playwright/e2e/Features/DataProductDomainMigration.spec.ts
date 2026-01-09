@@ -129,6 +129,7 @@ test.describe('Data Product Domain Migration', () => {
       await redirectToHomePage(page);
 
       // STEP 1: Verify initial state - assets should be under source domain
+      await sidebarClick(page, SidebarItem.DOMAIN);
       await verifyAssetsInDomain(
         page,
         sourceDomain.data,
@@ -138,6 +139,7 @@ test.describe('Data Product Domain Migration', () => {
       await checkAssetsCount(page, 2);
 
       // Verify target domain has no assets initially
+      await sidebarClick(page, SidebarItem.DOMAIN);
       await goToAssetsTab(page, targetDomain.data);
       await checkAssetsCount(page, 0);
 
@@ -195,6 +197,7 @@ test.describe('Data Product Domain Migration', () => {
 
       // STEP 5: THE KEY VERIFICATION - assets should now appear under TARGET domain
       // This is the actual bug we're testing - assets must be migrated to the new domain
+      await sidebarClick(page, SidebarItem.DOMAIN);
       await verifyAssetsInDomain(
         page,
         targetDomain.data,
@@ -204,6 +207,7 @@ test.describe('Data Product Domain Migration', () => {
       await checkAssetsCount(page, 2);
 
       // STEP 6: Verify assets are no longer under source domain
+      await sidebarClick(page, SidebarItem.DOMAIN);
       await goToAssetsTab(page, sourceDomain.data);
       await checkAssetsCount(page, 0);
     } finally {
