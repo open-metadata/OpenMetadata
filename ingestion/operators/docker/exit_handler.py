@@ -127,11 +127,7 @@ def find_main_pod(
         # Find the first pod from the job
         for pod in pods.items:
             try:
-                if (
-                    pod.metadata
-                    and pod.metadata.name
-                    and job_name in pod.metadata.name
-                ):
+                if pod.metadata and pod.metadata.name and job_name in pod.metadata.name:
                     logger.info(f"Found main pod: {pod.metadata.name}")
                     return pod
             except Exception as pod_error:
