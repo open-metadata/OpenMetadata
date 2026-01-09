@@ -123,6 +123,13 @@ const SchemaTable = () => {
   // Pagination state for columns
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true); // Start with loading state
+  const [activeTagFilters, setActiveTagFilters] = useState<{
+    Classification: React.Key[];
+    Glossary: React.Key[];
+  }>({ Classification: [], Glossary: [] });
+  const [allColumnsForFilters, setAllColumnsForFilters] = useState<Column[]>(
+    []
+  );
 
   const { fqn: decodedEntityFqn } = useFqn();
 
@@ -192,7 +199,7 @@ const SchemaTable = () => {
 
   // Function to fetch paginated columns or search results
   const fetchPaginatedColumns = useCallback(
-    async (page = 1, searchQuery?: string) => {
+    async (page = 1, searchQuery?: string, tagFilters?: typeof activeTagFilters) => {
       if (!tableFqn) {
         return;
       }
@@ -201,13 +208,21 @@ const SchemaTable = () => {
       try {
         const offset = (page - 1) * pageSize;
 
-        // Use search API if there's a search query, otherwise use regular pagination
-        const response = searchQuery
+        // Build tags parameter for server-side filtering
+        const tagsList = [
+          ...(tagFilters?.Classification || []),
+          ...(tagFilters?.Glossary || []),
+        ];
+        const tagsParam = tagsList.length > 0 ? tagsList.join(',') : undefined;
+
+        // Use search API if there's a search query or tags filter
+        const response = searchQuery || tagsParam
           ? await searchTableColumnsByFQN(tableFqn, {
               q: searchQuery,
               limit: pageSize,
               offset: offset,
               fields: 'tags,customMetrics',
+              tags: tagsParam,
             })
           : await getTableColumnsByFQN(tableFqn, {
               limit: pageSize,
@@ -228,15 +243,15 @@ const SchemaTable = () => {
       }
       setColumnsLoading(false);
     },
-    [decodedEntityFqn, pageSize]
+    [tableFqn, pageSize]
   );
 
   const handleColumnsPageChange = useCallback(
     ({ currentPage }: PagingHandlerParams) => {
-      fetchPaginatedColumns(currentPage, searchText);
+      fetchPaginatedColumns(currentPage, searchText, activeTagFilters);
       handlePageChange(currentPage);
     },
-    [paging, fetchPaginatedColumns, searchText]
+    [paging, fetchPaginatedColumns, searchText, activeTagFilters]
   );
 
   const fetchTestCaseSummary = async () => {
@@ -252,13 +267,35 @@ const SchemaTable = () => {
     fetchTestCaseSummary();
   }, [tableFqn]);
 
-  // Fetch columns when search changes
+  // Fetch all columns for building filter options (do this once on load)
+  useEffect(() => {
+    const fetchAllColumnsForFilters = async () => {
+      if (!tableFqn) {
+        return;
+      }
+      try {
+        const response = await getTableColumnsByFQN(tableFqn, {
+          limit: 10000, // Fetch all columns
+          offset: 0,
+          fields: 'tags',
+        });
+        setAllColumnsForFilters(pruneEmptyChildren(response.data) || []);
+      } catch {
+        setAllColumnsForFilters([]);
+      }
+    };
+
+    fetchAllColumnsForFilters();
+  }, [tableFqn]);
+
+  // Fetch columns when search or filters change
   useEffect(() => {
     if (tableFqn) {
-      // Reset to first page when search changes
-      fetchPaginatedColumns(1, searchText || undefined);
+      // Reset to first page when search or filters change
+      fetchPaginatedColumns(1, searchText || undefined, activeTagFilters);
+      handlePageChange(1);
     }
-  }, [tableFqn, searchText, fetchPaginatedColumns, pageSize]);
+  }, [tableFqn, searchText, activeTagFilters, fetchPaginatedColumns, pageSize]);
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {
@@ -475,13 +512,14 @@ const SchemaTable = () => {
   };
 
   const tagFilter = useMemo(() => {
-    const tags = getAllTags(tableColumns);
+    // Use all columns (not just current page) to build filter options
+    const tags = getAllTags(allColumnsForFilters);
 
     return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
       TagSource,
       TagFilterOptions[]
     >;
-  }, [tableColumns]);
+  }, [allColumnsForFilters]);
 
   const columns: ColumnsType<Column> = useMemo(
     () => [
@@ -579,7 +617,8 @@ const SchemaTable = () => {
         ),
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: activeTagFilters.Classification,
+        onFilter: () => true, // Server-side filtering
       },
       {
         title: t('label.glossary-term-plural'),
@@ -602,7 +641,8 @@ const SchemaTable = () => {
         ),
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: activeTagFilters.Glossary,
+        onFilter: () => true, // Server-side filtering
       },
       {
         title: t('label.data-quality'),
@@ -755,6 +795,13 @@ const SchemaTable = () => {
           searchProps={searchProps}
           size="middle"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+          onChange={(_, filters) => {
+            // Update active filters when user changes them
+            setActiveTagFilters({
+              Classification: (filters[TABLE_COLUMNS_KEYS.TAGS] as React.Key[]) || [],
+              Glossary: (filters[TABLE_COLUMNS_KEYS.GLOSSARY] as React.Key[]) || [],
+            });
+          }}
         />
       </Col>
       {editColumn && (

@@ -274,6 +274,7 @@ export type GetTableColumnsParams = {
   offset?: number;
   fields?: string;
   include?: Include;
+  tags?: string; // Comma-separated tag FQNs for filtering
 };
 
 export const getTableColumnsById = async (

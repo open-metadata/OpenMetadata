@@ -1848,13 +1848,18 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description = "Filter columns by tag FQNs (comma-separated)",
+              schema = @Schema(type = "string", example = "PII.Sensitive,Classification.Public"))
+          @QueryParam("tags")
+          String tags) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     ResultList<Column> result =
         repository.searchTableColumnsById(
-            id, query, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
+            id, query, limitParam, offsetParam, fieldsParam, include, tags, authorizer, securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
@@ -1909,13 +1914,18 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description = "Filter columns by tag FQNs (comma-separated)",
+              schema = @Schema(type = "string", example = "PII.Sensitive,Classification.Public"))
+          @QueryParam("tags")
+          String tags) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     ResultList<org.openmetadata.schema.type.Column> result =
         repository.searchTableColumnsByFQN(
-            fqn, query, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
+            fqn, query, limitParam, offsetParam, fieldsParam, include, tags, authorizer, securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
