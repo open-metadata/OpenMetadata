@@ -3,7 +3,6 @@ package org.openmetadata.mcp;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpTransportContextExtractor;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.HashMap;
 import java.util.Map;
 import org.openmetadata.service.security.JwtFilter;
 
@@ -13,9 +12,7 @@ public class AuthEnrichedMcpContextExtractor
 
   @Override
   public McpTransportContext extract(HttpServletRequest request) {
-    Map<String, Object> contextData = new HashMap<>();
-    contextData.put(
-        AUTHORIZATION_HEADER, JwtFilter.extractToken(request.getHeader(AUTHORIZATION_HEADER)));
-    return McpTransportContext.create(contextData);
+    String token = JwtFilter.extractToken(request.getHeader(AUTHORIZATION_HEADER));
+    return McpTransportContext.create(Map.of(AUTHORIZATION_HEADER, token != null ? token : ""));
   }
 }
