@@ -19,6 +19,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.csv.EntityCsvTest.assertSummary;
+import static org.openmetadata.csv.EntityCsvTest.createCsv;
+import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DEPARTMENT;
 
 import java.net.URI;
 import java.util.List;
@@ -26,6 +30,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.csv.CsvUtil;
+import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -33,13 +39,16 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.jdbi3.TeamRepository;
 
 /**
  * Integration tests for Team entity operations.
@@ -987,5 +996,116 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
       lastCreatedTeam = createEntity(request);
     }
     return lastCreatedTeam.getFullyQualifiedName();
+  }
+
+  /**
+   * Get CSV headers for team import/export.
+   * Uses TeamRepository.TeamCsv to get proper headers.
+   */
+  private List<org.openmetadata.schema.type.csv.CsvHeader> getTeamCsvHeaders(
+      Team team, boolean recursive) {
+    return TeamRepository.TeamCsv.HEADERS;
+  }
+
+  /**
+   * Helper method to create CSV record for team import.
+   * CSV Header: name,displayName,description,teamType,parents,Owner,isJoinable,defaultRoles,policies
+   */
+  private String getRecord(
+      TestNamespace ns,
+      String nameSuffix,
+      TeamType teamType,
+      String parent,
+      String owner,
+      Boolean isJoinable,
+      String defaultRoles,
+      String policies) {
+    // CSV Header
+    // "name", "displayName", "description", "teamType", "parents", "owners", "isJoinable",
+    // "defaultRoles", & "policies"
+    return String.format(
+        "%s,displayName%s,description%s,%s,%s,%s,%s,%s,%s",
+        ns.prefix(nameSuffix),
+        ns.prefix(nameSuffix),
+        ns.prefix(nameSuffix),
+        teamType.value(),
+        parent != null ? parent : "",
+        owner != null ? owner : "",
+        isJoinable == null ? "" : isJoinable,
+        defaultRoles != null ? defaultRoles : "",
+        policies != null ? policies : "");
+  }
+
+  @Test
+  void test_csvImportCreate(TestNamespace ns) throws Exception {
+    CreateTeam createTeam =
+        createRequest(ns.prefix("csv-import-create"), ns).withTeamType(DEPARTMENT);
+    Team team = createEntity(createTeam);
+
+    // Create CSV records for initial import (these should be marked as ENTITY_CREATED)
+    // Headers: name,displayName,description,teamType,parents,Owner,isJoinable,defaultRoles,policies
+    List<String> createRecords =
+        listOf(
+            getRecord(ns, "team1", TeamType.GROUP, team.getName(), null, true, null, null),
+            getRecord(ns, "team2", TeamType.GROUP, team.getName(), null, true, null, null));
+
+    String csv = createCsv(getTeamCsvHeaders(team, false), createRecords, null);
+
+    // Import CSV and verify all records are marked as created
+    CsvImportResult importResult = importCsv(team.getName(), csv, false);
+    assertSummary(importResult, ApiStatus.SUCCESS, 3, 3, 0); // 3 = header + 2 records
+
+    // Verify the result contains "Entity created" status for all records
+    String[] resultLines = importResult.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_CREATED),
+          "Record " + i + " should be marked as created: " + resultLines[i]);
+      // Verify changeDescription is present
+      assertTrue(
+          resultLines[i].contains("fieldsAdded"),
+          "Record " + i + " should have changeDescription: " + resultLines[i]);
+    }
+  }
+
+  @Test
+  void test_csvImportUpdate(TestNamespace ns) throws Exception {
+    CreateTeam createTeam =
+        createRequest(ns.prefix("csv-import-update"), ns).withTeamType(DEPARTMENT);
+    Team team = createEntity(createTeam);
+
+    // First import to create teams
+    // Headers: name,displayName,description,teamType,parents,Owner,isJoinable,defaultRoles,policies
+    List<String> createRecords =
+        listOf(
+            getRecord(ns, "team10", TeamType.GROUP, team.getName(), null, true, null, null),
+            getRecord(ns, "team20", TeamType.GROUP, team.getName(), null, true, null, null));
+
+    String createCsv = createCsv(getTeamCsvHeaders(team, false), createRecords, null);
+    importCsv(team.getName(), createCsv, false);
+
+    // Now update the same teams (these should be marked as ENTITY_UPDATED)
+    List<String> updateRecords =
+        listOf(
+            getRecord(ns, "team10", TeamType.GROUP, team.getName(), null, false, null, null),
+            getRecord(ns, "team20", TeamType.GROUP, team.getName(), null, false, null, null));
+
+    String updateCsv = createCsv(getTeamCsvHeaders(team, false), updateRecords, null);
+
+    // Import updated CSV and verify all records are marked as updated
+    CsvImportResult importResult = importCsv(team.getName(), updateCsv, false);
+    assertSummary(importResult, ApiStatus.SUCCESS, 3, 3, 0); // 3 = header + 2 records
+
+    // Verify the result contains "Entity updated" status for all records
+    String[] resultLines = importResult.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_UPDATED),
+          "Record " + i + " should be marked as updated: " + resultLines[i]);
+      // Verify changeDescription is present and contains fieldsUpdated
+      assertTrue(
+          resultLines[i].contains("fieldsUpdated"),
+          "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
+    }
   }
 }

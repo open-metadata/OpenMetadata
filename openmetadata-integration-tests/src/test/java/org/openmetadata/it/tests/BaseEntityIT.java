@@ -3804,6 +3804,62 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     return null; // Override in subclasses that support import/export
   }
 
+  // ===================================================================
+  // CSV HELPER METHODS - SDK-based implementations
+  // ===================================================================
+
+  /**
+   * Import CSV data using SDK and convert response to CsvImportResult.
+   * This preserves the same rich assertion capabilities as the original REST tests
+   * while using pure SDK patterns.
+   */
+  protected org.openmetadata.schema.type.csv.CsvImportResult importCsv(
+      String entityName, String csv, boolean dryRun) throws Exception {
+    org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
+    if (service == null) {
+      throw new UnsupportedOperationException("Entity service not provided for import/export");
+    }
+    String jsonResponse = service.importCsv(entityName, csv, dryRun);
+    return org.openmetadata.schema.utils.JsonUtils.readValue(
+        jsonResponse, org.openmetadata.schema.type.csv.CsvImportResult.class);
+  }
+
+  /**
+   * Import CSV data recursively using SDK and convert response to CsvImportResult.
+   */
+  protected org.openmetadata.schema.type.csv.CsvImportResult importCsvRecursive(
+      String entityName, String csv, boolean dryRun) throws Exception {
+    org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
+    if (service == null) {
+      throw new UnsupportedOperationException("Entity service not provided for import/export");
+    }
+    String jsonResponse = service.importCsv(entityName, csv, dryRun, true);
+    return org.openmetadata.schema.utils.JsonUtils.readValue(
+        jsonResponse, org.openmetadata.schema.type.csv.CsvImportResult.class);
+  }
+
+  /**
+   * Export CSV data using SDK.
+   */
+  protected String exportCsv(String entityName) throws Exception {
+    org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
+    if (service == null) {
+      throw new UnsupportedOperationException("Entity service not provided for import/export");
+    }
+    return service.exportCsv(entityName);
+  }
+
+  /**
+   * Export CSV data recursively using SDK.
+   */
+  protected String exportCsvRecursive(String entityName) throws Exception {
+    org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
+    if (service == null) {
+      throw new UnsupportedOperationException("Entity service not provided for import/export");
+    }
+    return service.exportCsv(entityName, true);
+  }
+
   /**
    * Test: Basic CSV export works.
    * Equivalent to: testImportExport (export part) in EntityResourceTest

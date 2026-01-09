@@ -18,22 +18,30 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.csv.EntityCsvTest.assertSummary;
+import static org.openmetadata.csv.EntityCsvTest.createCsv;
 
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.csv.CsvUtil;
+import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.jdbi3.GlossaryRepository;
 
 /**
  * Integration tests for Glossary entity operations.
@@ -890,5 +898,103 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
       lastCreatedGlossary = createEntity(request);
     }
     return lastCreatedGlossary.getFullyQualifiedName();
+  }
+
+  /**
+   * Get CSV headers for glossary term import/export.
+   * Uses GlossaryRepository.GlossaryCsv to get proper headers.
+   */
+  private List<org.openmetadata.schema.type.csv.CsvHeader> getGlossaryCsvHeaders(
+      Glossary glossary, boolean recursive) {
+    return GlossaryRepository.GlossaryCsv.HEADERS;
+  }
+
+  @Test
+  void test_csvImportCreate(TestNamespace ns) throws Exception {
+    CreateGlossary createGlossary = createRequest(ns.prefix("csv-import-create"), ns);
+    Glossary glossary = createEntity(createGlossary);
+
+    // Create CSV records for initial import (these should be marked as ENTITY_CREATED)
+    // Headers:
+    // parent,name,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension
+    List<String> createRecords =
+        listOf(
+            "," + ns.prefix("term1") + ",Display Term 1,Description for term1,,,,,,,,,,",
+            "," + ns.prefix("term2") + ",Display Term 2,Description for term2,,,,,,,,,,");
+
+    String csv = createCsv(getGlossaryCsvHeaders(glossary, false), createRecords, null);
+
+    // Import CSV and verify all records are marked as created
+    CsvImportResult result = importCsv(glossary.getName(), csv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 3, 3, 0); // 3 = header + 2 records
+
+    // Verify the result contains "Entity created" status for all records
+    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_CREATED),
+          "Record " + i + " should be marked as created: " + resultLines[i]);
+      // Verify changeDescription is present
+      assertTrue(
+          resultLines[i].contains("fieldsAdded"),
+          "Record " + i + " should have changeDescription: " + resultLines[i]);
+    }
+  }
+
+  @Test
+  void test_csvImportUpdate(TestNamespace ns) throws Exception {
+    CreateGlossary createGlossary = createRequest(ns.prefix("csv-import-update"), ns);
+    Glossary glossary = createEntity(createGlossary);
+
+    // Create glossary terms using SDK directly
+    OpenMetadataClient client = SdkClients.adminClient();
+    org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm1 =
+        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+            .withName(ns.prefix("term1"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Initial description 1");
+    client.glossaryTerms().create(createTerm1);
+
+    org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm2 =
+        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+            .withName(ns.prefix("term2"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Initial description 2");
+    client.glossaryTerms().create(createTerm2);
+
+    // First, create the terms via CSV import to establish baseline
+    // Headers:
+    // parent,name,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension
+    List<String> createRecords =
+        listOf(
+            "," + ns.prefix("term1") + ",Display Term 1,Initial description 1,,,,,,,,,,",
+            "," + ns.prefix("term2") + ",Display Term 2,Initial description 2,,,,,,,,,,");
+
+    String createCsv = createCsv(getGlossaryCsvHeaders(glossary, false), createRecords, null);
+    importCsv(glossary.getName(), createCsv, false);
+
+    // Now update the same terms (these should be marked as ENTITY_UPDATED)
+    List<String> updateRecords =
+        listOf(
+            "," + ns.prefix("term1") + ",Updated Display 1,Updated description 1,,,,,,,,,,",
+            "," + ns.prefix("term2") + ",Updated Display 2,Updated description 2,,,,,,,,,,");
+
+    String updateCsv = createCsv(getGlossaryCsvHeaders(glossary, false), updateRecords, null);
+
+    // Import updated CSV and verify all records are marked as updated
+    CsvImportResult result = importCsv(glossary.getName(), updateCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 3, 3, 0); // 3 = header + 2 records
+
+    // Verify the result contains "Entity updated" status for all records
+    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_UPDATED),
+          "Record " + i + " should be marked as updated: " + resultLines[i]);
+      // Verify changeDescription is present and contains fieldsUpdated
+      assertTrue(
+          resultLines[i].contains("fieldsUpdated"),
+          "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
+    }
   }
 }

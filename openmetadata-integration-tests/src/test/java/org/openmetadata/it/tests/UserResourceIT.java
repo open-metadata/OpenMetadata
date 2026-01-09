@@ -20,6 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.csv.EntityCsvTest.assertSummary;
+import static org.openmetadata.csv.EntityCsvTest.createCsv;
 
 import com.azure.core.exception.HttpResponseException;
 import java.net.URI;
@@ -32,6 +35,8 @@ import java.util.concurrent.Executors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.csv.CsvUtil;
+import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.domains.CreateDomain;
@@ -42,14 +47,18 @@ import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Personas;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -2021,6 +2030,184 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
     // Cleanup: Remove the test user
     deleteEntity(testUser.getId().toString());
+  }
+
+  /**
+   * Get CSV headers for user import/export.
+   * Uses UserRepository.UserCsv to get proper headers.
+   */
+  private List<org.openmetadata.schema.type.csv.CsvHeader> getUserCsvHeaders(boolean recursive) {
+    return UserRepository.UserCsv.HEADERS;
+  }
+
+  /**
+   * Override importCsv to use the correct endpoint for user CSV import.
+   * User CSV import uses /v1/users/import?team={teamName} endpoint, not /v1/users/name/{name}/import
+   */
+  @Override
+  protected org.openmetadata.schema.type.csv.CsvImportResult importCsv(
+      String teamName, String csv, boolean dryRun) throws Exception {
+    // User CSV import goes through /v1/users/import?team={teamName} endpoint
+    // We need to use the HTTP client directly since the SDK's EntityServiceBase.importCsv
+    // uses /name/{name}/import pattern which doesn't work for users
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Access the HTTP client and basePath through reflection since they're not publicly exposed
+    try {
+      org.openmetadata.sdk.services.EntityServiceBase<?> userService = client.users();
+
+      java.lang.reflect.Field httpClientField =
+          org.openmetadata.sdk.services.EntityServiceBase.class.getDeclaredField("httpClient");
+      httpClientField.setAccessible(true);
+      org.openmetadata.sdk.network.OpenMetadataHttpClient httpClient =
+          (org.openmetadata.sdk.network.OpenMetadataHttpClient) httpClientField.get(userService);
+
+      java.lang.reflect.Field basePathField =
+          org.openmetadata.sdk.services.EntityServiceBase.class.getDeclaredField("basePath");
+      basePathField.setAccessible(true);
+      String basePath = (String) basePathField.get(userService);
+
+      java.util.Map<String, String> queryParams = new java.util.HashMap<>();
+      queryParams.put("team", teamName);
+      if (dryRun) {
+        queryParams.put("dryRun", "true");
+      }
+
+      org.openmetadata.sdk.network.RequestOptions options =
+          org.openmetadata.sdk.network.RequestOptions.builder()
+              .header("Content-Type", "text/plain; charset=UTF-8")
+              .queryParams(queryParams)
+              .build();
+
+      // Use basePath + "/import" to get the correct path (e.g., /v1/users/import)
+      String path = basePath + "/import";
+      String jsonResponse =
+          httpClient.executeForString(
+              org.openmetadata.sdk.network.HttpMethod.PUT, path, csv, options);
+
+      return org.openmetadata.schema.utils.JsonUtils.readValue(
+          jsonResponse, org.openmetadata.schema.type.csv.CsvImportResult.class);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to import user CSV: " + e.getMessage(), e);
+    }
+  }
+
+  @Test
+  void test_csvImportCreate(TestNamespace ns) throws Exception {
+    // Create team using SDK directly
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateTeam createTeam = new CreateTeam();
+    createTeam.setName(ns.prefix("csv-import-create-team"));
+    createTeam.setTeamType(CreateTeam.TeamType.DEPARTMENT);
+    createTeam.setDescription("Team for CSV import test");
+    Team team = client.teams().create(createTeam);
+
+    // Create sanitized user names that match email prefixes
+    String user1Name = toValidEmail(ns.prefix("user1")).split("@")[0]; // Get email prefix
+    String user2Name = toValidEmail(ns.prefix("user2")).split("@")[0]; // Get email prefix
+
+    // Create CSV records for initial import (these should be marked as ENTITY_CREATED)
+    // Headers: name,displayName,description,email,timezone,isAdmin,teams,Roles
+    List<String> createRecords =
+        listOf(
+            user1Name
+                + ",Display User 1,Description for user1,"
+                + toValidEmail(user1Name)
+                + ",,false,"
+                + team.getName()
+                + ",",
+            user2Name
+                + ",Display User 2,Description for user2,"
+                + toValidEmail(user2Name)
+                + ",,false,"
+                + team.getName()
+                + ",");
+
+    String csv = createCsv(getUserCsvHeaders(false), createRecords, null);
+
+    // Import CSV and verify all records are marked as created
+    CsvImportResult importResult = importCsv(team.getName(), csv, false);
+    assertSummary(importResult, ApiStatus.SUCCESS, 3, 3, 0); // 3 = header + 2 records
+
+    // Verify the result contains "Entity created" status for all records
+    String[] resultLines = importResult.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_CREATED),
+          "Record " + i + " should be marked as created: " + resultLines[i]);
+      // Verify changeDescription is present
+      assertTrue(
+          resultLines[i].contains("fieldsAdded"),
+          "Record " + i + " should have changeDescription: " + resultLines[i]);
+    }
+  }
+
+  @Test
+  void test_csvImportUpdate(TestNamespace ns) throws Exception {
+    // Create team using SDK directly
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateTeam createTeam = new CreateTeam();
+    createTeam.setName(ns.prefix("csv-import-update-team"));
+    createTeam.setTeamType(CreateTeam.TeamType.DEPARTMENT);
+    createTeam.setDescription("Team for CSV import update test");
+    Team team = client.teams().create(createTeam);
+
+    // Create sanitized user names that match email prefixes
+    String user1Name = toValidEmail(ns.prefix("user1")).split("@")[0]; // Get email prefix
+    String user2Name = toValidEmail(ns.prefix("user2")).split("@")[0]; // Get email prefix
+
+    // Create users first using the regular API to ensure they exist
+    CreateUser createUser1 =
+        new CreateUser()
+            .withName(user1Name)
+            .withEmail(toValidEmail(user1Name))
+            .withDisplayName("Display User 1")
+            .withDescription("Initial description 1")
+            .withTeams(List.of(team.getId()));
+    User user1 = createEntity(createUser1);
+
+    CreateUser createUser2 =
+        new CreateUser()
+            .withName(user2Name)
+            .withEmail(toValidEmail(user2Name))
+            .withDisplayName("Display User 2")
+            .withDescription("Initial description 2")
+            .withTeams(List.of(team.getId()));
+    User user2 = createEntity(createUser2);
+
+    // Now update the same users via CSV (these should be marked as ENTITY_UPDATED)
+    List<String> updateRecords =
+        listOf(
+            user1Name
+                + ",Updated Display 1,Updated description 1,"
+                + toValidEmail(user1Name)
+                + ",,false,"
+                + team.getName()
+                + ",",
+            user2Name
+                + ",Updated Display 2,Updated description 2,"
+                + toValidEmail(user2Name)
+                + ",,false,"
+                + team.getName()
+                + ",");
+
+    String updateCsv = createCsv(getUserCsvHeaders(false), updateRecords, null);
+
+    // Import updated CSV and verify all records are marked as updated
+    CsvImportResult importResult = importCsv(team.getName(), updateCsv, false);
+    assertSummary(importResult, ApiStatus.SUCCESS, 3, 3, 0); // 3 = header + 2 records
+
+    // Verify the result contains "Entity updated" status for all records
+    String[] resultLines = importResult.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_UPDATED),
+          "Record " + i + " should be marked as updated: " + resultLines[i]);
+      // Verify changeDescription is present and contains fieldsUpdated
+      assertTrue(
+          resultLines[i].contains("fieldsUpdated"),
+          "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
+    }
   }
 
   // ===================================================================

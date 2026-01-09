@@ -27,7 +27,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
@@ -39,7 +38,6 @@ import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.jdbi3.TestCaseRepository.FAILED_ROWS_SAMPLE_EXTENSION;
-import static org.openmetadata.service.jdbi3.TestCaseRepository.TestCaseCsv;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.security.mask.PIIMasker.MASKED_VALUE;
@@ -96,8 +94,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.openmetadata.csv.CsvUtil;
-import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -137,7 +133,6 @@ import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestResultValue;
 import org.openmetadata.schema.tests.type.TestSummary;
-import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -5770,210 +5765,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Count number of test cases in export (excluding header)
     long testCaseCount = exportedCsv.lines().count() - 1;
     assertTrue(testCaseCount >= 2, "Should export at least 2 test cases");
-  }
-
-  @Test
-  void test_csvImportCreate() throws IOException {
-    TableResourceTest tableResourceTest = new TableResourceTest();
-    Column c1 = new Column().withName("c1").withDataType(BIGINT);
-    CreateTable createTable =
-        tableResourceTest
-            .createRequest("csvImportCreateTable")
-            .withColumns(listOf(c1))
-            .withTableConstraints(null);
-    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
-
-    TestDefinition tableRowCountDef =
-        Entity.getEntityByName(
-            TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
-
-    String entityFQN = "\"" + table.getFullyQualifiedName().replace("\"", "\"\"") + "\"";
-
-    // Create CSV records for initial import (these should be marked as ENTITY_CREATED)
-    List<String> createRecords =
-        listOf(
-            String.format(
-                "test1,Display Test 1,Description for test1,%s,%s,,,false,false,,,",
-                tableRowCountDef.getFullyQualifiedName(), entityFQN),
-            String.format(
-                "test2,Display Test 2,Description for test2,%s,%s,,,false,false,,,",
-                tableRowCountDef.getFullyQualifiedName(), entityFQN));
-
-    String csv = createCsv(TestCaseCsv.HEADERS, createRecords, null);
-
-    // Import CSV and verify all records are marked as created
-    CsvImportResult result = importCsv(table.getFullyQualifiedName(), csv, false);
-    assertSummary(result, ApiStatus.SUCCESS, 3, 3, 0); // 3 = header + 2 records
-
-    // Verify the result contains "Entity created" status for all records
-    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
-    for (int i = 1; i < resultLines.length; i++) { // Skip header
-      assertTrue(
-          resultLines[i].contains(EntityCsv.ENTITY_CREATED),
-          "Record " + i + " should be marked as created: " + resultLines[i]);
-      // Verify changeDescription is present
-      assertTrue(
-          resultLines[i].contains("fieldsAdded"),
-          "Record " + i + " should have changeDescription: " + resultLines[i]);
-    }
-
-    tableResourceTest.deleteEntityByName(
-        table.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void test_csvImportUpdate() throws IOException {
-    TableResourceTest tableResourceTest = new TableResourceTest();
-    Column c1 = new Column().withName("c1").withDataType(BIGINT);
-    CreateTable createTable =
-        tableResourceTest
-            .createRequest("csvImportUpdateTable")
-            .withColumns(listOf(c1))
-            .withTableConstraints(null);
-    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
-
-    TestDefinition tableRowCountDef =
-        Entity.getEntityByName(
-            TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
-
-    String entityFQN = "\"" + table.getFullyQualifiedName().replace("\"", "\"\"") + "\"";
-
-    // First import to create test case metadata
-    List<String> createRecords =
-        listOf(
-            String.format(
-                "test1,Display Test 1,Initial description 1,%s,%s,,,false,false,,,",
-                tableRowCountDef.getFullyQualifiedName(), entityFQN));
-
-    String createCsv = createCsv(TestCaseCsv.HEADERS, createRecords, null);
-    importCsv(table.getFullyQualifiedName(), createCsv, false);
-
-    // Now update the same test case (these should be marked as ENTITY_UPDATED)
-    List<String> updateRecords =
-        listOf(
-            String.format(
-                "test1,Updated Display 1,Updated description 1,%s,%s,,,false,false,,,",
-                tableRowCountDef.getFullyQualifiedName(), entityFQN));
-
-    String updateCsv = createCsv(TestCaseCsv.HEADERS, updateRecords, null);
-
-    // Import updated CSV and verify all records are marked as updated
-    CsvImportResult result = importCsv(table.getFullyQualifiedName(), updateCsv, false);
-    assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0); // 2 = header + 1 record
-
-    // Verify the result contains "Entity updated" status for all records
-    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
-    for (int i = 1; i < resultLines.length; i++) { // Skip header
-      assertTrue(
-          resultLines[i].contains(EntityCsv.ENTITY_UPDATED),
-          "Record " + i + " should be marked as updated: " + resultLines[i]);
-      // Verify changeDescription is present and contains fieldsUpdated
-      assertTrue(
-          resultLines[i].contains("fieldsUpdated"),
-          "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
-    }
-
-    tableResourceTest.deleteEntityByName(
-        table.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void test_csvImportRecursiveCreate() throws IOException {
-    // TestCase doesn't support recursive import in the same way as other entities
-    // This test validates create behavior similar to regular import
-    TableResourceTest tableResourceTest = new TableResourceTest();
-    Column c1 = new Column().withName("c1").withDataType(BIGINT);
-    CreateTable createTable =
-        tableResourceTest
-            .createRequest("csvImportRecCreateTable")
-            .withColumns(listOf(c1))
-            .withTableConstraints(null);
-    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
-
-    TestDefinition tableRowCountDef =
-        Entity.getEntityByName(
-            TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
-
-    String entityFQN = "\"" + table.getFullyQualifiedName().replace("\"", "\"\"") + "\"";
-
-    List<String> createRecords =
-        listOf(
-            String.format(
-                "test1,Display Test 1,Description for test1,%s,%s,,,false,false,,,",
-                tableRowCountDef.getFullyQualifiedName(), entityFQN));
-
-    String csv = createCsv(TestCaseCsv.HEADERS, createRecords, null);
-
-    CsvImportResult result = importCsvRecursive(table.getFullyQualifiedName(), csv, false);
-    assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0); // 2 = header + 1 record
-
-    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
-    for (int i = 1; i < resultLines.length; i++) {
-      assertTrue(
-          resultLines[i].contains(EntityCsv.ENTITY_CREATED),
-          "Record " + i + " should be marked as created: " + resultLines[i]);
-      assertTrue(
-          resultLines[i].contains("fieldsAdded"),
-          "Record " + i + " should have changeDescription: " + resultLines[i]);
-    }
-
-    tableResourceTest.deleteEntityByName(
-        table.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void test_csvImportRecursiveUpdate() throws IOException {
-    // TestCase doesn't support recursive import in the same way as other entities
-    // This test validates update behavior similar to regular import
-    TableResourceTest tableResourceTest = new TableResourceTest();
-    Column c1 = new Column().withName("c1").withDataType(BIGINT);
-    CreateTable createTable =
-        tableResourceTest
-            .createRequest("csvImportRecUpdateTable")
-            .withColumns(listOf(c1))
-            .withTableConstraints(null);
-    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
-
-    TestDefinition tableRowCountDef =
-        Entity.getEntityByName(
-            TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
-
-    String entityFQN = "\"" + table.getFullyQualifiedName().replace("\"", "\"\"") + "\"";
-
-    // First import to create metadata
-    List<String> createRecords =
-        listOf(
-            String.format(
-                "test1,Display Test 1,Initial description,%s,%s,,,false,false,,,",
-                tableRowCountDef.getFullyQualifiedName(), entityFQN));
-
-    String createCsv = createCsv(TestCaseCsv.HEADERS, createRecords, null);
-    importCsvRecursive(table.getFullyQualifiedName(), createCsv, false);
-
-    // Now update
-    List<String> updateRecords =
-        listOf(
-            String.format(
-                "test1,Updated Display 1,Updated description,%s,%s,,,false,false,,,",
-                tableRowCountDef.getFullyQualifiedName(), entityFQN));
-
-    String updateCsv = createCsv(TestCaseCsv.HEADERS, updateRecords, null);
-
-    CsvImportResult result = importCsvRecursive(table.getFullyQualifiedName(), updateCsv, false);
-    assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0); // 2 = header + 1 record
-
-    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
-    for (int i = 1; i < resultLines.length; i++) {
-      assertTrue(
-          resultLines[i].contains(EntityCsv.ENTITY_UPDATED),
-          "Record " + i + " should be marked as updated: " + resultLines[i]);
-      assertTrue(
-          resultLines[i].contains("fieldsUpdated"),
-          "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
-    }
-
-    tableResourceTest.deleteEntityByName(
-        table.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
   }
 
   @Test

@@ -1,17 +1,23 @@
 package org.openmetadata.it.tests;
 
+import static org.apache.commons.lang3.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.csv.EntityCsvTest.assertSummary;
+import static org.openmetadata.csv.EntityCsvTest.createCsv;
 
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.csv.CsvUtil;
+import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -20,11 +26,17 @@ import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 
 /**
  * Integration tests for DatabaseSchema entity operations.
@@ -183,6 +195,15 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
       lastCreatedSchema = createEntity(request);
     }
     return lastCreatedSchema.getFullyQualifiedName();
+  }
+
+  /**
+   * Get CSV headers for database schema import/export.
+   * Uses DatabaseSchemaRepository.DatabaseSchemaCsv to get proper headers.
+   */
+  private List<org.openmetadata.schema.type.csv.CsvHeader> getDatabaseSchemaCsvHeaders(
+      DatabaseSchema schema, boolean recursive) {
+    return new DatabaseSchemaRepository.DatabaseSchemaCsv(schema, "admin", recursive).HEADERS;
   }
 
   // ===================================================================
@@ -1290,5 +1311,218 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
         adminDescription,
         updatedEntity.getDescription(),
         "Admin should be able to update description via bulk");
+  }
+
+  @Test
+  void test_csvImportCreate(TestNamespace ns) throws Exception {
+    CreateDatabaseSchema createSchema = createRequest(ns.prefix("csv-import-create"), ns);
+    DatabaseSchema schema = createEntity(createSchema);
+
+    // Create CSV records for initial import (these should be marked as ENTITY_CREATED)
+    // Headers:
+    // name,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension
+    List<String> createRecords =
+        listOf(
+            ns.prefix("table1") + ",Display Table 1,Description for table1,,,,,,,,,",
+            ns.prefix("table2") + ",Display Table 2,Description for table2,,,,,,,,,");
+
+    String csv = createCsv(getDatabaseSchemaCsvHeaders(schema, false), createRecords, null);
+
+    // Import CSV and verify all records are marked as created
+    CsvImportResult result = importCsv(schema.getFullyQualifiedName(), csv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 3, 3, 0); // 3 = header + 2 records
+
+    // Verify the result contains "Entity created" status for all records
+    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_CREATED),
+          "Record " + i + " should be marked as created: " + resultLines[i]);
+      // Verify changeDescription is present
+      assertTrue(
+          resultLines[i].contains("fieldsAdded"),
+          "Record " + i + " should have changeDescription: " + resultLines[i]);
+    }
+  }
+
+  @Test
+  void test_csvImportUpdate(TestNamespace ns) throws Exception {
+    CreateDatabaseSchema createSchema = createRequest(ns.prefix("csv-import-update"), ns);
+    DatabaseSchema schema = createEntity(createSchema);
+
+    // Create tables using SDK directly
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateTable createTable1 = new CreateTable();
+    createTable1.setName(ns.prefix("table1"));
+    createTable1.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable1.setDescription("Initial description 1");
+    createTable1.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    client.tables().create(createTable1);
+
+    CreateTable createTable2 = new CreateTable();
+    createTable2.setName(ns.prefix("table2"));
+    createTable2.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable2.setDescription("Initial description 2");
+    createTable2.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    client.tables().create(createTable2);
+
+    // First, create the tables via CSV import to establish baseline
+    // Headers:
+    // name,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension
+    List<String> createRecords =
+        listOf(
+            ns.prefix("table1") + ",Display Table 1,Initial description 1,,,,,,,,,",
+            ns.prefix("table2") + ",Display Table 2,Initial description 2,,,,,,,,,");
+
+    String createCsv = createCsv(getDatabaseSchemaCsvHeaders(schema, false), createRecords, null);
+    importCsv(schema.getFullyQualifiedName(), createCsv, false);
+
+    // Now update the same tables (these should be marked as ENTITY_UPDATED)
+    List<String> updateRecords =
+        listOf(
+            ns.prefix("table1") + ",Updated Display 1,Updated description 1,,,,,,,,,",
+            ns.prefix("table2") + ",Updated Display 2,Updated description 2,,,,,,,,,");
+
+    String updateCsv = createCsv(getDatabaseSchemaCsvHeaders(schema, false), updateRecords, null);
+
+    // Import updated CSV and verify all records are marked as updated
+    CsvImportResult result = importCsv(schema.getFullyQualifiedName(), updateCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 3, 3, 0); // 3 = header + 2 records
+
+    // Verify the result contains "Entity updated" status for all records
+    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_UPDATED),
+          "Record " + i + " should be marked as updated: " + resultLines[i]);
+      // Verify changeDescription is present and contains fieldsUpdated
+      assertTrue(
+          resultLines[i].contains("fieldsUpdated"),
+          "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
+    }
+  }
+
+  @Test
+  void test_csvImportRecursiveCreate(TestNamespace ns) throws Exception {
+    CreateDatabaseSchema createSchema = createRequest(ns.prefix("csv-import-rec-create"), ns);
+    DatabaseSchema schema = createEntity(createSchema);
+
+    // Create CSV records for recursive import (these should be marked as ENTITY_CREATED)
+    // Headers:
+    // name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,entityType*,fullyQualifiedName
+    String table1fqn = schema.getFullyQualifiedName() + "." + ns.prefix("table1");
+    String column1fqn = schema.getFullyQualifiedName() + "." + ns.prefix("table1") + ".col1";
+    String column2fqn = schema.getFullyQualifiedName() + "." + ns.prefix("table1") + ".col2";
+    List<String> createRecords =
+        listOf(
+            String.format(
+                ns.prefix("table1") + ",Display Table,Description for table,,,,,,,,,,table,%s,",
+                escapeCsv(table1fqn)),
+            String.format(
+                "col1,Display Col1,Description for col1,,,,,,,,,,column,%s,,INT",
+                escapeCsv(column1fqn)),
+            String.format(
+                "col2,Display Col2,Description for col2,,,,,,,,,,column,%s,,INT",
+                escapeCsv(column2fqn)));
+
+    // Get recursive headers and create CSV
+    String csv = createCsv(getDatabaseSchemaCsvHeaders(schema, true), createRecords, null);
+
+    // Import CSV recursively and verify all records are marked as created
+    CsvImportResult result = importCsvRecursive(schema.getFullyQualifiedName(), csv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 4, 4, 0); // 4 = header + 3 records
+
+    // Verify the result contains "Entity created" status for all records
+    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_CREATED),
+          "Record " + i + " should be marked as created: " + resultLines[i]);
+      // Verify changeDescription is present
+      assertTrue(
+          resultLines[i].contains("fieldsAdded"),
+          "Record " + i + " should have changeDescription: " + resultLines[i]);
+    }
+  }
+
+  @Test
+  void test_csvImportRecursiveUpdate(TestNamespace ns) throws Exception {
+    CreateDatabaseSchema createSchema = createRequest(ns.prefix("csv-import-rec-update"), ns);
+    DatabaseSchema schema = createEntity(createSchema);
+
+    // Create a table with nested columns using SDK directly
+    OpenMetadataClient client = SdkClients.adminClient();
+    Column c1 =
+        new Column().withName("col1").withDataType(ColumnDataType.INT).withDescription("Init col1");
+    Column c2 =
+        new Column().withName("col2").withDataType(ColumnDataType.INT).withDescription("Init col2");
+    CreateTable createTable = new CreateTable();
+    createTable.setName(ns.prefix("table1"));
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setDescription("Initial table description");
+    createTable.setColumns(List.of(c1, c2));
+    createTable.setTableConstraints(null);
+    Table table = client.tables().create(createTable);
+
+    // First import to create entities via CSV
+    // Headers:
+    // name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,entityType*,fullyQualifiedName
+    String table1fqn = schema.getFullyQualifiedName() + "." + ns.prefix("table1");
+    String column1fqn = schema.getFullyQualifiedName() + "." + ns.prefix("table1") + ".col1";
+    String column2fqn = schema.getFullyQualifiedName() + "." + ns.prefix("table1") + ".col2";
+
+    List<String> createRecords =
+        listOf(
+            String.format(
+                ns.prefix("table1") + ",Display Table,Initial table description,,,,,,,,,,table,%s,",
+                escapeCsv(table1fqn)),
+            String.format(
+                "col1,Display Col1,Init col1,,,,,,,,,,column,%s,,INT", escapeCsv(column1fqn)),
+            String.format(
+                "col2,Display Col2,Init col2,,,,,,,,,,column,%s,,INT", escapeCsv(column2fqn)));
+
+    String createCsv = createCsv(getDatabaseSchemaCsvHeaders(schema, true), createRecords, null);
+    importCsvRecursive(schema.getFullyQualifiedName(), createCsv, false);
+
+    // Now update the same entities recursively (these should be marked as ENTITY_UPDATED)
+    table1fqn = schema.getFullyQualifiedName() + "." + ns.prefix("table1");
+    column1fqn = schema.getFullyQualifiedName() + "." + ns.prefix("table1") + ".col1";
+    column2fqn = schema.getFullyQualifiedName() + "." + ns.prefix("table1") + ".col2";
+
+    List<String> updateRecords =
+        listOf(
+            String.format(
+                ns.prefix("table1") + ",Updated Table,Updated table description,,,,,,,,,,table,%s,",
+                escapeCsv(table1fqn)),
+            String.format(
+                "col1,Updated Col1,Updated col1,,,,,,,,,,column,%s,,INT", escapeCsv(column1fqn)),
+            String.format(
+                "col2,Updated Col2,Updated col2,,,,,,,,,,column,%s,,INT", escapeCsv(column2fqn)));
+
+    String updateCsv = createCsv(getDatabaseSchemaCsvHeaders(schema, true), updateRecords, null);
+
+    // Import updated CSV recursively and verify all records are marked as updated
+    CsvImportResult result = importCsvRecursive(schema.getFullyQualifiedName(), updateCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 4, 4, 0); // 4 = header + 3 records
+
+    // Verify the result contains "Entity updated" status for all records
+    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_UPDATED),
+          "Record " + i + " should be marked as updated: " + resultLines[i]);
+      // Verify changeDescription is present and contains fieldsUpdated
+      assertTrue(
+          resultLines[i].contains("fieldsUpdated"),
+          "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
+    }
   }
 }

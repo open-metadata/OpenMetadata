@@ -6,6 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.csv.EntityCsvTest.assertSummary;
+import static org.openmetadata.csv.EntityCsvTest.createCsv;
+import static org.openmetadata.service.Entity.TEST_DEFINITION;
 
 import java.util.HashMap;
 import java.util.List;
@@ -13,6 +17,8 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.csv.CsvUtil;
+import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -24,15 +30,21 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
+import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
 
 /**
  * Integration tests for TestCase entity operations.
@@ -2684,5 +2696,199 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         Exception.class,
         () -> getEntityIncludeDeleted(created.getId().toString()),
         "Hard deleted entity should not be retrievable");
+  }
+
+  /**
+   * Get CSV headers for test case import/export.
+   * Uses TestCaseRepository.TestCaseCsv to get proper headers.
+   */
+  private List<org.openmetadata.schema.type.csv.CsvHeader> getTestCaseCsvHeaders(
+      boolean recursive) {
+    return TestCaseRepository.TestCaseCsv.HEADERS;
+  }
+
+  @Test
+  void test_csvImportCreate(TestNamespace ns) throws Exception {
+    // Create table using helper method
+    Table table = createTable(ns);
+
+    TestDefinition tableRowCountDef =
+        Entity.getEntityByName(
+            TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
+
+    String entityFQN = "\"" + table.getFullyQualifiedName().replace("\"", "\"\"") + "\"";
+
+    // Create CSV records for initial import (these should be marked as ENTITY_CREATED)
+    // Headers:
+    // name,displayName,description,testDefinition,entityLink,testSuite,parameterValues,owner,tags,testCaseResult,resolutionStatus,incidentManager,incidentType,incidentDetails,computePassedFailedRowCount,useDynamicAssertion,extension
+    List<String> createRecords =
+        listOf(
+            String.format(
+                ns.prefix("test1") + ",Display Test 1,Description for test1,%s,%s,,,false,false,,,",
+                tableRowCountDef.getFullyQualifiedName(),
+                entityFQN),
+            String.format(
+                ns.prefix("test2") + ",Display Test 2,Description for test2,%s,%s,,,false,false,,,",
+                tableRowCountDef.getFullyQualifiedName(),
+                entityFQN));
+
+    String csv = createCsv(getTestCaseCsvHeaders(false), createRecords, null);
+
+    // Import CSV and verify all records are marked as created
+    CsvImportResult result = importCsv(table.getFullyQualifiedName(), csv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 3, 3, 0); // 3 = header + 2 records
+
+    // Verify the result contains "Entity created" status for all records
+    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_CREATED),
+          "Record " + i + " should be marked as created: " + resultLines[i]);
+      // Verify changeDescription is present
+      assertTrue(
+          resultLines[i].contains("fieldsAdded"),
+          "Record " + i + " should have changeDescription: " + resultLines[i]);
+    }
+  }
+
+  @Test
+  void test_csvImportUpdate(TestNamespace ns) throws Exception {
+    // Create table using helper method
+    Table table = createTable(ns);
+
+    TestDefinition tableRowCountDef =
+        Entity.getEntityByName(
+            TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
+
+    String entityFQN = "\"" + table.getFullyQualifiedName().replace("\"", "\"\"") + "\"";
+
+    // First, create the test case via CSV import to establish baseline
+    // Headers:
+    // name,displayName,description,testDefinition,entityLink,testSuite,parameterValues,owner,tags,testCaseResult,resolutionStatus,incidentManager,incidentType,incidentDetails,computePassedFailedRowCount,useDynamicAssertion,extension
+    List<String> createRecords =
+        listOf(
+            String.format(
+                ns.prefix("test1") + ",Display Test 1,Initial description 1,%s,%s,,,false,false,,,",
+                tableRowCountDef.getFullyQualifiedName(),
+                entityFQN));
+
+    String createCsv = createCsv(getTestCaseCsvHeaders(false), createRecords, null);
+    importCsv(table.getFullyQualifiedName(), createCsv, false);
+
+    // Now update the same test case (these should be marked as ENTITY_UPDATED)
+    List<String> updateRecords =
+        listOf(
+            String.format(
+                ns.prefix("test1")
+                    + ",Updated Display 1,Updated description 1,%s,%s,,,false,false,,,",
+                tableRowCountDef.getFullyQualifiedName(),
+                entityFQN));
+
+    String updateCsv = createCsv(getTestCaseCsvHeaders(false), updateRecords, null);
+
+    // Import updated CSV and verify all records are marked as updated
+    CsvImportResult result = importCsv(table.getFullyQualifiedName(), updateCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0); // 2 = header + 1 record
+
+    // Verify the result contains "Entity updated" status for all records
+    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_UPDATED),
+          "Record " + i + " should be marked as updated: " + resultLines[i]);
+      // Verify changeDescription is present and contains fieldsUpdated
+      assertTrue(
+          resultLines[i].contains("fieldsUpdated"),
+          "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
+    }
+  }
+
+  @Test
+  void test_csvImportRecursiveCreate(TestNamespace ns) throws Exception {
+    // TestCase doesn't support recursive import in the same way as other entities
+    // This test validates create behavior similar to regular import
+    // Create table using helper method
+    Table table = createTable(ns);
+
+    TestDefinition tableRowCountDef =
+        Entity.getEntityByName(
+            TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
+
+    String entityFQN = "\"" + table.getFullyQualifiedName().replace("\"", "\"\"") + "\"";
+
+    // Headers:
+    // name,displayName,description,testDefinition,entityLink,testSuite,parameterValues,owner,tags,testCaseResult,resolutionStatus,incidentManager,incidentType,incidentDetails,computePassedFailedRowCount,useDynamicAssertion,extension
+    List<String> createRecords =
+        listOf(
+            String.format(
+                ns.prefix("test1") + ",Display Test 1,Description for test1,%s,%s,,,false,false,,,",
+                tableRowCountDef.getFullyQualifiedName(),
+                entityFQN));
+
+    String csv = createCsv(getTestCaseCsvHeaders(true), createRecords, null);
+
+    CsvImportResult result = importCsvRecursive(table.getFullyQualifiedName(), csv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0); // 2 = header + 1 record
+
+    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) {
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_CREATED),
+          "Record " + i + " should be marked as created: " + resultLines[i]);
+      assertTrue(
+          resultLines[i].contains("fieldsAdded"),
+          "Record " + i + " should have changeDescription: " + resultLines[i]);
+    }
+  }
+
+  @Test
+  void test_csvImportRecursiveUpdate(TestNamespace ns) throws Exception {
+    // TestCase doesn't support recursive import in the same way as other entities
+    // This test validates update behavior similar to regular import
+    // Create table using helper method
+    Table table = createTable(ns);
+
+    TestDefinition tableRowCountDef =
+        Entity.getEntityByName(
+            TEST_DEFINITION, "tableRowCountToBeBetween", "", Include.NON_DELETED);
+
+    String entityFQN = "\"" + table.getFullyQualifiedName().replace("\"", "\"\"") + "\"";
+
+    // First import to create entities via CSV
+    // Headers:
+    // name,displayName,description,testDefinition,entityLink,testSuite,parameterValues,owner,tags,testCaseResult,resolutionStatus,incidentManager,incidentType,incidentDetails,computePassedFailedRowCount,useDynamicAssertion,extension
+    List<String> createRecords =
+        listOf(
+            String.format(
+                ns.prefix("test1") + ",Display Test 1,Initial description,%s,%s,,,false,false,,,",
+                tableRowCountDef.getFullyQualifiedName(),
+                entityFQN));
+
+    String createCsv = createCsv(getTestCaseCsvHeaders(true), createRecords, null);
+    importCsvRecursive(table.getFullyQualifiedName(), createCsv, false);
+
+    // Now update the same entities recursively (these should be marked as ENTITY_UPDATED)
+    List<String> updateRecords =
+        listOf(
+            String.format(
+                ns.prefix("test1")
+                    + ",Updated Display 1,Updated description,%s,%s,,,false,false,,,",
+                tableRowCountDef.getFullyQualifiedName(),
+                entityFQN));
+
+    String updateCsv = createCsv(getTestCaseCsvHeaders(true), updateRecords, null);
+
+    CsvImportResult result = importCsvRecursive(table.getFullyQualifiedName(), updateCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0); // 2 = header + 1 record
+
+    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) {
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_UPDATED),
+          "Record " + i + " should be marked as updated: " + resultLines[i]);
+      assertTrue(
+          resultLines[i].contains("fieldsUpdated"),
+          "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
+    }
   }
 }

@@ -6,11 +6,17 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.csv.EntityCsvTest.assertSummary;
+import static org.openmetadata.csv.EntityCsvTest.createCsv;
 
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.csv.CsvUtil;
+import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
@@ -26,9 +32,13 @@ import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.csv.CsvHeader;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 
 /**
  * Integration tests for DatabaseService entity operations.
@@ -38,6 +48,11 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class DatabaseServiceResourceIT
     extends BaseServiceIT<DatabaseService, CreateDatabaseService> {
+
+  // Enable CSV import/export testing for database services
+  {
+    supportsImportExport = true;
+  }
 
   @Override
   protected CreateDatabaseService createMinimalRequest(TestNamespace ns) {
@@ -144,6 +159,39 @@ public class DatabaseServiceResourceIT
   @Override
   protected DatabaseService getVersion(UUID id, Double version) {
     return SdkClients.adminClient().databaseServices().getVersion(id.toString(), version);
+  }
+
+  // ===================================================================
+  // CSV IMPORT/EXPORT SUPPORT METHODS
+  // ===================================================================
+
+  @Override
+  protected org.openmetadata.sdk.services.EntityServiceBase<DatabaseService> getEntityService() {
+    return SdkClients.adminClient().databaseServices();
+  }
+
+  @Override
+  protected String getImportExportContainerName(TestNamespace ns) {
+    // For database services, the container is the service's FQN.
+    // The base class tests need a service to exist, so we create one with a test-specific name.
+    String serviceName = ns.prefix("test-db-service");
+    try {
+      // Check if service already exists
+      DatabaseService existing = getEntityByName(serviceName);
+      return existing.getFullyQualifiedName();
+    } catch (Exception e) {
+      // Service doesn't exist, create it
+      DatabaseService service = createEntity(createRequest(serviceName, ns));
+      return service.getFullyQualifiedName();
+    }
+  }
+
+  /**
+   * Get CSV headers for database service import/export.
+   * Uses DatabaseServiceRepository.DatabaseServiceCsv to get proper headers.
+   */
+  private List<CsvHeader> getDatabaseServiceCsvHeaders(DatabaseService service, boolean recursive) {
+    return new DatabaseServiceRepository.DatabaseServiceCsv(service, "admin", recursive).HEADERS;
   }
 
   // ===================================================================
@@ -437,5 +485,178 @@ public class DatabaseServiceResourceIT
         storedService.getTestConnectionResult(), "Test connection result should be persisted");
     assertEquals(
         TestConnectionResultStatus.SUCCESSFUL, storedService.getTestConnectionResult().getStatus());
+  }
+
+  @Test
+  void test_csvImportCreate(TestNamespace ns) throws Exception {
+    DatabaseService service = createEntity(createRequest(ns.prefix("csv-import-create"), ns));
+
+    // Create CSV records for initial import (these should be marked as ENTITY_CREATED)
+    // Headers:
+    // name,displayName,description,owner,tags,glossaryTerms,tiers,certification,domains,extension
+    List<String> createRecords =
+        listOf(
+            ns.prefix("db1") + ",Display DB 1,Description for db1,,,,,,,",
+            ns.prefix("db2") + ",Display DB 2,Description for db2,,,,,,,");
+
+    String csv = createCsv(getDatabaseServiceCsvHeaders(service, false), createRecords, null);
+
+    // Import CSV and verify all records are marked as created
+    CsvImportResult result = importCsv(service.getFullyQualifiedName(), csv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 3, 3, 0); // 3 = header + 2 records
+
+    // Verify the result contains "Entity created" status for all records
+    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_CREATED),
+          "Record " + i + " should be marked as created: " + resultLines[i]);
+      // Verify changeDescription is present
+      assertTrue(
+          resultLines[i].contains("fieldsAdded"),
+          "Record " + i + " should have changeDescription: " + resultLines[i]);
+    }
+  }
+
+  @Test
+  void test_csvImportUpdate(TestNamespace ns) throws Exception {
+    DatabaseService service = createEntity(createRequest(ns.prefix("csv-import-update"), ns));
+
+    // First, create the databases via CSV import to establish baseline
+    // Headers:
+    // name,displayName,description,owner,tags,glossaryTerms,tiers,certification,domains,extension
+    List<String> createRecords =
+        listOf(
+            ns.prefix("db1") + ",Display DB 1,Initial description 1,,,,,,,",
+            ns.prefix("db2") + ",Display DB 2,Initial description 2,,,,,,,");
+
+    String createCsv = createCsv(getDatabaseServiceCsvHeaders(service, false), createRecords, null);
+    importCsv(service.getFullyQualifiedName(), createCsv, false);
+
+    // Now update the same databases (these should be marked as ENTITY_UPDATED)
+    List<String> updateRecords =
+        listOf(
+            ns.prefix("db1") + ",Updated Display 1,Updated description 1,,,,,,,",
+            ns.prefix("db2") + ",Updated Display 2,Updated description 2,,,,,,,");
+
+    String updateCsv = createCsv(getDatabaseServiceCsvHeaders(service, false), updateRecords, null);
+
+    // Import updated CSV and verify all records are marked as updated
+    CsvImportResult result = importCsv(service.getFullyQualifiedName(), updateCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 3, 3, 0); // 3 = header + 2 records
+
+    // Verify the result contains "Entity updated" status for all records
+    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_UPDATED),
+          "Record " + i + " should be marked as updated: " + resultLines[i]);
+      // Verify changeDescription is present and contains fieldsUpdated
+      assertTrue(
+          resultLines[i].contains("fieldsUpdated"),
+          "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
+    }
+  }
+
+  @Test
+  void test_csvImportRecursiveCreate(TestNamespace ns) throws Exception {
+    DatabaseService service = createEntity(createRequest(ns.prefix("csv-import-rec-create"), ns));
+
+    // Create CSV records for recursive import (these should be marked as ENTITY_CREATED)
+    // Headers:
+    // name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,entityType*,fullyQualifiedName
+    List<String> createRecords =
+        listOf(
+            ns.prefix("db1")
+                + ",Display DB,Description for db,,,,,,,,,,database,"
+                + service.getFullyQualifiedName()
+                + "."
+                + ns.prefix("db1"),
+            ns.prefix("schema1")
+                + ",Display Schema,Description for schema,,,,,,,,,,databaseSchema,"
+                + service.getFullyQualifiedName()
+                + "."
+                + ns.prefix("db1")
+                + "."
+                + ns.prefix("schema1"));
+
+    // Get recursive headers and create CSV
+    String csv = createCsv(getDatabaseServiceCsvHeaders(service, true), createRecords, null);
+
+    // Import CSV recursively and verify all records are marked as created
+    CsvImportResult result = importCsvRecursive(service.getFullyQualifiedName(), csv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 3, 3, 0); // 3 = header + 2 records
+
+    // Verify the result contains "Entity created" status for all records
+    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_CREATED),
+          "Record " + i + " should be marked as created: " + resultLines[i]);
+      // Verify changeDescription is present
+      assertTrue(
+          resultLines[i].contains("fieldsAdded"),
+          "Record " + i + " should have changeDescription: " + resultLines[i]);
+    }
+  }
+
+  @Test
+  void test_csvImportRecursiveUpdate(TestNamespace ns) throws Exception {
+    DatabaseService service = createEntity(createRequest(ns.prefix("csv-import-rec-update"), ns));
+
+    // First import to create entities via CSV
+    // Headers:
+    // name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,entityType*,fullyQualifiedName
+    List<String> createRecords =
+        listOf(
+            ns.prefix("db1")
+                + ",Display DB,Initial db description,,,,,,,,,,database,"
+                + service.getFullyQualifiedName()
+                + "."
+                + ns.prefix("db1"),
+            ns.prefix("schema1")
+                + ",Display Schema,Initial schema description,,,,,,,,,,databaseSchema,"
+                + service.getFullyQualifiedName()
+                + "."
+                + ns.prefix("db1")
+                + "."
+                + ns.prefix("schema1"));
+
+    String createCsv = createCsv(getDatabaseServiceCsvHeaders(service, true), createRecords, null);
+    importCsvRecursive(service.getFullyQualifiedName(), createCsv, false);
+
+    // Now update the same entities recursively (these should be marked as ENTITY_UPDATED)
+    List<String> updateRecords =
+        listOf(
+            ns.prefix("db1")
+                + ",Updated DB,Updated db description,,,,,,,,,,database,"
+                + service.getFullyQualifiedName()
+                + "."
+                + ns.prefix("db1"),
+            ns.prefix("schema1")
+                + ",Updated Schema,Updated schema description,,,,,,,,,,databaseSchema,"
+                + service.getFullyQualifiedName()
+                + "."
+                + ns.prefix("db1")
+                + "."
+                + ns.prefix("schema1"));
+
+    String updateCsv = createCsv(getDatabaseServiceCsvHeaders(service, true), updateRecords, null);
+
+    // Import updated CSV recursively and verify all records are marked as updated
+    CsvImportResult result = importCsvRecursive(service.getFullyQualifiedName(), updateCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 3, 3, 0); // 3 = header + 2 records
+
+    // Verify the result contains "Entity updated" status for all records
+    String[] resultLines = result.getImportResultsCsv().split(CsvUtil.LINE_SEPARATOR);
+    for (int i = 1; i < resultLines.length; i++) { // Skip header
+      assertTrue(
+          resultLines[i].contains(EntityCsv.ENTITY_UPDATED),
+          "Record " + i + " should be marked as updated: " + resultLines[i]);
+      // Verify changeDescription is present and contains fieldsUpdated
+      assertTrue(
+          resultLines[i].contains("fieldsUpdated"),
+          "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
+    }
   }
 }
