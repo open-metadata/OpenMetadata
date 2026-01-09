@@ -127,11 +127,7 @@ def find_main_pod(
         # Find the first pod from the job
         for pod in pods.items:
             try:
-                if (
-                    pod.metadata
-                    and pod.metadata.name
-                    and job_name in pod.metadata.name
-                ):
+                if pod.metadata and pod.metadata.name and job_name in pod.metadata.name:
                     logger.info(f"Found main pod: {pod.metadata.name}")
                     return pod
             except Exception as pod_error:
@@ -385,9 +381,7 @@ def get_or_create_pipeline_status(
     return pipeline_status
 
 
-def gather_failure_diagnostics(
-    job_name: str, namespace: str
-) -> FailureDiagnostics:
+def gather_failure_diagnostics(job_name: str, namespace: str) -> FailureDiagnostics:
     """
     Gather diagnostic information from failed Kubernetes job pods.
     This function is fault-tolerant and will never raise exceptions.
