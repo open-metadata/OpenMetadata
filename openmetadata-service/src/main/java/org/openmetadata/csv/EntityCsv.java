@@ -32,8 +32,8 @@ import static org.openmetadata.service.util.EntityUtil.findColumnWithChildren;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.networknt.schema.JsonSchema;
-import com.networknt.schema.ValidationMessage;
+import com.networknt.schema.Error;
+import com.networknt.schema.Schema;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -56,7 +56,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
@@ -453,7 +452,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       String fieldName = entry.getKey();
       Object fieldValue = entry.getValue();
 
-      JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
+      Schema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
       if (jsonSchema == null) {
         importFailure(printer, invalidCustomPropertyKey(fieldNumber, fieldName), csvRecord);
         return;
@@ -692,12 +691,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
       Object fieldValue,
       String customPropertyType,
       Map<String, Object> extensionMap,
-      JsonSchema jsonSchema)
+      Schema jsonSchema)
       throws IOException {
     if (fieldValue != null) {
       JsonNode jsonNodeValue = JsonUtils.convertValue(fieldValue, JsonNode.class);
 
-      Set<ValidationMessage> validationMessages = jsonSchema.validate(jsonNodeValue);
+      List<Error> validationMessages = jsonSchema.validate(jsonNodeValue);
       if (!validationMessages.isEmpty()) {
         importFailure(
             printer,
