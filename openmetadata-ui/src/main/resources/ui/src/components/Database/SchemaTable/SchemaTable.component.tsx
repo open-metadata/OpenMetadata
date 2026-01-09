@@ -11,7 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Row, Select, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Dropdown,
+  Form,
+  Row,
+  Select,
+  Tooltip,
+  Typography,
+} from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
@@ -22,6 +32,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as IconSortIndicator } from '../../../assets/svg/ic-down-up-arrow.svg';
+import { ReactComponent as IconSort } from '../../../assets/svg/ic-sort-both.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
@@ -62,7 +74,6 @@ import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
-  getColumnSorter,
   getEntityBulkEditPath,
   getEntityName,
   getFrequentlyJoinedColumns,
@@ -109,6 +120,8 @@ const SchemaTable = () => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
   const [editColumn, setEditColumn] = useState<Column>();
+  const [sortBy, setSortBy] = useState<'name' | 'ordinalPosition'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const {
     currentPage,
@@ -192,7 +205,12 @@ const SchemaTable = () => {
 
   // Function to fetch paginated columns or search results
   const fetchPaginatedColumns = useCallback(
-    async (page = 1, searchQuery?: string) => {
+    async (
+      page = 1,
+      searchQuery?: string,
+      columnSortBy?: 'name' | 'ordinalPosition',
+      columnSortOrder?: 'asc' | 'desc'
+    ) => {
       if (!tableFqn) {
         return;
       }
@@ -200,6 +218,8 @@ const SchemaTable = () => {
       setColumnsLoading(true);
       try {
         const offset = (page - 1) * pageSize;
+        const sortByParam = columnSortBy ?? sortBy;
+        const sortOrderParam = columnSortOrder ?? sortOrder;
 
         // Use search API if there's a search query, otherwise use regular pagination
         const response = searchQuery
@@ -208,11 +228,15 @@ const SchemaTable = () => {
               limit: pageSize,
               offset: offset,
               fields: 'tags,customMetrics',
+              sortBy: sortByParam,
+              sortOrder: sortOrderParam,
             })
           : await getTableColumnsByFQN(tableFqn, {
               limit: pageSize,
               offset: offset,
               fields: 'tags,customMetrics',
+              sortBy: sortByParam,
+              sortOrder: sortOrderParam,
             });
 
         setTableColumns(pruneEmptyChildren(response.data) || []);
@@ -228,7 +252,7 @@ const SchemaTable = () => {
       }
       setColumnsLoading(false);
     },
-    [decodedEntityFqn, pageSize]
+    [decodedEntityFqn, pageSize, sortBy, sortOrder]
   );
 
   const handleColumnsPageChange = useCallback(
@@ -252,13 +276,20 @@ const SchemaTable = () => {
     fetchTestCaseSummary();
   }, [tableFqn]);
 
-  // Fetch columns when search changes
+  // Fetch columns when search or sort changes
   useEffect(() => {
     if (tableFqn) {
-      // Reset to first page when search changes
-      fetchPaginatedColumns(1, searchText || undefined);
+      // Reset to first page when search or sort changes
+      fetchPaginatedColumns(1, searchText || undefined, sortBy, sortOrder);
     }
-  }, [tableFqn, searchText, fetchPaginatedColumns, pageSize]);
+  }, [
+    tableFqn,
+    searchText,
+    sortBy,
+    sortOrder,
+    fetchPaginatedColumns,
+    pageSize,
+  ]);
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {
@@ -483,15 +514,80 @@ const SchemaTable = () => {
     >;
   }, [tableColumns]);
 
+  const sortMenuItems: ItemType[] = useMemo(
+    () => [
+      {
+        key: 'name',
+        label: (
+          <span data-testid="sort-alphabetical">
+            {t('label.alphabetical')} (A → Z)
+          </span>
+        ),
+        icon:
+          sortBy === 'name' ? <span className="text-primary">✓</span> : null,
+      },
+      {
+        key: 'ordinalPosition',
+        label: (
+          <span data-testid="sort-original-order">
+            {t('label.original-order')}
+          </span>
+        ),
+        icon:
+          sortBy === 'ordinalPosition' ? (
+            <span className="text-primary">✓</span>
+          ) : null,
+      },
+    ],
+    [sortBy, t]
+  );
+
+  const handleSortMenuClick = useCallback(
+    ({ key }: { key: string }) => {
+      const newSortBy = key as 'name' | 'ordinalPosition';
+      if (newSortBy !== sortBy) {
+        setSortBy(newSortBy);
+        setSortOrder('asc'); // Reset to ascending when changing sort field
+        handlePageChange(1);
+      }
+    },
+    [sortBy, handlePageChange]
+  );
+
+  const handleColumnHeaderSortToggle = useCallback(() => {
+    setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    handlePageChange(1);
+  }, [handlePageChange]);
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
-        title: t('label.name'),
+        title: (
+          <div
+            className="d-flex items-center cursor-pointer"
+            data-testid="name-column-header"
+            onClick={handleColumnHeaderSortToggle}>
+            <span
+              className={sortBy === 'name' ? 'text-primary font-medium' : ''}>
+              {t('label.name')}
+            </span>
+            <IconSortIndicator
+              className="m-l-xss"
+              data-testid="sort-indicator"
+              height={12}
+              style={{
+                color: sortBy === 'name' ? 'var(--primary-color)' : '#6B7280',
+                transform: sortOrder === 'desc' ? 'rotate(180deg)' : 'none',
+                transition: 'transform 0.2s ease',
+              }}
+              width={8}
+            />
+          </div>
+        ),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 200,
         fixed: 'left',
-        sorter: getColumnSorter<Column, 'name'>('name'),
         render: (name: Column['name'], record: Column) => {
           const { displayName } = record;
 
@@ -637,6 +733,11 @@ const SchemaTable = () => {
       onThreadLinkSelect,
       tagFilter,
       testCaseCounts,
+      searchText,
+      sortBy,
+      sortOrder,
+      handleColumnHeaderSortToggle,
+      t,
     ]
   );
 
@@ -741,10 +842,26 @@ const SchemaTable = () => {
           dataSource={tableColumns}
           defaultVisibleColumns={DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS}
           expandable={expandableConfig}
-          extraTableFilters={getBulkEditButton(
-            tablePermissions.EditAll && !deleted,
-            handleEditTable
-          )}
+          extraTableFilters={
+            <div className="d-flex items-center gap-4">
+              <Dropdown
+                menu={{ items: sortMenuItems, onClick: handleSortMenuClick }}
+                trigger={['click']}>
+                <Button
+                  className="flex-center gap-2"
+                  data-testid="sort-dropdown"
+                  icon={<IconSort height={14} width={14} />}
+                  size="small"
+                  type="text">
+                  {t('label.sort')}
+                </Button>
+              </Dropdown>
+              {getBulkEditButton(
+                tablePermissions.EditAll && !deleted,
+                handleEditTable
+              )}
+            </div>
+          }
           loading={columnsLoading}
           locale={{
             emptyText: <FilterTablePlaceHolder />,
