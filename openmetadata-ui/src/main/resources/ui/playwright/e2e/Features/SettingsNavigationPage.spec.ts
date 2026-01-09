@@ -276,6 +276,7 @@ test.describe('Settings Navigation Page Tests', () => {
       );
       await page.mouse.up();
 
+      // Adding wait so that drop action can complete
       await page.waitForTimeout(500);
 
       await expect(page.getByTestId('save-button')).toBeEnabled();

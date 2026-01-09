@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { TreeDataNode } from 'antd/lib';
-import { isEmpty } from 'lodash';
+import { isEmpty, isNumber } from 'lodash';
 import { LeftSidebarItem } from '../../components/MyData/LeftSidebar/LeftSidebar.interface';
 import {
   AppPlugin,
@@ -51,7 +51,7 @@ const insertPluginItem = (
   mergedItems: LeftSidebarItem[],
   pluginItem: LeftSidebarItem & { index?: number }
 ): void => {
-  if (typeof pluginItem.index === 'number' && pluginItem.index >= 0) {
+  if (isNumber(pluginItem.index) && pluginItem.index >= 0) {
     mergedItems.splice(
       Math.min(pluginItem.index, mergedItems.length),
       0,
