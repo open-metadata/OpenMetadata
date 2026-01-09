@@ -51,16 +51,62 @@ test.describe('Pagination tests for all pages', () => {
     await testPaginationNavigation(page, '/api/v1/policies', 'table');
   });
 
-  test('should test Database Schema page complete pagination flow', async ({ page }) => {
-    test.slow(true);
+  test.describe.serial('Database Schema Tables page pagination', () => {
+    const database = new DatabaseClass();
+    let schemaFqn: string;
 
-    await testCompletePaginationWithSearch({
-      page,
-      baseUrl: '/databaseSchema/sample_data.ecommerce_db.shopify?showDeletedTables=false',
-      normalApiPattern: '/api/v1/tables',
-      searchApiPattern: '/api/v1/search/query',
-      searchTestTerm: 'dim_address',
-      waitForLoadSelector: 'table',
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await database.create(apiContext);
+      schemaFqn = database.schemaResponseData.fullyQualifiedName;
+
+      for (let i = 1; i <= 25; i++) {
+        await apiContext.post('/api/v1/tables', {
+          data: {
+            name: `pw_table_${uuid()}_${i}`,
+            databaseSchema: schemaFqn,
+            description: `Test table ${i} for pagination testing`,
+            columns: [
+              {
+                name: 'id',
+                dataType: 'BIGINT',
+                dataTypeDisplay: 'bigint',
+                description: 'ID column',
+              },
+            ],
+          },
+        });
+      }
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await database.delete(apiContext);
+      await afterAction();
+    });
+
+    test('should test Database Schema Tables normal pagination', async ({ page }) => {
+      test.slow(true);
+
+      await page.goto(`/databaseSchema/${schemaFqn}?pageSize=15`);
+      await testPaginationNavigation(page, '/api/v1/tables', 'table');
+    });
+
+    test('should test Database Schema Tables complete flow with search', async ({ page }) => {
+      test.slow(true);
+
+      await testCompletePaginationWithSearch({
+        page,
+        baseUrl: `/databaseSchema/${schemaFqn}?showDeletedTables=false`,
+        normalApiPattern: '/api/v1/tables',
+        searchApiPattern: '/api/v1/search/query',
+        searchTestTerm: 'pw',
+        searchParamName: 'schema',
+        waitForLoadSelector: 'table',
+      });
     });
   });
 
