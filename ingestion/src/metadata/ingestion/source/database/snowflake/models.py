@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
     SnowflakeConnection,
 )
 from metadata.ingestion.source.database.snowflake.queries import (
+    SNOWFLAKE_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY,
     SNOWFLAKE_QUERY_LOG_QUERY,
 )
 from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
@@ -153,3 +154,31 @@ class SnowflakeQueryResult(QueryResult):
     rows_inserted: Optional[int] = None
     rows_updated: Optional[int] = None
     rows_deleted: Optional[int] = None
+
+
+class SnowflakeDynamicTableRefreshEntry(BaseModel):
+    """Entry for a Snowflake dynamic table refresh from DYNAMIC_TABLE_REFRESH_HISTORY
+    More info at: https://docs.snowflake.com/en/sql-reference/functions/dynamic_table_refresh_history
+    """
+
+    table_name: str
+    start_time: datetime
+    rows_inserted: Optional[int] = None
+    rows_updated: Optional[int] = None
+    rows_deleted: Optional[int] = None
+
+    @staticmethod
+    def get_for_table(
+        session: Session, tablename: str, service_connection_config: SnowflakeConnection
+    ):
+        rows = session.execute(
+            text(
+                SNOWFLAKE_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY.format(
+                    account_usage_schema=service_connection_config.accountUsageSchema,
+                    tablename=tablename,
+                )
+            )
+        )
+        return TypeAdapter(List[SnowflakeDynamicTableRefreshEntry]).validate_python(
+            [ExtendedDict(r).lower_case_keys() for r in rows]
+        )

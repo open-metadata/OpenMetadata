@@ -2,7 +2,7 @@
 
 # Observability
 
-> **4 Components** | **12 Files** | **39 Tests** | **114 Scenarios** 🚀
+> **4 Components** | **13 Files** | **61 Tests** | **180 Scenarios** 🚀
 
 ## Table of Contents
 - [Data Quality](#data-quality)
@@ -15,6 +15,130 @@
 <div id="data-quality"></div>
 
 ## Data Quality
+
+<details open>
+<summary>📄 <b>ColumnLevelTests.spec.ts</b> (16 tests, 48 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/ColumnLevelTests.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/ColumnLevelTests.spec.ts)
+
+### Column Level Data Quality Test Cases
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Level Data Quality Test Cases** - Column Values To Be Not Null | Column Values To Be Not Null test case  Creates a column-level `columnValuesToBeNotNull` test for a numeric column with description; verifies, edits display name and description, and deletes the test case. Steps 1. From entity page, open create test case (Column Level), select column and definition. 2. Fill name and description; submit; verify visibility in Data Quality tab. 3. Edit display name and description; delete the test case. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 2 | **Column Level Data Quality Test Cases** - Column Values To Be Between | Column Values To Be Between test case  Creates a `columnValuesToBeBetween` test for a numeric column with min and max values; verifies visibility in the Data Quality tab, edits the range values, and finally deletes the test case. Steps 1. From entity page, open create test case (Column Level), select column and definition. 2. Fill name and min/max values; submit; verify visibility in Data Quality tab. 3. Edit min/max values; delete the test case. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 3 | **Column Level Data Quality Test Cases** - Column Values To Be Unique | Column Values To Be Unique test case  Creates a `columnValuesToBeUnique` test for a column to verify all values are unique; verifies visibility in the Data Quality tab, edits display name, and finally deletes the test case. Steps 1. From entity page, open create test case (Column Level), select column and definition. 2. Fill name; submit; verify visibility in Data Quality tab. 3. Edit display name; delete the test case. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 4 | **Column Level Data Quality Test Cases** - Column Values To Be In Set | Column Values To Be In Set test case  Creates a `columnValuesToBeInSet` test to verify column values are within allowed set; verifies visibility in the Data Quality tab, edits the allowed values, and finally deletes the test case. Steps 1. From entity page, open create test case (Column Level), select column and definition. 2. Fill name and allowed values array; submit; verify visibility in Data Quality tab. 3. Edit allowed values; delete the test case. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 5 | **Column Level Data Quality Test Cases** - Column Values To Be Not In Set | Column Values To Be Not In Set test case  Creates a `columnValuesToBeNotInSet` test to verify column values are NOT in forbidden set; verifies visibility in the Data Quality tab, edits the forbidden values, and finally deletes the test case. Steps 1. From entity page, open create test case (Column Level), select column and definition. 2. Fill name and forbidden values array; submit; verify visibility in Data Quality tab. 3. Edit forbidden values; delete the test case. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 6 | **Column Level Data Quality Test Cases** - Column Values To Match Regex | Column Values To Match Regex test case  Creates a `columnValuesToMatchRegex` test to verify column values match a regex pattern; verifies visibility in the Data Quality tab, edits the regex pattern, and finally deletes the test case. Steps 1. From entity page, open create test case (Column Level), select column and definition. 2. Fill name and regex pattern; submit; verify visibility in Data Quality tab. 3. Edit regex pattern; delete the test case. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 7 | **Column Level Data Quality Test Cases** - Column Values To Not Match Regex | Column Values To Not Match Regex test case  Creates a `columnValuesToNotMatchRegex` test to verify column values do NOT match a regex pattern; verifies visibility in the Data Quality tab, edits the regex pattern, and finally deletes the test case. Steps 1. From entity page, open create test case (Column Level), select column and definition. 2. Fill name and regex pattern; submit; verify visibility in Data Quality tab. 3. Edit regex pattern; delete the test case. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 8 | **Column Level Data Quality Test Cases** - Column Value Max To Be Between | Column Value Max To Be Between test case  Creates a `columnValueMaxToBeBetween` test to verify maximum value in column is between range; verifies visibility in the Data Quality tab, edits the range values, and finally deletes the test case. Steps 1. From entity page, open create test case (Column Level), select column and definition. 2. Fill name and min/max for max value; submit; verify visibility in Data Quality tab. 3. Edit range values; delete the test case. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 9 | **Column Level Data Quality Test Cases** - Column Value Min To Be Between | Column Value Min To Be Between test case  Creates a `columnValueMinToBeBetween` test to verify minimum value in column is between range; verifies visibility in the Data Quality tab, edits the range values, and finally deletes the test case. Steps 1. From entity page, open create test case (Column Level), select column and definition. 2. Fill name and min/max for min value; submit; verify visibility in Data Quality tab. 3. Edit range values; delete the test case. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 10 | **Column Level Data Quality Test Cases** - Column Value Mean To Be Between | Column Value Mean To Be Between test case  Creates a `columnValueMeanToBeBetween` test to verify mean value of column is between range; verifies visibility in the Data Quality tab, edits the range values, and finally deletes the test case. Steps 1. From entity page, open create test case (Column Level), select column and definition. 2. Fill name and min/max for mean value; submit; verify visibility in Data Quality tab. 3. Edit range values; delete the test case. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 11 | **Column Level Data Quality Test Cases** - Column Value Median To Be Between | Column Value Median To Be Between test case  Creates a `columnValueMedianToBeBetween` test to verify median value of column is between range; verifies visibility in the Data Quality tab, edits the range values, and finally deletes the test case. Steps 1. From entity page, open create test case (Column Level), select column and definition. 2. Fill name and min/max for median value; submit; verify visibility in Data Quality tab. 3. Edit range values; delete the test case. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 12 | **Column Level Data Quality Test Cases** - Column Value StdDev To Be Between | Column Value StdDev To Be Between test case  Creates a `columnValueStdDevToBeBetween` test to verify standard deviation of column is between range; verifies visibility in the Data Quality tab, edits the range values, and finally deletes the test case. Steps 1. From entity page, open create test case (Column Level), select column and definition. 2. Fill name and min/max for std dev value; submit; verify visibility in Data Quality tab. 3. Edit range values; delete the test case. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 13 | **Column Level Data Quality Test Cases** - Column Values Sum To Be Between | Column Values Sum To Be Between test case  Creates a `columnValuesSumToBeBetween` test to verify sum of column values is between range; verifies visibility in the Data Quality tab, edits the range values, and finally deletes the test case. Steps 1. From entity page, open create test case (Column Level), select column and definition. 2. Fill name and min/max for sum value; submit; verify visibility in Data Quality tab. 3. Edit range values; delete the test case. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 14 | **Column Level Data Quality Test Cases** - Column Values Length To Be Between | Column Values Length To Be Between test case  Creates a `columnValuesLengthToBeBetween` test to verify string lengths in column are between range; verifies visibility in the Data Quality tab, edits the range values, and finally deletes the test case. Steps 1. From entity page, open create test case (Column Level), select column and definition. 2. Fill name and min/max length values; submit; verify visibility in Data Quality tab. 3. Edit range values; delete the test case. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 15 | **Column Level Data Quality Test Cases** - Column Values Missing Count To Be Equal | Column Values Missing Count To Be Equal test case  Creates a `columnValuesMissingCount` test to verify missing/null count equals expected value; verifies visibility in the Data Quality tab, edits the missing count value, and finally deletes the test case. Steps 1. From entity page, open create test case (Column Level), select column and definition. 2. Fill name and missing count value; submit; verify visibility in Data Quality tab. 3. Edit missing count value; delete the test case. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 16 | **Column Level Data Quality Test Cases** - Column Value To Be At Expected Location | Column Value To Be At Expected Location test case  Creates a `columnValuesToBeAtExpectedLocation` test to verify a value at a specific row location; verifies visibility in the Data Quality tab, edits the expected value and row, and finally deletes the test case. Steps 1. From entity page, open create test case (Column Level), select column and definition. 2. Fill name, expected value, and row number; submit; verify visibility in Data Quality tab. 3. Edit expected value and row number; delete the test case. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>TableLevelTests.spec.ts</b> (9 tests, 27 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts)
+
+### Table Level Data Quality Test Cases
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Table Level Data Quality Test Cases** - Table Row Count To Be Between | Table Row Count To Be Between test case  Creates a `tableRowCountToBeBetween` test with min and max row count values; verifies visibility in the Data Quality tab, edits the threshold values, and finally deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select type `tableRowCountToBeBetween`, set min and max values. 3. Submit and verify in Data Quality tab; then edit threshold values; delete at the end. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 2 | **Table Level Data Quality Test Cases** - Table Row Count To Equal | Table Row Count To Equal test case  Creates a `tableRowCountToEqual` test with an exact row count value; verifies visibility in the Data Quality tab, edits the value, and finally deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select type `tableRowCountToEqual`, set exact row count value. 3. Submit and verify in Data Quality tab; then edit the value; delete at the end. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 3 | **Table Level Data Quality Test Cases** - Table Column Count To Be Between | Table Column Count To Be Between test case  Creates a `tableColumnCountToBeBetween` test with min and max column count values; verifies visibility in the Data Quality tab, edits the threshold values, and finally deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select type `tableColumnCountToBeBetween`, set min and max values. 3. Submit and verify in Data Quality tab; then edit threshold values; delete at the end. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 4 | **Table Level Data Quality Test Cases** - Table Column Count To Equal | Table Column Count To Equal test case  Creates a `tableColumnCountToEqual` test with an exact column count value; verifies visibility in the Data Quality tab, edits the value, and finally deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select type `tableColumnCountToEqual`, set exact column count value. 3. Submit and verify in Data Quality tab; then edit the value; delete at the end. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 5 | **Table Level Data Quality Test Cases** - Table Column Name To Exist | Table Column Name To Exist test case  Creates a `tableColumnNameToExist` test to verify a column exists; verifies visibility in the Data Quality tab, edits the column name, and finally deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select type `tableColumnNameToExist`, set column name. 3. Submit and verify in Data Quality tab; then edit the column name; delete at the end. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 6 | **Table Level Data Quality Test Cases** - Table Column To Match Set | Table Column To Match Set test case  Creates a `tableColumnToMatchSet` test to verify columns match expected set; verifies visibility in the Data Quality tab, edits the column names, and finally deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select type `tableColumnToMatchSet`, set column names array. 3. Submit and verify in Data Quality tab; then edit the column names; delete at the end. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 7 | **Table Level Data Quality Test Cases** - Table Difference | Table Difference test case  Creates a `tableDiff` test by selecting a second table, setting key columns, use columns, and threshold; verifies visibility in the Data Quality tab, edits to add more columns, and finally deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select type `tableDiff`, pick Table 2 and its key columns; define Table 1 key/use columns and threshold. 3. Submit and verify in Data Quality tab; then edit to add additional key/use columns; delete at the end. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 8 | **Table Level Data Quality Test Cases** - Custom SQL Query | Custom SQL Query test case  Creates a `tableCustomSQLQuery` test with SQL in CodeMirror, selects strategy and threshold; verifies, edits display name, SQL and strategy, updates threshold, and deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select `tableCustomSQLQuery`, input SQL, choose strategy (ROWS/COUNT), set threshold. 3. Submit and verify in Data Quality tab; then edit display name, SQL and strategy; delete at the end. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 9 | **Table Level Data Quality Test Cases** - Table Row Inserted Count To Be Between | Table Row Inserted Count To Be Between test case  Creates a `tableRowInsertedCountToBeBetween` test with min and max inserted row count values; verifies visibility in the Data Quality tab, edits the threshold values, and finally deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select type `tableRowInsertedCountToBeBetween`, set min and max values. 3. Submit and verify in Data Quality tab; then edit threshold values; delete at the end. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+
+</details>
 
 <details open>
 <summary>📄 <b>AddTestCaseNewFlow.spec.ts</b> (4 tests, 6 scenarios)</summary>
@@ -33,30 +157,6 @@
 | | ↳ *Validate test case in Entity Page* | |
 | 3 | **Add TestCase New Flow** - Add multiple test case from table details page and validate pipeline | Tests bulk creation from entity page and pipeline validation  Adds a table-level and a column-level test case from the table details page and verifies test counts and the TestSuite pipeline, including edit navigation. Steps 1. From the table details page, add a table-level test case. 2. Add a column-level test case (scheduler card hidden; verify no pipeline POST). 3. Assert test count is 2 and pipeline count is 1; open pipeline list and navigate to edit. |
 | 4 | **Add TestCase New Flow** - Non-owner user should not able to add test case | Tests permission enforcement for non-owner roles  Validates that Data Consumer and Data Steward roles cannot create test cases and see the correct form validation message. Steps 1. As Data Consumer and Data Steward, open the create test case form. 2. Select a table and attempt to submit. 3. Verify the form helper shows lack-of-permission message and creation is blocked. |
-
-</details>
-
-<details open>
-<summary>📄 <b>TestCases.spec.ts</b> (3 tests, 9 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/TestCases.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/TestCases.spec.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | Table difference test case | Table Difference test case  Creates a `tableDiff` test by selecting a second table, setting key columns, use columns, and threshold; verifies visibility in the Data Quality tab, edits to add more columns, and finally deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select type `tableDiff`, pick Table 2 and its key columns; define Table 1 key/use columns and threshold. 3. Submit and verify in Data Quality tab; then edit to add additional key/use columns; delete at the end. |
-| | ↳ *Create* | |
-| | ↳ *Edit* | |
-| | ↳ *Delete* | |
-| 2 | Custom SQL Query | Custom SQL Query test case  Creates a `tableCustomSQLQuery` test with SQL in CodeMirror, selects strategy and threshold; verifies, edits display name, SQL and strategy, updates threshold, and deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select `tableCustomSQLQuery`, input SQL, choose strategy (ROWS/COUNT), set threshold. 3. Submit and verify in Data Quality tab; then edit display name, SQL and strategy; delete at the end. |
-| | ↳ *Create* | |
-| | ↳ *Edit* | |
-| | ↳ *Delete* | |
-| 3 | Column Values To Be Not Null | Column Values To Be Not Null test case  Creates a column-level `columnValuesToBeNotNull` test for a numeric column with description; verifies, edits display name and description, and deletes the test case. Steps 1. From entity page, open create test case (Column Level), select column and definition. 2. Fill name and description; submit; verify visibility in Data Quality tab. 3. Edit display name and description; delete the test case. |
-| | ↳ *Create* | |
-| | ↳ *Edit* | |
-| | ↳ *Delete* | |
 
 </details>
 

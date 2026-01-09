@@ -12,6 +12,8 @@
  */
 
 import {
+  AuditLogExportParams,
+  AuditLogExportResponse,
   AuditLogListParams,
   AuditLogListResponse,
 } from '../types/auditLogs.interface';
@@ -23,6 +25,19 @@ export const getAuditLogs = async (params: AuditLogListParams) => {
   const response = await APIClient.get<AuditLogListResponse>(BASE_URL, {
     params,
   });
+
+  return response.data;
+};
+
+export const exportAuditLogs = async (
+  params: AuditLogExportParams
+): Promise<AuditLogExportResponse> => {
+  const response = await APIClient.get<AuditLogExportResponse>(
+    `${BASE_URL}/export`,
+    {
+      params,
+    }
+  );
 
   return response.data;
 };

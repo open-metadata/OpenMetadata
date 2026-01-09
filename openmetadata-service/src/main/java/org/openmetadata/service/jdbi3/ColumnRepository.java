@@ -14,7 +14,9 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
+import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL_COLUMN;
 import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.Entity.TABLE_COLUMN;
 import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
 import static org.openmetadata.service.formatter.util.FormatterUtil.createChangeEventForEntity;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
@@ -23,6 +25,8 @@ import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.UpdateColumn;
@@ -57,35 +61,47 @@ public class ColumnRepository {
       String columnFQN,
       String entityType,
       UpdateColumn updateColumn) {
+    Objects.requireNonNull(columnFQN, "columnFQN cannot be null");
+    Objects.requireNonNull(updateColumn, "updateColumn cannot be null");
+
+    if (columnFQN.isBlank()) {
+      throw new IllegalArgumentException("columnFQN cannot be blank");
+    }
+
+    // Validate entity type first before any other processing
+    validateEntityType(entityType);
+
+    String parentFQN = extractParentFQN(columnFQN, entityType);
+    EntityReference parentEntityRef = getParentEntityByFQN(parentFQN, entityType);
+    String user = securityContext.getUserPrincipal().getName();
+
+    return switch (entityType) {
+      case TABLE -> updateTableColumn(
+          uriInfo, securityContext, user, columnFQN, updateColumn, parentEntityRef);
+      case DASHBOARD_DATA_MODEL -> updateDashboardDataModelColumn(
+          uriInfo, securityContext, user, columnFQN, updateColumn, parentEntityRef);
+      default -> throw new IllegalStateException("Unexpected entity type: " + entityType);
+    };
+  }
+
+  private void validateEntityType(String entityType) {
     if (entityType == null) {
       throw new IllegalArgumentException(
           "Entity type is required. Supported types are: table, dashboardDataModel");
     }
-
     if (!TABLE.equals(entityType) && !DASHBOARD_DATA_MODEL.equals(entityType)) {
       throw new IllegalArgumentException(
-          String.format(
-              "Unsupported entity type: %s. Supported types are: %s, %s",
-              entityType, TABLE, DASHBOARD_DATA_MODEL));
+          "Unsupported entity type: %s. Supported types are: %s, %s"
+              .formatted(entityType, TABLE, DASHBOARD_DATA_MODEL));
     }
+  }
 
-    String parentFQN;
+  private String extractParentFQN(String columnFQN, String entityType) {
     try {
-      parentFQN = FullyQualifiedName.getParentEntityFQN(columnFQN, entityType);
+      return FullyQualifiedName.getParentEntityFQN(columnFQN, entityType);
     } catch (Exception e) {
       throw new IllegalArgumentException(
-          String.format("Invalid column FQN format: %s. Error: %s", columnFQN, e.getMessage()), e);
-    }
-
-    EntityReference parentEntityRef = getParentEntityByFQN(parentFQN, entityType);
-    String user = securityContext.getUserPrincipal().getName();
-
-    if (TABLE.equals(entityType)) {
-      return updateTableColumn(
-          uriInfo, securityContext, user, columnFQN, updateColumn, parentEntityRef);
-    } else {
-      return updateDashboardDataModelColumn(
-          uriInfo, securityContext, user, columnFQN, updateColumn, parentEntityRef);
+          "Invalid column FQN format: %s. Error: %s".formatted(columnFQN, e.getMessage()), e);
     }
   }
 
@@ -108,47 +124,15 @@ public class ColumnRepository {
     Table updatedTable = JsonUtils.deepCopy(originalTable, Table.class);
     ColumnUtil.setColumnFQN(updatedTable.getFullyQualifiedName(), updatedTable.getColumns());
 
-    Column column = findColumnInHierarchy(updatedTable.getColumns(), columnFQN);
-    if (column == null) {
-      throw new EntityNotFoundException(String.format("Column not found: %s", columnFQN));
-    }
+    Column column =
+        findColumnInHierarchy(updatedTable.getColumns(), columnFQN)
+            .orElseThrow(
+                () -> new EntityNotFoundException("Column not found: %s".formatted(columnFQN)));
 
-    // Update fields that are explicitly provided
-    // Empty strings and special values indicate deletion
-    if (updateColumn.getDisplayName() != null) {
-      if (updateColumn.getDisplayName().trim().isEmpty()) {
-        column.setDisplayName(null); // Empty string = delete displayName
-      } else {
-        column.setDisplayName(updateColumn.getDisplayName());
-      }
-    }
-    if (updateColumn.getDescription() != null) {
-      if (updateColumn.getDescription().trim().isEmpty()) {
-        column.setDescription(null); // Empty string = delete description
-      } else {
-        column.setDescription(updateColumn.getDescription());
-      }
-    }
-    if (updateColumn.getTags() != null) {
-      column.setTags(
-          addDerivedTags(
-              updateColumn.getTags())); // Include Derived Tags, Empty array = remove all tags
-    }
-    // Handle constraint updates and removal
-    if (updateColumn.getRemoveConstraint() != null && updateColumn.getRemoveConstraint()) {
-      column.setConstraint(null); // removeConstraint=true = delete constraint
-    } else if (updateColumn.getConstraint() != null) {
-      column.setConstraint(updateColumn.getConstraint()); // Set new constraint
-    }
+    applyColumnUpdates(column, updateColumn, TABLE_COLUMN, true);
 
     JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalTable, updatedTable);
-
-    // Authorize the patch operation
-    OperationContext operationContext = new OperationContext(TABLE, jsonPatch);
-    ResourceContextInterface resourceContext =
-        new ResourceContext<>(
-            TABLE, parentEntityRef.getId(), null, ResourceContextInterface.Operation.PATCH);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    authorizeAndPatch(securityContext, TABLE, parentEntityRef, jsonPatch);
 
     RestUtil.PatchResponse<Table> patchResponse =
         tableRepository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch);
@@ -180,50 +164,64 @@ public class ColumnRepository {
 
     setDataModelColumnFQN(updatedDataModel.getFullyQualifiedName(), updatedDataModel.getColumns());
 
-    Column column = findColumnInHierarchy(updatedDataModel.getColumns(), columnFQN);
-    if (column == null) {
-      throw new EntityNotFoundException(String.format("Column not found: %s", columnFQN));
-    }
+    Column column =
+        findColumnInHierarchy(updatedDataModel.getColumns(), columnFQN)
+            .orElseThrow(
+                () -> new EntityNotFoundException("Column not found: %s".formatted(columnFQN)));
 
-    // Update fields that are explicitly provided
-    // Empty strings indicate deletion (constraints not supported for dashboard data model columns)
-    if (updateColumn.getDisplayName() != null) {
-      if (updateColumn.getDisplayName().trim().isEmpty()) {
-        column.setDisplayName(null); // Empty string = delete displayName
-      } else {
-        column.setDisplayName(updateColumn.getDisplayName());
-      }
-    }
-    if (updateColumn.getDescription() != null) {
-      if (updateColumn.getDescription().trim().isEmpty()) {
-        column.setDescription(null); // Empty string = delete description
-      } else {
-        column.setDescription(updateColumn.getDescription());
-      }
-    }
-    if (updateColumn.getTags() != null) {
-      column.setTags(
-          addDerivedTags(
-              updateColumn.getTags())); // Include Derived Tags, Empty array = remove all tags
-    }
+    applyColumnUpdates(column, updateColumn, DASHBOARD_DATA_MODEL_COLUMN, false);
 
     JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalDataModel, updatedDataModel);
-
-    // Authorize the patch operation
-    OperationContext operationContext = new OperationContext(DASHBOARD_DATA_MODEL, jsonPatch);
-    ResourceContextInterface resourceContext =
-        new ResourceContext<>(
-            DASHBOARD_DATA_MODEL,
-            parentEntityRef.getId(),
-            null,
-            ResourceContextInterface.Operation.PATCH);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    authorizeAndPatch(securityContext, DASHBOARD_DATA_MODEL, parentEntityRef, jsonPatch);
 
     RestUtil.PatchResponse<DashboardDataModel> patchResponse =
         dataModelRepository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch);
     triggerParentChangeEvent(patchResponse.entity(), user);
 
     return column;
+  }
+
+  private void applyColumnUpdates(
+      Column column,
+      UpdateColumn updateColumn,
+      String columnEntityType,
+      boolean supportsConstraints) {
+    Optional.ofNullable(updateColumn.getDisplayName())
+        .ifPresent(name -> column.setDisplayName(name.trim().isEmpty() ? null : name));
+
+    Optional.ofNullable(updateColumn.getDescription())
+        .ifPresent(desc -> column.setDescription(desc.trim().isEmpty() ? null : desc));
+
+    Optional.ofNullable(updateColumn.getTags())
+        .ifPresent(tags -> column.setTags(addDerivedTags(tags)));
+
+    if (supportsConstraints) {
+      if (Boolean.TRUE.equals(updateColumn.getRemoveConstraint())) {
+        column.setConstraint(null);
+      } else {
+        Optional.ofNullable(updateColumn.getConstraint()).ifPresent(column::setConstraint);
+      }
+    }
+
+    Optional.ofNullable(updateColumn.getExtension())
+        .ifPresent(
+            ext -> {
+              Object transformedExtension =
+                  EntityRepository.validateAndTransformExtension(ext, columnEntityType);
+              column.setExtension(transformedExtension);
+            });
+  }
+
+  private void authorizeAndPatch(
+      SecurityContext securityContext,
+      String entityType,
+      EntityReference parentEntityRef,
+      JsonPatch jsonPatch) {
+    OperationContext operationContext = new OperationContext(entityType, jsonPatch);
+    ResourceContextInterface resourceContext =
+        new ResourceContext<>(
+            entityType, parentEntityRef.getId(), null, ResourceContextInterface.Operation.PATCH);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
   }
 
   private void setDataModelColumnFQN(String parentFQN, List<Column> columns) {
@@ -241,37 +239,39 @@ public class ColumnRepository {
   }
 
   private EntityReference getParentEntityByFQN(String parentFQN, String entityType) {
-    if (TABLE.equals(entityType)) {
-      TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
-      Table table = tableRepository.findByName(parentFQN, Include.NON_DELETED);
-      return table.getEntityReference();
-    } else if (DASHBOARD_DATA_MODEL.equals(entityType)) {
-      DashboardDataModelRepository dataModelRepository =
-          (DashboardDataModelRepository) Entity.getEntityRepository(DASHBOARD_DATA_MODEL);
-      DashboardDataModel dataModel = dataModelRepository.findByName(parentFQN, Include.NON_DELETED);
-      return dataModel.getEntityReference();
-    } else {
-      throw new IllegalArgumentException(String.format("Unsupported entity type: %s", entityType));
-    }
+    return switch (entityType) {
+      case TABLE -> {
+        TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+        Table table = tableRepository.findByName(parentFQN, Include.NON_DELETED);
+        yield table.getEntityReference();
+      }
+      case DASHBOARD_DATA_MODEL -> {
+        DashboardDataModelRepository dataModelRepository =
+            (DashboardDataModelRepository) Entity.getEntityRepository(DASHBOARD_DATA_MODEL);
+        DashboardDataModel dataModel =
+            dataModelRepository.findByName(parentFQN, Include.NON_DELETED);
+        yield dataModel.getEntityReference();
+      }
+      default -> throw new IllegalArgumentException(
+          "Unsupported entity type: %s".formatted(entityType));
+    };
   }
 
-  Column findColumnInHierarchy(List<Column> columns, String columnFQN) {
+  Optional<Column> findColumnInHierarchy(List<Column> columns, String columnFQN) {
     if (columns == null) {
-      return null;
+      return Optional.empty();
     }
 
-    for (Column column : columns) {
-      if (columnFQN.equals(column.getFullyQualifiedName())) {
-        return column;
-      }
-      if (column.getChildren() != null) {
-        Column found = findColumnInHierarchy(column.getChildren(), columnFQN);
-        if (found != null) {
-          return found;
-        }
-      }
-    }
-    return null;
+    return columns.stream()
+        .map(
+            column -> {
+              if (columnFQN.equals(column.getFullyQualifiedName())) {
+                return Optional.of(column);
+              }
+              return findColumnInHierarchy(column.getChildren(), columnFQN);
+            })
+        .flatMap(Optional::stream)
+        .findFirst();
   }
 
   private void triggerParentChangeEvent(Object parent, String user) {
