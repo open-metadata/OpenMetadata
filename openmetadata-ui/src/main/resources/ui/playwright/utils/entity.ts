@@ -1411,17 +1411,11 @@ export const updateDisplayNameForEntity = async (
   endPoint: string,
   isRemoved?: boolean
 ) => {
-  const isMetricEntity = endPoint === EntityTypeEndpoint.METRIC;
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="rename-button"]');
 
-  const nameInputIsEnabled = await page.locator('#name').isEnabled();
-
-  if(isMetricEntity) {
-    expect(nameInputIsEnabled).toBe(true);
-  } else {
-    expect(nameInputIsEnabled).toBe(false);
-  }
+  const nameInputIsDisabled = await page.locator('#name').isDisabled();
+  expect(nameInputIsDisabled).toBe(true);
 
   await expect(page.locator('#displayName')).toBeVisible();
 
