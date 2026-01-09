@@ -12,7 +12,6 @@
 Client to interact with SAS Viya apis
 """
 
-# pylint: disable=protected-access
 import requests
 
 from metadata.generated.schema.entity.services.connections.database.sasConnection import (
@@ -72,7 +71,7 @@ class SASClient:
         headers = {
             "Accept": "application/vnd.sas.metadata.instance.entity.detail+json",
         }
-        response = self.client._request("GET", path=endpoint, headers=headers)
+        response = self.client.get(path=endpoint, headers=headers)
         if "error" in response.keys():
             raise APIError(response["error"])
         return response
@@ -103,7 +102,7 @@ class SASClient:
             f"{asset_filter if str(asset_filter) != 'None' else '*'}"
         )
         headers = {"Accept-Item": "application/vnd.sas.metadata.instance.entity+json"}
-        response = self.client._request("GET", path=endpoint, headers=headers)
+        response = self.client.get(path=endpoint, headers=headers)
         if "error" in response.keys():
             raise APIError(response["error"])
         return response["items"]
@@ -115,9 +114,7 @@ class SASClient:
             "Accept": "application/json",
         }
         logger.info(f"{query}")
-        response = self.client._request(
-            "POST", path=endpoint, data=query, headers=headers
-        )
+        response = self.client.post(path=endpoint, data=query, headers=headers)
         if "error" in response.keys():
             raise APIError(f"{response}")
         return response
@@ -126,7 +123,7 @@ class SASClient:
         headers = {
             "Accept-Item": "application/vnd.sas.data.source+json",
         }
-        response = self.client._request("GET", path=endpoint, headers=headers)
+        response = self.client.get(path=endpoint, headers=headers)
         logger.info(f"{response}")
         if "error" in response.keys():
             raise APIError(response["error"])

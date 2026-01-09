@@ -248,7 +248,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 fields=["tasks", "usageSummary"],
             )
 
-            if pipeline.tasks:
+            if pipeline and pipeline.tasks:
                 current_task_usage = sum(
                     1
                     for task in pipeline.tasks
@@ -416,8 +416,8 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     ) -> Iterable[Either[TablePipelineObservability]]:
         """Method to fetch pipeline observability data"""
         try:
-            for table_observability_map in self.get_table_pipeline_observability(
-                pipeline_details
+            for table_observability_map in (
+                self.get_table_pipeline_observability(pipeline_details) or []
             ):
                 for table_fqn, observability_list in table_observability_map.items():
                     table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)

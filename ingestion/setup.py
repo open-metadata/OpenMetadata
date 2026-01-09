@@ -20,9 +20,9 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==3.1.2",
+    "airflow": "apache-airflow==3.1.5",
     "adlfs": "adlfs>=2023.1.0",
-    "avro": "avro>=1.11.3,<1.12",
+    "avro": "avro>=1.11.4,<1.12",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
@@ -73,6 +73,7 @@ VERSIONS = {
     "asammdf": "asammdf~=7.4.5",
     "kafka-connect": "kafka-connect-py==0.10.11",
     "griffe2md": "griffe2md~=1.2",
+    "factory-boy": "factory-boy~=3.3.3",
 }
 
 COMMONS = {
@@ -158,7 +159,7 @@ base_requirements = {
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=1.4.0,<2",
-    "collate-sqllineage~=1.6.0",
+    "collate-sqllineage~=2.0",
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
@@ -349,6 +350,7 @@ plugins: Dict[str, Set[str]] = {
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce~=1.11", "authlib>=1.3.1"},
     "sample-data": {
+        "cachetools",
         VERSIONS["avro"],
         VERSIONS["grpc-tools"],
         VERSIONS["sqlalchemy-bigquery"],
@@ -402,6 +404,7 @@ test_unit = {
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
     # TODO: Remove once no unit test requires testcontainers
     "testcontainers",
+    VERSIONS["factory-boy"],
 }
 
 test = {
@@ -474,6 +477,7 @@ test = {
     *plugins["exasol"],
     VERSIONS["opensearch"],
     VERSIONS["kafka-connect"],
+    VERSIONS["factory-boy"],
 }
 
 docs = {

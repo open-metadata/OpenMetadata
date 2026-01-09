@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, trim } from 'lodash';
 import { DEFAULT_READ_TIMEOUT } from '../constants/Alerts.constants';
+import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { NotificationTemplate } from '../generated/entity/events/notificationTemplate';
 import { User } from '../generated/entity/teams/user';
@@ -46,6 +47,7 @@ export interface AddAlertFormWidgetProps {
   templates?: NotificationTemplate[];
   loading?: boolean;
   isViewMode?: boolean;
+  templateResourcePermission?: OperationPermission;
 }
 
 class AlertsClassBase {
@@ -115,8 +117,8 @@ class AlertsClassBase {
     const { alertName, alertDisplayName, destinations } =
       this.getCommonAlertFieldsData(data, initialData);
     // Remove timeout from alert object since it's only for UI
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { timeout, readTimeout, ...finalData } = data;
+
+    const { timeout: _timeout, readTimeout: _readTimeout, ...finalData } = data;
 
     return {
       ...(finalData as CreateEventSubscription),

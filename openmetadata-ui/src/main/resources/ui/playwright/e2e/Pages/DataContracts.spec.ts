@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
@@ -71,6 +71,7 @@ import {
   assignTag,
   assignTier,
 } from '../../utils/entity';
+import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
@@ -541,7 +542,7 @@ test.describe('Data Contracts', () => {
           async () => {
             await entity.visitEntityPage(page);
 
-            await page.getByTestId('contract').click();
+            await page.getByRole('tab').getByTestId('contract').click();
 
             await page.getByTestId('manage-contract-actions').click();
 
@@ -588,7 +589,7 @@ test.describe('Data Contracts', () => {
       await test.step('Verify YAML view', async () => {
         await entity.visitEntityPage(page);
 
-        await page.getByTestId('contract').click();
+        await page.getByRole('tab').getByTestId('contract').click();
 
         await page.getByTestId('contract-view-switch-tab-yaml').click();
 
@@ -2331,9 +2332,11 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               });
 
               // Navigate to persona details
-              await page
-                .getByTestId(`persona-details-card-${persona.data.name}`)
-                .click();
+              await navigateToPersonaWithPagination(
+                page,
+                persona.data.name,
+                true
+              );
               await page.getByRole('tab', { name: 'Users' }).click();
 
               // Add user to persona
@@ -2377,7 +2380,9 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               });
 
               // Verify Contract tab is not visible (should be hidden by persona customization)
-              await expect(page.getByTestId('contract')).toBeVisible();
+              await expect(
+                page.getByRole('tab').getByTestId('contract')
+              ).toBeVisible();
 
               // Verify Contract status badge is not visible in header
               await expect(
@@ -2408,9 +2413,11 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               });
 
               // Navigate to persona details and customize UI
-              await page
-                .getByTestId(`persona-details-card-${persona.data.name}`)
-                .click();
+              await navigateToPersonaWithPagination(
+                page,
+                persona.data.name,
+                true
+              );
               await page.getByRole('tab', { name: 'Customize UI' }).click();
               await page.waitForLoadState('networkidle');
 
@@ -2457,7 +2464,9 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               });
 
               // Verify Contract tab is not visible (should be hidden by persona customization)
-              await expect(page.getByTestId('contract')).not.toBeVisible();
+              await expect(
+                page.getByRole('tab').getByTestId('contract')
+              ).not.toBeVisible();
 
               // Verify Contract status badge is not visible in header
               await expect(

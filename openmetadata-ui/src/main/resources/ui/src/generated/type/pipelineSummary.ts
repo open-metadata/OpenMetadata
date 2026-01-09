@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,6 +18,10 @@ export interface PipelineSummary {
      * End time of the pipeline schedule
      */
     endTime?: number;
+    /**
+     * List of fully qualified names of tables impacted by this pipeline
+     */
+    impactedAssets?: string[];
     /**
      * Total count of tables impacted by this pipeline
      */
@@ -84,6 +88,7 @@ export enum PipelineServiceType {
     KafkaConnect = "KafkaConnect",
     KinesisFirehose = "KinesisFirehose",
     Matillion = "Matillion",
+    Mulesoft = "Mulesoft",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
     Snowplow = "Snowplow",

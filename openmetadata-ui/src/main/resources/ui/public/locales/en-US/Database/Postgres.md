@@ -8,9 +8,54 @@ $$note
 Note that we only support officially supported Postgres versions. You can check the version list <a href="https://www.postgresql.org/support/versioning/" target="_blank">here</a>.
 $$
 
+### Metadata Extraction
+
+OpenMetadata extracts metadata from PostgreSQL using two main sources:
+
+#### PostgreSQL System Catalogs (`pg_*`)
+
+The connector primarily uses PostgreSQL's system catalog tables and views to extract metadata. These include:
+- `pg_class` - Information about tables, views, and other relations
+- `pg_namespace` - Schema information
+- `pg_attribute` - Column information
+- `pg_description` - Comments on database objects
+- `pg_constraint` - Constraint information
+- `pg_database` - Database information
+- `pg_tables` - Table ownership and metadata
+- `pg_partitioned_table` - Partitioning information
+- `pg_policy` - Row-level security policies
+- `pg_sequence` - Sequence information
+- `pg_attrdef` - Column default values
+- `pg_proc` - Stored procedures and functions
+- `pg_user` - User information
+- `pg_stat_statements` - Query statistics (for usage and lineage)
+
+**No special grants are required** to read from most of these system catalogs as they are readable by any connected user by default. **Exception**: `pg_stat_statements` requires the `pg_read_all_stats` role for access (see [Usage and Lineage](#usage-and-lineage) section below).
+
+#### INFORMATION_SCHEMA Views
+
+The connector also accesses `information_schema.tables` and `information_schema.columns` views. In PostgreSQL, `INFORMATION_SCHEMA` views automatically filter results to show only objects for which the current user has privileges.
+
+**Important**: To extract complete metadata, ensure your OpenMetadata user has appropriate privileges on the schemas and objects you want to discover. While no explicit `GRANT` is needed for `INFORMATION_SCHEMA` itself, the user must have `USAGE` privilege on schemas to see objects within them:
+
+```sql
+-- Grant USAGE on schemas to allow metadata extraction
+GRANT USAGE ON SCHEMA your_schema TO your_user;
+
+-- For multiple schemas, repeat for each schema you want to discover
+GRANT USAGE ON SCHEMA schema1, schema2, schema3 TO your_user;
+```
+
+If you want to extract metadata for specific tables without granting broad access, you can grant `SELECT` on individual tables. However, for metadata extraction alone, `USAGE` on the schema is typically sufficient.
+
 ### Profiler & Data Quality
 
 Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
+
+```sql
+-- Grant SELECT for profiling and data quality tests
+GRANT SELECT ON ALL TABLES IN SCHEMA your_schema TO your_user;
+```
 
 ### Usage and Lineage
 
@@ -24,10 +69,34 @@ As a summary:
 
 Then, when extracting usage and lineage data, the query log duration will have no impact, only the query limit.
 
-- For usage and lineage grant your user `pg_read_all_stats` permission.
+**For usage and lineage, grant your user `pg_read_all_stats` permission:**
 
 ```sql
 GRANT pg_read_all_stats TO your_user;
+```
+
+### Summary of Required Grants
+
+Here's a complete example of setting up a user for OpenMetadata:
+
+```sql
+-- Create user
+CREATE USER openmetadata_user WITH PASSWORD 'your_password';
+
+-- Grant connection to database
+GRANT CONNECT ON DATABASE your_database TO openmetadata_user;
+
+-- Grant USAGE on schemas for metadata extraction
+-- Repeat for each schema you want OpenMetadata to discover
+GRANT USAGE ON SCHEMA schema1, schema2, schema3 TO openmetadata_user;
+
+-- For profiling and data quality (optional, only if needed)
+-- Repeat for each schema where you want to run profiling/tests
+GRANT SELECT ON ALL TABLES IN SCHEMA schema1 TO openmetadata_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA schema2 TO openmetadata_user;
+
+-- For usage and lineage extraction (optional, only if needed)
+GRANT pg_read_all_stats TO openmetadata_user;
 ```
 
 You can find further information on the Postgres connector in the <a href="https://docs.open-metadata.org/connectors/database/postgres" target="_blank">docs</a>.
@@ -152,6 +221,22 @@ The source identity specified by the principal that is calling the `AssumeRole` 
 Find more information about <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity" target="_blank">Source Identity</a>.
 $$
 
+$$section
+### Bucket Name $(id="bucketName")
+
+A bucket name in Data Lake is a unique identifier used to organize and store data objects.
+
+It's similar to a folder name, but it's used for object storage rather than file storage.
+$$
+
+$$section
+### Prefix $(id="prefix")
+
+The prefix of a data source refers to the first part of the data path that identifies the source or origin of the data.
+
+It's used to organize and categorize data within the container, and can help users easily locate and access the data they need.
+$$
+
 ## Azure Auth Config
 
 $$section
@@ -260,4 +345,22 @@ $$section
 ### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.
+$$
+
+$$section
+### Default Database Filter Pattern $(id="databaseFilterPattern")
+
+Regex to only include/exclude databases that matches the pattern.
+$$
+
+$$section
+### Default Schema Filter Pattern $(id="schemaFilterPattern")
+
+Regex to only include/exclude schemas that matches the pattern.
+$$
+
+$$section
+### Default Table Filter Pattern $(id="tableFilterPattern")
+
+Regex to only include/exclude tables that matches the pattern.
 $$

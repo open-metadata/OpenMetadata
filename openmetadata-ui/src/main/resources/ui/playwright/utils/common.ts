@@ -63,7 +63,7 @@ export const redirectToHomePage = async (
   await page.goto('/');
   await page.waitForURL('**/my-data');
   if (waitForNetworkIdle) {
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   }
 };
 
@@ -193,7 +193,9 @@ export const assignDomain = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
   );
 
   await page
@@ -234,7 +236,9 @@ export const assignSingleSelectDomain = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
   );
 
   await page
@@ -275,7 +279,9 @@ export const updateDomain = async (
     .clear();
 
   const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
   );
   await page
     .getByTestId('domain-selectable-tree')
@@ -314,7 +320,9 @@ export const removeDomain = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
   );
   await page
     .getByTestId('domain-selectable-tree')
@@ -322,7 +330,9 @@ export const removeDomain = async (
     .fill(domain.name);
   await searchDomain;
 
-  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+  await tagSelector.waitFor({ state: 'visible' });
+  await tagSelector.click();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
@@ -354,7 +364,9 @@ export const removeSingleSelectDomain = async (
     .clear();
 
   const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
   );
   await page
     .getByTestId('domain-selectable-tree')
@@ -395,7 +407,9 @@ export const assignDataProduct = async (
 
   for (const dataProduct of dataProducts) {
     const searchDataProduct = page.waitForResponse(
-      `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(encodeURIComponent(domain.name))
     );
 
     await page
@@ -497,13 +511,14 @@ export const getRandomLastName = () => {
 };
 
 export const generateRandomUsername = (prefix = '') => {
+  const timestamp = Date.now();
   const firstName = `${prefix}${getRandomFirstName()}`;
   const lastName = `${prefix}${getRandomLastName()}`;
 
   return {
     firstName,
     lastName,
-    email: `${firstName}.${lastName}@example.com`,
+    email: `${firstName}.${lastName}.${timestamp}@example.com`,
     password: 'User@OMD123',
   };
 };
@@ -732,7 +747,11 @@ export const testPaginationNavigation = async (
   expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
 };
 
-export const testTableSorting = async (page: Page, columnHeader: string) => {
+export const testTableSorting = async (
+  page: Page,
+  columnHeader: string,
+  columnIndex = 0
+) => {
   await waitForAllLoadersToDisappear(page);
   await page.waitForLoadState('networkidle');
 
@@ -740,7 +759,7 @@ export const testTableSorting = async (page: Page, columnHeader: string) => {
   const visibleRowSelector = `tbody tr:not([aria-hidden="true"])`;
 
   const getFirstCellValue = async () => {
-    const firstCell = page.locator(`${visibleRowSelector} td`).first();
+    const firstCell = page.locator(`${visibleRowSelector} td`).nth(columnIndex);
     await firstCell.waitFor({ state: 'visible' });
 
     return (await firstCell.textContent())?.trim();

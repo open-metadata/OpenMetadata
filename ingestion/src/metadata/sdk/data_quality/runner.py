@@ -246,7 +246,7 @@ class TestRunner:
         config = self.config_builder.build()
 
         workflow = TestSuiteWorkflow.create(  # pyright: ignore[reportUnknownMemberType]
-            config.model_dump()  # pyright: ignore[reportUnknownMemberType]
+            config.model_dump()
         )
 
         original_processor = workflow.steps[0]

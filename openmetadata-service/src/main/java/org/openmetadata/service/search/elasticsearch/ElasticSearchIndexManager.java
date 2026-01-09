@@ -191,14 +191,22 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     if (aliases == null || aliases.isEmpty()) {
       return;
     }
+    Set<String> allEntityIndices = listIndicesByPrefix(indexName);
+
     try {
       UpdateAliasesRequest request =
           UpdateAliasesRequest.of(
-              u -> {
-                for (String alias : aliases) {
-                  u.actions(a -> a.add(add -> add.index(indexName).alias(alias)));
-                }
-                return u;
+              updateBuilder -> {
+                allEntityIndices.forEach(
+                    actualIndexName -> {
+                      for (String alias : aliases) {
+                        updateBuilder.actions(
+                            actionBuilder ->
+                                actionBuilder.add(
+                                    addBuilder -> addBuilder.index(actualIndexName).alias(alias)));
+                      }
+                    });
+                return updateBuilder;
               });
 
       UpdateAliasesResponse response = client.indices().updateAliases(request);

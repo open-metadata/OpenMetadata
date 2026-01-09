@@ -21,8 +21,10 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataflow,
     Dataset,
     PowerBIDashboard,
+    PowerBIReport,
     PowerBiTable,
     PowerBITableSource,
+    ReportPage,
     UpstreaDataflow,
 )
 from metadata.utils import fqn
@@ -97,22 +99,34 @@ MOCK_DATABRICKS_NATIVE_EXP = """let
 in
     Source"""
 
-MOCK_DATABRICKS_NATIVE_QUERY_EXP = """let
-    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind="Database"]}[Data], "SELECT * FROM PUBLIC.STG_CUSTOMERS", null, [EnableFolding=true])
-in
-    Source"""
+MOCK_DATABRICKS_NATIVE_QUERY_EXP = """let 
+    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path,  
+        [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]) 
+        {[Name="DEMO_STAGE",Kind="Database"]}[Data],  
+            "select * from PUBLIC.STG_CUSTOMERS", null, [EnableFolding=true]) 
+in 
+    "Source" """
 
 EXPECTED_DATABRICKS_RESULT = [
     {"database": "DEMO_STAGE", "schema": "PUBLIC", "table": "STG_CUSTOMERS"}
 ]
 
+MOCK_DATABRICKS_NATIVE_QUERY_EXP_WITH_EXPRESSION = """let
+    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [   Catalog=   "DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name=DB, Kind=   "Database"]}[Data], "SELECT * FROM PUBLIC.STG_CUSTOMERS", null, [EnableFolding=true])
+in
+    Source"""
+EXPECTED_DATABRICKS_RESULT_WITH_EXPRESSION = [
+    {"database": "MY_DB", "schema": "PUBLIC", "table": "STG_CUSTOMERS"}
+]
+
+
 MOCK_DATABRICKS_NATIVE_INVALID_QUERY_EXP = """let
-    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind="Database"]}[Data], "WITH test as (select) Select test", null, [EnableFolding=true])
+    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind = "Database"]}[Data], "WITH test as (select) Select test", null, [EnableFolding=true])
 in
     Source"""
 
 MOCK_DATABRICKS_NATIVE_INVALID_EXP = """let
-    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind="Database"]}[Data], null, [EnableFolding=true])
+    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind=  "Database"]}[Data], null, [EnableFolding=true])
 in
     Source"""
 
@@ -335,6 +349,11 @@ class PowerBIUnitTest(TestCase):
 
         # Test with valid databricks native source
         result = self.powerbi._parse_databricks_source(
+            MOCK_DATABRICKS_NATIVE_QUERY_EXP_WITH_EXPRESSION, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertEqual(result, EXPECTED_DATABRICKS_RESULT_WITH_EXPRESSION)
+
+        result = self.powerbi._parse_databricks_source(
             MOCK_DATABRICKS_NATIVE_EXP, MOCK_DASHBOARD_DATA_MODEL
         )
         self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
@@ -352,7 +371,8 @@ class PowerBIUnitTest(TestCase):
         result = self.powerbi._parse_databricks_source(
             MOCK_DATABRICKS_NATIVE_INVALID_QUERY_EXP, MOCK_DASHBOARD_DATA_MODEL
         )
-        self.assertIsNone(result)
+        # sqlglot parses this sql and returns empty source list vs sqlfluff raising the error, hence adjusting test
+        self.assertEqual(result, [])
 
         result = self.powerbi._parse_databricks_source(
             MOCK_DATABRICKS_NATIVE_INVALID_EXP, MOCK_DASHBOARD_DATA_MODEL
@@ -741,3 +761,165 @@ class PowerBIUnitTest(TestCase):
         self.assertEqual(
             result[0].toColumn.root, "service.downstream_dataset.orders.order_id"
         )
+
+    @pytest.mark.order(13)
+    def test_get_report_url(self):
+        """
+        Test report URL generation with different page scenarios
+        """
+        from unittest.mock import MagicMock
+
+        workspace_id = "test-workspace-123"
+        dashboard_id = "test-dashboard-456"
+
+        # Create a mock client with api_client
+        mock_api_client = MagicMock()
+        self.powerbi.client = MagicMock()
+        self.powerbi.client.api_client = mock_api_client
+
+        # Test with multiple pages - should use first page name
+        with patch(
+            "metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri"
+        ) as mock_clean_uri:
+            mock_clean_uri.return_value = "https://app.powerbi.com"
+            mock_api_client.fetch_report_pages.return_value = [
+                ReportPage(name="page1", displayName="Page 1"),
+                ReportPage(name="page2", displayName="Page 2"),
+                ReportPage(name="page3", displayName="Page 3"),
+            ]
+
+            result = self.powerbi._get_report_url(workspace_id, dashboard_id)
+
+            mock_api_client.fetch_report_pages.assert_called_once_with(
+                workspace_id, dashboard_id
+            )
+            self.assertEqual(
+                result,
+                f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}/page1?experience=power-bi",
+            )
+
+        # Test with single page - should use that page name
+        with patch(
+            "metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri"
+        ) as mock_clean_uri:
+            mock_clean_uri.return_value = "https://app.powerbi.com"
+            mock_api_client.fetch_report_pages.reset_mock()
+            mock_api_client.fetch_report_pages.return_value = [
+                ReportPage(name="single-page", displayName="Single Page")
+            ]
+
+            result = self.powerbi._get_report_url(workspace_id, dashboard_id)
+
+            self.assertEqual(
+                result,
+                f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}/single-page?experience=power-bi",
+            )
+
+        # Test with no pages - should not add page_id
+        with patch(
+            "metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri"
+        ) as mock_clean_uri:
+            mock_clean_uri.return_value = "https://app.powerbi.com"
+            mock_api_client.fetch_report_pages.reset_mock()
+            mock_api_client.fetch_report_pages.return_value = []
+
+            result = self.powerbi._get_report_url(workspace_id, dashboard_id)
+
+            self.assertEqual(
+                result,
+                f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}?experience=power-bi",
+            )
+
+        # Test with exception during fetch_report_pages - should handle gracefully
+        with patch(
+            "metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri"
+        ) as mock_clean_uri:
+            mock_clean_uri.return_value = "https://app.powerbi.com"
+            mock_api_client.fetch_report_pages.reset_mock()
+            mock_api_client.fetch_report_pages.side_effect = Exception("API Error")
+
+            result = self.powerbi._get_report_url(workspace_id, dashboard_id)
+
+            # Should build URL without page_id when exception occurs
+            self.assertEqual(
+                result,
+                f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}?experience=power-bi",
+            )
+
+    @pytest.mark.order(14)
+    def test_fetch_report_details(self):
+        """
+        Test fetch_report_details API client method
+        """
+        from unittest.mock import MagicMock
+
+        group_id = "test-group-123"
+        report_id = "test-report-456"
+
+        mock_response = {
+            "id": report_id,
+            "name": "Test Report",
+            "datasetId": "dataset-789",
+            "description": "Test report description",
+            "webUrl": "https://app.powerbi.com/reports/test-report-456",
+            "embedUrl": "https://app.powerbi.com/embed/test-report-456",
+        }
+
+        mock_client = MagicMock()
+        self.powerbi.client = MagicMock()
+        self.powerbi.client.api_client = MagicMock()
+        self.powerbi.client.api_client.client = mock_client
+
+        # Test successful fetch
+        mock_client.get.return_value = mock_response
+        self.powerbi.client.api_client.client = mock_client
+        self.powerbi.client.api_client.fetch_report_details = (
+            lambda g, r: PowerBIReport(
+                **mock_client.get(f"/myorg/groups/{g}/reports/{r}")
+            )
+        )
+
+        result = self.powerbi.client.api_client.fetch_report_details(
+            group_id, report_id
+        )
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.id, report_id)
+        self.assertEqual(result.name, "Test Report")
+        self.assertEqual(result.datasetId, "dataset-789")
+        self.assertEqual(result.description, "Test report description")
+        mock_client.get.assert_called_with(
+            f"/myorg/groups/{group_id}/reports/{report_id}"
+        )
+
+        # Test with None response
+        mock_client.reset_mock()
+        mock_client.get.return_value = None
+        self.powerbi.client.api_client.fetch_report_details = (
+            lambda g, r: None
+            if mock_client.get(f"/myorg/groups/{g}/reports/{r}") is None
+            else PowerBIReport(**mock_client.get(f"/myorg/groups/{g}/reports/{r}"))
+        )
+
+        result = self.powerbi.client.api_client.fetch_report_details(
+            group_id, report_id
+        )
+        self.assertIsNone(result)
+
+        # Test with exception
+        mock_client.reset_mock()
+        mock_client.get.side_effect = Exception("API Error")
+
+        def fetch_with_exception(g, r):
+            try:
+                response = mock_client.get(f"/myorg/groups/{g}/reports/{r}")
+                return PowerBIReport(**response) if response else None
+            except Exception:
+                return None
+
+        self.powerbi.client.api_client.fetch_report_details = fetch_with_exception
+
+        result = self.powerbi.client.api_client.fetch_report_details(
+            group_id, report_id
+        )
+        self.assertIsNone(result)

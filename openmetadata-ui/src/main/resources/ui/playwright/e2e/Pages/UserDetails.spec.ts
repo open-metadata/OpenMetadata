@@ -13,15 +13,20 @@
 
 import { expect, Page, test as base } from '@playwright/test';
 import { Domain } from '../../support/domain/Domain';
+import { SubDomain } from '../../support/domain/SubDomain';
 import { TeamClass } from '../../support/team/TeamClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { uuid } from '../../utils/common';
+import { getApiContext, uuid } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { visitUserProfilePage } from '../../utils/user';
 import { redirectToUserPage } from '../../utils/userDetails';
+import { TableClass } from '../../support/entity/TableClass';
 
 const user1 = new UserClass();
 const user2 = new UserClass();
+const user3 = new UserClass();
 const admin = new AdminClass();
 const domain = new Domain();
 const team = new TeamClass({
@@ -56,6 +61,7 @@ test.describe('User with different Roles', () => {
 
     await user1.create(apiContext);
     await user2.create(apiContext);
+    await user3.create(apiContext);
 
     await team.create(apiContext);
     await domain.create(apiContext);
@@ -68,7 +74,7 @@ test.describe('User with different Roles', () => {
 
     await user1.delete(apiContext);
     await user2.delete(apiContext);
-
+    await user3.delete(apiContext);
     await team.delete(apiContext);
     await domain.delete(apiContext);
 
@@ -86,8 +92,6 @@ test.describe('User with different Roles', () => {
     await adminPage.getByTestId('edit-teams-button').click();
 
     await expect(adminPage.getByTestId('team-select')).toBeVisible();
-
-    await adminPage.getByTestId('team-select').click();
 
     await adminPage.waitForSelector('.ant-tree-select-dropdown', {
       state: 'visible',
@@ -109,7 +113,7 @@ test.describe('User with different Roles', () => {
   test('Create team with domain and verify visibility of inherited domain in user profile after team removal', async ({
     adminPage,
   }) => {
-    await redirectToUserPage(adminPage);
+    await visitUserProfilePage(adminPage, user3.getUserName());
     await adminPage.waitForLoadState('networkidle');
 
     await expect(adminPage.getByTestId('user-profile-teams')).toBeVisible();
@@ -117,8 +121,6 @@ test.describe('User with different Roles', () => {
     await adminPage.getByTestId('edit-teams-button').click();
 
     await expect(adminPage.getByTestId('team-select')).toBeVisible();
-
-    await adminPage.getByTestId('team-select').click();
 
     await adminPage.waitForSelector('.ant-tree-select-dropdown', {
       state: 'visible',
@@ -156,6 +158,21 @@ test.describe('User with different Roles', () => {
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
+    const searchDomain = adminPage.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        domain.responseData.displayName
+      )}**`
+    );
+
+    await adminPage
+      .getByTestId('domain-selectable-tree')
+      .getByTestId('searchbar')
+      .fill(domain.responseData.displayName);
+    await searchDomain;
+    await adminPage
+      .getByTestId('domain-selectable-tree')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
     await adminPage.getByText(domain.responseData.displayName).click();
 
     const teamsResponse = adminPage.waitForResponse(
@@ -168,7 +185,7 @@ test.describe('User with different Roles', () => {
 
     await teamsResponse;
 
-    await redirectToUserPage(adminPage);
+    await visitUserProfilePage(adminPage, user3.getUserName());
 
     await adminPage.waitForLoadState('networkidle');
 
@@ -200,7 +217,6 @@ test.describe('User with different Roles', () => {
     await adminPage.getByTestId('edit-teams-button').click();
 
     await teamsListResponse;
-    await adminPage.getByTestId('team-select').click();
 
     await adminPage.waitForSelector('.ant-tree-select-dropdown', {
       state: 'visible',
@@ -251,6 +267,225 @@ test.describe('User with different Roles', () => {
     ).toContainText(domain.responseData.displayName);
   });
 
+  test('Admin user can assign and remove domain from a user', async ({
+    adminPage,
+  }) => {
+    test.slow();
+
+    await redirectToUserPage(adminPage);
+    await adminPage.waitForLoadState('networkidle');
+
+    // Step 1: Assign domain to user
+    // Verify domain edit button is visible
+    await expect(adminPage.getByTestId('edit-domains')).toBeVisible();
+
+    // Click on edit domains button
+    await adminPage.getByTestId('edit-domains').click();
+
+    // Wait for domain select dropdown to be visible
+    await expect(adminPage.locator('.custom-domain-edit-select')).toBeVisible();
+
+    // Click on the select to open dropdown
+    await adminPage.locator('.custom-domain-edit-select').click();
+
+    // Wait for domain tree to load
+    await adminPage.waitForSelector('.domain-custom-dropdown-class', {
+      state: 'visible',
+    });
+
+    // Wait for loader to disappear
+    await adminPage
+      .locator('.domain-custom-dropdown-class')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
+
+    // Search for the domain
+    const searchPromise = adminPage.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        domain.responseData.displayName
+      )}**`
+    );
+    await adminPage
+      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .fill(domain.responseData.displayName);
+
+    await searchPromise;
+
+    // Wait for search results to load
+    await adminPage
+      .locator('.domain-custom-dropdown-class')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
+
+    // Click on the domain in the tree
+    await adminPage
+      .locator('.domain-selectable-tree-new')
+      .getByText(domain.responseData.displayName)
+      .click();
+
+    // Click save button to assign domain
+    let updateUserResponse = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/') &&
+        response.request().method() === 'PATCH'
+    );
+
+    await adminPage
+      .getByTestId('user-profile-domain-edit-cancel')
+      .click({ force: true });
+
+    await updateUserResponse;
+
+    // Verify domain is assigned and visible in user profile
+    await expect(
+      adminPage.locator('[data-testid="header-domain-container"]')
+    ).toContainText(domain.responseData.displayName);
+
+    // Verify domain link is clickable
+    await expect(
+      adminPage
+        .getByTestId('header-domain-container')
+        .getByRole('link', { name: domain.responseData.displayName })
+    ).toBeVisible();
+
+    // Step 2: Remove domain from user
+    // Click on edit domains button
+    await adminPage.getByTestId('edit-domains').click();
+
+    // Wait for domain select dropdown to be visible
+    await expect(adminPage.locator('.custom-domain-edit-select')).toBeVisible();
+
+    // Click on the select to open dropdown
+    await adminPage.locator('.custom-domain-edit-select').click();
+
+    // Wait for domain tree to load
+    await adminPage.waitForSelector('.domain-custom-dropdown-class', {
+      state: 'visible',
+    });
+
+    // Wait for loader to disappear
+    await adminPage
+      .locator('.domain-custom-dropdown-class')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
+
+    // Search for the domain
+    const searchPromise2 = adminPage.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        domain.responseData.displayName
+      )}**`
+    );
+    await adminPage
+      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .fill(domain.responseData.displayName);
+
+    await searchPromise2;
+
+    // Wait for search results to load
+    await adminPage
+      .locator('.domain-custom-dropdown-class')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
+
+    // Click on the domain checkbox in the tree to deselect it
+    await adminPage
+      .locator('.domain-selectable-tree-new')
+      .getByText(domain.responseData.displayName)
+      .click();
+
+    // Click save button to remove domain
+    updateUserResponse = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/') &&
+        response.request().method() === 'PATCH'
+    );
+
+    await adminPage
+      .getByTestId('user-profile-domain-edit-cancel')
+      .click({ force: true });
+
+    await updateUserResponse;
+
+    // Verify domain is removed
+    await expect(
+      adminPage
+        .getByTestId('header-domain-container')
+        .getByRole('link', { name: domain.responseData.displayName })
+    ).not.toBeVisible();
+  });
+
+  test('Subdomain is visible when expanding parent domain in tree', async ({
+    adminPage,
+  }) => {
+    const { apiContext } = await getApiContext(adminPage);
+
+    // Create a subdomain for testing
+    const subdomain = new SubDomain(domain);
+    await subdomain.create(apiContext);
+
+    await redirectToUserPage(adminPage);
+    await adminPage.waitForLoadState('networkidle');
+
+    // Click on edit domains button
+    await adminPage.getByTestId('edit-domains').click();
+
+    // Wait for domain select dropdown to be visible
+    await expect(adminPage.locator('.custom-domain-edit-select')).toBeVisible();
+
+    // Click on the select to open dropdown
+    await adminPage.locator('.custom-domain-edit-select').click();
+
+    // Wait for domain tree to load
+    await adminPage.waitForSelector('.domain-custom-dropdown-class', {
+      state: 'visible',
+    });
+
+    // Wait for loader to disappear
+    await adminPage
+      .locator('.domain-custom-dropdown-class')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
+
+    // Search for the domain
+    const searchPromise2 = adminPage.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        domain.responseData.displayName
+      )}**`
+    );
+    await adminPage
+      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .fill(domain.responseData.displayName);
+
+    await searchPromise2;
+
+    // Find the parent domain node switcher (expand icon)
+    const parentDomainNode = adminPage
+      .locator('.domain-custom-dropdown-class')
+      .locator('.ant-tree-treenode')
+      .filter({ hasText: domain.responseData.displayName })
+      .first();
+
+    // Click on the switcher icon to expand the parent domain
+    await parentDomainNode.locator('.ant-tree-switcher').click();
+
+    // Wait for the child domains to load
+    await waitForAllLoadersToDisappear(adminPage);
+    await adminPage.waitForLoadState('networkidle');
+
+    // Verify that the subdomain is now visible in the tree
+    await expect(
+      adminPage
+        .locator('.domain-custom-dropdown-class')
+        .getByText(subdomain.responseData.displayName)
+    ).toBeVisible();
+
+    // Close the dropdown
+    await adminPage.keyboard.press('Escape');
+
+    // Cleanup: delete the subdomain
+    await subdomain.delete(apiContext);
+  });
+
   test('Admin user can get all the roles hierarchy and edit roles', async ({
     adminPage,
   }) => {
@@ -263,8 +498,6 @@ test.describe('User with different Roles', () => {
     await expect(
       adminPage.getByTestId('profile-edit-roles-select')
     ).toBeVisible();
-
-    await adminPage.getByTestId('profile-edit-roles-select').click();
 
     await adminPage.waitForSelector('.ant-select-dropdown', {
       state: 'visible',
@@ -318,9 +551,90 @@ test.describe('User with different Roles', () => {
       userPage.getByTestId('edit-user-persona').getByTestId('edit-persona')
     ).not.toBeVisible();
     await expect(userPage.getByTestId('user-profile-roles')).toBeVisible();
-    // Edit Roles icon shouldn't be visible
     await expect(
       userPage.getByTestId('user-profile-edit-roles-save-button')
     ).not.toBeVisible();
+  });
+
+  test('My Data Tab - AssetsTabs search functionality', async ({
+    adminPage,
+  }) => {
+    const { apiContext } = await getApiContext(adminPage);
+    const table = new TableClass();
+
+    try {
+      await table.create(apiContext);
+
+      const adminUserResponse = await apiContext.get(
+        '/api/v1/users/name/admin'
+      );
+      const adminUser = await adminUserResponse.json();
+
+      await apiContext.patch(`/api/v1/tables/${table.entityResponseData?.id}`, {
+        data: [
+          {
+            op: 'add',
+            path: '/owners/0',
+            value: {
+              id: adminUser.id,
+              type: 'user',
+            },
+          },
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      });
+
+      await redirectToUserPage(adminPage);
+
+      await adminPage.getByTestId('mydata').click();
+
+      const assetsSearchBox = adminPage
+        .locator('#asset-tab')
+        .getByTestId('searchbar');
+
+      await expect(assetsSearchBox).toBeVisible();
+
+      const searchResponse = adminPage.waitForResponse(
+        '**/api/v1/search/query*'
+      );
+
+      await assetsSearchBox.fill(table.entity.name);
+
+      await searchResponse;
+
+      const assetCard = adminPage.getByText(table.entity.name).first();
+
+      await expect(assetCard).toBeVisible();
+
+      await assetsSearchBox.clear();
+
+      const incorrectSearchResponse = adminPage.waitForResponse(
+        '**/api/v1/search/query*'
+      );
+
+      await assetsSearchBox.fill('nonexistent-asset-name-xyz-123');
+
+      await incorrectSearchResponse;
+
+      await expect(assetsSearchBox).toBeVisible();
+
+      const incorrectAssetCard = adminPage.getByText(table.entity.name);
+
+      await expect(incorrectAssetCard).not.toBeVisible();
+
+      await expect(
+        adminPage.getByText('No records found')
+      ).toBeVisible();
+
+      const rightPanel = adminPage.getByTestId(
+        'entity-summary-panel-container'
+      );
+
+      await expect(rightPanel).not.toBeVisible();
+    } finally {
+      await table.delete(apiContext);
+    }
   });
 });

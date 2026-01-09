@@ -7,7 +7,8 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Table",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface", "org.openmetadata.schema.ColumnsEntityInterface"
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.ColumnsEntityInterface"
   ],
   "definitions": {
     "profileSampleType": {
@@ -292,7 +293,9 @@
     "column": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.Column",
-      "javaInterfaces": ["org.openmetadata.schema.FieldInterface"],
+      "javaInterfaces": [
+        "org.openmetadata.schema.FieldInterface"
+      ],
       "description": "This schema defines the type for a column in a table.",
       "properties": {
         "name": {
@@ -372,6 +375,10 @@
             "$ref": "../../tests/customMetric.json"
           },
           "default": null
+        },
+        "extension": {
+          "description": "Entity extension data with custom attributes added to the entity.",
+          "$ref": "../../type/basic.json#/definitions/entityExtension"
         }
       },
       "required": [
@@ -1034,7 +1041,24 @@
     "fileFormat": {
       "description": "File format in case of file/datalake tables.",
       "type": "string",
-      "enum": ["csv", "csv.gz", "tsv", "avro", "parquet", "pq", "pqt", "parq", "parquet.snappy", "json", "json.gz", "json.zip", "jsonl", "jsonl.gz", "jsonl.zip"]
+      "enum": [
+        "csv",
+        "csv.gz",
+        "tsv",
+        "avro",
+        "parquet",
+        "pq",
+        "pqt",
+        "parq",
+        "parquet.snappy",
+        "json",
+        "json.gz",
+        "json.zip",
+        "jsonl",
+        "jsonl.gz",
+        "jsonl.zip",
+        "MF4"
+      ]
     }
   },
   "properties": {
@@ -1199,7 +1223,7 @@
       "type": "boolean",
       "default": false
     },
-    "retentionPeriod" : {
+    "retentionPeriod": {
       "description": "Retention period of the data in the table. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database schema, if it exists.",
       "$ref": "../../type/basic.json#/definitions/duration"
     },
@@ -1221,7 +1245,11 @@
         "compressionType": {
           "description": "Type of compression: AUTOMATIC (Snowflake/BigQuery), MANUAL (Redshift), POLICY_BASED (TimescaleDB)",
           "type": "string",
-          "enum": ["AUTOMATIC", "MANUAL", "POLICY_BASED"],
+          "enum": [
+            "AUTOMATIC",
+            "MANUAL",
+            "POLICY_BASED"
+          ],
           "default": null
         },
         "segmentColumns": {
@@ -1259,19 +1287,19 @@
       "description": "Source URL of table.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domains" : {
+    "domains": {
       "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "fileFormat": {
       "description": "File format in case of file/datalake tables.",
-      "$ref" : "#/definitions/fileFormat"
+      "$ref": "#/definitions/fileFormat"
     },
-    "votes" : {
+    "votes": {
       "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },

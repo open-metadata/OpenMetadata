@@ -367,6 +367,16 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.PERMISSION_DEBUGGER}`,
             icon: AccessControlIcon,
           },
+          {
+            label: t('label.audit-log-plural'),
+            description: t('message.page-sub-header-for-audit-logs'),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.AUDIT_LOG,
+              permissions
+            ),
+            key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.AUDIT_LOGS}`,
+            icon: ManagementIcon,
+          },
         ],
       },
       {
@@ -379,7 +389,9 @@ class GlobalSettingsClassBase {
         items: [
           {
             label: t('label.theme'),
-            description: t('message.appearance-configuration-message'),
+            description: t('message.appearance-configuration-message', {
+              brandName: brandClassBase.getPageTitle(),
+            }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APPEARANCE}`,
             icon: AppearanceIcon,
@@ -625,7 +637,9 @@ class GlobalSettingsClassBase {
           },
           {
             label: t('label.open-metadata-url'),
-            description: t('message.om-url-configuration-message'),
+            description: t('message.om-url-configuration-message', {
+              brandName: brandClassBase.getPageTitle(),
+            }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.OM_URL_CONFIG}`,
             icon: LinkIcon,

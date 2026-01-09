@@ -66,3 +66,29 @@ export const mockAdvancedFieldDefaultOptions = {
     },
   },
 };
+
+export const mockTierTags = {
+  data: [
+    {
+      id: '1',
+      name: 'Tier1',
+      fullyQualifiedName: 'Tier.Tier1',
+      description: 'Tier 1',
+      displayName: 'Tier1',
+    },
+    {
+      id: '2',
+      name: 'Tier2',
+      fullyQualifiedName: 'Tier.Tier2',
+      description: 'Tier 2',
+      displayName: 'Tier2',
+    },
+    {
+      id: '3',
+      name: 'Tier3',
+      fullyQualifiedName: 'Tier.Tier3',
+      description: 'Tier 3',
+      displayName: 'Tier3',
+    },
+  ],
+};

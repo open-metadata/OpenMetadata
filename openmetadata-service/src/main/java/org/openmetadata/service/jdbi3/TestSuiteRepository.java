@@ -15,9 +15,14 @@ import static org.openmetadata.service.search.SearchUtils.getAggregationBuckets;
 import static org.openmetadata.service.search.SearchUtils.getAggregationKeyValue;
 import static org.openmetadata.service.search.SearchUtils.getAggregationObject;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.escapeDoubleQuotes;
 
+import jakarta.json.Json;
 import jakarta.json.JsonArray;
+import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObject;
+import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonReader;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -304,6 +309,87 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       throws IOException {
     SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggQuery);
     return searchRepository.genericAggregation(q, index, searchAggregation);
+  }
+
+  public DataQualityReport getDataQualityReport(
+      String q, String aggQuery, String index, SubjectContext subjectContext) throws IOException {
+    SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggQuery);
+    return searchRepository.genericAggregation(q, index, searchAggregation, subjectContext);
+  }
+
+  public DataQualityReport getDataQualityReport(
+      String q, String aggQuery, String index, String domain, SubjectContext subjectContext)
+      throws IOException {
+    String queryWithDomain = addDomainFilter(q, domain, index);
+    SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggQuery);
+    return searchRepository.genericAggregation(
+        queryWithDomain, index, searchAggregation, subjectContext);
+  }
+
+  private String addDomainFilter(String query, String domain, String index) {
+    if (nullOrEmpty(domain)) {
+      return query;
+    }
+
+    String domainField =
+        Entity.TEST_CASE_RESOLUTION_STATUS.equals(index)
+            ? "testCase.domains.fullyQualifiedName"
+            : "domains.fullyQualifiedName";
+
+    String domainFilterStr =
+        String.format("{\"term\": {\"%s\": \"%s\"}}", domainField, escapeDoubleQuotes(domain));
+
+    if (nullOrEmpty(query)) {
+      return String.format("{\"query\": {\"bool\": {\"filter\": [%s]}}}", domainFilterStr);
+    }
+
+    try (JsonReader queryReader = Json.createReader(new java.io.StringReader(query));
+        JsonReader domainReader = Json.createReader(new java.io.StringReader(domainFilterStr))) {
+
+      JsonObject queryJson = queryReader.readObject();
+      JsonObject queryObj = queryJson.getJsonObject("query");
+
+      if (queryObj == null) {
+        return query;
+      }
+
+      JsonObject domainFilterObj = domainReader.readObject();
+      JsonObject boolObj = queryObj.getJsonObject("bool");
+
+      JsonObjectBuilder newBoolBuilder = Json.createObjectBuilder();
+      JsonArrayBuilder filterBuilder = Json.createArrayBuilder();
+      filterBuilder.add(domainFilterObj);
+
+      if (boolObj != null) {
+        for (String key : boolObj.keySet()) {
+          if ("filter".equals(key)) {
+            JsonArray existingFilters = boolObj.getJsonArray("filter");
+            if (existingFilters != null) {
+              for (JsonValue value : existingFilters) {
+                filterBuilder.add(value);
+              }
+            }
+          } else {
+            newBoolBuilder.add(key, boolObj.get(key));
+          }
+        }
+      } else {
+        JsonArrayBuilder mustBuilder = Json.createArrayBuilder();
+        mustBuilder.add(queryObj);
+        newBoolBuilder.add("must", mustBuilder);
+      }
+
+      newBoolBuilder.add("filter", filterBuilder);
+
+      JsonObjectBuilder resultBuilder = Json.createObjectBuilder();
+      resultBuilder.add("query", Json.createObjectBuilder().add("bool", newBoolBuilder));
+
+      return resultBuilder.build().toString();
+    } catch (Exception e) {
+      LOG.error("Error adding domain filter to query: {}", e.getMessage());
+    }
+
+    return query;
   }
 
   public TestSummary getTestSummary(List<ResultSummary> testCaseResults) {

@@ -45,8 +45,8 @@ export const getConnectionSchemas = ({
     : (data.connection?.config as ConfigData);
 
   let connSch = {
-    schema: {} as Record<string, any>,
-    uiSchema: {} as Record<string, any>,
+    schema: {} as Record<string, unknown>,
+    uiSchema: {} as Record<string, unknown>,
   };
 
   const validConfig = cloneDeep(config || {});
@@ -152,7 +152,7 @@ export const getConnectionSchemas = ({
  * @returns The filtered schema
  */
 export const getFilteredSchema = (
-  schema?: Record<string, any>,
+  schema?: Record<string, unknown>,
   removeDefaultFilters = true
 ) =>
   Object.fromEntries(
@@ -171,7 +171,7 @@ export const getFilteredSchema = (
  * @returns The UI Schema with all the default filter fields hidden
  */
 export const getUISchemaWithNestedDefaultFilterFieldsHidden = (
-  uiSchema: Record<string, any>
+  uiSchema: Record<string, unknown>
 ) => {
   // object with all the default filter fields hidden
   const uiSchemaWithAllDefaultFilterFieldsHidden = reduce(
@@ -184,7 +184,7 @@ export const getUISchemaWithNestedDefaultFilterFieldsHidden = (
 
       return acc;
     },
-    {} as Record<string, any>
+    {} as Record<string, unknown>
   );
 
   // object with all the default filter fields hidden nested under all the ServiceNestedConnectionFields
@@ -198,7 +198,7 @@ export const getUISchemaWithNestedDefaultFilterFieldsHidden = (
 
       return acc;
     },
-    {} as Record<string, any>
+    {} as Record<string, unknown>
   );
 
   return {

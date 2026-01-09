@@ -15,7 +15,7 @@ import { Form, Select } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEqual, isUndefined, omit, pick, startCase } from 'lodash';
+import { isEqual, isString, isUndefined, omit, parseInt, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -27,6 +27,7 @@ import {
   PAGE_SIZE_BASE,
 } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
+import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -52,6 +53,7 @@ import Assignees from '../../pages/TasksPage/shared/Assignees';
 import { Option } from '../../pages/TasksPage/TasksPage.interface';
 import {
   getListTestCaseIncidentStatusFromSearch,
+  postTestCaseIncidentStatus,
   TestCaseIncidentStatusParams,
   updateTestCaseIncidentById,
 } from '../../rest/incidentManagerAPI';
@@ -68,6 +70,7 @@ import {
   getStartOfDayInMillis,
 } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import {
   getEntityDetailsPath,
   getTestCaseDetailPagePath,
@@ -102,7 +105,10 @@ const IncidentManager = ({
   const defaultRange = useMemo(
     () => ({
       key: 'last30days',
-      title: PROFILER_FILTER_RANGE.last30days.title,
+      title: translateWithNestedKeys(
+        PROFILER_FILTER_RANGE.last30days.title,
+        PROFILER_FILTER_RANGE.last30days.titleData
+      ),
     }),
     []
   );
@@ -127,10 +133,10 @@ const IncidentManager = ({
       ...urlParams,
     };
 
-    if (params.startTs && typeof params.startTs === 'string') {
+    if (params.startTs && isString(params.startTs)) {
       params.startTs = parseInt(params.startTs, 10);
     }
-    if (params.endTs && typeof params.endTs === 'string') {
+    if (params.endTs && isString(params.endTs)) {
       params.endTs = parseInt(params.endTs, 10);
     }
 
@@ -204,7 +210,7 @@ const IncidentManager = ({
           include: tableDetails?.deleted ? Include.Deleted : Include.NonDeleted,
           originEntityFQN: tableDetails?.fullyQualifiedName,
           domain:
-            activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined,
+            activeDomain === DEFAULT_DOMAIN_VALUE ? undefined : activeDomain,
           ...params,
         });
         const assigneeOptions = data.reduce((acc, curr) => {
@@ -327,6 +333,50 @@ const IncidentManager = ({
     }
   };
 
+  const handleAssigneeUpdate = useCallback(
+    async (record: TestCaseResolutionStatus, assignee?: EntityReference[]) => {
+      const assigneeData = assignee?.[0];
+
+      const updatedData: TestCaseResolutionStatus = {
+        ...record,
+        testCaseResolutionStatusDetails: {
+          ...record?.testCaseResolutionStatusDetails,
+          assignee: assigneeData,
+        },
+        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+      };
+
+      try {
+        await postTestCaseIncidentStatus({
+          severity: record.severity,
+          testCaseReference: record.testCaseReference?.fullyQualifiedName ?? '',
+          testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+          testCaseResolutionStatusDetails: {
+            assignee: assigneeData,
+          },
+        });
+
+        setTestCaseListData((prev) => {
+          const testCaseList = prev.data.map((item) => {
+            if (item.stateId === updatedData.stateId) {
+              return updatedData;
+            }
+
+            return item;
+          });
+
+          return {
+            ...prev,
+            data: testCaseList,
+          };
+        });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [setTestCaseListData]
+  );
+
   const fetchUserFilterOptions = async (query: string) => {
     if (!query) {
       return;
@@ -386,22 +436,25 @@ const IncidentManager = ({
     }
   };
 
-  const handleStatusSubmit = (value: TestCaseResolutionStatus) => {
-    setTestCaseListData((prev) => {
-      const testCaseList = prev.data.map((item) => {
-        if (item.stateId === value.stateId) {
-          return value;
-        }
+  const handleStatusSubmit = useCallback(
+    (value: TestCaseResolutionStatus) => {
+      setTestCaseListData((prev) => {
+        const testCaseList = prev.data.map((item) => {
+          if (item.stateId === value.stateId) {
+            return value;
+          }
 
-        return item;
+          return item;
+        });
+
+        return {
+          ...prev,
+          data: testCaseList,
+        };
       });
-
-      return {
-        ...prev,
-        data: testCaseList,
-      };
-    });
-  };
+    },
+    [setTestCaseListData]
+  );
 
   const searchTestCases = async (searchValue = WILD_CARD_CHAR) => {
     try {
@@ -444,6 +497,45 @@ const IncidentManager = ({
       fetchTestCasePermissions();
     }
   }, [testCaseListData.data]);
+
+  const testCaseResolutionStatusDetailsRender = (
+    value?: Assigned,
+    record?: TestCaseResolutionStatus
+  ) => {
+    if (isPermissionLoading) {
+      return <Skeleton height={24} variant="rectangular" width={100} />;
+    }
+
+    const hasPermission = testCasePermissions.find(
+      (item) =>
+        item.fullyQualifiedName ===
+        record?.testCaseReference?.fullyQualifiedName
+    );
+
+    return (
+      <Box data-testid="assignee">
+        <OwnerLabel
+          isCompactView
+          className="m-0"
+          hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
+          multiple={{
+            user: false,
+            team: false,
+          }}
+          owners={value?.assignee ? [value.assignee] : []}
+          placeHolder={t('label.no-entity', {
+            entity: t('label.assignee'),
+          })}
+          tooltipText={t('label.edit-entity', {
+            entity: t('label.assignee'),
+          })}
+          onUpdate={(assignees) =>
+            record && handleAssigneeUpdate(record, assignees)
+          }
+        />
+      </Box>
+    );
+  };
 
   const columns: ColumnsType<TestCaseResolutionStatus> = useMemo(
     () => [
@@ -506,7 +598,7 @@ const IncidentManager = ({
         title: t('label.last-updated'),
         dataIndex: 'timestamp',
         key: 'timestamp',
-        width: 200,
+        width: 150,
         render: (value: number) => {
           return <DateTimeDisplay timestamp={value} />;
         },
@@ -515,7 +607,7 @@ const IncidentManager = ({
         title: t('label.status'),
         dataIndex: 'testCaseResolutionStatusType',
         key: 'testCaseResolutionStatusType',
-        width: 120,
+        width: 100,
         render: (_, record: TestCaseResolutionStatus) => {
           if (isPermissionLoading) {
             return <Skeleton height={24} variant="rectangular" width={100} />;
@@ -540,7 +632,7 @@ const IncidentManager = ({
         title: t('label.severity'),
         dataIndex: 'severity',
         key: 'severity',
-        width: 120,
+        width: 100,
         render: (value: Severities, record: TestCaseResolutionStatus) => {
           if (isPermissionLoading) {
             return <Skeleton height={24} variant="rectangular" width={100} />;
@@ -566,13 +658,8 @@ const IncidentManager = ({
         title: t('label.assignee'),
         dataIndex: 'testCaseResolutionStatusDetails',
         key: 'testCaseResolutionStatusDetails',
-        width: 150,
-        render: (value?: Assigned) => (
-          <OwnerLabel
-            owners={value?.assignee ? [value.assignee] : []}
-            placeHolder={t('label.no-entity', { entity: t('label.assignee') })}
-          />
-        ),
+        width: 200,
+        render: testCaseResolutionStatusDetailsRender,
       },
     ],
     [
@@ -580,6 +667,8 @@ const IncidentManager = ({
       testCaseListData.data,
       testCasePermissions,
       isPermissionLoading,
+      handleAssigneeUpdate,
+      handleStatusSubmit,
     ]
   );
 
@@ -656,7 +745,9 @@ const IncidentManager = ({
                   updateFilters({ testCaseResolutionStatusType: value })
                 }>
                 {Object.values(TestCaseResolutionStatusTypes).map((value) => (
-                  <Select.Option key={value}>{startCase(value)}</Select.Option>
+                  <Select.Option key={value}>
+                    {TEST_CASE_RESOLUTION_STATUS_LABELS[value]}
+                  </Select.Option>
                 ))}
               </Select>
             </Form.Item>

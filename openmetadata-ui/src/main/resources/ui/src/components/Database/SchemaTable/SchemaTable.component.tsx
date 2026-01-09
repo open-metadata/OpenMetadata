@@ -14,6 +14,7 @@
 import { Button, Col, Form, Row, Select, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -83,6 +84,7 @@ import {
   pruneEmptyChildren,
   updateColumnInNestedStructure,
 } from '../../../utils/TableUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -121,7 +123,10 @@ const SchemaTable = () => {
   // Pagination state for columns
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true); // Start with loading state
-
+  const [hasInitialLoad, setHasInitialLoad] = useState(false);
+  const [prevTableColumns, setPrevTableColumns] = useState<
+    Column[] | undefined
+  >();
   const { fqn: decodedEntityFqn } = useFqn();
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
@@ -130,6 +135,7 @@ const SchemaTable = () => {
     permissions: tablePermissions,
     data: table,
     onThreadLinkSelect,
+    openColumnDetailPanel,
   } = useGenericContext<TableType>();
 
   const { testCaseCounts, joins, tableConstraints, deleted } = useMemo(
@@ -167,20 +173,6 @@ const SchemaTable = () => {
       editGlossaryTermsPermission:
         (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
         !deleted,
-      editAllPermission: tablePermissions.EditAll && !deleted,
-      editLineagePermission:
-        (tablePermissions.EditAll || tablePermissions.EditLineage) && !deleted,
-      viewSampleDataPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewSampleData,
-      viewQueriesPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewQueries,
-      viewProfilerPermission:
-        tablePermissions.ViewAll ||
-        tablePermissions.ViewDataProfile ||
-        tablePermissions.ViewTests,
-      viewAllPermission: tablePermissions.ViewAll,
-      viewBasicPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewBasic,
       editDisplayNamePermission:
         (tablePermissions.EditDisplayName || tablePermissions.EditAll) &&
         !deleted,
@@ -258,6 +250,33 @@ const SchemaTable = () => {
     }
   }, [tableFqn, searchText, fetchPaginatedColumns, pageSize]);
 
+  useEffect(() => {
+    if (!isEmpty(tableColumns)) {
+      setHasInitialLoad(true);
+    }
+  }, [tableColumns]);
+
+  useEffect(() => {
+    if (!hasInitialLoad || !table?.columns) {
+      return;
+    }
+
+    const columnsChanged = !isEqual(prevTableColumns, table.columns);
+
+    if (!columnsChanged) {
+      return;
+    }
+
+    fetchPaginatedColumns(currentPage, searchText || undefined);
+    setPrevTableColumns(table.columns);
+  }, [
+    table?.columns,
+    hasInitialLoad,
+    currentPage,
+    searchText,
+    fetchPaginatedColumns,
+  ]);
+
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {
       setTableColumns((prev) => {
@@ -332,14 +351,19 @@ const SchemaTable = () => {
 
   const handleEditColumnChange = async (columnDescription: string) => {
     if (!isUndefined(editColumn) && editColumn.fullyQualifiedName) {
-      await updateColumnDetails(
-        editColumn.fullyQualifiedName,
-        {
-          description: columnDescription,
-        },
-        'description'
-      );
-      setEditColumn(undefined);
+      try {
+        await updateColumnDetails(
+          editColumn.fullyQualifiedName,
+          {
+            description: columnDescription,
+          },
+          'description'
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setEditColumn(undefined);
+      }
     } else {
       setEditColumn(undefined);
     }
@@ -350,13 +374,17 @@ const SchemaTable = () => {
     editColumnTag: Column
   ) => {
     if (selectedTags && editColumnTag.fullyQualifiedName) {
-      await updateColumnDetails(
-        editColumnTag.fullyQualifiedName,
-        {
-          tags: selectedTags,
-        },
-        'tags'
-      );
+      try {
+        await updateColumnDetails(
+          editColumnTag.fullyQualifiedName,
+          {
+            tags: selectedTags,
+          },
+          'tags'
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
     }
   };
 
@@ -440,20 +468,24 @@ const SchemaTable = () => {
       !isUndefined(editColumnDisplayName) &&
       editColumnDisplayName.fullyQualifiedName
     ) {
-      await updateColumnDetails(
-        editColumnDisplayName.fullyQualifiedName,
-        {
-          displayName: displayName,
-          ...(isEmpty(constraint)
-            ? {
-                removeConstraint: true,
-              }
-            : { constraint }),
-        },
-        'displayName'
-      );
-
-      setEditColumnDisplayName(undefined);
+      try {
+        await updateColumnDetails(
+          editColumnDisplayName.fullyQualifiedName,
+          {
+            displayName: displayName,
+            ...(isEmpty(constraint)
+              ? {
+                  removeConstraint: true,
+                }
+              : { constraint }),
+          },
+          'displayName'
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setEditColumnDisplayName(undefined);
+      }
     } else {
       setEditColumnDisplayName(undefined);
     }
@@ -468,6 +500,18 @@ const SchemaTable = () => {
     >;
   }, [tableColumns]);
 
+  const handleColumnClick = useCallback(
+    (column: Column, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const isExpandIcon = target.closest('.table-expand-icon') !== null;
+
+      if (!isExpandIcon) {
+        openColumnDetailPanel(column);
+      }
+    },
+    [openColumnDetailPanel]
+  );
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -477,6 +521,10 @@ const SchemaTable = () => {
         width: 200,
         fixed: 'left',
         sorter: getColumnSorter<Column, 'name'>('name'),
+        onCell: (record: Column) => ({
+          onClick: (event) => handleColumnClick(record, event),
+          'data-testid': 'column-name-cell',
+        }),
         render: (name: Column['name'], record: Column) => {
           const { displayName } = record;
 
@@ -489,9 +537,12 @@ const SchemaTable = () => {
                   tableConstraints,
                 })}
                 <Typography.Text
-                  className={classNames('m-b-0 d-block break-word', {
-                    'text-grey-600': !isEmpty(displayName),
-                  })}
+                  className={classNames(
+                    'm-b-0 d-block break-word cursor-pointer',
+                    {
+                      'text-grey-600': !isEmpty(displayName),
+                    }
+                  )}
                   data-testid="column-name">
                   {stringToHTML(highlightSearchText(name, searchText))}
                 </Typography.Text>
@@ -518,7 +569,10 @@ const SchemaTable = () => {
                       border: 'none',
                       background: 'transparent',
                     }}
-                    onClick={() => handleEditDisplayNameClick(record)}>
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditDisplayNameClick(record);
+                    }}>
                     <IconEdit
                       style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
                     />
@@ -625,6 +679,15 @@ const SchemaTable = () => {
     ]
   );
 
+  const constraintOptionsTranslated = useMemo(
+    () =>
+      COLUMN_CONSTRAINT_TYPE_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   const additionalFieldsInEntityNameModal = (
     <Form.Item
       label={t('label.entity-type-plural', {
@@ -634,7 +697,7 @@ const SchemaTable = () => {
       <Select
         allowClear
         data-testid="constraint-type-select"
-        options={COLUMN_CONSTRAINT_TYPE_OPTIONS}
+        options={constraintOptionsTranslated}
         placeholder={t('label.select-entity', {
           entity: t('label.entity-type-plural', {
             entity: t('label.constraint'),

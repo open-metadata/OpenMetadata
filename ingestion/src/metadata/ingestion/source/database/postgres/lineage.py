@@ -15,6 +15,8 @@ import traceback
 from datetime import datetime
 from typing import Iterable
 
+from sqlalchemy import text
+
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresScheme,
@@ -78,8 +80,12 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
         """
         try:
             with get_connection(self.service_connection).connect() as conn:
-                rows = conn.execute(self.get_sql_statement())
+                sql_statement = self.get_sql_statement()
+                logger.debug(f"Executing lineage query: {sql_statement}")
+                rows = conn.execute(text(sql_statement))
+                row_count = 0
                 for row in rows:
+                    row_count += 1
                     row = dict(row)
                     try:
                         yield TableQuery(
@@ -96,6 +102,7 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
                     except Exception as err:
                         logger.debug(traceback.format_exc())
                         logger.error(str(err))
+                logger.info(f"Processed {row_count} query log entries for lineage")
         except Exception as err:
             logger.error(f"Source usage processing error - {err}")
             logger.debug(traceback.format_exc())

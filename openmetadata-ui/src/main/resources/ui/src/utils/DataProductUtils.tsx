@@ -26,6 +26,7 @@ import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichT
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { DomainLabelV2 } from '../components/DataAssets/DomainLabelV2/DomainLabelV2';
 import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../components/Explore/ExplorePage.interface';
 import AssetsTabs, {
@@ -33,6 +34,7 @@ import AssetsTabs, {
 } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { EntityReference } from '../generated/entity/data/table';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
@@ -89,6 +91,10 @@ export const getDataProductIconByUrl = (iconURL?: string) => {
 };
 
 export const getDataProductWidgetsFromKey = (widgetConfig: WidgetConfig) => {
+  if (widgetConfig.i === DetailPageWidgetKeys.DOMAIN) {
+    return <DomainLabelV2 multiple showDomainHeading hasPermission={false} />;
+  }
+
   return (
     <CommonWidgets
       entityType={EntityType.DATA_PRODUCT}
@@ -178,7 +184,7 @@ export const getDataProductDetailTabs = ({
                     <AssetsTabs
                       assetCount={assetCount}
                       entityFqn={dataProduct.fullyQualifiedName}
-                      isSummaryPanelOpen={false}
+                      isSummaryPanelOpen={Boolean(previewAsset)}
                       permissions={dataProductPermission}
                       ref={assetTabRef}
                       type={AssetsOfEntity.DATA_PRODUCT}
@@ -188,7 +194,7 @@ export const getDataProductDetailTabs = ({
                     />
                   ),
                   minWidth: 800,
-                  flex: 0.87,
+                  flex: 0.67,
                 }}
                 hideSecondPanel={!previewAsset}
                 pageTitle={t('label.data-product')}
@@ -198,10 +204,14 @@ export const getDataProductDetailTabs = ({
                     <EntitySummaryPanel
                       entityDetails={previewAsset}
                       handleClosePanel={() => setPreviewAsset(undefined)}
+                      key={
+                        previewAsset.details.id ??
+                        previewAsset.details.fullyQualifiedName
+                      }
                     />
                   ),
                   minWidth: 400,
-                  flex: 0.13,
+                  flex: 0.33,
                   className:
                     'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
                 }}

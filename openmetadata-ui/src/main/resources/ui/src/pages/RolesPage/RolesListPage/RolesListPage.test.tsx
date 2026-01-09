@@ -41,11 +41,6 @@ jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () =>
     .mockReturnValue(<div data-testid="delete-modal">DeletWdigetModal</div>)
 );
 
-jest.mock(
-  '../../../components/common/RichTextEditor/RichTextEditorPreviewNew',
-  () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
-);
-
 jest.mock('../../../components/common/NextPrevious/NextPrevious', () =>
   jest.fn().mockReturnValue(<div>NextPrevious</div>)
 );
@@ -92,6 +87,22 @@ jest.mock(
     return jest.fn().mockImplementation(() => <p>TitleBreadcrumb</p>);
   }
 );
+
+jest.mock('../../../utils/TableColumn.util', () => ({
+  columnFilterIcon: jest.fn(),
+  ownerTableObject: jest.fn(() => []),
+  domainTableObject: jest.fn(() => []),
+  dataProductTableObject: jest.fn(() => []),
+  tagTableObject: jest.fn(() => []),
+  descriptionTableObject: jest.fn(() => [
+    {
+      title: 'label.description',
+      dataIndex: 'description',
+      key: 'description',
+      render: (text: string) => <div data-testid="viewer-container">{text}</div>,
+    },
+  ]),
+}));
 
 describe('Test Roles List Page', () => {
   it('Should render the list component', async () => {
@@ -146,7 +157,7 @@ describe('Test Roles List Page', () => {
     const container = await screen.findByTestId('roles-list-table');
 
     const nameRows = await screen.findAllByTestId('role-name');
-    const descriptionRows = await screen.findAllByTestId('previewer');
+    const descriptionRows = await screen.findAllByTestId('viewer-container');
     const policiesRows = await screen.findAllByTestId('policy-link');
     const actionsRows = await screen.findAllByTestId('delete-action-data');
 
