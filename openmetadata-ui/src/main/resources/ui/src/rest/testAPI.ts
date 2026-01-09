@@ -379,3 +379,15 @@ export const listTestCases = async (params: ListTestCasesParams) => {
 
   return response.data;
 };
+
+export const exportTestCasesInCSV = async (
+  name: string,
+  params?: { recursive?: boolean }
+) => {
+  const response = await APIClient.get(
+    `/dataQuality/testCases/name/${getEncodedFqn(name)}/exportAsync`,
+    { params }
+  );
+
+  return response.data;
+};

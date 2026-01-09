@@ -19,6 +19,7 @@ import {
   importGlossaryInCSVFormat,
   importGlossaryTermInCSVFormat,
   importServiceInCSVFormat,
+  importTestCaseInCSVFormat,
 } from '../../rest/importExportAPI';
 import { getEntityBreadcrumbs, getEntityName } from '../EntityUtils';
 import i18n from '../i18next/LocalUtil';
@@ -102,6 +103,9 @@ export const getImportValidateAPIEntityType = (entityType: EntityType) => {
 
     case EntityType.GLOSSARY:
       return importGlossaryInCSVFormat;
+
+    case EntityType.TEST_CASE:
+      return importTestCaseInCSVFormat;
 
     default:
       return importEntityInCSVFormat;

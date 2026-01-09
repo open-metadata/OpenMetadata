@@ -204,18 +204,14 @@ export const getCSVStringFromColumnsAndDataSource = (
         if (
           csvUtilsClassBase
             .columnsWithMultipleValuesEscapeNeeded()
-            .includes(colName)
-        ) {
-          return isEmpty(value)
-            ? ''
-            : `"${value.replaceAll(new RegExp('"', 'g'), '""')}"`;
-        } else if (
+            .includes(colName) ||
           value.includes(',') ||
           value.includes('\n') ||
+          value.includes('"') ||
           colName.includes('tags') ||
           colName.includes('domains')
         ) {
-          return isEmpty(value) ? '' : `"${value}"`;
+          return isEmpty(value) ? '' : `"${value.replaceAll('"', '""')}"`;
         }
 
         return get(row, col.key ?? '', '');

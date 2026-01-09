@@ -12,6 +12,7 @@
  */
 import { Box, Grid, Stack, Tab, Tabs, useTheme } from '@mui/material';
 import { Form, Select, Space } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
@@ -44,12 +45,15 @@ import {
 } from '../../../../../utils/EntityUtils';
 import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
+import { ExtraTestCaseDropdownOptions } from '../../../../../utils/TestCaseUtils';
+import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import TestSuitePipelineTab from '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
+import { useEntityExportModalProvider } from '../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import DataQualityTab from '../../DataQualityTab/DataQualityTab';
 import { ProfilerTabPath } from '../../ProfilerDashboard/profilerDashboard.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
@@ -102,6 +106,8 @@ export const QualityTab = () => {
       qualityTab: string;
     };
   }, [location.search]);
+
+  const { showModal } = useEntityExportModalProvider();
 
   const { qualityTab = EntityTabs.TEST_CASES } = searchData;
 
@@ -230,6 +236,36 @@ export const QualityTab = () => {
       });
     }
   };
+
+  const extraDropdownContent: ItemType[] = useMemo(
+    () =>
+      ExtraTestCaseDropdownOptions(
+        table?.fullyQualifiedName ?? '',
+        {
+          ViewAll: permissions?.ViewAll ?? false,
+          EditAll: permissions?.EditAll ?? false,
+        },
+        table?.deleted ?? false,
+        navigate,
+        showModal
+      ) as ItemType[],
+    [permissions, table, navigate, showModal]
+  );
+
+  const qualityTabHeader = useMemo(() => {
+    return (
+      <ManageButton
+        canDelete={false}
+        deleted={table?.deleted ?? false}
+        displayName={t('label.manage')}
+        entityId={table?.id}
+        entityName={getEntityName(table)}
+        entityType={EntityType.TABLE}
+        extraDropdownContent={extraDropdownContent}
+        isRecursiveDelete={false}
+      />
+    );
+  }, [table, extraDropdownContent]);
 
   const handleTestCaseTypeChange = (value: TestCaseType) => {
     if (value !== selectedTestType) {
@@ -416,6 +452,7 @@ export const QualityTab = () => {
                     onChange={handleTestCaseStatusChange}
                   />
                 </Form.Item>
+                {qualityTabHeader}
               </Space>
             </Form>
           )}

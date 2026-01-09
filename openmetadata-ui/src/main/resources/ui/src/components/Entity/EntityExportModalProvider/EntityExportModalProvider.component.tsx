@@ -168,7 +168,7 @@ export const EntityExportModalProvider = ({
   };
 
   const handleCSVExportSuccess = useCallback(
-    (data: string, fileName?: string) => {
+    async (data: string, fileName?: string) => {
       if (isBulkEdit) {
         setCSVExportData(data);
       } else {

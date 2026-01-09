@@ -25,6 +25,7 @@ import { ImportStatus } from '../../../components/common/EntityImport/ImportStat
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { DataAssetsHeaderProps } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { ProfilerTabPath } from '../../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import Stepper from '../../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import UploadFile from '../../../components/UploadFile/UploadFile';
@@ -32,9 +33,10 @@ import {
   ENTITY_IMPORT_STEPS,
   VALIDATION_STEP,
 } from '../../../constants/BulkImport.constant';
+import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { SOCKET_EVENTS } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
@@ -52,6 +54,10 @@ import {
   validateCsvString,
 } from '../../../utils/EntityImport/EntityImportUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import {
+  getDataQualityPagePath,
+  getEntityDetailsPath,
+} from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import './bulk-entity-import-page.less';
@@ -136,9 +142,17 @@ const BulkEntityImportPage = () => {
   >;
 
   const fetchEntityData = useCallback(async () => {
+    if (fqn === WILD_CARD_CHAR) {
+      setEntity(undefined);
+
+      return;
+    }
+
     try {
+      const fetchEntityType =
+        entityType === EntityType.TEST_CASE ? EntityType.TABLE : entityType;
       const response = await entityUtilClassBase.getEntityByFqn(
-        entityType,
+        fetchEntityType,
         fqn
       );
       setEntity(response as DataAssetsHeaderProps['dataAsset']);
@@ -152,11 +166,43 @@ const BulkEntityImportPage = () => {
     [location]
   );
 
-  const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
-    () =>
-      entity ? getBulkEntityBreadcrumbList(entityType, entity, isBulkEdit) : [],
-    [entityType, entity, isBulkEdit]
-  );
+  const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(() => {
+    if (fqn === WILD_CARD_CHAR) {
+      return [
+        {
+          name: t('label.data-quality'),
+          url: getDataQualityPagePath(),
+        },
+      ];
+    }
+
+    if (!entity) {
+      return [];
+    }
+
+    const baseBreadcrumb = getBulkEntityBreadcrumbList(
+      entityType === EntityType.TEST_CASE ? EntityType.TABLE : entityType,
+      entity,
+      isBulkEdit
+    );
+
+    if (entityType === EntityType.TEST_CASE) {
+      return [
+        ...baseBreadcrumb,
+        {
+          name: t('label.data-quality'),
+          url: getEntityDetailsPath(
+            EntityType.TABLE,
+            entity.fullyQualifiedName ?? '',
+            EntityTabs.PROFILER,
+            ProfilerTabPath.DATA_QUALITY
+          ),
+        },
+      ];
+    }
+
+    return baseBreadcrumb;
+  }, [entityType, entity, isBulkEdit, fqn, t]);
 
   const importedEntityType = useMemo(
     () => getImportedEntityType(entityType),
