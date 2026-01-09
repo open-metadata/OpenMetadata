@@ -136,13 +136,13 @@ class AuditLogRepositoryTest {
   void testAuditLogRecordBuilder() {
     AuditLogRecord record =
         AuditLogRecord.builder()
-            .changeEventId(UUID.randomUUID().toString())
+            .changeEventId(UUID.randomUUID())
             .eventTs(System.currentTimeMillis())
             .eventType("entityCreated")
             .userName("admin")
             .actorType("USER")
             .entityType(Entity.TABLE)
-            .entityId(UUID.randomUUID().toString())
+            .entityId(UUID.randomUUID())
             .entityFQN("mysql.db.schema.table")
             .createdAt(System.currentTimeMillis())
             .build();

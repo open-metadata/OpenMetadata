@@ -437,7 +437,11 @@ class TableauSource(DashboardServiceSource):
                     datamodel_entity = self.metadata.get_by_name(
                         entity=DashboardDataModel, fqn=datamodel_fqn
                     )
-
+                    if not datamodel_entity:
+                        logger.debug(
+                            f"Datamodel entity not found for lineage: {str(datamodel)}"
+                        )
+                        continue
                     # TableauPublishedDatasource will be skipped here and their lineage will be processed later
                     if (
                         datamodel_entity.dataModelType
