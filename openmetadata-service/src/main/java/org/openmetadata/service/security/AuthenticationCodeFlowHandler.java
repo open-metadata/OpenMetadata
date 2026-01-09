@@ -962,16 +962,6 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         throw new IllegalArgumentException(
             "Invalid JWT Principal Claims Mapping. Both username and email should be present");
       }
-
-      // Validate that only username and email keys are present (no other keys allowed)
-      for (String key : mapping.keySet()) {
-        if (!USERNAME_CLAIM_KEY.equals(key) && !EMAIL_CLAIM_KEY.equals(key)) {
-          throw new IllegalArgumentException(
-              String.format(
-                  "Invalid JWT Principal Claims Mapping. Only username and email keys are allowed, but found: %s",
-                  key));
-        }
-      }
     }
     // If emtpy, jwtPrincipalClaims will be used so no need to validate
   }
