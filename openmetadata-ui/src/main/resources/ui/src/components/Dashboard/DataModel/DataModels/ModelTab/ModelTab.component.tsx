@@ -305,6 +305,7 @@ const ModelTab = () => {
         onCell: (record: Column) => ({
           onClick: (event: React.MouseEvent) =>
             handleColumnClick(record, event),
+          'data-testid': 'column-name-cell',
         }),
         render: (_, record: Column) => {
           const { displayName } = record;

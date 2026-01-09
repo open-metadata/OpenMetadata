@@ -310,6 +310,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         className: 'cursor-pointer',
         onCell: (record: Field) => ({
           onClick: (event) => handleColumnClick(record, event),
+          'data-testid': 'column-name-cell',
         }),
       },
       {

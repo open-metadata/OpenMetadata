@@ -918,12 +918,20 @@ export const openColumnDetailPanel = async ({
   columnId: string;
   columnNameTestId?: string;
 }) => {
-  const columnName = page
-    .locator(`[${rowSelector}="${columnId}"]`)
-    .getByTestId(columnNameTestId)
-    .first();
-  await columnName.scrollIntoViewIfNeeded();
-  await columnName.click();
+  const row = page.locator(`[${rowSelector}="${columnId}"]`).first();
+  await row.waitFor({ state: 'visible' });
+
+  const nameCell = row.getByTestId('column-name-cell');
+
+  await nameCell.waitFor({ state: 'visible' });
+
+  const columnNameElement = nameCell.getByTestId(columnNameTestId);
+
+  if ((await columnNameElement.count()) > 0) {
+    await columnNameElement.click({ force: false });
+  } else {
+    await nameCell.click({ force: false });
+  }
 
   await expect(page.locator('.column-detail-panel')).toBeVisible();
 
@@ -931,6 +939,7 @@ export const openColumnDetailPanel = async ({
 
   const panelContainer = page.locator('.column-detail-panel');
 
+  // Wait for the panel content to be loaded
   await expect(panelContainer.getByTestId('entity-link')).toBeVisible();
 
   return panelContainer;

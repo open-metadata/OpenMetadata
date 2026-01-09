@@ -200,6 +200,7 @@ export const PipelineTaskTab = () => {
         onCell: (record: Task) => ({
           onClick: (event) =>
             isEmpty(record.sourceUrl) && handleTaskClick(record, event),
+          'data-testid': 'column-name-cell',
         }),
         render: (_, record) =>
           isEmpty(record.sourceUrl) ? (

@@ -250,6 +250,7 @@ const SearchIndexFieldsTable = ({
         className: 'cursor-pointer',
         onCell: (record: SearchIndexField) => ({
           onClick: (event: React.MouseEvent) => handleFieldClick(record, event),
+          'data-testid': 'column-name-cell',
         }),
         render: (_, record: SearchIndexField) => (
           <div className="d-inline-flex w-max-90">

@@ -523,6 +523,7 @@ const SchemaTable = () => {
         sorter: getColumnSorter<Column, 'name'>('name'),
         onCell: (record: Column) => ({
           onClick: (event) => handleColumnClick(record, event),
+          'data-testid': 'column-name-cell',
         }),
         render: (name: Column['name'], record: Column) => {
           const { displayName } = record;

@@ -302,6 +302,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         sorter: getColumnSorter<Field, 'name'>('name'),
         onCell: (record: Field) => ({
           onClick: (event) => handleFieldClick(record, event),
+          'data-testid': 'column-name-cell',
         }),
         render: renderSchemaName,
       },

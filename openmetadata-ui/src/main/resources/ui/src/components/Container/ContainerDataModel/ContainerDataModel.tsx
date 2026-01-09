@@ -141,6 +141,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         className: 'cursor-pointer',
         onCell: (record: Column) => ({
           onClick: (event: React.MouseEvent) => handleColumnClick(record, event),
+          'data-testid': 'column-name-cell',
         }),
         render: (_, record: Column) => (
           <Tooltip destroyTooltipOnHide title={getEntityName(record)}>

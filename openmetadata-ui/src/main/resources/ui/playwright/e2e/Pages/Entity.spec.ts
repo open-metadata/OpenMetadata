@@ -449,9 +449,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             });
 
             // Add tag via panel
-            const editButton = panelContainer.getByTestId(
-              'edit-icon-tags'
-            );
+            const editButton = panelContainer.getByTestId('edit-icon-tags');
             await editButton.click();
 
             await page
@@ -614,16 +612,12 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             // Open column detail panel
             const columnNameTestId =
               entity.type === 'Pipeline' ? 'task-name' : 'column-name';
-            const columnName = page
-              .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-              .getByTestId(columnNameTestId)
-              .first();
-            await columnName.scrollIntoViewIfNeeded();
-            await columnName.click();
-
-            await expect(page.locator('.column-detail-panel')).toBeVisible();
-
-            const panelContainer = page.locator('.column-detail-panel');
+            const panelContainer = await openColumnDetailPanel({
+              page,
+              rowSelector,
+              columnId: entity.childrenSelectorId ?? '',
+              columnNameTestId,
+            });
 
             // Verify data type is displayed (if available)
             if (entity.type !== 'Pipeline') {
@@ -762,24 +756,17 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               entity.entityResponseData?.['fullyQualifiedName']
             }.${(entity as TableClass).columnsName[2]}`;
 
-            const nestedColumnName = page
-              .locator(`[data-row-key="${nestedParentFQN}"]`)
-              .getByTestId('column-name');
-
-            await nestedColumnName.click();
-
-            // Wait for panel to be visible
-            await expect(page.locator('.column-detail-panel')).toBeVisible({
-              timeout: 10000,
+            await openColumnDetailPanel({
+              page,
+              rowSelector: 'data-row-key',
+              columnId: nestedParentFQN,
+              columnNameTestId: 'column-name',
             });
 
             // Wait for any loaders to disappear
-            await page
-              .waitForSelector('[data-testid="loader"]', {
-                state: 'detached',
-                timeout: 5000,
-              })
-              .catch(() => {});
+            await page.waitForSelector('[data-testid="loader"]', {
+              state: 'detached',
+            });
           }
         );
 
@@ -1055,7 +1042,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             );
 
             if (!nestedParent) {
-              throw new Error(`Nested parent column not found: ${(entity as TableClass).columnsName[2]}`);
+              throw new Error(
+                `Nested parent column not found: ${
+                  (entity as TableClass).columnsName[2]
+                }`
+              );
             }
 
             const nestedParentFQN = nestedParent.fullyQualifiedName;
@@ -1065,7 +1056,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             );
 
             if (!arrayColumn) {
-              throw new Error(`Array column not found: ${(entity as TableClass).columnsName[4]}`);
+              throw new Error(
+                `Array column not found: ${
+                  (entity as TableClass).columnsName[4]
+                }`
+              );
             }
 
             const arrayColumnFQN = arrayColumn.fullyQualifiedName;
@@ -1083,15 +1078,16 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
             await arrayColumnRow.waitFor({ state: 'visible' });
 
-            const columnName = arrayColumnRow.getByTestId('column-name');
+            const arrayColumnId = await arrayColumnRow.getAttribute(
+              'data-row-key'
+            );
 
-            await columnName.waitFor({ state: 'visible' });
-            await columnName.scrollIntoViewIfNeeded();
-            await columnName.click();
-
-            await expect(page.locator('.column-detail-panel')).toBeVisible();
-
-            const panelContainer = page.locator('.column-detail-panel');
+            const panelContainer = await openColumnDetailPanel({
+              page,
+              rowSelector: 'data-row-key',
+              columnId: arrayColumnId ?? '',
+              columnNameTestId: 'column-name',
+            });
 
             const nestedColumnLinks = panelContainer.locator(
               '.nested-column-name'
@@ -1139,13 +1135,15 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               await page.waitForTimeout(300);
 
               // Open detail panel
-              const columnName = nestedColumnRow.getByTestId('column-name');
-
-              await columnName.click();
-
-              await expect(page.locator('.column-detail-panel')).toBeVisible();
-
-              const panelContainer = page.locator('.column-detail-panel');
+              const nestedColumnId = await nestedColumnRow.getAttribute(
+                'data-row-key'
+              );
+              const panelContainer = await openColumnDetailPanel({
+                page,
+                rowSelector: 'data-row-key',
+                columnId: nestedColumnId ?? nestedParentFQN,
+                columnNameTestId: 'column-name',
+              });
               const nestedColumnLinks = panelContainer.locator(
                 '.nested-column-name'
               );
@@ -1298,15 +1296,12 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             // Open column detail panel
             const columnNameTestId =
               entity.type === 'Pipeline' ? 'task-name' : 'column-name';
-            const columnName = page
-              .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-              .getByTestId(columnNameTestId)
-              .first();
-            await columnName.click();
-
-            await expect(page.locator('.column-detail-panel')).toBeVisible();
-
-            const panelContainer = page.locator('.column-detail-panel');
+            const panelContainer = await openColumnDetailPanel({
+              page,
+              rowSelector,
+              columnId: entity.childrenSelectorId ?? '',
+              columnNameTestId,
+            });
 
             // Verify panel displays correct column information
             await expect(page.getByTestId('entity-link')).toBeVisible();
@@ -1344,12 +1339,12 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               ).toBeVisible();
             }
 
-            if(entity.type === 'Table') {
-            await page.getByTestId('data-quality-tab').click();
+            if (entity.type === 'Table') {
+              await page.getByTestId('data-quality-tab').click();
 
-            await expect(page.getByTestId('data-quality-tab')).toHaveClass(
-              /ant-menu-item-selected/
-            );
+              await expect(page.getByTestId('data-quality-tab')).toHaveClass(
+                /ant-menu-item-selected/
+              );
             }
             await page.getByTestId('custom-properties-tab').click();
 
