@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -1111,20 +1113,21 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     long baseTimestamp = System.currentTimeMillis();
 
     org.openmetadata.schema.entity.data.PipelineStatus status5min =
-        createPipelineStatusWithDuration("exec_5min", 300000L, baseTimestamp);
+        createPipelineStatusWithDuration("exec_5min", 300000L, baseTimestamp, "test_task");
     org.openmetadata.schema.entity.data.PipelineStatus status10min =
-        createPipelineStatusWithDuration("exec_10min", 600000L, baseTimestamp + 1000);
+        createPipelineStatusWithDuration("exec_10min", 600000L, baseTimestamp + 1000, "test_task");
     org.openmetadata.schema.entity.data.PipelineStatus status30min =
-        createPipelineStatusWithDuration("exec_30min", 1800000L, baseTimestamp + 2000);
+        createPipelineStatusWithDuration("exec_30min", 1800000L, baseTimestamp + 2000, "test_task");
 
     client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), status5min);
     client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), status10min);
     client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), status30min);
 
+    String encodedFqn = URLEncoder.encode(pipeline.getFullyQualifiedName(), StandardCharsets.UTF_8);
     String statusPath =
         String.format(
             "/api/v1/pipelines/%s/status?startTs=%d&endTs=%d&minDuration=600000",
-            pipeline.getFullyQualifiedName(), baseTimestamp - 10000, baseTimestamp + 3600000);
+            encodedFqn, baseTimestamp - 10000, baseTimestamp + 3600000);
     String jsonResponse = client.getHttpClient().executeForString(HttpMethod.GET, statusPath, null);
     ResultList<org.openmetadata.schema.entity.data.PipelineStatus> resultWithMin =
         mapper.readValue(
@@ -1143,7 +1146,7 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     String statusPathMax =
         String.format(
             "/api/v1/pipelines/%s/status?startTs=%d&endTs=%d&maxDuration=3600000",
-            pipeline.getFullyQualifiedName(), baseTimestamp - 10000, baseTimestamp + 3600000);
+            encodedFqn, baseTimestamp - 10000, baseTimestamp + 3600000);
     String jsonResponseMax =
         client.getHttpClient().executeForString(HttpMethod.GET, statusPathMax, null);
     ResultList<org.openmetadata.schema.entity.data.PipelineStatus> resultWithMax =
@@ -1199,10 +1202,11 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
 
     client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), pipelineStatus);
 
+    String encodedFqn = URLEncoder.encode(pipeline.getFullyQualifiedName(), StandardCharsets.UTF_8);
     String statusPath =
         String.format(
             "/api/v1/pipelines/%s/status?startTs=%d&endTs=%d&minDuration=700000",
-            pipeline.getFullyQualifiedName(), baseTimestamp - 10000, baseTimestamp + 3600000);
+            encodedFqn, baseTimestamp - 10000, baseTimestamp + 3600000);
     String jsonResponse = client.getHttpClient().executeForString(HttpMethod.GET, statusPath, null);
     ResultList<org.openmetadata.schema.entity.data.PipelineStatus> result =
         mapper.readValue(
@@ -1247,13 +1251,15 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), statusWithoutTiming);
 
     org.openmetadata.schema.entity.data.PipelineStatus statusWithTiming =
-        createPipelineStatusWithDuration("with_timing_exec", 600000L, baseTimestamp + 1000);
+        createPipelineStatusWithDuration(
+            "with_timing_exec", 600000L, baseTimestamp + 1000, "task1");
     client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), statusWithTiming);
 
+    String encodedFqn = URLEncoder.encode(pipeline.getFullyQualifiedName(), StandardCharsets.UTF_8);
     String statusPath =
         String.format(
             "/api/v1/pipelines/%s/status?startTs=%d&endTs=%d&minDuration=300000",
-            pipeline.getFullyQualifiedName(), baseTimestamp - 10000, baseTimestamp + 3600000);
+            encodedFqn, baseTimestamp - 10000, baseTimestamp + 3600000);
     String jsonResponse = client.getHttpClient().executeForString(HttpMethod.GET, statusPath, null);
     ResultList<org.openmetadata.schema.entity.data.PipelineStatus> result =
         mapper.readValue(
@@ -1266,10 +1272,10 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   }
 
   private org.openmetadata.schema.entity.data.PipelineStatus createPipelineStatusWithDuration(
-      String executionId, long durationMs, long timestamp) {
+      String executionId, long durationMs, long timestamp, String taskName) {
     org.openmetadata.schema.type.Status taskStatus =
         new org.openmetadata.schema.type.Status()
-            .withName("test_task")
+            .withName(taskName)
             .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful)
             .withStartTime(timestamp)
             .withEndTime(timestamp + durationMs);
