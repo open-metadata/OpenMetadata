@@ -284,7 +284,7 @@ export const removeOwner = async ({
   type?: 'Teams' | 'Users';
   dataTestId?: string;
 }) => {
-  await page.getByTestId(dataTestId ?? 'edit-owner').click();
+  await page.getByTestId('edit-owner').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
