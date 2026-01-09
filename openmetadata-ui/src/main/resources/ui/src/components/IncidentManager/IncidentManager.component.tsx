@@ -125,23 +125,28 @@ const IncidentManager = ({
   const filters = useMemo(() => {
     const urlParams = omit(allParams, ['key', 'title']);
 
-    const params = {
-      startTs: getStartOfDayInMillis(
-        getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days)
-      ),
-      endTs: getEndOfDayInMillis(getCurrentMillis()),
+    let params: TestCaseIncidentStatusParams = {
       ...urlParams,
     };
 
-    if (params.startTs && isString(params.startTs)) {
-      params.startTs = parseInt(params.startTs, 10);
-    }
-    if (params.endTs && isString(params.endTs)) {
-      params.endTs = parseInt(params.endTs, 10);
+    // Only add default time range if date range picker is visible and no explicit time params in URL
+    if (isDateRangePickerVisible && !urlParams.startTs && !urlParams.endTs) {
+      params.startTs = getStartOfDayInMillis(
+        getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days)
+      );
+      params.endTs = getEndOfDayInMillis(getCurrentMillis());
+    } else if (urlParams.startTs || urlParams.endTs) {
+      // If time params exist in URL, ensure they are numbers
+      if (urlParams.startTs && isString(urlParams.startTs)) {
+        params.startTs = parseInt(urlParams.startTs as string, 10);
+      }
+      if (urlParams.endTs && isString(urlParams.endTs)) {
+        params.endTs = parseInt(urlParams.endTs as string, 10);
+      }
     }
 
-    return params as TestCaseIncidentStatusParams;
-  }, [allParams]);
+    return params;
+  }, [allParams, isDateRangePickerVisible]);
 
   const dateRangeKey = useMemo(() => {
     if (allParams.key) {
