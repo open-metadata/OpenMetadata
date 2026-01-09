@@ -91,9 +91,13 @@ Google Single Sign-On (SSO) enables users to log in with their Google Workspace 
 ### <span data-id="jwtPrincipalClaimsMapping">JWT Principal Claims Mapping</span>
 
 - **Definition:** Maps JWT claims to OpenMetadata user attributes.
-- **Example:** ["email:email", "name:name", "firstName:given_name", "lastName:family_name"]
+- **Example:** ["email:email", "username:name"]
 - **Why it matters:** Controls how user information from Google maps to OpenMetadata user profiles.
 - **Note:** Format: "openmetadata_field:jwt_claim"
+- **Validation Requirements:**
+  - Both `username` and `email` mappings must be present when this field is used
+  - Only `username` and `email` keys are allowed; no other keys are permitted
+  - If validation fails, errors will be displayed on this specific field
 
 ### <span data-id="tokenValidation">Token Validation Algorithm</span>
 
