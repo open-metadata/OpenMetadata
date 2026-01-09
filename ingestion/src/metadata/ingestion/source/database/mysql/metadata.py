@@ -37,12 +37,10 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.mysql.models import (
     STORED_PROC_LANGUAGE_MAP,
-    MysqlStoredProcedure,
+    STORED_PROC_TYPE_MAP,
+    MysqlRoutine,
 )
-from metadata.ingestion.source.database.mysql.queries import (
-    MYSQL_GET_FUNCTIONS,
-    MYSQL_GET_STORED_PROCEDURES,
-)
+from metadata.ingestion.source.database.mysql.queries import MYSQL_GET_ROUTINES
 from metadata.ingestion.source.database.mysql.utils import col_type_map, parse_column
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
@@ -79,48 +77,35 @@ class MysqlSource(CommonDbSourceService):
             )
         return cls(config, metadata)
 
-    def _get_stored_procedures_internal(
-        self, query: str
-    ) -> Iterable[MysqlStoredProcedure]:
-        """
-        Internal method to fetch stored procedures or functions
-        """
-        results = self.engine.execute(query).all()
-        for row in results:
-            try:
-                stored_procedure = MysqlStoredProcedure.model_validate(
-                    dict(row._mapping)  # pylint: disable=protected-access
-                )
-                yield stored_procedure
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error parsing stored procedure: {dict(row).get('procedure_name', 'UNKNOWN')} - {exc}"
-                )
-                self.status.failed(
-                    error=StackTraceError(
-                        name=dict(row).get("procedure_name", "UNKNOWN"),
-                        error=f"Error parsing Stored Procedure payload: {exc}",
-                        stackTrace=traceback.format_exc(),
-                    )
-                )
-
-    def get_stored_procedures(self) -> Iterable[MysqlStoredProcedure]:
+    def get_stored_procedures(self) -> Iterable[MysqlRoutine]:
         """List stored procedures and functions"""
         if self.source_config.includeStoredProcedures:
-            yield from self._get_stored_procedures_internal(
-                MYSQL_GET_STORED_PROCEDURES.format(
+            results = self.engine.execute(
+                MYSQL_GET_ROUTINES.format(
                     schema_name=self.context.get().database_schema
                 )
-            )
-            yield from self._get_stored_procedures_internal(
-                MYSQL_GET_FUNCTIONS.format(
-                    schema_name=self.context.get().database_schema
-                )
-            )
+            ).all()
+            for row in results:
+                try:
+                    stored_procedure = MysqlRoutine.model_validate(
+                        dict(row._mapping)  # pylint: disable=protected-access
+                    )
+                    yield stored_procedure
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Error parsing stored procedure/function: {dict(row._mapping).get('routine_name', 'UNKNOWN')} - {exc}"
+                    )
+                    self.status.failed(
+                        error=StackTraceError(
+                            name=dict(row._mapping).get("routine_name", "UNKNOWN"),
+                            error=f"Error parsing Stored Procedure/Function payload: {exc}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
 
     def yield_stored_procedure(
-        self, stored_procedure: MysqlStoredProcedure
+        self, stored_procedure: MysqlRoutine
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Prepare the stored procedure payload"""
         try:
@@ -142,7 +127,9 @@ class MysqlSource(CommonDbSourceService):
                     database_name=self.context.get().database,
                     schema_name=self.context.get().database_schema,
                 ),
-                storedProcedureType=stored_procedure.procedure_type,
+                storedProcedureType=STORED_PROC_TYPE_MAP.get(
+                    stored_procedure.routine_type
+                ),
             )
             yield Either(right=stored_procedure_request)
             self.register_record_stored_proc_request(stored_procedure_request)

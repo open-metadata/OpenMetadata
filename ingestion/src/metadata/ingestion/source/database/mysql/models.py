@@ -15,19 +15,27 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from metadata.generated.schema.entity.data.storedProcedure import Language
+from metadata.generated.schema.entity.data.storedProcedure import (
+    Language,
+    StoredProcedureType,
+)
 
 STORED_PROC_LANGUAGE_MAP = {
     "SQL": Language.SQL,
 }
 
+STORED_PROC_TYPE_MAP = {
+    "PROCEDURE": StoredProcedureType.StoredProcedure,
+    "FUNCTION": StoredProcedureType.Function,
+}
 
-class MysqlStoredProcedure(BaseModel):
-    """MySQL stored procedure list query results"""
 
-    name: str = Field(alias="procedure_name")
+class MysqlRoutine(BaseModel):
+    """MySQL routine list query results"""
+
+    name: str = Field(alias="routine_name")
     schema: str = Field(alias="schema_name")
     definition: Optional[str] = None
     language: str = Field(default="SQL")
-    procedure_type: Optional[str] = Field(None, alias="procedure_type")
+    routine_type: Optional[str] = Field(None, alias="routine_type")
     description: Optional[str] = Field(None, alias="description")
