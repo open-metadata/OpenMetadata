@@ -54,6 +54,7 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import Dialect
@@ -163,13 +164,14 @@ class PowerbiSource(DashboardServiceSource):
         paginate include filters if more then `20` filters
         in single call
         """
-        paginated_include_filters = [filter_pattern]
+        if not filter_pattern:
+            return [FilterPattern(includes=[".*"])]
+        paginated_include_filters = []
         if filter_pattern.includes:
             include_filters = [
                 filter_pattern.includes[i : i + MAX_PROJECT_FILTER_SIZE]
                 for i in range(0, len(filter_pattern.includes), MAX_PROJECT_FILTER_SIZE)
             ]
-            paginated_include_filters = []
             for include_filter in include_filters:
                 filter_pattern_copy = deepcopy(filter_pattern)
                 filter_pattern_copy.includes = include_filter
@@ -421,6 +423,13 @@ class PowerbiSource(DashboardServiceSource):
                         owners=self.get_owner_ref(dashboard_details=dashboard_details),
                     )
                 else:
+                    report_details = self.client.api_client.fetch_report_details(
+                        group_id=self.context.get().workspace.id,
+                        report_id=dashboard_details.id,
+                    )
+                    description = None
+                    if report_details and report_details.description:
+                        description = Markdown(report_details.description)
                     dashboard_request = CreateDashboardRequest(
                         name=EntityName(dashboard_details.id),
                         dashboardType=DashboardType.Report,
@@ -432,6 +441,7 @@ class PowerbiSource(DashboardServiceSource):
                         ),
                         project=self.get_project_name(dashboard_details),
                         displayName=dashboard_details.name,
+                        description=description,
                         service=self.context.get().dashboard_service,
                         owners=self.get_owner_ref(dashboard_details=dashboard_details),
                     )

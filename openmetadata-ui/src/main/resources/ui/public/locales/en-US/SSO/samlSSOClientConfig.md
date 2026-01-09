@@ -229,6 +229,10 @@ SAML (Security Assertion Markup Language) SSO enables users to log in using SAML
 - **Example:** ["email:email", "username:preferred_username"]
 - **Why it matters:** Controls how SAML user information maps to OpenMetadata user profiles.
 - **Note:** Format: "openmetadata_field:saml_claim" or "openmetadata_field:jwt_claim"
+- **Validation Requirements:**
+  - Both `username` and `email` mappings must be present when this field is used
+  - Only `username` and `email` keys are allowed; no other keys are permitted
+  - If validation fails, errors will be displayed on this specific field
 
 ## <span data-id="tokenValidationAlgorithm">Token Validation Algorithm</span>
 
