@@ -38,6 +38,20 @@ test.describe('Pagination tests for all pages', () => {
     await testPaginationNavigation(page, '/api/v1/users', 'table');
   });
 
+  test('should test Users complete flow with search', async ({ page }) => {
+    test.slow(true);
+
+    await testCompletePaginationWithSearch({
+      page,
+      baseUrl: '/settings/members/users',
+      normalApiPattern: '/api/v1/users',
+      searchApiPattern: '/api/v1/search/query',
+      searchTestTerm: 'pw',
+      searchParamName: 'user',
+      waitForLoadSelector: 'table',
+    });
+  });
+
   test('should test pagination on Roles page', async ({ page }) => {
     test.slow(true);
 
