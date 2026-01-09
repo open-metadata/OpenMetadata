@@ -300,6 +300,10 @@ LDAP authentication enables users to log in with their LDAP directory credential
 - **Example:** ["email:email", "username:preferred_username"]
 - **Why it matters:** Controls how LDAP user information maps to OpenMetadata user profiles.
 - **Note:** Format: "openmetadata_field:ldap_attribute" or "openmetadata_field:jwt_claim"
+- **Validation Requirements:**
+  - Both `username` and `email` mappings must be present when this field is used
+  - Only `username` and `email` keys are allowed; no other keys are permitted
+  - If validation fails, errors will be displayed on this specific field
 
 ## <span data-id="tokenValidationAlgorithm">Token Validation Algorithm</span>
 

@@ -213,10 +213,15 @@ jest.mock('../../utils/StringsUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
 }));
 
-jest.mock('../../utils/TableUtils', () => ({
-  getTagsWithoutTier: jest.fn().mockReturnValue([]),
-  getTierTags: jest.fn().mockReturnValue([]),
-}));
+jest.mock('../../utils/TableUtils', () => {
+  const actual = jest.requireActual('../../utils/TableUtils');
+
+  return {
+    ...actual,
+    getTagsWithoutTier: jest.fn().mockReturnValue([]),
+    getTierTags: jest.fn().mockReturnValue([]),
+  };
+});
 
 jest.mock('../../utils/TagsUtils', () => ({
   createTagObject: jest.fn().mockImplementation((tagObject) => tagObject),

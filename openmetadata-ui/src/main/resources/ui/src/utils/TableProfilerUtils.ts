@@ -13,9 +13,15 @@
 
 import { isUndefined, last, sortBy } from 'lodash';
 import { MetricChartType } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
-import { Table, TableProfile } from '../generated/entity/data/table';
+import {
+  ColumnProfile,
+  Table,
+  TableProfile,
+} from '../generated/entity/data/table';
 import { CustomMetric } from '../generated/tests/customMetric';
+import { calculatePercentage, formatNumberWithComma } from './CommonUtils';
 import {
   customFormatDateTime,
   DATE_TIME_12_HOUR_FORMAT,
@@ -285,4 +291,65 @@ export const calculateColumnProfilerMetrics = ({
       data: quartileMetricData,
     },
   };
+};
+
+export interface KeyProfileMetricConfig {
+  key: keyof ColumnProfile;
+  labelKey: string;
+  tooltipKey?: string;
+  formatter?: (value: number) => string | number;
+}
+
+export const KEY_PROFILE_METRIC_CONFIGS: KeyProfileMetricConfig[] = [
+  {
+    key: 'uniqueProportion',
+    labelKey: 'label.uniqueness',
+    tooltipKey: 'message.uniqueness-profile-metric-description',
+    formatter: (value) => calculatePercentage(value, 1, 0, true),
+  },
+  {
+    key: 'nullProportion',
+    labelKey: 'label.nullness',
+    tooltipKey: 'message.nullness-profile-metric-description',
+    formatter: (value) => calculatePercentage(value, 1, 0, true),
+  },
+  {
+    key: 'distinctProportion',
+    labelKey: 'label.distinct',
+    tooltipKey: 'message.distinct-profile-metric-description',
+    formatter: (value) => calculatePercentage(value, 1, 0, true),
+  },
+  {
+    key: 'valuesCount',
+    labelKey: 'label.value-count',
+    tooltipKey: 'message.value-count-profile-metric-description',
+    formatter: (value) => formatNumberWithComma(value),
+  },
+];
+
+export const formatProfileMetricValue = (
+  value: number | null | undefined,
+  formatter?: (value: number) => string | number
+): string | number => {
+  if (value === null || value === undefined) {
+    return NO_DATA_PLACEHOLDER;
+  }
+
+  return formatter ? formatter(value) : value;
+};
+
+export const getKeyProfileMetrics = (
+  profile: ColumnProfile | undefined,
+  t: (key: string) => string
+) => {
+  return KEY_PROFILE_METRIC_CONFIGS.map((config) => ({
+    label: t(config.labelKey),
+    value: profile
+      ? formatProfileMetricValue(
+          profile[config.key] as number | null | undefined,
+          config.formatter
+        )
+      : NO_DATA_PLACEHOLDER,
+    tooltip: config.tooltipKey ? t(config.tooltipKey) : undefined,
+  }));
 };
