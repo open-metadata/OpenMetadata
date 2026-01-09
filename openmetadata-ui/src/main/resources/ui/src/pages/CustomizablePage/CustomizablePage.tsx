@@ -261,7 +261,7 @@ export const CustomizablePage = () => {
               fullyQualifiedName: pageLayoutFQN,
               entityType: EntityType.PAGE,
               data: {
-                pages: null,
+                pages: [],
                 navigation: null,
               },
             });
