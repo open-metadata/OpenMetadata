@@ -1884,7 +1884,7 @@ test.describe('Glossary tests', () => {
         await glossaryTermResponse;
 
         await expect(page.locator('#name_help')).toHaveText(
-          `A term with the name '${glossaryTerm2.data.name}' already exists in '${glossary1.responseData.name}' glossary.`
+          `A term with the name '${glossaryTerm2.data.name}' already exists in '${glossary1.responseData.fullyQualifiedName}' glossary.`
         );
       });
     } finally {
