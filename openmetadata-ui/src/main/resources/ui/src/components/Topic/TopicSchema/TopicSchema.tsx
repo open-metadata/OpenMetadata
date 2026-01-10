@@ -100,6 +100,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     permissions,
     onUpdate,
     currentVersionData,
+    openColumnDetailPanel,
   } = useGenericContext<Topic>();
 
   const isReadOnly = useMemo(() => {
@@ -273,6 +274,18 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     }
   };
 
+  const handleColumnClick = useCallback(
+    (field: Field, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const isExpandIcon = target.closest('.table-expand-icon') !== null;
+
+      if (!isExpandIcon) {
+        openColumnDetailPanel(field);
+      }
+    },
+    [openColumnDetailPanel]
+  );
+
   const toggleExpandAll = () => {
     if (expandedRowKeys.length < schemaAllRowKeys.length) {
       const safeKeys = getSafeExpandAllKeys(
@@ -370,7 +383,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         )}
       </div>
     ),
-    [isVersionView, copiedFieldFqn, handleCopyFieldLink, t]
+    [isVersionView, copiedFieldFqn, handleCopyFieldLink, t, handleColumnClick]
   );
 
   const renderDataType = useCallback(
@@ -459,6 +472,11 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         width: 220,
         sorter: getColumnSorter<Field, 'name'>('name'),
         render: renderSchemaName,
+        className: 'cursor-pointer',
+        onCell: (record: Field) => ({
+          onClick: (event) => handleColumnClick(record, event),
+          'data-testid': 'column-name-cell',
+        }),
       },
       {
         title: t('label.type'),

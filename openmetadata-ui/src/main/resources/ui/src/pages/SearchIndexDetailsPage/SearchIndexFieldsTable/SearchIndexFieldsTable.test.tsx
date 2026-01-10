@@ -79,22 +79,54 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>SearchBar</div>)
 );
 
-jest.mock('../../../utils/TableUtils', () => ({
-  searchInFields: jest.fn().mockReturnValue(MOCK_SEARCH_INDEX_FIELDS),
-  updateFieldDescription: jest.fn(),
-  updateFieldTags: jest.fn(),
-  getTableExpandableConfig: jest.fn().mockReturnValue({}),
-  getTableColumnConfigSelections: jest
-    .fn()
-    .mockReturnValue([
-      'name',
-      'description',
-      'dataTypeDisplay',
-      'tags',
-      'glossary',
-    ]),
-  handleUpdateTableColumnSelections: jest.fn(),
-}));
+jest.mock(
+  '../../../components/Database/ColumnDetailPanel/ColumnDetailPanel.component',
+  () => ({
+    ColumnDetailPanel: jest
+      .fn()
+      .mockImplementation(() => <div data-testid="column-detail-panel" />),
+  })
+);
+
+jest.mock(
+  '../../../components/Database/ColumnFilter/ColumnFilter.component',
+  () => ({
+    ColumnFilter: jest
+      .fn()
+      .mockImplementation(() => <div data-testid="column-filter" />),
+  })
+);
+
+jest.mock(
+  '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider',
+  () => ({
+    EntityAttachmentProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+  })
+);
+
+jest.mock('../../../utils/TableUtils', () => {
+  const actual = jest.requireActual('../../../utils/TableUtils');
+
+  return {
+    ...actual,
+    searchInFields: jest.fn().mockReturnValue(MOCK_SEARCH_INDEX_FIELDS),
+    updateFieldDescription: jest.fn(),
+    updateFieldTags: jest.fn(),
+    getTableExpandableConfig: jest.fn().mockReturnValue({}),
+    getTableColumnConfigSelections: jest
+      .fn()
+      .mockReturnValue([
+        'name',
+        'description',
+        'dataTypeDisplay',
+        'tags',
+        'glossary',
+      ]),
+    handleUpdateTableColumnSelections: jest.fn(),
+  };
+});
 
 jest.mock('../../../utils/RouterUtils', () => ({
   getEntityDetailsPath: jest
