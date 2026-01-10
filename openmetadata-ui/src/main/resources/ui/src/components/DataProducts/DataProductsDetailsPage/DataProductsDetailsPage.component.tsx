@@ -422,15 +422,22 @@ const DataProductsDetailsPage = ({
         name: name?.trim(),
       };
 
-      await onUpdate(updatedDetails);
-      setIsNameEditing(false);
+      try {
+        await onUpdate(updatedDetails);
 
-      // If name changed, navigate to the new URL
-      if (name && name.trim() !== dataProduct.name) {
-        navigate(
-          getEntityDetailsPath(EntityType.DATA_PRODUCT, name.trim(), activeTab),
-          { replace: true }
-        );
+        // If name changed, navigate to the new URL
+        if (name && name.trim() !== dataProduct.name) {
+          navigate(
+            getEntityDetailsPath(
+              EntityType.DATA_PRODUCT,
+              name.trim(),
+              activeTab
+            ),
+            { replace: true }
+          );
+        }
+      } finally {
+        setIsNameEditing(false);
       }
     }
   };
