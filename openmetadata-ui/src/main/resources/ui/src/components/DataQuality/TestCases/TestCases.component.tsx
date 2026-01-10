@@ -418,44 +418,30 @@ export const TestCases = () => {
     }
   };
 
-  const canExportGlobal = useMemo(
-    () =>
-      checkPermission(
-        Operation.ViewAll,
-        ResourceEntity.TEST_CASE,
-        permissions
-      ) ||
-      checkPermission(
-        Operation.ViewBasic,
-        ResourceEntity.TEST_CASE,
-        permissions
-      ),
-    [permissions]
-  );
-
-  const canImportGlobal = useMemo(
-    () =>
-      checkPermission(Operation.EditAll, ResourceEntity.TEST_CASE, permissions),
-    [permissions]
-  );
-
   const extraDropdownContent = useMemo(() => {
     return ExtraTestCaseDropdownOptions(
       WILD_CARD_CHAR,
       {
-        ViewAll: canExportGlobal,
-        EditAll: canImportGlobal,
+        ViewAll: getPrioritizedViewPermission(
+          testCasePermission,
+          Operation.ViewAll
+        ),
+        EditAll: checkPermission(
+          Operation.EditAll,
+          ResourceEntity.TEST_CASE,
+          permissions
+        ),
       },
       false,
       navigate,
       showModal
     );
-  }, [canExportGlobal, canImportGlobal, navigate, showModal]);
+  }, [testCasePermission, permissions, navigate, showModal]);
 
   const dqTableHeader = useMemo(() => {
     return (
       <Row align="middle" gutter={[16, 16]}>
-        <Col span={12}>
+        <Col span={16}>
           <PageHeader
             data={{
               header: t('label.test-case-insight-plural'),
@@ -463,7 +449,7 @@ export const TestCases = () => {
             }}
           />
         </Col>
-        <Col span={6}>
+        <Col className="d-flex justify-end gap-4" span={8}>
           <Searchbar
             removeMargin
             placeholder={t('label.search-entity', {
@@ -472,8 +458,6 @@ export const TestCases = () => {
             searchValue={searchValue}
             onSearch={(value) => handleSearchParam('searchValue', value)}
           />
-        </Col>
-        <Col className="d-flex justify-end" span={6}>
           <ManageButton
             entityFQN={WILD_CARD_CHAR}
             entityId=""
