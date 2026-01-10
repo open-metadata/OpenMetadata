@@ -100,6 +100,18 @@ SNOWFLAKE_FETCH_SCHEMA_TAGS = textwrap.dedent(
 """
 )
 
+SNOWFLAKE_FETCH_DATABASE_TAGS = textwrap.dedent(
+    """
+    select TAG_NAME, TAG_VALUE, OBJECT_DATABASE as DATABASE_NAME
+    from {account_usage}.tag_references
+    where OBJECT_DATABASE = '{database_name}'
+      and OBJECT_SCHEMA IS NULL
+      and OBJECT_NAME IS NULL
+      and COLUMN_NAME IS NULL
+      and DOMAIN = 'DATABASE'
+"""
+)
+
 SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES = """
 select TABLE_NAME, NULL from information_schema.tables
 where TABLE_SCHEMA = '{schema}' AND TABLE_TYPE = 'EXTERNAL TABLE'

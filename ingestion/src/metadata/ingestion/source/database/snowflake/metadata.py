@@ -87,6 +87,7 @@ from metadata.ingestion.source.database.snowflake.models import (
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_DESC_FUNCTION,
     SNOWFLAKE_DESC_STORED_PROCEDURE,
+    SNOWFLAKE_FETCH_DATABASE_TAGS,
     SNOWFLAKE_FETCH_SCHEMA_TAGS,
     SNOWFLAKE_FETCH_TABLE_TAGS,
     SNOWFLAKE_GET_CLUSTER_KEY,
@@ -210,6 +211,7 @@ class SnowflakeSource(
         self.database_desc_map = {}
         self.external_location_map = {}
         self.schema_tags_map = {}
+        self.database_tags_map = {}
 
         self._account: Optional[str] = None
         self._org_name: Optional[str] = None
@@ -332,6 +334,32 @@ class SnowflakeSource(
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch schema tags: {exc}")
 
+    def set_database_tags_map(self, database_name: str) -> None:
+        """Fetch and store database-level tags for the current database"""
+        self.database_tags_map.clear()
+        if not self.source_config.includeTags:
+            return
+
+        try:
+            results = self.engine.execute(
+                SNOWFLAKE_FETCH_DATABASE_TAGS.format(
+                    database_name=database_name,
+                    account_usage=self.service_connection.accountUsageSchema,
+                )
+            ).all()
+
+            for row in results:
+                db_name = row.DATABASE_NAME
+                if db_name not in self.database_tags_map:
+                    self.database_tags_map[db_name] = []
+                self.database_tags_map[db_name].append(
+                    {"tag_name": row.TAG_NAME, "tag_value": row.TAG_VALUE}
+                )
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to fetch database tags: {exc}")
+
     def get_schema_description(self, schema_name: str) -> Optional[str]:
         """
         Method to fetch the schema description
@@ -363,6 +391,7 @@ class SnowflakeSource(
             self.set_database_description_map()
             self.set_external_location_map(configured_db)
             self.set_schema_tags_map(configured_db)
+            self.set_database_tags_map(configured_db)
             yield configured_db
         else:
             for new_database in self.get_database_names_raw():
@@ -392,6 +421,7 @@ class SnowflakeSource(
                     self.set_database_description_map()
                     self.set_external_location_map(new_database)
                     self.set_schema_tags_map(new_database)
+                    self.set_database_tags_map(new_database)
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -553,6 +583,31 @@ class SnowflakeSource(
                         metadata=self.metadata,
                         system_tags=True,
                     )
+
+    def yield_database_tag(
+        self, database_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Yield database-level tags for the topology."""
+        if not self.source_config.includeTags:
+            return
+
+        if database_name in self.database_tags_map:
+            database_fqn = fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,
+                database_name=database_name,
+            )
+            for tag_info in self.database_tags_map[database_name]:
+                yield from get_ometa_tag_and_classification(
+                    tag_fqn=FullyQualifiedEntityName(database_fqn),
+                    tags=[tag_info["tag_value"]],
+                    classification_name=tag_info["tag_name"],
+                    tag_description=SNOWFLAKE_TAG_DESCRIPTION,
+                    classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
+                    metadata=self.metadata,
+                    system_tags=True,
+                )
 
     def _get_table_names_and_types(
         self, schema_name: str, table_type: TableType = TableType.Regular
@@ -998,9 +1053,25 @@ class SnowflakeSource(
             f"Processing ownership is not supported for {self.service_connection.type.name}"
         )
 
+    def _get_classification_name(self, tag_label: TagLabel) -> str:
+        """Extract classification name from tag FQN (e.g., 'ENV.staging' -> 'ENV')"""
+        tag_fqn = tag_label.tagFQN.root if tag_label.tagFQN else ""
+        return tag_fqn.split(".")[0] if "." in tag_fqn else tag_fqn
+
+    def _has_classification(
+        self, classification_name: str, tag_list: List[TagLabel]
+    ) -> bool:
+        """Check if a tag with the given classification name already exists"""
+        for tag in tag_list:
+            if self._get_classification_name(tag) == classification_name:
+                return True
+        return False
+
     def get_schema_tag_labels(self, schema_name: str) -> Optional[List[TagLabel]]:
         """
-        Return tags for schema entity including Snowflake schema-level tags.
+        Return tags for schema entity including:
+        1. Snowflake schema-level tags
+        2. Inherited database-level tags (only if no tag with same classification exists)
         """
         schema_tags = []
 
@@ -1014,32 +1085,65 @@ class SnowflakeSource(
                 if tag_label:
                     schema_tags.append(tag_label)
 
+        # Add inherited database tags (only if classification doesn't already exist)
+        database_name = self.context.get().database
+        if database_name and database_name in self.database_tags_map:
+            for tag_info in self.database_tags_map[database_name]:
+                if not self._has_classification(tag_info["tag_name"], schema_tags):
+                    tag_label = get_tag_label(
+                        metadata=self.metadata,
+                        tag_name=tag_info["tag_value"],
+                        classification_name=tag_info["tag_name"],
+                    )
+                    if tag_label:
+                        schema_tags.append(tag_label)
+
         # Include parent tags from context
         parent_tags = super().get_schema_tag_labels(schema_name) or []
         for tag in parent_tags:
-            if tag not in schema_tags:
+            if not self._has_classification(
+                self._get_classification_name(tag), schema_tags
+            ):
                 schema_tags.append(tag)
 
         return schema_tags if schema_tags else None
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """
-        Override to include schema-level tags inherited by tables.
+        Override to include inherited tags from both schema and database levels.
         This method combines:
         1. Tags directly assigned to the table (from parent implementation)
-        2. Tags inherited from the schema level
+        2. Tags inherited from the schema level (only if no tag with same classification)
+        3. Tags inherited from the database level (only if no tag with same classification)
+
+        Tag values at lower levels take precedence over inherited values.
         """
         table_tags = super().get_tag_labels(table_name) or []
 
+        # Add inherited schema tags (only if classification doesn't already exist)
         schema_name = self.context.get().database_schema
         if schema_name and schema_name in self.schema_tags_map:
             for tag_info in self.schema_tags_map[schema_name]:
-                tag_label = get_tag_label(
-                    metadata=self.metadata,
-                    tag_name=tag_info["tag_value"],
-                    classification_name=tag_info["tag_name"],
-                )
-                if tag_label and tag_label not in table_tags:
-                    table_tags.append(tag_label)
+                if not self._has_classification(tag_info["tag_name"], table_tags):
+                    tag_label = get_tag_label(
+                        metadata=self.metadata,
+                        tag_name=tag_info["tag_value"],
+                        classification_name=tag_info["tag_name"],
+                    )
+                    if tag_label:
+                        table_tags.append(tag_label)
+
+        # Add inherited database tags (only if classification doesn't already exist)
+        database_name = self.context.get().database
+        if database_name and database_name in self.database_tags_map:
+            for tag_info in self.database_tags_map[database_name]:
+                if not self._has_classification(tag_info["tag_name"], table_tags):
+                    tag_label = get_tag_label(
+                        metadata=self.metadata,
+                        tag_name=tag_info["tag_value"],
+                        classification_name=tag_info["tag_name"],
+                    )
+                    if tag_label:
+                        table_tags.append(tag_label)
 
         return table_tags if table_tags else None
