@@ -1,0 +1,143 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/sinkConfig/gitSinkConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GitSinkConfig",
+  "description": "Configuration for Git-based sinks. Works with any Git provider (GitHub, GitLab, Bitbucket).",
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.sinkConfig.GitSinkConfig",
+  "type": "object",
+  "definitions": {
+    "gitCredentialsType": {
+      "title": "Credentials Type",
+      "description": "Type of authentication for Git operations.",
+      "type": "string",
+      "enum": ["token", "ssh"]
+    },
+    "conflictResolution": {
+      "title": "Conflict Resolution",
+      "description": "How to handle files that were modified directly in git.",
+      "type": "string",
+      "enum": ["overwriteExternal", "preserveExternal", "fail"],
+      "default": "overwriteExternal"
+    }
+  },
+  "properties": {
+    "repositoryUrl": {
+      "title": "Repository URL",
+      "description": "Git repository URL (HTTPS or SSH format).",
+      "type": "string",
+      "examples": ["https://github.com/org/repo.git", "git@github.com:org/repo.git"]
+    },
+    "branch": {
+      "title": "Branch",
+      "description": "Target branch for commits.",
+      "type": "string",
+      "default": "main"
+    },
+    "basePath": {
+      "title": "Base Path",
+      "description": "Base directory path in the repository for metadata files.",
+      "type": "string",
+      "default": "metadata"
+    },
+    "credentials": {
+      "title": "Git Credentials",
+      "description": "Authentication credentials for Git operations.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/gitCredentialsType"
+        },
+        "token": {
+          "title": "Access Token",
+          "description": "Personal access token or app token for authentication.",
+          "type": "string",
+          "format": "password"
+        },
+        "privateKey": {
+          "title": "SSH Private Key",
+          "description": "SSH private key content for authentication.",
+          "type": "string",
+          "format": "password"
+        },
+        "passphrase": {
+          "title": "SSH Key Passphrase",
+          "description": "Passphrase for encrypted SSH private key.",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "commitConfig": {
+      "title": "Commit Configuration",
+      "description": "Configuration for Git commits.",
+      "type": "object",
+      "properties": {
+        "messageTemplate": {
+          "title": "Message Template",
+          "description": "Template for commit messages. Variables: {entityType}, {entityName}, {action}, {count}",
+          "type": "string",
+          "default": "Sync {entityType}: {entityName}"
+        },
+        "authorName": {
+          "title": "Author Name",
+          "description": "Git commit author name.",
+          "type": "string",
+          "default": "OpenMetadata Bot"
+        },
+        "authorEmail": {
+          "title": "Author Email",
+          "description": "Git commit author email.",
+          "type": "string",
+          "format": "email",
+          "default": "bot@openmetadata.org"
+        }
+      },
+      "additionalProperties": false
+    },
+    "conflictResolution": {
+      "$ref": "#/definitions/conflictResolution"
+    },
+    "syncMetadata": {
+      "title": "Sync Metadata Configuration",
+      "description": "Configuration for embedding sync metadata in output files.",
+      "type": "object",
+      "properties": {
+        "embed": {
+          "title": "Embed Metadata",
+          "description": "Embed _syncMetadata block in each YAML/JSON file for conflict detection and audit.",
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "retryConfig": {
+      "title": "Retry Configuration",
+      "type": "object",
+      "properties": {
+        "maxRetries": {
+          "type": "integer",
+          "default": 3,
+          "minimum": 0,
+          "maximum": 10
+        },
+        "retryDelaySeconds": {
+          "type": "integer",
+          "default": 5,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "timeout": {
+      "title": "Timeout",
+      "description": "Timeout in seconds for Git operations.",
+      "type": "integer",
+      "default": 300
+    }
+  },
+  "required": ["repositoryUrl", "credentials"],
+  "additionalProperties": false
+}
