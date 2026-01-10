@@ -1765,6 +1765,7 @@
     "test-case-lowercase-plural": "حالات اختبار",
     "test-case-name": "اسم حالة الاختبار",
     "test-case-plural": "حالات اختبار",
+    "test-case-plural-lowercase": "حالات الاختبار",
     "test-case-resolution-status": "حالة قرار حالة الاختبار",
     "test-case-result": "نتائج حالة الاختبار",
     "test-email": "اختبار البريد الإلكتروني",

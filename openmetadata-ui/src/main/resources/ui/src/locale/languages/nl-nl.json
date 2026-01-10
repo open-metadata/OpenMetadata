@@ -1765,6 +1765,7 @@
     "test-case-lowercase-plural": "testcases",
     "test-case-name": "Testcasenaam",
     "test-case-plural": "Testcases",
+    "test-case-plural-lowercase": "testgevallen",
     "test-case-resolution-status": "Test Case Resolution Status",
     "test-case-result": "Testcaseresultaten",
     "test-email": "Test E-mail",

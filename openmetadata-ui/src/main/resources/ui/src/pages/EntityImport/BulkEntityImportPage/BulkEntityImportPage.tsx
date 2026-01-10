@@ -352,7 +352,24 @@ const BulkEntityImportPage = () => {
               fqn,
             })
           );
-          navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
+
+          if (entityType === EntityType.TEST_CASE) {
+            if (fqn === WILD_CARD_CHAR) {
+              navigate(getDataQualityPagePath());
+            } else {
+              navigate(
+                getEntityDetailsPath(
+                  EntityType.TABLE,
+                  fqn,
+                  EntityTabs.PROFILER,
+                  ProfilerTabPath.DATA_QUALITY
+                )
+              );
+            }
+          } else {
+            navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
+          }
+
           handleResetImportJob();
           setIsValidating(false);
         }

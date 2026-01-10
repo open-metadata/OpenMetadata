@@ -1765,6 +1765,7 @@
     "test-case-lowercase-plural": "casos de prueba",
     "test-case-name": "Nombre del caso de prueba",
     "test-case-plural": "Casos de Prueba",
+    "test-case-plural-lowercase": "casos de prueba",
     "test-case-resolution-status": "Estado de Resolución del Caso de Prueba",
     "test-case-result": "Resultados del caso de prueba",
     "test-email": "Email de prueba",

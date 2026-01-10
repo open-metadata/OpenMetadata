@@ -1765,6 +1765,7 @@
     "test-case-lowercase-plural": "테스트 케이스들",
     "test-case-name": "테스트 케이스 이름",
     "test-case-plural": "테스트 케이스들",
+    "test-case-plural-lowercase": "테스트 케이스",
     "test-case-resolution-status": "테스트 케이스 해결 상태",
     "test-case-result": "테스트 케이스 결과",
     "test-email": "이메일 테스트",
