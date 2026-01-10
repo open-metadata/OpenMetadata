@@ -24,6 +24,7 @@ import {
   TagLabel,
   TagSource,
 } from '../../../generated/type/tagLabel';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import GlossaryTermsSection from './GlossaryTermsSection';
 
@@ -210,6 +211,11 @@ jest.mock('../../../utils/EntityUpdateUtils', () => ({
     }),
 }));
 
+// Mock useEntityRules hook
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn(),
+}));
+
 jest.requireMock('../../../utils/ToastUtils');
 const { getEntityName } = jest.requireMock('../../../utils/EntityUtils');
 
@@ -254,12 +260,24 @@ const clickHeaderEdit = () => {
 describe('GlossaryTermsSection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Set default entity rules
+    (useEntityRules as jest.Mock).mockReturnValue({
+      entityRules: {
+        canAddMultipleGlossaryTerm: true,
+      },
+      rules: [],
+      isLoading: false,
+    });
   });
 
   describe('Rendering - No Terms', () => {
     it('shows header, no data placeholder, and edit control when permitted', () => {
       const { container } = render(
-        <GlossaryTermsSection hasPermission showEditButton />
+        <GlossaryTermsSection
+          hasPermission
+          showEditButton
+          entityType={EntityType.TABLE}
+        />
       );
 
       expect(
@@ -285,7 +303,13 @@ describe('GlossaryTermsSection', () => {
     });
 
     it('enters edit mode and cancels back', () => {
-      render(<GlossaryTermsSection hasPermission showEditButton />);
+      render(
+        <GlossaryTermsSection
+          hasPermission
+          showEditButton
+          entityType={EntityType.TABLE}
+        />
+      );
 
       clickHeaderEdit();
 
@@ -321,6 +345,7 @@ describe('GlossaryTermsSection', () => {
     it('lists glossary terms using getEntityName and shows icon', () => {
       const { container } = render(
         <GlossaryTermsSection
+          entityType={EntityType.TABLE}
           tags={[...nonGlossaryTags, ...baseGlossaryTags]}
         />
       );
@@ -340,6 +365,7 @@ describe('GlossaryTermsSection', () => {
         <GlossaryTermsSection
           hasPermission
           showEditButton
+          entityType={EntityType.TABLE}
           tags={baseGlossaryTags as TagLabel[]}
         />
       );
