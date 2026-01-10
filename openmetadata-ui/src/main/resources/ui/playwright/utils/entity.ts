@@ -17,7 +17,7 @@ import {
   BIG_ENTITY_DELETE_TIMEOUT,
   ENTITIES_WITHOUT_FOLLOWING_BUTTON,
   LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
-  LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED
+  LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED,
 } from '../constant/delete';
 import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { SidebarItem } from '../constant/sidebar';
@@ -31,15 +31,16 @@ import {
   readElementInListWithScroll,
   redirectToHomePage,
   toastNotification,
-  uuid
+  uuid,
 } from './common';
 import {
   customFormatDateTime,
   getCurrentMillis,
-  getEpochMillisForFutureDays
+  getEpochMillisForFutureDays,
 } from './dateTime';
 import { searchAndClickOnOption } from './explore';
 import { sidebarClick } from './sidebar';
+import { EntityType } from '../support/entity/EntityDataClass.interface';
 
 export const waitForAllLoadersToDisappear = async (
   page: Page,
@@ -443,7 +444,7 @@ export const assignTier = async (
 ) => {
   // Wait for the edit button to be visible and clickable
   const editButton = page.getByTestId(initiatorId);
-  await editButton.waitFor({ state: 'visible'});
+  await editButton.waitFor({ state: 'visible' });
   await editButton.click();
 
   // Wait for all loaders to disappear
@@ -577,7 +578,13 @@ export const updateDescription = async (
   isModal = false,
   validationContainerTestId = 'asset-description-container'
 ) => {
-  await page.getByTestId('edit-description').click();
+  const editButton = page.locator('[data-testid="edit-description"]');
+  if (await editButton.isVisible()) {
+    await editButton.click();
+  } else {
+    // Fallback for ML Model which uses 'edit-button'
+    await page.getByTestId('edit-button').click();
+  }
   await page.locator(descriptionBox).first().click();
   await page.locator(descriptionBox).first().clear();
   await page.locator(descriptionBox).first().fill(description);
@@ -661,6 +668,7 @@ export const assignTag = async (
     .getByTestId(parentId)
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
+    .first()
     .click();
 
   // Wait for the form to be visible and stable
@@ -816,6 +824,7 @@ export const removeTagsFromChildren = async ({
       .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('tags-container')
       .getByTestId('edit-button')
+      .first()
       .click();
 
     await page
@@ -907,6 +916,61 @@ export const assignGlossaryTerm = async (
   ).toBeVisible();
 };
 
+export const openColumnDetailPanel = async ({
+  page,
+  rowSelector = 'data-row-key',
+  columnId,
+  columnNameTestId = 'column-name',
+  entityType,
+}: {
+  page: Page;
+  rowSelector?: string;
+  columnId: string;
+  columnNameTestId?: string;
+  entityType?: EntityType;
+}) => {
+  if (entityType === 'MlModel') {
+    const columnName = page
+      .locator(`[${rowSelector}="${columnId}"]`)
+      .getByTestId(columnNameTestId)
+      .first();
+    await columnName.waitFor({ state: 'visible' });
+    await columnName.click();
+  } else {
+    const row = page.locator(`[${rowSelector}="${columnId}"]`).first();
+    await row.waitFor({ state: 'visible' });
+
+    const nameCell = row.getByTestId('column-name-cell');
+
+    await nameCell.waitFor({ state: 'visible' });
+
+    const columnNameElement = nameCell.getByTestId(columnNameTestId);
+
+    if ((await columnNameElement.count()) > 0) {
+      await columnNameElement.click({ force: false });
+    } else {
+      await nameCell.click({ force: false });
+    }
+  }
+  await expect(page.locator('.column-detail-panel')).toBeVisible();
+
+  await page.waitForLoadState('networkidle');
+
+  const panelContainer = page.locator('.column-detail-panel');
+
+  // Wait for the panel content to be loaded
+  await expect(panelContainer.getByTestId('entity-link')).toBeVisible();
+
+  return panelContainer;
+};
+
+export const closeColumnDetailPanel = async (page: Page) => {
+  const panelContainer = page.locator('.column-detail-panel');
+  await panelContainer.getByTestId('close-button').click();
+
+  await expect(page.locator('.column-detail-panel')).not.toBeVisible();
+};
+
 export const assignGlossaryTermToChildren = async ({
   page,
   glossaryTerm,
@@ -926,6 +990,7 @@ export const assignGlossaryTermToChildren = async ({
     .locator(`[${rowSelector}="${rowId}"]`)
     .getByTestId('glossary-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
+    .first()
     .click();
 
   const searchGlossaryTerm = page.waitForResponse(
@@ -1035,6 +1100,7 @@ export const removeGlossaryTermFromChildren = async ({
       .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('glossary-container')
       .getByTestId('edit-button')
+      .first()
       .click();
 
     await page
@@ -2033,40 +2099,43 @@ export const checkExploreSearchFilter = async (
       : rawFilterValue;
 
   // Use a predicate to check the response URL contains the correct filter
-  const queryRes = page.waitForResponse((response) => {
-    const url = response.url();
-    if (
-      !url.includes('/api/v1/search/query') ||
-      !url.includes('index=dataAsset')
-    ) {
-      return false;
-    }
+  const queryRes = page.waitForResponse(
+    (response) => {
+      const url = response.url();
+      if (
+        !url.includes('/api/v1/search/query') ||
+        !url.includes('index=dataAsset')
+      ) {
+        return false;
+      }
 
-    // Check if the URL contains the filterKey in query_filter
-    const urlObj = new URL(url);
-    const queryFilter = urlObj.searchParams.get('query_filter');
+      // Check if the URL contains the filterKey in query_filter
+      const urlObj = new URL(url);
+      const queryFilter = urlObj.searchParams.get('query_filter');
 
-    if (!queryFilter) {
-      return false;
-    }
+      if (!queryFilter) {
+        return false;
+      }
 
-    try {
-      const filterObj = JSON.parse(queryFilter);
-      const filterStr = JSON.stringify(filterObj);
-      
-      // Check if the filter contains both the filterKey and filterValue
-      return (
-        filterStr.includes(filterKey) &&
-        filterStr.includes(filterValueForSearchURL)
-      );
-    } catch {
-      // Fallback to simple string match if JSON parse fails
-      return (
-        queryFilter.includes(filterKey) &&
-        queryFilter.includes(filterValueForSearchURL)
-      );
-    }
-  }, { timeout: 30_000 });
+      try {
+        const filterObj = JSON.parse(queryFilter);
+        const filterStr = JSON.stringify(filterObj);
+
+        // Check if the filter contains both the filterKey and filterValue
+        return (
+          filterStr.includes(filterKey) &&
+          filterStr.includes(filterValueForSearchURL)
+        );
+      } catch {
+        // Fallback to simple string match if JSON parse fails
+        return (
+          queryFilter.includes(filterKey) &&
+          queryFilter.includes(filterValueForSearchURL)
+        );
+      }
+    },
+    { timeout: 30_000 }
+  );
 
   await page.click('[data-testid="update-btn"]');
   await queryRes;

@@ -35,7 +35,8 @@ const MlModelFeaturesList = () => {
     {} as MlFeature
   );
   const [editDescription, setEditDescription] = useState<boolean>(false);
-  const { data, onUpdate, permissions } = useGenericContext<Mlmodel>();
+  const { data, onUpdate, permissions, openColumnDetailPanel } =
+    useGenericContext<Mlmodel>();
 
   const { mlFeatures, isDeleted, entityFqn } = useMemo(() => {
     return {
@@ -107,6 +108,18 @@ const MlModelFeaturesList = () => {
     }
   };
 
+  const handleColumnClick = useCallback(
+    (feature: MlFeature, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const isExpandIcon = target.closest('.table-expand-icon') !== null;
+
+      if (!isExpandIcon) {
+        openColumnDetailPanel(feature);
+      }
+    },
+    [openColumnDetailPanel]
+  );
+
   if (!isEmpty(mlFeatures)) {
     return (
       <Fragment>
@@ -129,7 +142,13 @@ const MlModelFeaturesList = () => {
                   key={feature.fullyQualifiedName}>
                   <Row gutter={[0, 8]}>
                     <Col span={24}>
-                      <Typography.Text className="font-semibold">
+                      <Typography.Text
+                        className="font-semibold"
+                        data-testid="column-name"
+                        style={{
+                          cursor: isDeleted ? 'default' : 'pointer',
+                        }}
+                        onClick={(event) => handleColumnClick(feature, event)}>
                         {feature.name}
                       </Typography.Text>
                     </Col>
