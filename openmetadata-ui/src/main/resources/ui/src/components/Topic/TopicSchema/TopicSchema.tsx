@@ -278,8 +278,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     (field: Field, event: React.MouseEvent) => {
       const target = event.target as HTMLElement;
       const isExpandIcon = target.closest('.table-expand-icon') !== null;
+      const isButton = target.closest('button') !== null;
 
-      if (!isExpandIcon) {
+      if (!isExpandIcon && !isButton) {
         openColumnDetailPanel(field);
       }
     },

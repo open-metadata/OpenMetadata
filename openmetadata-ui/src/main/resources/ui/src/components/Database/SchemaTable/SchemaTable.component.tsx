@@ -595,8 +595,9 @@ const SchemaTable = () => {
     (column: Column, event: React.MouseEvent) => {
       const target = event.target as HTMLElement;
       const isExpandIcon = target.closest('.table-expand-icon') !== null;
+      const isButton = target.closest('button') !== null;
 
-      if (!isExpandIcon) {
+      if (!isExpandIcon && !isButton) {
         openColumnDetailPanel(column);
       }
     },
@@ -650,10 +651,7 @@ const SchemaTable = () => {
                           width: '24px',
                           height: '24px',
                         }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditDisplayNameClick(record);
-                        }}>
+                        onClick={() => handleEditDisplayNameClick(record)}>
                         <IconEdit
                           style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
                         />
@@ -681,10 +679,12 @@ const SchemaTable = () => {
                         width: '24px',
                         height: '24px',
                       }}
-                      onClick={() =>
-                        record.fullyQualifiedName &&
-                        handleCopyColumnLink(record.fullyQualifiedName)
-                      }>
+                      onClick={() => {
+                        if (record.fullyQualifiedName) {
+                          handleCopyColumnLink(record.fullyQualifiedName);
+                        }
+                      }}
+                      >
                       <ShareIcon
                         style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
                       />
