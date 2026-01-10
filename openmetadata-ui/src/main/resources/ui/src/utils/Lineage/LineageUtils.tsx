@@ -137,14 +137,14 @@ export const getSearchNameEsQuery = (
       should: [
         {
           wildcard: {
-            'name.keyword': {
+            ['name.keyword']: {
               value: `*${searchText}*`,
             },
           },
         },
         {
           wildcard: {
-            'displayName.keyword': {
+            ['displayName.keyword']: {
               value: `*${searchText}*`,
             },
           },

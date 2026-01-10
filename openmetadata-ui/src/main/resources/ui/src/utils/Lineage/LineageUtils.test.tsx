@@ -507,6 +507,32 @@ describe('LineageUtils', () => {
         },
       });
     });
+
+    it('should use table fields', () => {
+      const searchText = 'status';
+      const result = getSearchNameEsQuery(searchText);
+
+      expect(result).toEqual({
+        bool: {
+          should: [
+            {
+              wildcard: {
+                'name.keyword': {
+                  value: '*status*',
+                },
+              },
+            },
+            {
+              wildcard: {
+                'displayName.keyword': {
+                  value: '*status*',
+                },
+              },
+            },
+          ],
+        },
+      });
+    });
   });
 
   describe('Edge cases and error handling', () => {
