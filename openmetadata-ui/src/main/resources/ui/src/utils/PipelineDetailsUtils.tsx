@@ -29,8 +29,9 @@ import { PipelineTaskTab } from '../components/Pipeline/PipelineTaskTab/Pipeline
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
-import { StatusType, TaskStatus } from '../generated/entity/data/pipeline';
+import { Pipeline, StatusType, Task, TaskStatus } from '../generated/entity/data/pipeline';
 import { PageType } from '../generated/system/ui/page';
+import { EntityReference } from '../generated/type/entityReference';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { t } from './i18next/LocalUtil';
 import { PipelineDetailPageTabProps } from './PipelineClassBase';
@@ -171,5 +172,15 @@ export const getPipelineWidgetsFromKey = (widgetConfig: WidgetConfig) => {
       entityType={EntityType.PIPELINE}
       widgetConfig={widgetConfig}
     />
+  );
+};
+
+export const extractPipelineTasks = <T extends Omit<EntityReference, 'type'>>(
+  data: T
+): Task[] => {
+  const pipeline = data as Partial<Pipeline>;
+
+  return (pipeline.tasks ?? []).map(
+    (task) => ({ ...task, tags: task.tags ?? [] } as Task)
   );
 };

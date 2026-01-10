@@ -31,9 +31,9 @@ import com.github.fge.jsonpatch.JsonPatchException;
 import com.github.fge.jsonpatch.diff.JsonDiff;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
-import com.networknt.schema.JsonSchema;
-import com.networknt.schema.JsonSchemaFactory;
-import com.networknt.schema.SpecVersion.VersionFlag;
+import com.networknt.schema.Schema;
+import com.networknt.schema.SchemaRegistry;
+import com.networknt.schema.SpecificationVersion;
 import jakarta.json.*;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -89,8 +89,8 @@ public final class JsonUtils {
   private static final ObjectMapper OBJECT_MAPPER_LENIENT;
   private static final ObjectMapper EXPOSED_OBJECT_MAPPER;
   private static final ObjectMapper MASKER_OBJECT_MAPPER;
-  private static final JsonSchemaFactory schemaFactory =
-      JsonSchemaFactory.getInstance(VersionFlag.V7);
+  private static final SchemaRegistry schemaFactory =
+      SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_7);
   private static final String FAILED_TO_PROCESS_JSON = "Failed to process JSON ";
 
   static {
@@ -395,7 +395,7 @@ public final class JsonUtils {
     }
   }
 
-  public static JsonSchema getJsonSchema(String schema) {
+  public static Schema getJsonSchema(String schema) {
     return schemaFactory.getSchema(schema);
   }
 
