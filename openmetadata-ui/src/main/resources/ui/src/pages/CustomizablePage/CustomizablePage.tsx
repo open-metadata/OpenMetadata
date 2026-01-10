@@ -261,7 +261,7 @@ export const CustomizablePage = () => {
               entityType: EntityType.PAGE,
               data: {
                 pages: [],
-                navigation: [],
+                navigation: null,
               },
             });
             setCurrentPageType(pageFqn as PageType);
