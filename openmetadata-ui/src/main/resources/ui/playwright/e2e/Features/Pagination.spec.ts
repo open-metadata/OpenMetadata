@@ -19,6 +19,7 @@ import { MetricClass } from '../../support/entity/MetricClass';
 import { DriveServiceClass } from '../../support/entity/service/DriveServiceClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
+import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
   testCompletePaginationWithSearch,
@@ -30,7 +31,24 @@ test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-test.describe('Pagination tests for all pages', () => {
+test.describe('Pagination tests for Users page', () => {
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    for (let i = 1; i <= 20; i++) {
+      const user = new UserClass({
+        firstName: `pw_pagination_User${i}`,
+        lastName: `LastName${i}`,
+        email: `pw_pagination_user${i}@example.com`,
+        password: 'User@OMD123',
+      });
+
+      await user.create(apiContext);
+    }
+
+    await afterAction();
+  });
+
   test('should test pagination on Users page', async ({ page }) => {
     test.slow(true);
 
@@ -51,7 +69,9 @@ test.describe('Pagination tests for all pages', () => {
       waitForLoadSelector: 'table',
     });
   });
+});
 
+test.describe('Pagination tests for all pages', () => {
   test('should test pagination on Roles page', async ({ page }) => {
     test.slow(true);
 
