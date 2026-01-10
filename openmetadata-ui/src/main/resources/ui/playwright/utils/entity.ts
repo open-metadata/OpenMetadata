@@ -625,9 +625,10 @@ export const updateDescriptionForChildren = async (
 
   await descriptionInput.click();
   await descriptionInput.focus();
-
+  // Added multiple ways to clear description field as fill alone was flaky some times
   await page.keyboard.press('Meta+A');
   await page.keyboard.press('Backspace');
+  await descriptionInput.fill('');
 
   await expect(descriptionInput).toBeEmpty();
 
