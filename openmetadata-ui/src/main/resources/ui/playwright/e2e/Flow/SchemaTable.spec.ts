@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { test } from '../fixtures/pages';
-
 import { get } from 'lodash';
+import { test } from '../fixtures/pages';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -231,6 +230,18 @@ test('Copy column link should have valid URL format', async ({ page }) => {
   expect(validationResult.isValid).toBe(true);
   expect(validationResult.protocol).toMatch(/^https?:$/);
   expect(validationResult.pathname).toContain('table');
+
+  // Visit the copied link to verify it opens the side panel
+  await page.goto(clipboardText);
+
+  // Verify side panel is open
+  const sidePanel = page.locator('.column-detail-panel');
+  await expect(sidePanel).toBeVisible();
+  // Verify the correct column is showing in the panel
+  const columnName = table.entityResponseData.columns?.[0]?.name;
+  if (columnName) {
+    await expect(sidePanel).toContainText(columnName);
+  }
 });
 
 test('Copy nested column link should include full hierarchical path', async ({ page }) => {
@@ -266,6 +277,19 @@ test('Copy nested column link should include full hierarchical path', async ({ p
       expect(clipboardText).toContain(
         table.entityResponseData?.['fullyQualifiedName'] ?? ''
       );
+
+      // Visit the copied link to verify it opens the side panel
+      await page.goto(clipboardText);
+
+      // Verify side panel is open
+      const sidePanel = page.locator('.column-detail-panel');
+      await expect(sidePanel).toBeVisible();
+
+      // Verify the correct column is showing in the panel
+      const nestedColumnName = table.entityResponseData.columns?.[0]?.children?.[0]?.name;
+      if (nestedColumnName) {
+        await expect(sidePanel).toContainText(nestedColumnName);
+      }
     }
   }
 });

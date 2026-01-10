@@ -18,7 +18,6 @@ import {
   FunctionComponent,
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -71,17 +70,53 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const { fqn: decodedEntityFqn } = useFqn();
 
-  // Extract just the topic FQN (service.topic) from the URL
-  // The URL might contain field path like: service.topic.fieldName.nestedField
-  const topicFQN = useMemo(() => {
-    if (!decodedEntityFqn) {
-      return '';
-    }
-    const splitFqn = Fqn.split(decodedEntityFqn);
+  /*
+   * Extract the topic FQN from the URL.
+   * The URL might contain field path like: service.topic.fieldName.nestedField
+   * We need to determine where the entity FQN ends and the field path starts.
+   */
+  const [topicFQN, setTopicFQN] = useState<string>('');
 
-    // Topic FQN has 2 parts: service, topic
-    // Take only the first 2 parts
-    return splitFqn.slice(0, 2).join(FQN_SEPARATOR_CHAR);
+  useEffect(() => {
+    if (!decodedEntityFqn) {
+      return;
+    }
+
+    const resolveTopicFQN = async () => {
+      setLoading(true);
+      let foundFQN = decodedEntityFqn;
+      const parts = Fqn.split(decodedEntityFqn);
+
+      // Try finding the topic by successively removing the last segment
+      // until we find a match or run out of segments (min 2: service.topic)
+      while (parts.length >= 2) {
+        const candidateFQN = parts.join(FQN_SEPARATOR_CHAR);
+        try {
+          await getTopicByFqn(candidateFQN, {
+            fields: TabSpecificField.OWNERS, // Minimal fetch to verify existence
+          });
+          foundFQN = candidateFQN;
+          break; // Found valid topic
+        } catch (error) {
+          if (
+            (error as AxiosError).response?.status === ClientErrors.NOT_FOUND &&
+            parts.length > 2
+          ) {
+            parts.pop(); // Remove last segment (potential field name) and retry
+          } else {
+            // Other error or down to 2 parts, stop
+            if (parts.length === 2) {
+              // If we reached the base (service.topic) and it's 404, default to candidate
+              foundFQN = candidateFQN;
+            }
+            break;
+          }
+        }
+      }
+      setTopicFQN(foundFQN);
+    };
+
+    resolveTopicFQN();
   }, [decodedEntityFqn]);
 
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
@@ -268,7 +303,9 @@ const TopicDetailsPage: FunctionComponent = () => {
   }, []);
 
   useEffect(() => {
-    fetchResourcePermission(topicFQN);
+    if (topicFQN) {
+      fetchResourcePermission(topicFQN);
+    }
   }, [topicFQN]);
 
   useEffect(() => {

@@ -204,5 +204,18 @@ test.describe('Container entity specific tests ', () => {
     expect(validationResult.isValid).toBe(true);
     expect(validationResult.protocol).toMatch(/^https?:$/);
     expect(validationResult.pathname).toContain('container');
+
+    // Visit the copied link to verify it opens the side panel
+    await page.goto(clipboardText);
+
+    // Verify side panel is open
+    const sidePanel = page.locator('.column-detail-panel');
+    await expect(sidePanel).toBeVisible();
+    
+    // Verify the correct column is showing in the panel
+    const columnName = (container.entityResponseData as any)?.dataModel?.columns?.[0]?.name;
+    if (columnName) {
+      await expect(sidePanel).toContainText(columnName);
+    }
   });
 });

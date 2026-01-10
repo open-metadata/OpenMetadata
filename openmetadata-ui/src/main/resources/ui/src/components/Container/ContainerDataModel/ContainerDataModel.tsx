@@ -51,6 +51,7 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
+  findFieldByFQN,
   getParentKeysToExpand,
   getTableExpandableConfig,
   pruneEmptyChildren,
@@ -117,6 +118,12 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     const parentKeys = getParentKeysToExpand(schema, entityFqn);
     if (parentKeys.length > 0) {
       setExpandedRowKeys((prev) => [...new Set([...prev, ...parentKeys])]);
+    }
+
+    // Open side panel for the deeper linked column
+    const matchedColumn = findFieldByFQN(schema, entityFqn);
+    if (matchedColumn) {
+      openColumnDetailPanel(matchedColumn);
     }
 
     const timer = setTimeout(() => {

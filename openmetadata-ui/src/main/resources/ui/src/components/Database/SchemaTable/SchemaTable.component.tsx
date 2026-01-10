@@ -81,6 +81,7 @@ import {
 } from '../../../utils/TableTags/TableTags.utils';
 import {
   findColumnByEntityLink,
+  findFieldByFQN,
   getAllRowKeysByKeyName,
   getTableExpandableConfig,
   prepareConstraintIcon,
@@ -175,13 +176,19 @@ const SchemaTable = () => {
     // URL contains more than just the table FQN - likely a column
     setHighlightedColumnFqn(decodedEntityFqn);
 
+    // Find and open the specific column in the side panel
+    const matchedColumn = findFieldByFQN(tableColumns ?? [], decodedEntityFqn);
+    if (matchedColumn) {
+      openColumnDetailPanel(matchedColumn);
+    }
+
     // Clear highlight after animation completes
     const timer = setTimeout(() => {
       setHighlightedColumnFqn(undefined);
     }, 3000);
 
     return () => clearTimeout(timer);
-  }, [decodedEntityFqn, tableFqn]);
+  }, [decodedEntityFqn, tableFqn, tableColumns]);
 
   // Scroll to highlighted row when columns are loaded
   useScrollToElement(
@@ -193,10 +200,7 @@ const SchemaTable = () => {
     (record: Column) => {
       if (highlightedColumnFqn && record.fullyQualifiedName) {
         // Check if this row matches the highlighted FQN
-        if (
-          record.fullyQualifiedName === highlightedColumnFqn ||
-          highlightedColumnFqn.startsWith(record.fullyQualifiedName + '.')
-        ) {
+        if (record.fullyQualifiedName === highlightedColumnFqn) {
           return 'highlighted-row';
         }
       }

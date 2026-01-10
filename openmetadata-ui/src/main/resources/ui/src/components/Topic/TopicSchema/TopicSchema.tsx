@@ -49,6 +49,7 @@ import {
 import {
   getAllRowKeysByKeyName,
   getExpandAllKeysToDepth,
+  findFieldByFQN,
   getParentKeysToExpand,
   getSafeExpandAllKeys,
   getSchemaDepth,
@@ -160,6 +161,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     const parentKeys = getParentKeysToExpand(fields, entityFqn);
     if (parentKeys.length > 0) {
       setExpandedRowKeys((prev) => [...new Set([...prev, ...parentKeys])]);
+    }
+
+    // Open side panel for the deeper linked field
+    const matchedField = findFieldByFQN(fields, entityFqn);
+    if (matchedField) {
+      openColumnDetailPanel(matchedField);
     }
 
     const timer = setTimeout(() => {

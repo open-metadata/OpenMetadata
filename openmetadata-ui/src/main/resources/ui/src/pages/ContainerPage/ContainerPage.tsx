@@ -96,22 +96,55 @@ const ContainerPage = () => {
   );
   const { fqn: decodedEntityFqn } = useFqn();
 
-  // Extract just the container FQN (service.container) from the URL
-  // The URL might contain column path like: service.container.columnName.nestedColumn
-  const decodedContainerName = useMemo(() => {
-    if (!decodedEntityFqn) {
-      return '';
-    }
-    const splitFqn = Fqn.split(decodedEntityFqn);
+  // Local states
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [containerFQN, setContainerFQN] = useState<string>('');
+  const [hasError, setHasError] = useState<boolean>(false);
 
-    // Container FQN has 2 parts: service, container
-    // Take only the first 2 parts
-    return splitFqn.slice(0, 2).join(FQN_SEPARATOR_CHAR);
+  useEffect(() => {
+    if (!decodedEntityFqn) {
+      return;
+    }
+
+    const resolveContainerFQN = async () => {
+      setIsLoading(true);
+      let foundFQN = decodedEntityFqn;
+      const parts = Fqn.split(decodedEntityFqn);
+
+      // Try finding the container by successively removing the last segment
+      // until we find a match or run out of segments (min 2: service.container)
+      while (parts.length >= 2) {
+        const candidateFQN = parts.join(FQN_SEPARATOR_CHAR);
+        try {
+          await getContainerByName(candidateFQN, {
+            fields: [TabSpecificField.OWNERS], // Minimal fetch to verify existence
+          });
+          foundFQN = candidateFQN;
+          break; // Found valid container
+        } catch (error) {
+          if (
+            (error as AxiosError).response?.status === ClientErrors.NOT_FOUND &&
+            parts.length > 2
+          ) {
+            parts.pop(); // Remove last segment (potential column name) and retry
+          } else {
+            // Other error or down to 2 parts, stop
+            if (parts.length === 2) {
+              // If we reached the base (service.container) and it's 404, then it really doesn't exist
+              foundFQN = candidateFQN;
+            }
+            break;
+          }
+        }
+      }
+      setContainerFQN(foundFQN);
+      setIsLoading(false);
+    };
+
+    resolveContainerFQN();
   }, [decodedEntityFqn]);
 
   // Local states
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [hasError, setHasError] = useState<boolean>(false);
   const [containerData, setContainerData] = useState<Container>();
   const [containerPermissions, setContainerPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -165,7 +198,7 @@ const ContainerPage = () => {
   );
 
   const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.CONTAINER, decodedContainerName, handleFeedCount);
+    getFeedCounts(EntityType.CONTAINER, containerFQN, handleFeedCount);
 
   const fetchResourcePermission = async (containerFQN: string) => {
     try {
@@ -199,7 +232,7 @@ const ContainerPage = () => {
   const fetchContainerChildren = useCallback(async () => {
     try {
       const { paging } = await getContainerChildrenByName(
-        decodedContainerName,
+        containerFQN,
         {
           limit: 0,
         }
@@ -208,7 +241,7 @@ const ContainerPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  }, [decodedContainerName]);
+  }, [containerFQN]);
 
   const { deleted, version, isUserFollowing } = useMemo(() => {
     return {
@@ -462,7 +495,7 @@ const ContainerPage = () => {
     navigate(
       getVersionPath(
         EntityType.CONTAINER,
-        decodedContainerName,
+        containerFQN,
         toString(version)
       )
     );
@@ -508,7 +541,7 @@ const ContainerPage = () => {
 
     const tabs = containerDetailsClassBase.getContainerDetailPageTabs({
       isDataModelEmpty,
-      decodedContainerName,
+      decodedContainerName: containerFQN,
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
@@ -532,7 +565,7 @@ const ContainerPage = () => {
   }, [
     isDataModelEmpty,
     containerData,
-    decodedContainerName,
+    containerFQN,
     editLineagePermission,
     editCustomAttributePermission,
     viewAllPermission,
@@ -548,7 +581,7 @@ const ContainerPage = () => {
     try {
       await updateContainerVotes(id, data);
 
-      const details = await getContainerByName(decodedContainerName, {
+      const details = await getContainerByName(containerFQN, {
         fields: [
           TabSpecificField.PARENT,
           TabSpecificField.DATAMODEL,
@@ -568,9 +601,11 @@ const ContainerPage = () => {
 
   // Effects
   useEffect(() => {
-    fetchResourcePermission(decodedContainerName);
-    fetchContainerChildren();
-  }, [decodedContainerName]);
+    if (containerFQN) {
+      fetchResourcePermission(containerFQN);
+      fetchContainerChildren();
+    }
+  }, [containerFQN]);
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
@@ -607,7 +642,7 @@ const ContainerPage = () => {
   if (hasError) {
     return (
       <ErrorPlaceHolder>
-        {getEntityMissingError(t('label.container'), decodedContainerName)}
+        {getEntityMissingError(t('label.container'), containerFQN)}
       </ErrorPlaceHolder>
     );
   }

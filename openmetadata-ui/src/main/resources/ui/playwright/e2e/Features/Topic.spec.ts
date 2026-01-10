@@ -96,6 +96,13 @@ test.describe('Topic entity specific tests ', () => {
     expect(validationResult.isValid).toBe(true);
     expect(validationResult.protocol).toMatch(/^https?:$/);
     expect(validationResult.pathname).toContain('topic');
+
+    // Visit the copied link to verify it opens the side panel
+    await page.goto(clipboardText);
+
+    // Verify side panel is open
+    const sidePanel = page.locator('.column-detail-panel');
+    await expect(sidePanel).toBeVisible();
   });
 
   test('Copy nested field link should include full hierarchical path', async ({
@@ -139,6 +146,13 @@ test.describe('Topic entity specific tests ', () => {
         expect(clipboardText).toContain(
           topic.entityResponseData?.['fullyQualifiedName'] ?? ''
         );
+
+        // Visit the copied link to verify it opens the side panel
+        await page.goto(clipboardText);
+
+        // Verify side panel is open
+        const sidePanel = page.locator('.column-detail-panel');
+        await expect(sidePanel).toBeVisible();
       }
     }
   });
