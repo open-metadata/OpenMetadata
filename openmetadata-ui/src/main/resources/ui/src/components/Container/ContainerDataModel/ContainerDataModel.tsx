@@ -43,13 +43,15 @@ import {
   updateContainerColumnTags,
 } from '../../../utils/ContainerDetailUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { useCopyEntityLink } from '../../../hooks/useCopyEntityLink';
+import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
+  getParentKeysToExpand,
   getTableExpandableConfig,
   pruneEmptyChildren,
 } from '../../../utils/TableUtils';
@@ -77,96 +79,58 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
 
   const [editContainerColumnDescription, setEditContainerColumnDescription] =
     useState<Column>();
-  const [copiedColumnFqn, setCopiedColumnFqn] = useState<string>();
   const [highlightedColumnFqn, setHighlightedColumnFqn] = useState<string>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
-  const schema = pruneEmptyChildren(dataModel?.columns ?? []);
-
-  // Get all parent keys that need to be expanded to show the target column
-  const getParentKeysToExpand = useCallback(
-    (
-      columns: Column[],
-      targetFqn: string,
-      parentKeys: string[] = []
-    ): string[] => {
-      for (const column of columns) {
-        if (column.fullyQualifiedName === targetFqn) {
-          return parentKeys;
-        }
-        if (
-          column.children?.length &&
-          targetFqn.startsWith((column.fullyQualifiedName ?? '') + '.')
-        ) {
-          const newParentKeys = [...parentKeys, column.name];
-          const result = getParentKeysToExpand(
-            column.children,
-            targetFqn,
-            newParentKeys
-          );
-          if (
-            result.length > 0 ||
-            column.children.some((c) => c.fullyQualifiedName === targetFqn)
-          ) {
-            return newParentKeys;
-          }
-        }
-      }
-
-      return parentKeys;
-    },
-    []
+  const { copyEntityLink, copiedFqn: copiedColumnFqn } = useCopyEntityLink(
+    EntityType.CONTAINER
   );
+
+  const schema = pruneEmptyChildren(dataModel?.columns ?? []);
 
   // Detect if URL contains a column FQN and highlight it
   useEffect(() => {
     // entityFqn from props is the URL FQN, check if it's different from container FQN
     const containerFqnPrefix = entityFqn?.split('.').slice(0, -1).join('.');
     if (
-      entityFqn &&
-      containerFqnPrefix &&
-      entityFqn.includes(containerFqnPrefix + '.')
+      !entityFqn ||
+      !containerFqnPrefix ||
+      !entityFqn.includes(containerFqnPrefix + '.')
     ) {
-      // Check if entityFqn is a column FQN (not just the container)
-      const columnMatch = schema.some(
-        (col) =>
-          col.fullyQualifiedName === entityFqn ||
-          entityFqn.startsWith((col.fullyQualifiedName ?? '') + '.')
-      );
-      if (columnMatch) {
-        setHighlightedColumnFqn(entityFqn);
-
-        // Expand parent rows to show the nested column
-        const parentKeys = getParentKeysToExpand(schema, entityFqn);
-        if (parentKeys.length > 0) {
-          setExpandedRowKeys((prev) => [...new Set([...prev, ...parentKeys])]);
-        }
-
-        const timer = setTimeout(() => {
-          setHighlightedColumnFqn(undefined);
-        }, 3000);
-
-        return () => clearTimeout(timer);
-      }
+      return;
     }
-  }, [entityFqn, schema, getParentKeysToExpand]);
+
+    // Check if entityFqn is a column FQN (not just the container)
+    const columnMatch = schema.some(
+      (col) =>
+        col.fullyQualifiedName === entityFqn ||
+        entityFqn.startsWith((col.fullyQualifiedName ?? '') + '.')
+    );
+
+    if (!columnMatch) {
+      return;
+    }
+
+    setHighlightedColumnFqn(entityFqn);
+
+    // Expand parent rows to show the nested column
+    const parentKeys = getParentKeysToExpand(schema, entityFqn);
+    if (parentKeys.length > 0) {
+      setExpandedRowKeys((prev) => [...new Set([...prev, ...parentKeys])]);
+    }
+
+    const timer = setTimeout(() => {
+      setHighlightedColumnFqn(undefined);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [entityFqn, schema]);
 
   // Scroll to highlighted row when columns are loaded
-  useEffect(() => {
-    if (highlightedColumnFqn && schema.length > 0) {
-      const scrollTimer = setTimeout(() => {
-        const highlightedRow = document.querySelector('.highlighted-row');
-        if (highlightedRow) {
-          highlightedRow.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-          });
-        }
-      }, 100);
-
-      return () => clearTimeout(scrollTimer);
-    }
-  }, [highlightedColumnFqn, schema]);
+  useScrollToElement(
+    '.highlighted-row',
+    Boolean(highlightedColumnFqn && schema.length > 0)
+  );
 
   const getRowClassName = useCallback(
     (record: Column) => {
@@ -182,40 +146,11 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     [highlightedColumnFqn]
   );
 
-  const getColumnLink = useCallback((columnFqn: string) => {
-    const columnPath = getEntityDetailsPath(EntityType.CONTAINER, columnFqn);
-
-    return `${window.location.origin}${columnPath}`;
-  }, []);
-
   const handleCopyColumnLink = useCallback(
     async (columnFqn: string) => {
-      const columnLink = getColumnLink(columnFqn);
-      try {
-        await navigator.clipboard.writeText(columnLink);
-        setCopiedColumnFqn(columnFqn);
-        setTimeout(() => setCopiedColumnFqn(undefined), 2000);
-      } catch {
-        try {
-          const textArea = document.createElement('textarea');
-          textArea.value = columnLink;
-          textArea.style.position = 'fixed';
-          textArea.style.opacity = '0';
-          document.body.appendChild(textArea);
-          textArea.focus();
-          textArea.select();
-          const successful = document.execCommand('copy');
-          document.body.removeChild(textArea);
-          if (successful) {
-            setCopiedColumnFqn(columnFqn);
-            setTimeout(() => setCopiedColumnFqn(undefined), 2000);
-          }
-        } catch {
-          // Silently fail if both methods don't work
-        }
-      }
+      await copyEntityLink(columnFqn);
     },
-    [getColumnLink]
+    [copyEntityLink]
   );
 
   const handleFieldTagsChange = useCallback(

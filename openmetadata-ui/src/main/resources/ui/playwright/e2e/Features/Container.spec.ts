@@ -18,8 +18,18 @@ import { redirectToHomePage } from '../../utils/common';
 import {
   assignTagToChildren,
   removeTagsFromChildren,
+  testCopyLinkButton,
+  validateCopiedLinkFormat,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
+
+// Grant clipboard permissions for copy link tests
+test.use({
+  contextOptions: {
+    permissions: ['clipboard-read', 'clipboard-write'],
+  },
+});
 
 const container = new ContainerClass();
 
@@ -126,10 +136,7 @@ test.describe('Container entity specific tests ', () => {
   }) => {
     await page.goto('/container/s3_storage_sample.departments.finance');
 
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     await assignTagToChildren({
       page,
@@ -151,5 +158,51 @@ test.describe('Container entity specific tests ', () => {
       rowId: 'budget_executor',
       entityEndpoint: 'containers',
     });
+  });
+
+  test('Copy column link button should copy the column URL to clipboard', async ({
+    dataConsumerPage: page,
+  }) => {
+    await container.visitEntityPage(page);
+
+    await testCopyLinkButton({
+      page,
+      buttonTestId: 'copy-column-link-button',
+      containerTestId: 'container-data-model-table',
+      expectedUrlPath: '/container/',
+      entityFqn: container.entityResponseData?.['fullyQualifiedName'] ?? '',
+    });
+  });
+
+  test('Copy column link should have valid URL format', async ({
+    dataConsumerPage: page,
+  }) => {
+    await container.visitEntityPage(page);
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await expect(page.getByTestId('container-data-model-table')).toBeVisible();
+
+    const copyButton = page.getByTestId('copy-column-link-button').first();
+    await expect(copyButton).toBeVisible();
+    await copyButton.click();
+
+    const clipboardText = await page.evaluate(async () => {
+      try {
+        return await navigator.clipboard.readText();
+      } catch (error) {
+        return `CLIPBOARD_ERROR: ${error}`;
+      }
+    });
+
+    const validationResult = validateCopiedLinkFormat({
+      clipboardText,
+      expectedEntityType: 'container',
+      entityFqn: container.entityResponseData?.['fullyQualifiedName'] ?? '',
+      options: { expectFragment: false },
+    });
+
+    expect(validationResult.isValid).toBe(true);
+    expect(validationResult.protocol).toMatch(/^https?:$/);
+    expect(validationResult.pathname).toContain('container');
   });
 });

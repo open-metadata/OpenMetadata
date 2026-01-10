@@ -2172,3 +2172,132 @@ export const getEntityDataTypeDisplayPatch = (entity: EntityClass) => {
       return undefined;
   }
 };
+/**
+ * Test utility for verifying copy link button functionality across different entity types.
+ * Follows Playwright Developer Handbook guidelines for user-centric testing.
+ * 
+ * This function tests the copy link feature by:
+ * 1. Clicking the copy button
+ * 2. Reading clipboard content via navigator.clipboard API
+ * 3. Verifying the clipboard URL contains expected values
+ * 
+ * Note: This requires the test to run in a secure context (HTTPS or localhost)
+ * 
+ * @param page - Playwright Page object
+ * @param buttonTestId - Test ID of the copy button ('copy-column-link-button' or 'copy-field-link-button')
+ * @param containerTestId - Test ID of the container element to wait for
+ * @param expectedUrlPath - Expected URL path segment (e.g., '/table/', '/container/')
+ * @param entityFqn - Fully qualified name of the entity to verify in clipboard
+ */
+export const testCopyLinkButton = async ({
+  page,
+  buttonTestId,
+  containerTestId,
+  expectedUrlPath,
+  entityFqn,
+}: {
+  page: Page;
+  buttonTestId: 'copy-column-link-button' | 'copy-field-link-button';
+  containerTestId: string;
+  expectedUrlPath: string;
+  entityFqn: string;
+}) => {
+  // Wait for page to be fully loaded
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  // Wait for the specific container to be visible
+  await expect(page.getByTestId(containerTestId)).toBeVisible();
+
+  // Find the first copy button and verify it's visible
+  const copyButton = page.getByTestId(buttonTestId).first();
+  await expect(copyButton).toBeVisible();
+
+  // Click the copy button
+  await copyButton.click();
+  
+  // Wait a bit for clipboard to be populated
+  await page.waitForTimeout(500);
+
+  // Read clipboard content
+  const clipboardText = await page.evaluate(async () => {
+    try {
+      return await navigator.clipboard.readText();
+    } catch (error) {
+      // If clipboard API fails, return error message
+      return `CLIPBOARD_ERROR: ${error}`;
+    }
+  });
+  
+  // Verify the clipboard text contains expected URL path and entity FQN
+  expect(clipboardText).toContain(expectedUrlPath);
+  expect(clipboardText).toContain(entityFqn);
+};
+
+/**
+ * Validates the format and structure of a copied link URL.
+ * Ensures URLs are properly formatted, contain all required components, and follow expected patterns.
+ * 
+ * @param clipboardText - The text copied to clipboard
+ * @param expectedEntityType - Expected entity type in URL (e.g., 'table', 'topic', 'container')
+ * @param entityFqn - Fully qualified name of the entity
+ * @param options - Optional validation options
+ * @returns Validation result with details
+ */
+export const validateCopiedLinkFormat = ({
+  clipboardText,
+  expectedEntityType,
+  entityFqn,
+  options = {},
+}: {
+  clipboardText: string;
+  expectedEntityType: string;
+  entityFqn: string;
+  options?: {
+    expectFragment?: boolean; // Expect URL fragment (e.g., #column-name)
+    allowedProtocols?: string[]; // Allowed protocols (default: ['http:', 'https:'])
+  };
+}) => {
+  const {
+    expectFragment = true,
+    allowedProtocols = ['http:', 'https:'],
+  } = options;
+
+  // Parse the URL
+  let url: URL;
+  try {
+    url = new URL(clipboardText);
+  } catch (error) {
+    throw new Error(`Invalid URL format: ${clipboardText}. Error: ${error}`);
+  }
+
+  // Validate protocol
+  expect(allowedProtocols).toContain(url.protocol);
+
+  // Validate hostname exists
+  expect(url.hostname).toBeTruthy();
+
+  // Validate path structure: should contain /{entityType}/{fqn}
+  const pathPattern = new RegExp(`^/${expectedEntityType}/`);
+  expect(url.pathname).toMatch(pathPattern);
+
+  // Validate FQN is in the path
+  expect(url.pathname).toContain(entityFqn);
+
+  // Validate fragment if expected (e.g., #column-name or #field-name)
+  if (expectFragment) {
+    expect(url.hash).toBeTruthy();
+    expect(url.hash).toMatch(/^#.+/);
+  }
+
+  // Return parsed URL for additional assertions if needed
+  return {
+    url,
+    protocol: url.protocol,
+    hostname: url.hostname,
+    pathname: url.pathname,
+    fragment: url.hash,
+    isValid: true,
+  };
+};
+

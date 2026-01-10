@@ -37,8 +37,9 @@ import {
 } from '../../../generated/entity/data/topic';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
+import { useScrollToElement } from '../../../hooks/useScrollToElement';
+import { useCopyEntityLink } from '../../../hooks/useCopyEntityLink';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
-import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -48,6 +49,7 @@ import {
 import {
   getAllRowKeysByKeyName,
   getExpandAllKeysToDepth,
+  getParentKeysToExpand,
   getSafeExpandAllKeys,
   getSchemaDepth,
   getSchemaFieldCount,
@@ -80,10 +82,13 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const { t } = useTranslation();
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const [copiedFieldFqn, setCopiedFieldFqn] = useState<string>();
   const [highlightedFieldFqn, setHighlightedFieldFqn] = useState<string>();
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.FIELDS
+  );
+
+  const { copyEntityLink, copiedFqn: copiedFieldFqn } = useCopyEntityLink(
+    EntityType.TOPIC
   );
   const viewTypeOptions = [
     {
@@ -141,83 +146,38 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     );
   }, [messageSchema?.schemaFields]);
 
-  // Get all parent keys that need to be expanded to show the target field
-  const getParentKeysToExpand = useCallback(
-    (
-      fields: Field[],
-      targetFqn: string,
-      parentKeys: string[] = []
-    ): string[] => {
-      for (const field of fields) {
-        if (field.fullyQualifiedName === targetFqn) {
-          return parentKeys;
-        }
-        if (
-          field.children?.length &&
-          targetFqn.startsWith((field.fullyQualifiedName ?? '') + '.')
-        ) {
-          const newParentKeys = [...parentKeys, field.name];
-          const result = getParentKeysToExpand(
-            field.children,
-            targetFqn,
-            newParentKeys
-          );
-          if (
-            result.length > 0 ||
-            field.children.some((c) => c.fullyQualifiedName === targetFqn)
-          ) {
-            return newParentKeys;
-          }
-        }
-      }
-
-      return parentKeys;
-    },
-    []
-  );
-
   // Detect if URL contains a field FQN and highlight it
   useEffect(() => {
     const topicFqn = topicDetails?.fullyQualifiedName;
-    if (entityFqn && topicFqn && entityFqn !== topicFqn) {
-      setHighlightedFieldFqn(entityFqn);
-
-      // Expand parent rows to show the nested field
-      const fields = messageSchema?.schemaFields ?? [];
-      const parentKeys = getParentKeysToExpand(fields, entityFqn);
-      if (parentKeys.length > 0) {
-        setExpandedRowKeys((prev) => [...new Set([...prev, ...parentKeys])]);
-      }
-
-      const timer = setTimeout(() => {
-        setHighlightedFieldFqn(undefined);
-      }, 3000);
-
-      return () => clearTimeout(timer);
+    if (!entityFqn || !topicFqn || entityFqn === topicFqn) {
+      return;
     }
+
+    setHighlightedFieldFqn(entityFqn);
+
+    // Expand parent rows to show the nested field
+    const fields = messageSchema?.schemaFields ?? [];
+    const parentKeys = getParentKeysToExpand(fields, entityFqn);
+    if (parentKeys.length > 0) {
+      setExpandedRowKeys((prev) => [...new Set([...prev, ...parentKeys])]);
+    }
+
+    const timer = setTimeout(() => {
+      setHighlightedFieldFqn(undefined);
+    }, 3000);
+
+    return () => clearTimeout(timer);
   }, [
     entityFqn,
     topicDetails?.fullyQualifiedName,
     messageSchema?.schemaFields,
-    getParentKeysToExpand,
   ]);
 
   // Scroll to highlighted row when fields are loaded
-  useEffect(() => {
-    if (highlightedFieldFqn && messageSchema?.schemaFields?.length) {
-      const scrollTimer = setTimeout(() => {
-        const highlightedRow = document.querySelector('.highlighted-row');
-        if (highlightedRow) {
-          highlightedRow.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-          });
-        }
-      }, 100);
-
-      return () => clearTimeout(scrollTimer);
-    }
-  }, [highlightedFieldFqn, messageSchema?.schemaFields]);
+  useScrollToElement(
+    '.highlighted-row',
+    Boolean(highlightedFieldFqn && messageSchema?.schemaFields?.length)
+  );
 
   const getRowClassName = useCallback(
     (record: Field) => {
@@ -304,40 +264,11 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     setExpandedRowKeys(keys as string[]);
   };
 
-  const getFieldLink = useCallback((fieldFqn: string) => {
-    const fieldPath = getEntityDetailsPath(EntityType.TOPIC, fieldFqn);
-
-    return `${window.location.origin}${fieldPath}`;
-  }, []);
-
   const handleCopyFieldLink = useCallback(
     async (fieldFqn: string) => {
-      const fieldLink = getFieldLink(fieldFqn);
-      try {
-        await navigator.clipboard.writeText(fieldLink);
-        setCopiedFieldFqn(fieldFqn);
-        setTimeout(() => setCopiedFieldFqn(undefined), 2000);
-      } catch {
-        try {
-          const textArea = document.createElement('textarea');
-          textArea.value = fieldLink;
-          textArea.style.position = 'fixed';
-          textArea.style.opacity = '0';
-          document.body.appendChild(textArea);
-          textArea.focus();
-          textArea.select();
-          const successful = document.execCommand('copy');
-          document.body.removeChild(textArea);
-          if (successful) {
-            setCopiedFieldFqn(fieldFqn);
-            setTimeout(() => setCopiedFieldFqn(undefined), 2000);
-          }
-        } catch {
-          // Silently fail if both methods don't work
-        }
-      }
+      await copyEntityLink(fieldFqn);
     },
-    [getFieldLink]
+    [copyEntityLink]
   );
 
   const renderSchemaName = useCallback(

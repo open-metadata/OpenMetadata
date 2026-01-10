@@ -13,9 +13,15 @@
 import test, { expect } from '@playwright/test';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { testCopyLinkButton, validateCopiedLinkFormat } from '../../utils/entity';
 
 // use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+test.use({
+  storageState: 'playwright/.auth/admin.json',
+  contextOptions: {
+    permissions: ['clipboard-read', 'clipboard-write'],
+  },
+});
 
 const topic = new TopicClass();
 
@@ -46,5 +52,94 @@ test.describe('Topic entity specific tests ', () => {
     await topic.visitEntityPage(page);
 
     await expect(page.getByRole('tab', { name: 'Schema' })).toContainText('2');
+  });
+
+  test('Copy field link button should copy the field URL to clipboard', async ({
+    page,
+  }) => {
+    await topic.visitEntityPage(page);
+
+    await testCopyLinkButton({
+      page,
+      buttonTestId: 'copy-field-link-button',
+      containerTestId: 'topic-schema-fields-table',
+      expectedUrlPath: '/topic/',
+      entityFqn: topic.entityResponseData?.['fullyQualifiedName'] ?? '',
+    });
+  });
+
+  test('Copy field link should have valid URL format', async ({ page }) => {
+    await topic.visitEntityPage(page);
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await expect(page.getByTestId('topic-schema-fields-table')).toBeVisible();
+
+    const copyButton = page.getByTestId('copy-field-link-button').first();
+    await expect(copyButton).toBeVisible();
+    await copyButton.click();
+
+    const clipboardText = await page.evaluate(async () => {
+      try {
+        return await navigator.clipboard.readText();
+      } catch (error) {
+        return `CLIPBOARD_ERROR: ${error}`;
+      }
+    });
+
+    const validationResult = validateCopiedLinkFormat({
+      clipboardText,
+      expectedEntityType: 'topic',
+      entityFqn: topic.entityResponseData?.['fullyQualifiedName'] ?? '',
+      options: { expectFragment: false },
+    });
+
+    expect(validationResult.isValid).toBe(true);
+    expect(validationResult.protocol).toMatch(/^https?:$/);
+    expect(validationResult.pathname).toContain('topic');
+  });
+
+  test('Copy nested field link should include full hierarchical path', async ({
+    page,
+  }) => {
+    await topic.visitEntityPage(page);
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await expect(page.getByTestId('topic-schema-fields-table')).toBeVisible();
+
+    const expandButtons = page.locator('[data-testid="expand-icon"]');
+    const expandButtonCount = await expandButtons.count();
+
+    if (expandButtonCount > 0) {
+      // Expand the first nested field
+      await expandButtons.first().click();
+
+      // Find copy button in the nested row
+      const nestedCopyButtons = page.getByTestId('copy-field-link-button');
+      const nestedButtonCount = await nestedCopyButtons.count();
+
+      // If we have more than one copy button, the second one is likely nested
+      if (nestedButtonCount > 1) {
+        const nestedCopyButton = nestedCopyButtons.nth(1);
+        await expect(nestedCopyButton).toBeVisible();
+
+        // Click the nested field's copy button
+        await nestedCopyButton.click();        
+
+        // Read clipboard content
+        const clipboardText = await page.evaluate(async () => {
+          try {
+            return await navigator.clipboard.readText();
+          } catch (error) {
+            return `CLIPBOARD_ERROR: ${error}`;
+          }
+        });
+
+        // Verify the URL contains the topic FQN
+        expect(clipboardText).toContain('/topic/');
+        expect(clipboardText).toContain(
+          topic.entityResponseData?.['fullyQualifiedName'] ?? ''
+        );
+      }
+    }
   });
 });

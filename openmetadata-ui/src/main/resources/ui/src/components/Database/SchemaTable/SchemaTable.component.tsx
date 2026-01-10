@@ -52,7 +52,9 @@ import { TestSummary } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { useCopyEntityLink } from '../../../hooks/useCopyEntityLink';
 import { useFqn } from '../../../hooks/useFqn';
+import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useSub } from '../../../hooks/usePubSub';
 import {
   getTableColumnsByFQN,
@@ -71,7 +73,6 @@ import {
   highlightSearchText,
 } from '../../../utils/EntityUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtils';
-import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -111,8 +112,11 @@ const SchemaTable = () => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
   const [editColumn, setEditColumn] = useState<Column>();
-  const [copiedColumnFqn, setCopiedColumnFqn] = useState<string>();
   const [highlightedColumnFqn, setHighlightedColumnFqn] = useState<string>();
+
+  const { copyEntityLink, copiedFqn: copiedColumnFqn } = useCopyEntityLink(
+    EntityType.TABLE
+  );
 
   const {
     currentPage,
@@ -164,36 +168,26 @@ const SchemaTable = () => {
 
   // Detect if URL contains a column FQN and highlight it
   useEffect(() => {
-    if (decodedEntityFqn && tableFqn && decodedEntityFqn !== tableFqn) {
-      // URL contains more than just the table FQN - likely a column
-      setHighlightedColumnFqn(decodedEntityFqn);
-
-      // Clear highlight after animation completes
-      const timer = setTimeout(() => {
-        setHighlightedColumnFqn(undefined);
-      }, 3000);
-
-      return () => clearTimeout(timer);
+    if (!decodedEntityFqn || !tableFqn || decodedEntityFqn === tableFqn) {
+      return;
     }
+
+    // URL contains more than just the table FQN - likely a column
+    setHighlightedColumnFqn(decodedEntityFqn);
+
+    // Clear highlight after animation completes
+    const timer = setTimeout(() => {
+      setHighlightedColumnFqn(undefined);
+    }, 3000);
+
+    return () => clearTimeout(timer);
   }, [decodedEntityFqn, tableFqn]);
 
   // Scroll to highlighted row when columns are loaded
-  useEffect(() => {
-    if (highlightedColumnFqn && tableColumns.length > 0 && !columnsLoading) {
-      // Small delay to ensure DOM is rendered
-      const scrollTimer = setTimeout(() => {
-        const highlightedRow = document.querySelector('.highlighted-row');
-        if (highlightedRow) {
-          highlightedRow.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-          });
-        }
-      }, 100);
-
-      return () => clearTimeout(scrollTimer);
-    }
-  }, [highlightedColumnFqn, tableColumns, columnsLoading]);
+  useScrollToElement(
+    '.highlighted-row',
+    Boolean(highlightedColumnFqn && tableColumns.length > 0 && !columnsLoading)
+  );
 
   const getRowClassName = useCallback(
     (record: Column) => {
@@ -516,41 +510,11 @@ const SchemaTable = () => {
     setEditColumnDisplayName(record);
   };
 
-  const getColumnLink = useCallback((columnFqn: string) => {
-    const columnPath = getEntityDetailsPath(EntityType.TABLE, columnFqn);
-
-    return `${window.location.origin}${columnPath}`;
-  }, []);
-
   const handleCopyColumnLink = useCallback(
     async (columnFqn: string) => {
-      const columnLink = getColumnLink(columnFqn);
-      try {
-        await navigator.clipboard.writeText(columnLink);
-        setCopiedColumnFqn(columnFqn);
-        setTimeout(() => setCopiedColumnFqn(undefined), 2000);
-      } catch {
-        // Fallback for older browsers
-        try {
-          const textArea = document.createElement('textarea');
-          textArea.value = columnLink;
-          textArea.style.position = 'fixed';
-          textArea.style.opacity = '0';
-          document.body.appendChild(textArea);
-          textArea.focus();
-          textArea.select();
-          const successful = document.execCommand('copy');
-          document.body.removeChild(textArea);
-          if (successful) {
-            setCopiedColumnFqn(columnFqn);
-            setTimeout(() => setCopiedColumnFqn(undefined), 2000);
-          }
-        } catch {
-          // Silently fail if both methods don't work
-        }
-      }
+      await copyEntityLink(columnFqn);
     },
-    [getColumnLink]
+    [copyEntityLink]
   );
 
   const handleEditColumnData = async (data: EntityName) => {

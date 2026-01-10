@@ -38,7 +38,11 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TagClass } from '../../support/tag/TagClass';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
-import { updateDisplayNameForEntity } from '../../utils/entity';
+import {
+  testCopyLinkButton,
+  updateDisplayNameForEntity,
+  validateCopiedLinkFormat,
+} from '../../utils/entity';
 import {
   Bucket,
   validateBucketsForIndex,
@@ -48,7 +52,12 @@ import {
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+test.use({
+  storageState: 'playwright/.auth/admin.json',
+  contextOptions: {
+    permissions: ['clipboard-read', 'clipboard-write'],
+  },
+});
 
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
@@ -426,5 +435,93 @@ test.describe('Explore page', () => {
         }
       }
     );
+  });
+
+  test('Copy field link button should copy the field URL to clipboard for SearchIndex', async ({
+    page,
+  }) => {
+    await searchIndex.visitEntityPage(page);
+
+    await testCopyLinkButton({
+      page,
+      buttonTestId: 'copy-field-link-button',
+      containerTestId: 'search-index-fields-table',
+      expectedUrlPath: '/searchIndex/',
+      entityFqn: searchIndex.entityResponseData?.['fullyQualifiedName'] ?? '',
+    });
+  });
+
+  test('Copy field link button should copy the field URL to clipboard for APIEndpoint', async ({
+    page,
+  }) => {
+    await apiEndpoint.visitEntityPage(page);
+
+    await testCopyLinkButton({
+      page,
+      buttonTestId: 'copy-field-link-button',
+      containerTestId: 'schema-fields-table',
+      expectedUrlPath: '/apiEndpoint/',
+      entityFqn: apiEndpoint.entityResponseData?.['fullyQualifiedName'] ?? '',
+    });
+  });
+
+  test('Copy field link should have valid URL format for SearchIndex', async ({ page }) => {
+    await searchIndex.visitEntityPage(page);
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await expect(page.getByTestId('search-index-fields-table')).toBeVisible();
+
+    const copyButton = page.getByTestId('copy-field-link-button').first();
+    await expect(copyButton).toBeVisible();
+    await copyButton.click();
+
+    const clipboardText = await page.evaluate(async () => {
+      try {
+        return await navigator.clipboard.readText();
+      } catch (error) {
+        return `CLIPBOARD_ERROR: ${error}`;
+      }
+    });
+
+    const validationResult = validateCopiedLinkFormat({
+      clipboardText,
+      expectedEntityType: 'searchIndex',
+      entityFqn: searchIndex.entityResponseData?.['fullyQualifiedName'] ?? '',
+      options: { expectFragment: false },
+    });
+
+    expect(validationResult.isValid).toBe(true);
+    expect(validationResult.protocol).toMatch(/^https?:$/);
+    expect(validationResult.pathname).toContain('searchIndex');
+  });
+
+  test('Copy field link should have valid URL format for APIEndpoint', async ({ page }) => {
+    await apiEndpoint.visitEntityPage(page);
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await expect(page.getByTestId('schema-fields-table')).toBeVisible();
+
+    const copyButton = page.getByTestId('copy-field-link-button').first();
+    await expect(copyButton).toBeVisible();
+    await copyButton.click();
+
+    const clipboardText = await page.evaluate(async () => {
+      try {
+        return await navigator.clipboard.readText();
+      } catch (error) {
+        return `CLIPBOARD_ERROR: ${error}`;
+      }
+    });
+
+    const validationResult = validateCopiedLinkFormat({
+      clipboardText,
+      expectedEntityType: 'apiEndpoint',
+      entityFqn: apiEndpoint.entityResponseData?.['fullyQualifiedName'] ?? '',
+      options: { expectFragment: false },
+    });
+
+    expect(validationResult.isValid).toBe(true);
+    expect(validationResult.protocol).toMatch(/^https?:$/);
+    expect(validationResult.pathname).toContain('apiEndpoint');
   });
 });

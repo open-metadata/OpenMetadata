@@ -19,7 +19,8 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
-import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { EntityType } from '../../../enums/entity.enum';
+import { useCopyEntityLink } from '../../../hooks/useCopyEntityLink';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -38,48 +39,18 @@ const DisplayName: React.FC<DisplayNameProps> = ({
   const { t } = useTranslation();
 
   const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
-  const [copiedFqn, setCopiedFqn] = useState<string>();
 
-  const getFieldLink = useCallback(
-    (fqn: string) => {
-      if (!entityType) {
-        return '';
-      }
-      const fieldPath = getEntityDetailsPath(entityType, fqn);
-
-      return `${window.location.origin}${fieldPath}`;
-    },
-    [entityType]
+  const { copyEntityLink, copiedFqn } = useCopyEntityLink(
+    entityType ?? EntityType.TABLE
   );
 
   const handleCopyLink = useCallback(
     async (fqn: string) => {
-      const fieldLink = getFieldLink(fqn);
-      try {
-        await navigator.clipboard.writeText(fieldLink);
-        setCopiedFqn(fqn);
-        setTimeout(() => setCopiedFqn(undefined), 2000);
-      } catch {
-        try {
-          const textArea = document.createElement('textarea');
-          textArea.value = fieldLink;
-          textArea.style.position = 'fixed';
-          textArea.style.opacity = '0';
-          document.body.appendChild(textArea);
-          textArea.focus();
-          textArea.select();
-          const successful = document.execCommand('copy');
-          document.body.removeChild(textArea);
-          if (successful) {
-            setCopiedFqn(fqn);
-            setTimeout(() => setCopiedFqn(undefined), 2000);
-          }
-        } catch {
-          // Silently fail if both methods don't work
-        }
+      if (entityType) {
+        await copyEntityLink(fqn);
       }
     },
-    [getFieldLink]
+    [copyEntityLink, entityType]
   );
 
   const handleDisplayNameUpdate = async (data: EntityName) => {

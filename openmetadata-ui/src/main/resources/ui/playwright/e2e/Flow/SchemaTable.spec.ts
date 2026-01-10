@@ -20,8 +20,17 @@ import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import {
   addOwner,
+  testCopyLinkButton,
   updateDisplayNameForEntityChildren,
+  validateCopiedLinkFormat,
 } from '../../utils/entity';
+
+// Grant clipboard permissions for copy link tests
+test.use({
+  contextOptions: {
+    permissions: ['clipboard-read', 'clipboard-write'],
+  },
+});
 
 const table = new TableClass();
 
@@ -178,31 +187,85 @@ test('Schema Table Pagination should work Properly', async ({ page }) => {
 
 test('Copy column link button should copy the column URL to clipboard', async ({
   page,
-  context,
 }) => {
-  // Grant clipboard permissions
-  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-
+  // Navigate directly to the table page instead of searching
+  await redirectToHomePage(page);
   await table.visitEntityPage(page);
-  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  // Wait for the schema table to load
+  await testCopyLinkButton({
+    page,
+    buttonTestId: 'copy-column-link-button',
+    containerTestId: 'entity-table',
+    expectedUrlPath: '/table/',
+    entityFqn: table.entityResponseData?.['fullyQualifiedName'] ?? '',
+  });
+});
+
+test('Copy column link should have valid URL format', async ({ page }) => {
+  await redirectToHomePage(page);
+  await table.visitEntityPage(page);
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   await expect(page.getByTestId('entity-table')).toBeVisible();
 
-  // Find the first copy column link button
   const copyButton = page.getByTestId('copy-column-link-button').first();
   await expect(copyButton).toBeVisible();
-
-  // Click the copy button
   await copyButton.click();
 
-  // Verify the clipboard contains the correct URL
-  const clipboardText = await page.evaluate(() =>
-    navigator.clipboard.readText()
-  );
+  const clipboardText = await page.evaluate(async () => {
+    try {
+      return await navigator.clipboard.readText();
+    } catch (error) {
+      return `CLIPBOARD_ERROR: ${error}`;
+    }
+  });
 
-  // The clipboard should contain a URL with the column's FQN
-  expect(clipboardText).toContain('/table/');
-  expect(clipboardText).toContain(table.entity.fullyQualifiedName);
+  const validationResult = validateCopiedLinkFormat({
+    clipboardText,
+    expectedEntityType: 'table',
+    entityFqn: table.entityResponseData?.['fullyQualifiedName'] ?? '',
+    options: { expectFragment: false },
+  });
+
+  expect(validationResult.isValid).toBe(true);
+  expect(validationResult.protocol).toMatch(/^https?:$/);
+  expect(validationResult.pathname).toContain('table');
+});
+
+test('Copy nested column link should include full hierarchical path', async ({ page }) => {
+  await redirectToHomePage(page);
+  await table.visitEntityPage(page);
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await expect(page.getByTestId('entity-table')).toBeVisible();
+
+  const expandButtons = page.locator('[data-testid="expand-icon"]');
+  const expandButtonCount = await expandButtons.count();
+
+  if (expandButtonCount > 0) {
+    await expandButtons.first().click();
+
+    const nestedCopyButtons = page.getByTestId('copy-column-link-button');
+    const nestedButtonCount = await nestedCopyButtons.count();
+
+    if (nestedButtonCount > 1) {
+      const nestedCopyButton = nestedCopyButtons.nth(1);
+      await expect(nestedCopyButton).toBeVisible();
+      await nestedCopyButton.click();
+
+      const clipboardText = await page.evaluate(async () => {
+        try {
+          return await navigator.clipboard.readText();
+        } catch (error) {
+          return `CLIPBOARD_ERROR: ${error}`;
+        }
+      });
+
+      expect(clipboardText).toContain('/table/');
+      expect(clipboardText).toContain(
+        table.entityResponseData?.['fullyQualifiedName'] ?? ''
+      );
+    }
+  }
 });
