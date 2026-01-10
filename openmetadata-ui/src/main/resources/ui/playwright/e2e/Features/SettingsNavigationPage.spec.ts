@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -246,5 +246,87 @@ test.describe('Settings Navigation Page Tests', () => {
     // Verify reset worked - save button disabled and state reverted
     expect(await domainSwitch.isChecked()).toBeTruthy();
     await expect(page.getByTestId('save-button')).toBeEnabled();
+  });
+
+  test('should support drag and drop reordering of navigation items', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await setUserDefaultPersona(page, persona.responseData.displayName);
+    await navigateToPersonaNavigation(page);
+
+    const treeItems = page.locator('.ant-tree-node-content-wrapper');
+    const firstItem = treeItems.first();
+    const secondItem = treeItems.nth(1);
+
+    const firstItemText = await firstItem.textContent();
+
+    const firstItemBox = await firstItem.boundingBox();
+    const secondItemBox = await secondItem.boundingBox();
+
+    expect(firstItemBox).not.toBeNull();
+    expect(secondItemBox).not.toBeNull();
+
+    if (firstItemBox && secondItemBox) {
+      await page.mouse.move(
+        firstItemBox.x + firstItemBox.width / 2,
+        firstItemBox.y + firstItemBox.height / 2
+      );
+      await page.mouse.down();
+      await page.mouse.move(
+        secondItemBox.x + secondItemBox.width / 2,
+        secondItemBox.y + secondItemBox.height / 2 + 10
+      );
+      await page.mouse.up();
+
+      // Adding wait so that drop action can complete
+      await page.waitForTimeout(500);
+
+      await expect(page.getByTestId('save-button')).toBeEnabled();
+
+      const newFirstItemText = await treeItems.first().textContent();
+
+      expect(newFirstItemText).not.toBe(firstItemText);
+    }
+  });
+
+  test('should handle multiple items being hidden at once', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await setUserDefaultPersona(page, persona.responseData.displayName);
+    await navigateToPersonaNavigation(page);
+
+    const exploreSwitchLocator = page
+      .locator('.ant-tree-title:has-text("Explore")')
+      .locator('.ant-switch');
+    const insightsSwitchLocator = page
+      .locator('.ant-tree-title:has-text("Insights")')
+      .locator('.ant-switch');
+
+    const exploreSwitch = exploreSwitchLocator.first();
+    const insightsSwitch = insightsSwitchLocator.first();
+
+    await exploreSwitch.click();
+    await insightsSwitch.click();
+
+    await expect(page.getByTestId('save-button')).toBeEnabled();
+
+    const saveResponse = page.waitForResponse('api/v1/docStore');
+    await page.getByTestId('save-button').click();
+    await saveResponse;
+
+    await redirectToHomePage(page);
+
+    await expect(page.getByTestId('app-bar-item-explore')).not.toBeVisible();
+    await expect(page.getByTestId('app-bar-item-insights')).not.toBeVisible();
+
+    await navigateToPersonaNavigation(page);
+    await exploreSwitch.click();
+    await insightsSwitch.click();
+
+    const restoreResponse = page.waitForResponse('api/v1/docStore/*');
+    await page.getByTestId('save-button').click();
+    await restoreResponse;
   });
 });
