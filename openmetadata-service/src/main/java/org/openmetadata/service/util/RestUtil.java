@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.util;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_RESTORED;
@@ -24,6 +23,7 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.ResponseBuilder;
 import jakarta.ws.rs.core.Response.Status;
+import jakarta.ws.rs.core.UriBuilder;
 import jakarta.ws.rs.core.UriInfo;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -34,6 +34,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.Optional;
 import java.util.TimeZone;
 import java.util.UUID;
 import lombok.Getter;
@@ -42,6 +43,8 @@ import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguratio
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
 public final class RestUtil {
@@ -67,18 +70,30 @@ public final class RestUtil {
     return s;
   }
 
+  /** Remove trailing slash */
+  private static String removeTrailingSlash(String str) {
+    return str != null && str.endsWith("/") ? str.substring(0, str.length() - 1) : str;
+  }
+
+  /** Ensure string starts with a leading slash */
+  private static String ensureLeadingSlash(String str) {
+    return str != null && !str.isEmpty() && !str.startsWith("/") ? "/" + str : str;
+  }
+
   public static URI getHref(UriInfo uriInfo, String collectionPath) {
-    collectionPath = removeSlashes(collectionPath);
-    OpenMetadataBaseUrlConfiguration urlConfiguration =
-        SettingsCache.getSetting(
-            SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION,
-            OpenMetadataBaseUrlConfiguration.class);
-    String url =
-        nullOrEmpty(urlConfiguration.getOpenMetadataUrl())
-            ? uriInfo.getBaseUri().toString()
-            : urlConfiguration.getOpenMetadataUrl();
-    url = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
-    return URI.create(url + "/" + collectionPath);
+    OpenMetadataApplicationConfig config = OpenMetadataApplicationConfigHolder.getInstance();
+    String apiPath = removeTrailingSlash(config.getApiRootPath());
+    String collPath = ensureLeadingSlash(removeTrailingSlash(collectionPath));
+
+    return Optional.ofNullable(
+            SettingsCache.getSetting(
+                    SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION,
+                    OpenMetadataBaseUrlConfiguration.class)
+                .getOpenMetadataUrl())
+        .filter(url -> !url.isBlank())
+        .map(RestUtil::removeTrailingSlash)
+        .map(url -> UriBuilder.fromUri(url).path(apiPath).path(collPath).build())
+        .orElseGet(() -> UriBuilder.fromUri(uriInfo.getBaseUri()).path(collPath).build());
   }
 
   public static URI getHref(URI parent, String child) {
