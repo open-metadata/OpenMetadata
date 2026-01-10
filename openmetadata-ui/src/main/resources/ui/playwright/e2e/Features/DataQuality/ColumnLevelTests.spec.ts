@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
-import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import {
   createNewPage,
@@ -24,7 +23,7 @@ import { deleteTestCase } from '../../../utils/testCases';
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Column Level Data Quality Test Cases', { tag: DOMAIN_TAGS.OBSERVABILITY }, () => {
+test.describe('Column Level Data Quality Test Cases', () => {
 
   const table = new TableClass();
   test.beforeAll(async ({ browser }) => {
