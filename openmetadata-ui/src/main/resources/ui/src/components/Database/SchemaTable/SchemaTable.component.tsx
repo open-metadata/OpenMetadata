@@ -130,7 +130,10 @@ const SchemaTable = () => {
   // Pagination state for columns
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true); // Start with loading state
-
+  const [hasInitialLoad, setHasInitialLoad] = useState(false);
+  const [prevTableColumns, setPrevTableColumns] = useState<
+    Column[] | undefined
+  >();
   const { fqn: decodedEntityFqn } = useFqn();
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
@@ -139,6 +142,7 @@ const SchemaTable = () => {
     permissions: tablePermissions,
     data: table,
     onThreadLinkSelect,
+    openColumnDetailPanel,
   } = useGenericContext<TableType>();
 
   const { testCaseCounts, joins, tableConstraints, deleted } = useMemo(
@@ -176,20 +180,6 @@ const SchemaTable = () => {
       editGlossaryTermsPermission:
         (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
         !deleted,
-      editAllPermission: tablePermissions.EditAll && !deleted,
-      editLineagePermission:
-        (tablePermissions.EditAll || tablePermissions.EditLineage) && !deleted,
-      viewSampleDataPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewSampleData,
-      viewQueriesPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewQueries,
-      viewProfilerPermission:
-        tablePermissions.ViewAll ||
-        tablePermissions.ViewDataProfile ||
-        tablePermissions.ViewTests,
-      viewAllPermission: tablePermissions.ViewAll,
-      viewBasicPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewBasic,
       editDisplayNamePermission:
         (tablePermissions.EditDisplayName || tablePermissions.EditAll) &&
         !deleted,
@@ -294,6 +284,33 @@ const SchemaTable = () => {
     }
     fetchTableColumns(currentPage);
   }, [tableFqn, pageSize, currentPage, searchText, fetchTableColumns]);
+
+  useEffect(() => {
+    if (!isEmpty(tableColumns)) {
+      setHasInitialLoad(true);
+    }
+  }, [tableColumns]);
+
+  useEffect(() => {
+    if (!hasInitialLoad || !table?.columns) {
+      return;
+    }
+
+    const columnsChanged = !isEqual(prevTableColumns, table.columns);
+
+    if (!columnsChanged) {
+      return;
+    }
+
+    fetchPaginatedColumns(currentPage, searchText || undefined);
+    setPrevTableColumns(table.columns);
+  }, [
+    table?.columns,
+    hasInitialLoad,
+    currentPage,
+    searchText,
+    fetchPaginatedColumns,
+  ]);
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {
@@ -518,6 +535,18 @@ const SchemaTable = () => {
     >;
   }, [tableColumns]);
 
+  const handleColumnClick = useCallback(
+    (column: Column, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const isExpandIcon = target.closest('.table-expand-icon') !== null;
+
+      if (!isExpandIcon) {
+        openColumnDetailPanel(column);
+      }
+    },
+    [openColumnDetailPanel]
+  );
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -527,6 +556,10 @@ const SchemaTable = () => {
         width: 200,
         fixed: 'left',
         sorter: getColumnSorter<Column, 'name'>('name'),
+        onCell: (record: Column) => ({
+          onClick: (event) => handleColumnClick(record, event),
+          'data-testid': 'column-name-cell',
+        }),
         render: (name: Column['name'], record: Column) => {
           const { displayName } = record;
 
@@ -539,9 +572,12 @@ const SchemaTable = () => {
                   tableConstraints,
                 })}
                 <Typography.Text
-                  className={classNames('m-b-0 d-block break-word', {
-                    'text-grey-600': !isEmpty(displayName),
-                  })}
+                  className={classNames(
+                    'm-b-0 d-block break-word cursor-pointer',
+                    {
+                      'text-grey-600': !isEmpty(displayName),
+                    }
+                  )}
                   data-testid="column-name">
                   {stringToHTML(highlightSearchText(name, searchText))}
                 </Typography.Text>
@@ -568,7 +604,10 @@ const SchemaTable = () => {
                       border: 'none',
                       background: 'transparent',
                     }}
-                    onClick={() => handleEditDisplayNameClick(record)}>
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditDisplayNameClick(record);
+                    }}>
                     <IconEdit
                       style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
                     />

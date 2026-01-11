@@ -19,9 +19,11 @@ import { Link } from 'react-router-dom';
 import { SearchedDataProps } from '../../src/components/SearchedData/SearchedData.interface';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { GenericProvider } from '../components/Customization/GenericProvider/GenericProvider';
+import { ColumnOrTask } from '../components/Database/ColumnDetailPanel/ColumnDetailPanel.interface';
 import SchemaEditor from '../components/Database/SchemaEditor/SchemaEditor';
 import APIEndpointSummary from '../components/Explore/EntitySummaryPanel/APIEndpointSummary/APIEndpointSummary';
 import { ColumnSummaryList } from '../components/Explore/EntitySummaryPanel/ColumnSummaryList/ColumnsSummaryList';
+import { EntityData } from '../components/Explore/EntitySummaryPanel/CustomPropertiesSection/CustomPropertiesSection.interface';
 import DataProductSummary from '../components/Explore/EntitySummaryPanel/DataProductSummary/DataProductSummary.component';
 import DomainSummary from '../components/Explore/EntitySummaryPanel/DomainSummary/DomainSummary.component';
 import GlossaryTermSummary from '../components/Explore/EntitySummaryPanel/GlossaryTermSummary/GlossaryTermSummary.component';
@@ -685,4 +687,35 @@ export const getEntityChildDetails = (
       <Col span={24}>{childComponent}</Col>
     </Row>
   );
+};
+
+/**
+ * Convert ColumnOrTask to EntityData for CustomPropertiesSection
+ * @param column - Column or task-like entity
+ * @returns EntityData object with extension property if available, or undefined
+ */
+export const toEntityData = (
+  column: ColumnOrTask | null
+): EntityData | undefined => {
+  if (!column) {
+    return undefined;
+  }
+
+  // Check if column has extension property and create a new object that satisfies EntityData
+  // extension is typed as 'any' in entity interfaces, but EntityData.extension expects Record<string, unknown>
+  // so we cast it after runtime validation to ensure type safety
+  const extension =
+    'extension' in column &&
+    typeof column.extension === 'object' &&
+    column.extension !== null
+      ? (column.extension as Table['extension'])
+      : undefined;
+
+  // Create an object that satisfies EntityData interface with index signature
+  const entityData: EntityData = {};
+  if (extension) {
+    entityData.extension = extension;
+  }
+
+  return entityData;
 };

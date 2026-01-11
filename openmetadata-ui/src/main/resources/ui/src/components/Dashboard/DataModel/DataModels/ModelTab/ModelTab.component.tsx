@@ -63,6 +63,7 @@ const ModelTab = () => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
   const [searchText, setSearchText] = useState('');
+  const { openColumnDetailPanel } = useGenericContext<DashboardDataModel>();
 
   const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true);
@@ -111,7 +112,7 @@ const ModelTab = () => {
 
         setPaginatedColumns(pruneEmptyChildren(response.data) || []);
         handlePagingChange(response.paging);
-      } catch (error) {
+      } catch {
         setPaginatedColumns([]);
         handlePagingChange({
           offset: 1,
@@ -244,6 +245,21 @@ const ModelTab = () => {
     );
   };
 
+  const handleColumnClick = useCallback(
+    (column: Column, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (
+        target.closest(
+          'button, a, input, textarea, select, .table-expand-icon'
+        ) !== null
+      ) {
+        return;
+      }
+      openColumnDetailPanel(column);
+    },
+    [openColumnDetailPanel]
+  );
+
   const searchProps = useMemo(
     () => ({
       placeholder: t('message.find-in-table'),
@@ -287,7 +303,13 @@ const ModelTab = () => {
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 250,
         fixed: 'left',
+        className: 'cursor-pointer',
         sorter: getColumnSorter<Column, 'name'>('name'),
+        onCell: (record: Column) => ({
+          onClick: (event: React.MouseEvent) =>
+            handleColumnClick(record, event),
+          'data-testid': 'column-name-cell',
+        }),
         render: (_, record: Column) => {
           const { displayName } = record;
 
@@ -389,6 +411,9 @@ const ModelTab = () => {
       editColumnDescription,
       hasEditDescriptionPermission,
       handleFieldTagsChange,
+      handleColumnClick,
+      editDisplayNamePermission,
+      handleEditColumnData,
     ]
   );
 
