@@ -683,9 +683,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         config = AirbyteConnection(
             hostPort="https://api.airbyte.com",
@@ -708,9 +706,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest.return_value = mock_rest_instance
@@ -749,9 +745,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest.return_value = mock_rest_instance
@@ -790,9 +784,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest.return_value = mock_rest_instance
@@ -829,9 +821,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest.return_value = mock_rest_instance
@@ -869,9 +859,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest.return_value = mock_rest_instance
@@ -917,9 +905,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest.return_value = mock_rest_instance
@@ -962,9 +948,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest_instance.get.return_value = {
@@ -1003,9 +987,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest_instance.get.return_value = {
@@ -1042,9 +1024,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest_instance.get.return_value = {
@@ -1085,9 +1065,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest_instance.get.return_value = {
@@ -1124,9 +1102,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest_instance.get.return_value = {"data": [{"jobId": "cloud-job"}]}
@@ -1161,9 +1137,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest_instance.get.return_value = {
@@ -1200,9 +1174,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest_instance.get.return_value = {"sourceId": "cloud-source"}
@@ -1237,9 +1209,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest_instance.get.return_value = {
@@ -1276,9 +1246,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest_instance.get.return_value = {"destinationId": "cloud-destination"}
@@ -1315,9 +1283,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest_instance.get.return_value = {
@@ -1354,9 +1320,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest_instance.get.return_value = {"data": []}
@@ -1392,9 +1356,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest_instance.get.return_value = {"data": []}
@@ -1432,9 +1394,7 @@ class TestAirbyteCloudClient(TestCase):
         from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
             AirbyteConnection,
         )
-        from metadata.ingestion.source.pipeline.airbyte.client import (
-            AirbyteCloudClient,
-        )
+        from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 
         mock_rest_instance = MagicMock()
         mock_rest.return_value = mock_rest_instance
