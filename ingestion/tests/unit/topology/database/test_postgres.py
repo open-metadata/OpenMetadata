@@ -398,31 +398,31 @@ class PostgresUnitTest(TestCase):
 
     def test_query_statement_source_custom(self):
         """Test that custom query statement source is used when configured"""
-        custom_config = OpenMetadataWorkflowConfig.model_validate(
-            mock_postgres_usage_config_custom_source
-        )
         with patch(
             "metadata.ingestion.source.database.postgres.usage.PostgresUsageSource.test_connection"
         ):
+            custom_config = OpenMetadataWorkflowConfig.model_validate(
+                mock_postgres_usage_config_custom_source
+            )
             custom_usage_source = PostgresUsageSource.create(
                 mock_postgres_usage_config_custom_source["source"],
                 custom_config.workflowConfig.openMetadataServerConfig,
             )
 
-        # Mock the engine with time column check
-        mock_engine = MagicMock()
-        mock_conn = MagicMock()
-        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
-        mock_conn.__exit__ = MagicMock(return_value=None)
-        mock_conn.execute.return_value = [("total_exec_time",)]
-        mock_engine.connect.return_value = mock_conn
-        custom_usage_source.engine = mock_engine
+            # Mock the engine with time column check
+            mock_engine = MagicMock()
+            mock_conn = MagicMock()
+            mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+            mock_conn.__exit__ = MagicMock(return_value=None)
+            mock_conn.execute.return_value = [("total_exec_time",)]
+            mock_engine.connect.return_value = mock_conn
+            custom_usage_source.engine = mock_engine
 
-        sql_statement = custom_usage_source.get_sql_statement()
-        # Verify custom source is used
-        self.assertIn("my_schema.custom_pg_stat_statements s", sql_statement)
-        # Verify default source is NOT used
-        self.assertNotIn("pg_stat_statements s", sql_statement)
+            sql_statement = custom_usage_source.get_sql_statement()
+            # Verify custom source is used
+            self.assertIn("my_schema.custom_pg_stat_statements s", sql_statement)
+            # Verify default source is NOT used (check for the default without the custom schema prefix)
+            self.assertNotIn("FROM\n  pg_stat_statements s", sql_statement)
 
     def test_mark_deleted_schemas_enabled(self):
         """Test mark deleted schemas when the config is enabled"""
