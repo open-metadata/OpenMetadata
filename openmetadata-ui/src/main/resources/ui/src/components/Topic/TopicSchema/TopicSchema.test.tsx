@@ -22,6 +22,7 @@ import {
   screen,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { Topic } from '../../../generated/entity/data/topic';
 import { MESSAGE_SCHEMA } from '../TopicDetails/TopicDetails.mock';
 import TopicSchema from './TopicSchema';
@@ -179,7 +180,11 @@ jest.mock('../../../utils/RouterUtils', () => ({
 
 describe('Topic Schema', () => {
   it('Should render the schema component', async () => {
-    render(<TopicSchema {...mockProps} />);
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
 
     const schemaFields = await screen.findByTestId('topic-schema-fields-table');
     const rows = await screen.findAllByRole('row');
@@ -203,7 +208,11 @@ describe('Topic Schema', () => {
   });
 
   it('Should render the children on click of expand icon', async () => {
-    render(<TopicSchema {...mockProps} />);
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
 
     const rows = await screen.findAllByRole('row');
 
@@ -228,7 +237,11 @@ describe('Topic Schema', () => {
   });
 
   it('On edit description button click modal editor should render', async () => {
-    render(<TopicSchema {...mockProps} />);
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
 
     const rows = await screen.findAllByRole('row');
 
@@ -247,7 +260,11 @@ describe('Topic Schema', () => {
 
   it('Should not render the edit action if isReadOnly', async () => {
     mockTopicDetails.deleted = true;
-    render(<TopicSchema {...mockProps} />);
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
 
     const rows = await screen.findAllByRole('row');
 
@@ -260,7 +277,11 @@ describe('Topic Schema', () => {
 
   it('Should render copy field link button for each field', async () => {
     mockTopicDetails.deleted = false;
-    render(<TopicSchema {...mockProps} />);
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
 
     const copyButtons = await screen.findAllByTestId('copy-field-link-button');
 
@@ -276,7 +297,11 @@ describe('Topic Schema', () => {
       },
     });
 
-    render(<TopicSchema {...mockProps} />);
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
 
     const copyButtons = await screen.findAllByTestId('copy-field-link-button');
 

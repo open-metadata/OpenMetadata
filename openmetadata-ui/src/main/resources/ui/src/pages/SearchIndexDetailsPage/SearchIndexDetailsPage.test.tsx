@@ -12,6 +12,7 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getSearchIndexDetailsByFQN } from '../../rest/SearchIndexAPI';
@@ -106,10 +107,12 @@ jest.mock(
 );
 
 jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
   useParams: jest
     .fn()
     .mockImplementation(() => ({ fqn: 'fqn', tab: 'fields' })),
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+  useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
 
 jest.mock('../../components/common/Loader/Loader', () => {
@@ -146,7 +149,11 @@ jest.mock('../../hooks/useEntityRules', () => ({
 
 describe('SearchIndexDetailsPage component', () => {
   it('SearchIndexDetailsPage should fetch permissions', () => {
-    render(<SearchIndexDetailsPage />);
+    render(
+      <MemoryRouter>
+        <SearchIndexDetailsPage />
+      </MemoryRouter>
+    );
 
     expect(mockEntityPermissionByFqn).toHaveBeenCalledWith(
       'searchIndex',
@@ -155,7 +162,11 @@ describe('SearchIndexDetailsPage component', () => {
   });
 
   it('SearchIndexDetailsPage should not fetch search index details if permission is there', () => {
-    render(<SearchIndexDetailsPage />);
+    render(
+      <MemoryRouter>
+        <SearchIndexDetailsPage />
+      </MemoryRouter>
+    );
 
     expect(getSearchIndexDetailsByFQN).not.toHaveBeenCalled();
   });
@@ -168,7 +179,11 @@ describe('SearchIndexDetailsPage component', () => {
     }));
 
     await act(async () => {
-      render(<SearchIndexDetailsPage />);
+      render(
+      <MemoryRouter>
+        <SearchIndexDetailsPage />
+      </MemoryRouter>
+    );
     });
 
     expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith('fqn', {
@@ -185,7 +200,11 @@ describe('SearchIndexDetailsPage component', () => {
     }));
 
     await act(async () => {
-      render(<SearchIndexDetailsPage />);
+      render(
+      <MemoryRouter>
+        <SearchIndexDetailsPage />
+      </MemoryRouter>
+    );
     });
 
     expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith('fqn', {
@@ -216,7 +235,11 @@ describe('SearchIndexDetailsPage component', () => {
     }));
 
     await act(async () => {
-      render(<SearchIndexDetailsPage />);
+      render(
+      <MemoryRouter>
+        <SearchIndexDetailsPage />
+      </MemoryRouter>
+    );
     });
 
     expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith('fqn', {
@@ -246,7 +269,11 @@ describe('SearchIndexDetailsPage component', () => {
     }));
 
     await act(async () => {
-      render(<SearchIndexDetailsPage />);
+      render(
+      <MemoryRouter>
+        <SearchIndexDetailsPage />
+      </MemoryRouter>
+    );
     });
 
     expect(PageLayoutV1).toHaveBeenCalledWith(

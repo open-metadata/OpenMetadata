@@ -12,6 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { MOCK_SEARCH_INDEX_FIELDS } from '../../../mocks/SearchIndex.mock';
 import SearchIndexFieldsTable from './SearchIndexFieldsTable';
 
@@ -137,7 +138,11 @@ jest.mock('../../../utils/RouterUtils', () => ({
 describe('SearchIndexFieldsTable component', () => {
   it('SearchIndexFieldsTable should render a table with proper data', async () => {
     await act(async () => {
-      render(<SearchIndexFieldsTable {...mockProps} />);
+      render(
+        <MemoryRouter>
+          <SearchIndexFieldsTable {...mockProps} />
+        </MemoryRouter>
+      );
     });
 
     expect(screen.getByText('testToggleExpandButton')).toBeInTheDocument();
@@ -149,11 +154,13 @@ describe('SearchIndexFieldsTable component', () => {
   it('SearchIndexFieldsTable should not display data if fields data is empty', async () => {
     await act(async () => {
       render(
-        <SearchIndexFieldsTable
-          {...mockProps}
-          isReadOnly={false}
-          searchIndexFields={[]}
-        />
+        <MemoryRouter>
+          <SearchIndexFieldsTable
+            {...mockProps}
+            isReadOnly={false}
+            searchIndexFields={[]}
+          />
+        </MemoryRouter>
       );
     });
 
@@ -165,10 +172,12 @@ describe('SearchIndexFieldsTable component', () => {
   it('SearchIndexFieldsTable should only show relevant field rows according to the searchedFields data', async () => {
     await act(async () => {
       render(
-        <SearchIndexFieldsTable
-          {...mockProps}
-          searchIndexFields={mockSearchedFields}
-        />
+        <MemoryRouter>
+          <SearchIndexFieldsTable
+            {...mockProps}
+            searchIndexFields={mockSearchedFields}
+          />
+        </MemoryRouter>
       );
     });
 
@@ -181,10 +190,12 @@ describe('SearchIndexFieldsTable component', () => {
   it('SearchIndexFieldsTable should show value from dataType field when there is no dataTypeDisplay is present', async () => {
     await act(async () => {
       render(
-        <SearchIndexFieldsTable
-          {...mockProps}
-          searchIndexFields={mockSearchedFields}
-        />
+        <MemoryRouter>
+          <SearchIndexFieldsTable
+            {...mockProps}
+            searchIndexFields={mockSearchedFields}
+          />
+        </MemoryRouter>
       );
     });
 
@@ -195,7 +206,11 @@ describe('SearchIndexFieldsTable component', () => {
 
   it('Should render copy field link button for each field', async () => {
     await act(async () => {
-      render(<SearchIndexFieldsTable {...mockProps} />);
+      render(
+        <MemoryRouter>
+          <SearchIndexFieldsTable {...mockProps} />
+        </MemoryRouter>
+      );
     });
 
     const copyButtons = await screen.findAllByTestId('copy-field-link-button');
@@ -212,7 +227,11 @@ describe('SearchIndexFieldsTable component', () => {
     });
 
     await act(async () => {
-      render(<SearchIndexFieldsTable {...mockProps} />);
+      render(
+        <MemoryRouter>
+          <SearchIndexFieldsTable {...mockProps} />
+        </MemoryRouter>
+      );
     });
 
     const copyButtons = await screen.findAllByTestId('copy-field-link-button');

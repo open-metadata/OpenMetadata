@@ -13,6 +13,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ReactNode } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs } from '../../enums/entity.enum';
@@ -242,8 +243,16 @@ const mockUseParams = jest.fn().mockReturnValue({
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockImplementation(() => mockUseParams()),
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: 'mockPath',
+    search: '',
+    hash: '',
+    state: null,
+    key: 'default',
+  })),
 }));
 
 jest.mock('../../hoc/LimitWrapper', () => {
@@ -290,7 +299,11 @@ describe('Container Page Component', () => {
 
     (getContainerByName as jest.Mock).mockResolvedValue({});
 
-    render(<ContainerPage />);
+    render(
+      <MemoryRouter>
+        <ContainerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText('Loader')).toBeVisible();
 
@@ -304,7 +317,11 @@ describe('Container Page Component', () => {
   });
 
   it('fetch container data, if have view permission', async () => {
-    render(<ContainerPage />);
+    render(
+      <MemoryRouter>
+        <ContainerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText('Loader')).toBeVisible();
 
@@ -342,7 +359,11 @@ describe('Container Page Component', () => {
       .mockResolvedValueOnce({}) // For resolution
       .mockRejectedValue('failed to fetch container data'); // For fetch
 
-    render(<ContainerPage />);
+    render(
+      <MemoryRouter>
+        <ContainerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText('Loader')).toBeVisible();
 
@@ -360,7 +381,11 @@ describe('Container Page Component', () => {
       MOCK_CONTAINER_DATA
     );
 
-    render(<ContainerPage />);
+    render(
+      <MemoryRouter>
+        <ContainerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText('Loader')).toBeVisible();
 
@@ -407,7 +432,11 @@ describe('Container Page Component', () => {
       MOCK_CONTAINER_DATA
     );
 
-    render(<ContainerPage />);
+    render(
+      <MemoryRouter>
+        <ContainerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText('Loader')).toBeVisible();
 
@@ -425,7 +454,11 @@ describe('Container Page Component', () => {
       MOCK_CONTAINER_DATA
     );
 
-    render(<ContainerPage />);
+    render(
+      <MemoryRouter>
+        <ContainerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText('Loader')).toBeVisible();
 
@@ -452,7 +485,11 @@ describe('Container Page Component', () => {
       tab: EntityTabs.CHILDREN,
     });
 
-    render(<ContainerPage />);
+    render(
+      <MemoryRouter>
+        <ContainerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText('Loader')).toBeVisible();
 
@@ -477,7 +514,11 @@ describe('Container Page Component', () => {
       MOCK_CONTAINER_DATA
     );
 
-    render(<ContainerPage />);
+    render(
+      <MemoryRouter>
+        <ContainerPage />
+      </MemoryRouter>
+    );
 
     await waitFor(() => expect(getContainerByName).toHaveBeenCalled());
 

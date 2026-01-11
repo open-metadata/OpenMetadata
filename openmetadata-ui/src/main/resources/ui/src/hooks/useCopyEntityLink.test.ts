@@ -16,7 +16,8 @@ import { useCopyEntityLink } from './useCopyEntityLink';
 
 // Mock window.location
 const mockOrigin = 'http://localhost:3000';
-delete (window as Window).location;
+
+delete (window as unknown as { location: unknown }).location;
 window.location = { origin: mockOrigin } as Location;
 
 // Mock getEntityDetailsPath
@@ -39,9 +40,7 @@ describe('useCopyEntityLink', () => {
 
   describe('getEntityLink', () => {
     it('should generate correct entity link', () => {
-      const { result } = renderHook(() =>
-        useCopyEntityLink(EntityType.TABLE)
-      );
+      const { result } = renderHook(() => useCopyEntityLink(EntityType.TABLE));
 
       const link = result.current.getEntityLink('test.table.fqn');
 
@@ -77,9 +76,7 @@ describe('useCopyEntityLink', () => {
         },
       });
 
-      const { result } = renderHook(() =>
-        useCopyEntityLink(EntityType.TABLE)
-      );
+      const { result } = renderHook(() => useCopyEntityLink(EntityType.TABLE));
 
       let copyResult: boolean = false;
       await act(async () => {
@@ -104,9 +101,7 @@ describe('useCopyEntityLink', () => {
       const execCommandMock = jest.fn().mockReturnValue(true);
       document.execCommand = execCommandMock;
 
-      const { result } = renderHook(() =>
-        useCopyEntityLink(EntityType.TOPIC)
-      );
+      const { result } = renderHook(() => useCopyEntityLink(EntityType.TOPIC));
 
       let copyResult: boolean = false;
       await act(async () => {
@@ -154,9 +149,7 @@ describe('useCopyEntityLink', () => {
         throw new Error('execCommand failed');
       });
 
-      const { result } = renderHook(() =>
-        useCopyEntityLink(EntityType.TABLE)
-      );
+      const { result } = renderHook(() => useCopyEntityLink(EntityType.TABLE));
 
       let copyResult: boolean = false;
       await act(async () => {
@@ -178,7 +171,7 @@ describe('useCopyEntityLink', () => {
       });
 
       const { result } = renderHook(() =>
-        useCopyEntityLink(EntityType.TABLE, 2000)
+        useCopyEntityLink(EntityType.TABLE, undefined, 2000)
       );
 
       await act(async () => {
@@ -206,7 +199,7 @@ describe('useCopyEntityLink', () => {
 
       const customTimeout = 5000;
       const { result } = renderHook(() =>
-        useCopyEntityLink(EntityType.TOPIC, customTimeout)
+        useCopyEntityLink(EntityType.TOPIC, undefined, customTimeout)
       );
 
       await act(async () => {
@@ -239,7 +232,7 @@ describe('useCopyEntityLink', () => {
       });
 
       const { result } = renderHook(() =>
-        useCopyEntityLink(EntityType.TABLE, 2000)
+        useCopyEntityLink(EntityType.TABLE, undefined, 2000)
       );
 
       await act(async () => {
@@ -285,7 +278,7 @@ describe('useCopyEntityLink', () => {
       });
 
       const { result, unmount } = renderHook(() =>
-        useCopyEntityLink(EntityType.TABLE, 2000)
+        useCopyEntityLink(EntityType.TABLE, undefined, 2000)
       );
 
       await act(async () => {

@@ -13,6 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
@@ -44,9 +45,13 @@ jest.mock('../../../hooks/useEntityRules', () => ({
   })),
 }));
 
-jest.mock('react-router-dom', () => ({
-  useParams: jest.fn().mockImplementation(() => ({ tab: EntityTabs.SCHEMA })),
-}));
+jest.mock('react-router-dom', () => {
+  const actual = jest.requireActual('react-router-dom');
+  return {
+    ...actual,
+    useParams: jest.fn().mockImplementation(() => ({ tab: EntityTabs.SCHEMA })),
+  };
+});
 
 jest.mock('../../../utils/CustomizePage/CustomizePageUtils', () => ({
   getLayoutFromCustomizedPage: jest.fn().mockImplementation(() => []),
@@ -107,9 +112,11 @@ describe('GenericProvider', () => {
 
   it('should render children and provide context values', () => {
     render(
-      <GenericProvider {...defaultProps}>
-        <TestComponent />
-      </GenericProvider>
+      <MemoryRouter>
+        <GenericProvider {...defaultProps}>
+          <TestComponent />
+        </GenericProvider>
+      </MemoryRouter>
     );
 
     expect(screen.getByTestId('context-data')).toHaveTextContent(
@@ -119,9 +126,11 @@ describe('GenericProvider', () => {
 
   it('should handle thread panel opening', async () => {
     render(
-      <GenericProvider {...defaultProps}>
-        <TestComponent />
-      </GenericProvider>
+      <MemoryRouter>
+        <GenericProvider {...defaultProps}>
+          <TestComponent />
+        </GenericProvider>
+      </MemoryRouter>
     );
 
     // Initially, thread panel should not be visible
@@ -145,9 +154,11 @@ describe('GenericProvider', () => {
     (postThread as jest.Mock).mockResolvedValueOnce({});
 
     render(
-      <GenericProvider {...defaultProps}>
-        <TestComponent />
-      </GenericProvider>
+      <MemoryRouter>
+        <GenericProvider {...defaultProps}>
+          <TestComponent />
+        </GenericProvider>
+      </MemoryRouter>
     );
 
     // Open thread panel
@@ -176,9 +187,11 @@ describe('GenericProvider', () => {
     (postThread as jest.Mock).mockRejectedValueOnce(error);
 
     render(
-      <GenericProvider {...defaultProps}>
-        <TestComponent />
-      </GenericProvider>
+      <MemoryRouter>
+        <GenericProvider {...defaultProps}>
+          <TestComponent />
+        </GenericProvider>
+      </MemoryRouter>
     );
 
     // Open thread panel
@@ -208,16 +221,20 @@ describe('GenericProvider', () => {
 
   it('should update context values when props change', () => {
     const { rerender } = render(
-      <GenericProvider {...defaultProps}>
-        <TestComponent />
-      </GenericProvider>
+      <MemoryRouter>
+        <GenericProvider {...defaultProps}>
+          <TestComponent />
+        </GenericProvider>
+      </MemoryRouter>
     );
 
     const updatedData = { ...mockData, name: 'Updated Name' };
     rerender(
-      <GenericProvider {...defaultProps} data={updatedData}>
-        <TestComponent />
-      </GenericProvider>
+      <MemoryRouter>
+        <GenericProvider {...defaultProps} data={updatedData}>
+          <TestComponent />
+        </GenericProvider>
+      </MemoryRouter>
     );
 
     expect(screen.getByTestId('context-data')).toHaveTextContent(
@@ -227,12 +244,14 @@ describe('GenericProvider', () => {
 
   it('should handle version view mode', () => {
     render(
-      <GenericProvider
-        {...defaultProps}
-        isVersionView
-        currentVersionData={mockData}>
-        <TestComponent />
-      </GenericProvider>
+      <MemoryRouter>
+        <GenericProvider
+          {...defaultProps}
+          isVersionView
+          currentVersionData={mockData}>
+          <TestComponent />
+        </GenericProvider>
+      </MemoryRouter>
     );
 
     expect(screen.getByTestId('context-data')).toBeInTheDocument();
@@ -240,16 +259,20 @@ describe('GenericProvider', () => {
 
   it('should handle update widget height', () => {
     const { rerender } = render(
-      <GenericProvider {...defaultProps}>
-        <TestComponent />
-      </GenericProvider>
+      <MemoryRouter>
+        <GenericProvider {...defaultProps}>
+          <TestComponent />
+        </GenericProvider>
+      </MemoryRouter>
     );
 
     const updatedData = { ...mockData, name: 'Updated Name' };
     rerender(
-      <GenericProvider {...defaultProps} data={updatedData}>
-        <TestComponent />
-      </GenericProvider>
+      <MemoryRouter>
+        <GenericProvider {...defaultProps} data={updatedData}>
+          <TestComponent />
+        </GenericProvider>
+      </MemoryRouter>
     );
 
     fireEvent.click(screen.getByText('Update Widget Height'));
