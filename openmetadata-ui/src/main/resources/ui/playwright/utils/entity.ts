@@ -635,9 +635,7 @@ export const updateDescriptionForChildren = async (
 
   // Wait for editor to be fully ready
   await page.waitForTimeout(500);
-
-  // Triple-click to select all content (more reliable than Meta+A on CI)
-  await descriptionInput.click({ clickCount: 3 });
+  await descriptionInput.clear();
 
   // Type new content directly (this replaces the selection)
   await descriptionInput.fill(description);
@@ -657,7 +655,7 @@ export const updateDescriptionForChildren = async (
   await updateRequest;
 
   await page.waitForSelector('[role="dialog"]', { state: 'hidden' });
-  
+
   if (isEmpty(description)) {
     await expect(
       page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
