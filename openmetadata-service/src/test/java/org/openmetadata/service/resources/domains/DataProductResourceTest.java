@@ -1,9 +1,9 @@
 package org.openmetadata.service.resources.domains;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.TABLE;
@@ -53,6 +53,7 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DataProductResource.DataProductList;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
 
 public class DataProductResourceTest extends EntityResourceTest<DataProduct, CreateDataProduct> {
@@ -1259,5 +1260,530 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     WebTarget target = getResource("dataProducts/assets/counts");
     Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
     return response.readEntity(new GenericType<Map<String, Integer>>() {});
+  }
+
+  @Test
+  void testRenameDataProduct(TestInfo test) throws IOException {
+    // Create a data product
+    DomainResourceTest domainTest = new DomainResourceTest();
+    Domain domain = domainTest.createEntity(domainTest.createRequest(test), ADMIN_AUTH_HEADERS);
+
+    DataProduct dataProduct =
+        createEntity(
+            createRequest(getEntityName(test)).withDomains(List.of(domain.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
+
+    String oldName = dataProduct.getName();
+    String oldFqn = dataProduct.getFullyQualifiedName();
+    String newName = "renamed-" + oldName;
+
+    // Rename the data product using PATCH
+    String json = JsonUtils.pojoToJson(dataProduct);
+    ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
+    fieldUpdated(change, "name", oldName, newName);
+    dataProduct.setName(newName);
+    // FQN for data product is quoted name
+    dataProduct.setFullyQualifiedName(FullyQualifiedName.quoteName(newName));
+
+    dataProduct = patchEntityAndCheck(dataProduct, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify the data product was renamed
+    assertEquals(newName, dataProduct.getName());
+    assertNotEquals(oldFqn, dataProduct.getFullyQualifiedName());
+
+    // Verify we can get by new FQN
+    DataProduct getByFqn = getEntityByName(dataProduct.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertEquals(newName, getByFqn.getName());
+
+    // Verify old FQN no longer works
+    assertThatThrownBy(() -> getEntityByName(oldFqn, ADMIN_AUTH_HEADERS))
+        .isInstanceOf(HttpResponseException.class);
+  }
+
+  @Test
+  void testRenameDataProductWithAssets(TestInfo test) throws IOException {
+    // Disable domain validation rule since test tables may not have matching domain
+    String domainValidationRule = "Data Product Domain Validation";
+    EntityResourceTest.toggleRule(domainValidationRule, false);
+
+    try {
+      // Create a domain and data product
+      DomainResourceTest domainTest = new DomainResourceTest();
+      Domain domain = domainTest.createEntity(domainTest.createRequest(test), ADMIN_AUTH_HEADERS);
+
+      DataProduct dataProduct =
+          createEntity(
+              createRequest(getEntityName(test))
+                  .withDomains(List.of(domain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+
+      String oldFqn = dataProduct.getFullyQualifiedName();
+
+      // Add an asset to the data product
+      TableResourceTest tableTest = new TableResourceTest();
+      Table table =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, 1)), ADMIN_AUTH_HEADERS);
+      bulkAddAssets(
+          dataProduct.getFullyQualifiedName(),
+          new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+      // Verify asset count and that table has the data product reference
+      ResultList<EntityReference> assets =
+          getAssets(dataProduct.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+      assertEquals(1, assets.getPaging().getTotal());
+
+      // Verify the table has the data product in its dataProducts field
+      Table tableWithDataProducts =
+          tableTest.getEntity(table.getId(), "dataProducts", ADMIN_AUTH_HEADERS);
+      assertNotNull(tableWithDataProducts.getDataProducts());
+      assertEquals(1, tableWithDataProducts.getDataProducts().size());
+      assertEquals(oldFqn, tableWithDataProducts.getDataProducts().get(0).getFullyQualifiedName());
+
+      String oldName = dataProduct.getName();
+      String newName = "renamed-" + oldName;
+      String newFqn = FullyQualifiedName.quoteName(newName);
+
+      // Rename the data product
+      String json = JsonUtils.pojoToJson(dataProduct);
+      ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
+      fieldUpdated(change, "name", oldName, newName);
+      dataProduct.setName(newName);
+      dataProduct.setFullyQualifiedName(newFqn);
+
+      dataProduct =
+          patchEntityAndCheck(dataProduct, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+      // Verify the data product was renamed
+      assertEquals(newName, dataProduct.getName());
+      assertEquals(newFqn, dataProduct.getFullyQualifiedName());
+
+      // Verify assets are still associated with the renamed data product
+      assets = getAssets(dataProduct.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+      assertEquals(1, assets.getPaging().getTotal());
+      assertEquals(table.getId(), assets.getData().getFirst().getId());
+
+      // Verify the table's dataProducts field has the UPDATED FQN
+      tableWithDataProducts =
+          tableTest.getEntity(table.getId(), "dataProducts", ADMIN_AUTH_HEADERS);
+      assertNotNull(tableWithDataProducts.getDataProducts());
+      assertEquals(1, tableWithDataProducts.getDataProducts().size());
+      assertEquals(
+          newFqn,
+          tableWithDataProducts.getDataProducts().get(0).getFullyQualifiedName(),
+          "Table's dataProducts reference should have updated FQN after rename");
+    } finally {
+      EntityResourceTest.toggleRule(domainValidationRule, true);
+    }
+  }
+
+  @Test
+  void testRenameDataProductSearchIndexUpdate(TestInfo test)
+      throws IOException, InterruptedException {
+    // Disable domain validation rule since test tables may not have matching domain
+    String domainValidationRule = "Data Product Domain Validation";
+    EntityResourceTest.toggleRule(domainValidationRule, false);
+
+    try {
+      // Use simple alphanumeric names to avoid URL encoding issues in search queries
+      String timestamp = String.valueOf(System.currentTimeMillis());
+      String simpleName = "searchIndexTestDP" + timestamp;
+      String simpleDomainName = "searchIndexTestDomain" + timestamp;
+      String simpleTableName = "searchIndexTestTable" + timestamp;
+
+      // Create a domain and data product
+      DomainResourceTest domainTest = new DomainResourceTest();
+      Domain domain =
+          domainTest.createEntity(domainTest.createRequest(simpleDomainName), ADMIN_AUTH_HEADERS);
+
+      DataProduct dataProduct =
+          createEntity(
+              createRequest(simpleName).withDomains(List.of(domain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+
+      String oldFqn = dataProduct.getFullyQualifiedName();
+
+      // Add an asset to the data product
+      TableResourceTest tableTest = new TableResourceTest();
+      Table table =
+          tableTest.createEntity(tableTest.createRequest(simpleTableName), ADMIN_AUTH_HEADERS);
+      bulkAddAssets(
+          dataProduct.getFullyQualifiedName(),
+          new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+      // Wait for search index to be updated
+      Thread.sleep(2000);
+
+      // Verify asset can be found via search with old FQN
+      String searchQuery = "dataProducts.fullyQualifiedName:" + escapeSearchQuery(oldFqn);
+      String searchResponse = searchWithQuery("table_search_index", searchQuery);
+      assertTrue(
+          searchResponse.contains(table.getName()),
+          "Table should be found in search with old dataProduct FQN");
+
+      String oldName = dataProduct.getName();
+      String newName = "renamed-" + oldName;
+      String newFqn = FullyQualifiedName.quoteName(newName);
+
+      // Rename the data product
+      String json = JsonUtils.pojoToJson(dataProduct);
+      ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
+      fieldUpdated(change, "name", oldName, newName);
+      dataProduct.setName(newName);
+      dataProduct.setFullyQualifiedName(newFqn);
+
+      dataProduct =
+          patchEntityAndCheck(dataProduct, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+      // Wait for search index to be updated
+      Thread.sleep(2000);
+
+      // Verify asset can be found via search with NEW FQN
+      searchQuery = "dataProducts.fullyQualifiedName:" + escapeSearchQuery(newFqn);
+      searchResponse = searchWithQuery("table_search_index", searchQuery);
+      assertTrue(
+          searchResponse.contains(table.getName()),
+          "Table should be found in search with new dataProduct FQN after rename");
+
+    } finally {
+      EntityResourceTest.toggleRule(domainValidationRule, true);
+    }
+  }
+
+  private String searchWithQuery(String indexName, String query) throws HttpResponseException {
+    WebTarget target =
+        getResource(
+            String.format(
+                "search/query?q=%s&index=%s&from=0&deleted=false&size=100", query, indexName));
+    return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+  }
+
+  private String escapeSearchQuery(String value) {
+    // Escape special characters for Elasticsearch query
+    return value.replace("\"", "\\\"");
+  }
+
+  @Test
+  void testMultipleRenamesDataProductWithAssets(TestInfo test) throws IOException {
+    // Test that assets are preserved after multiple renames
+    String domainValidationRule = "Data Product Domain Validation";
+    EntityResourceTest.toggleRule(domainValidationRule, false);
+
+    try {
+      // Create a domain and data product
+      DomainResourceTest domainTest = new DomainResourceTest();
+      Domain domain = domainTest.createEntity(domainTest.createRequest(test), ADMIN_AUTH_HEADERS);
+
+      DataProduct dataProduct =
+          createEntity(
+              createRequest(getEntityName(test))
+                  .withDomains(List.of(domain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+
+      // Add an asset to the data product
+      TableResourceTest tableTest = new TableResourceTest();
+      Table table =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, 1)), ADMIN_AUTH_HEADERS);
+      bulkAddAssets(
+          dataProduct.getFullyQualifiedName(),
+          new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+      // Verify initial asset count
+      ResultList<EntityReference> assets =
+          getAssets(dataProduct.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+      assertEquals(1, assets.getPaging().getTotal(), "Initial asset count should be 1");
+
+      // Perform multiple renames and verify assets after each
+      String[] newNames = {"renamed-first", "renamed-second", "renamed-third"};
+
+      for (int i = 0; i < newNames.length; i++) {
+        String oldName = dataProduct.getName();
+        String oldFqn = dataProduct.getFullyQualifiedName();
+        String newName = newNames[i] + "-" + UUID.randomUUID().toString().substring(0, 8);
+        String newFqn = FullyQualifiedName.quoteName(newName);
+
+        // Rename the data product
+        String json = JsonUtils.pojoToJson(dataProduct);
+        ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
+        fieldUpdated(change, "name", oldName, newName);
+        dataProduct.setName(newName);
+        dataProduct.setFullyQualifiedName(newFqn);
+
+        dataProduct =
+            patchEntityAndCheck(dataProduct, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+        // Verify the data product was renamed
+        assertEquals(newName, dataProduct.getName());
+        assertEquals(newFqn, dataProduct.getFullyQualifiedName());
+
+        // Verify old FQN no longer works
+        final String finalOldFqn = oldFqn;
+        assertThatThrownBy(() -> getEntityByName(finalOldFqn, ADMIN_AUTH_HEADERS))
+            .isInstanceOf(HttpResponseException.class);
+
+        // CRITICAL: Verify assets are still associated after rename
+        assets = getAssets(dataProduct.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+        assertEquals(
+            1,
+            assets.getPaging().getTotal(),
+            "Asset count should still be 1 after rename " + (i + 1));
+        assertEquals(
+            table.getId(),
+            assets.getData().getFirst().getId(),
+            "Asset should still be the same table after rename " + (i + 1));
+
+        // Verify the table's dataProducts field has the UPDATED FQN
+        Table tableWithDataProducts =
+            tableTest.getEntity(table.getId(), "dataProducts", ADMIN_AUTH_HEADERS);
+        assertNotNull(
+            tableWithDataProducts.getDataProducts(),
+            "Table should still have dataProducts after rename " + (i + 1));
+        assertEquals(
+            1,
+            tableWithDataProducts.getDataProducts().size(),
+            "Table should have exactly 1 data product after rename " + (i + 1));
+        assertEquals(
+            newFqn,
+            tableWithDataProducts.getDataProducts().get(0).getFullyQualifiedName(),
+            "Table's dataProducts reference should have updated FQN after rename " + (i + 1));
+      }
+    } finally {
+      EntityResourceTest.toggleRule(domainValidationRule, true);
+    }
+  }
+
+  @Test
+  void testRenameDataProductWithDuplicateName(TestInfo test) throws IOException {
+    // Create a domain
+    DomainResourceTest domainTest = new DomainResourceTest();
+    Domain domain = domainTest.createEntity(domainTest.createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // Create two data products
+    DataProduct dataProduct1 =
+        createEntity(
+            createRequest(getEntityName(test, 1))
+                .withDomains(List.of(domain.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
+
+    DataProduct dataProduct2 =
+        createEntity(
+            createRequest(getEntityName(test, 2))
+                .withDomains(List.of(domain.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
+
+    // Try to rename dataProduct1 to the name of dataProduct2
+    String json = JsonUtils.pojoToJson(dataProduct1);
+    dataProduct1.setName(dataProduct2.getName());
+    dataProduct1.setFullyQualifiedName(FullyQualifiedName.quoteName(dataProduct2.getName()));
+
+    // Expect an exception when trying to rename to an existing name
+    assertThatThrownBy(
+            () -> patchEntity(dataProduct1.getId(), json, dataProduct1, ADMIN_AUTH_HEADERS))
+        .isInstanceOf(HttpResponseException.class)
+        .hasMessageContaining("already exists");
+  }
+
+  /**
+   * Helper method to rename a data product and verify the change.
+   */
+  public void renameDataProductAndCheck(DataProduct dataProduct, String newName)
+      throws IOException {
+    String oldName = dataProduct.getName();
+    String json = JsonUtils.pojoToJson(dataProduct);
+    ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
+    fieldUpdated(change, "name", oldName, newName);
+    dataProduct.setName(newName);
+    dataProduct.setFullyQualifiedName(FullyQualifiedName.quoteName(newName));
+    patchEntityAndCheck(dataProduct, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // GET the data product and verify it was renamed
+    DataProduct updated = getEntity(dataProduct.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(newName, updated.getName());
+  }
+
+  @Test
+  void testDataProductDomainMigration(TestInfo test) throws IOException {
+    // Test that when a data product's domain changes, all its assets are migrated to the new domain
+
+    // Disable domain validation rule since we need to add assets before domain migration
+    String domainValidationRule = "Data Product Domain Validation";
+    EntityResourceTest.toggleRule(domainValidationRule, false);
+
+    try {
+      // Create two domains
+      DomainResourceTest domainTest = new DomainResourceTest();
+      Domain sourceDomain =
+          domainTest.createEntity(
+              domainTest.createRequest(getEntityName(test) + "_source"), ADMIN_AUTH_HEADERS);
+      Domain targetDomain =
+          domainTest.createEntity(
+              domainTest.createRequest(getEntityName(test) + "_target"), ADMIN_AUTH_HEADERS);
+
+      // Create data product in source domain
+      DataProduct dataProduct =
+          createEntity(
+              createRequest(getEntityName(test))
+                  .withDomains(List.of(sourceDomain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+
+      // Create tables and assign them to source domain
+      TableResourceTest tableTest = new TableResourceTest();
+      Table table1 =
+          tableTest.createEntity(
+              tableTest
+                  .createRequest(getEntityName(test) + "_table1")
+                  .withDomains(List.of(sourceDomain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+      Table table2 =
+          tableTest.createEntity(
+              tableTest
+                  .createRequest(getEntityName(test) + "_table2")
+                  .withDomains(List.of(sourceDomain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+
+      // Add tables to data product as assets
+      BulkAssets bulkAssets =
+          new BulkAssets()
+              .withAssets(List.of(table1.getEntityReference(), table2.getEntityReference()));
+      bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkAssets);
+
+      // Verify assets were added
+      ResultList<EntityReference> assets =
+          getAssets(dataProduct.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+      assertEquals(2, assets.getPaging().getTotal());
+
+      // Verify tables are in source domain
+      Table table1Before = tableTest.getEntity(table1.getId(), "domains", ADMIN_AUTH_HEADERS);
+      assertEquals(1, table1Before.getDomains().size());
+      assertEquals(sourceDomain.getId(), table1Before.getDomains().get(0).getId());
+
+      Table table2Before = tableTest.getEntity(table2.getId(), "domains", ADMIN_AUTH_HEADERS);
+      assertEquals(1, table2Before.getDomains().size());
+      assertEquals(sourceDomain.getId(), table2Before.getDomains().get(0).getId());
+
+      // CRITICAL: Change data product domain to target domain using PATCH
+      String json = JsonUtils.pojoToJson(dataProduct);
+      dataProduct.setDomains(List.of(targetDomain.getEntityReference()));
+      ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
+      fieldAdded(change, "domains", List.of(targetDomain.getEntityReference()));
+      fieldDeleted(change, "domains", List.of(sourceDomain.getEntityReference()));
+      dataProduct =
+          patchEntityAndCheck(dataProduct, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+      // Verify data product is now in target domain
+      assertEquals(1, dataProduct.getDomains().size());
+      assertEquals(targetDomain.getId(), dataProduct.getDomains().get(0).getId());
+
+      // CRITICAL ASSERTION: Verify tables were migrated to target domain
+      Table table1After = tableTest.getEntity(table1.getId(), "domains", ADMIN_AUTH_HEADERS);
+      assertEquals(
+          1,
+          table1After.getDomains().size(),
+          "Table1 should have exactly 1 domain after migration");
+      assertEquals(
+          targetDomain.getId(),
+          table1After.getDomains().get(0).getId(),
+          "Table1 should be in target domain after migration");
+
+      Table table2After = tableTest.getEntity(table2.getId(), "domains", ADMIN_AUTH_HEADERS);
+      assertEquals(
+          1,
+          table2After.getDomains().size(),
+          "Table2 should have exactly 1 domain after migration");
+      assertEquals(
+          targetDomain.getId(),
+          table2After.getDomains().get(0).getId(),
+          "Table2 should be in target domain after migration");
+
+      // Verify assets are still in the data product
+      assets = getAssets(dataProduct.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+      assertEquals(2, assets.getPaging().getTotal(), "Assets should still be in data product");
+
+    } finally {
+      EntityResourceTest.toggleRule(domainValidationRule, true);
+    }
+  }
+
+  @Test
+  void testDataProductDomainMigrationWithInputOutputPorts(TestInfo test) throws IOException {
+    // Test that input/output ports are also migrated when domain changes
+
+    String domainValidationRule = "Data Product Domain Validation";
+    EntityResourceTest.toggleRule(domainValidationRule, false);
+
+    try {
+      // Create two domains
+      DomainResourceTest domainTest = new DomainResourceTest();
+      Domain sourceDomain =
+          domainTest.createEntity(
+              domainTest.createRequest(getEntityName(test) + "_source_port"), ADMIN_AUTH_HEADERS);
+      Domain targetDomain =
+          domainTest.createEntity(
+              domainTest.createRequest(getEntityName(test) + "_target_port"), ADMIN_AUTH_HEADERS);
+
+      // Create tables for ports and assign them to source domain
+      TableResourceTest tableTest = new TableResourceTest();
+      Table inputPort =
+          tableTest.createEntity(
+              tableTest
+                  .createRequest(getEntityName(test) + "_input")
+                  .withDomains(List.of(sourceDomain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+      Table outputPort =
+          tableTest.createEntity(
+              tableTest
+                  .createRequest(getEntityName(test) + "_output")
+                  .withDomains(List.of(sourceDomain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+
+      // Create data product with input/output ports
+      DataProduct dataProduct =
+          createEntity(
+              createRequest(getEntityName(test))
+                  .withDomains(List.of(sourceDomain.getFullyQualifiedName()))
+                  .withInputPorts(List.of(inputPort.getEntityReference()))
+                  .withOutputPorts(List.of(outputPort.getEntityReference())),
+              ADMIN_AUTH_HEADERS);
+
+      // Verify ports are in source domain
+      Table inputBefore = tableTest.getEntity(inputPort.getId(), "domains", ADMIN_AUTH_HEADERS);
+      assertEquals(sourceDomain.getId(), inputBefore.getDomains().get(0).getId());
+      Table outputBefore = tableTest.getEntity(outputPort.getId(), "domains", ADMIN_AUTH_HEADERS);
+      assertEquals(sourceDomain.getId(), outputBefore.getDomains().get(0).getId());
+
+      // Change data product domain to target domain
+      String json = JsonUtils.pojoToJson(dataProduct);
+      dataProduct.setDomains(List.of(targetDomain.getEntityReference()));
+      ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
+      fieldAdded(change, "domains", List.of(targetDomain.getEntityReference()));
+      fieldDeleted(change, "domains", List.of(sourceDomain.getEntityReference()));
+      dataProduct =
+          patchEntityAndCheck(dataProduct, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+      // Verify ports were migrated to target domain
+      Table inputAfter = tableTest.getEntity(inputPort.getId(), "domains", ADMIN_AUTH_HEADERS);
+      assertEquals(
+          targetDomain.getId(),
+          inputAfter.getDomains().get(0).getId(),
+          "Input port should be in target domain after migration");
+
+      Table outputAfter = tableTest.getEntity(outputPort.getId(), "domains", ADMIN_AUTH_HEADERS);
+      assertEquals(
+          targetDomain.getId(),
+          outputAfter.getDomains().get(0).getId(),
+          "Output port should be in target domain after migration");
+
+      // Verify ports are still associated with data product
+      DataProduct fetchedProduct =
+          getEntity(dataProduct.getId(), "inputPorts,outputPorts", ADMIN_AUTH_HEADERS);
+      assertEquals(1, fetchedProduct.getInputPorts().size());
+      assertEquals(inputPort.getId(), fetchedProduct.getInputPorts().get(0).getId());
+      assertEquals(1, fetchedProduct.getOutputPorts().size());
+      assertEquals(outputPort.getId(), fetchedProduct.getOutputPorts().get(0).getId());
+
+    } finally {
+      EntityResourceTest.toggleRule(domainValidationRule, true);
+    }
   }
 }
