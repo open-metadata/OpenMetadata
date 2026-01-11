@@ -192,6 +192,7 @@ jest.mock('../../utils/TableUtils', () => ({
   getTierTags: jest.fn().mockImplementation(() => ({})),
   getTagsWithoutTier: jest.fn().mockImplementation(() => []),
   getTableExpandableConfig: jest.fn().mockReturnValue({}),
+  extractColumnsFromData: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
