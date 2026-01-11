@@ -34,11 +34,17 @@ public class FetchEntitiesImpl implements JavaDelegate {
 
     // If not a batch trigger process, use the configured entity types
     if (entityTypeToFetch == null) {
-      List<String> entityTypes =
-          JsonUtils.readOrConvertValue(entityTypesExpr.getValue(execution), List.class);
+      List<String> entityTypes = new ArrayList<>();
+      try {
+        entityTypes = JsonUtils.readOrConvertValue(entityTypesExpr.getValue(execution), List.class);
+      } catch (Exception exception) {
+        // If there is an exception, then the entityTypes expression is a string
+        entityTypeToFetch =
+            JsonUtils.readOrConvertValue(entityTypesExpr.getValue(execution), String.class);
+      }
       if (entityTypes != null && !entityTypes.isEmpty()) {
         // For non-batch triggers, only process the first entity type to avoid performance issues
-        entityTypeToFetch = entityTypes.get(0);
+        entityTypeToFetch = entityTypes.getFirst();
         if (entityTypes.size() > 1) {
           LOG.warn(
               "Multiple entity types {} configured for non-batch process. Only processing: {}",

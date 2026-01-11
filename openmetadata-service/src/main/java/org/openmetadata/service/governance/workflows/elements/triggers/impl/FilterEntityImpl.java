@@ -4,6 +4,8 @@ import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAME
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger.PASSES_FILTER_VARIABLE;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -13,6 +15,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.WorkflowTriggerFields;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -133,41 +136,49 @@ public class FilterEntityImpl implements JavaDelegate {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
-    boolean excludeFieldFilter;
+    boolean fieldBasedFilter;
     Optional<ChangeDescription> oChangeDescription =
         Optional.ofNullable(entity.getChangeDescription());
 
     // ChangeDescription is empty means it is a Create event.
     if (oChangeDescription.isEmpty()) {
-      excludeFieldFilter = true;
+      fieldBasedFilter = true;
     } else {
       ChangeDescription changeDescription = oChangeDescription.get();
+      List<FieldChange> changedFields = getAllChangedFields(changeDescription);
 
-      List<FieldChange> changedFields = changeDescription.getFieldsAdded();
-      changedFields.addAll(changeDescription.getFieldsDeleted());
-      changedFields.addAll(changeDescription.getFieldsUpdated());
-      excludeFieldFilter =
+      // Check if ANY field is trigger-worthy AND not excluded
+      fieldBasedFilter =
           changedFields.isEmpty()
-              || excludedFilter == null
-              || excludedFilter.isEmpty()
               || changedFields.stream()
-                  .anyMatch(changedField -> !excludedFilter.contains(changedField.getName()));
+                  .anyMatch(
+                      field -> {
+                        String fieldName = field.getName();
+                        boolean isTriggerField =
+                            Arrays.stream(WorkflowTriggerFields.values())
+                                .map(Enum::name)
+                                .anyMatch(fieldName::equals);
+                        boolean isNotExcluded =
+                            excludedFilter == null || !excludedFilter.contains(fieldName);
+                        return isTriggerField && isNotExcluded;
+                      });
     }
 
-    // If excludeFields are there in change description, then don't even trigger workflow or
-    // evaluate jsonLogic, so return false to not trigger workflow
-    if (!excludeFieldFilter) return false;
-    // If excludeFields are not there in change description, then evaluate jsonLogic, if jsonLogic
-    // evaluates to true, then don't trigger the workflow, send false
-    boolean jsonFilter;
+    // Apply JSON filter
+    boolean passesJsonFilter = true;
     if (filterLogic != null && !filterLogic.trim().isEmpty()) {
-      jsonFilter =
-          (Boolean.TRUE.equals(
-              RuleEngine.getInstance().apply(filterLogic, JsonUtils.getMap(entity))));
-    } else {
-      jsonFilter = false; // No filter means pass
+      passesJsonFilter =
+          !Boolean.TRUE.equals(
+              RuleEngine.getInstance().apply(filterLogic, JsonUtils.getMap(entity)));
     }
 
-    return !jsonFilter;
+    return fieldBasedFilter && passesJsonFilter;
+  }
+
+  private List<FieldChange> getAllChangedFields(ChangeDescription changeDescription) {
+    List<FieldChange> allChanges = new ArrayList<>(changeDescription.getFieldsAdded());
+    allChanges.addAll(changeDescription.getFieldsDeleted());
+    allChanges.addAll(changeDescription.getFieldsUpdated());
+    return allChanges;
   }
 }
