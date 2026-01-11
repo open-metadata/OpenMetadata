@@ -293,7 +293,7 @@ export const DatabaseSchemaTable = ({
     if (searchValue) {
       searchSchema(searchValue, currentPage);
     }
-  }, [searchValue, currentPage]);
+  }, [searchValue, currentPage, searchSchema]);
 
   useEffect(() => {
     if (searchValue) {
