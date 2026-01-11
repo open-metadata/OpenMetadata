@@ -39,11 +39,14 @@ import {
   getEntityName,
 } from '../../../../../utils/EntityUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
+import { useFqnDeepLink } from '../../../../../hooks/useFqnDeepLink';
 import {
   getAllTags,
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
-import { pruneEmptyChildren } from '../../../../../utils/TableUtils';
+import {
+  pruneEmptyChildren,
+} from '../../../../../utils/TableUtils';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -62,8 +65,11 @@ import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEdi
 const ModelTab = () => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
+  const [highlightedColumnFqn, setHighlightedColumnFqn] = useState<string>();
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
   const { openColumnDetailPanel } = useGenericContext<DashboardDataModel>();
+
 
   const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true);
@@ -110,8 +116,11 @@ const ModelTab = () => {
               fields: TabSpecificField.TAGS,
             });
 
-        setPaginatedColumns(pruneEmptyChildren(response.data) || []);
+        const data = pruneEmptyChildren(response.data) || [];
+        setPaginatedColumns(data);
         handlePagingChange(response.paging);
+
+
       } catch {
         setPaginatedColumns([]);
         handlePagingChange({
@@ -170,7 +179,25 @@ const ModelTab = () => {
     if (entityFqn) {
       fetchPaginatedColumns(1, searchText || undefined);
     }
-  }, [entityFqn, searchText, fetchPaginatedColumns, pageSize]);
+  }, [entityFqn, searchText, fetchPaginatedColumns, pageSize, dataModel]);
+
+  useFqnDeepLink({
+    data: paginatedColumns,
+    setHighlightedFqn: setHighlightedColumnFqn,
+    setExpandedRowKeys: setExpandedRowKeys,
+    openColumnDetailPanel,
+  });
+  
+  const getRowClassName = useCallback(
+    (record: Column) => {
+      if (highlightedColumnFqn && record.fullyQualifiedName === highlightedColumnFqn) {
+        return 'highlighted-row';
+      }
+
+      return '';
+    },
+    [highlightedColumnFqn]
+  );
 
   const updateColumnDetails = async (
     columnFqn: string,
@@ -320,6 +347,7 @@ const ModelTab = () => {
               hasEditPermission={editDisplayNamePermission}
               id={record.fullyQualifiedName ?? ''}
               name={record.name}
+              parentEntityFqn={entityFqn}
               onEditDisplayName={handleEditColumnData}
             />
           );
@@ -427,11 +455,23 @@ const ModelTab = () => {
         data-testid="data-model-column-table"
         dataSource={data}
         defaultVisibleColumns={DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS}
+        expandable={{
+           ...omit(paging.total > PAGE_SIZE_LARGE ? {} : { expandable: false }),
+           expandedRowKeys: expandedRowKeys,
+           onExpand: (expanded, record) => {
+             setExpandedRowKeys(
+               expanded
+                 ? [...expandedRowKeys, record.fullyQualifiedName ?? '']
+                 : expandedRowKeys.filter((key) => key !== record.fullyQualifiedName)
+             );
+           },
+        }}
         loading={columnsLoading}
         locale={{
           emptyText: <FilterTablePlaceHolder />,
         }}
         pagination={false}
+        rowClassName={getRowClassName}
         rowKey="name"
         scroll={{ x: 1200 }}
         searchProps={searchProps}

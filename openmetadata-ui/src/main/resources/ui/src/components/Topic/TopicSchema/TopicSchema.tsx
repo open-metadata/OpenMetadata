@@ -19,6 +19,7 @@ import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -38,7 +39,9 @@ import {
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
+import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useCopyEntityLink } from '../../../hooks/useCopyEntityLink';
+
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
@@ -49,8 +52,6 @@ import {
 import {
   getAllRowKeysByKeyName,
   getExpandAllKeysToDepth,
-  findFieldByFQN,
-  getParentKeysToExpand,
   getSafeExpandAllKeys,
   getSchemaDepth,
   getSchemaFieldCount,
@@ -88,9 +89,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     SchemaViewType.FIELDS
   );
 
-  const { copyEntityLink, copiedFqn: copiedFieldFqn } = useCopyEntityLink(
-    EntityType.TOPIC
-  );
+
   const viewTypeOptions = [
     {
       label: t('label.field-plural'),
@@ -108,6 +107,13 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     currentVersionData,
     openColumnDetailPanel,
   } = useGenericContext<Topic>();
+
+  const { hash } = useLocation();
+
+  const { copyEntityLink, copiedFqn: copiedFieldFqn } = useCopyEntityLink(
+    EntityType.TOPIC,
+    topicDetails?.fullyQualifiedName
+  );
 
   const isReadOnly = useMemo(() => {
     // If there is a current version, it should be read only
@@ -147,36 +153,15 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     );
   }, [messageSchema?.schemaFields]);
 
-  // Detect if URL contains a field FQN and highlight it
+  // Detect if URL contains a field FQN in hash and highlight it
   useEffect(() => {
-    const topicFqn = topicDetails?.fullyQualifiedName;
-    if (!entityFqn || !topicFqn || entityFqn === topicFqn) {
-      return;
-    }
-
-    setHighlightedFieldFqn(entityFqn);
-
-    // Expand parent rows to show the nested field
-    const fields = messageSchema?.schemaFields ?? [];
-    const parentKeys = getParentKeysToExpand(fields, entityFqn);
-    if (parentKeys.length > 0) {
-      setExpandedRowKeys((prev) => [...new Set([...prev, ...parentKeys])]);
-    }
-
-    // Open side panel for the deeper linked field
-    const matchedField = findFieldByFQN(fields, entityFqn);
-    if (matchedField) {
-      openColumnDetailPanel(matchedField);
-    }
-
     const timer = setTimeout(() => {
       setHighlightedFieldFqn(undefined);
     }, 3000);
 
     return () => clearTimeout(timer);
   }, [
-    entityFqn,
-    topicDetails?.fullyQualifiedName,
+    hash,
     messageSchema?.schemaFields,
   ]);
 
@@ -253,6 +238,13 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     },
     [openColumnDetailPanel]
   );
+
+  useFqnDeepLink({
+    data: topicDetails?.messageSchema?.schemaFields ?? [],
+    setHighlightedFqn: setHighlightedFieldFqn,
+    setExpandedRowKeys: setExpandedRowKeys,
+    openColumnDetailPanel,
+  });
 
   const toggleExpandAll = () => {
     if (expandedRowKeys.length < schemaAllRowKeys.length) {

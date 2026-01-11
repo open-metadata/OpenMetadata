@@ -90,7 +90,7 @@ test.describe('Topic entity specific tests ', () => {
       clipboardText,
       expectedEntityType: 'topic',
       entityFqn: topic.entityResponseData?.['fullyQualifiedName'] ?? '',
-      options: { expectFragment: false },
+      options: { expectFragment: true },
     });
 
     expect(validationResult.isValid).toBe(true);

@@ -45,7 +45,11 @@ const fallbackCopyTextToClipboard = (text: string): boolean => {
  * @param timeout - Time in ms before clearing the copied state (default: 2000ms)
  * @returns Object with copyEntityLink function and copiedFqn state
  */
-export const useCopyEntityLink = (entityType: EntityType, timeout = 2000) => {
+export const useCopyEntityLink = (
+  entityType: EntityType,
+  entityFqn?: string,
+  timeout = 2000
+) => {
   const [copiedFqn, setCopiedFqn] = useState<string>();
 
   useEffect(() => {
@@ -60,11 +64,17 @@ export const useCopyEntityLink = (entityType: EntityType, timeout = 2000) => {
 
   const getEntityLink = useCallback(
     (fqn: string) => {
+      if (entityFqn) {
+        const entityPath = getEntityDetailsPath(entityType, entityFqn);
+
+        return `${window.location.origin}${entityPath}#${fqn}`;
+      }
+
       const entityPath = getEntityDetailsPath(entityType, fqn);
 
       return `${window.location.origin}${entityPath}`;
     },
-    [entityType]
+    [entityType, entityFqn]
   );
 
   const copyEntityLink = useCallback(

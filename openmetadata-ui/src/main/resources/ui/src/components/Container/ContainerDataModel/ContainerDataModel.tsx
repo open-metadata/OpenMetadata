@@ -21,8 +21,9 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -45,14 +46,13 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { useCopyEntityLink } from '../../../hooks/useCopyEntityLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
+import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
-  findFieldByFQN,
-  getParentKeysToExpand,
   getTableExpandableConfig,
   pruneEmptyChildren,
 } from '../../../utils/TableUtils';
@@ -84,54 +84,20 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
   const { copyEntityLink, copiedFqn: copiedColumnFqn } = useCopyEntityLink(
-    EntityType.CONTAINER
+    EntityType.CONTAINER,
+    entityFqn
   );
 
+
+
   const schema = pruneEmptyChildren(dataModel?.columns ?? []);
-
-  // Detect if URL contains a column FQN and highlight it
-  useEffect(() => {
-    // entityFqn from props is the URL FQN, check if it's different from container FQN
-    const containerFqnPrefix = entityFqn?.split('.').slice(0, -1).join('.');
-    if (
-      !entityFqn ||
-      !containerFqnPrefix ||
-      !entityFqn.includes(containerFqnPrefix + '.')
-    ) {
-      return;
-    }
-
-    // Check if entityFqn is a column FQN (not just the container)
-    const columnMatch = schema.some(
-      (col) =>
-        col.fullyQualifiedName === entityFqn ||
-        entityFqn.startsWith((col.fullyQualifiedName ?? '') + '.')
-    );
-
-    if (!columnMatch) {
-      return;
-    }
-
-    setHighlightedColumnFqn(entityFqn);
-
-    // Expand parent rows to show the nested column
-    const parentKeys = getParentKeysToExpand(schema, entityFqn);
-    if (parentKeys.length > 0) {
-      setExpandedRowKeys((prev) => [...new Set([...prev, ...parentKeys])]);
-    }
-
-    // Open side panel for the deeper linked column
-    const matchedColumn = findFieldByFQN(schema, entityFqn);
-    if (matchedColumn) {
-      openColumnDetailPanel(matchedColumn);
-    }
-
-    const timer = setTimeout(() => {
-      setHighlightedColumnFqn(undefined);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [entityFqn, schema]);
+  
+  useFqnDeepLink({
+    data: dataModel?.columns || [],
+    setHighlightedFqn: setHighlightedColumnFqn,
+    setExpandedRowKeys: setExpandedRowKeys,
+    openColumnDetailPanel,
+  });
 
   // Scroll to highlighted row when columns are loaded
   useScrollToElement(

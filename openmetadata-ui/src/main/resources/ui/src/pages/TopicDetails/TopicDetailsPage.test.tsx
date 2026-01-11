@@ -13,7 +13,6 @@
 
 import { findByText, render, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { useFqn } from '../../hooks/useFqn';
 import { getTopicByFqn } from '../../rest/topicsAPI';
 import TopicDetailsPageComponent from './TopicDetailsPage.component';
 
@@ -118,17 +117,25 @@ describe('Test TopicDetailsPage component', () => {
 
   it('Should extract topic FQN from field-level deep link URL', async () => {
     // Mock useFqn to return a field-level FQN (includes field path)
-    (useFqn as jest.Mock).mockReturnValue({
-      fqn: 'sample_kafka.sales.Order.orderId',
+    // Mock getTopicByFqn to return 404 for the full path (deep link)
+    // and success for the topic FQN (sample_kafka.sales)
+    (getTopicByFqn as jest.Mock).mockImplementation((fqn) => {
+      if (fqn === 'sample_kafka.sales') {
+        return Promise.resolve({});
+      }
+
+      // Return 404 for other FQNs (like the deep link)
+      return Promise.reject({
+        response: { status: 404 },
+      });
     });
 
     render(<TopicDetailsPageComponent />, {
       wrapper: MemoryRouter,
     });
 
-    // Wait for the API to be called
+    // Wait for the API to be called with the resolved FQN
     await waitFor(() => {
-      // The API should be called with just the topic FQN (first 2 parts)
       expect(getTopicByFqn).toHaveBeenCalledWith(
         'sample_kafka.sales',
         expect.any(Object)

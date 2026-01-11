@@ -620,14 +620,17 @@ export const updateDescriptionForChildren = async (
 ) => {
   await page
     .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('description')
+    .first()
     .getByTestId('edit-button')
     .click();
 
   await page.waitForSelector('[role="dialog"]', { state: 'visible' });
 
-  await page.locator(descriptionBox).first().click();
-  await page.locator(descriptionBox).first().clear();
-  await page.locator(descriptionBox).first().fill(description);
+  const modalEditor = page.locator('[role="dialog"]').locator(descriptionBox);
+  await modalEditor.click();
+  await modalEditor.clear();
+  await modalEditor.fill(description);
   let updateRequest;
   if (
     entityEndpoint === 'tables' ||

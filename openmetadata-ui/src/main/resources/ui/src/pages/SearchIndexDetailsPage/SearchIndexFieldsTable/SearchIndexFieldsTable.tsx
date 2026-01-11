@@ -26,6 +26,7 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -62,6 +63,7 @@ import {
 } from '../../../utils/EntityUtils';
 import { useCopyEntityLink } from '../../../hooks/useCopyEntityLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
+import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { makeData } from '../../../utils/SearchIndexUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import {
@@ -69,7 +71,6 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
-  getParentKeysToExpand,
   getTableExpandableConfig,
   searchInFields,
   updateFieldDescription,
@@ -103,42 +104,21 @@ const SearchIndexFieldsTable = ({
   const [highlightedFieldFqn, setHighlightedFieldFqn] = useState<string>();
 
   const { copyEntityLink, copiedFqn: copiedFieldFqn } = useCopyEntityLink(
-    EntityType.SEARCH_INDEX
+    EntityType.SEARCH_INDEX,
+    entityFqn
   );
 
-  // Detect if URL contains a field FQN and highlight it
-  useEffect(() => {
-    // entityFqn from props may include the field FQN when navigating to a specific field
-    const searchIndexFqnPrefix = entityFqn?.split('.').slice(0, -1).join('.');
-    if (!entityFqn || !searchIndexFqnPrefix || !searchIndexFields?.length) {
-      return;
-    }
+  const { openColumnDetailPanel, permissions } =
+    useGenericContext<SearchIndex>();
 
-    // Check if entityFqn is a field FQN (not just the search index)
-    const fieldMatch = searchIndexFields.some(
-      (field) =>
-        field.fullyQualifiedName === entityFqn ||
-        entityFqn.startsWith((field.fullyQualifiedName ?? '') + '.')
-    );
 
-    if (!fieldMatch) {
-      return;
-    }
 
-    setHighlightedFieldFqn(entityFqn);
-
-    // Expand parent rows to show the nested field
-    const parentKeys = getParentKeysToExpand(searchIndexFields, entityFqn);
-    if (parentKeys.length > 0) {
-      setExpandedRowKeys((prev) => [...new Set([...prev, ...parentKeys])]);
-    }
-
-    const timer = setTimeout(() => {
-      setHighlightedFieldFqn(undefined);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [entityFqn, searchIndexFields]);
+  useFqnDeepLink({
+    data: searchIndexFields,
+    setHighlightedFqn: setHighlightedFieldFqn,
+    setExpandedRowKeys: setExpandedRowKeys,
+    openColumnDetailPanel,
+  });
 
   // Scroll to highlighted row when fields are loaded
   useScrollToElement(
@@ -167,8 +147,7 @@ const SearchIndexFieldsTable = ({
     [copyEntityLink]
   );
 
-  const { openColumnDetailPanel, permissions } =
-    useGenericContext<SearchIndex>();
+
 
   const sortByOrdinalPosition = useMemo(
     () => sortBy(searchIndexFields, 'ordinalPosition'),

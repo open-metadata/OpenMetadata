@@ -22,6 +22,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -78,6 +79,8 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   );
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
+  const location = useLocation();
+  const navigate = useNavigate();
   const pageType = useMemo(() => ENTITY_PAGE_TYPE_MAP[type], [type]);
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const expandedLayout = useRef<WidgetConfig[]>([]);
@@ -187,7 +190,13 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
   const closeColumnDetailPanel = useCallback(() => {
     setSelectedColumn(null);
-  }, []);
+    if (location.hash) {
+      navigate(
+        { pathname: location.pathname, search: location.search },
+        { replace: true }
+      );
+    }
+  }, [location, navigate]);
 
   // Wrapper for onColumnFieldUpdate that updates selectedColumn after the update completes
   const handleColumnFieldUpdate = useCallback(

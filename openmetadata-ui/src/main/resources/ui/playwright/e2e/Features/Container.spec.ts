@@ -198,7 +198,7 @@ test.describe('Container entity specific tests ', () => {
       clipboardText,
       expectedEntityType: 'container',
       entityFqn: container.entityResponseData?.['fullyQualifiedName'] ?? '',
-      options: { expectFragment: false },
+      options: { expectFragment: true },
     });
 
     expect(validationResult.isValid).toBe(true);

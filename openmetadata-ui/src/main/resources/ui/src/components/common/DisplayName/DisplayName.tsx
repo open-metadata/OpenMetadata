@@ -26,7 +26,11 @@ import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.compon
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { DisplayNameProps } from './DisplayName.interface';
 
-const DisplayName: React.FC<DisplayNameProps> = ({
+interface DisplayNamePropsWithParent extends DisplayNameProps {
+  parentEntityFqn?: string;
+}
+
+const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
   id,
   name,
   displayName,
@@ -35,13 +39,15 @@ const DisplayName: React.FC<DisplayNameProps> = ({
   allowRename,
   hasEditPermission = false,
   entityType,
+  parentEntityFqn,
 }) => {
   const { t } = useTranslation();
 
   const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
 
   const { copyEntityLink, copiedFqn } = useCopyEntityLink(
-    entityType ?? EntityType.TABLE
+    entityType ?? EntityType.TABLE,
+    parentEntityFqn
   );
 
   const handleCopyLink = useCallback(

@@ -20,7 +20,7 @@ import { groupBy, isEmpty, isEqual, isUndefined, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -55,6 +55,7 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { useCopyEntityLink } from '../../../hooks/useCopyEntityLink';
 import { useFqn } from '../../../hooks/useFqn';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
+import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useSub } from '../../../hooks/usePubSub';
 import {
   getTableColumnsByFQN,
@@ -115,9 +116,7 @@ const SchemaTable = () => {
   const [editColumn, setEditColumn] = useState<Column>();
   const [highlightedColumnFqn, setHighlightedColumnFqn] = useState<string>();
 
-  const { copyEntityLink, copiedFqn: copiedColumnFqn } = useCopyEntityLink(
-    EntityType.TABLE
-  );
+
 
   const {
     currentPage,
@@ -147,6 +146,20 @@ const SchemaTable = () => {
     openColumnDetailPanel,
   } = useGenericContext<TableType>();
 
+  const { copyEntityLink, copiedFqn: copiedColumnFqn } = useCopyEntityLink(
+    EntityType.TABLE,
+    table?.fullyQualifiedName
+  );
+
+  const { hash: locationHash } = useLocation();
+
+  useFqnDeepLink({
+    data: table.columns || [],
+    setHighlightedFqn: setHighlightedColumnFqn,
+    setExpandedRowKeys: setExpandedRowKeys,
+    openColumnDetailPanel,
+  });
+
   const { testCaseCounts, joins, tableConstraints, deleted } = useMemo(
     () => ({
       testCaseCounts: testCaseSummary?.columnTestSummary ?? [],
@@ -154,7 +167,7 @@ const SchemaTable = () => {
       tableConstraints: table?.tableConstraints,
       deleted: table?.deleted,
     }),
-    [table, testCaseSummary]
+    [testCaseSummary, table]
   );
 
   const tableFqn = useMemo(

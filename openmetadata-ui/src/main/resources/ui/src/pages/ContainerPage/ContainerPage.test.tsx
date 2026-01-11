@@ -288,13 +288,15 @@ describe('Container Page Component', () => {
     );
     getPrioritizedViewPermission.mockReturnValue(false);
 
+    (getContainerByName as jest.Mock).mockResolvedValue({});
+
     render(<ContainerPage />);
 
     expect(screen.getByText('Loader')).toBeVisible();
 
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
-
-    expect(getContainerByName).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalled()
+    );
 
     expect(
       await screen.findByText(ERROR_PLACEHOLDER_TYPE.PERMISSION)
@@ -306,7 +308,13 @@ describe('Container Page Component', () => {
 
     expect(screen.getByText('Loader')).toBeVisible();
 
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
+    expect(screen.getByText('Loader')).toBeVisible();
+
+    (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
+
+    await waitFor(() =>
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalled()
+    );
 
     await waitFor(() =>
       expect(getContainerByName).toHaveBeenCalledWith(
@@ -330,23 +338,25 @@ describe('Container Page Component', () => {
   });
 
   it('show ErrorPlaceHolder if container data fetch fail', async () => {
-    (getContainerByName as jest.Mock).mockRejectedValueOnce(
-      'failed to fetch container data'
-    );
+    (getContainerByName as jest.Mock)
+      .mockResolvedValueOnce({}) // For resolution
+      .mockRejectedValue('failed to fetch container data'); // For fetch
 
     render(<ContainerPage />);
 
     expect(screen.getByText('Loader')).toBeVisible();
 
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalled()
+    );
 
-    await waitFor(() => expect(getContainerByName).toHaveBeenCalled());
+    await waitFor(() => expect(getContainerByName).toHaveBeenCalledTimes(2));
 
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
 
   it('should render the page container data, with the schema tab selected', async () => {
-    (getContainerByName as jest.Mock).mockResolvedValueOnce(
+    (getContainerByName as jest.Mock).mockResolvedValue(
       MOCK_CONTAINER_DATA
     );
 
@@ -354,7 +364,9 @@ describe('Container Page Component', () => {
 
     expect(screen.getByText('Loader')).toBeVisible();
 
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalled()
+    );
 
     await waitFor(() =>
       expect(getContainerByName).toHaveBeenCalledWith(
@@ -391,7 +403,7 @@ describe('Container Page Component', () => {
   });
 
   it('onClick of follow container should call addContainerFollower', async () => {
-    (getContainerByName as jest.Mock).mockResolvedValueOnce(
+    (getContainerByName as jest.Mock).mockResolvedValue(
       MOCK_CONTAINER_DATA
     );
 
@@ -409,7 +421,7 @@ describe('Container Page Component', () => {
   });
 
   it('tab switch should work', async () => {
-    (getContainerByName as jest.Mock).mockResolvedValueOnce(
+    (getContainerByName as jest.Mock).mockResolvedValue(
       MOCK_CONTAINER_DATA
     );
 
@@ -432,7 +444,7 @@ describe('Container Page Component', () => {
   });
 
   it('children should render on children tab', async () => {
-    (getContainerByName as jest.Mock).mockResolvedValueOnce(
+    (getContainerByName as jest.Mock).mockResolvedValue(
       MOCK_CONTAINER_DATA_1
     );
     mockUseParams.mockReturnValue({
@@ -461,7 +473,7 @@ describe('Container Page Component', () => {
   });
 
   it('should pass entity name as pageTitle to PageLayoutV1', async () => {
-    (getContainerByName as jest.Mock).mockResolvedValueOnce(
+    (getContainerByName as jest.Mock).mockResolvedValue(
       MOCK_CONTAINER_DATA
     );
 
@@ -469,11 +481,13 @@ describe('Container Page Component', () => {
 
     await waitFor(() => expect(getContainerByName).toHaveBeenCalled());
 
-    expect(PageLayoutV1).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pageTitle: MOCK_CONTAINER_DATA.name,
-      }),
-      expect.anything()
+    await waitFor(() =>
+      expect(PageLayoutV1).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: MOCK_CONTAINER_DATA.name,
+        }),
+        expect.anything()
+      )
     );
   });
 });
