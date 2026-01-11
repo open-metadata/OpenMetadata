@@ -515,61 +515,9 @@ describe('LineageUtils', () => {
       });
     });
 
-    it('should create correct Elasticsearch query for column-level search', () => {
-      const searchText = 'customer';
-      const result = getSearchNameEsQuery(searchText, true);
-
-      expect(result).toEqual({
-        bool: {
-          should: [
-            {
-              wildcard: {
-                'columns.name.keyword': {
-                  value: '*customer*',
-                },
-              },
-            },
-            {
-              wildcard: {
-                'columns.displayName.keyword': {
-                  value: '*customer*',
-                },
-              },
-            },
-          ],
-        },
-      });
-    });
-
-    it('should use column fields when isColumnLevel is true', () => {
+    it('should use table fields', () => {
       const searchText = 'status';
-      const result = getSearchNameEsQuery(searchText, true);
-
-      expect(result).toEqual({
-        bool: {
-          should: [
-            {
-              wildcard: {
-                'columns.name.keyword': {
-                  value: '*status*',
-                },
-              },
-            },
-            {
-              wildcard: {
-                'columns.displayName.keyword': {
-                  value: '*status*',
-                },
-              },
-            },
-          ],
-        },
-      });
-    });
-
-    it('should use table fields when isColumnLevel is false', () => {
-      const searchText = 'status';
-      const result = getSearchNameEsQuery(searchText, false);
+      const result = getSearchNameEsQuery(searchText);
 
       expect(result).toEqual({
         bool: {
@@ -585,57 +533,6 @@ describe('LineageUtils', () => {
               wildcard: {
                 'displayName.keyword': {
                   value: '*status*',
-                },
-              },
-            },
-          ],
-        },
-      });
-    });
-
-    it('should handle empty search text with column-level flag', () => {
-      const result = getSearchNameEsQuery('', true);
-
-      expect(result).toEqual({
-        bool: {
-          should: [
-            {
-              wildcard: {
-                'columns.name.keyword': {
-                  value: '**',
-                },
-              },
-            },
-            {
-              wildcard: {
-                'columns.displayName.keyword': {
-                  value: '**',
-                },
-              },
-            },
-          ],
-        },
-      });
-    });
-
-    it('should handle special characters with column-level flag', () => {
-      const searchText = 'col_123';
-      const result = getSearchNameEsQuery(searchText, true);
-
-      expect(result).toEqual({
-        bool: {
-          should: [
-            {
-              wildcard: {
-                'columns.name.keyword': {
-                  value: '*col_123*',
-                },
-              },
-            },
-            {
-              wildcard: {
-                'columns.displayName.keyword': {
-                  value: '*col_123*',
                 },
               },
             },
