@@ -68,6 +68,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
   initialDomains,
   dropdownRef,
   handleDropdownChange,
+  open,
 }) => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -603,7 +604,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
         <Select
           className="custom-domain-edit-select"
           dropdownRender={() => treeContent}
-          dropdownStyle={{ maxHeight: '200px' }}
+          dropdownStyle={{ maxHeight: 'fit-content' }}
           filterOption={false}
           maxTagCount={3}
           maxTagPlaceholder={(omittedValues) => (
@@ -612,6 +613,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
             </span>
           )}
           mode={isMultiple ? 'multiple' : undefined}
+          open={open}
           options={domains.map((domain) => ({
             value: domain?.fullyQualifiedName,
             label: domain?.name,

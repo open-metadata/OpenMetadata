@@ -1,7 +1,7 @@
 package org.openmetadata.mcp;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,8 +18,12 @@ import org.openmetadata.service.security.JwtFilter;
 @Slf4j
 public class McpUtils {
 
+  private static final McpJsonMapper JSON_MAPPER =
+      new JacksonMcpJsonMapper(JsonUtils.getObjectMapper());
+
+  @SuppressWarnings("unchecked")
   public static McpSchema.JSONRPCMessage getJsonRpcMessageWithAuthorizationParam(
-      ObjectMapper objectMapper, HttpServletRequest request, String body) throws IOException {
+      McpJsonMapper jsonMapper, HttpServletRequest request, String body) throws IOException {
     Map<String, Object> requestMessage = JsonUtils.getMap(JsonUtils.readTree(body));
     Map<String, Object> params = (Map<String, Object>) requestMessage.get("params");
     if (params != null) {
@@ -28,8 +32,7 @@ public class McpUtils {
         arguments.put("Authorization", JwtFilter.extractToken(request.getHeader("Authorization")));
       }
     }
-    return McpSchema.deserializeJsonRpcMessage(
-        new JacksonMcpJsonMapper(objectMapper), JsonUtils.pojoToJson(requestMessage));
+    return McpSchema.deserializeJsonRpcMessage(jsonMapper, JsonUtils.pojoToJson(requestMessage));
   }
 
   @SuppressWarnings("unchecked")
@@ -81,7 +84,6 @@ public class McpUtils {
         throw new RuntimeException("Failed to load tool definitions");
       }
       LOG.debug("Successfully loaded {} tool definitions", cachedTools.size());
-      JacksonMcpJsonMapper jsonMapper = new JacksonMcpJsonMapper(JsonUtils.getObjectMapper());
       for (int i = 0; i < cachedTools.size(); i++) {
         Map<String, Object> toolDef = cachedTools.get(i);
         String name = (String) toolDef.get("name");
@@ -91,7 +93,7 @@ public class McpUtils {
             McpSchema.Tool.builder()
                 .name(name)
                 .description(description)
-                .inputSchema(jsonMapper, JsonUtils.pojoToJson(schema))
+                .inputSchema(JSON_MAPPER, JsonUtils.pojoToJson(schema))
                 .build());
       }
       return result;
