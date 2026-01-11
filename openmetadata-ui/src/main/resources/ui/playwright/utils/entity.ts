@@ -1483,9 +1483,8 @@ export const updateDisplayNameForEntity = async (
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="rename-button"]');
 
-  const nameInputIsDisabled = await page.locator('#name').isEnabled();
-
-  expect(nameInputIsDisabled).toBe(false);
+  const nameInputIsDisabled = await page.locator('#name').isDisabled();
+  expect(nameInputIsDisabled).toBe(true);
 
   await expect(page.locator('#displayName')).toBeVisible();
 
