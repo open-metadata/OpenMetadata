@@ -19,7 +19,7 @@ import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -108,7 +108,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     openColumnDetailPanel,
   } = useGenericContext<Topic>();
 
-  const { hash } = useLocation();
+
 
   const { copyEntityLink, copiedFqn: copiedFieldFqn } = useCopyEntityLink(
     EntityType.TOPIC,
@@ -153,17 +153,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     );
   }, [messageSchema?.schemaFields]);
 
-  // Detect if URL contains a field FQN in hash and highlight it
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setHighlightedFieldFqn(undefined);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [
-    hash,
-    messageSchema?.schemaFields,
-  ]);
 
   // Scroll to highlighted row when fields are loaded
   useScrollToElement(
@@ -244,6 +233,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     setHighlightedFqn: setHighlightedFieldFqn,
     setExpandedRowKeys: setExpandedRowKeys,
     openColumnDetailPanel,
+    timeoutMs: 2000,
   });
 
   const toggleExpandAll = () => {

@@ -19,6 +19,7 @@ interface UseFqnDeepLinkProps<T> {
   setHighlightedFqn: (fqn: string | undefined) => void;
   setExpandedRowKeys: (keys: (prev: string[]) => string[]) => void;
   openColumnDetailPanel: (field: T) => void;
+  timeoutMs?: number;
 }
 
 export const useFqnDeepLink = <T extends { fullyQualifiedName?: string; children?: T[] }>({
@@ -26,6 +27,7 @@ export const useFqnDeepLink = <T extends { fullyQualifiedName?: string; children
   setHighlightedFqn,
   setExpandedRowKeys,
   openColumnDetailPanel,
+  timeoutMs = 3000,
 }: UseFqnDeepLinkProps<T>) => {
   const location = useLocation();
 
@@ -45,8 +47,10 @@ export const useFqnDeepLink = <T extends { fullyQualifiedName?: string; children
       }
 
       const timer = setTimeout(() => {
+        if (!fqn) {return;}
+
         setHighlightedFqn(undefined);
-      }, 3000);
+      }, timeoutMs);
 
       return () => clearTimeout(timer);
     }
