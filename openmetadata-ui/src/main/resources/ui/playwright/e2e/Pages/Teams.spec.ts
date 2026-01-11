@@ -834,7 +834,6 @@ test.describe('Teams Page', () => {
       await afterAction();
     }
   });
-
 });
 
 test.describe('Teams Page with EditUser Permission', () => {

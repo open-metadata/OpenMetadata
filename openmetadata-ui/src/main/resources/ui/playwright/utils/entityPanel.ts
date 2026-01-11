@@ -108,7 +108,7 @@ export const editTags = async (
 
   const tagOption = page.getByTitle(tagName);
   // Wait for tag option to be visible before clicking
-  await tagOption.waitFor({ state: 'visible'});
+  await tagOption.waitFor({ state: 'visible' });
   await tagOption.click();
 
   const updateBtn = page.getByRole('button', { name: 'Update' });
@@ -119,9 +119,7 @@ export const editTags = async (
   await expect(page.getByText(/Tags updated successfully/i)).toBeVisible();
 };
 
-export const editGlossaryTerms = async (
-  page: Page,
-  termName?: string) => {
+export const editGlossaryTerms = async (page: Page, termName?: string) => {
   await page
     .locator('[data-testid="edit-glossary-terms"]')
     .scrollIntoViewIfNeeded();
@@ -137,10 +135,9 @@ export const editGlossaryTerms = async (
     await page.locator('[data-testid="glossary-container"] [data-testid="add-tag"]').click();
   }
 
-
   await page
     .locator('[data-testid="selectable-list"]')
-    .scrollIntoViewIfNeeded();
+    .waitFor({ state: 'visible' });
 
   if (termName) {
     const searchBar = page.locator(
@@ -165,7 +162,6 @@ export const editGlossaryTerms = async (
   await page.getByRole('button', { name: 'Update' }).click();
   await patchResp;
 };
-
 
 export const editDomain = async (page: Page, domainName: string) => {
   const summaryPanel = page.locator('.entity-summary-panel-container');
@@ -196,7 +192,9 @@ export const editDomain = async (page: Page, domainName: string) => {
   const searchDomainResponse = await searchDomainPromise;
   expect(searchDomainResponse.status()).toBe(200);
 
-  const tagSelector = page.getByTestId(`tag-${domainName}`);
+  const tagSelector = page
+    .getByTestId('domain-selectable-tree')
+    .getByText(domainName);
   await tagSelector.waitFor({ state: 'visible' });
 
   const patchReqPromise = page.waitForResponse(
@@ -212,8 +210,6 @@ export const editDomain = async (page: Page, domainName: string) => {
     state: 'detached',
   });
 };
-
-
 
 export const verifyDeletedEntityNotVisible = async (
   page: Page,
@@ -276,6 +272,198 @@ export const navigateToIncidentsTab = async (page: Page) => {
       state: 'detached',
     });
   }
+};
+
+export const removeTagsFromPanel = async (
+  page: Page,
+  tagDisplayNames: string[]
+) => {
+  await page.getByTestId('edit-icon-tags').click();
+
+  await page
+    .locator('[data-testid="selectable-list"]')
+    .waitFor({ state: 'visible' });
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  for (const tagName of tagDisplayNames) {
+    const tagOption = page.getByTitle(tagName);
+    await tagOption.waitFor({ state: 'visible' });
+    await tagOption.click();
+  }
+
+  const patchPromise = waitForPatchResponse(page);
+  await page.getByRole('button', { name: 'Update' }).click();
+  await patchPromise;
+};
+
+export const removeGlossaryTermFromPanel = async (
+  page: Page,
+  termDisplayNames: string[]
+) => {
+  await page
+    .locator('[data-testid="edit-glossary-terms"]')
+    .scrollIntoViewIfNeeded();
+
+  await page.waitForSelector('[data-testid="edit-glossary-terms"]', {
+    state: 'visible',
+  });
+  // Use force click to ensure popover triggers even if animating/partially obstructed
+  await page.getByTestId('edit-glossary-terms').click({ force: true });
+
+  await page
+    .locator('[data-testid="selectable-list"]')
+    .waitFor({ state: 'visible' });
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+  for (const termName of termDisplayNames) {
+    const searchBar = page.getByTestId('glossary-term-select-search-bar');
+    await searchBar.fill(termName);
+
+    // Wait for the list to update with search results
+    const termItem = page
+      .locator('.ant-list-item')
+      .filter({ hasText: termName });
+    await termItem.waitFor({ state: 'visible' });
+
+    await termItem.click();
+
+    // Clear search for next iteration if there are multiple terms
+    await searchBar.clear();
+  }
+
+  const patchPromise = waitForPatchResponse(page);
+  await page.getByRole('button', { name: 'Update' }).click();
+  await patchPromise;
+};
+
+export const removeOwnerFromPanel = async (
+  page: Page,
+  ownerNames: string[],
+  type: 'Users' | 'Teams' = 'Users'
+) => {
+  await page.waitForSelector('[data-testid="edit-owners"]', {
+    state: 'visible',
+  });
+  await page.getByTestId('edit-owners').click({ force: true });
+
+  await page.getByTestId('select-owner-tabs').waitFor({ state: 'visible' });
+
+  await page.getByRole('tab', { name: type }).click();
+
+  const patchPromise = waitForPatchResponse(page);
+
+  for (const ownerName of ownerNames) {
+    const searchBarDataTestId =
+      type === 'Users'
+        ? 'owner-select-users-search-bar'
+        : 'owner-select-teams-search-bar';
+    const searchBar = page.getByTestId(searchBarDataTestId);
+    if (await searchBar.isVisible()) {
+      await searchBar.fill(ownerName);
+      const ownerItem = page
+        .locator('.ant-list-item')
+        .filter({ hasText: ownerName });
+      await ownerItem.waitFor({ state: 'visible' });
+      await ownerItem.click();
+    } else {
+      const ownerItem = page
+        .locator('.ant-list-item')
+        .filter({ hasText: ownerName });
+      await ownerItem.waitFor({ state: 'visible' });
+      await ownerItem.click();
+    }
+  }
+
+  const updateButton = page.getByTestId('selectable-list-update-btn');
+  if (await updateButton.isVisible()) {
+    await updateButton.click();
+  }
+
+  await patchPromise;
+};
+
+export const removeDomainFromPanel = async (page: Page, domainName: string) => {
+  await page.waitForSelector('[data-testid="add-domain"]', {
+    state: 'visible',
+  });
+
+  // Use force click to ensure popover triggers even if animating/partially obstructed
+  await page.getByTestId('add-domain').click({ force: true });
+
+  const domainTree = page.getByTestId('domain-selectable-tree');
+  await domainTree.waitFor({ state: 'visible' });
+
+  const searchDomainPromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(`q=`)
+  );
+
+  await domainTree.getByTestId('searchbar').fill(domainName);
+
+  await searchDomainPromise;
+
+  const domainItem = domainTree.getByText(domainName);
+  const patchPromise = waitForPatchResponse(page);
+
+  await domainItem.click();
+
+  const updateButton = page.getByRole('button', { name: 'Update' });
+  if (await updateButton.isVisible()) {
+    await updateButton.click();
+  }
+
+  await patchPromise;
+};
+
+export const assignTierToPanel = async (page: Page, tierName: string) => {
+  await page.waitForSelector('[data-testid="edit-icon-tier"]', {
+    state: 'visible',
+  });
+  await page.getByTestId('edit-icon-tier').click({ force: true });
+
+  const tierPopover = page.getByTestId('cards');
+  await tierPopover.waitFor({ state: 'visible' });
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const tierRadioButton = page.getByTestId(`radio-btn-${tierName}`);
+  await tierRadioButton.waitFor({ state: 'visible' });
+
+  const patchPromise = waitForPatchResponse(page);
+
+  await tierRadioButton.click();
+
+  const updateButton = page.getByTestId('update-tier-card');
+  await updateButton.waitFor({ state: 'visible' });
+  await updateButton.click();
+
+  await patchPromise;
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+};
+
+export const removeTierFromPanel = async (page: Page) => {
+  await page.locator('[data-testid="edit-icon-tier"]').scrollIntoViewIfNeeded();
+  await page.waitForSelector('[data-testid="edit-icon-tier"]', {
+    state: 'visible',
+  });
+  await page.getByTestId('edit-icon-tier').click({ force: true });
+
+  const tierPopover = page.getByTestId('cards');
+  await tierPopover.waitFor({ state: 'visible' });
+
+  const clearButton = tierPopover.getByTestId('clear-tier');
+  await clearButton.waitFor({ state: 'visible' });
+
+  const patchPromise = waitForPatchResponse(page);
+  await clearButton.click();
+  await patchPromise;
 };
 
 export async function navigateToExploreAndSelectTable(

@@ -26,6 +26,7 @@ const DomainSelectableListNew = ({
   multiple = false,
   onUpdate,
   selectedDomain,
+  isClearable,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -120,6 +121,7 @@ const DomainSelectableListNew = ({
               dropdownRef={dropdownRef}
               handleDropdownChange={handleDropdownChange}
               initialDomains={initialDomains}
+              isClearable={isClearable}
               isMultiple={multiple}
               open={isDropdownOpen}
               value={selectedDomainsList as string[]}
