@@ -212,10 +212,13 @@ export const getCSVStringFromColumnsAndDataSource = (
         } else if (
           value.includes(',') ||
           value.includes('\n') ||
+          value.includes('"') ||
           colName.includes('tags') ||
           colName.includes('domains')
         ) {
-          return isEmpty(value) ? '' : `"${value}"`;
+          return isEmpty(value)
+            ? ''
+            : `"${value.replaceAll(new RegExp('"', 'g'), '""')}"`;
         }
 
         return get(row, col.key ?? '', '');

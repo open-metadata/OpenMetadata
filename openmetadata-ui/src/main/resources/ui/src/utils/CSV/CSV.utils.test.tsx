@@ -140,6 +140,29 @@ describe('CSVUtils', () => {
         `tags,glossaryTerms,description,domain\n"value,1","value_2","something#new","domain,1"`
       );
     });
+
+    it('should properly escape quotes in FQN values containing dots', () => {
+      const columns = [
+        { name: 'name*', key: 'name*' },
+        { name: 'fullyQualifiedName', key: 'fullyQualifiedName' },
+        { name: 'entityType*', key: 'entityType*' },
+      ];
+      const dataSource = [
+        {
+          'name*': 'default',
+          fullyQualifiedName: '"local.mysql".default',
+          'entityType*': 'database',
+        },
+      ];
+      const csvString = getCSVStringFromColumnsAndDataSource(
+        columns,
+        dataSource
+      );
+
+      expect(csvString).toBe(
+        'name*,fullyQualifiedName,entityType*\n"default","""local.mysql"".default",database'
+      );
+    });
   });
 
   describe('convertCustomPropertyStringToEntityExtension', () => {

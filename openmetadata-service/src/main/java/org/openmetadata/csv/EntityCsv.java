@@ -774,7 +774,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       records = convertToCSVRecords(fixedRows, headers);
 
     } catch (IOException e) {
-      e.printStackTrace();
+      documentFailure(failed(e.getMessage(), CsvErrorType.PARSER_FAILURE));
     }
 
     return records;
