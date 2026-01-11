@@ -199,7 +199,7 @@ export const DatabaseSchemaTable = ({
         );
       }
     },
-    [paging, handlePageChange, pageSize]
+    [paging, handlePageChange, pageSize, searchValue]
   );
 
   const onSchemaSearch = useCallback(
@@ -293,7 +293,7 @@ export const DatabaseSchemaTable = ({
     if (searchValue) {
       searchSchema(searchValue, currentPage);
     }
-  }, [searchValue, currentPage, searchSchema]);
+  }, [searchValue, currentPage]);
 
   useEffect(() => {
     if (searchValue) {
