@@ -20,11 +20,13 @@ import {
   ServicesUpdateRequest,
   ServiceTypes,
 } from 'Models';
+import QueryString from 'qs';
 import {
   FunctionComponent,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -290,6 +292,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
   const { showDeletedTables: showDeleted } = tableFilters;
 
+  const isInitialLoadRef = useRef(true);
+  const isInitialPaginationLoadRef = useRef(true);
+
   const { isFollowing, followers = [] } = useMemo(
     () => ({
       isFollowing: serviceDetails?.followers?.some(
@@ -311,6 +316,21 @@ const ServiceDetailsPage: FunctionComponent = () => {
     () => !isUndefined(CollateAIAgentsWidget) && isDBService,
     [CollateAIAgentsWidget, isDBService]
   );
+
+  const { searchValue, fileSearchValue, spreadSheetSearchValue } =
+    useMemo(() => {
+      const param = location.search;
+      const searchData = QueryString.parse(
+        param.startsWith('?') ? param.substring(1) : param
+      );
+
+      return {
+        searchValue: searchData.schema,
+        fileSearchValue: searchData.file,
+        spreadSheetSearchValue: searchData.spreadsheet,
+      };
+    }, [location.search]);
+
   const handleTypeFilterChange = useCallback(
     (type: Array<{ key: string; label: string }>) => {
       setTypeFilter(type);
@@ -417,7 +437,25 @@ const ServiceDetailsPage: FunctionComponent = () => {
         if (isAgentTab) {
           subTab = ServiceAgentSubTabs.METADATA;
         }
-
+        if (key === getCountLabel(serviceCategory).toLowerCase()) {
+          handlePageChange(INITIAL_PAGING_VALUE, {
+            cursorType: null,
+            cursorValue: undefined,
+          });
+          setFilters({ showDeletedTables: false });
+        }
+        if (key === EntityTabs.FILES) {
+          handleFilesPageChange(INITIAL_PAGING_VALUE, {
+            cursorType: null,
+            cursorValue: undefined,
+          });
+        }
+        if (key === EntityTabs.SPREADSHEETS) {
+          handleSpreadsheetsPageChange(INITIAL_PAGING_VALUE, {
+            cursorType: null,
+            cursorValue: undefined,
+          });
+        }
         navigate({
           pathname: getServiceDetailsPath(
             decodedServiceFQN,
@@ -428,7 +466,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
         });
       }
     },
-    [activeTab, decodedServiceFQN, serviceCategory]
+    [
+      activeTab,
+      decodedServiceFQN,
+      serviceCategory,
+      handleFilesPageChange,
+      handleSpreadsheetsPageChange,
+    ]
   );
 
   const fetchWorkflowInstanceStates = useCallback(async () => {
@@ -912,7 +956,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       setServiceDetails(response);
       setConnectionDetails(response.connection?.config as DashboardConnection);
       // show deleted child entities if service is deleted
-      handleShowDeleted(response.deleted ?? false);
+      setFilters({ showDeletedTables: response.deleted ?? false });
     } catch (error) {
       // Error
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
@@ -970,7 +1014,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }
   }, [USERId, serviceId]);
   const handleFollowClick = useCallback(async () => {
-    isFollowing ? await unFollowService() : await followService();
+    if (isFollowing) {
+      await unFollowService();
+    } else {
+      await followService();
+    }
   }, [isFollowing, unFollowService, followService]);
   const handleUpdateDisplayName = useCallback(
     async (data: EntityName) => {
@@ -1187,7 +1235,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
 
   const versionHandler = useCallback(() => {
-    currentVersion &&
+    if (currentVersion) {
       navigate(
         getServiceVersionPath(
           serviceCategory,
@@ -1195,6 +1243,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           toString(currentVersion)
         )
       );
+    }
   }, [currentVersion, serviceCategory, decodedServiceFQN]);
 
   const entityType = useMemo(
@@ -1204,26 +1253,37 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const onFilesPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        fetchFiles({
-          [cursorType]: filesPaging[cursorType],
-        });
+      if (fileSearchValue) {
+        handleFilesPageChange(currentPage);
+      } else if (cursorType) {
+        handleFilesPageChange(
+          currentPage,
+          { cursorType, cursorValue: filesPaging[cursorType] },
+          filesPageSize
+        );
       }
-      handleFilesPageChange(currentPage);
     },
-    [filesPaging, fetchFiles, handleFilesPageChange]
+    [filesPaging, handleFilesPageChange, fileSearchValue, filesPageSize]
   );
 
   const onSpreadsheetsPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        fetchSpreadsheets({
-          [cursorType]: spreadsheetsPaging[cursorType],
-        });
+      if (spreadSheetSearchValue) {
+        handleSpreadsheetsPageChange(currentPage);
+      } else if (cursorType) {
+        handleSpreadsheetsPageChange(
+          currentPage,
+          { cursorType, cursorValue: spreadsheetsPaging[cursorType] },
+          spreadsheetsPageSize
+        );
       }
-      handleSpreadsheetsPageChange(currentPage);
     },
-    [spreadsheetsPaging, fetchSpreadsheets, handleSpreadsheetsPageChange]
+    [
+      spreadsheetsPaging,
+      handleSpreadsheetsPageChange,
+      spreadSheetSearchValue,
+      spreadsheetsPageSize,
+    ]
   );
 
   const handleToggleDelete = useCallback((version?: number) => {
@@ -1316,31 +1376,88 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }, [isWorkflowStatusLoading, workflowStatesData?.mainInstanceState.status]);
 
   useEffect(() => {
+    if (searchValue) {
+      return;
+    }
+    getOtherDetails({ limit: pageSize });
+    isInitialPaginationLoadRef.current = false;
+  }, [showDeleted, deleted, pageSize, searchValue]);
+
+  useEffect(() => {
+    if (
+      isInitialPaginationLoadRef.current ||
+      searchValue ||
+      [EntityTabs.FILES, EntityTabs.SPREADSHEETS].includes(
+        activeTab as EntityTabs
+      )
+    ) {
+      return;
+    }
     const { cursorType, cursorValue } = pagingInfo?.pagingCursor ?? {};
-    if (cursorType && cursorValue) {
-      getOtherDetails({ limit: pageSize, [cursorType]: paging[cursorType] });
-    } else {
-      getOtherDetails({ limit: pageSize });
-    }
-  }, [showDeleted, deleted, pageSize, pagingInfo?.pagingCursor]);
+    getOtherDetails({
+      limit: pageSize,
+      ...(cursorType && { [cursorType]: cursorValue }),
+    });
+  }, [pagingInfo?.pagingCursor, searchValue, activeTab]);
 
   useEffect(() => {
-    if (tab === getCountLabel(serviceCategory).toLowerCase()) {
-      handlePageChange(INITIAL_PAGING_VALUE);
-      setFilters({ showDeletedTables: false });
-    }
-  }, [tab]);
-
-  useEffect(() => {
-    // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active
     if (serviceCategory === ServiceCategory.DASHBOARD_SERVICES) {
       fetchDashboardsDataModel({ limit: 0 });
     }
-    if (serviceCategory === ServiceCategory.DRIVE_SERVICES) {
-      fetchFiles({ limit: filesPageSize });
-      fetchSpreadsheets({ limit: spreadsheetsPageSize });
+
+    if (
+      serviceCategory === ServiceCategory.DRIVE_SERVICES &&
+      isInitialLoadRef.current
+    ) {
+      if (isEmpty(fileSearchValue)) {
+        fetchFiles({ limit: filesPageSize });
+      }
+      if (isEmpty(spreadSheetSearchValue)) {
+        fetchSpreadsheets({ limit: spreadsheetsPageSize });
+      }
+      isInitialLoadRef.current = false;
     }
-  }, [showDeleted]);
+  }, [serviceCategory]);
+
+  useEffect(() => {
+    if (
+      serviceCategory === ServiceCategory.DRIVE_SERVICES &&
+      !isInitialLoadRef.current &&
+      isEmpty(fileSearchValue) &&
+      activeTab === EntityTabs.FILES
+    ) {
+      const { cursorType: fileCursorType, cursorValue: fileCursorValue } =
+        filesPagingInfo?.pagingCursor ?? {};
+      fetchFiles({
+        limit: filesPageSize,
+        ...(fileCursorType && { [fileCursorType]: fileCursorValue }),
+      });
+    }
+  }, [filesPagingInfo?.pagingCursor, filesPageSize, fileSearchValue]);
+
+  useEffect(() => {
+    if (
+      serviceCategory === ServiceCategory.DRIVE_SERVICES &&
+      !isInitialLoadRef.current &&
+      isEmpty(spreadSheetSearchValue) &&
+      activeTab === EntityTabs.SPREADSHEETS
+    ) {
+      const {
+        cursorType: spreadSheetCursorType,
+        cursorValue: spreadSheetCursorValue,
+      } = spreadsheetsPagingInfo?.pagingCursor ?? {};
+      fetchSpreadsheets({
+        limit: spreadsheetsPageSize,
+        ...(spreadSheetCursorType && {
+          [spreadSheetCursorType]: spreadSheetCursorValue,
+        }),
+      });
+    }
+  }, [
+    spreadsheetsPagingInfo?.pagingCursor,
+    spreadsheetsPageSize,
+    spreadSheetSearchValue,
+  ]);
 
   useEffect(() => {
     if (servicePermission.ViewAll || servicePermission.ViewBasic) {
@@ -1356,12 +1473,14 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   useEffect(() => {
     if (isAirflowAvailable && !isOpenMetadataService) {
-      isEmpty(searchText) && isEmpty(statusFilter) && isEmpty(typeFilter)
-        ? getAllIngestionWorkflows(
-            {},
-            ingestionPagingCursor?.pageSize ?? ingestionPageSize
-          )
-        : searchPipelines(searchText, currentIngestionPage);
+      if (isEmpty(searchText) && isEmpty(statusFilter) && isEmpty(typeFilter)) {
+        getAllIngestionWorkflows(
+          {},
+          ingestionPagingCursor?.pageSize ?? ingestionPageSize
+        );
+      } else {
+        searchPipelines(searchText, currentIngestionPage);
+      }
     }
   }, [
     isAirflowAvailable,
@@ -1574,7 +1693,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
             <ServiceMainTabContent
               currentPage={currentPage}
               data={data}
-              getServiceDetails={getOtherDetails}
               isServiceLoading={isServiceLoading}
               paging={paging}
               pagingInfo={pagingInfo}
@@ -1616,7 +1734,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
           count: filesPaging.total,
           children: (
             <FilesTable
-              fetchFiles={fetchFiles}
               files={files}
               handlePageChange={onFilesPageChange}
               handleShowDeleted={handleShowDeleted}
@@ -1635,7 +1752,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
           count: spreadsheetsPaging.total,
           children: (
             <SpreadsheetsTable
-              fetchSpreadsheets={fetchSpreadsheets}
               handlePageChange={onSpreadsheetsPageChange}
               handleShowDeleted={handleShowDeleted}
               isLoading={isSpreadsheetsLoading}

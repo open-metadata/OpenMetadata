@@ -223,6 +223,12 @@ test.describe('User with Admin Roles', () => {
       user2.responseData.displayName
     );
 
+    const fetchUsers = adminPage.waitForResponse(
+      '/api/v1/users?**include=non-deleted'
+    );
+    await adminPage.fill('[data-testid="searchbar"]', '');
+    await fetchUsers;
+
     await restoreUser(
       adminPage,
       user2.responseData.name,
@@ -904,7 +910,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     await adminPage.waitForSelector(
       '[data-testid="default-persona-select-list"]'
     );
-    
+
     await adminPage.waitForSelector('.ant-select-dropdown', {
       state: 'visible',
     });

@@ -241,6 +241,10 @@ const BotListV1 = ({
     } else {
       setSearchedData(botUsers);
     }
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
   };
 
   const handleShowDeletedBots = (checked: boolean) => {
