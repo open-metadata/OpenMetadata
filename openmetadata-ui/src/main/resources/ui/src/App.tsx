@@ -16,6 +16,7 @@ import { FC, useEffect, useMemo } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
 import { BrowserRouter } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
 import AppRouter from './components/AppRouter/AppRouter';
 import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
 import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
@@ -50,7 +51,13 @@ import i18n from './utils/i18next/LocalUtil';
 import { getThemeConfig } from './utils/ThemeUtils';
 const App: FC = () => {
   const { applicationConfig, setApplicationConfig, setRdfEnabled } =
-    useApplicationStore();
+    useApplicationStore(
+      useShallow((state) => ({
+        applicationConfig: state.applicationConfig,
+        setApplicationConfig: state.setApplicationConfig,
+        setRdfEnabled: state.setRdfEnabled,
+      }))
+    );
 
   // Create dynamic MUI theme based on user customizations
   const muiTheme = useMemo(

@@ -202,7 +202,8 @@ export interface PipelineServiceClientConfiguration {
      */
     jwtPrincipalClaims?: string[];
     /**
-     * Jwt Principal Claim Mapping
+     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
+     * 'email'. Both username and email mappings are required.
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
@@ -996,7 +997,8 @@ export interface AuthenticationConfiguration {
      */
     jwtPrincipalClaims: string[];
     /**
-     * Jwt Principal Claim Mapping
+     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
+     * 'email'. Both username and email mappings are required.
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
@@ -1346,7 +1348,7 @@ export interface SamlSSOClientConfig {
  */
 export interface Idp {
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Authority URL (deprecated, use entityId instead).
      */
     authorityUrl?: string;
     /**
@@ -1358,7 +1360,7 @@ export interface Idp {
      */
     idpX509Certificate?: string;
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Name ID format for SAML assertions
      */
     nameId?: string;
     /**

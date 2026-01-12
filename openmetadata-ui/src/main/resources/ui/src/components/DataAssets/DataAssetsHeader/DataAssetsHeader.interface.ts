@@ -135,6 +135,7 @@ export type DataAssetsHeaderProps = {
   permissions: OperationPermission;
   openTaskCount?: number;
   allowSoftDelete?: boolean;
+  allowRename?: boolean;
   showDomain?: boolean;
   isRecursiveDelete?: boolean;
   isDqAlertSupported?: boolean;

@@ -464,6 +464,10 @@ export interface Pipeline {
      */
     processViewLineage?: boolean;
     /**
+     * Configuration for SQL query parser selection for lineage extraction.
+     */
+    queryParserConfig?: QueryParserConfig;
+    /**
      * Regex to only fetch stored procedures that matches the pattern.
      */
     storedProcedureFilterPattern?: FilterPattern;
@@ -909,7 +913,7 @@ export interface FilterPattern {
 export interface CollateAIAppConfig {
     /**
      * Query filter to be passed to ES. E.g.,
-     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
+     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domains.displayName.keyword":"DG
      * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
      */
     filter?: string;
@@ -1041,6 +1045,10 @@ export interface CollateAIAppConfig {
      * (e.g., 30 for one month, 60 for two months).
      */
     activityThreadsRetentionPeriod?: number;
+    /**
+     * Enter the retention period for Audit Log entries in days (e.g., 90 for three months).
+     */
+    auditLogRetentionPeriod?: number;
     /**
      * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
      * one month).
@@ -1360,6 +1368,14 @@ export enum MetadataAttribute {
  */
 export interface TagLabel {
     /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
+    /**
      * Description for the tag label.
      *
      * Optional description of entity.
@@ -1507,6 +1523,14 @@ export interface CoverImage {
  * tier to apply
  */
 export interface TierElement {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
     /**
      * Description for the tag label.
      */
@@ -1761,7 +1785,7 @@ export interface Resource {
     filterJsonTree?: string;
     /**
      * Query filter to be passed to ES. E.g.,
-     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
+     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domains.displayName.keyword":"DG
      * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
      */
     queryFilter?: string;
@@ -2348,6 +2372,42 @@ export enum ProcessingEngineType {
 export enum ProfileSampleType {
     Percentage = "PERCENTAGE",
     Rows = "ROWS",
+}
+
+/**
+ * Configuration for SQL query parser selection for lineage extraction.
+ *
+ * Configuration for SQL query parser selection for lineage and usage extraction.
+ */
+export interface QueryParserConfig {
+    /**
+     * Choose the SQL parser for lineage extraction:
+     * • Auto (default): Automatically tries SqlGlot first, falls back to SqlFluff, then
+     * SqlParse. Recommended for best results.
+     * • SqlGlot: High-performance parser with excellent dialect support. Falls back to SqlParse
+     * on failure.
+     * • SqlFluff: Comprehensive parser with strong dialect support. Falls back to SqlParse on
+     * failure.
+     */
+    type?: QueryParserType;
+}
+
+/**
+ * Choose the SQL parser for lineage extraction:
+ * • Auto (default): Automatically tries SqlGlot first, falls back to SqlFluff, then
+ * SqlParse. Recommended for best results.
+ * • SqlGlot: High-performance parser with excellent dialect support. Falls back to SqlParse
+ * on failure.
+ * • SqlFluff: Comprehensive parser with strong dialect support. Falls back to SqlParse on
+ * failure.
+ *
+ * Type of SQL query parser to use for lineage and usage extraction. Auto mode is
+ * recommended for best results.
+ */
+export enum QueryParserType {
+    Auto = "Auto",
+    SQLFluff = "SqlFluff",
+    SQLGlot = "SqlGlot",
 }
 
 /**
@@ -3175,6 +3235,9 @@ export interface ConfigObject {
      */
     siteName?: string;
     /**
+     * SSL Configuration details for DB2 connection. Provide CA certificate for server
+     * validation, and optionally client certificate and key for mutual TLS authentication.
+     *
      * SSL Configuration details.
      *
      * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
@@ -3533,6 +3596,7 @@ export interface ConfigObject {
      * License file name to connect to DB2.
      */
     licenseFileName?:               string;
+    sslMode?:                       SSLMode;
     supportsViewLineageExtraction?: boolean;
     /**
      * Available sources to fetch the metadata.
@@ -3608,7 +3672,13 @@ export interface ConfigObject {
      * Custom OpenMetadata Classification name for TimescaleDB policy tags.
      */
     classificationName?: string;
-    sslMode?:            SSLMode;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?: string;
     /**
      * Protocol ( Connection Argument ) to connect to Presto.
      */
@@ -4974,6 +5044,9 @@ export interface QlikCertificatesBy {
  *
  * SSL Configuration details.
  *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
+ *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
  *
@@ -5230,7 +5303,14 @@ export interface ConfigConnection {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      */
-    ingestAllDatabases?:      boolean;
+    ingestAllDatabases?: boolean;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?:    string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -5414,6 +5494,9 @@ export enum ConnectionScheme {
  * OpenMetadata Client configured to validate SSL certificates.
  *
  * SSL Configuration details.
+ *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
  *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
@@ -5793,7 +5876,14 @@ export interface HiveMetastoreConnectionDetails {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      */
-    ingestAllDatabases?:      boolean;
+    ingestAllDatabases?: boolean;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?:    string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -6169,6 +6259,9 @@ export enum SpaceType {
  * Client SSL configuration
  *
  * SSL Configuration details.
+ *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
  *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.

@@ -804,6 +804,143 @@ test('Verify there is no traced nodes and columns on exiting edit mode', async (
   }
 });
 
+test('Verify node full path is present as breadcrumb in lineage node', async ({
+  page,
+}) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table = new TableClass();
+
+  await table.create(apiContext);
+
+  try {
+    await table.visitEntityPage(page);
+    await visitLineageTab(page);
+
+    const tableFqn = get(table, 'entityResponseData.fullyQualifiedName');
+    const tableNode = page.locator(`[data-testid="lineage-node-${tableFqn}"]`);
+
+    await expect(tableNode).toBeVisible();
+
+    const breadcrumbContainer = tableNode.locator(
+      '[data-testid="lineage-breadcrumbs"]'
+    );
+    await expect(breadcrumbContainer).toBeVisible();
+
+    const breadcrumbItems = breadcrumbContainer.locator(
+      '.lineage-breadcrumb-item'
+    );
+    const breadcrumbCount = await breadcrumbItems.count();
+
+    expect(breadcrumbCount).toBeGreaterThan(0);
+
+    const fqnParts: Array<string> = tableFqn.split('.');
+    fqnParts.pop();
+
+    expect(breadcrumbCount).toBe(fqnParts.length);
+
+    for (let i = 0; i < breadcrumbCount; i++) {
+      const breadcrumbText = await breadcrumbItems.nth(i).textContent();
+      expect(breadcrumbText).toBe(fqnParts[i]);
+    }
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Edges are not getting hidden when column is selected and column layer is removed', async ({
+  page,
+}) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table1 = new TableClass();
+  const table2 = new TableClass();
+
+  try {
+    await Promise.all([table1.create(apiContext), table2.create(apiContext)]);
+
+    const table1Fqn = get(table1, 'entityResponseData.fullyQualifiedName');
+    const table2Fqn = get(table2, 'entityResponseData.fullyQualifiedName');
+
+    const sourceCol = `${table1Fqn}.${get(
+      table1,
+      'entityResponseData.columns[0].name'
+    )}`;
+    const targetCol = `${table2Fqn}.${get(
+      table2,
+      'entityResponseData.columns[0].name'
+    )}`;
+
+    await test.step(
+      '1. Create 2 tables and create column level lineage between them.',
+      async () => {
+        await connectEdgeBetweenNodesViaAPI(
+          apiContext,
+          {
+            id: table1.entityResponseData.id,
+            type: 'table',
+          },
+          {
+            id: table2.entityResponseData.id,
+            type: 'table',
+          },
+          [
+            {
+              fromColumns: [sourceCol],
+              toColumn: targetCol,
+            },
+          ]
+        );
+
+        await table1.visitEntityPage(page);
+        await visitLineageTab(page);
+      }
+    );
+
+    await test.step('2. Verify edge between 2 tables is visible', async () => {
+      const tableEdge = page.getByTestId(
+        `rf__edge-edge-${table1.entityResponseData.id}-${table2.entityResponseData.id}`
+      );
+      await expect(tableEdge).toBeVisible();
+    });
+
+    await test.step(
+      '3. Activate column layer and select a column - table edge should be hidden',
+      async () => {
+        await activateColumnLayer(page);
+
+        const firstColumn = page.locator(`[data-testid="column-${sourceCol}"]`);
+        await firstColumn.click();
+
+        const tableEdge = page.getByTestId(
+          `rf__edge-edge-${table1.entityResponseData.id}-${table2.entityResponseData.id}`
+        );
+        await expect(tableEdge).not.toBeVisible();
+      }
+    );
+
+    await test.step(
+      '4. Remove column layer - table edge should be visible again',
+      async () => {
+        const columnLayerBtn = page.locator(
+          '[data-testid="lineage-layer-column-btn"]'
+        );
+
+        await page.click('[data-testid="lineage-layer-btn"]');
+        await columnLayerBtn.click();
+        await clickOutside(page);
+
+        const tableEdge = page.getByTestId(
+          `rf__edge-edge-${table1.entityResponseData.id}-${table2.entityResponseData.id}`
+        );
+        await expect(tableEdge).toBeVisible();
+      }
+    );
+  } finally {
+    await Promise.all([table1.delete(apiContext), table2.delete(apiContext)]);
+    await afterAction();
+  }
+});
+
 test.describe.serial('Test pagination in column level lineage', () => {
   const generateColumnsWithNames = (count: number) => {
     const columns = [];
@@ -1785,7 +1922,7 @@ test.describe(
         const searchInput = page
           .getByTestId('search-entity-select')
           .locator('.ant-select-selection-search-input');
-          
+
         const searchResponse = page.waitForResponse((response) =>
           response.url().includes('/api/v1/search/query')
         );

@@ -14,6 +14,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { Box, Tooltip as MUITooltip } from '@mui/material';
 import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { InternalAxiosRequestConfig } from 'axios';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';
 import { Fragment, ReactNode } from 'react';
@@ -44,10 +45,12 @@ import {
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { Domain } from '../generated/entity/domains/domain';
 import { Operation } from '../generated/entity/policies/policy';
 import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../generated/system/ui/page';
+import { useDomainStore } from '../hooks/useDomainStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
   QueryFieldInterface,
@@ -62,7 +65,85 @@ import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from './PermissionsUtils';
-import { getDomainPath } from './RouterUtils';
+import { getDomainPath, getPathNameFromWindowLocation } from './RouterUtils';
+
+export const withDomainFilter = (
+  config: InternalAxiosRequestConfig
+): InternalAxiosRequestConfig => {
+  const isGetRequest = config.method === 'get';
+  const activeDomain = useDomainStore.getState().activeDomain;
+  const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
+  const currentPath = getPathNameFromWindowLocation();
+  const shouldNotIntercept = [
+    '/domain',
+    '/auth/logout',
+    '/auth/refresh',
+  ].reduce((prev, curr) => {
+    return prev || currentPath.startsWith(curr);
+  }, false);
+
+  if (shouldNotIntercept) {
+    return config;
+  }
+
+  if (isGetRequest && hasActiveDomain) {
+    if (config.url?.includes('/search/query')) {
+      if (config.params?.index === SearchIndex.TAG) {
+        return config;
+      }
+      let filter: QueryFilterInterface = { query: { bool: {} } };
+      if (config.params?.query_filter) {
+        try {
+          const parsed = JSON.parse(config.params.query_filter as string);
+          filter = parsed?.query ? parsed : { query: { bool: {} } };
+        } catch {
+          filter = { query: { bool: {} } };
+        }
+      }
+
+      const mustArray = Array.isArray(filter.query?.bool?.must)
+        ? filter.query.bool.must
+        : filter.query?.bool?.must
+        ? [filter.query.bool.must]
+        : [];
+
+      filter.query.bool = {
+        ...filter.query?.bool,
+        must: [
+          ...mustArray,
+          {
+            bool: {
+              should: [
+                {
+                  term: {
+                    'domains.fullyQualifiedName': activeDomain,
+                  },
+                },
+                {
+                  prefix: {
+                    'domains.fullyQualifiedName': `${activeDomain}.`,
+                  },
+                },
+              ],
+            },
+          } as QueryFieldInterface,
+        ],
+      };
+
+      config.params = {
+        ...config.params,
+        query_filter: JSON.stringify(filter),
+      };
+    } else {
+      config.params = {
+        ...config.params,
+        domain: activeDomain,
+      };
+    }
+  }
+
+  return config;
+};
 
 export const getOwner = (
   hasPermission: boolean,
@@ -158,37 +239,72 @@ export const getQueryFilterToExcludeDomainTerms = (
   };
 };
 
-export const getQueryFilterForDomain = (domainFqn: string) => ({
-  query: {
-    bool: {
-      must: [
-        {
-          bool: {
-            should: [
-              {
-                term: {
-                  'domains.fullyQualifiedName': domainFqn,
-                },
-              },
-              {
-                prefix: {
-                  'domains.fullyQualifiedName': `${domainFqn}.`,
-                },
-              },
-            ],
+/**
+ * Returns an Elasticsearch query filter for fetching assets belonging to a domain,
+ * excluding DataProduct entities. Use this for general domain asset listings.
+ * @param domainFqn - The fully qualified name of the domain
+ */
+export const getQueryFilterForDomain = (domainFqn: string) => {
+  if (!domainFqn) {
+    return { query: { match_none: {} } };
+  }
+
+  return {
+    query: {
+      bool: {
+        should: [
+          {
+            term: {
+              'domains.fullyQualifiedName': domainFqn,
+            },
           },
-        },
-      ],
-      must_not: [
-        {
-          term: {
-            entityType: 'dataProduct',
+          {
+            prefix: {
+              'domains.fullyQualifiedName': `${domainFqn}.`,
+            },
           },
-        },
-      ],
+        ],
+        must_not: [
+          {
+            term: {
+              entityType: 'dataProduct',
+            },
+          },
+        ],
+      },
     },
-  },
-});
+  };
+};
+
+/**
+ * Returns an Elasticsearch query filter for fetching DataProduct entities within a domain.
+ * Unlike getQueryFilterForDomain, this does not exclude any entity types.
+ * @param domainFqn - The fully qualified name of the domain
+ */
+export const getQueryFilterForDataProducts = (domainFqn: string) => {
+  if (!domainFqn) {
+    return { query: { match_none: {} } };
+  }
+
+  return {
+    query: {
+      bool: {
+        should: [
+          {
+            term: {
+              'domains.fullyQualifiedName': domainFqn,
+            },
+          },
+          {
+            prefix: {
+              'domains.fullyQualifiedName': `${domainFqn}.`,
+            },
+          },
+        ],
+      },
+    },
+  };
+};
 
 // Domain type description which will be shown in tooltip
 export const domainTypeTooltipDataRender = () => (
