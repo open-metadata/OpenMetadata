@@ -256,22 +256,48 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, false);
   }
 
+  public BulkOperationResult bulkAddInputPortsById(UUID dataProductId, BulkAssets request) {
+    return bulkPortsOperationById(dataProductId, request, Relationship.INPUT_PORT, true);
+  }
+
+  public BulkOperationResult bulkRemoveInputPortsById(UUID dataProductId, BulkAssets request) {
+    return bulkPortsOperationById(dataProductId, request, Relationship.INPUT_PORT, false);
+  }
+
+  public BulkOperationResult bulkAddOutputPortsById(UUID dataProductId, BulkAssets request) {
+    return bulkPortsOperationById(dataProductId, request, Relationship.OUTPUT_PORT, true);
+  }
+
+  public BulkOperationResult bulkRemoveOutputPortsById(UUID dataProductId, BulkAssets request) {
+    return bulkPortsOperationById(dataProductId, request, Relationship.OUTPUT_PORT, false);
+  }
+
   @Transaction
   private BulkOperationResult bulkPortsOperation(
       String dataProductName, BulkAssets request, Relationship relationship, boolean isAdd) {
     DataProduct dataProduct = getByName(null, dataProductName, getFields("id"));
+    return executeBulkPortsOperation(dataProduct, request, relationship, isAdd);
+  }
+
+  @Transaction
+  private BulkOperationResult bulkPortsOperationById(
+      UUID dataProductId, BulkAssets request, Relationship relationship, boolean isAdd) {
+    DataProduct dataProduct = get(null, dataProductId, getFields("id"));
+    return executeBulkPortsOperation(dataProduct, request, relationship, isAdd);
+  }
+
+  private BulkOperationResult executeBulkPortsOperation(
+      DataProduct dataProduct, BulkAssets request, Relationship relationship, boolean isAdd) {
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
     List<BulkResponse> success = new ArrayList<>();
 
-    // Validate and populate entity references - create mutable copy for sorting
     List<EntityReference> assets = new ArrayList<>(listOrEmpty(request.getAssets()));
     EntityUtil.populateEntityReferences(assets);
 
     String fieldName = relationship == Relationship.INPUT_PORT ? "inputPorts" : "outputPorts";
 
     for (EntityReference ref : assets) {
-      // Update Result Processed
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
       if (isAdd) {
@@ -285,18 +311,15 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
-      // Update ES for the data product
       EntityLifecycleEventDispatcher.getInstance()
           .onEntityUpdated(dataProduct.getEntityReference(), null);
     }
 
     result.withSuccessRequest(success);
 
-    // Create a Change Event on successful addition/removal of ports
     if (result.getStatus().equals(ApiStatus.SUCCESS)) {
       ChangeDescription change =
           addBulkAddRemoveChangeDescription(dataProduct.getVersion(), isAdd, assets, null);
-      // Update field name from default "assets" to the port field name
       if (!change.getFieldsAdded().isEmpty()) {
         change.getFieldsAdded().get(0).setName(fieldName);
       }

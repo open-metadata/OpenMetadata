@@ -1914,4 +1914,143 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     assertEquals(1, afterRemove.getPaging().getTotal());
     assertEquals(table2.getId(), getEntityId(afterRemove.getData().get(0)));
   }
+
+  @Test
+  void test_addPortsById(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_add_by_id"))
+            .withDescription("Data product for add ports by ID test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table1 = createTestTable(ns, "add_by_id_input", domain);
+    Table table2 = createTestTable(ns, "add_by_id_output", domain);
+
+    // Add input port by ID
+    SdkClients.adminClient()
+        .dataProducts()
+        .inputPorts(dataProduct.getId())
+        .add(new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+
+    // Add output port by ID
+    SdkClients.adminClient()
+        .dataProducts()
+        .outputPorts(dataProduct.getId())
+        .add(new BulkAssets().withAssets(List.of(table2.getEntityReference())));
+
+    // Verify ports were added
+    ResultList<Map<String, Object>> inputPorts = getInputPorts(dataProduct.getId(), 10, 0);
+    ResultList<Map<String, Object>> outputPorts = getOutputPorts(dataProduct.getId(), 10, 0);
+
+    assertEquals(1, inputPorts.getPaging().getTotal());
+    assertEquals(1, outputPorts.getPaging().getTotal());
+    assertEquals(table1.getId(), getEntityId(inputPorts.getData().get(0)));
+    assertEquals(table2.getId(), getEntityId(outputPorts.getData().get(0)));
+  }
+
+  @Test
+  void test_removePortsById(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_remove_by_id"))
+            .withDescription("Data product for remove ports by ID test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table1 = createTestTable(ns, "remove_by_id_input1", domain);
+    Table table2 = createTestTable(ns, "remove_by_id_input2", domain);
+    Table table3 = createTestTable(ns, "remove_by_id_output1", domain);
+    Table table4 = createTestTable(ns, "remove_by_id_output2", domain);
+
+    // Add ports by name first
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(List.of(table1.getEntityReference(), table2.getEntityReference())));
+    bulkAddOutputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(List.of(table3.getEntityReference(), table4.getEntityReference())));
+
+    assertEquals(2, getInputPorts(dataProduct.getId(), 10, 0).getPaging().getTotal());
+    assertEquals(2, getOutputPorts(dataProduct.getId(), 10, 0).getPaging().getTotal());
+
+    // Remove input port by ID
+    SdkClients.adminClient()
+        .dataProducts()
+        .inputPorts(dataProduct.getId())
+        .remove(new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+
+    // Remove output port by ID
+    SdkClients.adminClient()
+        .dataProducts()
+        .outputPorts(dataProduct.getId())
+        .remove(new BulkAssets().withAssets(List.of(table3.getEntityReference())));
+
+    // Verify correct ports were removed
+    ResultList<Map<String, Object>> inputPorts = getInputPorts(dataProduct.getId(), 10, 0);
+    ResultList<Map<String, Object>> outputPorts = getOutputPorts(dataProduct.getId(), 10, 0);
+
+    assertEquals(1, inputPorts.getPaging().getTotal());
+    assertEquals(1, outputPorts.getPaging().getTotal());
+    assertEquals(table2.getId(), getEntityId(inputPorts.getData().get(0)));
+    assertEquals(table4.getId(), getEntityId(outputPorts.getData().get(0)));
+  }
+
+  @Test
+  void test_portsViewById(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_portsview_by_id"))
+            .withDescription("Data product for ports view by ID test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table1 = createTestTable(ns, "portsview_id_input", domain);
+    Table table2 = createTestTable(ns, "portsview_id_output", domain);
+
+    // Add ports using ID-based API
+    SdkClients.adminClient()
+        .dataProducts()
+        .inputPorts(dataProduct.getId())
+        .add(new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+    SdkClients.adminClient()
+        .dataProducts()
+        .outputPorts(dataProduct.getId())
+        .add(new BulkAssets().withAssets(List.of(table2.getEntityReference())));
+
+    // Get ports view by ID
+    DataProductPortsView portsViewById =
+        SdkClients.adminClient().dataProducts().portsView(dataProduct.getId()).get();
+
+    assertEquals(1, portsViewById.getInputPorts().getPaging().getTotal());
+    assertEquals(1, portsViewById.getOutputPorts().getPaging().getTotal());
+    assertEquals(
+        table1.getId(),
+        getEntityId(portsViewById.getInputPorts().getData().get(0).getAdditionalProperties()));
+    assertEquals(
+        table2.getId(),
+        getEntityId(portsViewById.getOutputPorts().getData().get(0).getAdditionalProperties()));
+
+    // Get ports view by name and compare
+    DataProductPortsView portsViewByName =
+        SdkClients.adminClient()
+            .dataProducts()
+            .portsView(dataProduct.getFullyQualifiedName())
+            .get();
+
+    assertEquals(
+        portsViewById.getInputPorts().getPaging().getTotal(),
+        portsViewByName.getInputPorts().getPaging().getTotal());
+    assertEquals(
+        portsViewById.getOutputPorts().getPaging().getTotal(),
+        portsViewByName.getOutputPorts().getPaging().getTotal());
+  }
 }

@@ -391,6 +391,130 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   }
 
   @PUT
+  @Path("/{id}/inputPorts/add")
+  @Operation(
+      operationId = "bulkAddInputPortsById",
+      summary = "Bulk Add Input Ports by ID",
+      description = "Bulk Add Input Ports to a Data Product by ID",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {id} is not found")
+      })
+  public Response bulkAddInputPortsById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Data Product", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    return Response.ok().entity(repository.bulkAddInputPortsById(id, request)).build();
+  }
+
+  @PUT
+  @Path("/{id}/inputPorts/remove")
+  @Operation(
+      operationId = "bulkRemoveInputPortsById",
+      summary = "Bulk Remove Input Ports by ID",
+      description = "Bulk Remove Input Ports from a Data Product by ID",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {id} is not found")
+      })
+  public Response bulkRemoveInputPortsById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Data Product", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    return Response.ok().entity(repository.bulkRemoveInputPortsById(id, request)).build();
+  }
+
+  @PUT
+  @Path("/{id}/outputPorts/add")
+  @Operation(
+      operationId = "bulkAddOutputPortsById",
+      summary = "Bulk Add Output Ports by ID",
+      description = "Bulk Add Output Ports to a Data Product by ID",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {id} is not found")
+      })
+  public Response bulkAddOutputPortsById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Data Product", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    return Response.ok().entity(repository.bulkAddOutputPortsById(id, request)).build();
+  }
+
+  @PUT
+  @Path("/{id}/outputPorts/remove")
+  @Operation(
+      operationId = "bulkRemoveOutputPortsById",
+      summary = "Bulk Remove Output Ports by ID",
+      description = "Bulk Remove Output Ports from a Data Product by ID",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {id} is not found")
+      })
+  public Response bulkRemoveOutputPortsById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Data Product", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    return Response.ok().entity(repository.bulkRemoveOutputPortsById(id, request)).build();
+  }
+
+  @PUT
   @Path("/{name}/inputPorts/add")
   @Operation(
       operationId = "bulkAddInputPorts",
@@ -512,6 +636,138 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok().entity(repository.bulkRemoveOutputPorts(name, request)).build();
+  }
+
+  @PUT
+  @Path("/name/{fqn}/inputPorts/add")
+  @Operation(
+      operationId = "bulkAddInputPortsByName",
+      summary = "Bulk Add Input Ports by Name",
+      description = "Bulk Add Input Ports to a Data Product by fully qualified name",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {fqn} is not found")
+      })
+  public Response bulkAddInputPortsByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the Data Product",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    return Response.ok().entity(repository.bulkAddInputPorts(fqn, request)).build();
+  }
+
+  @PUT
+  @Path("/name/{fqn}/inputPorts/remove")
+  @Operation(
+      operationId = "bulkRemoveInputPortsByName",
+      summary = "Bulk Remove Input Ports by Name",
+      description = "Bulk Remove Input Ports from a Data Product by fully qualified name",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {fqn} is not found")
+      })
+  public Response bulkRemoveInputPortsByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the Data Product",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    return Response.ok().entity(repository.bulkRemoveInputPorts(fqn, request)).build();
+  }
+
+  @PUT
+  @Path("/name/{fqn}/outputPorts/add")
+  @Operation(
+      operationId = "bulkAddOutputPortsByName",
+      summary = "Bulk Add Output Ports by Name",
+      description = "Bulk Add Output Ports to a Data Product by fully qualified name",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {fqn} is not found")
+      })
+  public Response bulkAddOutputPortsByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the Data Product",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    return Response.ok().entity(repository.bulkAddOutputPorts(fqn, request)).build();
+  }
+
+  @PUT
+  @Path("/name/{fqn}/outputPorts/remove")
+  @Operation(
+      operationId = "bulkRemoveOutputPortsByName",
+      summary = "Bulk Remove Output Ports by Name",
+      description = "Bulk Remove Output Ports from a Data Product by fully qualified name",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {fqn} is not found")
+      })
+  public Response bulkRemoveOutputPortsByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the Data Product",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    return Response.ok().entity(repository.bulkRemoveOutputPorts(fqn, request)).build();
   }
 
   @PATCH
