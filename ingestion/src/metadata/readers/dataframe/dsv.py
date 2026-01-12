@@ -14,6 +14,7 @@ Generic Delimiter-Separated-Values implementation
 """
 import csv
 import functools
+import traceback
 from functools import singledispatchmethod
 from io import StringIO
 from typing import Any, Dict, List, Optional
@@ -40,7 +41,6 @@ from metadata.utils.logger import ingestion_logger
 TSV_SEPARATOR = "\t"
 CSV_SEPARATOR = ","
 logger = ingestion_logger()
-import traceback
 
 
 class DSVDataFrameReader(DataFrameReader):
@@ -59,11 +59,11 @@ class DSVDataFrameReader(DataFrameReader):
             for chunk in chunk_list:
                 values_list = []
                 for value in chunk.values:
-                    values_list.append(
-                        list(csv.reader(StringIO(str(value[0])), delimiter=separator))[
-                            0
-                        ]
+                    single_row_value = list(
+                        csv.reader(StringIO(str(value[0])), delimiter=separator)
                     )
+                    if single_row_value:
+                        values_list.append(single_row_value[0])
                 updated_chunk_list.append(
                     pd.DataFrame(columns=parsed_columns, data=values_list)
                 )
