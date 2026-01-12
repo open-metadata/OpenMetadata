@@ -29,6 +29,9 @@ from collate_sqllineage.exceptions import SQLLineageException
 from collate_sqllineage.runner import LineageRunner
 from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
 
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.lineage.models import Dialect
@@ -76,6 +79,7 @@ class LineageParser:
         query: str,
         dialect: Dialect = Dialect.ANSI,
         timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
+        parser_type: QueryParserType = QueryParserType.Auto,
     ):
         self.query = query
         self.query_hash = self.get_query_hash(query)
@@ -85,7 +89,10 @@ class LineageParser:
         self.masked_query = None
         self._clean_query = self.clean_raw_query(query)
         self.parser = self._evaluate_best_parser(
-            self._clean_query, dialect=dialect, timeout_seconds=timeout_seconds
+            self._clean_query,
+            dialect=dialect,
+            timeout_seconds=timeout_seconds,
+            parser_type=parser_type,
         )
         if self.masked_query is None:
             self.masked_query = (
@@ -138,7 +145,7 @@ class LineageParser:
             )
 
         except SQLLineageException as exc:
-            logger.debug(traceback.format_exc())
+            logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
             logger.warning(
                 f"[{self.query_hash}] Cannot extract source table information from query"
                 f" [{self.masked_query or self.query}]: {exc}"
@@ -205,7 +212,7 @@ class LineageParser:
             logger.warning(
                 f"[{self.query_hash}] Failed to fetch column level lineage due to: {err}"
             )
-            logger.debug(traceback.format_exc())
+            logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
         return column_lineage
 
     @cached_property
@@ -460,7 +467,7 @@ class LineageParser:
                 logger.debug(
                     f"[{self.query_hash}] Cannot process comparison {comparison}: {exc}"
                 )
-                logger.debug(traceback.format_exc())
+                logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
 
     @cached_property
     def table_joins(self) -> Dict[str, List[TableColumnJoin]]:
@@ -520,27 +527,38 @@ class LineageParser:
 
     @calculate_execution_time(context="EvaluateBestParser")
     def _evaluate_best_parser(
-        self, query: str, dialect: Dialect, timeout_seconds: int
+        self,
+        query: str,
+        dialect: Dialect,
+        timeout_seconds: int,
+        parser_type: QueryParserType,
     ) -> Optional[LineageRunner]:
         """Evaluate and return the best available parser for the query."""
         start_time = time.time()
-        result = self._evaluate_best_parser_impl(query, dialect, timeout_seconds)
+        result = self._evaluate_best_parser_impl(
+            query, dialect, timeout_seconds, parser_type
+        )
         elapsed = time.time() - start_time
 
         elapsed_str = pretty_print_time_duration(elapsed)
-        logger.info(f"[{self.query_hash}] Evaluated best parser in {elapsed_str}")
+        logger.debug(f"[{self.query_hash}] Evaluated best parser in {elapsed_str}")
 
         return result
 
     def _evaluate_best_parser_impl(
-        self, query: str, dialect: Dialect, timeout_seconds: int
+        self,
+        query: str,
+        dialect: Dialect,
+        timeout_seconds: int,
+        parser_type: QueryParserType,
     ) -> Optional[LineageRunner]:
         if query is None:
             return None
 
         logger.debug(
             f"[{self.query_hash}] Evaluating best parser (query length: {len(query)} chars)"
-            f" for query [{dialect.value}]: {self.masked_query or self.query}"
+            f" for query (dialect: {dialect.value}, parser_type: {parser_type}):"
+            f" {self.masked_query or self.query}"
         )
 
         @calculate_execution_time(context="GetSqlGlotLineageRunner")
@@ -557,45 +575,48 @@ class LineageParser:
             lr_sqlglot.get_column_lineage()
             return lr_sqlglot
 
-        try:
-            lr_sqlglot = get_sqlglot_lineage_runner(query, dialect.value)
-            _ = len(lr_sqlglot.get_column_lineage()) + len(
-                set(lr_sqlglot.source_tables).union(
-                    set(lr_sqlglot.target_tables).union(
-                        set(lr_sqlglot.intermediate_tables)
+        # SqlGlot is enabled when query parser type is Auto or SqlGlot
+        if parser_type in [QueryParserType.Auto, QueryParserType.SqlGlot]:
+
+            try:
+                lr_sqlglot = get_sqlglot_lineage_runner(query, dialect.value)
+                _ = len(lr_sqlglot.get_column_lineage()) + len(
+                    set(lr_sqlglot.source_tables).union(
+                        set(lr_sqlglot.target_tables).union(
+                            set(lr_sqlglot.intermediate_tables)
+                        )
                     )
                 )
-            )
-        except TimeoutError:
-            self.query_parsing_success = False
-            self.query_parsing_failure_reason = (
-                f"[{self.query_hash}] Query parsing with SqlGlot failed with"
-                f" timeout of {timeout_seconds} seconds."
-            )
-            logger.debug(self.query_parsing_failure_reason)
-            lr_sqlglot = None
-        except MemoryLimitExceeded:
-            self.query_parsing_success = False
-            self.query_parsing_failure_reason = (
-                f"[{self.query_hash}] Query parsing with SqlGlot failed with"
-                f" memory limit of {LINEAGE_PARSING_MEMORY_LIMIT_MB}MB exceeded."
-            )
-            logger.debug(self.query_parsing_failure_reason)
-            lr_sqlglot = None
-        except Exception as err:
-            self.query_parsing_success = False
-            self.query_parsing_failure_reason = (
-                f"[{self.query_hash}] Query parsing with SqlGlot failed with"
-                f" error: {err}"
-            )
-            logger.debug(self.query_parsing_failure_reason)
-            logger.debug(traceback.format_exc())
-            lr_sqlglot = None
+            except TimeoutError:
+                self.query_parsing_success = False
+                self.query_parsing_failure_reason = (
+                    f"[{self.query_hash}] Query parsing with SqlGlot failed with"
+                    f" timeout of {timeout_seconds} seconds."
+                )
+                logger.debug(self.query_parsing_failure_reason)
+                lr_sqlglot = None
+            except MemoryLimitExceeded:
+                self.query_parsing_success = False
+                self.query_parsing_failure_reason = (
+                    f"[{self.query_hash}] Query parsing with SqlGlot failed with"
+                    f" memory limit of {LINEAGE_PARSING_MEMORY_LIMIT_MB}MB exceeded."
+                )
+                logger.debug(self.query_parsing_failure_reason)
+                lr_sqlglot = None
+            except Exception as err:
+                self.query_parsing_success = False
+                self.query_parsing_failure_reason = (
+                    f"[{self.query_hash}] Query parsing with SqlGlot failed with"
+                    f" error: {err}"
+                )
+                logger.debug(self.query_parsing_failure_reason)
+                logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
+                lr_sqlglot = None
 
-        if lr_sqlglot:
-            self.query_hash += "-SqlGlot"
-            logger.debug(f"[{self.query_hash}] Selected SqlGlot for query parsing")
-            return lr_sqlglot
+            if lr_sqlglot:
+                self.query_hash += "-SqlGlot"
+                logger.debug(f"[{self.query_hash}] Selected SqlGlot for query parsing")
+                return lr_sqlglot
 
         @calculate_execution_time(context="GetSqlFluffLineageRunner")
         @timeout(seconds=timeout_seconds)
@@ -611,45 +632,48 @@ class LineageParser:
             lr_sqlfluff.get_column_lineage()
             return lr_sqlfluff
 
-        try:
-            lr_sqlfluff = get_sqlfluff_lineage_runner(query, dialect.value)
-            _ = len(lr_sqlfluff.get_column_lineage()) + len(
-                set(lr_sqlfluff.source_tables).union(
-                    set(lr_sqlfluff.target_tables).union(
-                        set(lr_sqlfluff.intermediate_tables)
+        # SqlFluff is enabled when query parser type is Auto or SqlFluff
+        if parser_type in [QueryParserType.Auto, QueryParserType.SqlFluff]:
+
+            try:
+                lr_sqlfluff = get_sqlfluff_lineage_runner(query, dialect.value)
+                _ = len(lr_sqlfluff.get_column_lineage()) + len(
+                    set(lr_sqlfluff.source_tables).union(
+                        set(lr_sqlfluff.target_tables).union(
+                            set(lr_sqlfluff.intermediate_tables)
+                        )
                     )
                 )
-            )
-        except TimeoutError:
-            self.query_parsing_success = False
-            self.query_parsing_failure_reason = (
-                f"[{self.query_hash}] Query parsing with SqlFluff failed with"
-                f" timeout of {timeout_seconds} seconds."
-            )
-            logger.debug(self.query_parsing_failure_reason)
-            lr_sqlfluff = None
-        except MemoryLimitExceeded:
-            self.query_parsing_success = False
-            self.query_parsing_failure_reason = (
-                f"[{self.query_hash}] Query parsing with SqlFluff failed with"
-                f" memory limit of {LINEAGE_PARSING_MEMORY_LIMIT_MB}MB exceeded."
-            )
-            logger.debug(self.query_parsing_failure_reason)
-            lr_sqlfluff = None
-        except Exception as err:
-            self.query_parsing_success = False
-            self.query_parsing_failure_reason = (
-                f"[{self.query_hash}] Query parsing with SqlFluff failed with"
-                f" error: {err}"
-            )
-            logger.debug(self.query_parsing_failure_reason)
-            logger.debug(traceback.format_exc())
-            lr_sqlfluff = None
+            except TimeoutError:
+                self.query_parsing_success = False
+                self.query_parsing_failure_reason = (
+                    f"[{self.query_hash}] Query parsing with SqlFluff failed with"
+                    f" timeout of {timeout_seconds} seconds."
+                )
+                logger.debug(self.query_parsing_failure_reason)
+                lr_sqlfluff = None
+            except MemoryLimitExceeded:
+                self.query_parsing_success = False
+                self.query_parsing_failure_reason = (
+                    f"[{self.query_hash}] Query parsing with SqlFluff failed with"
+                    f" memory limit of {LINEAGE_PARSING_MEMORY_LIMIT_MB}MB exceeded."
+                )
+                logger.debug(self.query_parsing_failure_reason)
+                lr_sqlfluff = None
+            except Exception as err:
+                self.query_parsing_success = False
+                self.query_parsing_failure_reason = (
+                    f"[{self.query_hash}] Query parsing with SqlFluff failed with"
+                    f" error: {err}"
+                )
+                logger.debug(self.query_parsing_failure_reason)
+                logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
+                lr_sqlfluff = None
 
-        if lr_sqlfluff:
-            self.query_hash += "-SqlFluff"
-            logger.debug(f"[{self.query_hash}] Selected SqlFluff for query parsing")
-            return lr_sqlfluff
+            if lr_sqlfluff:
+                self.query_hash += "-SqlFluff"
+                logger.debug(f"[{self.query_hash}] Selected SqlFluff for query parsing")
+                return lr_sqlfluff
 
         @calculate_execution_time(context="GetSqlParseLineageRunner")
         @timeout(seconds=timeout_seconds)
@@ -663,7 +687,7 @@ class LineageParser:
             lr_sqlparse.get_column_lineage()
             return lr_sqlparse
 
-        lr_sqlparse = None
+        # SqlParse is enabled in all the cases as a fallback parser
         try:
             lr_sqlparse = get_sqlparse_lineage_runner(query)
             _ = len(lr_sqlparse.get_column_lineage()) + len(
@@ -696,7 +720,7 @@ class LineageParser:
                 f" error: {err}"
             )
             logger.debug(self.query_parsing_failure_reason)
-            logger.debug(traceback.format_exc())
+            logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
             # All parsers SqlGlot, SqlFluff, SqlParse have failed to parse the query
             lr_sqlparse = None
 

@@ -35,6 +35,9 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
     EntitiesEdge,
@@ -351,13 +354,17 @@ def handle_udf_column_lineage(
 
 @functools.lru_cache(maxsize=1000)
 def _get_udf_parser(
-    code: str, dialect: Dialect, timeout_seconds: int
+    code: str,
+    dialect: Dialect,
+    timeout_seconds: int,
+    parser_type: QueryParserType = QueryParserType.Auto,
 ) -> Optional[LineageParser]:
     if code:
         return LineageParser(
             f"create table dummy_table_name as {code}",
             dialect=dialect,
             timeout_seconds=timeout_seconds,
+            parser_type=parser_type,
         )
     return None
 
@@ -836,6 +843,7 @@ def get_lineage_by_query(
     lineage_parser: Optional[LineageParser] = None,
     schema_fallback: bool = False,
     service_name: Optional[str] = None,  # backward compatibility for python sdk
+    parser_type: QueryParserType = QueryParserType.Auto,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
@@ -855,7 +863,7 @@ def get_lineage_by_query(
     try:
         if not lineage_parser:
             lineage_parser = LineageParser(
-                query, dialect, timeout_seconds=timeout_seconds
+                query, dialect, timeout_seconds=timeout_seconds, parser_type=parser_type
             )
         masked_query = lineage_parser.masked_query
         query_hash = lineage_parser.query_hash
@@ -957,6 +965,7 @@ def get_lineage_via_table_entity(
     graph: Optional[DiGraph] = None,
     lineage_parser: Optional[LineageParser] = None,
     schema_fallback: bool = False,
+    parser_type: QueryParserType = QueryParserType.Auto,
 ) -> Iterable[Either[AddLineageRequest]]:
     """Get lineage from table entity"""
     column_lineage = {}
@@ -966,7 +975,7 @@ def get_lineage_via_table_entity(
     try:
         if not lineage_parser:
             lineage_parser = LineageParser(
-                query, dialect, timeout_seconds=timeout_seconds
+                query, dialect, timeout_seconds=timeout_seconds, parser_type=parser_type
             )
         masked_query = lineage_parser.masked_query
         query_hash = lineage_parser.query_hash
