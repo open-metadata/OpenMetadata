@@ -125,7 +125,7 @@
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
     <testng.version>7.6.1</testng.version>
     <dropwizard-micrometer.version>3.0.0</dropwizard-micrometer.version>
-    <json-schema-validator.version>1.5.2</json-schema-validator.version>
+    <json-schema-validator.version>2.0.1</json-schema-validator.version>
     <java-jwt.version>4.4.0</java-jwt.version>
     <jwks-rsa.version>0.22.1</jwks-rsa.version>
     <jjwt.version>0.9.1</jjwt.version>
@@ -150,7 +150,7 @@
     <json-patch.version>1.13</json-patch.version>
     <jetty.version>12.1.1</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
-    <mcp-sdk.version>0.14.0</mcp-sdk.version>
+    <mcp-sdk.version>0.17.0</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
     <flyway.version>9.22.3</flyway.version>
     <angus-mail.version>2.0.4</angus-mail.version>

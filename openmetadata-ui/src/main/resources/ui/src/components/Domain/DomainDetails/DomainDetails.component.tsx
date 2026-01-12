@@ -71,6 +71,7 @@ import {
 import domainClassBase from '../../../utils/Domain/DomainClassBase';
 import { getDomainContainerStyles } from '../../../utils/DomainPageStyles';
 import {
+  getQueryFilterForDataProducts,
   getQueryFilterForDomain,
   getQueryFilterToExcludeDomainTerms,
 } from '../../../utils/DomainUtils';
@@ -243,9 +244,7 @@ const DomainDetails = ({
           query: '',
           pageNumber: 1,
           pageSize: 0,
-          queryFilter: getTermQuery({
-            'domains.fullyQualifiedName': domain.fullyQualifiedName ?? '',
-          }),
+          queryFilter: getQueryFilterForDataProducts(domainFqn),
           searchIndex: SearchIndex.DATA_PRODUCT,
         });
 
@@ -634,17 +633,26 @@ const DomainDetails = ({
     openDataProductDrawer();
   }, [openDataProductDrawer]);
 
-  const onNameSave = (obj: { name: string; displayName?: string }) => {
-    const { displayName } = obj;
+  const onNameSave = async (obj: { name: string; displayName?: string }) => {
+    const { name: newName, displayName } = obj;
     let updatedDetails = cloneDeep(domain);
 
     updatedDetails = {
       ...domain,
       displayName: displayName?.trim(),
+      name: newName?.trim(),
     };
 
-    onUpdate(updatedDetails);
+    await onUpdate(updatedDetails);
     setIsNameEditing(false);
+
+    // If name changed, navigate to the new URL
+    if (newName && newName.trim() !== domain.name) {
+      const newFqn = domain.parent
+        ? `${domain.parent.fullyQualifiedName}.${newName.trim()}`
+        : newName.trim();
+      navigate(getDomainDetailsPath(newFqn, activeTab));
+    }
   };
 
   const onStyleSave = async (data: Style) => {
@@ -1057,9 +1065,10 @@ const DomainDetails = ({
         />
       )}
       <EntityNameModal<Domain>
+        allowRename
         entity={domain}
         title={t('label.edit-entity', {
-          entity: t('label.display-name'),
+          entity: t('label.name'),
         })}
         visible={isNameEditing}
         onCancel={() => setIsNameEditing(false)}

@@ -96,7 +96,7 @@ public class McpServer implements McpServerProvider {
 
     McpStatelessSyncServer server =
         io.modelcontextprotocol.server.McpServer.sync(statelessTransport)
-            .serverInfo("openmetadata-mcp-stateless", "0.14.0")
+            .serverInfo("openmetadata-mcp-stateless", "0.17.0")
             .capabilities(serverCapabilities)
             .build();
     addToolsToServer(server, tools);

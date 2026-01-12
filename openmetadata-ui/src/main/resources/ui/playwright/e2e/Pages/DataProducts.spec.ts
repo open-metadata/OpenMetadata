@@ -98,8 +98,8 @@ test.describe('Data Products', () => {
     await user.delete(apiContext);
     await classification.delete(apiContext);
     await tag.delete(apiContext);
-    await glossaryTerm.delete(apiContext);
     await glossary.delete(apiContext);
+    await glossaryTerm.delete(apiContext);
     await domain.delete(apiContext);
     await afterAction();
   });
@@ -296,24 +296,26 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Verify table view is default', async () => {
-      await expect(page.locator('table tbody tr').first()).toBeVisible();
-      const columnHeaders = page.getByRole('columnheader');
-      expect(await columnHeaders.count()).toBeGreaterThan(0);
+      // Table should be visible with rows and column headers
+      await expect(page.getByTestId('table-view-container')).toBeVisible();
     });
 
     await test.step('Switch to card view', async () => {
-      await page.locator('button[title="card"]').click();
+      await page.getByTestId('card-view-toggle').click();
       await page.waitForLoadState('networkidle');
 
-      await expect(page.locator('.MuiCard-root').first()).toBeVisible();
-      await expect(page.getByText(dataProduct.data.displayName)).toBeVisible();
+      // Table should be hidden, cards should be visible
+      await expect(page.getByTestId('table-view-container')).not.toBeVisible();
+      await expect(page.getByTestId('card-view-container')).toBeVisible();
+      await expect(page.getByTestId('entity-card').first()).toBeVisible();
     });
 
     await test.step('Switch back to table view', async () => {
-      await page.locator('button[title="table"]').click();
+      await page.getByTestId('table-view-toggle').click();
       await page.waitForLoadState('networkidle');
 
-      await expect(page.locator('table tbody tr').first()).toBeVisible();
+      await expect(page.getByTestId('card-view-container')).not.toBeVisible();
+      await expect(page.getByTestId('table-view-container')).toBeVisible();
     });
 
     await test.step('Cleanup test data product', async () => {

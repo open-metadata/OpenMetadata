@@ -606,14 +606,52 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Initialize default SAML settings (e.g. IDP metadata, SP keys, etc.)
       SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
 
-      contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
-      contextHandler.addServlet(
-          new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
-      contextHandler.addServlet(
-          new ServletHolder(new SamlMetadataServlet()), "/api/v1/saml/metadata");
-      contextHandler.addServlet(
-          new ServletHolder(new SamlTokenRefreshServlet()), "/api/v1/saml/refresh");
-      contextHandler.addServlet(new ServletHolder(new SamlLogoutServlet()), "/api/v1/saml/logout");
+      // Only register servlets if they don't already exist to prevent duplicate registration
+      if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/login")) {
+        contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
+      }
+      if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/acs")) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
+      }
+      if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/metadata")) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlMetadataServlet()), "/api/v1/saml/metadata");
+      }
+      if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/refresh")) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlTokenRefreshServlet()), "/api/v1/saml/refresh");
+      }
+      if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/logout")) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlLogoutServlet()), "/api/v1/saml/logout");
+      }
+    }
+  }
+
+  private boolean isSamlServletRegistered(
+      MutableServletContextHandler contextHandler, String path) {
+    try {
+      ServletHandler servletHandler = contextHandler.getServletHandler();
+      ServletMapping[] servletMappings = servletHandler.getServletMappings();
+
+      if (servletMappings != null) {
+        for (ServletMapping mapping : servletMappings) {
+          if (mapping.getPathSpecs() != null) {
+            for (String pathSpec : mapping.getPathSpecs()) {
+              if (path.equals(pathSpec)) {
+                LOG.debug("SAML servlet already registered at path: {}", path);
+                return true;
+              }
+            }
+          }
+        }
+      }
+      return false;
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to check if SAML servlet is registered at path {}: {}", path, e.getMessage());
+      return false;
     }
   }
 

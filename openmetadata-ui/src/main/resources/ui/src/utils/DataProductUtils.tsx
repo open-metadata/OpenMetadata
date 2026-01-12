@@ -26,7 +26,7 @@ import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichT
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import { DomainLabelV2 } from '../components/DataAssets/DomainLabelV2/DomainLabelV2';
+import { DataProductDomainWidget } from '../components/DataProducts/DataProductDomainWidget/DataProductDomainWidget';
 import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../components/Explore/ExplorePage.interface';
 import AssetsTabs, {
@@ -92,7 +92,7 @@ export const getDataProductIconByUrl = (iconURL?: string) => {
 
 export const getDataProductWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   if (widgetConfig.i === DetailPageWidgetKeys.DOMAIN) {
-    return <DomainLabelV2 multiple showDomainHeading hasPermission={false} />;
+    return <DataProductDomainWidget />;
   }
 
   return (
