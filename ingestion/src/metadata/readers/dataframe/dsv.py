@@ -40,11 +40,9 @@ TSV_SEPARATOR = "\t"
 CSV_SEPARATOR = ","
 
 
-def _fix_quoted_header_dataframe(
-    df: "DataFrame", separator: str
-) -> Optional["DataFrame"]:
+def _fix_malformed_quoted_header(chunk_list: list, separator: str) -> list:
     """
-    Fix malformed CSV where the header row is wrapped in quotes as a single column.
+    Fix malformed CSV where header row is wrapped in quotes as a single column.
 
     Some CSV exports incorrectly wrap the entire header row in quotes, e.g.:
     "col1,col2,col3" instead of col1,col2,col3
@@ -52,19 +50,29 @@ def _fix_quoted_header_dataframe(
     This causes pandas to parse it as a single column with the entire header
     string as the column name.
 
-    Returns a new DataFrame with fixed columns, or None if no fix is needed.
+    For header-only files (no data rows), creates a new DataFrame with proper columns.
+    For files with data, the data is also malformed and cannot be automatically fixed,
+    so we return a header-only DataFrame to at least capture the schema.
+
+    Returns the fixed chunk_list.
     """
     import pandas as pd  # pylint: disable=import-outside-toplevel
 
-    columns = list(df.columns)
+    if not chunk_list:
+        return chunk_list
+
+    first_chunk = chunk_list[0]
+    columns = list(first_chunk.columns)
 
     if len(columns) == 1:
         single_col = str(columns[0])
         if separator in single_col:
-            parsed_columns = next(csv.reader(StringIO(single_col), delimiter=separator))
-            return pd.DataFrame(columns=parsed_columns)
+            parsed_columns = list(
+                csv.reader(StringIO(single_col), delimiter=separator)
+            )[0]
+            return [pd.DataFrame(columns=parsed_columns)]
 
-    return None
+    return chunk_list
 
 
 class DSVDataFrameReader(DataFrameReader):
@@ -106,10 +114,7 @@ class DSVDataFrameReader(DataFrameReader):
             for chunks in reader:
                 chunk_list.append(chunks)
 
-        if chunk_list:
-            fixed_df = _fix_quoted_header_dataframe(chunk_list[0], self.separator)
-            if fixed_df is not None:
-                chunk_list = [fixed_df]
+        chunk_list = _fix_malformed_quoted_header(chunk_list, self.separator)
 
         return DatalakeColumnWrapper(dataframes=chunk_list)
 
@@ -157,10 +162,7 @@ class DSVDataFrameReader(DataFrameReader):
             for chunks in reader:
                 chunk_list.append(chunks)
 
-        if chunk_list:
-            fixed_df = _fix_quoted_header_dataframe(chunk_list[0], self.separator)
-            if fixed_df is not None:
-                chunk_list = [fixed_df]
+        chunk_list = _fix_malformed_quoted_header(chunk_list, self.separator)
 
         return DatalakeColumnWrapper(dataframes=chunk_list)
 
