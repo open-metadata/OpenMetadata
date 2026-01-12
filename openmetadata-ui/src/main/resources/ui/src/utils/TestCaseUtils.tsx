@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -34,7 +34,8 @@ export const ExtraTestCaseDropdownOptions = (
   permission: TestCasePermission,
   deleted: boolean,
   navigate: NavigateFunction,
-  showModal: (data: ExportData) => void
+  showModal: (data: ExportData) => void,
+  sourceEntityType?: EntityType.TABLE | EntityType.TEST_SUITE
 ): ItemType[] => {
   const { ViewAll, EditAll } = permission;
 
@@ -46,14 +47,21 @@ export const ExtraTestCaseDropdownOptions = (
               <LimitWrapper resource="testCase">
                 <ManageButtonItemLabel
                   description={t('message.import-entity-help', {
-                    entity: t('label.test-case-plural-lowercase'),
+                    entity: t('label.test-case-lowercase-plural'),
                   })}
                   icon={ImportIcon}
                   id="import-button"
                   name={t('label.import')}
-                  onClick={() =>
-                    navigate(getEntityImportPath(EntityType.TEST_CASE, fqn))
-                  }
+                  onClick={() => {
+                    const importPath = getEntityImportPath(
+                      EntityType.TEST_CASE,
+                      fqn
+                    );
+                    const pathWithSource = sourceEntityType
+                      ? `${importPath}?sourceEntityType=${sourceEntityType}`
+                      : importPath;
+                    navigate(pathWithSource);
+                  }}
                 />
               </LimitWrapper>
             ),
@@ -67,7 +75,7 @@ export const ExtraTestCaseDropdownOptions = (
             label: (
               <ManageButtonItemLabel
                 description={t('message.export-entity-help', {
-                  entity: t('label.test-case-plural-lowercase'),
+                  entity: t('label.test-case-lowercase-plural'),
                 })}
                 icon={ExportIcon}
                 id="export-button"

@@ -35,6 +35,7 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import DataQualityTab from '../../components/Database/Profiler/DataQualityTab/DataQualityTab';
 import { AddTestCaseList } from '../../components/DataQuality/AddTestCaseList/AddTestCaseList.component';
 import TestSuitePipelineTab from '../../components/DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -51,6 +52,7 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { Operation } from '../../generated/entity/policies/policy';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../generated/tests/testCase';
 import { EntityReference, TestSuite } from '../../generated/tests/testSuite';
@@ -71,11 +73,15 @@ import {
   updateTestSuiteById,
 } from '../../rest/testAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import {
   getDataQualityPagePath,
   getTestSuitePath,
 } from '../../utils/RouterUtils';
+import { ExtraTestCaseDropdownOptions } from '../../utils/TestCaseUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './test-suite-details-page.styles.less';
 
@@ -85,6 +91,7 @@ const TestSuiteDetailsPage = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn: testSuiteFQN } = useFqn();
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
 
   const afterDeleteAction = () => {
     navigate(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
@@ -137,6 +144,30 @@ const TestSuiteDetailsPage = () => {
       hasDeletePermission: testSuitePermissions?.Delete,
     };
   }, [testSuitePermissions]);
+
+  const canExportTestCases = useMemo(
+    () => getPrioritizedViewPermission(testSuitePermissions, Operation.ViewAll),
+    [testSuitePermissions]
+  );
+
+  const canImportTestCases = useMemo(
+    () => testSuitePermissions?.EditAll ?? false,
+    [testSuitePermissions]
+  );
+
+  const extraDropdownContent = useMemo(() => {
+    return ExtraTestCaseDropdownOptions(
+      testSuite?.fullyQualifiedName ?? '',
+      {
+        ViewAll: canExportTestCases,
+        EditAll: canImportTestCases,
+      },
+      testSuite?.deleted ?? false,
+      navigate,
+      showModal,
+      EntityType.TEST_SUITE
+    );
+  }, [canExportTestCases, canImportTestCases, testSuite, navigate, showModal]);
 
   const incidentUrlState = useMemo(() => {
     return [
@@ -520,6 +551,7 @@ const TestSuiteDetailsPage = () => {
                   entityId={testSuite?.id}
                   entityName={testSuite?.fullyQualifiedName as string}
                   entityType={EntityType.TEST_SUITE}
+                  extraDropdownContent={extraDropdownContent}
                   onEditDisplayName={handleDisplayNameChange}
                 />
               </Space>

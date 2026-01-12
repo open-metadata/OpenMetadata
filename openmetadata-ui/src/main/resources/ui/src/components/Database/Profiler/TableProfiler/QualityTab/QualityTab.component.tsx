@@ -239,16 +239,19 @@ export const QualityTab = () => {
 
   const extraDropdownContent: ItemType[] = useMemo(
     () =>
-      ExtraTestCaseDropdownOptions(
-        table?.fullyQualifiedName ?? '',
-        {
-          ViewAll: permissions?.ViewAll ?? false,
-          EditAll: permissions?.EditAll ?? false,
-        },
-        table?.deleted ?? false,
-        navigate,
-        showModal
-      ) as ItemType[],
+      table?.fullyQualifiedName
+        ? (ExtraTestCaseDropdownOptions(
+            table.fullyQualifiedName,
+            {
+              ViewAll: permissions?.ViewAll ?? false,
+              EditAll: permissions?.EditAll ?? false,
+            },
+            table?.deleted ?? false,
+            navigate,
+            showModal,
+            EntityType.TABLE
+          ) as ItemType[])
+        : [],
     [permissions, table, navigate, showModal]
   );
 

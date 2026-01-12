@@ -57,9 +57,11 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   getDataQualityPagePath,
   getEntityDetailsPath,
+  getTestSuitePath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { DataQualityPageTabs } from '../../DataQuality/DataQualityPage.interface';
 import './bulk-entity-import-page.less';
 import {
   CSVImportAsyncWebsocketResponse,
@@ -67,6 +69,7 @@ import {
 } from './BulkEntityImportPage.interface';
 
 const BulkEntityImportPage = () => {
+  const location = useLocation();
   const { socket } = useWebSocketConnector();
   const [activeAsyncImportJob, setActiveAsyncImportJob] =
     useState<CSVImportJobType>();
@@ -80,12 +83,20 @@ const BulkEntityImportPage = () => {
     entityType: undefined,
   });
 
+  const sourceEntityTypeFromURL = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const sourceType = params.get('sourceEntityType');
+
+    return sourceType === EntityType.TABLE ||
+      sourceType === EntityType.TEST_SUITE
+      ? sourceType
+      : undefined;
+  }, [location.search]);
+
   const [activeStep, setActiveStep] = useState<VALIDATION_STEP>(
     VALIDATION_STEP.UPLOAD
   );
   const activeStepRef = useRef<VALIDATION_STEP>(VALIDATION_STEP.UPLOAD);
-
-  const location = useLocation();
   const { t } = useTranslation();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { fqn } = useFqn();
@@ -113,6 +124,7 @@ const BulkEntityImportPage = () => {
   }>();
 
   const [entity, setEntity] = useState<DataAssetsHeaderProps['dataAsset']>();
+  const [sourceEntityType, setSourceEntityType] = useState<EntityType>();
 
   const filterColumns = useMemo(
     () =>
@@ -144,22 +156,43 @@ const BulkEntityImportPage = () => {
   const fetchEntityData = useCallback(async () => {
     if (fqn === WILD_CARD_CHAR) {
       setEntity(undefined);
+      setSourceEntityType(undefined);
 
       return;
     }
 
-    try {
-      const fetchEntityType =
-        entityType === EntityType.TEST_CASE ? EntityType.TABLE : entityType;
-      const response = await entityUtilClassBase.getEntityByFqn(
-        fetchEntityType,
-        fqn
-      );
-      setEntity(response as DataAssetsHeaderProps['dataAsset']);
-    } catch {
-      // not show error here
+    if (entityType === EntityType.TEST_CASE) {
+      if (sourceEntityTypeFromURL) {
+        try {
+          const response = await entityUtilClassBase.getEntityByFqn(
+            sourceEntityTypeFromURL,
+            fqn
+          );
+          setEntity(response as DataAssetsHeaderProps['dataAsset']);
+          setSourceEntityType(sourceEntityTypeFromURL);
+        } catch (error) {
+          showErrorToast(
+            error as AxiosError,
+            t('message.entity-fetch-error', { entity: entityType })
+          );
+        }
+      }
+    } else {
+      try {
+        const response = await entityUtilClassBase.getEntityByFqn(
+          entityType,
+          fqn
+        );
+        setEntity(response as DataAssetsHeaderProps['dataAsset']);
+        setSourceEntityType(entityType);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('message.entity-fetch-error', { entity: entityType })
+        );
+      }
     }
-  }, [entityType, fqn]);
+  }, [entityType, fqn, t, sourceEntityTypeFromURL]);
 
   const isBulkEdit = useMemo(
     () => isBulkEditRoute(location.pathname),
@@ -180,13 +213,18 @@ const BulkEntityImportPage = () => {
       return [];
     }
 
-    const baseBreadcrumb = getBulkEntityBreadcrumbList(
-      entityType === EntityType.TEST_CASE ? EntityType.TABLE : entityType,
-      entity,
-      isBulkEdit
-    );
+    const breadcrumbEntityType = sourceEntityType ?? entityType;
 
-    if (entityType === EntityType.TEST_CASE) {
+    if (
+      entityType === EntityType.TEST_CASE &&
+      breadcrumbEntityType === EntityType.TABLE
+    ) {
+      const baseBreadcrumb = getBulkEntityBreadcrumbList(
+        EntityType.TABLE,
+        entity,
+        isBulkEdit
+      );
+
       return [
         ...baseBreadcrumb,
         {
@@ -201,8 +239,28 @@ const BulkEntityImportPage = () => {
       ];
     }
 
-    return baseBreadcrumb;
-  }, [entityType, entity, isBulkEdit, fqn, t]);
+    if (
+      entityType === EntityType.TEST_CASE &&
+      breadcrumbEntityType === EntityType.TEST_SUITE
+    ) {
+      return [
+        {
+          name: t('label.test-suite-plural'),
+          url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+        },
+        {
+          name: entity.displayName ?? entity.name ?? '',
+          url: getTestSuitePath(entity.fullyQualifiedName ?? ''),
+        },
+      ];
+    }
+
+    return getBulkEntityBreadcrumbList(
+      breadcrumbEntityType,
+      entity,
+      isBulkEdit
+    );
+  }, [entityType, entity, isBulkEdit, fqn, sourceEntityType, t]);
 
   const importedEntityType = useMemo(
     () => getImportedEntityType(entityType),
@@ -357,14 +415,23 @@ const BulkEntityImportPage = () => {
             if (fqn === WILD_CARD_CHAR) {
               navigate(getDataQualityPagePath());
             } else {
-              navigate(
-                getEntityDetailsPath(
-                  EntityType.TABLE,
-                  fqn,
-                  EntityTabs.PROFILER,
-                  ProfilerTabPath.DATA_QUALITY
-                )
-              );
+              const redirectSourceType =
+                sourceEntityType ?? sourceEntityTypeFromURL;
+
+              if (redirectSourceType === EntityType.TABLE) {
+                navigate(
+                  getEntityDetailsPath(
+                    EntityType.TABLE,
+                    fqn,
+                    EntityTabs.PROFILER,
+                    ProfilerTabPath.DATA_QUALITY
+                  )
+                );
+              } else if (redirectSourceType === EntityType.TEST_SUITE) {
+                navigate(getTestSuitePath(fqn));
+              } else {
+                navigate(getDataQualityPagePath());
+              }
             }
           } else {
             navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
@@ -408,6 +475,8 @@ const BulkEntityImportPage = () => {
       importedEntityType,
       handleResetImportJob,
       handleActiveStepChange,
+      sourceEntityType,
+      sourceEntityTypeFromURL,
     ]
   );
 
