@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { test } from '../../../support/fixtures/userPages';
+import { Browser, Page } from '@playwright/test';
+import { test as baseTest } from '../../../support/fixtures/userPages';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 
@@ -26,6 +27,18 @@ import {
 import { SERVICE_ENTITIES } from '../../../constant/service';
 
 const testUser = new UserClass();
+
+const test = baseTest.extend<{
+  testUserPage: Page;
+}>({
+  testUserPage: async ({ browser }: { browser: Browser }, use) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await testUser.login(page);
+    await use(page);
+    await context.close();
+  },
+});
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -57,18 +70,11 @@ Object.entries(SERVICE_ENTITIES).forEach(([entityType, EntityClass]) => {
        * EditCustomFields, and Delete operations
        */
       test(`${entityType} allow common operations permissions`, async ({
-        browser,
+        testUserPage,
       }) => {
         test.slow(true);
 
-        // Create a fresh page and log in as test user to get updated permissions
-        const testUserPage = await browser.newPage();
-        try {
-          await testUser.login(testUserPage);
-          await runCommonPermissionTests(testUserPage, entity, 'allow');
-        } finally {
-          await testUserPage.close();
-        }
+        await runCommonPermissionTests(testUserPage, entity, 'allow');
       });
     });
 
@@ -87,16 +93,11 @@ Object.entries(SERVICE_ENTITIES).forEach(([entityType, EntityClass]) => {
        * EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled
        */
       test(`${entityType} deny common operations permissions`, async ({
-        browser,
+        testUserPage,
       }) => {
         test.slow(true);
-        const testUserPage = await browser.newPage();
-        try {
-          await testUser.login(testUserPage);
-          await runCommonPermissionTests(testUserPage, entity, 'deny');
-        } finally {
-          await testUserPage.close();
-        }
+
+        await runCommonPermissionTests(testUserPage, entity, 'deny');
       });
     });
   });
