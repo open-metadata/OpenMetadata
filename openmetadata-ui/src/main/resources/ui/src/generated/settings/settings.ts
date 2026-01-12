@@ -277,6 +277,11 @@ export interface PipelineServiceClientConfiguration {
      */
     useRolesFromProvider?: boolean;
     /**
+     * AWS IAM authentication configuration for OpenSearch. When useIamAuth is true, requests
+     * will be signed using AWS Signature Version 4.
+     */
+    aws?: Aws;
+    /**
      * Batch Size for Requests
      */
     batchSize?: number;
@@ -289,7 +294,8 @@ export interface PipelineServiceClientConfiguration {
      */
     connectionTimeoutSecs?: number;
     /**
-     * Elastic Search Host
+     * Elastic Search Host. Supports single host or comma-separated list for multiple hosts
+     * (e.g., 'localhost' or 'es-node1:9200,es-node2:9200,es-node3:9200').
      */
     host?: string;
     /**
@@ -319,7 +325,8 @@ export interface PipelineServiceClientConfiguration {
      */
     payLoadSize?: number;
     /**
-     * Elastic Search port
+     * Elastic Search port. Used when host does not include port. Ignored when using
+     * comma-separated hosts with ports.
      */
     port?: number;
     /**
@@ -1509,6 +1516,38 @@ export interface AuthorizerConfiguration {
      * Use Roles from Provider
      */
     useRolesFromProvider?: boolean;
+}
+
+/**
+ * AWS IAM authentication configuration for OpenSearch. When useIamAuth is true, requests
+ * will be signed using AWS Signature Version 4.
+ */
+export interface Aws {
+    /**
+     * AWS Access Key ID. If not provided, default credential provider chain will be used.
+     */
+    accessKeyId?: string;
+    /**
+     * AWS Region for OpenSearch service
+     */
+    region?: string;
+    /**
+     * AWS Secret Access Key. If not provided, default credential provider chain will be used.
+     */
+    secretAccessKey?: string;
+    /**
+     * AWS service name for signing (es for Elasticsearch/OpenSearch, aoss for OpenSearch
+     * Serverless)
+     */
+    serviceName?: string;
+    /**
+     * AWS Session Token for temporary credentials
+     */
+    sessionToken?: string;
+    /**
+     * Enable AWS IAM authentication for OpenSearch
+     */
+    useIamAuth?: boolean;
 }
 
 /**
