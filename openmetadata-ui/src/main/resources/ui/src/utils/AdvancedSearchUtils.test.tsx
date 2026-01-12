@@ -11,13 +11,20 @@
  *  limitations under the License.
  */
 
+import { FieldOrGroup } from '@react-awesome-query-builder/antd';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
-import { EntityFields } from '../enums/AdvancedSearch.enum';
+import {
+  EntityFields,
+  EntityReferenceFields,
+} from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import advancedSearchClassBase from './AdvancedSearchClassBase';
 import {
   getChartsOptions,
   getColumnsOptions,
   getEmptyJsonTree,
+  getEmptyJsonTreeForQueryBuilder,
   getOptionsFromAggregationBucket,
   getSchemaFieldOptions,
   getSearchDropdownLabels,
@@ -25,6 +32,8 @@ import {
   getSelectedOptionLabelString,
   getServiceOptions,
   getTasksOptions,
+  processCustomPropertyField,
+  processEntityTypeFields,
 } from './AdvancedSearchUtils';
 import {
   highlightedItemLabel,
@@ -47,15 +56,33 @@ import {
   mockShortOptionsArray,
 } from './mocks/AdvancedSearchUtils.mock';
 
-// Mock QbUtils
+jest.mock('./AdvancedSearchClassBase', () => ({
+  __esModule: true,
+  default: {
+    getCustomPropertiesSubFields: jest.fn(),
+  },
+}));
+
+const mockUuid = jest.fn();
+let uuidCounter = 0;
+
 jest.mock('@react-awesome-query-builder/antd', () => ({
   ...jest.requireActual('@react-awesome-query-builder/antd'),
   Utils: {
-    uuid: jest.fn().mockReturnValue('test-uuid'),
+    uuid: () => mockUuid(),
   },
 }));
 
 describe('AdvancedSearchUtils tests', () => {
+  beforeEach(() => {
+    uuidCounter = 0;
+    mockUuid.mockImplementation(() => {
+      uuidCounter++;
+
+      return `test-uuid-${uuidCounter}`;
+    });
+  });
+
   it('Function getSearchDropdownLabels should return menuItems for passed options', () => {
     const resultMenuItems = getSearchDropdownLabels(mockOptionsArray, true);
 
@@ -230,36 +257,42 @@ describe('AdvancedSearchUtils tests', () => {
     it('should return a default JsonTree structure with OWNERS as the default field', () => {
       const result = getEmptyJsonTree();
 
-      const expected = {
-        id: 'test-uuid',
-        type: 'group',
-        properties: {
-          conjunction: 'AND',
-          not: false,
-        },
-        children1: {
-          'test-uuid': {
-            type: 'group',
-            properties: {
-              conjunction: 'AND',
-              not: false,
-            },
-            children1: {
-              'test-uuid': {
-                type: 'rule',
-                properties: {
-                  field: EntityFields.OWNERS,
-                  operator: null,
-                  value: [],
-                  valueSrc: ['value'],
-                },
-              },
-            },
-          },
-        },
-      };
+      expect(result.type).toBe('group');
+      expect(result.properties).toEqual({
+        conjunction: 'AND',
+        not: false,
+      });
 
-      expect(result).toEqual(expected);
+      const children1Keys = Object.keys(result.children1 ?? {});
+
+      expect(children1Keys.length).toBe(1);
+
+      const children1AsRecord = result.children1 as Record<
+        string,
+        {
+          type: string;
+          children1?: Record<
+            string,
+            { type: string; properties?: { field: string } }
+          >;
+        }
+      >;
+      const firstChild = children1AsRecord[children1Keys[0]];
+
+      expect(firstChild?.type).toBe('group');
+
+      const grandChildren1Keys = Object.keys(firstChild?.children1 ?? {});
+
+      expect(grandChildren1Keys.length).toBe(1);
+
+      const grandChildren1AsRecord = firstChild?.children1 as Record<
+        string,
+        { type: string; properties?: { field: string } }
+      >;
+      const grandChild = grandChildren1AsRecord[grandChildren1Keys[0]];
+
+      expect(grandChild?.type).toBe('rule');
+      expect(grandChild?.properties?.field).toBe(EntityFields.OWNERS);
     });
 
     it('should use the provided field when passed as parameter', () => {
@@ -270,10 +303,356 @@ describe('AdvancedSearchUtils tests', () => {
         string,
         { children1: Record<string, { properties: { field: string } }> }
       >;
+      const firstChildKey = Object.keys(children1)[0];
+      const firstChild = children1[firstChildKey] as {
+        children1: Record<string, { properties: { field: string } }>;
+      };
+      const grandChildKey = Object.keys(firstChild.children1)[0];
+
+      expect(firstChild.children1[grandChildKey]?.properties.field).toEqual(
+        customField
+      );
+    });
+  });
+
+  describe('getEmptyJsonTreeForQueryBuilder', () => {
+    it('should return a JsonTree structure with default parameters', () => {
+      const result = getEmptyJsonTreeForQueryBuilder();
+
+      expect(result.type).toBe('group');
+      expect(result.properties).toEqual({
+        conjunction: 'AND',
+        not: false,
+      });
+
+      const children1Keys = Object.keys(result.children1 ?? {});
+
+      expect(children1Keys.length).toBe(1);
+
+      const children1AsRecord = result.children1 as Record<
+        string,
+        {
+          type: string;
+          properties?: { field: string; mode: string };
+          children1?: Record<
+            string,
+            { type: string; properties?: { field: string; operator: string } }
+          >;
+        }
+      >;
+      const firstChild = children1AsRecord[children1Keys[0]];
+
+      expect(firstChild?.type).toBe('rule_group');
+      expect(firstChild?.properties?.field).toBe(EntityReferenceFields.OWNERS);
+      expect(firstChild?.properties?.mode).toBe('some');
+
+      const grandChildren1Keys = Object.keys(firstChild?.children1 ?? {});
+
+      expect(grandChildren1Keys.length).toBe(1);
+
+      const grandChildren1AsRecord = firstChild?.children1 as Record<
+        string,
+        { type: string; properties?: { field: string; operator: string } }
+      >;
+      const grandChild = grandChildren1AsRecord[grandChildren1Keys[0]];
+
+      expect(grandChild?.type).toBe('rule');
+      expect(grandChild?.properties?.field).toBe(
+        `${EntityReferenceFields.OWNERS}.fullyQualifiedName`
+      );
+      expect(grandChild?.properties?.operator).toBe('select_equals');
+    });
+
+    it('should use custom field when provided', () => {
+      const customField = EntityReferenceFields.TAG;
+      const result = getEmptyJsonTreeForQueryBuilder(customField);
+
+      const children1 = result.children1 as Record<
+        string,
+        {
+          properties: { field: string };
+          children1: Record<string, { properties: { field: string } }>;
+        }
+      >;
+      const firstChildKey = Object.keys(children1)[0];
+      const firstChild = children1[firstChildKey] as {
+        properties: { field: string };
+        children1: Record<string, { properties: { field: string } }>;
+      };
+      const grandChildKey = Object.keys(firstChild.children1)[0];
+
+      expect(firstChild.properties.field).toEqual(customField);
+      expect(firstChild.children1[grandChildKey]?.properties.field).toEqual(
+        `${customField}.fullyQualifiedName`
+      );
+    });
+
+    it('should use custom subField when provided', () => {
+      const customSubField = 'name';
+      const result = getEmptyJsonTreeForQueryBuilder(
+        EntityReferenceFields.OWNERS,
+        customSubField
+      );
+
+      const children1 = result.children1 as Record<
+        string,
+        { children1: Record<string, { properties: { field: string } }> }
+      >;
+      const firstChildKey = Object.keys(children1)[0];
+      const firstChild = children1[firstChildKey] as {
+        children1: Record<string, { properties: { field: string } }>;
+      };
+      const grandChildKey = Object.keys(firstChild.children1)[0];
+
+      expect(firstChild.children1[grandChildKey]?.properties.field).toEqual(
+        `${EntityReferenceFields.OWNERS}.${customSubField}`
+      );
+    });
+
+    it('should have rule_group as the type for the first child', () => {
+      const result = getEmptyJsonTreeForQueryBuilder();
+
+      const children1 = result.children1 as Record<string, { type: string }>;
+      const firstChildKey = Object.keys(children1)[0];
+
+      expect(children1[firstChildKey].type).toEqual('rule_group');
+    });
+  });
+
+  describe('processCustomPropertyField', () => {
+    const mockField = {
+      name: 'testField',
+      type: 'string',
+      description: 'Test field description',
+    };
+
+    const mockDataObject = {
+      type: 'select',
+      label: 'Test Field',
+      valueSources: ['value'],
+    };
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should return early if field.name is missing', () => {
+      const subfields: Record<string, FieldOrGroup> = {};
+      const fieldWithoutName = { type: 'string' };
+
+      processCustomPropertyField(fieldWithoutName as never, 'table', subfields);
+
+      expect(subfields).toEqual({});
+    });
+
+    it('should return early if field.type is missing', () => {
+      const subfields: Record<string, FieldOrGroup> = {};
+      const fieldWithoutType = { name: 'testField' };
+
+      processCustomPropertyField(fieldWithoutType as never, 'table', subfields);
+
+      expect(subfields).toEqual({});
+    });
+
+    it('should add subfield directly when entityType is specified', () => {
+      const subfields: Record<string, FieldOrGroup> = {};
+      const mockResult = {
+        subfieldsKey: 'testField.keyword',
+        dataObject: mockDataObject,
+      };
+
+      (
+        advancedSearchClassBase.getCustomPropertiesSubFields as jest.Mock
+      ).mockReturnValue(mockResult);
+
+      processCustomPropertyField(
+        mockField as never,
+        'table',
+        subfields,
+        'table'
+      );
+
+      expect(subfields['testField.keyword']).toEqual({
+        ...mockDataObject,
+        valueSources: ['value'],
+      });
+    });
+
+    it('should create nested subfields when entityType is not specified', () => {
+      const subfields: Record<string, FieldOrGroup> = {};
+      const mockResult = {
+        subfieldsKey: 'testField.keyword',
+        dataObject: mockDataObject,
+      };
+
+      (
+        advancedSearchClassBase.getCustomPropertiesSubFields as jest.Mock
+      ).mockReturnValue(mockResult);
+
+      processCustomPropertyField(mockField as never, 'table', subfields);
+
+      expect(subfields.table).toBeDefined();
+      expect(subfields.table).toMatchObject({
+        label: 'Table',
+        type: '!group',
+        subfields: {
+          'testField.keyword': {
+            ...mockDataObject,
+            valueSources: ['value'],
+          },
+        },
+      });
+    });
+
+    it('should handle array result from getCustomPropertiesSubFields', () => {
+      const subfields: Record<string, FieldOrGroup> = {};
+      const mockArrayResult = [
+        {
+          subfieldsKey: 'testField1.keyword',
+          dataObject: { ...mockDataObject, label: 'Field 1' },
+        },
+        {
+          subfieldsKey: 'testField2.keyword',
+          dataObject: { ...mockDataObject, label: 'Field 2' },
+        },
+      ];
+
+      (
+        advancedSearchClassBase.getCustomPropertiesSubFields as jest.Mock
+      ).mockReturnValue(mockArrayResult);
+
+      processCustomPropertyField(
+        mockField as never,
+        'table',
+        subfields,
+        'table'
+      );
+
+      expect(subfields['testField1.keyword']).toBeDefined();
+      expect(subfields['testField2.keyword']).toBeDefined();
+    });
+
+    it('should merge with existing entity subfields', () => {
+      const subfields: Record<string, FieldOrGroup> = {
+        table: {
+          label: 'Table',
+          type: '!group',
+          subfields: {
+            existingField: {
+              type: 'text',
+              label: 'Existing Field',
+            },
+          },
+        },
+      };
+
+      const mockResult = {
+        subfieldsKey: 'newField.keyword',
+        dataObject: mockDataObject,
+      };
+
+      (
+        advancedSearchClassBase.getCustomPropertiesSubFields as jest.Mock
+      ).mockReturnValue(mockResult);
+
+      processCustomPropertyField(mockField as never, 'table', subfields);
+
+      const tableSubfields = (
+        subfields.table as { subfields: Record<string, unknown> }
+      ).subfields;
+
+      expect(tableSubfields.existingField).toBeDefined();
+      expect(tableSubfields['newField.keyword']).toBeDefined();
+    });
+  });
+
+  describe('processEntityTypeFields', () => {
+    const mockFields = [
+      {
+        name: 'field1',
+        type: 'string',
+        description: 'Field 1',
+      },
+      {
+        name: 'field2',
+        type: 'integer',
+        description: 'Field 2',
+      },
+    ];
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      (
+        advancedSearchClassBase.getCustomPropertiesSubFields as jest.Mock
+      ).mockReturnValue({
+        subfieldsKey: 'field.keyword',
+        dataObject: {
+          type: 'select',
+          label: 'Field',
+          valueSources: ['value'],
+        },
+      });
+    });
+
+    it('should process all fields when entityType is not specified', () => {
+      const subfields: Record<string, FieldOrGroup> = {};
+
+      processEntityTypeFields('table', mockFields as never, subfields);
+
+      expect(subfields.table).toBeDefined();
+    });
+
+    it('should skip processing if entityType does not match', () => {
+      const subfields: Record<string, FieldOrGroup> = {};
+
+      processEntityTypeFields(
+        'table',
+        mockFields as never,
+        subfields,
+        'database'
+      );
+
+      expect(subfields).toEqual({});
+    });
+
+    it('should process fields when entityType matches', () => {
+      const subfields: Record<string, FieldOrGroup> = {};
+
+      processEntityTypeFields('table', mockFields as never, subfields, 'table');
+
+      expect(Object.keys(subfields).length).toBeGreaterThan(0);
+    });
+
+    it('should process fields when entityType is ALL', () => {
+      const subfields: Record<string, FieldOrGroup> = {};
+
+      processEntityTypeFields(
+        'table',
+        mockFields as never,
+        subfields,
+        EntityType.ALL
+      );
+
+      expect(Object.keys(subfields).length).toBeGreaterThan(0);
+      expect(subfields['field.keyword']).toBeDefined();
+    });
+
+    it('should handle empty fields array', () => {
+      const subfields: Record<string, FieldOrGroup> = {};
+
+      processEntityTypeFields('table', [], subfields);
+
+      expect(subfields).toEqual({});
+    });
+
+    it('should call processCustomPropertyField for each field', () => {
+      const subfields: Record<string, FieldOrGroup> = {};
+
+      processEntityTypeFields('table', mockFields as never, subfields);
 
       expect(
-        children1['test-uuid'].children1['test-uuid'].properties.field
-      ).toEqual(customField);
+        advancedSearchClassBase.getCustomPropertiesSubFields
+      ).toHaveBeenCalledTimes(2);
     });
   });
 });

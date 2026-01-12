@@ -71,6 +71,7 @@ declare module 'Models' {
     key: string;
     doc_count: number;
     label?: string;
+    [key: string]: unknown; // Allow dynamic properties for ES aggregations like 'top_hits#top'
   };
 
   export type FormattedTableData = {

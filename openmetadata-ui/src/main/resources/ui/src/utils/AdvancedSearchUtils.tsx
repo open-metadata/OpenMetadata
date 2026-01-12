@@ -12,14 +12,19 @@
  */
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { CustomIconComponentProps } from '@ant-design/icons/lib/components/Icon';
 import {
+  Field,
+  FieldOrGroup,
   ListValues,
   OldJsonTree,
   RenderSettings,
   Utils as QbUtils,
+  ValueSource,
 } from '@react-awesome-query-builder/antd';
 import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
 import { isArray, isEmpty, toLower } from 'lodash';
+import { Bucket } from 'Models';
 import React from 'react';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
@@ -41,7 +46,6 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
-  Bucket,
   ContainerSearchSource,
   DashboardSearchSource,
   ExploreSearchSource,
@@ -51,6 +55,7 @@ import {
   TableSearchSource,
   TopicSearchSource,
 } from '../interface/search.interface';
+import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getTags } from '../rest/tagAPI';
 import { getCountBadge } from '../utils/CommonUtils';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
@@ -76,7 +81,6 @@ export const getAssetsPageQuickFilters = (type?: AssetsOfEntity) => {
     default:
       return [...COMMON_DROPDOWN_ITEMS];
   }
-  // TODO: Add more quick filters
 };
 
 export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
@@ -88,7 +92,9 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
     return (
       <Icon
         className="action action--DELETE"
-        component={CloseCircleOutlined as React.ForwardRefExoticComponent<any>}
+        component={
+          CloseCircleOutlined as React.ForwardRefExoticComponent<CustomIconComponentProps>
+        }
         data-testid="advanced-search-delete-rule"
         onClick={props?.onClick}
       />
@@ -369,7 +375,7 @@ export const getTierOptions = async (): Promise<ListValues> => {
     }));
 
     return tierFields as ListValues;
-  } catch (error) {
+  } catch {
     return [];
   }
 };
@@ -491,4 +497,85 @@ export const getEmptyJsonTreeForQueryBuilder = (
       },
     },
   };
+};
+
+/**
+ * Process a custom property field and add it to the subfields
+ * @param field - The custom property field to process
+ * @param resEntityType - The entity type containing the field
+ * @param subfields - The subfields record to update
+ * @param entityType - Optional specific entity type to filter for
+ */
+export const processCustomPropertyField = (
+  field: CustomPropertySummary,
+  resEntityType: string,
+  subfields: Record<string, FieldOrGroup>,
+  entityType?: string
+) => {
+  if (!field.name || !field.type) {
+    return;
+  }
+
+  const result = advancedSearchClassBase.getCustomPropertiesSubFields(field);
+  const subfieldsArray = Array.isArray(result) ? result : [result];
+
+  subfieldsArray.forEach(({ subfieldsKey, dataObject }) => {
+    // If entityType is specified, return subfields directly without entityType wrapper
+    if (entityType) {
+      subfields[subfieldsKey] = {
+        ...dataObject,
+        valueSources: dataObject.valueSources as ValueSource[],
+      };
+    } else {
+      // Create nested subfields for each entity type (e.g., table, database, etc.)
+      const existingGroup = subfields[resEntityType];
+      const entitySubfields: Record<string, Field> =
+        existingGroup && 'subfields' in existingGroup
+          ? existingGroup.subfields ?? {}
+          : {};
+
+      entitySubfields[subfieldsKey] = {
+        ...dataObject,
+        valueSources: dataObject.valueSources as ValueSource[],
+      };
+
+      // Only create the entity type field if it has custom properties
+      if (!isEmpty(entitySubfields)) {
+        subfields[resEntityType] = {
+          label: resEntityType.charAt(0).toUpperCase() + resEntityType.slice(1),
+          type: '!group',
+          subfields: entitySubfields,
+        };
+      }
+    }
+  });
+};
+
+/**
+ * Process all custom property fields for a specific entity type
+ * @param resEntityType - The entity type to process
+ * @param fields - Array of custom property fields
+ * @param subfields - The subfields record to update
+ * @param entityType - Optional specific entity type to filter for
+ */
+export const processEntityTypeFields = (
+  resEntityType: string,
+  fields: CustomPropertySummary[],
+  subfields: Record<string, FieldOrGroup>,
+  entityType?: string
+) => {
+  // If entityType is specified, only include custom properties for that entity type
+  if (
+    entityType &&
+    entityType !== EntityType.ALL &&
+    resEntityType !== entityType
+  ) {
+    return;
+  }
+
+  if (Array.isArray(fields) && fields.length > 0) {
+    fields.forEach((field) => {
+      processCustomPropertyField(field, resEntityType, subfields, entityType);
+    });
+  }
 };
