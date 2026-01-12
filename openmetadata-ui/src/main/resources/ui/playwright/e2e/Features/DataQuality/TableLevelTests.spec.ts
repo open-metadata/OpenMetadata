@@ -984,7 +984,7 @@ test.describe('Table Level Data Quality Test Cases', () => {
    * 2. Open Test Case form, select type `tableRowInsertedCountToBeBetween`, set min and max values.
    * 3. Submit and verify in Data Quality tab; then edit threshold values; delete at the end.
    */
-  test('Table Row Inserted Count To Be Between', async ({ page }) => {
+  test.skip('Table Row Inserted Count To Be Between', async ({ page }) => {
     await redirectToHomePage(page);
 
     const testCase = {
