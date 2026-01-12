@@ -11,6 +11,14 @@
  *  limitations under the License.
  */
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
+import { ApiServiceClass } from '../support/entity/service/ApiServiceClass';
+import { DashboardServiceClass } from '../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../support/entity/service/MlmodelServiceClass';
+import { PipelineServiceClass } from '../support/entity/service/PipelineServiceClass';
+import { SearchIndexServiceClass } from '../support/entity/service/SearchIndexServiceClass';
+import { StorageServiceClass } from '../support/entity/service/StorageServiceClass';
 import { uuid } from '../utils/common';
 import { GlobalSettingOptions, ServiceTypes } from './settings';
 
@@ -105,3 +113,15 @@ export const DBT = {
 };
 
 export const MAX_CONSECUTIVE_ERRORS = 3;
+
+// Service entity classes
+export const SERVICE_ENTITIES = [
+  ApiServiceClass,
+  DashboardServiceClass,
+  DatabaseServiceClass,
+  MessagingServiceClass,
+  MlmodelServiceClass,
+  PipelineServiceClass,
+  SearchIndexServiceClass,
+  StorageServiceClass,
+] as const;
