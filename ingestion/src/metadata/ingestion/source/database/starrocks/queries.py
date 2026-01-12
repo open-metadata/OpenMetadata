@@ -26,10 +26,10 @@ STARROCKS_GET_TABLE_NAMES = textwrap.dedent(
     case when `ENGINE` = 'StarRocks' and TABLE_TYPE = 'VIEW' then 'MVIEW'
          when `ENGINE` = 'MEMORY' and TABLE_TYPE = 'SYSTEM VIEW' then 'VIEW'
          when `ENGINE` = 'StarRocks' and TABLE_TYPE = 'TABLE' then 'TABLE'
-         when `ENGINE` = '' and TABLE_TYPE = 'VIEW' then 'VIEW'
+         when (`ENGINE` = '' OR `ENGINE` IS NULL) and TABLE_TYPE = 'VIEW' then 'VIEW'
          else `ENGINE`
     end as engine
-    from INFORMATION_SCHEMA.tables 
+    from INFORMATION_SCHEMA.tables
     where TABLE_SCHEMA = :schema
     """
 )

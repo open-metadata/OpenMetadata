@@ -1,6 +1,12 @@
 source:
   type: starrocks-lineage
   serviceName: local_starrocks
+  serviceConnection:
+    config:
+      type: StarRocks
+      username: root
+      password: ''
+      hostPort: localhost:9030
   sourceConfig:
     config:
       type: DatabaseLineage

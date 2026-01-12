@@ -7,7 +7,6 @@ source:
       username: root
       password: ''
       hostPort: localhost:9030
-      databaseName: quickstart
   sourceConfig:
     config:
       type: Profiler
