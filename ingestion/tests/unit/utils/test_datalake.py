@@ -19,7 +19,7 @@ from unittest import TestCase
 import pandas as pd
 
 from metadata.generated.schema.entity.data.table import Column, DataType
-from metadata.readers.dataframe.dsv import _fix_malformed_quoted_header
+from metadata.readers.dataframe.dsv import DSVDataFrameReader
 from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.utils.datalake.datalake_utils import (
     DataFrameColumnParser,
@@ -769,6 +769,20 @@ class TestIcebergDeltaLakeMetadataParsing(TestCase):
 class TestCSVQuotedHeaderFix(TestCase):
     """Test CSV parsing with quoted header fix for malformed CSV files"""
 
+    @classmethod
+    def setUpClass(cls):
+        """Set up a DSVDataFrameReader instance for testing"""
+        from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+            LocalConfig,
+        )
+
+        cls.csv_reader = DSVDataFrameReader(
+            config_source=LocalConfig(), client=None, separator=","
+        )
+        cls.tsv_reader = DSVDataFrameReader(
+            config_source=LocalConfig(), client=None, separator="\t"
+        )
+
     def test_normal_csv_no_fix_applied(self):
         """Test that normal CSV files with proper headers are not modified"""
         df = pd.DataFrame(
@@ -785,7 +799,7 @@ class TestCSVQuotedHeaderFix(TestCase):
             }
         )
 
-        result = _fix_malformed_quoted_header([df], ",")
+        result = self.csv_reader._fix_malformed_quoted_chunk([df], ",")
 
         self.assertEqual(len(result), 1)
         self.assertEqual(len(result[0].columns), 5)
@@ -800,7 +814,7 @@ class TestCSVQuotedHeaderFix(TestCase):
         malformed_header = "managementLevel,businessAllocation2Key,validFrom,fillable,businessAllocation1English"
         df = pd.DataFrame(columns=[malformed_header])
 
-        result = _fix_malformed_quoted_header([df], ",")
+        result = self.csv_reader._fix_malformed_quoted_chunk([df], ",")
 
         self.assertEqual(len(result), 1)
         self.assertEqual(len(result[0].columns), 5)
@@ -819,7 +833,7 @@ class TestCSVQuotedHeaderFix(TestCase):
         """Test that single column CSV without separator in name is not modified"""
         df = pd.DataFrame(columns=["single_column_name"])
 
-        result = _fix_malformed_quoted_header([df], ",")
+        result = self.csv_reader._fix_malformed_quoted_chunk([df], ",")
 
         self.assertEqual(len(result), 1)
         self.assertEqual(list(result[0].columns), ["single_column_name"])
@@ -829,7 +843,7 @@ class TestCSVQuotedHeaderFix(TestCase):
         malformed_header = '"col1","col2 with spaces","col3&special","col4/slash"'
         df = pd.DataFrame(columns=[malformed_header])
 
-        result = _fix_malformed_quoted_header([df], ",")
+        result = self.csv_reader._fix_malformed_quoted_chunk([df], ",")
 
         self.assertEqual(len(result), 1)
         self.assertEqual(len(result[0].columns), 4)
@@ -843,7 +857,7 @@ class TestCSVQuotedHeaderFix(TestCase):
         malformed_header = "col1\tcol2\tcol3\tcol4"
         df = pd.DataFrame(columns=[malformed_header])
 
-        result = _fix_malformed_quoted_header([df], "\t")
+        result = self.tsv_reader._fix_malformed_quoted_chunk([df], "\t")
 
         self.assertEqual(len(result), 1)
         self.assertEqual(len(result[0].columns), 4)
@@ -851,5 +865,5 @@ class TestCSVQuotedHeaderFix(TestCase):
 
     def test_empty_chunk_list_returns_empty(self):
         """Test that empty chunk list returns empty list"""
-        result = _fix_malformed_quoted_header([], ",")
+        result = self.csv_reader._fix_malformed_quoted_chunk([], ",")
         self.assertEqual(result, [])
