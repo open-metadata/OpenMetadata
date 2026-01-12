@@ -48,3 +48,39 @@ STARROCKS_PARTITION_DETAILS = textwrap.dedent(
 SHOW PARTITIONS FROM {}.{}
     """
 )
+
+STARROCKS_SQL_STATEMENT = textwrap.dedent(
+    """
+    SELECT
+        `timestamp` AS start_time,
+        DATE_ADD(`timestamp`, INTERVAL queryTime/1000 SECOND) AS end_time,
+        queryTime AS duration,
+        db AS database_name,
+        db AS schema_name,
+        user AS user_name,
+        state != 'EOF' AS aborted,
+        queryId AS query_id,
+        stmt AS query_text
+    FROM starrocks_audit_db__.starrocks_audit_tbl__
+    WHERE `timestamp` >= '{start_time}'
+      AND `timestamp` < '{end_time}'
+      AND stmt NOT LIKE '%/* {{"app": "OpenMetadata",%}} */%'
+      AND stmt NOT LIKE '%/* {{"app": "dbt",%}} */%'
+      {filters}
+    ORDER BY `timestamp` DESC
+    LIMIT {result_limit}
+    """
+)
+
+STARROCKS_SQL_STATEMENT_TEST = textwrap.dedent(
+    """
+    SELECT
+        `timestamp` AS start_time,
+        queryTime AS duration,
+        db AS database_name,
+        user AS user_name,
+        stmt AS query_text
+    FROM starrocks_audit_db__.starrocks_audit_tbl__
+    LIMIT 1
+    """
+)

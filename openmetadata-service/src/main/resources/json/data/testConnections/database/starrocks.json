@@ -27,6 +27,12 @@
       "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
       "errorMessage": "Failed to fetch views, please validate if the user has enough privilege to fetch views.",
       "mandatory": false
+    },
+    {
+      "name": "GetQueries",
+      "description": "Validate access to the StarRocks audit log table (starrocks_audit_db__.starrocks_audit_tbl__) for lineage and usage extraction.",
+      "errorMessage": "Failed to access audit logs. Ensure the FE audit log plugin is enabled and the user has SELECT privilege on starrocks_audit_db__.starrocks_audit_tbl__.",
+      "mandatory": false
     }
   ]
 }

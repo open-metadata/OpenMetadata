@@ -18,9 +18,9 @@
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
       "enum": [
-        "starrocks"
+        "mysql+pymysql"
       ],
-      "default": "starrocks"
+      "default": "mysql+pymysql"
     }
   },
   "properties": {
@@ -34,7 +34,7 @@
       "title": "Connection Scheme",
       "description": "SQLAlchemy driver scheme options.",
       "$ref": "#/definitions/starrocksScheme",
-      "default": "starrocks"
+      "default": "mysql+pymysql"
     },
     "username": {
       "title": "Username",
@@ -104,6 +104,12 @@
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "supportsUsageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+    },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
     }
   },
   "additionalProperties": false,

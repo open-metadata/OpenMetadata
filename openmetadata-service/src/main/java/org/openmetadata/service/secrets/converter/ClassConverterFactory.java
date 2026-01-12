@@ -42,6 +42,7 @@ import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SalesforceConnection;
 import org.openmetadata.schema.services.connections.database.SapHanaConnection;
+import org.openmetadata.schema.services.connections.database.StarRocksConnection;
 import org.openmetadata.schema.services.connections.database.TimescaleConnection;
 import org.openmetadata.schema.services.connections.database.TrinoConnection;
 import org.openmetadata.schema.services.connections.database.UnityCatalogConnection;
@@ -95,6 +96,7 @@ public final class ClassConverterFactory {
             Map.entry(GreenplumConnection.class, new GreenplumConnectionClassConverter()),
             Map.entry(PostgresConnection.class, new PostgresConnectionClassConverter()),
             Map.entry(SapHanaConnection.class, new SapHanaConnectionClassConverter()),
+            Map.entry(StarRocksConnection.class, new StarRocksConnectionClassConverter()),
             Map.entry(StorageConfig.class, new StorageConfigClassConverter()),
             Map.entry(SupersetConnection.class, new SupersetConnectionClassConverter()),
             Map.entry(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter()),

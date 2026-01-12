@@ -17,10 +17,11 @@ import textwrap
 from sqlalchemy import sql
 from sqlalchemy.engine import reflection
 
-from metadata.utils.logger import ingestion_logger
 from metadata.ingestion.source.database.starrocks.queries import (
     STARROCKS_TABLE_COMMENTS,
 )
+from metadata.utils.logger import ingestion_logger
+
 logger = ingestion_logger()
 query = textwrap.dedent(
     """

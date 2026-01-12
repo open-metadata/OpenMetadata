@@ -13,21 +13,13 @@
 
 package org.openmetadata.service.secrets.converter;
 
+import java.util.List;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.database.StarRocksConnection;
-import org.openmetadata.schema.services.connections.database.common.IamAuthConfig;
-import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.utils.JsonUtils;
 
-import java.util.List;
-
-/**
- * Converter class to get an `DatalakeConnection` object.
- */
+/** Converter class to get a `StarRocksConnection` object. */
 public class StarRocksConnectionClassConverter extends ClassConverter {
-
-  private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
-      List.of(basicAuth.class, IamAuthConfig.class);
 
   private static final List<Class<?>> SSL_SOURCE_CLASS = List.of(ValidateSSLClientConfig.class);
 
@@ -37,7 +29,8 @@ public class StarRocksConnectionClassConverter extends ClassConverter {
 
   @Override
   public Object convert(Object object) {
-    StarRocksConnection starrocksConnection = (StarRocksConnection) JsonUtils.convertValue(object, this.clazz);
+    StarRocksConnection starrocksConnection =
+        (StarRocksConnection) JsonUtils.convertValue(object, this.clazz);
     tryToConvert(starrocksConnection.getSslConfig(), SSL_SOURCE_CLASS)
         .ifPresent(starrocksConnection::setSslConfig);
     return starrocksConnection;

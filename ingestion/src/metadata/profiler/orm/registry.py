@@ -181,10 +181,10 @@ def is_date_time(_type) -> bool:
             DataType.DATE.value,
         }
     return (
-            issubclass(_type.__class__, Date)
-            or issubclass(_type.__class__, Time)
-            or issubclass(_type.__class__, DateTime)
-            or issubclass(_type.__class__, CustomTimestamp)
+        issubclass(_type.__class__, Date)
+        or issubclass(_type.__class__, Time)
+        or issubclass(_type.__class__, DateTime)
+        or issubclass(_type.__class__, CustomTimestamp)
     )
 
 
@@ -195,7 +195,7 @@ def is_quantifiable(_type) -> bool:
     if isinstance(_type, DataType):
         return _type.value in QUANTIFIABLE_SET
     return (
-            is_numeric(_type) or is_integer(_type) or getattr(_type, "quantifiable", False)
+        is_numeric(_type) or is_integer(_type) or getattr(_type, "quantifiable", False)
     )
 
 
