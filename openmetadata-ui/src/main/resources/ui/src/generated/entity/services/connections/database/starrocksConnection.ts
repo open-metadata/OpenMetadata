@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,7 +13,7 @@
 /**
  * StarRocks Database Connection Config
  */
-export interface StarRocksConnection {
+export interface StarrocksConnection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
@@ -46,15 +46,18 @@ export interface StarRocksConnection {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?: StarRocksScheme;
+    scheme?: StarrocksScheme;
     /**
      * SSL Configuration details.
      */
-    sslConfig?:                  Config;
-    supportsDBTExtraction?:      boolean;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
+    sslConfig?:                     Config;
+    supportsDBTExtraction?:         boolean;
+    supportsLineageExtraction?:     boolean;
+    supportsMetadataExtraction?:    boolean;
+    supportsProfiler?:              boolean;
+    supportsQueryComment?:          boolean;
+    supportsUsageExtraction?:       boolean;
+    supportsViewLineageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -62,10 +65,10 @@ export interface StarRocksConnection {
     /**
      * Service Type
      */
-    type?: StarRocksType;
+    type?: StarrocksType;
     /**
-     * Username to connect to StarRocks. This user should have privileges to read all the metadata
-     * in StarRocks.
+     * Username to connect to StarRocks. This user should have privileges to read all the
+     * metadata in StarRocks.
      */
     username: string;
 }
@@ -93,8 +96,8 @@ export interface FilterPattern {
 /**
  * SQLAlchemy driver scheme options.
  */
-export enum StarRocksScheme {
-    StarRocks = "starrocks",
+export enum StarrocksScheme {
+    MysqlPymysql = "mysql+pymysql",
 }
 
 /**
@@ -124,6 +127,6 @@ export interface Config {
  *
  * Service type.
  */
-export enum StarRocksType {
+export enum StarrocksType {
     StarRocks = "StarRocks",
 }
