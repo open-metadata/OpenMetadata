@@ -27,19 +27,15 @@ import { SERVICE_ENTITIES } from '../../../constant/service';
 
 const testUser = new UserClass();
 
-
-
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await testUser.create(apiContext);
   await afterAction();
 });
 
-SERVICE_ENTITIES.forEach((EntityClass) => {
-  const entity = new EntityClass();
-  const entityType = entity.getType();
-
+Object.entries(SERVICE_ENTITIES).forEach(([entityType, EntityClass]) => {
   test.describe(`${entityType} Permissions`, () => {
+    const entity = new EntityClass();
     test.beforeAll('Setup entity', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await entity.create(apiContext);
@@ -54,18 +50,26 @@ SERVICE_ENTITIES.forEach((EntityClass) => {
         await afterAction();
       });
 
+      /**
+       * Tests allow permissions for common service operations
+       * @description Verifies that a user with allow permissions can perform all common operations on the service,
+       * including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms,
+       * EditCustomFields, and Delete operations
+       */
       test(`${entityType} allow common operations permissions`, async ({
         browser,
       }) => {
         test.slow(true);
-        const page = await browser.newPage();
-        await testUser.login(page);
 
-        await runCommonPermissionTests(page, entity, 'allow');
-        
-        await page.close();
+        // Create a fresh page and log in as test user to get updated permissions
+        const testUserPage = await browser.newPage();
+        try {
+          await testUser.login(testUserPage);
+          await runCommonPermissionTests(testUserPage, entity, 'allow');
+        } finally {
+          await testUserPage.close();
+        }
       });
-
     });
 
     test.describe('Deny permissions', () => {
@@ -76,16 +80,23 @@ SERVICE_ENTITIES.forEach((EntityClass) => {
         await afterAction();
       });
 
+      /**
+       * Tests deny permissions for common service operations
+       * @description Verifies that a user with deny permissions cannot perform common operations on the service,
+       * including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms,
+       * EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled
+       */
       test(`${entityType} deny common operations permissions`, async ({
         browser,
       }) => {
         test.slow(true);
-        const page = await browser.newPage();
-        await testUser.login(page);
-
-        await runCommonPermissionTests(page, entity, 'deny');
-
-        await page.close();
+        const testUserPage = await browser.newPage();
+        try {
+          await testUser.login(testUserPage);
+          await runCommonPermissionTests(testUserPage, entity, 'deny');
+        } finally {
+          await testUserPage.close();
+        }
       });
     });
   });

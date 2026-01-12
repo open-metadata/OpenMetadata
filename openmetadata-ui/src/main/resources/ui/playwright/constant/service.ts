@@ -115,13 +115,13 @@ export const DBT = {
 export const MAX_CONSECUTIVE_ERRORS = 3;
 
 // Service entity classes
-export const SERVICE_ENTITIES = [
-  ApiServiceClass,
-  DashboardServiceClass,
-  DatabaseServiceClass,
-  MessagingServiceClass,
-  MlmodelServiceClass,
-  PipelineServiceClass,
-  SearchIndexServiceClass,
-  StorageServiceClass,
-] as const;
+export const SERVICE_ENTITIES = {
+  'Api Service': ApiServiceClass,
+  'Dashboard Service': DashboardServiceClass,
+  'Database Service': DatabaseServiceClass,
+  'Messaging Service': MessagingServiceClass,
+  'Mlmodel Service': MlmodelServiceClass,
+  'Pipeline Service': PipelineServiceClass,
+  'SearchIndex Service': SearchIndexServiceClass,
+  'Storage Service': StorageServiceClass,
+} as const;
