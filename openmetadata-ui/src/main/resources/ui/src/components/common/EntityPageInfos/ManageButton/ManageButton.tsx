@@ -29,7 +29,6 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
-import { getPopupContainer } from '../../../../utils/formUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import EntityNameModal from '../../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -255,7 +254,6 @@ const ManageButton: FC<ManageButtonProps> = ({
           <Dropdown
             align={{ targetOffset: [-12, 0] }}
             dropdownRender={renderDropdownContainer}
-            getPopupContainer={getPopupContainer}
             menu={{ items }}
             overlayClassName="manage-dropdown-list-container"
             overlayStyle={{ width: '350px' }}
