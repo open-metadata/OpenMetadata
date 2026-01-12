@@ -620,6 +620,7 @@ export const updateDescriptionForChildren = async (
 ) => {
   await page
     .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('description')
     .getByTestId('edit-button')
     .click();
 
