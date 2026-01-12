@@ -621,108 +621,108 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
   // DOMAIN TESTS
   // ===================================================================
 
-  // test('Domain - rename then update description should work', async ({ page, browser }) => {
-  //   test.slow();
+  test.skip('Domain - rename then update description should work', async ({ page, browser }) => {
+    test.slow();
 
-  //   const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
-  //   const domain = new Domain();
-  //   await domain.create(apiContext);
+    const domain = new Domain();
+    await domain.create(apiContext);
 
-  //   let currentName = domain.data.name;
+    let currentName = domain.data.name;
 
-  //   try {
-  //     await redirectToHomePage(page);
+    try {
+      await redirectToHomePage(page);
 
-  //     // Navigate to domain
-  //     await sidebarClick(page, SidebarItem.DOMAIN);
-  //     await page.waitForLoadState('networkidle');
-  //     await selectDomain(page, domain.responseData);
-  //     await expect(page.getByTestId('entity-header-name')).toBeVisible();
+      // Navigate to domain
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await selectDomain(page, domain.responseData);
+      await expect(page.getByTestId('entity-header-name')).toBeVisible();
 
-  //     // Step 1: Rename the domain
-  //     const newName = `renamed-domain-${uuid()}`;
-  //     await performRename(page, newName, '/api/v1/domains/');
-  //     currentName = newName;
+      // Step 1: Rename the domain
+      const newName = `renamed-domain-${uuid()}`;
+      await performRename(page, newName, '/api/v1/domains/');
+      currentName = newName;
 
-  //     // Step 2: Update description (triggers consolidation logic)
-  //     await updateDescription(
-  //       page,
-  //       `Updated domain description ${uuid()}`,
-  //       '/api/v1/domains/'
-  //     );
+      // Step 2: Update description (triggers consolidation logic)
+      await updateDescription(
+        page,
+        `Updated domain description ${uuid()}`,
+        '/api/v1/domains/'
+      );
 
-  //     // Step 3: Verify the domain is still accessible with updated data
-  //     await expect(page.getByTestId('entity-header-name')).toContainText(
-  //       newName
-  //     );
-  //   } finally {
-  //     try {
-  //       await apiContext.delete(
-  //         `/api/v1/domains/name/${encodeURIComponent(
-  //           currentName
-  //         )}?hardDelete=true&recursive=true`
-  //       );
-  //     } catch {
-  //       try {
-  //         await domain.delete(apiContext);
-  //       } catch {
-  //         // Ignore
-  //       }
-  //     }
-  //     await afterAction();
-  //   }
-  // });
+      // Step 3: Verify the domain is still accessible with updated data
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        newName
+      );
+    } finally {
+      try {
+        await apiContext.delete(
+          `/api/v1/domains/name/${encodeURIComponent(
+            currentName
+          )}?hardDelete=true&recursive=true`
+        );
+      } catch {
+        try {
+          await domain.delete(apiContext);
+        } catch {
+          // Ignore
+        }
+      }
+      await afterAction();
+    }
+  });
 
-  // test('Domain - multiple rename + update cycles should work', async ({ page, browser }) => {
-  //   test.slow();
+  test.skip('Domain - multiple rename + update cycles should work', async ({ page, browser }) => {
+    test.slow();
 
-  //   const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
-  //   const domain = new Domain();
-  //   await domain.create(apiContext);
+    const domain = new Domain();
+    await domain.create(apiContext);
 
-  //   let currentName = domain.data.name;
+    let currentName = domain.data.name;
 
-  //   try {
-  //     await redirectToHomePage(page);
+    try {
+      await redirectToHomePage(page);
 
-  //     await sidebarClick(page, SidebarItem.DOMAIN);
-  //     await page.waitForLoadState('networkidle');
-  //     await selectDomain(page, domain.responseData);
-  //     await expect(page.getByTestId('entity-header-name')).toBeVisible();
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await selectDomain(page, domain.responseData);
+      await expect(page.getByTestId('entity-header-name')).toBeVisible();
 
-  //     // Perform 3 cycles of rename + update
-  //     for (let i = 1; i <= 3; i++) {
-  //       const newName = `renamed-domain-cycle-${i}-${uuid()}`;
-  //       await performRename(page, newName, '/api/v1/domains/');
-  //       currentName = newName;
+      // Perform 3 cycles of rename + update
+      for (let i = 1; i <= 3; i++) {
+        const newName = `renamed-domain-cycle-${i}-${uuid()}`;
+        await performRename(page, newName, '/api/v1/domains/');
+        currentName = newName;
 
-  //       await updateDescription(
-  //         page,
-  //         `Description after cycle ${i}`,
-  //         '/api/v1/domains/'
-  //       );
+        await updateDescription(
+          page,
+          `Description after cycle ${i}`,
+          '/api/v1/domains/'
+        );
 
-  //       await expect(page.getByTestId('entity-header-name')).toContainText(
-  //         newName
-  //       );
-  //     }
-  //   } finally {
-  //     try {
-  //       await apiContext.delete(
-  //         `/api/v1/domains/name/${encodeURIComponent(
-  //           currentName
-  //         )}?hardDelete=true&recursive=true`
-  //       );
-  //     } catch {
-  //       try {
-  //         await domain.delete(apiContext);
-  //       } catch {
-  //         // Ignore
-  //       }
-  //     }
-  //     await afterAction();
-  //   }
-  // });
+        await expect(page.getByTestId('entity-header-name')).toContainText(
+          newName
+        );
+      }
+    } finally {
+      try {
+        await apiContext.delete(
+          `/api/v1/domains/name/${encodeURIComponent(
+            currentName
+          )}?hardDelete=true&recursive=true`
+        );
+      } catch {
+        try {
+          await domain.delete(apiContext);
+        } catch {
+          // Ignore
+        }
+      }
+      await afterAction();
+    }
+  });
 });
