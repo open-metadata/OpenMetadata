@@ -61,7 +61,7 @@ import {
   updateTableColumn,
 } from '../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
-import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
+import { buildColumnFqn, getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
   getColumnSorter,
@@ -80,7 +80,6 @@ import {
 } from '../../../utils/TableTags/TableTags.utils';
 import {
   findColumnByEntityLink,
-  findFieldByFQN,
   getAllRowKeysByKeyName,
   getTableExpandableConfig,
   prepareConstraintIcon,
@@ -113,7 +112,6 @@ const SchemaTable = () => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
   const [editColumn, setEditColumn] = useState<Column>();
-  const [highlightedColumnFqn, setHighlightedColumnFqn] = useState<string>();
 
   const {
     currentPage,
@@ -143,9 +141,35 @@ const SchemaTable = () => {
     openColumnDetailPanel,
   } = useGenericContext<TableType>();
 
+  const { tableFqn, columnPart } = useMemo(() => {
+    const parts = decodedEntityFqn.split(FQN_SEPARATOR_CHAR);
+
+    if (parts.length > 4) {
+      const tableParts = parts.slice(0, 4);
+      const columnParts = parts.slice(4);
+
+      return {
+        tableFqn: tableParts.join(FQN_SEPARATOR_CHAR),
+        columnPart: columnParts.join(FQN_SEPARATOR_CHAR),
+      };
+    }
+
+    return {
+      tableFqn: decodedEntityFqn,
+      columnPart: undefined,
+    };
+  }, [decodedEntityFqn]);
+
+  const highlightedColumnFqn = useMemo(() => {
+    if (!columnPart) {return undefined;}
+
+    return buildColumnFqn(tableFqn, decodeURIComponent(columnPart));
+  }, [columnPart, tableFqn]);
+
   useFqnDeepLink({
     data: table.columns || [],
-    setHighlightedFqn: setHighlightedColumnFqn,
+    tableFqn,
+    columnPart,
     setExpandedRowKeys: setExpandedRowKeys,
     openColumnDetailPanel,
   });
@@ -160,40 +184,6 @@ const SchemaTable = () => {
     [testCaseSummary, table]
   );
 
-  const tableFqn = useMemo(
-    () =>
-      getPartialNameFromTableFQN(
-        decodedEntityFqn,
-        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-        FQN_SEPARATOR_CHAR
-      ),
-    [decodedEntityFqn]
-  );
-
-  // Detect if URL contains a column FQN and highlight it
-  useEffect(() => {
-    if (!decodedEntityFqn || !tableFqn || decodedEntityFqn === tableFqn) {
-      return;
-    }
-
-    // URL contains more than just the table FQN - likely a column
-    setHighlightedColumnFqn(decodedEntityFqn);
-
-    // Find and open the specific column in the side panel
-    const matchedColumn = findFieldByFQN(tableColumns ?? [], decodedEntityFqn);
-    if (matchedColumn) {
-      openColumnDetailPanel(matchedColumn);
-    }
-
-    // Clear highlight after animation completes
-    const timer = setTimeout(() => {
-      setHighlightedColumnFqn(undefined);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [decodedEntityFqn, tableFqn, tableColumns]);
-
-  // Scroll to highlighted row when columns are loaded
   useScrollToElement(
     '.highlighted-row',
     Boolean(highlightedColumnFqn && tableColumns.length > 0 && !columnsLoading)

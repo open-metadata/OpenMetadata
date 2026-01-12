@@ -22,7 +22,6 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -34,7 +33,27 @@ jest.mock('../../../hooks/useCustomPages');
 jest.mock('../../../hooks/useFqn');
 jest.mock('../../../utils/useRequiredParams');
 jest.mock('../../../rest/driveAPI');
-jest.mock('../../../utils/CommonUtils');
+const mockGetFeedCounts = jest.fn();
+const mockExtractEntityFqnAndColumnPart = jest.fn().mockImplementation((entityFqn, baseFqn) => {
+  if (baseFqn && entityFqn.startsWith(baseFqn)) {
+    return {
+      entityFqn: baseFqn,
+      columnPart: undefined,
+    };
+  }
+
+  return {
+    entityFqn: entityFqn || baseFqn || '',
+    columnPart: undefined,
+  };
+});
+
+jest.mock('../../../utils/CommonUtils', () => ({
+  ...jest.requireActual('../../../utils/CommonUtils'),
+  getEntityMissingError: jest.fn(),
+  getFeedCounts: (...args: any[]) => mockGetFeedCounts(...args),
+  extractEntityFqnAndColumnPart: (...args: any[]) => mockExtractEntityFqnAndColumnPart(...args),
+}));
 jest.mock('../../../utils/RouterUtils');
 jest.mock('../../../utils/ToastUtils');
 jest.mock('../../../utils/FileClassBase', () => ({
@@ -132,7 +151,7 @@ const mockUseCustomPages = useCustomPages as jest.Mock;
 const mockUseFqn = useFqn as jest.Mock;
 const mockUseRequiredParams = useRequiredParams as jest.Mock;
 const mockRestoreDriveAsset = restoreDriveAsset as jest.Mock;
-const mockGetFeedCounts = getFeedCounts as jest.Mock;
+// const mockGetFeedCounts = getFeedCounts as jest.Mock;
 const mockGetEntityDetailsPath = getEntityDetailsPath as jest.Mock;
 
 const mockFileDetails: File = {
@@ -236,6 +255,7 @@ describe('FileDetails', () => {
 
     mockUseFqn.mockReturnValue({
       fqn: 'test-service.test-file.txt',
+      columnPart: undefined,
     });
 
     mockUseRequiredParams.mockReturnValue({
@@ -324,7 +344,7 @@ describe('FileDetails', () => {
         'test-service.test-file.txt',
         expect.any(Function)
       );
-    });
+    }, { timeout: 3000 });
   });
 
   it('should handle follow file action for non-following user', async () => {

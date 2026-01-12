@@ -43,6 +43,7 @@ import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
 } from '../../../utils/ContainerDetailUtils';
+import { buildColumnFqn, extractEntityFqnAndColumnPart } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
@@ -77,20 +78,37 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   entityFqn,
 }) => {
   const { t } = useTranslation();
-  const { openColumnDetailPanel } = useGenericContext<Container>();
+  const { openColumnDetailPanel, data: containerData, selectedColumn } = useGenericContext<Container>();
 
   const [editContainerColumnDescription, setEditContainerColumnDescription] =
     useState<Column>();
-  const [highlightedColumnFqn, setHighlightedColumnFqn] = useState<string>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
   const schema = pruneEmptyChildren(dataModel?.columns ?? []);
 
+  const { entityFqn: containerFqn, columnPart } = useMemo(
+    () =>
+      extractEntityFqnAndColumnPart(
+        entityFqn,
+        containerData?.fullyQualifiedName,
+        2
+      ),
+    [entityFqn, containerData?.fullyQualifiedName]
+  );
+
+  const highlightedColumnFqn = useMemo(() => {
+    if (!columnPart) {return undefined;}
+
+    return buildColumnFqn(containerFqn, decodeURIComponent(columnPart));
+  }, [columnPart, containerFqn]);
+
   useFqnDeepLink({
     data: dataModel?.columns || [],
-    setHighlightedFqn: setHighlightedColumnFqn,
+    tableFqn: containerFqn,
+    columnPart,
     setExpandedRowKeys: setExpandedRowKeys,
     openColumnDetailPanel,
+    selectedColumn: selectedColumn as Column | null,
   });
 
   useScrollToElement(

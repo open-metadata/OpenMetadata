@@ -180,6 +180,10 @@ describe('Test DisplayName Component', () => {
         writeText: mockWriteText,
       },
     });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+    });
 
     const props = {
       ...mockProps,

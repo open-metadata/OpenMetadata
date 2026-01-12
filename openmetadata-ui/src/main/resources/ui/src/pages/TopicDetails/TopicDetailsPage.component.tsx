@@ -83,7 +83,10 @@ const TopicDetailsPage: FunctionComponent = () => {
     }
 
     const resolveTopicFQN = async () => {
-      setLoading(true);
+      if (decodedEntityFqn === topicFQN) {
+        return;
+      }
+
       let foundFQN = decodedEntityFqn;
       const parts = Fqn.split(decodedEntityFqn);
 
@@ -117,7 +120,7 @@ const TopicDetailsPage: FunctionComponent = () => {
     };
 
     resolveTopicFQN();
-  }, [decodedEntityFqn]);
+  }, [decodedEntityFqn, topicFQN]);
 
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
   const [isLoading, setLoading] = useState<boolean>(true);

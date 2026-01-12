@@ -119,6 +119,10 @@ jest.mock('../../rest/dataModelsAPI', () => ({
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
   getEntityMissingError: jest.fn(() => ENTITY_MISSING_ERROR),
+  extractEntityFqnAndColumnPart: jest.fn().mockReturnValue({
+    entityFqn: 'testFqn',
+    columnPart: undefined,
+  }),
 }));
 
 jest.mock('../../utils/DataModelsUtils', () => ({

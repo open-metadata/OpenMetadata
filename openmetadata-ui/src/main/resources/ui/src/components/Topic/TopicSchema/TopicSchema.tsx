@@ -40,6 +40,7 @@ import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
+import { buildColumnFqn, extractEntityFqnAndColumnPart } from '../../../utils/CommonUtils';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
@@ -84,7 +85,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const { t } = useTranslation();
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const [highlightedFieldFqn, setHighlightedFieldFqn] = useState<string>();
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.FIELDS
   );
@@ -105,7 +105,24 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     onUpdate,
     currentVersionData,
     openColumnDetailPanel,
+    selectedColumn,
   } = useGenericContext<Topic>();
+
+  const { entityFqn: topicFqn, columnPart } = useMemo(
+    () =>
+      extractEntityFqnAndColumnPart(
+        entityFqn,
+        topicDetails?.fullyQualifiedName,
+        2
+      ),
+    [entityFqn, topicDetails?.fullyQualifiedName]
+  );
+
+  const highlightedFieldFqn = useMemo(() => {
+    if (!columnPart) {return undefined;}
+
+    return buildColumnFqn(topicFqn, decodeURIComponent(columnPart));
+  }, [columnPart, topicFqn]);
 
   const isReadOnly = useMemo(() => {
     // If there is a current version, it should be read only
@@ -199,22 +216,25 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const handleColumnClick = useCallback(
     (field: Field, event: React.MouseEvent) => {
       const target = event.target as HTMLElement;
-      const isExpandIcon = target.closest('.table-expand-icon') !== null;
-      const isButton = target.closest('button') !== null;
-
-      if (!isExpandIcon && !isButton) {
-        openColumnDetailPanel(field);
+      if (
+        target.closest(
+          'button, a, input, textarea, select, .table-expand-icon'
+        ) !== null
+      ) {
+        return;
       }
+      openColumnDetailPanel(field);
     },
     [openColumnDetailPanel]
   );
 
   useFqnDeepLink({
     data: topicDetails?.messageSchema?.schemaFields ?? [],
-    setHighlightedFqn: setHighlightedFieldFqn,
+    tableFqn: topicFqn,
+    columnPart,
     setExpandedRowKeys: setExpandedRowKeys,
     openColumnDetailPanel,
-    timeoutMs: 2000,
+    selectedColumn: selectedColumn as Field | null,
   });
 
   const toggleExpandAll = () => {

@@ -293,6 +293,10 @@ describe('ContainerDataModel', () => {
         writeText: mockWriteText,
       },
     });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+    });
 
     render(
       <MemoryRouter>

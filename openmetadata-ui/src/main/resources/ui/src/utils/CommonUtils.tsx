@@ -172,6 +172,106 @@ export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
   );
 };
 
+export const getColumnPartFromFqn = (
+  fullColumnFqn: string,
+  tableFqn: string
+): string => {
+  if (!fullColumnFqn || !tableFqn) {
+    return '';
+  }
+
+  if (fullColumnFqn.startsWith(tableFqn + FQN_SEPARATOR_CHAR)) {
+    return fullColumnFqn.substring(tableFqn.length + 1);
+  }
+
+  return getPartialNameFromTableFQN(
+    fullColumnFqn,
+    [FqnPart.NestedColumn],
+    FQN_SEPARATOR_CHAR
+  );
+};
+
+export const buildColumnFqn = (
+  tableFqn: string,
+  columnPart: string
+): string => {
+  if (!tableFqn || !columnPart) {
+    return '';
+  }
+
+  return Fqn.build(...Fqn.split(tableFqn), ...Fqn.split(columnPart));
+};
+
+/**
+ * Extracts the entity FQN and column part from a full FQN.
+ * If the entityFqn contains a column reference (longer than the base FQN),
+ * it splits them. Otherwise, returns the entityFqn as-is with undefined columnPart.
+ * Uses Fqn.split() to properly handle quoted names in FQNs.
+ *
+ * @param entityFqn - The full FQN from the URL/route
+ * @param baseFqn - The base FQN of the entity (e.g., container, topic, apiEndpoint)
+ * @param minPartsLength - Minimum number of parts required to consider it a column FQN (default: 3)
+ * @returns Object with entityFqn and columnPart (undefined if no column part exists)
+ */
+export const extractEntityFqnAndColumnPart = (
+  entityFqn: string,
+  baseFqn: string | undefined,
+  minPartsLength = 3
+): { entityFqn: string; columnPart: string | undefined } => {
+  // Use Fqn.split() to properly handle quoted names (e.g., "2. Phase II or Combined I/II")
+  const entityParts = Fqn.split(entityFqn);
+
+  // If baseFqn is provided, use it for comparison
+  if (baseFqn) {
+    const baseParts = Fqn.split(baseFqn);
+
+    // Check if entityFqn starts with baseFqn by comparing parts
+    const partsMatch =
+      entityParts.length > baseParts.length &&
+      baseParts.every((part, index) => part === entityParts[index]);
+
+    if (partsMatch && entityFqn !== baseFqn) {
+      // Extract the column parts (everything after the base parts)
+      const columnParts = entityParts.slice(baseParts.length);
+      
+      // Rebuild the column part using Fqn.build() to ensure proper formatting
+      // This handles quoted names correctly
+      const columnPart = Fqn.build(...columnParts);
+
+      return {
+        entityFqn: baseFqn,
+        columnPart: columnPart,
+      };
+    }
+
+    return {
+      entityFqn,
+      columnPart: undefined,
+    };
+  }
+
+  // If baseFqn is not provided, extract base FQN from entityFqn if it has more than minPartsLength parts
+  if (entityParts.length > minPartsLength) {
+    // Extract the base parts (first minPartsLength parts)
+    const baseParts = entityParts.slice(0, minPartsLength);
+    const columnParts = entityParts.slice(minPartsLength);
+    
+    // Rebuild both using Fqn.build() to ensure proper formatting
+    const extractedBaseFqn = Fqn.build(...baseParts);
+    const columnPart = Fqn.build(...columnParts);
+
+    return {
+      entityFqn: extractedBaseFqn,
+      columnPart: columnPart,
+    };
+  }
+
+  return {
+    entityFqn,
+    columnPart: undefined,
+  };
+};
+
 export const pluralize = (count: number, noun: string, suffix = 's') => {
   const countString = count.toLocaleString();
   if (count !== 1 && count !== 0 && !noun.endsWith(suffix)) {

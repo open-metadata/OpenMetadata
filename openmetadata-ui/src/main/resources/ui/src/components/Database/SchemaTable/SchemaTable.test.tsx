@@ -444,6 +444,10 @@ describe('Test EntityTable Component', () => {
         writeText: mockWriteText,
       },
     });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+    });
 
     (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
       data: mockColumns,

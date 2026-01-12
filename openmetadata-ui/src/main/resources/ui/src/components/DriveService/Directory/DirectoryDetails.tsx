@@ -38,7 +38,10 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  extractEntityFqnAndColumnPart,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -97,10 +100,23 @@ function DirectoryDetails({
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.CHILDREN } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedDirectoryFQN } = useFqn();
+  const { fqn: urlFqn } = useFqn();
   const navigate = useNavigate();
   const { customizedPage, isLoading } = useCustomPages(PageType.Directory);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
+
+  // Extract base FQN from URL (removes column part if present)
+  // Use directoryDetails.fullyQualifiedName if available, otherwise extract from URL
+  const decodedDirectoryFQN = useMemo(() => {
+    const baseFqn = directoryDetails?.fullyQualifiedName;
+    const { entityFqn } = extractEntityFqnAndColumnPart(
+      urlFqn,
+      baseFqn,
+      2
+    );
+
+    return entityFqn;
+  }, [urlFqn, directoryDetails?.fullyQualifiedName]);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -263,12 +279,14 @@ function DirectoryDetails({
     setFeedCount(data);
   }, []);
 
-  const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.DIRECTORY, decodedDirectoryFQN, handleFeedCount);
+  const getEntityFeedCount = useCallback(
+    () => getFeedCounts(EntityType.DIRECTORY, decodedDirectoryFQN, handleFeedCount),
+    [decodedDirectoryFQN, handleFeedCount]
+  );
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    [navigate]
   );
 
   const {
@@ -319,7 +337,7 @@ function DirectoryDetails({
 
   useEffect(() => {
     getEntityFeedCount();
-  }, [directoryPermissions, decodedDirectoryFQN]);
+  }, [getEntityFeedCount]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

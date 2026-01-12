@@ -19,6 +19,9 @@ import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { MlFeature, Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { TagSource } from '../../../generated/type/schema';
+import { useFqn } from '../../../hooks/useFqn';
+import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
+import { extractEntityFqnAndColumnPart } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -35,8 +38,17 @@ const MlModelFeaturesList = () => {
     {} as MlFeature
   );
   const [editDescription, setEditDescription] = useState<boolean>(false);
-  const { data, onUpdate, permissions, openColumnDetailPanel } =
+  const [_expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const { data, onUpdate, permissions, openColumnDetailPanel, selectedColumn } =
     useGenericContext<Mlmodel>();
+
+  const { fqn: urlFqn } = useFqn();
+
+  // Extract base FQN and column part from URL
+  const { entityFqn: mlModelFqn, columnPart } = useMemo(
+    () => extractEntityFqnAndColumnPart(urlFqn, data?.fullyQualifiedName, 2),
+    [urlFqn, data?.fullyQualifiedName]
+  );
 
   const { mlFeatures, isDeleted, entityFqn } = useMemo(() => {
     return {
@@ -45,6 +57,16 @@ const MlModelFeaturesList = () => {
       entityFqn: data?.fullyQualifiedName ?? '',
     };
   }, [data]);
+
+  // Use deep link hook to handle URL-based column selection
+  useFqnDeepLink({
+    data: mlFeatures || [],
+    tableFqn: mlModelFqn,
+    columnPart,
+    setExpandedRowKeys: setExpandedRowKeys,
+    openColumnDetailPanel,
+    selectedColumn: selectedColumn as MlFeature | null,
+  });
 
   const hasEditPermission = useMemo(
     () => permissions.EditTags || permissions.EditAll,

@@ -22,6 +22,7 @@ import Loader from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import MlModelDetailComponent from '../../components/MlModel/MlModelDetail/MlModelDetail.component';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -44,6 +45,7 @@ import {
   getEntityMissingError,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import Fqn from '../../utils/Fqn';
 import { defaultFields } from '../../utils/MlModelDetailsUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
@@ -56,8 +58,50 @@ const MlModelPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const navigate = useNavigate();
-  const { fqn: mlModelFqn } = useFqn();
+  const { fqn: decodedEntityFqn } = useFqn();
+  const [mlModelFqn, setMlModelFqn] = useState<string>('');
   const [mlModelDetail, setMlModelDetail] = useState<Mlmodel>({} as Mlmodel);
+
+  useEffect(() => {
+    if (!decodedEntityFqn) {
+      return;
+    }
+
+    const resolveMlModelFQN = async () => {
+      if (decodedEntityFqn === mlModelFqn) {
+        return;
+      }
+
+      let foundFQN = decodedEntityFqn;
+      const parts = Fqn.split(decodedEntityFqn);
+
+      while (parts.length >= 2) {
+        const candidateFQN = parts.join(FQN_SEPARATOR_CHAR);
+        try {
+          await getMlModelByFQN(candidateFQN, {
+            fields: defaultFields,
+          });
+          foundFQN = candidateFQN;
+          break;
+        } catch (error) {
+          if (
+            (error as AxiosError).response?.status === ClientErrors.NOT_FOUND &&
+            parts.length > 2
+          ) {
+            parts.pop();
+          } else {
+            if (parts.length === 2) {
+              foundFQN = candidateFQN;
+            }
+            break;
+          }
+        }
+      }
+      setMlModelFqn(foundFQN);
+    };
+
+    resolveMlModelFQN();
+  }, [decodedEntityFqn, mlModelFqn]);
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
   const USERId = currentUser?.id ?? '';
 
@@ -292,7 +336,9 @@ const MlModelPage = () => {
   };
 
   useEffect(() => {
-    fetchResourcePermission(mlModelFqn);
+    if (mlModelFqn) {
+      fetchResourcePermission(mlModelFqn);
+    }
   }, [mlModelFqn]);
 
   if (isDetailLoading) {

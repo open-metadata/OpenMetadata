@@ -24,7 +24,7 @@ export const ContainerWidget = () => {
     permissions,
     onUpdate,
   } = useGenericContext<Container>();
-  const { fqn: decodedContainerName } = useFqn();
+  const { fqn: entityFqn } = useFqn();
 
   const {
     editDescriptionPermission,
@@ -66,7 +66,7 @@ export const ContainerWidget = () => {
   return (
     <ContainerDataModel
       dataModel={containerData?.dataModel}
-      entityFqn={decodedContainerName}
+      entityFqn={entityFqn}
       hasDescriptionEditAccess={editDescriptionPermission}
       hasGlossaryTermEditAccess={editGlossaryTermsPermission}
       hasTagEditAccess={editTagsPermission}

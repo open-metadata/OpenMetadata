@@ -200,7 +200,6 @@ test.describe('Container entity specific tests ', () => {
       clipboardText,
       expectedEntityType: 'container',
       entityFqn: container.entityResponseData?.['fullyQualifiedName'] ?? '',
-      options: { expectFragment: true },
     });
 
     expect(validationResult.isValid).toBe(true);
@@ -220,5 +219,12 @@ test.describe('Container entity specific tests ', () => {
     if (columnName) {
       await expect(sidePanel).toContainText(columnName);
     }
+
+    // Close side panel
+    await page.getByTestId('close-button').click();
+    await expect(sidePanel).not.toBeVisible();
+
+    // Verify URL does not contain the column part
+    await expect(page).toHaveURL(new RegExp(`/container/${container.entityResponseData?.['fullyQualifiedName']}$`));
   });
 });

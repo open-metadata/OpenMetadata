@@ -37,7 +37,10 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  extractEntityFqnAndColumnPart,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -95,10 +98,23 @@ function WorksheetDetails({
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedWorksheetFQN } = useFqn();
+  const { fqn: urlFqn } = useFqn();
   const navigate = useNavigate();
   const { customizedPage, isLoading } = useCustomPages(PageType.Worksheet);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
+
+  // Extract base FQN from URL (removes column part if present)
+  // Use worksheetDetails.fullyQualifiedName if available, otherwise extract from URL
+  const decodedWorksheetFQN = useMemo(() => {
+    const baseFqn = worksheetDetails?.fullyQualifiedName;
+    const { entityFqn } = extractEntityFqnAndColumnPart(
+      urlFqn,
+      baseFqn,
+      2
+    );
+
+    return entityFqn;
+  }, [urlFqn, worksheetDetails?.fullyQualifiedName]);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -245,12 +261,14 @@ function WorksheetDetails({
     setFeedCount(data);
   }, []);
 
-  const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.WORKSHEET, decodedWorksheetFQN, handleFeedCount);
+  const getEntityFeedCount = useCallback(
+    () => getFeedCounts(EntityType.WORKSHEET, decodedWorksheetFQN, handleFeedCount),
+    [decodedWorksheetFQN, handleFeedCount]
+  );
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    [navigate]
   );
 
   const {
@@ -301,7 +319,7 @@ function WorksheetDetails({
 
   useEffect(() => {
     getEntityFeedCount();
-  }, [worksheetPermissions, decodedWorksheetFQN]);
+  }, [getEntityFeedCount]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

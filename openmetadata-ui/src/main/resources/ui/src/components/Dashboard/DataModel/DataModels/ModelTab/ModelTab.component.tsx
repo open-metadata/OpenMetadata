@@ -34,11 +34,13 @@ import {
   searchDataModelColumnsByFQN,
   updateDataModelColumn,
 } from '../../../../../rest/dataModelsAPI';
+import { buildColumnFqn, extractEntityFqnAndColumnPart } from '../../../../../utils/CommonUtils';
 import {
   getColumnSorter,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
+import { useFqn } from '../../../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../../../hooks/useFqnDeepLink';
 import {
   getAllTags,
@@ -64,11 +66,11 @@ import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEdi
 
 const ModelTab = () => {
   const { t } = useTranslation();
+  const { fqn: urlFqn } = useFqn();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
-  const [highlightedColumnFqn, setHighlightedColumnFqn] = useState<string>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
-  const { openColumnDetailPanel } = useGenericContext<DashboardDataModel>();
+  const { openColumnDetailPanel, selectedColumn } = useGenericContext<DashboardDataModel>();
 
 
   const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
@@ -87,6 +89,22 @@ const ModelTab = () => {
   const { data: dataModel, permissions } =
     useGenericContext<DashboardDataModel>();
   const { fullyQualifiedName: entityFqn, deleted: isReadOnly } = dataModel;
+
+  const { entityFqn: modelFqn, columnPart } = useMemo(
+    () =>
+      extractEntityFqnAndColumnPart(
+        urlFqn,
+        entityFqn,
+        3
+      ),
+    [urlFqn, entityFqn]
+  );
+
+  const highlightedColumnFqn = useMemo(() => {
+    if (!columnPart) {return undefined;}
+
+    return buildColumnFqn(modelFqn, decodeURIComponent(columnPart));
+  }, [columnPart, modelFqn]);
 
   // Always use paginated columns, never dataModel.columns directly
   const data = paginatedColumns;
@@ -183,9 +201,11 @@ const ModelTab = () => {
 
   useFqnDeepLink({
     data: paginatedColumns,
-    setHighlightedFqn: setHighlightedColumnFqn,
+    tableFqn: modelFqn,
+    columnPart,
     setExpandedRowKeys: setExpandedRowKeys,
     openColumnDetailPanel,
+    selectedColumn: selectedColumn as Column | null,
   });
   
   const getRowClassName = useCallback(

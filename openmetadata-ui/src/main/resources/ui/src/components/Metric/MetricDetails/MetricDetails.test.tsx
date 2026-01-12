@@ -82,6 +82,10 @@ jest.mock('../../../utils/useRequiredParams', () => ({
 
 jest.mock('../../../utils/CommonUtils', () => ({
   getFeedCounts: jest.fn(),
+  extractEntityFqnAndColumnPart: jest.fn().mockReturnValue({
+    entityFqn: 'test.metric',
+    columnPart: undefined,
+  }),
 }));
 
 jest.mock(

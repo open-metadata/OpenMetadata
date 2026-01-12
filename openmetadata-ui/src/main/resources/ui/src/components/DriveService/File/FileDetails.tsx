@@ -37,7 +37,10 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  extractEntityFqnAndColumnPart,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -95,10 +98,23 @@ function FileDetails({
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.OVERVIEW } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedFileFQN } = useFqn();
+  const { fqn: urlFqn } = useFqn();
   const navigate = useNavigate();
   const { customizedPage, isLoading } = useCustomPages(PageType.File);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
+
+  // Extract base FQN from URL (removes column part if present)
+  // Use fileDetails.fullyQualifiedName if available, otherwise extract from URL
+  const decodedFileFQN = useMemo(() => {
+    const baseFqn = fileDetails?.fullyQualifiedName;
+    const { entityFqn } = extractEntityFqnAndColumnPart(
+      urlFqn,
+      baseFqn,
+      2
+    );
+
+    return entityFqn;
+  }, [urlFqn, fileDetails?.fullyQualifiedName]);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -239,12 +255,14 @@ function FileDetails({
     setFeedCount(data);
   }, []);
 
-  const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.FILE, decodedFileFQN, handleFeedCount);
+  const getEntityFeedCount = useCallback(
+    () => getFeedCounts(EntityType.FILE, decodedFileFQN, handleFeedCount),
+    [decodedFileFQN, handleFeedCount]
+  );
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    [navigate]
   );
 
   const {
@@ -291,7 +309,7 @@ function FileDetails({
 
   useEffect(() => {
     getEntityFeedCount();
-  }, [filePermissions, decodedFileFQN]);
+  }, [getEntityFeedCount]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

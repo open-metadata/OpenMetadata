@@ -95,7 +95,6 @@ test.describe('Topic entity specific tests ', () => {
       clipboardText,
       expectedEntityType: 'topic',
       entityFqn: topic.entityResponseData?.['fullyQualifiedName'] ?? '',
-      options: { expectFragment: true },
     });
 
     expect(validationResult.isValid).toBe(true);
@@ -108,6 +107,13 @@ test.describe('Topic entity specific tests ', () => {
     // Verify side panel is open
     const sidePanel = page.locator('.column-detail-panel');
     await expect(sidePanel).toBeVisible();
+
+    // Close side panel
+    await page.getByTestId('close-button').click();
+    await expect(sidePanel).not.toBeVisible();
+
+    // Verify URL does not contain the column part
+    await expect(page).toHaveURL(new RegExp(`/topic/${topic.entityResponseData?.['fullyQualifiedName']}$`));
   });
 
   test('Copy nested field link should include full hierarchical path', async ({
@@ -158,6 +164,13 @@ test.describe('Topic entity specific tests ', () => {
         // Verify side panel is open
         const sidePanel = page.locator('.column-detail-panel');
         await expect(sidePanel).toBeVisible();
+
+        // Close side panel
+        await page.getByTestId('close-button').click();
+        await expect(sidePanel).not.toBeVisible();
+
+        // Verify URL does not contain the column part
+        await expect(page).toHaveURL(new RegExp(`/topic/${topic.entityResponseData?.['fullyQualifiedName']}$`));
       }
     }
   });

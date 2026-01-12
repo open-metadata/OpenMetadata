@@ -46,7 +46,6 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
-  FqnPart,
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
@@ -79,7 +78,6 @@ import {
 import {
   addToRecentViewed,
   getFeedCounts,
-  getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
@@ -134,15 +132,26 @@ const TableDetailsPageV1: React.FC = () => {
   const { customizedPage, isLoading } = useCustomPages(PageType.Table);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
-  const tableFqn = useMemo(
-    () =>
-      getPartialNameFromTableFQN(
-        datasetFQN,
-        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-        FQN_SEPARATOR_CHAR
-      ),
-    [datasetFQN]
-  );
+  const { tableFqn, columnFqn, columnPart } = useMemo(() => {
+    const parts = datasetFQN.split(FQN_SEPARATOR_CHAR);
+
+    if (parts.length > 4) {
+      const tableParts = parts.slice(0, 4);
+      const columnParts = parts.slice(4);
+
+      return {
+        tableFqn: tableParts.join(FQN_SEPARATOR_CHAR),
+        columnFqn: datasetFQN,
+        columnPart: columnParts.join(FQN_SEPARATOR_CHAR),
+      };
+    }
+
+    return {
+      tableFqn: datasetFQN,
+      columnFqn: undefined,
+      columnPart: undefined,
+    };
+  }, [datasetFQN]);
 
   const alertBadge = useMemo(() => {
     return tableClassBase.getAlertEnableStatus() && dqFailureCount > 0 ? (
@@ -553,6 +562,8 @@ const TableDetailsPageV1: React.FC = () => {
       fetchTableDetails,
       isViewTableType,
       labelMap: tabLabelMap,
+      columnFqn,
+      columnPart,
     });
 
     const updatedTabs = getDetailsTabWithNewLabel(
@@ -582,6 +593,8 @@ const TableDetailsPageV1: React.FC = () => {
     editLineagePermission,
     fetchTableDetails,
     isViewTableType,
+    columnFqn,
+    columnPart,
   ]);
 
   const isExpandViewSupported = useMemo(

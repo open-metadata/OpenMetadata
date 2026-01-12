@@ -83,18 +83,53 @@ function SearchIndexDetailsPage() {
   const { fqn: decodedEntityFqn } = useFqn();
   const { t } = useTranslation();
 
-  // Extract just the search index FQN (service.searchIndex) from the URL
+  // Extract the search index FQN from the URL
   // The URL might contain field path like: service.searchIndex.fieldName.nestedField
-  const decodedSearchIndexFQN = useMemo(() => {
-    if (!decodedEntityFqn) {
-      return '';
-    }
-    const splitFqn = Fqn.split(decodedEntityFqn);
+  const [decodedSearchIndexFQN, setDecodedSearchIndexFQN] = useState<string>('');
 
-    // Search Index FQN has 2 parts: service, searchIndex
-    // Take only the first 2 parts
-    return splitFqn.slice(0, 2).join(FQN_SEPARATOR_CHAR);
-  }, [decodedEntityFqn]);
+  useEffect(() => {
+    if (!decodedEntityFqn) {
+      return;
+    }
+
+    const resolveSearchIndexFQN = async () => {
+      if (decodedEntityFqn === decodedSearchIndexFQN) {
+        return;
+      }
+
+      let foundFQN = decodedEntityFqn;
+      const parts = Fqn.split(decodedEntityFqn);
+
+      // Try finding the Search Index by successively removing the last segment
+      // until we find a match or run out of segments (min 2: service.searchIndex)
+      while (parts.length >= 2) {
+        const candidateFQN = parts.join(FQN_SEPARATOR_CHAR);
+        try {
+          await getSearchIndexDetailsByFQN(candidateFQN, {
+            fields: defaultFields, // Minimal fetch check (defaultFields is used in main fetch too)
+          });
+          foundFQN = candidateFQN;
+
+          break; // Found valid entity
+        } catch {
+          // If 404 and we have more than 2 parts, pop and retry
+          if (parts.length > 2) {
+            parts.pop();
+          } else {
+            // Down to 2 parts, stop
+            if (parts.length === 2) {
+              foundFQN = candidateFQN;
+            }
+
+            break;
+          }
+        }
+      }
+      setDecodedSearchIndexFQN(foundFQN);
+    };
+
+    resolveSearchIndexFQN();
+  }, [decodedEntityFqn, decodedSearchIndexFQN]);
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';

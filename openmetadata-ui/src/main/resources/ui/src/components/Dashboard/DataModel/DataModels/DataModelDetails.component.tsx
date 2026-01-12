@@ -27,7 +27,10 @@ import { useCustomPages } from '../../../../hooks/useCustomPages';
 import { useFqn } from '../../../../hooks/useFqn';
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { restoreDataModel } from '../../../../rest/dataModelsAPI';
-import { getFeedCounts } from '../../../../utils/CommonUtils';
+import {
+  extractEntityFqnAndColumnPart,
+  getFeedCounts,
+} from '../../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -67,7 +70,7 @@ const DataModelDetails = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedDataModelFQN } = useFqn();
+  const { fqn: urlFqn } = useFqn();
   const { customizedPage, isLoading } = useCustomPages(
     PageType.DashboardDataModel
   );
@@ -75,6 +78,19 @@ const DataModelDetails = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+
+  // Extract base FQN from URL (removes column part if present)
+  // Use dataModelData.fullyQualifiedName if available, otherwise extract from URL
+  const decodedDataModelFQN = useMemo(() => {
+    const baseFqn = dataModelData?.fullyQualifiedName;
+    const { entityFqn } = extractEntityFqnAndColumnPart(
+      urlFqn,
+      baseFqn,
+      3
+    );
+
+    return entityFqn;
+  }, [urlFqn, dataModelData?.fullyQualifiedName]);
 
   const { deleted, version } = useMemo(() => {
     return {

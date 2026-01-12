@@ -39,6 +39,10 @@ import {
   updateWidgetHeightRecursively,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import {
+  getEntityDetailsPath,
+  getEntityDetailsPathWithColumn,
+} from '../../../utils/RouterUtils';
+import {
   extractColumnsFromData,
   findFieldByFQN,
 } from '../../../utils/TableUtils';
@@ -184,19 +188,51 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     setLayout((prev) => updateWidgetHeightRecursively(widgetId, height, prev));
   }, []);
 
-  const openColumnDetailPanel = useCallback((column: ColumnOrTask) => {
-    setSelectedColumn(column);
-  }, []);
+  const openColumnDetailPanel = useCallback(
+    (column: ColumnOrTask) => {
+      const columnFqn = column.fullyQualifiedName;
+      
+      // If the column is already selected, don't do anything to avoid loops
+      if (selectedColumn?.fullyQualifiedName === columnFqn) {
+        return;
+      }
+      
+      // Set selected column immediately to avoid flicker
+      setSelectedColumn(column);
+      
+      // Update URL to include column FQN if the column has a fullyQualifiedName
+      if (columnFqn && data.fullyQualifiedName) {
+        const newPath = getEntityDetailsPathWithColumn(
+          type,
+          data.fullyQualifiedName,
+          columnFqn,
+          tab
+        );
+        
+        // Only navigate if the path is different from current path to avoid loops
+        if (location.pathname !== newPath) {
+          navigate(newPath, { replace: true });
+        }
+      }
+    },
+    [data.fullyQualifiedName, type, tab, navigate, location.pathname, selectedColumn?.fullyQualifiedName]
+  );
 
   const closeColumnDetailPanel = useCallback(() => {
     setSelectedColumn(null);
-    if (location.hash) {
+    
+    // Update URL to remove column FQN
+    if (data.fullyQualifiedName) {
+      const newPath = getEntityDetailsPath(type, data.fullyQualifiedName, tab);
+      navigate(newPath, { replace: true });
+    } else if (location.hash) {
+      // Fallback: just remove hash if no FQN available
       navigate(
         { pathname: location.pathname, search: location.search },
         { replace: true }
       );
     }
-  }, [location, navigate]);
+  }, [data.fullyQualifiedName, type, tab, location, navigate]);
 
   // Wrapper for onColumnFieldUpdate that updates selectedColumn after the update completes
   const handleColumnFieldUpdate = useCallback(
@@ -221,9 +257,31 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     [data, type, onUpdate, selectedColumn, cleanColumn]
   );
 
-  const handleColumnNavigate = useCallback((column: ColumnOrTask) => {
-    setSelectedColumn(column);
-  }, []);
+  const handleColumnNavigate = useCallback(
+    (column: ColumnOrTask) => {
+      const columnFqn = column.fullyQualifiedName;
+
+      if (selectedColumn?.fullyQualifiedName === columnFqn) {
+        return;
+      }
+
+      setSelectedColumn(column);
+
+      if (columnFqn && data.fullyQualifiedName) {
+        const newPath = getEntityDetailsPathWithColumn(
+          type,
+          data.fullyQualifiedName,
+          columnFqn,
+          tab
+        );
+
+        if (location.pathname !== newPath) {
+          navigate(newPath, { replace: true });
+        }
+      }
+    },
+    [selectedColumn, data, type, tab, location, navigate]
+  );
 
   // Extract deleted status from entity data
   const deleted = (data as { deleted?: boolean })?.deleted;

@@ -16,8 +16,8 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { useCopyEntityLink } from '../../../hooks/useCopyEntityLink';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useClipboard } from '../../../hooks/useClipBoard';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 
 interface CopyLinkButtonProps {
   entityType: EntityType;
@@ -31,25 +31,22 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
   testId = 'copy-field-link-button',
 }) => {
   const { t } = useTranslation();
-  const { data } = useGenericContext();
-
-  const { copyEntityLink, copiedFqn } = useCopyEntityLink(
-    entityType,
-    data?.fullyQualifiedName
-  );
+  const { onCopyToClipBoard, hasCopied } = useClipboard('');
 
   const handleCopyFieldLink = useCallback(
     async (fqn: string) => {
-      await copyEntityLink(fqn);
+      const path = getEntityDetailsPath(entityType, fqn);
+      const link = `${window.location.origin}${path}`;
+      await onCopyToClipBoard(link);
     },
-    [copyEntityLink]
+    [entityType, onCopyToClipBoard]
   );
 
   return (
     <Tooltip
       placement="top"
       title={
-        copiedFqn === fieldFqn
+        hasCopied
           ? t('message.link-copy-to-clipboard')
           : t('label.copy-item', { item: t('label.url-uppercase') })
       }>

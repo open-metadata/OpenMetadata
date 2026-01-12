@@ -36,6 +36,7 @@ describe('useFqn', () => {
       fqn: 'sample_data.db_sample.schema_sample.dim/client.',
       ingestionFQN: 'sample_data.db_sample.schema_sample.dim/client.',
       ruleName: 'testing / policy rule do not use',
+      columnPart: '',
     });
   });
 
@@ -48,6 +49,7 @@ describe('useFqn', () => {
       fqn: '',
       ingestionFQN: '',
       ruleName: '',
+      columnPart: '',
     });
   });
 });

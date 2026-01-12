@@ -62,8 +62,10 @@ import {
   highlightSearchText,
 } from '../../../utils/EntityUtils';
 import { useCopyEntityLink } from '../../../hooks/useCopyEntityLink';
+import { useFqn } from '../../../hooks/useFqn';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
+import { buildColumnFqn, extractEntityFqnAndColumnPart } from '../../../utils/CommonUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import {
@@ -101,23 +103,41 @@ const SearchIndexFieldsTable = ({
     []
   );
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const [highlightedFieldFqn, setHighlightedFieldFqn] = useState<string>();
 
   const { copyEntityLink, copiedFqn: copiedFieldFqn } = useCopyEntityLink(
     EntityType.SEARCH_INDEX,
     entityFqn
   );
 
-  const { openColumnDetailPanel, permissions } =
+  const { openColumnDetailPanel, permissions, data: searchIndexData, selectedColumn } =
     useGenericContext<SearchIndex>();
 
+  const { fqn: urlFqn } = useFqn();
 
+  // Extract base FQN and column part from URL
+  const { entityFqn: searchIndexFqn, columnPart } = useMemo(
+    () =>
+      extractEntityFqnAndColumnPart(
+        urlFqn,
+        searchIndexData?.fullyQualifiedName,
+        2
+      ),
+    [urlFqn, searchIndexData?.fullyQualifiedName]
+  );
+
+  const highlightedFieldFqn = useMemo(() => {
+    if (!columnPart) {return undefined;}
+
+    return buildColumnFqn(searchIndexFqn, decodeURIComponent(columnPart));
+  }, [columnPart, searchIndexFqn]);
 
   useFqnDeepLink({
     data: searchIndexFields,
-    setHighlightedFqn: setHighlightedFieldFqn,
+    tableFqn: searchIndexFqn,
+    columnPart,
     setExpandedRowKeys: setExpandedRowKeys,
     openColumnDetailPanel,
+    selectedColumn: selectedColumn as SearchIndexField | null,
   });
 
   // Scroll to highlighted row when fields are loaded

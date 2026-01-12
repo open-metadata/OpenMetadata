@@ -296,6 +296,10 @@ describe('Topic Schema', () => {
         writeText: mockWriteText,
       },
     });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+    });
 
     render(
       <MemoryRouter>

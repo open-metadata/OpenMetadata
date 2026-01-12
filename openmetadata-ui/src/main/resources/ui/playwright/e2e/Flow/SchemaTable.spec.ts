@@ -224,7 +224,6 @@ test('Copy column link should have valid URL format', async ({ page }) => {
     clipboardText,
     expectedEntityType: 'table',
     entityFqn: table.entityResponseData?.['fullyQualifiedName'] ?? '',
-    options: { expectFragment: false },
   });
 
   expect(validationResult.isValid).toBe(true);
@@ -242,6 +241,13 @@ test('Copy column link should have valid URL format', async ({ page }) => {
   if (columnName) {
     await expect(sidePanel).toContainText(columnName);
   }
+
+  // Close side panel
+  await page.getByTestId('close-button').click();
+  await expect(sidePanel).not.toBeVisible();
+
+  // Verify URL does not contain the column part
+  await expect(page).toHaveURL(new RegExp(`/table/${table.entityResponseData?.['fullyQualifiedName']}$`));
 });
 
 test('Copy nested column link should include full hierarchical path', async ({ page }) => {
@@ -290,6 +296,13 @@ test('Copy nested column link should include full hierarchical path', async ({ p
       if (nestedColumnName) {
         await expect(sidePanel).toContainText(nestedColumnName);
       }
+
+      // Close side panel
+      await page.getByTestId('close-button').click();
+      await expect(sidePanel).not.toBeVisible();
+
+      // Verify URL does not contain the column part
+      await expect(page).toHaveURL(new RegExp(`/table/${table.entityResponseData?.['fullyQualifiedName']}$`));
     }
   }
 });

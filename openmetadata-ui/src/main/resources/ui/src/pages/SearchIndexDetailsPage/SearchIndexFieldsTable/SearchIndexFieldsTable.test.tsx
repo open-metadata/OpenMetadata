@@ -225,6 +225,10 @@ describe('SearchIndexFieldsTable component', () => {
         writeText: mockWriteText,
       },
     });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+    });
 
     await act(async () => {
       render(

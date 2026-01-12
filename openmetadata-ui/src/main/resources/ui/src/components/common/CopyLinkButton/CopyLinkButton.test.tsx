@@ -12,19 +12,21 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
-import { useCopyEntityLink } from '../../../hooks/useCopyEntityLink';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useClipboard } from '../../../hooks/useClipBoard';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import CopyLinkButton from './CopyLinkButton';
 
-jest.mock('../../../hooks/useCopyEntityLink', () => ({
-  useCopyEntityLink: jest.fn(),
+jest.mock('../../../hooks/useClipBoard', () => ({
+  useClipboard: jest.fn(),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
-  useGenericContext: jest.fn(),
+jest.mock('../../../utils/RouterUtils', () => ({
+  getEntityDetailsPath: jest.fn((entityType: EntityType, fqn: string) => {
+    return `/${entityType.toLowerCase()}/${fqn}`;
+  }),
 }));
 
-const mockCopyEntityLink = jest.fn();
+const mockOnCopyToClipBoard = jest.fn();
 
 describe('CopyLinkButton', () => {
   const defaultProps = {
@@ -35,13 +37,15 @@ describe('CopyLinkButton', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useCopyEntityLink as jest.Mock).mockReturnValue({
-      copyEntityLink: mockCopyEntityLink,
-      copiedFqn: '',
+    (useClipboard as jest.Mock).mockReturnValue({
+      onCopyToClipBoard: mockOnCopyToClipBoard,
+      hasCopied: false,
     });
-    (useGenericContext as jest.Mock).mockReturnValue({
-      data: { fullyQualifiedName: 'test.database.schema.table' },
-    });
+    (getEntityDetailsPath as jest.Mock).mockImplementation(
+      (entityType: EntityType, fqn: string) => {
+        return `/${entityType.toLowerCase()}/${fqn}`;
+      }
+    );
   });
 
   it('should render the copy button', () => {
@@ -75,14 +79,16 @@ describe('CopyLinkButton', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(mockCopyEntityLink).toHaveBeenCalledWith(defaultProps.fieldFqn);
+      const expectedLink = `${window.location.origin}/table/${defaultProps.fieldFqn}`;
+
+      expect(mockOnCopyToClipBoard).toHaveBeenCalledWith(expectedLink);
     });
   });
 
   it('should display copied message after copying', () => {
-    (useCopyEntityLink as jest.Mock).mockReturnValue({
-      copyEntityLink: mockCopyEntityLink,
-      copiedFqn: defaultProps.fieldFqn,
+    (useClipboard as jest.Mock).mockReturnValue({
+      onCopyToClipBoard: mockOnCopyToClipBoard,
+      hasCopied: true,
     });
 
     render(<CopyLinkButton {...defaultProps} />);
@@ -106,84 +112,7 @@ describe('CopyLinkButton', () => {
     const button = screen.getByTestId('copy-column-link-button');
     fireEvent.click(button);
 
-    expect(mockCopyEntityLink).not.toHaveBeenCalled();
-  });
-
-  it('should use entityFqn from context', () => {
-    const contextFqn = 'context.entity.fqn';
-    (useGenericContext as jest.Mock).mockReturnValue({
-      data: { fullyQualifiedName: contextFqn },
-    });
-
-    render(
-      <CopyLinkButton
-        entityType={EntityType.API_ENDPOINT}
-        fieldFqn={defaultProps.fieldFqn}
-      />
-    );
-
-    expect(useCopyEntityLink).toHaveBeenCalledWith(
-      EntityType.API_ENDPOINT,
-      contextFqn
-    );
-  });
-
-  it('should use entityFqn from context when provided', () => {
-    const contextFqn = 'context.entity.fqn';
-    (useGenericContext as jest.Mock).mockReturnValue({
-      data: { fullyQualifiedName: contextFqn },
-    });
-
-    render(<CopyLinkButton {...defaultProps} />);
-
-    expect(useCopyEntityLink).toHaveBeenCalledWith(
-      EntityType.TABLE,
-      contextFqn
-    );
-  });
-
-  it('should handle undefined entityFqn from context', () => {
-    (useGenericContext as jest.Mock).mockReturnValue({
-      data: null,
-    });
-
-    render(<CopyLinkButton {...defaultProps} />);
-
-    expect(useCopyEntityLink).toHaveBeenCalledWith(
-      EntityType.TABLE,
-      undefined
-    );
-  });
-
-  it('should handle different entity types correctly', () => {
-    const contextFqn = 'test.database.schema.table';
-    (useGenericContext as jest.Mock).mockReturnValue({
-      data: { fullyQualifiedName: contextFqn },
-    });
-
-    const entityTypes = [
-      EntityType.TABLE,
-      EntityType.TOPIC,
-      EntityType.CONTAINER,
-      EntityType.API_ENDPOINT,
-      EntityType.SEARCH_INDEX,
-    ];
-
-    entityTypes.forEach((entityType) => {
-      jest.clearAllMocks();
-
-      render(
-        <CopyLinkButton
-          entityType={entityType}
-          fieldFqn={defaultProps.fieldFqn}
-        />
-      );
-
-      expect(useCopyEntityLink).toHaveBeenCalledWith(
-        entityType,
-        contextFqn
-      );
-    });
+    expect(mockOnCopyToClipBoard).not.toHaveBeenCalled();
   });
 
   it('should apply correct button styles', () => {

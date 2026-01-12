@@ -12,18 +12,24 @@
  */
 import { useRequiredParams } from '../utils/useRequiredParams';
 
-type Fqn = { fqn: string; ingestionFQN: string; ruleName: string };
+type Fqn = {
+  fqn: string;
+  ingestionFQN: string;
+  ruleName: string;
+  columnPart?: string;
+};
 
 /**
- * @description Hook to get the decoded fqn and ingestionFQN from the url
- * @returns {fqn: string, ingestionFQN: string} - fqn and ingestionFQN from the url
+ * @description Hook to get the decoded fqn, ingestionFQN, and columnPart from the url
+ * @returns {fqn: string, ingestionFQN: string, ruleName: string, columnPart?: string} - fqn, ingestionFQN, ruleName, and columnPart from the url
  */
 export const useFqn = (): Fqn => {
-  const { fqn, ingestionFQN, ruleName } = useRequiredParams<Fqn>();
+  const { fqn, ingestionFQN, ruleName, columnPart } = useRequiredParams<Fqn>();
 
   return {
     fqn: fqn ?? '',
     ingestionFQN: ingestionFQN ?? '',
     ruleName: ruleName ?? '',
+    columnPart: columnPart ?? '',
   };
 };

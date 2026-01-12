@@ -32,7 +32,10 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreTopic } from '../../../rest/topicsAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  extractEntityFqnAndColumnPart,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -89,10 +92,22 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedTopicFQN } = useFqn();
+  const { fqn: urlFqn } = useFqn();
   const navigate = useNavigate();
   const { customizedPage, isLoading } = useCustomPages(PageType.Topic);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
+
+  // Extract base FQN from URL (removes column part if present)
+  // Use topicDetails.fullyQualifiedName if available, otherwise extract from URL
+  const decodedTopicFQN = useMemo(() => {
+    const baseFqn = topicDetails?.fullyQualifiedName;
+    const { entityFqn } = extractEntityFqnAndColumnPart(
+      urlFqn,
+      baseFqn,
+      2
+    );
+    return entityFqn;
+  }, [urlFqn, topicDetails?.fullyQualifiedName]);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA

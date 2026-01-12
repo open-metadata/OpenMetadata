@@ -13,44 +13,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { EntityType } from '../enums/entity.enum';
 import { getEntityDetailsPath } from '../utils/RouterUtils';
+import { useClipboard } from './useClipBoard';
 
-/**
- * Fallback method for copying text to clipboard using document.execCommand
- * This works in older browsers and doesn't require HTTPS
- */
-const fallbackCopyTextToClipboard = (text: string): boolean => {
-  const textArea = document.createElement('textarea');
-  textArea.value = text;
-  textArea.style.position = 'fixed';
-  textArea.style.opacity = '0';
-  document.body.appendChild(textArea);
-  textArea.focus();
-  textArea.select();
-
-  try {
-    const successful = document.execCommand('copy');
-    document.body.removeChild(textArea);
-
-    return successful;
-  } catch {
-    document.body.removeChild(textArea);
-
-    return false;
-  }
-};
-
-/**
- * Custom hook to copy entity link to clipboard
- * @param entityType - The type of entity (e.g., TABLE, TOPIC, CONTAINER)
- * @param timeout - Time in ms before clearing the copied state (default: 2000ms)
- * @returns Object with copyEntityLink function and copiedFqn state
- */
 export const useCopyEntityLink = (
   entityType: EntityType,
-  entityFqn?: string,
+  _entityFqn?: string,
   timeout = 2000
 ) => {
   const [copiedFqn, setCopiedFqn] = useState<string>();
+  const { onCopyToClipBoard } = useClipboard('');
 
   useEffect(() => {
     if (!copiedFqn) {
@@ -63,43 +34,37 @@ export const useCopyEntityLink = (
   }, [copiedFqn, timeout]);
 
   const getEntityLink = useCallback(
-    (fqn: string) => {
-      if (entityFqn) {
-        const entityPath = getEntityDetailsPath(entityType, entityFqn);
-
-        return `${window.location.origin}${entityPath}#${fqn}`;
+    (fieldFqn: string) => {
+      if (!fieldFqn) {
+        return '';
       }
 
-      const entityPath = getEntityDetailsPath(entityType, fqn);
+      const baseUrl = window.location.origin;
+      const path = getEntityDetailsPath(entityType, fieldFqn);
 
-      return `${window.location.origin}${entityPath}`;
+      return `${baseUrl}${path}`;
     },
-    [entityType, entityFqn]
+    [entityType]
   );
 
   const copyEntityLink = useCallback(
     async (fqn: string) => {
       const link = getEntityLink(fqn);
 
+      if (!link) {
+        return false;
+      }
+
       try {
-        await navigator.clipboard.writeText(link);
+        await onCopyToClipBoard(link);
         setCopiedFqn(fqn);
 
         return true;
       } catch {
-        try {
-          const success = fallbackCopyTextToClipboard(link);
-          if (success) {
-            setCopiedFqn(fqn);
-          }
-
-          return success;
-        } catch {
-          return false;
-        }
+        return false;
       }
     },
-    [getEntityLink]
+    [getEntityLink, onCopyToClipBoard]
   );
 
   return { copyEntityLink, copiedFqn, getEntityLink };

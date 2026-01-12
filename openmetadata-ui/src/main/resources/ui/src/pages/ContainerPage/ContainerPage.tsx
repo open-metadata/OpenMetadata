@@ -107,7 +107,10 @@ const ContainerPage = () => {
     }
 
     const resolveContainerFQN = async () => {
-      setIsLoading(true);
+      if (decodedEntityFqn === containerFQN) {
+        return;
+      }
+
       let foundFQN = decodedEntityFqn;
       const parts = Fqn.split(decodedEntityFqn);
 
@@ -138,11 +141,10 @@ const ContainerPage = () => {
         }
       }
       setContainerFQN(foundFQN);
-      setIsLoading(false);
     };
 
     resolveContainerFQN();
-  }, [decodedEntityFqn]);
+  }, [decodedEntityFqn, containerFQN]);
 
   // Local states
   const [containerData, setContainerData] = useState<Container>();

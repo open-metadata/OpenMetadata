@@ -30,7 +30,10 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMetric } from '../../../rest/metricsAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  extractEntityFqnAndColumnPart,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -75,8 +78,22 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.OVERVIEW } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedMetricFqn } = useFqn();
+  const { fqn: urlFqn } = useFqn();
   const navigate = useNavigate();
+  
+  // Extract base FQN from URL (removes column part if present)
+  // Use metricDetails.fullyQualifiedName if available, otherwise extract from URL
+  const decodedMetricFqn = useMemo(() => {
+    const baseFqn = metricDetails?.fullyQualifiedName;
+    const { entityFqn } = extractEntityFqnAndColumnPart(
+      urlFqn,
+      baseFqn,
+      2
+    );
+
+    return entityFqn;
+  }, [urlFqn, metricDetails?.fullyQualifiedName]);
+  
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );

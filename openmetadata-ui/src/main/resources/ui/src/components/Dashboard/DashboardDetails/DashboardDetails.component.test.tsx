@@ -95,6 +95,10 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
 
 jest.mock('../../../utils/CommonUtils', () => ({
   getFeedCounts: jest.fn(),
+  extractEntityFqnAndColumnPart: jest.fn().mockReturnValue({
+    entityFqn: 'test.dashboard',
+    columnPart: undefined,
+  }),
 }));
 
 jest.mock(

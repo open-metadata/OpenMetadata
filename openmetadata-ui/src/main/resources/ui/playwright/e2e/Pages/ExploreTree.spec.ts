@@ -493,12 +493,25 @@ test.describe('Explore page', () => {
       clipboardText,
       expectedEntityType: 'searchIndex',
       entityFqn: searchIndex.entityResponseData?.['fullyQualifiedName'] ?? '',
-      options: { expectFragment: false },
     });
 
     expect(validationResult.isValid).toBe(true);
     expect(validationResult.protocol).toMatch(/^https?:$/);
     expect(validationResult.pathname).toContain('searchIndex');
+
+    // Visit the copied link to verify it opens the side panel
+    await page.goto(clipboardText);
+
+    // Verify side panel is open
+    const sidePanel = page.locator('.column-detail-panel');
+    await expect(sidePanel).toBeVisible();
+
+    // Close side panel
+    await page.getByTestId('close-button').click();
+    await expect(sidePanel).not.toBeVisible();
+
+    // Verify URL does not contain the column part
+    await expect(page).toHaveURL(new RegExp(`/searchIndex/${searchIndex.entityResponseData?.['fullyQualifiedName']}$`));
   });
 
   test('Copy field link should have valid URL format for APIEndpoint', async ({
@@ -525,11 +538,24 @@ test.describe('Explore page', () => {
       clipboardText,
       expectedEntityType: 'apiEndpoint',
       entityFqn: apiEndpoint.entityResponseData?.['fullyQualifiedName'] ?? '',
-      options: { expectFragment: false },
     });
 
     expect(validationResult.isValid).toBe(true);
     expect(validationResult.protocol).toMatch(/^https?:$/);
     expect(validationResult.pathname).toContain('apiEndpoint');
+
+    // Visit the copied link to verify it opens the side panel
+    await page.goto(clipboardText);
+
+    // Verify side panel is open
+    const sidePanel = page.locator('.column-detail-panel');
+    await expect(sidePanel).toBeVisible();
+
+    // Close side panel
+    await page.getByTestId('close-button').click();
+    await expect(sidePanel).not.toBeVisible();
+
+    // Verify URL does not contain the column part
+    await expect(page).toHaveURL(new RegExp(`/apiEndpoint/${apiEndpoint.entityResponseData?.['fullyQualifiedName']}$`));
   });
 });

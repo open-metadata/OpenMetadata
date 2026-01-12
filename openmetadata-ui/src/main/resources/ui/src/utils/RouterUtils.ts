@@ -49,7 +49,7 @@ import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
-import { getPartialNameFromFQN } from './CommonUtils';
+import { getColumnPartFromFqn, getPartialNameFromFQN } from './CommonUtils';
 import { getBasePath } from './HistoryUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
@@ -821,6 +821,40 @@ export const getEntityDetailsPath = (
   path = path.replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType);
 
   return path;
+};
+
+export const getEntityDetailsPathWithColumn = (
+  entityType: EntityType,
+  tableFqn: string,
+  columnFqn: string,
+  tab?: string
+): string => {
+  try {
+    const columnPart = getColumnPartFromFqn(columnFqn, tableFqn);
+
+    if (!columnPart) {
+      return getEntityDetailsPath(entityType, tableFqn, tab);
+    }
+
+    // Append column part to base FQN with a dot (.) instead of a slash (/)
+    // This creates paths like: /table/baseFqn.columnPart instead of /table/baseFqn/columnPart
+    const fullFqn = `${tableFqn}.${columnPart}`;
+    const encodedFqn = getEncodedFqn(fullFqn);
+
+    // Use the regular entity details path pattern with the full FQN
+    let path = tab ? ROUTES.ENTITY_DETAILS_WITH_TAB : ROUTES.ENTITY_DETAILS;
+
+    path = path.replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType);
+    path = path.replace(PLACEHOLDER_ROUTE_FQN, encodedFqn);
+
+    if (tab) {
+      path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+    }
+
+    return path;
+  } catch (error) {
+    return getEntityDetailsPath(entityType, tableFqn, tab);
+  }
 };
 
 export const getGlossaryTermDetailsPath = (

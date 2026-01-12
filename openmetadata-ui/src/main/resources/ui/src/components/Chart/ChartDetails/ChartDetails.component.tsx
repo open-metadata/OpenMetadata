@@ -31,7 +31,10 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreChart } from '../../../rest/chartsAPI';
 import chartDetailsClassBase from '../../../utils/ChartDetailsClassBase';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  extractEntityFqnAndColumnPart,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -76,7 +79,21 @@ const ChartDetails = ({
     tab: EntityTabs;
   }>();
   const { customizedPage, isLoading } = useCustomPages('Chart' as PageType);
-  const { fqn: decodedChartFQN } = useFqn();
+  const { fqn: urlFqn } = useFqn();
+  
+  // Extract base FQN from URL (removes column part if present)
+  // Use chartDetails.fullyQualifiedName if available, otherwise extract from URL
+  const decodedChartFQN = useMemo(() => {
+    const baseFqn = chartDetails?.fullyQualifiedName;
+    const { entityFqn } = extractEntityFqnAndColumnPart(
+      urlFqn,
+      baseFqn,
+      2
+    );
+
+    return entityFqn;
+  }, [urlFqn, chartDetails?.fullyQualifiedName]);
+  
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );

@@ -2251,12 +2251,10 @@ export const validateCopiedLinkFormat = ({
   expectedEntityType: string;
   entityFqn: string;
   options?: {
-    expectFragment?: boolean; // Expect URL fragment (e.g., #column-name)
     allowedProtocols?: string[]; // Allowed protocols (default: ['http:', 'https:'])
   };
 }) => {
   const {
-    expectFragment = true,
     allowedProtocols = ['http:', 'https:'],
   } = options;
 
@@ -2281,12 +2279,6 @@ export const validateCopiedLinkFormat = ({
   // Validate FQN is in the path
   expect(url.pathname).toContain(entityFqn);
 
-  // Validate fragment if expected (e.g., #column-name or #field-name)
-  if (expectFragment) {
-    expect(url.hash).toBeTruthy();
-    expect(url.hash).toMatch(/^#.+/);
-  }
-
   // Return parsed URL for additional assertions if needed
   return {
     url,
@@ -2297,4 +2289,5 @@ export const validateCopiedLinkFormat = ({
     isValid: true,
   };
 };
+
 

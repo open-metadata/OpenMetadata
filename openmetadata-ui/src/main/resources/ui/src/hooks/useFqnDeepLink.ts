@@ -11,48 +11,43 @@
  *  limitations under the License.
  */
 import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { buildColumnFqn } from '../utils/CommonUtils';
 import { findFieldByFQN, getParentKeysToExpand } from '../utils/TableUtils';
 
 interface UseFqnDeepLinkProps<T> {
   data: T[];
-  setHighlightedFqn: (fqn: string | undefined) => void;
+  tableFqn: string;
+  columnPart?: string;
   setExpandedRowKeys: (keys: (prev: string[]) => string[]) => void;
   openColumnDetailPanel: (field: T) => void;
-  timeoutMs?: number;
+  selectedColumn?: T | null;
 }
 
 export const useFqnDeepLink = <T extends { fullyQualifiedName?: string; children?: T[] }>({
   data,
-  setHighlightedFqn,
+  tableFqn,
+  columnPart,
   setExpandedRowKeys,
   openColumnDetailPanel,
-  timeoutMs = 3000,
+  selectedColumn,
 }: UseFqnDeepLinkProps<T>) => {
-  const location = useLocation();
-
   useEffect(() => {
-    if (location.hash) {
-      const fqn = decodeURIComponent(location.hash.slice(1));
-      setHighlightedFqn(fqn);
+    if (!columnPart) {
+      return;
+    }
 
-      const parentKeys = getParentKeysToExpand(data, fqn);
-      if (parentKeys.length > 0) {
-        setExpandedRowKeys((prev) => [...new Set([...prev, ...parentKeys])]);
-      }
+    const fullColumnFqn = buildColumnFqn(tableFqn, decodeURIComponent(columnPart));
 
-      const matchedField = findFieldByFQN(data, fqn);
-      if (matchedField) {
+    const parentKeys = getParentKeysToExpand(data, fullColumnFqn);
+    if (parentKeys.length > 0) {
+      setExpandedRowKeys((prev) => [...new Set([...prev, ...parentKeys])]);
+    }
+
+    const matchedField = findFieldByFQN(data, fullColumnFqn);
+    if (matchedField) {
+      if (selectedColumn?.fullyQualifiedName !== matchedField.fullyQualifiedName) {
         openColumnDetailPanel(matchedField);
       }
-
-      const timer = setTimeout(() => {
-        if (!fqn) {return;}
-
-        setHighlightedFqn(undefined);
-      }, timeoutMs);
-
-      return () => clearTimeout(timer);
     }
-  }, [location.hash, data, openColumnDetailPanel, setHighlightedFqn, setExpandedRowKeys]);
+  }, [columnPart, tableFqn, data, openColumnDetailPanel, selectedColumn, setExpandedRowKeys]);
 };

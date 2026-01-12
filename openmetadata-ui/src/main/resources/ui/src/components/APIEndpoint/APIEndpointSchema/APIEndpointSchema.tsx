@@ -41,6 +41,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
+import { buildColumnFqn, extractEntityFqnAndColumnPart } from '../../../utils/CommonUtils';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
@@ -81,10 +82,9 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 }) => {
   const { theme } = useApplicationStore();
   const { t } = useTranslation();
-  const { fqn: _entityFqn } = useFqn();
+  const { fqn: entityFqn } = useFqn();
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const [highlightedFieldFqn, setHighlightedFieldFqn] = useState<string>();
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.REQUEST_SCHEMA
   );
@@ -94,7 +94,24 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     permissions,
     onUpdate: onApiEndpointUpdate,
     openColumnDetailPanel,
+    selectedColumn,
   } = useGenericContext<APIEndpoint>();
+
+  const { entityFqn: apiEndpointFqn, columnPart } = useMemo(
+    () =>
+      extractEntityFqnAndColumnPart(
+        entityFqn,
+        apiEndpointDetails?.fullyQualifiedName,
+        3
+      ),
+    [entityFqn, apiEndpointDetails?.fullyQualifiedName]
+  );
+
+  const highlightedFieldFqn = useMemo(() => {
+    if (!columnPart) {return undefined;}
+
+    return buildColumnFqn(apiEndpointFqn, decodeURIComponent(columnPart));
+  }, [columnPart, apiEndpointFqn]);
 
   const { hash } = useLocation();
 
@@ -217,9 +234,11 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 
   useFqnDeepLink({
     data: activeSchemaFields,
-    setHighlightedFqn: setHighlightedFieldFqn,
+    tableFqn: apiEndpointFqn,
+    columnPart,
     setExpandedRowKeys: setExpandedRowKeys,
     openColumnDetailPanel,
+    selectedColumn: selectedColumn as Field | null,
   });
 
   useScrollToElement(

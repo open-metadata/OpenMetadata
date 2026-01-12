@@ -14,7 +14,7 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import APIEndpointDetails from '../../components/APIEndpoint/APIEndpointDetails/APIEndpointDetails';
@@ -61,18 +61,53 @@ const APIEndpointPage = () => {
 
   const { fqn: decodedEntityFqn } = useFqn();
 
-  // Extract just the API endpoint FQN (service.collection.endpoint) from the URL
+  // Extract the API endpoint FQN from the URL
   // The URL might contain field path like: service.collection.endpoint.requestSchema.fieldName
-  const apiEndpointFqn = useMemo(() => {
-    if (!decodedEntityFqn) {
-      return '';
-    }
-    const splitFqn = Fqn.split(decodedEntityFqn);
+  const [apiEndpointFqn, setApiEndpointFqn] = useState<string>('');
 
-    // API endpoint FQN has 3 parts: service, collection, endpoint
-    // Take only the first 3 parts
-    return splitFqn.slice(0, 3).join(FQN_SEPARATOR_CHAR);
-  }, [decodedEntityFqn]);
+  useEffect(() => {
+    if (!decodedEntityFqn) {
+      return;
+    }
+
+    const resolveApiEndpointFQN = async () => {
+      if (decodedEntityFqn === apiEndpointFqn) {
+        return;
+      }
+
+      let foundFQN = decodedEntityFqn;
+      const parts = Fqn.split(decodedEntityFqn);
+
+      // Try finding the API Endpoint by successively removing the last segment
+      // until we find a match or run out of segments
+      while (parts.length >= 3) {
+        const candidateFQN = parts.join(FQN_SEPARATOR_CHAR);
+        try {
+          await getApiEndPointByFQN(candidateFQN, {
+            fields: TabSpecificField.OWNERS, // Minimal fetch to verify existence
+          });
+          foundFQN = candidateFQN;
+          break; // Found valid entity
+        } catch (error) {
+          if (
+            (error as AxiosError).response?.status === ClientErrors.NOT_FOUND &&
+            parts.length > 3
+          ) {
+            parts.pop(); // Remove last segment (potential field name) and retry
+          } else {
+            // Other error or down to 3 parts (service.collection.endpoint), stop
+            if (parts.length === 3) {
+              foundFQN = candidateFQN;
+            }
+            break;
+          }
+        }
+      }
+      setApiEndpointFqn(foundFQN);
+    };
+
+    resolveApiEndpointFQN();
+  }, [decodedEntityFqn, apiEndpointFqn]);
 
   const [apiEndpointDetails, setApiEndpointDetails] = useState<APIEndpoint>(
     {} as APIEndpoint
@@ -269,7 +304,9 @@ const APIEndpointPage = () => {
   }, []);
 
   useEffect(() => {
-    fetchResourcePermission(apiEndpointFqn);
+    if (apiEndpointFqn) {
+      fetchResourcePermission(apiEndpointFqn);
+    }
   }, [apiEndpointFqn]);
 
   useEffect(() => {
