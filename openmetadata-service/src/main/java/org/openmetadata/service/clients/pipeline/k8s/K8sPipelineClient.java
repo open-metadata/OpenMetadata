@@ -705,8 +705,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
           spec = new HashMap<>();
           cronOMJob.put("spec", spec);
         }
-        boolean currentlySuspended =
-            Boolean.TRUE.equals(spec.getOrDefault("suspend", false));
+        boolean currentlySuspended = Boolean.TRUE.equals(spec.getOrDefault("suspend", false));
         spec.put("suspend", !currentlySuspended);
 
         executeWithRetry(
@@ -1231,8 +1230,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
     String configMapName = CONFIG_MAP_PREFIX + pipelineName;
     Map<String, String> labels = buildLabels(pipeline, "scheduled");
     OMJob.OMJobSpec omJobSpec =
-        buildIngestionOMJobSpec(
-            pipeline, SCHEDULED_RUN_ID, null, null, configMapName, labels);
+        buildIngestionOMJobSpec(pipeline, SCHEDULED_RUN_ID, null, null, configMapName, labels);
 
     return CronOMJob.builder()
         .apiVersion(OMJOB_GROUP + "/" + OMJOB_VERSION)
@@ -1362,9 +1360,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
             .image(k8sConfig.getIngestionImage())
             .imagePullPolicy(k8sConfig.getImagePullPolicy())
             .imagePullSecrets(
-                k8sConfig.getImagePullSecrets().isEmpty()
-                    ? null
-                    : k8sConfig.getImagePullSecrets())
+                k8sConfig.getImagePullSecrets().isEmpty() ? null : k8sConfig.getImagePullSecrets())
             .serviceAccountName(k8sConfig.getServiceAccountName())
             .command(List.of(PYTHON_MAIN_PY, MAIN_PY))
             .env(mainEnv)
@@ -1659,10 +1655,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
     Map<String, String> labels = buildApplicationLabels(application, runId);
     return new V1Job()
         .metadata(
-            new V1ObjectMeta()
-                .name(jobName)
-                .namespace(k8sConfig.getNamespace())
-                .labels(labels))
+            new V1ObjectMeta().name(jobName).namespace(k8sConfig.getNamespace()).labels(labels))
         .spec(
             new V1JobSpec()
                 .backoffLimit(k8sConfig.getBackoffLimit())
@@ -1708,9 +1701,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
             .image(k8sConfig.getIngestionImage())
             .imagePullPolicy(k8sConfig.getImagePullPolicy())
             .imagePullSecrets(
-                k8sConfig.getImagePullSecrets().isEmpty()
-                    ? null
-                    : k8sConfig.getImagePullSecrets())
+                k8sConfig.getImagePullSecrets().isEmpty() ? null : k8sConfig.getImagePullSecrets())
             .serviceAccountName(k8sConfig.getServiceAccountName())
             .command(List.of(PYTHON_MAIN_PY, APPLICATIONS_RUNNER, APPLICATIONS_RUNNER_MODULE))
             .env(List.of(new V1EnvVar().name(ENV_CONFIG).value(JsonUtils.pojoToJson(application))))
@@ -2020,11 +2011,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
           (Map<String, Object>)
               customObjectsApi
                   .getNamespacedCustomObject(
-                      OMJOB_GROUP,
-                      OMJOB_VERSION,
-                      k8sConfig.getNamespace(),
-                      CRONOMJOB_PLURAL,
-                      name)
+                      OMJOB_GROUP, OMJOB_VERSION, k8sConfig.getNamespace(), CRONOMJOB_PLURAL, name)
                   .execute();
       @SuppressWarnings("unchecked")
       Map<String, Object> metadata = (Map<String, Object>) existing.get("metadata");

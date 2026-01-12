@@ -246,7 +246,7 @@ class K8sPipelineClientTest {
     assertNotNull(source.getConfigMapKeyRef());
     assertEquals("om-config-test-pipeline", source.getConfigMapKeyRef().getName());
   }
-  
+
   @Test
   void testBuildCronOMJobWithCustomTimezone() {
     K8sPipelineClient clientWithOMJob = createClientWithUseOMJobOperator(true);
@@ -257,7 +257,7 @@ class K8sPipelineClientTest {
 
     assertEquals("America/New_York", cronOMJob.getSpec().getTimeZone());
   }
-  
+
   @Test
   void testBuildCronOMJobWithDisabledPipeline() {
     K8sPipelineClient clientWithOMJob = createClientWithUseOMJobOperator(true);
@@ -268,7 +268,7 @@ class K8sPipelineClientTest {
 
     assertTrue(cronOMJob.getSpec().getSuspend());
   }
-  
+
   @Test
   void testBuildCronOMJobWithHistoryLimits() {
     K8sPipelineClient clientWithOMJob = createClientWithUseOMJobOperator(true);
@@ -279,7 +279,7 @@ class K8sPipelineClientTest {
     assertEquals(3, cronOMJob.getSpec().getSuccessfulJobsHistoryLimit());
     assertEquals(1, cronOMJob.getSpec().getFailedJobsHistoryLimit());
   }
-  
+
   @Test
   void testBuildCronOMJobWithStartingDeadline() {
     K8sPipelineClient clientWithOMJob = createClientWithUseOMJobOperator(true);
@@ -290,26 +290,26 @@ class K8sPipelineClientTest {
     assertNotNull(cronOMJob.getSpec().getStartingDeadlineSeconds());
     assertEquals(300, cronOMJob.getSpec().getStartingDeadlineSeconds());
   }
-  
+
   @Test
   void testCronScheduleConversion() {
     K8sPipelineClient clientWithOMJob = createClientWithUseOMJobOperator(true);
-    
+
     // Test daily schedule
     IngestionPipeline dailyPipeline = createTestPipeline("daily", "@daily");
     CronOMJob dailyCron = clientWithOMJob.buildCronOMJob(dailyPipeline);
     assertEquals("0 0 * * *", dailyCron.getSpec().getSchedule());
-    
+
     // Test hourly schedule
     IngestionPipeline hourlyPipeline = createTestPipeline("hourly", "@hourly");
     CronOMJob hourlyCron = clientWithOMJob.buildCronOMJob(hourlyPipeline);
     assertEquals("0 * * * *", hourlyCron.getSpec().getSchedule());
-    
+
     // Test weekly schedule
     IngestionPipeline weeklyPipeline = createTestPipeline("weekly", "@weekly");
     CronOMJob weeklyCron = clientWithOMJob.buildCronOMJob(weeklyPipeline);
     assertEquals("0 0 * * 0", weeklyCron.getSpec().getSchedule());
-    
+
     // Test custom cron expression
     IngestionPipeline customPipeline = createTestPipeline("custom", "*/15 * * * *");
     CronOMJob customCron = clientWithOMJob.buildCronOMJob(customPipeline);

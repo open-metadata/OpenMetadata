@@ -60,7 +60,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>This test validates that pipeline REST API operations work correctly with the
  * Kubernetes backend through the OpenMetadata API layer.
- * 
+ *
  * <p>Tests are enabled via ENABLE_K8S_TESTS environment variable.
  * Run with: mvn test -Dtest=K8sIngestionPipelineResourceIT -DENABLE_K8S_TESTS=true
  */
@@ -133,28 +133,38 @@ public class K8sIngestionPipelineResourceIT {
     return SdkClients.adminClient().ingestionPipelines().create(request);
   }
 
-  private PipelineServiceClientResponse deployPipeline(IngestionPipeline pipeline) throws OpenMetadataException {
+  private PipelineServiceClientResponse deployPipeline(IngestionPipeline pipeline)
+      throws OpenMetadataException {
     OpenMetadataClient client = SdkClients.adminClient();
     String path = "/v1/services/ingestionPipelines/deploy/" + pipeline.getId();
-    return client.getHttpClient().execute(HttpMethod.POST, path, null, PipelineServiceClientResponse.class);
+    return client
+        .getHttpClient()
+        .execute(HttpMethod.POST, path, null, PipelineServiceClientResponse.class);
   }
 
-  private PipelineServiceClientResponse triggerPipeline(IngestionPipeline pipeline) throws OpenMetadataException {
+  private PipelineServiceClientResponse triggerPipeline(IngestionPipeline pipeline)
+      throws OpenMetadataException {
     OpenMetadataClient client = SdkClients.adminClient();
     String path = "/v1/services/ingestionPipelines/trigger/" + pipeline.getId();
-    return client.getHttpClient().execute(HttpMethod.POST, path, null, PipelineServiceClientResponse.class);
+    return client
+        .getHttpClient()
+        .execute(HttpMethod.POST, path, null, PipelineServiceClientResponse.class);
   }
 
-  private IngestionPipeline togglePipeline(IngestionPipeline pipeline) throws OpenMetadataException {
+  private IngestionPipeline togglePipeline(IngestionPipeline pipeline)
+      throws OpenMetadataException {
     OpenMetadataClient client = SdkClients.adminClient();
     String path = "/v1/services/ingestionPipelines/toggleIngestion/" + pipeline.getId();
     return client.getHttpClient().execute(HttpMethod.POST, path, null, IngestionPipeline.class);
   }
 
-  private PipelineServiceClientResponse killPipeline(IngestionPipeline pipeline) throws OpenMetadataException {
+  private PipelineServiceClientResponse killPipeline(IngestionPipeline pipeline)
+      throws OpenMetadataException {
     OpenMetadataClient client = SdkClients.adminClient();
     String path = "/v1/services/ingestionPipelines/kill/" + pipeline.getId();
-    return client.getHttpClient().execute(HttpMethod.POST, path, null, PipelineServiceClientResponse.class);
+    return client
+        .getHttpClient()
+        .execute(HttpMethod.POST, path, null, PipelineServiceClientResponse.class);
   }
 
   @Test
@@ -189,7 +199,8 @@ public class K8sIngestionPipelineResourceIT {
                     coreApi
                         .readNamespacedConfigMap("om-config-" + sanitizedName, K8S_NAMESPACE)
                         .execute();
-                return configMap != null && configMap.getData() != null
+                return configMap != null
+                    && configMap.getData() != null
                     && configMap.getData().containsKey("config");
               } catch (Exception e) {
                 return false;
@@ -465,8 +476,10 @@ public class K8sIngestionPipelineResourceIT {
 
     OpenMetadataClient client = SdkClients.adminClient();
     String path = "/v1/services/ingestionPipelines/status";
-    PipelineServiceClientResponse response = 
-        client.getHttpClient().execute(HttpMethod.GET, path, null, PipelineServiceClientResponse.class);
+    PipelineServiceClientResponse response =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.GET, path, null, PipelineServiceClientResponse.class);
 
     assertEquals(200, response.getCode());
     assertEquals("Kubernetes", response.getPlatform());
