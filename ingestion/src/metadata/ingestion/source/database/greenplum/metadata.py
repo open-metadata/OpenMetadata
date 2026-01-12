@@ -11,6 +11,7 @@
 """
 Greenplum source module
 """
+
 import traceback
 from collections import namedtuple
 from typing import Iterable, Optional, Tuple
@@ -48,7 +49,9 @@ from metadata.ingestion.source.database.common_pg_mappings import (
 from metadata.ingestion.source.database.greenplum.queries import (
     GREENPLUM_GET_DB_NAMES,
     GREENPLUM_GET_TABLE_NAMES,
+    GREENPLUM_GET_TABLE_NAMES_V7,
     GREENPLUM_PARTITION_DETAILS,
+    GREENPLUM_PARTITION_DETAILS_V7,
 )
 from metadata.ingestion.source.database.greenplum.utils import (
     get_column_info,
@@ -86,6 +89,10 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
     Database metadata from Greenplum Source
     """
 
+    # Greenplum 7.x is based on PostgreSQL 12, while Greenplum 6.x is based on PostgreSQL 9.4
+    # We use this version threshold to determine which queries to use
+    GREENPLUM_V7_PG_VERSION = (12,)
+
     @classmethod
     def create(
         cls,
@@ -101,6 +108,13 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
             )
         return cls(config, metadata)
 
+    def _is_greenplum_v7(self) -> bool:
+        """
+        Check if the Greenplum version is 7.x or later.
+        Greenplum 7.x is based on PostgreSQL 12, while Greenplum 6.x is based on PostgreSQL 9.4.
+        """
+        return self.engine.dialect.server_version_info >= self.GREENPLUM_V7_PG_VERSION
+
     def query_table_names_and_types(
         self, schema_name: str
     ) -> Iterable[TableNameAndType]:
@@ -108,8 +122,15 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
         Overwrite the inspector implementation to handle partitioned
         and foreign types
         """
+        # Use version-specific query: Greenplum 7 uses PostgreSQL-style relispartition,
+        # while Greenplum 6 uses the legacy pg_partition_rule table
+        query = (
+            GREENPLUM_GET_TABLE_NAMES_V7
+            if self._is_greenplum_v7()
+            else GREENPLUM_GET_TABLE_NAMES
+        )
         result = self.connection.execute(
-            sql.text(GREENPLUM_GET_TABLE_NAMES),
+            sql.text(query),
             {"schema": schema_name},
         )
 
@@ -144,9 +165,11 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_database
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -163,10 +186,15 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
     ) -> Tuple[bool, Optional[TablePartition]]:
+        # Use version-specific query: Greenplum 7 uses pg_partitioned_table,
+        # while Greenplum 6 uses the legacy pg_partition table
+        partition_query = (
+            GREENPLUM_PARTITION_DETAILS_V7
+            if self._is_greenplum_v7()
+            else GREENPLUM_PARTITION_DETAILS
+        )
         result = self.engine.execute(
-            GREENPLUM_PARTITION_DETAILS.format(
-                table_name=table_name, schema_name=schema_name
-            )
+            partition_query.format(table_name=table_name, schema_name=schema_name)
         ).all()
 
         if result:
