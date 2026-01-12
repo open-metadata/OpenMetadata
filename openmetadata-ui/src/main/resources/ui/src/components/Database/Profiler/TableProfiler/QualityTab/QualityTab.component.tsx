@@ -255,21 +255,6 @@ export const QualityTab = () => {
     [permissions, table, navigate, showModal]
   );
 
-  const qualityTabHeader = useMemo(() => {
-    return (
-      <ManageButton
-        canDelete={false}
-        deleted={table?.deleted ?? false}
-        displayName={t('label.manage')}
-        entityId={table?.id}
-        entityName={getEntityName(table)}
-        entityType={EntityType.TABLE}
-        extraDropdownContent={extraDropdownContent}
-        isRecursiveDelete={false}
-      />
-    );
-  }, [table, extraDropdownContent]);
-
   const handleTestCaseTypeChange = (value: TestCaseType) => {
     if (value !== selectedTestType) {
       setSelectedTestType(value);
@@ -458,7 +443,16 @@ export const QualityTab = () => {
                     onChange={handleTestCaseStatusChange}
                   />
                 </Form.Item>
-                {qualityTabHeader}
+                <ManageButton
+                  canDelete={false}
+                  deleted={table?.deleted ?? false}
+                  displayName={t('label.manage')}
+                  entityId={table?.id}
+                  entityName={getEntityName(table)}
+                  entityType={EntityType.TABLE}
+                  extraDropdownContent={extraDropdownContent}
+                  isRecursiveDelete={false}
+                />
               </Space>
             </Form>
           )}
