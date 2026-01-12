@@ -1730,4 +1730,188 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         .portsView(name)
         .get(inputLimit, inputOffset, outputLimit, outputOffset);
   }
+
+  // ===================================================================
+  // ADDITIONAL PORT OPERATION TESTS
+  // Tests for remove operations, by-ID operations, and edge cases
+  // ===================================================================
+
+  @Test
+  void test_removeInputPorts(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_remove_input_ports"))
+            .withDescription("Data product for remove input ports test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table1 = createTestTable(ns, "remove_input_1", domain);
+    Table table2 = createTestTable(ns, "remove_input_2", domain);
+    Table table3 = createTestTable(ns, "remove_input_3", domain);
+
+    // Add all ports
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(
+                List.of(
+                    table1.getEntityReference(),
+                    table2.getEntityReference(),
+                    table3.getEntityReference())));
+
+    ResultList<Map<String, Object>> beforeRemove = getInputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(3, beforeRemove.getPaging().getTotal());
+
+    // Remove one port
+    SdkClients.adminClient()
+        .dataProducts()
+        .inputPorts(dataProduct.getFullyQualifiedName())
+        .remove(new BulkAssets().withAssets(List.of(table2.getEntityReference())));
+
+    ResultList<Map<String, Object>> afterRemove = getInputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(2, afterRemove.getPaging().getTotal());
+
+    // Verify correct port was removed
+    List<UUID> remainingIds = afterRemove.getData().stream().map(this::getEntityId).toList();
+    assertTrue(remainingIds.contains(table1.getId()));
+    assertFalse(remainingIds.contains(table2.getId()));
+    assertTrue(remainingIds.contains(table3.getId()));
+  }
+
+  @Test
+  void test_removeOutputPorts(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_remove_output_ports"))
+            .withDescription("Data product for remove output ports test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table1 = createTestTable(ns, "remove_output_1", domain);
+    Table table2 = createTestTable(ns, "remove_output_2", domain);
+
+    // Add ports
+    bulkAddOutputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(List.of(table1.getEntityReference(), table2.getEntityReference())));
+
+    assertEquals(2, getOutputPorts(dataProduct.getId(), 10, 0).getPaging().getTotal());
+
+    // Remove one port
+    SdkClients.adminClient()
+        .dataProducts()
+        .outputPorts(dataProduct.getFullyQualifiedName())
+        .remove(new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+
+    ResultList<Map<String, Object>> afterRemove = getOutputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(1, afterRemove.getPaging().getTotal());
+    assertEquals(table2.getId(), getEntityId(afterRemove.getData().get(0)));
+  }
+
+  @Test
+  void test_listPortsById(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_list_by_id"))
+            .withDescription("Data product for list ports by ID test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table1 = createTestTable(ns, "list_by_id_1", domain);
+    Table table2 = createTestTable(ns, "list_by_id_2", domain);
+
+    // Add ports by name (bulk operations use name-based endpoints)
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+    bulkAddOutputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table2.getEntityReference())));
+
+    // List ports by ID (list operations support ID-based endpoints)
+    ResultList<Map<String, Object>> inputPorts = getInputPorts(dataProduct.getId(), 10, 0);
+    ResultList<Map<String, Object>> outputPorts = getOutputPorts(dataProduct.getId(), 10, 0);
+
+    assertEquals(1, inputPorts.getPaging().getTotal());
+    assertEquals(1, outputPorts.getPaging().getTotal());
+    assertEquals(table1.getId(), getEntityId(inputPorts.getData().get(0)));
+    assertEquals(table2.getId(), getEntityId(outputPorts.getData().get(0)));
+  }
+
+  @Test
+  void test_paginationOffsetBeyondTotal(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_offset_beyond"))
+            .withDescription("Data product for offset beyond total test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table1 = createTestTable(ns, "offset_test_1", domain);
+    Table table2 = createTestTable(ns, "offset_test_2", domain);
+
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(List.of(table1.getEntityReference(), table2.getEntityReference())));
+
+    // Request with offset beyond total
+    ResultList<Map<String, Object>> result = getInputPorts(dataProduct.getId(), 10, 100);
+    assertEquals(2, result.getPaging().getTotal());
+    assertEquals(0, result.getData().size());
+
+    // Test via portsView as well
+    DataProductPortsView portsView = getPortsView(dataProduct.getId(), 10, 100, 10, 100);
+    assertEquals(2, portsView.getInputPorts().getPaging().getTotal());
+    assertEquals(0, portsView.getInputPorts().getData().size());
+  }
+
+  @Test
+  void test_bulkRemoveMultiplePorts(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_bulk_remove"))
+            .withDescription("Data product for bulk remove ports test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table1 = createTestTable(ns, "bulk_remove_1", domain);
+    Table table2 = createTestTable(ns, "bulk_remove_2", domain);
+    Table table3 = createTestTable(ns, "bulk_remove_3", domain);
+
+    // Add all ports
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(
+                List.of(
+                    table1.getEntityReference(),
+                    table2.getEntityReference(),
+                    table3.getEntityReference())));
+
+    assertEquals(3, getInputPorts(dataProduct.getId(), 10, 0).getPaging().getTotal());
+
+    // Remove multiple ports at once
+    SdkClients.adminClient()
+        .dataProducts()
+        .inputPorts(dataProduct.getFullyQualifiedName())
+        .remove(
+            new BulkAssets()
+                .withAssets(List.of(table1.getEntityReference(), table3.getEntityReference())));
+
+    ResultList<Map<String, Object>> afterRemove = getInputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(1, afterRemove.getPaging().getTotal());
+    assertEquals(table2.getId(), getEntityId(afterRemove.getData().get(0)));
+  }
 }
