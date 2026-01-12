@@ -122,42 +122,55 @@ class PowerbiSource(DashboardServiceSource):
         fetch all the workspace data for non-admin users
         """
         filter_pattern = self.source_config.projectFilterPattern
-        workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
-        for workspace in workspaces:
-            # add the dashboards to the workspace
-            workspace.dashboards.extend(
-                self.client.api_client.fetch_all_org_dashboards(group_id=workspace.id)
-                or []
-            )
-            for dashboard in workspace.dashboards:
-                # add the tiles to the dashboards
-                dashboard.tiles.extend(
-                    self.client.api_client.fetch_all_org_tiles(
-                        group_id=workspace.id, dashboard_id=dashboard.id
+        paginated_filter_patterns = self._paginate_project_filter_pattern(
+            filter_pattern
+        )
+        for filter_pattern in paginated_filter_patterns:
+            workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
+            if workspaces:
+                for workspace in workspaces:
+                    # add the dashboards to the workspace
+                    workspace.dashboards.extend(
+                        self.client.api_client.fetch_all_org_dashboards(
+                            group_id=workspace.id
+                        )
+                        or []
                     )
-                    or []
-                )
+                    for dashboard in workspace.dashboards:
+                        # add the tiles to the dashboards
+                        dashboard.tiles.extend(
+                            self.client.api_client.fetch_all_org_tiles(
+                                group_id=workspace.id, dashboard_id=dashboard.id
+                            )
+                            or []
+                        )
 
-            # add the reports to the workspaces
-            workspace.reports.extend(
-                self.client.api_client.fetch_all_org_reports(group_id=workspace.id)
-                or []
-            )
-
-            # add the datasets to the workspaces
-            workspace.datasets.extend(
-                self.client.api_client.fetch_all_org_datasets(group_id=workspace.id)
-                or []
-            )
-            for dataset in workspace.datasets:
-                # add the tables to the datasets
-                dataset.tables.extend(
-                    self.client.api_client.fetch_dataset_tables(
-                        group_id=workspace.id, dataset_id=dataset.id
+                    # add the reports to the workspaces
+                    workspace.reports.extend(
+                        self.client.api_client.fetch_all_org_reports(
+                            group_id=workspace.id
+                        )
+                        or []
                     )
-                    or []
-                )
-            yield workspace
+
+                    # add the datasets to the workspaces
+                    workspace.datasets.extend(
+                        self.client.api_client.fetch_all_org_datasets(
+                            group_id=workspace.id
+                        )
+                        or []
+                    )
+                    for dataset in workspace.datasets:
+                        # add the tables to the datasets
+                        dataset.tables.extend(
+                            self.client.api_client.fetch_dataset_tables(
+                                group_id=workspace.id, dataset_id=dataset.id
+                            )
+                            or []
+                        )
+                    yield workspace
+            else:
+                logger.error("Unable to fetch any PowerBI workspaces")
 
     def _paginate_project_filter_pattern(self, filter_pattern):
         """
@@ -165,13 +178,21 @@ class PowerbiSource(DashboardServiceSource):
         in single call
         """
         if not filter_pattern:
+            # default include filter needed to include all
+            # workspaces
             return [FilterPattern(includes=[".*"])]
-        paginated_include_filters = []
+        # case handling if only exclude filters
+        # are provided.
+        paginated_include_filters = [filter_pattern]
         if filter_pattern.includes:
+            # if include filters are present then paginate them
+            # in the batch of `MAX_PROJECT_FILTER_SIZE=20` while
+            # keeping exclude filters same across all batches
             include_filters = [
                 filter_pattern.includes[i : i + MAX_PROJECT_FILTER_SIZE]
                 for i in range(0, len(filter_pattern.includes), MAX_PROJECT_FILTER_SIZE)
             ]
+            paginated_include_filters = []
             for include_filter in include_filters:
                 filter_pattern_copy = deepcopy(filter_pattern)
                 filter_pattern_copy.includes = include_filter
@@ -1149,6 +1170,10 @@ class PowerbiSource(DashboardServiceSource):
             table_info_list = self._parse_table_info_from_source_exp(
                 table, datamodel_entity
             )
+            if not table_info_list:
+                # if tables are not found from source expression
+                # try establishing lineage using powerbi's table name
+                table_info_list = [{"table": table.name}]
             if isinstance(table_info_list, List):
                 for table_info in table_info_list:
                     table_name = table_info.get("table") or table.name

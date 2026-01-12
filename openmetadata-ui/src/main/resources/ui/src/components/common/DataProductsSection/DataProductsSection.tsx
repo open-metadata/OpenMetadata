@@ -19,6 +19,7 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { useEditableSection } from '../../../hooks/useEditableSection';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -45,6 +46,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   const [showAllDataProducts, setShowAllDataProducts] = useState(false);
   const [displayActiveDomains, setDisplayActiveDomains] =
     useState<EntityReference[]>(activeDomains);
+  const { entityRules } = useEntityRules(entityType);
 
   const {
     isEditing,
@@ -165,6 +167,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     () => (
       <DataProductsSelectListV1
         fetchOptions={fetchAPI}
+        multiSelect={entityRules.canAddMultipleDataProducts}
         popoverProps={{
           open: popoverOpen,
           onOpenChange: handlePopoverOpenChange,
@@ -184,6 +187,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       handlePopoverOpenChange,
       editingDataProducts,
       handleSaveWithDataProducts,
+      entityRules.canAddMultipleDataProducts,
       cancelEditing,
     ]
   );
