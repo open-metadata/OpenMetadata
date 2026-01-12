@@ -633,8 +633,6 @@ export const updateDescriptionForChildren = async (
   await descriptionInput.click();
   await descriptionInput.focus();
 
-  // Wait for editor to be fully ready
-  await page.waitForTimeout(500);
   await descriptionInput.clear();
 
   // Type new content directly (this replaces the selection)
