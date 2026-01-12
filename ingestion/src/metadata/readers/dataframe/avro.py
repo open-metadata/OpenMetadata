@@ -84,7 +84,6 @@ class AvroDataFrameReader(DataFrameReader):
         import json
 
         import fastavro
-        from pandas import DataFrame
 
         from metadata.parsers.avro_parser import parse_avro_schema
 
