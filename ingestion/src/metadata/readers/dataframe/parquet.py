@@ -242,7 +242,9 @@ class ParquetDataFrameReader(DataFrameReader):
     @_read_parquet_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         import pandas as pd  # pylint: disable=import-outside-toplevel
-        import pyarrow.fs as fs
+        from adlfs import AzureBlobFileSystem
+        from pyarrow.fs import FSSpecHandler, PyFileSystem
+        from pyarrow.parquet import ParquetFile
 
         storage_options = return_azure_storage_options(self.config_source)
         account_url = AZURE_PATH.format(
@@ -253,18 +255,18 @@ class ParquetDataFrameReader(DataFrameReader):
 
         # Check file size to determine reading strategy
         try:
-            # Try to get file size from Azure
-            azure_fs = fs.SubTreeFileSystem(
-                account_url, fs.AzureFileSystem(**storage_options)
+            # Use adlfs (fsspec-based) filesystem which supports service principal auth
+            adlfs_fs = AzureBlobFileSystem(
+                account_name=self.config_source.securityConfig.accountName,
+                **storage_options,
             )
-            file_info = azure_fs.get_file_info("/")
-            file_size = file_info.size if hasattr(file_info, "size") else 0
+            file_path = f"{bucket_name}/{key}"
+            file_info = adlfs_fs.info(file_path)
+            file_size = file_info.get("size", 0)
 
             if self._should_use_chunking(file_size):
-                # Use PyArrow ParquetFile for batched reading of large files
-                parquet_file = ParquetFile(
-                    account_url, filesystem=fs.AzureFileSystem(**storage_options)
-                )
+                pa_fs = PyFileSystem(FSSpecHandler(adlfs_fs))
+                parquet_file = ParquetFile(file_path, filesystem=pa_fs)
                 return self._read_parquet_in_batches(parquet_file)
             else:
                 # Use pandas for regular reading of smaller files
