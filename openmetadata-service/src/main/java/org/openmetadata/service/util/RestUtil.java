@@ -63,13 +63,6 @@ public final class RestUtil {
 
   private RestUtil() {}
 
-  /** Remove leading and trailing slashes */
-  public static String removeSlashes(String s) {
-    s = s.startsWith("/") ? s.substring(1) : s;
-    s = s.endsWith("/") ? s.substring(0, s.length() - 1) : s;
-    return s;
-  }
-
   /** Remove trailing slash */
   private static String removeTrailingSlash(String str) {
     return str != null && str.endsWith("/") ? str.substring(0, str.length() - 1) : str;
@@ -96,26 +89,9 @@ public final class RestUtil {
         .orElseGet(() -> UriBuilder.fromUri(uriInfo.getBaseUri()).path(collPath).build());
   }
 
-  public static URI getHref(URI parent, String child) {
-    child = removeSlashes(child);
-    child = replaceSpaces(child);
-    return URI.create(parent.toString() + "/" + child);
-  }
-
-  public static String replaceSpaces(String s) {
-    s = s.replace(" ", "%20");
-    return s;
-  }
-
-  public static URI getHref(UriInfo uriInfo, String collectionPath, String resourcePath) {
-    collectionPath = removeSlashes(collectionPath);
-    resourcePath = removeSlashes(resourcePath);
-    URI uri = getHref(uriInfo, collectionPath);
-    return getHref(uri, resourcePath);
-  }
-
   public static URI getHref(UriInfo uriInfo, String collectionPath, UUID id) {
-    return getHref(uriInfo, collectionPath, id.toString());
+    URI baseUri = getHref(uriInfo, collectionPath);
+    return UriBuilder.fromUri(baseUri).path(id.toString()).build();
   }
 
   public static int compareDates(String date1, String date2) {
