@@ -47,6 +47,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
+import org.openmetadata.schema.api.domains.DataProductPortsView;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
@@ -78,8 +79,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 public class DataProductResource extends EntityResource<DataProduct, DataProductRepository> {
   public static final String COLLECTION_PATH = "/v1/dataProducts/";
   private final DataProductMapper mapper = new DataProductMapper();
-  static final String FIELDS =
-      "domains,owners,reviewers,experts,extension,tags,followers,inputPorts,outputPorts";
+  static final String FIELDS = "domains,owners,reviewers,experts,extension,tags,followers";
 
   public DataProductResource(Authorizer authorizer, Limits limits) {
     super(Entity.DATA_PRODUCT, authorizer, limits);
@@ -800,5 +800,298 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     java.util.Map<String, Integer> result = repository.getAllDataProductsWithAssetsCount();
     return Response.ok(result).build();
+  }
+
+  @GET
+  @Path("/{id}/inputPorts")
+  @Operation(
+      operationId = "getInputPorts",
+      summary = "Get input ports for a data product",
+      description = "Get paginated list of input ports (data assets consumed) for a data product.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of input ports",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ResultList.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {id} is not found")
+      })
+  public Response getInputPorts(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data product", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Limit the number of results returned",
+              schema = @Schema(type = "integer", defaultValue = "50"))
+          @QueryParam("limit")
+          @DefaultValue("50")
+          @Min(1)
+          @Max(1000)
+          int limit,
+      @Parameter(
+              description = "Offset from which to start returning results",
+              schema = @Schema(type = "integer", defaultValue = "0"))
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset) {
+    return Response.ok(repository.getPaginatedInputPorts(id, limit, offset)).build();
+  }
+
+  @GET
+  @Path("/name/{fqn}/inputPorts")
+  @Operation(
+      operationId = "getInputPortsByName",
+      summary = "Get input ports for a data product by name",
+      description =
+          "Get paginated list of input ports (data assets consumed) for a data product by name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of input ports",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ResultList.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {fqn} is not found")
+      })
+  public Response getInputPortsByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the data product", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(
+              description = "Limit the number of results returned",
+              schema = @Schema(type = "integer", defaultValue = "50"))
+          @QueryParam("limit")
+          @DefaultValue("50")
+          @Min(1)
+          @Max(1000)
+          int limit,
+      @Parameter(
+              description = "Offset from which to start returning results",
+              schema = @Schema(type = "integer", defaultValue = "0"))
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset) {
+    return Response.ok(repository.getPaginatedInputPortsByName(fqn, limit, offset)).build();
+  }
+
+  @GET
+  @Path("/{id}/outputPorts")
+  @Operation(
+      operationId = "getOutputPorts",
+      summary = "Get output ports for a data product",
+      description =
+          "Get paginated list of output ports (data assets produced/exposed) for a data product.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of output ports",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ResultList.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {id} is not found")
+      })
+  public Response getOutputPorts(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data product", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Limit the number of results returned",
+              schema = @Schema(type = "integer", defaultValue = "50"))
+          @QueryParam("limit")
+          @DefaultValue("50")
+          @Min(1)
+          @Max(1000)
+          int limit,
+      @Parameter(
+              description = "Offset from which to start returning results",
+              schema = @Schema(type = "integer", defaultValue = "0"))
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset) {
+    return Response.ok(repository.getPaginatedOutputPorts(id, limit, offset)).build();
+  }
+
+  @GET
+  @Path("/name/{fqn}/outputPorts")
+  @Operation(
+      operationId = "getOutputPortsByName",
+      summary = "Get output ports for a data product by name",
+      description =
+          "Get paginated list of output ports (data assets produced/exposed) for a data product by name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of output ports",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ResultList.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {fqn} is not found")
+      })
+  public Response getOutputPortsByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the data product", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(
+              description = "Limit the number of results returned",
+              schema = @Schema(type = "integer", defaultValue = "50"))
+          @QueryParam("limit")
+          @DefaultValue("50")
+          @Min(1)
+          @Max(1000)
+          int limit,
+      @Parameter(
+              description = "Offset from which to start returning results",
+              schema = @Schema(type = "integer", defaultValue = "0"))
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset) {
+    return Response.ok(repository.getPaginatedOutputPortsByName(fqn, limit, offset)).build();
+  }
+
+  @GET
+  @Path("/{id}/portsView")
+  @Operation(
+      operationId = "getPortsView",
+      summary = "Get combined input/output ports view for a data product",
+      description =
+          "Get a combined view of input and output ports with independent pagination, "
+              + "optimized for lineage-like visualization.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Combined ports view",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataProductPortsView.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {id} is not found")
+      })
+  public Response getPortsView(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data product", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Limit the number of input ports returned",
+              schema = @Schema(type = "integer", defaultValue = "50"))
+          @QueryParam("inputLimit")
+          @DefaultValue("50")
+          @Min(1)
+          @Max(1000)
+          int inputLimit,
+      @Parameter(
+              description = "Offset for input ports pagination",
+              schema = @Schema(type = "integer", defaultValue = "0"))
+          @QueryParam("inputOffset")
+          @DefaultValue("0")
+          @Min(0)
+          int inputOffset,
+      @Parameter(
+              description = "Limit the number of output ports returned",
+              schema = @Schema(type = "integer", defaultValue = "50"))
+          @QueryParam("outputLimit")
+          @DefaultValue("50")
+          @Min(1)
+          @Max(1000)
+          int outputLimit,
+      @Parameter(
+              description = "Offset for output ports pagination",
+              schema = @Schema(type = "integer", defaultValue = "0"))
+          @QueryParam("outputOffset")
+          @DefaultValue("0")
+          @Min(0)
+          int outputOffset) {
+    return Response.ok(
+            repository.getPortsView(id, inputLimit, inputOffset, outputLimit, outputOffset))
+        .build();
+  }
+
+  @GET
+  @Path("/name/{fqn}/portsView")
+  @Operation(
+      operationId = "getPortsViewByName",
+      summary = "Get combined input/output ports view for a data product by name",
+      description =
+          "Get a combined view of input and output ports with independent pagination by name, "
+              + "optimized for lineage-like visualization.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Combined ports view",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataProductPortsView.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {fqn} is not found")
+      })
+  public Response getPortsViewByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the data product", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(
+              description = "Limit the number of input ports returned",
+              schema = @Schema(type = "integer", defaultValue = "50"))
+          @QueryParam("inputLimit")
+          @DefaultValue("50")
+          @Min(1)
+          @Max(1000)
+          int inputLimit,
+      @Parameter(
+              description = "Offset for input ports pagination",
+              schema = @Schema(type = "integer", defaultValue = "0"))
+          @QueryParam("inputOffset")
+          @DefaultValue("0")
+          @Min(0)
+          int inputOffset,
+      @Parameter(
+              description = "Limit the number of output ports returned",
+              schema = @Schema(type = "integer", defaultValue = "50"))
+          @QueryParam("outputLimit")
+          @DefaultValue("50")
+          @Min(1)
+          @Max(1000)
+          int outputLimit,
+      @Parameter(
+              description = "Offset for output ports pagination",
+              schema = @Schema(type = "integer", defaultValue = "0"))
+          @QueryParam("outputOffset")
+          @DefaultValue("0")
+          @Min(0)
+          int outputOffset) {
+    return Response.ok(
+            repository.getPortsViewByName(fqn, inputLimit, inputOffset, outputLimit, outputOffset))
+        .build();
   }
 }

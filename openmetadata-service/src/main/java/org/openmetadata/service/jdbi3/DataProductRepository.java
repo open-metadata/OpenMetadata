@@ -42,6 +42,8 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.domains.DataProductPortsView;
+import org.openmetadata.schema.api.domains.PaginatedEntities;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.domains.DataProduct;
@@ -90,7 +92,7 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 @Slf4j
 public class DataProductRepository extends EntityRepository<DataProduct> {
   private static final String UPDATE_FIELDS =
-      "experts,inputPorts,outputPorts,domains"; // Domain can now be updated with asset migration
+      "experts,domains"; // Domain can now be updated with asset migration
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
@@ -116,20 +118,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   @Override
   public void setFields(DataProduct entity, Fields fields) {
-    // Assets field is not exposed via API - use dedicated paginated API:
+    // Assets, inputPorts, outputPorts are accessed via dedicated paginated APIs:
     // GET /v1/dataProducts/{id}/assets
-    entity.setInputPorts(
-        fields.contains("inputPorts") ? getInputPorts(entity) : entity.getInputPorts());
-    entity.setOutputPorts(
-        fields.contains("outputPorts") ? getOutputPorts(entity) : entity.getOutputPorts());
-  }
-
-  private List<EntityReference> getInputPorts(DataProduct dataProduct) {
-    return findTo(dataProduct.getId(), Entity.DATA_PRODUCT, Relationship.INPUT_PORT, null);
-  }
-
-  private List<EntityReference> getOutputPorts(DataProduct dataProduct) {
-    return findTo(dataProduct.getId(), Entity.DATA_PRODUCT, Relationship.OUTPUT_PORT, null);
+    // GET /v1/dataProducts/{id}/inputPorts
+    // GET /v1/dataProducts/{id}/outputPorts
+    // GET /v1/dataProducts/{id}/portsView
   }
 
   @Override
@@ -152,8 +145,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   public void clearFields(DataProduct entity, Fields fields) {
     // Assets field is deprecated - use GET /v1/dataProducts/{id}/assets API
     entity.setAssets(null);
-    entity.setInputPorts(fields.contains("inputPorts") ? entity.getInputPorts() : null);
-    entity.setOutputPorts(fields.contains("outputPorts") ? entity.getOutputPorts() : null);
   }
 
   @Override
@@ -163,12 +154,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   @Override
   public void storeEntity(DataProduct entity, boolean update) {
-    // Ports are stored as relationships, not in JSON
-    List<EntityReference> inputPorts = entity.getInputPorts();
-    List<EntityReference> outputPorts = entity.getOutputPorts();
-    entity.withInputPorts(null).withOutputPorts(null);
+    // Ports are stored as relationships via dedicated APIs, not in entity JSON
     store(entity, update);
-    entity.withInputPorts(inputPorts).withOutputPorts(outputPorts);
   }
 
   @Override
@@ -185,24 +172,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       addRelationship(
           entity.getId(), expert.getId(), Entity.DATA_PRODUCT, Entity.USER, Relationship.EXPERT);
     }
-    // Store input/output port relationships
-    for (EntityReference port : listOrEmpty(entity.getInputPorts())) {
-      addRelationship(
-          entity.getId(),
-          port.getId(),
-          Entity.DATA_PRODUCT,
-          port.getType(),
-          Relationship.INPUT_PORT);
-    }
-    for (EntityReference port : listOrEmpty(entity.getOutputPorts())) {
-      addRelationship(
-          entity.getId(),
-          port.getId(),
-          Entity.DATA_PRODUCT,
-          port.getType(),
-          Relationship.OUTPUT_PORT);
-    }
-    // Assets cannot be added via create/PUT/PATCH - use bulk API:
+    // Ports and assets are managed via dedicated bulk APIs:
+    // PUT /v1/dataProducts/{name}/inputPorts/add
+    // PUT /v1/dataProducts/{name}/outputPorts/add
     // PUT /v1/dataProducts/{name}/assets/add
   }
 
@@ -399,6 +371,77 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
 
     return dataProductAssetCounts;
+  }
+
+  public ResultList<EntityInterface> getPaginatedInputPorts(
+      UUID dataProductId, int limit, int offset) {
+    List<EntityReference> allPortRefs =
+        findTo(dataProductId, Entity.DATA_PRODUCT, Relationship.INPUT_PORT, null);
+    return paginateAndResolveEntities(allPortRefs, offset, limit);
+  }
+
+  public ResultList<EntityInterface> getPaginatedInputPortsByName(
+      String dataProductName, int limit, int offset) {
+    DataProduct dataProduct = getByName(null, dataProductName, getFields("id"));
+    return getPaginatedInputPorts(dataProduct.getId(), limit, offset);
+  }
+
+  public ResultList<EntityInterface> getPaginatedOutputPorts(
+      UUID dataProductId, int limit, int offset) {
+    List<EntityReference> allPortRefs =
+        findTo(dataProductId, Entity.DATA_PRODUCT, Relationship.OUTPUT_PORT, null);
+    return paginateAndResolveEntities(allPortRefs, offset, limit);
+  }
+
+  public ResultList<EntityInterface> getPaginatedOutputPortsByName(
+      String dataProductName, int limit, int offset) {
+    DataProduct dataProduct = getByName(null, dataProductName, getFields("id"));
+    return getPaginatedOutputPorts(dataProduct.getId(), limit, offset);
+  }
+
+  @SuppressWarnings("unchecked")
+  public DataProductPortsView getPortsView(
+      UUID dataProductId, int inputLimit, int inputOffset, int outputLimit, int outputOffset) {
+    DataProduct dataProduct = get(null, dataProductId, getFields("id,fullyQualifiedName"));
+
+    ResultList<EntityInterface> inputPorts =
+        getPaginatedInputPorts(dataProductId, inputLimit, inputOffset);
+    ResultList<EntityInterface> outputPorts =
+        getPaginatedOutputPorts(dataProductId, outputLimit, outputOffset);
+
+    return new DataProductPortsView()
+        .withEntity(dataProduct.getEntityReference())
+        .withInputPorts(
+            new PaginatedEntities()
+                .withData((List) inputPorts.getData())
+                .withPaging(inputPorts.getPaging()))
+        .withOutputPorts(
+            new PaginatedEntities()
+                .withData((List) outputPorts.getData())
+                .withPaging(outputPorts.getPaging()));
+  }
+
+  public DataProductPortsView getPortsViewByName(
+      String dataProductName, int inputLimit, int inputOffset, int outputLimit, int outputOffset) {
+    DataProduct dataProduct = getByName(null, dataProductName, getFields("id,fullyQualifiedName"));
+    return getPortsView(dataProduct.getId(), inputLimit, inputOffset, outputLimit, outputOffset);
+  }
+
+  private ResultList<EntityInterface> paginateAndResolveEntities(
+      List<EntityReference> allRefs, int offset, int limit) {
+    int total = allRefs.size();
+    if (offset >= total) {
+      return new ResultList<>(Collections.emptyList(), offset, total);
+    }
+    int toIndex = Math.min(offset + limit, total);
+    List<EntityReference> pageRefs = allRefs.subList(offset, toIndex);
+
+    List<EntityInterface> entities = new ArrayList<>();
+    for (EntityReference ref : pageRefs) {
+      EntityInterface entity = Entity.getEntity(ref, "", Include.NON_DELETED);
+      entities.add(entity);
+    }
+    return new ResultList<>(entities, offset, total);
   }
 
   @Transaction
@@ -622,9 +665,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateName(updated);
-      // Track and update input/output port changes (stored as relationships)
-      updatePorts("inputPorts", Relationship.INPUT_PORT);
-      updatePorts("outputPorts", Relationship.OUTPUT_PORT);
+      // Ports are managed via dedicated bulk add/remove APIs, not via entity PATCH
       // Handle domain change with asset migration
       // Skip during consolidation to avoid incorrect intermediate migrations.
       // Asset migration should only happen on the final update, not during
@@ -781,30 +822,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       daoCollection
           .feedDAO()
           .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
-    }
-
-    private void updatePorts(String fieldName, Relationship relationship) {
-      List<EntityReference> origPorts =
-          fieldName.equals("inputPorts") ? original.getInputPorts() : original.getOutputPorts();
-      List<EntityReference> updatedPorts =
-          fieldName.equals("inputPorts") ? updated.getInputPorts() : updated.getOutputPorts();
-
-      List<EntityReference> added = new ArrayList<>();
-      List<EntityReference> deleted = new ArrayList<>();
-      recordListChange(
-          fieldName, origPorts, updatedPorts, added, deleted, EntityUtil.entityReferenceMatch);
-
-      // Update relationships for deleted ports
-      for (EntityReference port : deleted) {
-        deleteRelationship(
-            original.getId(), Entity.DATA_PRODUCT, port.getId(), port.getType(), relationship);
-      }
-
-      // Update relationships for added ports
-      for (EntityReference port : added) {
-        addRelationship(
-            updated.getId(), port.getId(), Entity.DATA_PRODUCT, port.getType(), relationship);
-      }
     }
   }
 

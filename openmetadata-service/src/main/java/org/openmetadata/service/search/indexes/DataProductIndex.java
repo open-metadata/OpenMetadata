@@ -7,7 +7,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 
 public record DataProductIndex(DataProduct dataProduct) implements SearchIndex {
-  // Only exclude assets - inputPorts and outputPorts are indexed
   private static final Set<String> excludeFields = Set.of("assets");
 
   @Override
@@ -23,8 +22,6 @@ public record DataProductIndex(DataProduct dataProduct) implements SearchIndex {
     doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.putAll(commonAttributes);
     doc.put("upstreamLineage", SearchIndex.getLineageData(dataProduct.getEntityReference()));
-    doc.put("inputPorts", getEntitiesWithDisplayName(dataProduct.getInputPorts()));
-    doc.put("outputPorts", getEntitiesWithDisplayName(dataProduct.getOutputPorts()));
     return doc;
   }
 
