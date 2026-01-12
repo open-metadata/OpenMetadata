@@ -484,10 +484,9 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                               .withUsername("test")));
 
       WebTarget serviceTarget =
-          APP.client()
-              .target(
-                  String.format(
-                      "http://localhost:%s/api/v1/services/databaseServices", APP.getLocalPort()));
+          client.target(
+              String.format(
+                  "http://localhost:%s/api/v1/services/databaseServices", APP.getLocalPort()));
       Response serviceResponse =
           SecurityUtil.addHeaders(serviceTarget, ADMIN_AUTH_HEADERS)
               .post(Entity.json(createService));
@@ -502,8 +501,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
               .withService(service.getFullyQualifiedName());
 
       WebTarget dbTarget =
-          APP.client()
-              .target(String.format("http://localhost:%s/api/v1/databases", APP.getLocalPort()));
+          client.target(String.format("http://localhost:%s/api/v1/databases", APP.getLocalPort()));
       Response dbResponse =
           SecurityUtil.addHeaders(dbTarget, ADMIN_AUTH_HEADERS).post(Entity.json(createDatabase));
       Database database =
@@ -516,9 +514,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
               .withDatabase(database.getFullyQualifiedName());
 
       WebTarget schemaTarget =
-          APP.client()
-              .target(
-                  String.format("http://localhost:%s/api/v1/databaseSchemas", APP.getLocalPort()));
+          client.target(
+              String.format("http://localhost:%s/api/v1/databaseSchemas", APP.getLocalPort()));
       Response schemaResponse =
           SecurityUtil.addHeaders(schemaTarget, ADMIN_AUTH_HEADERS).post(Entity.json(createSchema));
       DatabaseSchema schema =
@@ -580,7 +577,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                         .withDataType(org.openmetadata.schema.type.ColumnDataType.STRING)))
             .withTableConstraints(List.of());
 
-    WebTarget target = APP.client().target(getTableUri());
+    WebTarget target = client.target(getTableUri());
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(createTable));
     Table createdTable =
@@ -659,7 +656,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
             .withPartitions(1)
             .withMessageSchema(messageSchema);
 
-    WebTarget target = APP.client().target(getTopicUri());
+    WebTarget target = client.target(getTopicUri());
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(createTopic));
     Topic createdTopic =
@@ -714,7 +711,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
       createApiEndpoint.withResponseSchema(responseSchema);
     }
 
-    WebTarget target = APP.client().target(getApiEndpointUri());
+    WebTarget target = client.target(getApiEndpointUri());
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(createApiEndpoint));
     APIEndpoint createdApiEndpoint =
@@ -759,7 +756,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
       createDataModel.withColumns(columns);
     }
 
-    WebTarget target = APP.client().target(getDashboardDataModelUri());
+    WebTarget target = client.target(getDashboardDataModelUri());
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(createDataModel));
     DashboardDataModel createdDataModel =
@@ -893,26 +890,26 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   }
 
   private void deleteTable(UUID id, boolean recursive) {
-    WebTarget tableTarget = APP.client().target(getTableUri() + "/" + id);
+    WebTarget tableTarget = client.target(getTableUri() + "/" + id);
     tableTarget = tableTarget.queryParam("recursive", recursive);
     Response response = SecurityUtil.addHeaders(tableTarget, ADMIN_AUTH_HEADERS).delete();
     response.readEntity(String.class); // Consume response
   }
 
   private void deleteTopic(UUID id) {
-    WebTarget topicTarget = APP.client().target(getTopicUri() + "/" + id);
+    WebTarget topicTarget = client.target(getTopicUri() + "/" + id);
     Response response = SecurityUtil.addHeaders(topicTarget, ADMIN_AUTH_HEADERS).delete();
     response.readEntity(String.class); // Consume response
   }
 
   private void deleteApiEndpoint(UUID id) {
-    WebTarget apiEndpointTarget = APP.client().target(getApiEndpointUri() + "/" + id);
+    WebTarget apiEndpointTarget = client.target(getApiEndpointUri() + "/" + id);
     Response response = SecurityUtil.addHeaders(apiEndpointTarget, ADMIN_AUTH_HEADERS).delete();
     response.readEntity(String.class); // Consume response
   }
 
   private void deleteDashboardDataModel(UUID id) {
-    WebTarget dataModelTarget = APP.client().target(getDashboardDataModelUri() + "/" + id);
+    WebTarget dataModelTarget = client.target(getDashboardDataModelUri() + "/" + id);
     Response response = SecurityUtil.addHeaders(dataModelTarget, ADMIN_AUTH_HEADERS).delete();
     response.readEntity(String.class); // Consume response
   }
@@ -928,7 +925,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   }
 
   protected WebTarget getCollection() {
-    return APP.client().target(getDataContractUri());
+    return client.target(getDataContractUri());
   }
 
   private String getDataContractUri() {
@@ -956,7 +953,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                 new MessagingConnection()
                     .withConfig(new KafkaConnection().withBootstrapServers("localhost:9092")));
 
-    WebTarget target = APP.client().target(getMessagingServiceUri());
+    WebTarget target = client.target(getMessagingServiceUri());
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(createService));
     MessagingService createdService =
@@ -993,7 +990,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   private DataContractResult runValidate(DataContract dataContract) throws HttpResponseException {
     WebTarget validateTarget = getResource(dataContract.getId()).path("/validate");
     Response validateResponse =
-        SecurityUtil.addHeaders(validateTarget, ADMIN_AUTH_HEADERS).post(null);
+        SecurityUtil.addHeaders(validateTarget, ADMIN_AUTH_HEADERS).post(Entity.json("{}"));
     return TestUtils.readResponse(
         validateResponse, DataContractResult.class, Status.OK.getStatusCode());
   }
