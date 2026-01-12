@@ -466,19 +466,27 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
 
     private void updateSearchIndexes(String oldFqn, String newFqn, Domain updated) {
-      // Update search index for the renamed domain
-      searchRepository.updateEntity(updated.getEntityReference());
+      LOG.info(
+          "Updating search indexes after renaming domain from {} to {} using bulk operations",
+          oldFqn,
+          newFqn);
 
-      // Update search indexes for child domains
-      List<Domain> childDomains = getNestedDomains(updated);
-      for (Domain child : childDomains) {
-        searchRepository.updateEntity(child.getEntityReference());
-      }
+      // Update parent domain in search index with new FQN
+      Domain parentWithFields = get(null, updated.getId(), getFields("parent,owners,experts"));
+      parentWithFields.setFullyQualifiedName(newFqn);
+      parentWithFields.setName(updated.getName());
+      searchRepository.updateEntityIndex(parentWithFields);
 
-      // Reindex assets that reference this domain across all search indices
-      searchRepository
-          .getSearchClient()
-          .reindexAcrossIndices("domain.fullyQualifiedName", updated.getEntityReference());
+      // Bulk update all domain entities' FQNs and parent.fullyQualifiedName in search index
+      // This updates domain_search_index for all nested domains
+      searchRepository.updateDomainFqnByPrefix(oldFqn, newFqn);
+      LOG.info("Bulk updated all domain FQNs in search index from {} to {}", oldFqn, newFqn);
+
+      // Bulk update all asset domain references across all indices via global alias
+      // This updates the domains[].fullyQualifiedName field in all assets
+      searchRepository.updateAssetDomainFqnByPrefix(oldFqn, newFqn);
+      LOG.info(
+          "Bulk updated all asset domain references in search index from {} to {}", oldFqn, newFqn);
     }
   }
 

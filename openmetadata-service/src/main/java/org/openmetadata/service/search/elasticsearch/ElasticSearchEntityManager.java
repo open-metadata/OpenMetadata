@@ -1127,12 +1127,12 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                               s.inline(
                                   i ->
                                       i.lang(ScriptLanguage.Painless)
-                                          .source(SearchClient.UPDATE_ASSET_DOMAIN_SCRIPT)
+                                          .source(SearchClient.UPDATE_ASSET_DOMAIN_FQN_SCRIPT)
                                           .params(params)))
                       .refresh(true));
 
       LOG.info(
-          "Updated asset domains by IDs: requested={}, total={}, updated={}, noops={}, removed={}, added={}",
+          "Updated asset domain FQNs by IDs: requested={}, total={}, updated={}, noops={}, oldFqns={}, newFqns={}",
           assetIds.size(),
           updateResponse.total(),
           updateResponse.updated(),
@@ -1151,6 +1151,117 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
 
     } catch (Exception e) {
       LOG.error("Error while updating asset domains by IDs: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
+    if (!isClientAvailable) {
+      LOG.error("Elasticsearch client is not available. Cannot update domain FQNs.");
+      return;
+    }
+
+    try {
+      String domainIndexName = Entity.getSearchRepository().getIndexOrAliasName(Entity.DOMAIN);
+      LOG.info(
+          "Updating domain FQNs by prefix: index={}, oldFqn={}, newFqn={}",
+          domainIndexName,
+          oldFqn,
+          newFqn);
+
+      Query prefixQuery = Query.of(q -> q.prefix(p -> p.field("fullyQualifiedName").value(oldFqn)));
+      Map<String, JsonData> params =
+          Map.of(
+              "oldFqn", JsonData.of(oldFqn),
+              "newFqn", JsonData.of(newFqn));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(domainIndexName)
+                      .query(prefixQuery)
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless)
+                                          .source(SearchClient.UPDATE_DOMAIN_FQN_BY_PREFIX_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Updated domain FQNs: total={}, updated={}, noops={}",
+          updateResponse.total(),
+          updateResponse.updated(),
+          updateResponse.noops());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update domain FQNs: {}", errorMessage);
+      }
+    } catch (Exception e) {
+      LOG.error("Error while updating domain FQNs by prefix: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
+    if (!isClientAvailable) {
+      LOG.error("Elasticsearch client is not available. Cannot update asset domain FQNs.");
+      return;
+    }
+
+    try {
+      String indexName = Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+      LOG.info(
+          "Updating asset domain FQNs by prefix in search index: index={}, oldFqn={}, newFqn={}",
+          indexName,
+          oldFqn,
+          newFqn);
+
+      // Use match_all query - the script will filter and update only matching documents
+      Query matchAllQuery = Query.of(q -> q.matchAll(m -> m));
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldFqn", JsonData.of(oldFqn),
+              "newFqn", JsonData.of(newFqn));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(indexName)
+                      .query(matchAllQuery)
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless)
+                                          .source(
+                                              SearchClient.UPDATE_ASSET_DOMAIN_FQN_BY_PREFIX_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Updated asset domain FQNs in search: total={}, updated={}, noops={}",
+          updateResponse.total(),
+          updateResponse.updated(),
+          updateResponse.noops());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update asset domain FQNs: {}", errorMessage);
+      }
+    } catch (Exception e) {
+      LOG.error("Error while updating asset domain FQNs by prefix: {}", e.getMessage(), e);
     }
   }
 
