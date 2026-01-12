@@ -10,38 +10,27 @@
 #  limitations under the License.
 
 """
-MySQL SQLAlchemy Helper Methods
+StarRocks SQLAlchemy Helper Methods
 """
-import textwrap
 
-from sqlalchemy import sql
+from sqlalchemy import sql, text
 from sqlalchemy.engine import reflection
 
 from metadata.ingestion.source.database.starrocks.queries import (
+    STARROCKS_GET_TABLE_NAMES,
     STARROCKS_TABLE_COMMENTS,
 )
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-query = textwrap.dedent(
-    """
-    select TABLE_NAME as name,
-           case when `ENGINE` = 'StarRocks' and TABLE_TYPE = 'VIEW' then 'MVIEW'
-                when `ENGINE` = 'MEMORY' and TABLE_TYPE = 'SYSTEM VIEW' then 'VIEW'
-                when `ENGINE` = 'StarRocks' and TABLE_TYPE = 'TABLE' then 'TABLE'
-                when `ENGINE` = '' and TABLE_TYPE = 'VIEW' then 'VIEW'
-                else `ENGINE`
-           end as engine
-    from INFORMATION_SCHEMA.tables 
-    """
-)
 
 
 def get_table_names_and_type(_, connection, schema=None, **kw):
-    if schema:
-        query_sql = query + f" WHERE TABLE_SCHEMA = '{schema}'"
     database = schema or connection.engine.url.database
-    rows = connection.execute(query_sql, database=database, **kw)
+    rows = connection.execute(
+        text(STARROCKS_GET_TABLE_NAMES),
+        {"schema": database},
+    )
     return list(rows)
 
 

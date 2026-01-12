@@ -42,10 +42,6 @@ from metadata.ingestion.source.database.starrocks.queries import (
     STARROCKS_PARTITION_DETAILS,
     STARROCKS_SHOW_FULL_COLUMNS,
 )
-from metadata.ingestion.source.database.starrocks.utils import (
-    get_table_comment,
-    get_table_names_and_type,
-)
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
@@ -466,45 +462,42 @@ class StarRocksSource(CommonDbSourceService):
     ) -> Tuple[bool, Optional[TablePartition]]:
         """Get partition information of the table"""
         if not self.engine:
-            logger.error(
+            logger.debug(
                 "SQLAlchemy engine not initialized, cannot query partition information"
             )
             return False, None
 
         with self.engine.connect() as conn:
             try:
-                # Execute partition query (adapt to positional parameters of the template)
                 query_str = STARROCKS_PARTITION_DETAILS.format(schema_name, table_name)
                 query = sql.text(query_str)
                 result_row = conn.execute(query).first()
 
-                if (
-                    result_row
-                    and hasattr(result_row, "PartitionKey")
-                    and result_row.PartitionKey.strip()
-                ):
-                    # Parse partition keys (support multiple partition keys)
-                    partition_keys = [
-                        key.strip() for key in result_row.PartitionKey.split(",")
+                if not result_row:
+                    return False, None
+
+                partition_key = getattr(result_row, "PartitionKey", None)
+                if not partition_key or not partition_key.strip():
+                    return False, None
+
+                partition_keys = [key.strip() for key in partition_key.split(",")]
+                partition_details = TablePartition(
+                    columns=[
+                        PartitionColumnDetails(
+                            columnName=key,
+                            intervalType=PartitionIntervalTypes.TIME_UNIT,
+                        )
+                        for key in partition_keys
                     ]
-                    partition_details = TablePartition(
-                        columns=[
-                            PartitionColumnDetails(
-                                columnName=key,
-                                intervalType=PartitionIntervalTypes.TIME_UNIT,  # Default to time partition (adjustable based on actual scenario)
-                            )
-                            for key in partition_keys
-                        ]
-                    )
-                    logger.debug(
-                        f"Partition keys of table {schema_name}.{table_name}: {partition_keys}"
-                    )
-                    return True, partition_details
+                )
+                logger.debug(
+                    f"Partition keys of table {schema_name}.{table_name}: {partition_keys}"
+                )
+                return True, partition_details
 
             except Exception as exc:
-                logger.error(
-                    f"Failed to get partition information (table: {schema_name}.{table_name}): {str(exc)}",
-                    exc_info=True,
+                logger.debug(
+                    f"Could not get partition information for {schema_name}.{table_name}: {exc}"
                 )
 
         return False, None
