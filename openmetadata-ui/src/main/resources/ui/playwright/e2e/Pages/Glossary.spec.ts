@@ -1369,7 +1369,6 @@ test.describe('Glossary tests', () => {
   test('Async Delete - WebSocket failure triggers recovery', async ({
     browser,
   }) => {
-    
     // Create page and set up mocked WebSocket BEFORE navigation
     const page = await browser.newPage();
     await setupMockedWebSocket(page);
@@ -1443,6 +1442,7 @@ test.describe('Glossary tests', () => {
       await expect(
         page.getByRole('menuitem', { name: glossaryB.data.displayName })
       ).not.toBeVisible();
+
       await expectGlossaryVisible(page, glossaryC.data.displayName);
     } finally {
       await glossaryC.delete(apiContext);
@@ -1454,7 +1454,7 @@ test.describe('Glossary tests', () => {
     browser,
   }) => {
     test.slow(true);
-    
+
     // Create page and set up mocked WebSocket BEFORE navigation
     const page = await browser.newPage();
     await setupMockedWebSocket(page);
@@ -1499,6 +1499,7 @@ test.describe('Glossary tests', () => {
       await expect(
         page.getByRole('menuitem', { name: glossaryA.data.displayName })
       ).not.toBeVisible();
+
       await expectGlossaryVisible(page, glossaryB.data.displayName);
       await expectGlossaryVisible(page, glossaryC.data.displayName);
     } finally {
@@ -1833,6 +1834,57 @@ test.describe('Glossary tests', () => {
 
         await expect(page.locator('#name_help')).toHaveText(
           `A term with the name '${glossaryTerm2.data.name}' already exists in '${glossary1.data.name}' glossary.`
+        );
+      });
+    } finally {
+      await glossaryTerm1.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Check for duplicate Glossary Term with Glossary having dot in name', async ({
+    browser,
+  }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(
+      glossary1,
+      undefined,
+      'PW_TEST_TERM'
+    );
+    const glossaryTerm2 = new GlossaryTerm(
+      glossary1,
+      undefined,
+      'Pw_test_term'
+    );
+    await glossary1.create(apiContext);
+
+    try {
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+
+      await test.step('Create Glossary Term One', async () => {
+        await fillGlossaryTermDetails(page, glossaryTerm1.data, false, false);
+
+        const glossaryTermResponse = page.waitForResponse(
+          '/api/v1/glossaryTerms'
+        );
+        await page.click('[data-testid="save-glossary-term"]');
+        await glossaryTermResponse;
+      });
+
+      await test.step('Create Glossary Term Two', async () => {
+        await fillGlossaryTermDetails(page, glossaryTerm2.data, false, false);
+
+        const glossaryTermResponse = page.waitForResponse(
+          '/api/v1/glossaryTerms'
+        );
+        await page.click('[data-testid="save-glossary-term"]');
+        await glossaryTermResponse;
+
+        await expect(page.locator('#name_help')).toHaveText(
+          `A term with the name '${glossaryTerm2.data.name}' already exists in '${glossary1.responseData.fullyQualifiedName}' glossary.`
         );
       });
     } finally {
