@@ -492,8 +492,8 @@ pipelineServiceClientConfiguration:
       requests:
         cpu: ${K8S_REQUESTS_CPU:-"500m"}
         memory: ${K8S_REQUESTS_MEMORY:-"1Gi"}
-    ttlSecondsAfterFinished: ${K8S_TTL_SECONDS_AFTER_FINISHED:-86400}
-    activeDeadlineSeconds: ${K8S_ACTIVE_DEADLINE_SECONDS:-86400}
+    ttlSecondsAfterFinished: ${K8S_TTL_SECONDS_AFTER_FINISHED:-604800}
+    activeDeadlineSeconds: ${K8S_ACTIVE_DEADLINE_SECONDS:-604800}
     backoffLimit: ${K8S_BACKOFF_LIMIT:-3}
     successfulJobsHistoryLimit: ${K8S_SUCCESSFUL_JOBS_HISTORY_LIMIT:-3}
     failedJobsHistoryLimit: ${K8S_FAILED_JOBS_HISTORY_LIMIT:-1}
@@ -504,6 +504,7 @@ pipelineServiceClientConfiguration:
     runAsNonRoot: ${K8S_RUN_AS_NON_ROOT:-"true"}
     extraEnvVars: ${K8S_EXTRA_ENV_VARS:-[]}
     podAnnotations: ${K8S_POD_ANNOTATIONS:-""}
+    useOMJobOperator: ${USE_OMJOB_OPERATOR:-"true"}
 
 
 # no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how

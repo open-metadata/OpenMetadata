@@ -35,7 +35,7 @@ openmetadata:
         serviceAccountName: "openmetadata-ingestion-test"
         
         # Local ingestion image
-        ingestionImage: "openmetadata/ingestion-base:20260107"
+        ingestionImage: "openmetadata/ingestion-base:20260109"
         imagePullPolicy: "IfNotPresent"
         
         # Reduced resources for local testing
@@ -46,26 +46,48 @@ openmetadata:
           requests:
             cpu: "100m"
             memory: "512Mi"
-        
-        # Shorter timeouts for faster testing
-        ttlSecondsAfterFinished: 3600  # 1 hour
-        activeDeadlineSeconds: 1800    # 30 minutes
-        backoffLimit: 1                # Fewer retries
-        
+
         # Testing environment variables
         extraEnvVars:
           - "LOG_LEVEL:DEBUG"
           - "PYTHONDONTWRITEBYTECODE:1"
+        
+        # Enable OMJob operator for guaranteed exit handler execution
+        useOMJobOperator: true
 
 # Local image configuration
 image:
   repository: openmetadata/server
-  tag: "20260108-6"
+  tag: "20260108-19"
   pullPolicy: IfNotPresent
 
 # Service configuration for local access
 service:
   type: LoadBalancer  # For minikube tunnel access
+
+# OMJob Operator configuration
+omjobOperator:
+  enabled: true
+  # Use locally built image
+  image:
+    repository: docker.getcollate.io/openmetadata/omjob-operator
+    tag: "1.12.0-SNAPSHOT"
+    pullPolicy: IfNotPresent
+  # Adjusted resources for Java application (was OOMKilled at 128Mi)
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      cpu: "1"
+      memory: "1Gi"
+  # Debug logging for testing
+  env:
+    logLevel: "DEBUG"
+    watchNamespaces: "openmetadata-pipelines-test"
+  # Enable health checks now that operator implements proper endpoints
+  healthCheck:
+    enabled: true
 
 # Reduced resources for local testing
 resources:

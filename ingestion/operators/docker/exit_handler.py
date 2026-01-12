@@ -74,7 +74,7 @@ class FailureDiagnostics(BaseModel):
         return "No diagnostics available"
 
 
-SUCCESS_STATES = {"Succeeded"}
+SUCCESS_STATES = {"Succeeded", "success"}
 logger = ometa_logger()
 
 
@@ -166,7 +166,7 @@ def get_main_pod_logs(
         logger.info(f"Fetching logs from pod '{pod_name}'")
 
         logs = k8s_client.read_namespaced_pod_log(
-            name=pod_name, namespace=namespace, container="ingestion", tail_lines=500
+            name=pod_name, namespace=namespace, container="main", tail_lines=500
         )
 
         if logs:

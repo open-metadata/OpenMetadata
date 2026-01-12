@@ -201,7 +201,7 @@ spec:
     spec:
       serviceAccountName: openmetadata-ingestion-test
       containers:
-      - name: ingestion
+      - name: main
         image: docker.getcollate.io/openmetadata/ingestion:latest
         command: ["sh", "-c", "echo 'Starting ingestion...'; sleep 10; echo 'Something went wrong!'; exit 1"]
       restartPolicy: Never

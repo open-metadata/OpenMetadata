@@ -340,7 +340,7 @@ spec:
         fsGroup: 1000
         runAsNonRoot: true
       containers:
-      - name: ingestion
+      - name: main
         image: docker.getcollate.io/openmetadata/ingestion:latest
         imagePullPolicy: IfNotPresent
         command: ["python", "main.py"]
@@ -792,3 +792,261 @@ kubectl get pods --all-namespaces | grep Terminating
 ```
 
 This ensures reliable pipeline status reporting and early detection of issues with the automatic failure diagnostics system.
+
+## OMJob Operator: Guaranteed Exit Handler Execution
+
+### Overview
+
+The **OMJob Operator** provides guaranteed exit handler execution for all pipeline termination scenarios, addressing fundamental limitations of Kubernetes `preStop` lifecycle hooks.
+
+### Problem with PreStop Hooks
+
+While `preStop` hooks work for many scenarios, they have a critical limitation:
+
+**PreStop hooks only execute when pods are terminated by Kubernetes**, not when containers exit naturally due to application errors, completion, or internal failures.
+
+#### PreStop Hook Execution Matrix
+
+| Termination Scenario | PreStop Hook Executes |
+|----------------------|----------------------|
+| Manual `kubectl delete pod` | ✅ Yes |
+| Pod eviction (resource pressure) | ✅ Yes |
+| Node drain/failure | ✅ Yes |
+| Job timeout (`activeDeadlineSeconds`) | ✅ Yes |
+| **Container exit code 0 (success)** | ❌ **No** |
+| **Container exit code 1 (error)** | ❌ **No** |
+| **Application crash/exception** | ❌ **No** |
+| **OOM kill by container runtime** | ❌ **No** |
+
+### OMJob Operator Solution
+
+The OMJob operator guarantees exit handler execution for **ALL** termination scenarios by implementing a **two-stage execution pattern** similar to Argo Workflows' `onExit` handlers.
+
+#### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     OMJob Operator                         │
+├─────────────────────────────────────────────────────────────┤
+│ • Watches for OMJob custom resources                       │
+│ • Orchestrates two-stage execution workflow                │
+│ • Guarantees exit handler execution for ALL scenarios      │
+│ • Updates OMJob status throughout lifecycle                 │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                       OMJob CRD                            │
+├─────────────────────────────────────────────────────────────┤
+│ • mainPodSpec: Main ingestion workflow specification       │
+│ • exitHandlerSpec: Exit handler pod specification          │
+│ • ttlSecondsAfterFinished: Cleanup configuration          │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  Two-Stage Execution                       │
+├─────────────────────────────────────────────────────────────┤
+│ Stage 1: Main Pod → Ingestion workflow (any exit reason)   │
+│ Stage 2: Exit Handler Pod → Status reporting (guaranteed)  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Execution Flow
+
+1. **OMJob Resource Creation**: K8sPipelineClient creates OMJob instead of regular Job
+2. **Main Pod Execution**: Operator creates main ingestion pod from `mainPodSpec`
+3. **Completion Detection**: Operator watches main pod until completion (ANY reason)
+4. **Exit Handler Execution**: Operator creates exit handler pod from `exitHandlerSpec`
+5. **Status Reporting**: Exit handler updates OpenMetadata with final status
+6. **Cleanup**: Operator manages TTL-based cleanup of all resources
+
+#### OMJob Custom Resource
+
+```yaml
+apiVersion: pipelines.openmetadata.org/v1
+kind: OMJob
+metadata:
+  name: om-job-mysql-pipeline-a1b2c3d4
+  namespace: openmetadata-pipelines
+  labels:
+    app.kubernetes.io/name: openmetadata
+    app.kubernetes.io/component: ingestion
+    app.kubernetes.io/pipeline: mysql-pipeline
+    app.kubernetes.io/run-id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+spec:
+  # Main ingestion pod specification
+  mainPodSpec:
+    image: "openmetadata/ingestion-base:1.5.0"
+    imagePullPolicy: "IfNotPresent"
+    serviceAccountName: "openmetadata-ingestion"
+    command: ["python", "main.py"]
+    env:
+      - name: config
+        value: |
+          workflowConfig:
+            openMetadataServerConfig:
+              hostPort: "http://openmetadata:8585/api"
+            # ... complete pipeline configuration
+      - name: pipelineType
+        value: "metadata"
+      - name: pipelineRunId
+        value: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+    
+  # Exit handler pod specification
+  exitHandlerSpec:
+    image: "openmetadata/ingestion-base:1.5.0"
+    imagePullPolicy: "IfNotPresent"
+    command: ["python", "exit_handler.py"]
+    env:
+      - name: config
+        value: |
+          workflowConfig:
+            openMetadataServerConfig:
+              hostPort: "http://openmetadata:8585/api"
+            # ... minimal configuration for status updates
+      - name: pipelineRunId
+        value: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      - name: jobName
+        value: "om-job-mysql-pipeline-a1b2c3d4"
+      - name: namespace
+        value: "openmetadata-pipelines"
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "256Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+  
+  # Cleanup configuration
+  ttlSecondsAfterFinished: 604800  # 1 week
+status:
+  phase: "Pending"  # Pending → Running → ExitHandlerRunning → Succeeded/Failed
+  mainPodName: "om-job-mysql-pipeline-a1b2c3d4-main"
+  exitHandlerPodName: "om-job-mysql-pipeline-a1b2c3d4-exit"
+  startTime: "2025-01-09T15:30:00Z"
+  completionTime: "2025-01-09T15:45:00Z"
+  message: "Main pod completed successfully, exit handler executed"
+  mainPodExitCode: 0
+```
+
+### OMJob vs Regular Jobs
+
+| Aspect | Regular K8s Jobs + preStop | OMJob Operator |
+|--------|----------------------------|----------------|
+| **Exit handler execution** | ❌ Only on external termination | ✅ Guaranteed for ALL scenarios |
+| **Success completion** | ❌ No exit handler | ✅ Exit handler runs |
+| **Application crashes** | ❌ No exit handler | ✅ Exit handler runs |
+| **OOM kills** | ❌ No exit handler | ✅ Exit handler runs |
+| **Manual termination** | ✅ preStop hook runs | ✅ Exit handler runs |
+| **Resource overhead** | Lower (single pod) | Slightly higher (operator + 2 pods) |
+| **Complexity** | Lower | Higher (requires operator) |
+| **Reliability** | Partial coverage | Complete coverage |
+
+### Configuration
+
+#### K8sPipelineClient Configuration
+
+```yaml
+# openmetadata.yaml
+pipelineServiceClientConfiguration:
+  className: "org.openmetadata.service.clients.pipeline.k8s.K8sPipelineClient"
+  parameters:
+    # Enable OMJob operator usage
+    useOMJobOperator: true
+    
+    # Standard configuration (applies to both mainPodSpec and exitHandlerSpec)
+    namespace: "openmetadata-pipelines"
+    ingestionImage: "openmetadata/ingestion-base:1.5.0"
+    imagePullPolicy: "IfNotPresent"
+    serviceAccountName: "openmetadata-ingestion"
+    ttlSecondsAfterFinished: 604800
+    
+    # Resource configuration (mainPodSpec gets full resources, exitHandlerSpec gets minimal)
+    resources:
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+```
+
+#### Helm Configuration
+
+```yaml
+# Enable OMJob operator installation
+omjobOperator:
+  enabled: true
+
+# Enable OMJob usage in pipeline client
+openmetadata:
+  config:
+    pipelineServiceClientConfig:
+      type: "k8s"
+      k8s:
+        useOMJobOperator: true
+        namespace: "openmetadata-pipelines"
+        ingestionImage: "openmetadata/ingestion-base:1.5.0"
+        # ... other k8s configuration
+```
+
+### Operator Implementation
+
+The OMJob operator is implemented using the [Java Operator SDK](https://github.com/operator-framework/java-operator-sdk) and follows cloud-native patterns:
+
+#### Required Components
+
+1. **OMJob CRD**: Custom resource definition for pipeline jobs
+2. **Operator Deployment**: Controller pod that watches OMJob resources
+3. **RBAC**: Permissions for operator to manage pods and OMJobs
+4. **K8sPipelineClient Integration**: Creates OMJob resources instead of Jobs
+
+#### Operator Responsibilities
+
+- **Resource Watching**: Monitor OMJob custom resources in target namespace
+- **Pod Lifecycle Management**: Create, monitor, and clean up main and exit handler pods
+- **Status Reporting**: Update OMJob status throughout execution phases
+- **Error Handling**: Manage failures in both main and exit handler pods
+- **Cleanup**: Implement TTL-based resource cleanup
+
+### Benefits
+
+1. **Guaranteed Status Updates**: Pipeline status is always reported to OpenMetadata
+2. **Complete Coverage**: Works for all termination scenarios (success, failure, crash, OOM, external kill)
+3. **Kubernetes Native**: Uses custom resources and controller pattern
+4. **Resource Efficiency**: Exit handler pods use minimal resources (100m CPU, 256Mi memory)
+5. **Debugging**: Failed pods remain available for log inspection
+6. **Consistency**: Same behavior regardless of termination cause
+
+### When to Use OMJob Operator
+
+**Use OMJob Operator when:**
+- Critical pipelines require guaranteed status reporting
+- Running in environments with frequent OOM kills or resource pressure
+- Need debugging capabilities for failed ingestion processes
+- Compliance requires audit trails of all pipeline executions
+
+**Use Regular Jobs when:**
+- Simple ingestion scenarios with reliable infrastructure
+- Resource constraints make operator overhead significant
+- Development/testing environments where occasional missed status updates are acceptable
+
+### Operator Development
+
+The OMJob operator is located in the `openmetadata-k8s-operator` module and implements:
+
+- **OMJobReconciler**: Main controller logic for OMJob lifecycle management
+- **OMJobStatus**: Status tracking and phase transitions
+- **PodManager**: Pod creation and monitoring utilities
+- **Configuration**: Operator settings and resource defaults
+
+See `openmetadata-k8s-operator/README.md` for implementation details and development setup.

@@ -34,6 +34,7 @@
     <module>common</module>
     <module>openmetadata-shaded-deps</module>
     <module>openmetadata-service</module>
+    <module>openmetadata-k8s-operator</module>
     <module>openmetadata-integration-tests</module>
     <module>openmetadata-mcp</module>
     <module>openmetadata-ui-core-components</module>

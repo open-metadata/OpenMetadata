@@ -88,6 +88,20 @@
       <version>24.0.0</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>io.fabric8</groupId>
+      <artifactId>kubernetes-client</artifactId>
+      <version>6.12.0</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- OMJob operator model for K8s integration tests -->
+    <dependency>
+      <groupId>org.open-metadata</groupId>
+      <artifactId>openmetadata-k8s-operator</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
 
     <!-- Dropwizard testing harness -->
     <dependency>

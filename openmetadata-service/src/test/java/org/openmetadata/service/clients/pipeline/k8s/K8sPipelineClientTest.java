@@ -32,6 +32,8 @@ import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.models.V1ConfigMap;
 import io.kubernetes.client.openapi.models.V1CronJob;
 import io.kubernetes.client.openapi.models.V1CronJobSpec;
+import io.kubernetes.client.openapi.models.V1EnvVar;
+import io.kubernetes.client.openapi.models.V1EnvVarSource;
 import io.kubernetes.client.openapi.models.V1Job;
 import io.kubernetes.client.openapi.models.V1JobList;
 import io.kubernetes.client.openapi.models.V1JobStatus;
@@ -42,6 +44,8 @@ import io.kubernetes.client.openapi.models.V1Status;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -185,6 +189,131 @@ class K8sPipelineClientTest {
     assertTrue(createdJob.getMetadata().getName().startsWith("om-job-test-pipeline-"));
     assertEquals(
         "test-pipeline", createdJob.getMetadata().getLabels().get("app.kubernetes.io/pipeline"));
+  }
+
+  @Test
+  void testBuildEnvVarsIncludeConfigAndExtraEnvVars() {
+    K8sPipelineClient clientWithExtraEnvs = createClientWithExtraEnvVars();
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+    String runId = UUID.randomUUID().toString();
+
+    List<V1EnvVar> envVars = clientWithExtraEnvs.buildEnvVars(pipeline, runId, null, testService);
+    Map<String, String> envMap = toEnvMap(envVars);
+
+    assertTrue(envMap.containsKey("config"));
+    assertFalse(StringUtils.isBlank(envMap.get("config")));
+    assertEquals("bar", envMap.get("FOO"));
+    assertEquals("qux", envMap.get("BAZ"));
+    assertFalse(envMap.containsKey("OPENMETADATA_SERVER_URL"));
+  }
+
+  @Test
+  void testExitHandlerEnvVarsIncludeConfigAndExtraEnvVars() {
+    K8sPipelineClient clientWithExtraEnvs = createClientWithExtraEnvVars();
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+    String runId = UUID.randomUUID().toString();
+
+    List<V1EnvVar> envVars =
+        clientWithExtraEnvs.buildExitHandlerEnvVars(pipeline, runId, null, testService);
+    Map<String, String> envMap = toEnvMap(envVars);
+
+    assertTrue(envMap.containsKey("config"));
+    assertFalse(StringUtils.isBlank(envMap.get("config")));
+    assertEquals("bar", envMap.get("FOO"));
+    assertEquals("qux", envMap.get("BAZ"));
+    assertFalse(envMap.containsKey("OPENMETADATA_SERVER_URL"));
+  }
+
+  @Test
+  void testBuildCronOMJobUsesConfigMap() {
+    K8sPipelineClient clientWithOMJob = createClientWithUseOMJobOperator(true);
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", "0 * * * *");
+
+    CronOMJob cronOMJob = clientWithOMJob.buildCronOMJob(pipeline);
+
+    assertEquals("om-cronomjob-test-pipeline", cronOMJob.getMetadata().getName());
+    assertEquals("0 * * * *", cronOMJob.getSpec().getSchedule());
+    assertEquals("UTC", cronOMJob.getSpec().getTimeZone());
+
+    List<V1EnvVar> env = cronOMJob.getSpec().getOmJobSpec().getMainPodSpec().getEnv();
+    Map<String, V1EnvVar> envMap =
+        env.stream().collect(Collectors.toMap(V1EnvVar::getName, v -> v));
+
+    V1EnvVar configEnv = envMap.get("config");
+    assertNotNull(configEnv);
+    V1EnvVarSource source = configEnv.getValueFrom();
+    assertNotNull(source);
+    assertNotNull(source.getConfigMapKeyRef());
+    assertEquals("om-config-test-pipeline", source.getConfigMapKeyRef().getName());
+  }
+  
+  @Test
+  void testBuildCronOMJobWithCustomTimezone() {
+    K8sPipelineClient clientWithOMJob = createClientWithUseOMJobOperator(true);
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", "0 * * * *");
+    pipeline.getAirflowConfig().setPipelineTimezone("America/New_York");
+
+    CronOMJob cronOMJob = clientWithOMJob.buildCronOMJob(pipeline);
+
+    assertEquals("America/New_York", cronOMJob.getSpec().getTimeZone());
+  }
+  
+  @Test
+  void testBuildCronOMJobWithDisabledPipeline() {
+    K8sPipelineClient clientWithOMJob = createClientWithUseOMJobOperator(true);
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", "0 * * * *");
+    pipeline.setEnabled(false);
+
+    CronOMJob cronOMJob = clientWithOMJob.buildCronOMJob(pipeline);
+
+    assertTrue(cronOMJob.getSpec().getSuspend());
+  }
+  
+  @Test
+  void testBuildCronOMJobWithHistoryLimits() {
+    K8sPipelineClient clientWithOMJob = createClientWithUseOMJobOperator(true);
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", "0 * * * *");
+
+    CronOMJob cronOMJob = clientWithOMJob.buildCronOMJob(pipeline);
+
+    assertEquals(3, cronOMJob.getSpec().getSuccessfulJobsHistoryLimit());
+    assertEquals(1, cronOMJob.getSpec().getFailedJobsHistoryLimit());
+  }
+  
+  @Test
+  void testBuildCronOMJobWithStartingDeadline() {
+    K8sPipelineClient clientWithOMJob = createClientWithUseOMJobOperator(true);
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", "0 * * * *");
+
+    CronOMJob cronOMJob = clientWithOMJob.buildCronOMJob(pipeline);
+
+    assertNotNull(cronOMJob.getSpec().getStartingDeadlineSeconds());
+    assertEquals(300, cronOMJob.getSpec().getStartingDeadlineSeconds());
+  }
+  
+  @Test
+  void testCronScheduleConversion() {
+    K8sPipelineClient clientWithOMJob = createClientWithUseOMJobOperator(true);
+    
+    // Test daily schedule
+    IngestionPipeline dailyPipeline = createTestPipeline("daily", "@daily");
+    CronOMJob dailyCron = clientWithOMJob.buildCronOMJob(dailyPipeline);
+    assertEquals("0 0 * * *", dailyCron.getSpec().getSchedule());
+    
+    // Test hourly schedule
+    IngestionPipeline hourlyPipeline = createTestPipeline("hourly", "@hourly");
+    CronOMJob hourlyCron = clientWithOMJob.buildCronOMJob(hourlyPipeline);
+    assertEquals("0 * * * *", hourlyCron.getSpec().getSchedule());
+    
+    // Test weekly schedule
+    IngestionPipeline weeklyPipeline = createTestPipeline("weekly", "@weekly");
+    CronOMJob weeklyCron = clientWithOMJob.buildCronOMJob(weeklyPipeline);
+    assertEquals("0 0 * * 0", weeklyCron.getSpec().getSchedule());
+    
+    // Test custom cron expression
+    IngestionPipeline customPipeline = createTestPipeline("custom", "*/15 * * * *");
+    CronOMJob customCron = clientWithOMJob.buildCronOMJob(customPipeline);
+    assertEquals("*/15 * * * *", customCron.getSpec().getSchedule());
   }
 
   @Test
@@ -618,6 +747,51 @@ class K8sPipelineClientTest {
     pipeline.setOpenMetadataServerConnection(serverConnection);
 
     return pipeline;
+  }
+
+  private K8sPipelineClient createClientWithExtraEnvVars() {
+    Parameters params = new Parameters();
+    params.setAdditionalProperty("namespace", NAMESPACE);
+    params.setAdditionalProperty("inCluster", "false");
+    params.setAdditionalProperty("skipInit", "true");
+    params.setAdditionalProperty("ingestionImage", "openmetadata/ingestion:test");
+    params.setAdditionalProperty("serviceAccountName", "test-sa");
+    params.setAdditionalProperty("extraEnvVars", List.of("FOO:bar", "BAZ:qux"));
+
+    PipelineServiceClientConfiguration config = new PipelineServiceClientConfiguration();
+    config.setEnabled(true);
+    config.setMetadataApiEndpoint("http://localhost:8585/api");
+    config.setParameters(params);
+
+    K8sPipelineClient clientWithExtraEnvs = new K8sPipelineClient(config);
+    clientWithExtraEnvs.setBatchApi(batchApi);
+    clientWithExtraEnvs.setCoreApi(coreApi);
+    return clientWithExtraEnvs;
+  }
+
+  private K8sPipelineClient createClientWithUseOMJobOperator(boolean enabled) {
+    Parameters params = new Parameters();
+    params.setAdditionalProperty("namespace", NAMESPACE);
+    params.setAdditionalProperty("inCluster", "false");
+    params.setAdditionalProperty("skipInit", "true");
+    params.setAdditionalProperty("ingestionImage", "openmetadata/ingestion:test");
+    params.setAdditionalProperty("serviceAccountName", "test-sa");
+    params.setAdditionalProperty("useOMJobOperator", Boolean.toString(enabled));
+
+    PipelineServiceClientConfiguration config = new PipelineServiceClientConfiguration();
+    config.setEnabled(true);
+    config.setMetadataApiEndpoint("http://localhost:8585/api");
+    config.setParameters(params);
+
+    K8sPipelineClient clientWithOMJob = new K8sPipelineClient(config);
+    clientWithOMJob.setBatchApi(batchApi);
+    clientWithOMJob.setCoreApi(coreApi);
+    return clientWithOMJob;
+  }
+
+  private static Map<String, String> toEnvMap(List<V1EnvVar> envVars) {
+    return envVars.stream()
+        .collect(Collectors.toMap(V1EnvVar::getName, V1EnvVar::getValue, (a, b) -> b));
   }
 
   private ServiceEntityInterface createTestService() {

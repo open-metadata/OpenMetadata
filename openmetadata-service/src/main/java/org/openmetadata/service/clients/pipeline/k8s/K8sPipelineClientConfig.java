@@ -126,7 +126,7 @@ public class K8sPipelineClientConfig {
     this.podAnnotations = parseKeyValuePairs(getStringParam(params, POD_ANNOTATIONS_KEY, ""));
     // Default to 0 seconds - prevents CronJobs from trying to catch up any missed executions
     // This eliminates duplicate executions when AutoPilot deploys pipelines
-    this.startingDeadlineSeconds = getIntParam(params, STARTING_DEADLINE_SECONDS_KEY, 0);
+    this.startingDeadlineSeconds = getIntParam(params, STARTING_DEADLINE_SECONDS_KEY, 60);
     this.skipInit = Boolean.parseBoolean(getStringParam(params, SKIP_INIT_KEY, "false"));
 
     // Validate configuration
