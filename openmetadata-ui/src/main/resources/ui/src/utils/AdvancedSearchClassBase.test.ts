@@ -269,3 +269,112 @@ describe('getCustomPropertiesSubFields', () => {
     });
   });
 });
+
+describe('elasticSearchFormatValue for text widget', () => {
+  let advancedSearchClassBase: AdvancedSearchClassBase;
+
+  beforeEach(() => {
+    advancedSearchClassBase = new AdvancedSearchClassBase();
+  });
+
+  it('should format regexp operator correctly without double nesting', () => {
+    const formatValue =
+      advancedSearchClassBase.configWidgets.text.elasticSearchFormatValue;
+    const result = formatValue(
+      'regexp',
+      ['gold.*'],
+      'regexp',
+      'databaseSchema.displayName.keyword'
+    );
+
+    expect(result).toEqual({
+      'databaseSchema.displayName.keyword': {
+        value: 'gold.*',
+        case_insensitive: true,
+      },
+    });
+
+    // Ensure it does NOT have double-nested regexp key
+    expect(result).not.toHaveProperty('regexp');
+  });
+
+  it('should format equal operator correctly', () => {
+    const formatValue =
+      advancedSearchClassBase.configWidgets.text.elasticSearchFormatValue;
+    const result = formatValue('term', ['testValue'], 'equal', 'fieldName');
+
+    expect(result).toEqual({
+      fieldName: 'testValue',
+    });
+  });
+
+  it('should format like operator correctly', () => {
+    const formatValue =
+      advancedSearchClassBase.configWidgets.text.elasticSearchFormatValue;
+    const result = formatValue('wildcard', ['testValue'], 'like', 'fieldName');
+
+    expect(result).toEqual({
+      fieldName: { value: '*testValue*' },
+    });
+  });
+
+  it('should format not_like operator correctly', () => {
+    const formatValue =
+      advancedSearchClassBase.configWidgets.text.elasticSearchFormatValue;
+    const result = formatValue(
+      'wildcard',
+      ['testValue'],
+      'not_like',
+      'fieldName'
+    );
+
+    expect(result).toEqual({
+      wildcard: { fieldName: { value: '*testValue*' } },
+    });
+  });
+
+  it('should format not_equal operator correctly', () => {
+    const formatValue =
+      advancedSearchClassBase.configWidgets.text.elasticSearchFormatValue;
+    const result = formatValue('term', ['testValue'], 'not_equal', 'fieldName');
+
+    expect(result).toEqual({
+      term: { fieldName: 'testValue' },
+    });
+  });
+
+  it('should format is_null operator correctly', () => {
+    const formatValue =
+      advancedSearchClassBase.configWidgets.text.elasticSearchFormatValue;
+    const result = formatValue('exists', [], 'is_null', 'fieldName');
+
+    expect(result).toEqual({
+      field: 'fieldName',
+    });
+  });
+
+  it('should format is_not_null operator correctly', () => {
+    const formatValue =
+      advancedSearchClassBase.configWidgets.text.elasticSearchFormatValue;
+    const result = formatValue('exists', [], 'is_not_null', 'fieldName');
+
+    expect(result).toEqual({
+      field: 'fieldName',
+    });
+  });
+
+  it('should lowercase extension field values', () => {
+    const formatValue =
+      advancedSearchClassBase.configWidgets.text.elasticSearchFormatValue;
+    const result = formatValue(
+      'term',
+      ['TestValue'],
+      'equal',
+      'extension.customField'
+    );
+
+    expect(result).toEqual({
+      'extension.customField': 'testvalue',
+    });
+  });
+});
