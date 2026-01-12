@@ -32,8 +32,7 @@ public class ServicesStatusJobHandler {
   private static ServicesStatusJobHandler instance;
 
   private ServicesStatusJobHandler(
-      EventMonitorConfiguration monitorConfiguration,
-      String clusterName)
+      EventMonitorConfiguration monitorConfiguration, String clusterName)
       throws SchedulerException {
     this.meterRegistry =
         (PrometheusMeterRegistry)
@@ -50,8 +49,7 @@ public class ServicesStatusJobHandler {
   }
 
   public static ServicesStatusJobHandler create(
-      EventMonitorConfiguration eventMonitorConfiguration,
-      String clusterName) {
+      EventMonitorConfiguration eventMonitorConfiguration, String clusterName) {
     if (instance != null) return instance;
 
     try {
@@ -82,7 +80,6 @@ public class ServicesStatusJobHandler {
                 .repeatForever())
         .build();
   }
-
 
   public void addDatabaseAndSearchStatusJobs() {
     try {
