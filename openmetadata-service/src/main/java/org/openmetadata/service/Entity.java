@@ -290,6 +290,36 @@ public final class Entity {
   public static final String ORGANIZATION_POLICY_NAME = "OrganizationPolicy";
   public static final String INGESTION_BOT_NAME = "ingestion-bot";
   public static final String ALL_RESOURCES = "All";
+  public static final String DATA_ASSETS = "dataAsset";
+
+  // Data asset entity types - entities that users should be able to interact with
+  // This excludes services, policies, roles, users, teams, and other administrative entities
+  public static final Set<String> DATA_ASSET_TYPES =
+      Set.of(
+          TABLE,
+          STORED_PROCEDURE,
+          DATABASE_SCHEMA,
+          DATABASE,
+          CHART,
+          DASHBOARD,
+          DASHBOARD_DATA_MODEL,
+          PIPELINE,
+          TOPIC,
+          CONTAINER,
+          SEARCH_INDEX,
+          MLMODEL,
+          DATA_PRODUCT,
+          GLOSSARY_TERM,
+          TAG,
+          METRIC,
+          API_COLLECTION,
+          API_ENDPOINT,
+          DIRECTORY,
+          FILE,
+          SPREADSHEET,
+          WORKSHEET,
+          QUERY,
+          LLM_MODEL);
 
   public static final String DOCUMENT = "document";
   // ServiceType - Service Entity name map

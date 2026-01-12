@@ -1,6 +1,8 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import static org.openmetadata.service.Entity.ALL_RESOURCES;
+import static org.openmetadata.service.Entity.DATA_ASSETS;
+import static org.openmetadata.service.Entity.DATA_ASSET_TYPES;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionDenied;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -204,6 +206,10 @@ public class CompiledRule extends Rule {
     }
     if (getResources().stream().anyMatch(r -> r.equalsIgnoreCase(ALL_RESOURCES))) {
       return !resource.equalsIgnoreCase("scim");
+    }
+    // Match "dataAsset" resource group - matches only data asset entity types, not services
+    if (getResources().stream().anyMatch(r -> r.equalsIgnoreCase(DATA_ASSETS))) {
+      return DATA_ASSET_TYPES.contains(resource);
     }
     return false;
   }
