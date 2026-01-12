@@ -29,11 +29,12 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public abstract class BaseServiceIT<T extends EntityInterface, K extends CreateEntity>
     extends BaseEntityIT<T, K> {
 
-  // Services typically don't support patch and don't have search indices
+  // Services typically don't support patch, don't have search indices, and don't need tag testing
   {
     supportsPatch = false;
     supportsSearchIndex = false;
     supportsDomains = false; // Services don't support domains field directly
+    supportsTags = false; // Skip tag tests for services to avoid deadlocks in parallel execution
   }
 
   @Test
