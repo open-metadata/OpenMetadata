@@ -393,6 +393,9 @@ export enum AuthProvider {
  *
  * Regex to only fetch api collections with names matching the pattern.
  *
+ * Regex to only include/exclude schemas that matches the pattern. System schemas
+ * (information_schema, _statistics_, sys) are excluded by default.
+ *
  * Regex to include/exclude FHIR resource categories
  *
  * Regex to include/exclude FHIR resource types
@@ -1129,6 +1132,9 @@ export interface ConfigObject {
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to only include/exclude schemas that matches the pattern. System schemas
+     * (information_schema, _statistics_, sys) are excluded by default.
      *
      * Regex to include/exclude FHIR resource categories
      */

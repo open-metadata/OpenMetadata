@@ -40,7 +40,8 @@ export interface StarrocksConnection {
      */
     password?: string;
     /**
-     * Regex to only include/exclude schemas that matches the pattern.
+     * Regex to only include/exclude schemas that matches the pattern. System schemas
+     * (information_schema, _statistics_, sys) are excluded by default.
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -78,7 +79,8 @@ export interface StarrocksConnection {
  *
  * Regex to only fetch entities that matches the pattern.
  *
- * Regex to only include/exclude schemas that matches the pattern.
+ * Regex to only include/exclude schemas that matches the pattern. System schemas
+ * (information_schema, _statistics_, sys) are excluded by default.
  *
  * Regex to only include/exclude tables that matches the pattern.
  */
