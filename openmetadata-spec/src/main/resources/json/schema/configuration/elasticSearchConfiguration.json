@@ -21,11 +21,11 @@
   },
   "properties": {
     "host": {
-      "description": "Elastic Search Host",
+      "description": "Elastic Search Host. Supports single host or comma-separated list for multiple hosts (e.g., 'localhost' or 'es-node1:9200,es-node2:9200,es-node3:9200').",
       "type": "string"
     },
     "port": {
-      "description": "Elastic Search port",
+      "description": "Elastic Search port. Used when host does not include port. Ignored when using comma-separated hosts with ports.",
       "type": "integer"
     },
     "scheme": {
@@ -102,6 +102,40 @@
     "searchIndexFactoryClassName": {
       "description": "Index factory name",
       "type": "string"
+    },
+    "aws": {
+      "description": "AWS IAM authentication configuration for OpenSearch. When useIamAuth is true, requests will be signed using AWS Signature Version 4.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.AwsConfiguration",
+      "properties": {
+        "useIamAuth": {
+          "description": "Enable AWS IAM authentication for OpenSearch",
+          "type": "boolean",
+          "default": false
+        },
+        "region": {
+          "description": "AWS Region for OpenSearch service",
+          "type": "string"
+        },
+        "accessKeyId": {
+          "description": "AWS Access Key ID. If not provided, default credential provider chain will be used.",
+          "type": "string"
+        },
+        "secretAccessKey": {
+          "description": "AWS Secret Access Key. If not provided, default credential provider chain will be used.",
+          "type": "string"
+        },
+        "sessionToken": {
+          "description": "AWS Session Token for temporary credentials",
+          "type": "string"
+        },
+        "serviceName": {
+          "description": "AWS service name for signing (es for Elasticsearch/OpenSearch, aoss for OpenSearch Serverless)",
+          "type": "string",
+          "default": "es"
+        }
+      },
+      "additionalProperties": false
     },
     "naturalLanguageSearch": {
       "description": "Configuration for natural language search capabilities",

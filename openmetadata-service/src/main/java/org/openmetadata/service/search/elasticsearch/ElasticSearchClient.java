@@ -20,6 +20,7 @@ import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.security.KeyStoreException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -638,14 +639,11 @@ public class ElasticSearchClient implements SearchClient {
   public RestClient getLowLevelRestClient(ElasticSearchConfiguration esConfig) {
     if (esConfig != null) {
       try {
-        RestClientBuilder restClientBuilder =
-            RestClient.builder(
-                new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
+        HttpHost[] httpHosts = buildHttpHosts(esConfig);
+        RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
 
-        // Configure connection pooling
         restClientBuilder.setHttpClientConfigCallback(
             httpAsyncClientBuilder -> {
-              // Set connection pool sizes
               if (esConfig.getMaxConnTotal() != null && esConfig.getMaxConnTotal() > 0) {
                 httpAsyncClientBuilder.setMaxConnTotal(esConfig.getMaxConnTotal());
               }
@@ -653,7 +651,6 @@ public class ElasticSearchClient implements SearchClient {
                 httpAsyncClientBuilder.setMaxConnPerRoute(esConfig.getMaxConnPerRoute());
               }
 
-              // Configure authentication if provided
               if (StringUtils.isNotEmpty(esConfig.getUsername())
                   && StringUtils.isNotEmpty(esConfig.getPassword())) {
                 CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
@@ -664,7 +661,6 @@ public class ElasticSearchClient implements SearchClient {
                 httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
               }
 
-              // Configure SSL if needed
               SSLContext sslContext = null;
               try {
                 sslContext = createElasticSearchSSLContext(esConfig);
@@ -675,7 +671,6 @@ public class ElasticSearchClient implements SearchClient {
                 httpAsyncClientBuilder.setSSLContext(sslContext);
               }
 
-              // Enable TCP keep alive strategy
               if (esConfig.getKeepAliveTimeoutSecs() != null
                   && esConfig.getKeepAliveTimeoutSecs() > 0) {
                 httpAsyncClientBuilder.setKeepAliveStrategy(
@@ -685,22 +680,18 @@ public class ElasticSearchClient implements SearchClient {
               return httpAsyncClientBuilder;
             });
 
-        // Configure request timeouts
         restClientBuilder.setRequestConfigCallback(
             requestConfigBuilder ->
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
 
-        // Enable compression for better network efficiency
         restClientBuilder.setCompressionEnabled(true);
 
-        // Build client without default headers first to check version
         RestClient tempClient = restClientBuilder.build();
         boolean isElasticsearch7 = isElasticsearch7Version(tempClient);
         tempClient.close();
 
-        // Only set default headers for ES 7.x server
         if (isElasticsearch7) {
           restClientBuilder.setDefaultHeaders(defaultHeaders);
         }
@@ -714,6 +705,36 @@ public class ElasticSearchClient implements SearchClient {
       LOG.error("Failed to create low level rest client as esConfig is null");
       return null;
     }
+  }
+
+  private HttpHost[] buildHttpHosts(ElasticSearchConfiguration esConfig) {
+    List<HttpHost> hosts = new ArrayList<>();
+    String scheme = esConfig.getScheme();
+    int defaultPort = esConfig.getPort() != null ? esConfig.getPort() : 9200;
+
+    if (StringUtils.isNotEmpty(esConfig.getHost())) {
+      String hostConfig = esConfig.getHost();
+      if (hostConfig.contains(",")) {
+        for (String hostEntry : hostConfig.split(",")) {
+          hostEntry = hostEntry.trim();
+          String[] parts = hostEntry.split(":");
+          String host = parts[0];
+          int port = parts.length > 1 ? Integer.parseInt(parts[1]) : defaultPort;
+          hosts.add(new HttpHost(host, port, scheme));
+        }
+        LOG.info("Configured Elasticsearch with {} hosts", hosts.size());
+      } else {
+        String[] parts = hostConfig.split(":");
+        String host = parts[0];
+        int port = parts.length > 1 ? Integer.parseInt(parts[1]) : defaultPort;
+        hosts.add(new HttpHost(host, port, scheme));
+        LOG.info("Configured Elasticsearch with single host: {}:{}", host, port);
+      }
+    } else {
+      throw new IllegalArgumentException("'host' must be provided in Elasticsearch configuration");
+    }
+
+    return hosts.toArray(new HttpHost[0]);
   }
 
   @Override

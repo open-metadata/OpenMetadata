@@ -15,6 +15,7 @@ import java.util.UUID;
 import javax.net.ssl.SSLContext;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import java.util.ArrayList;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpHost;
@@ -23,6 +24,14 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.jetbrains.annotations.NotNull;
+import org.openmetadata.schema.service.configuration.elasticsearch.AwsConfiguration;
+import org.openmetadata.service.search.SigV4RequestSigningInterceptor;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
@@ -609,14 +618,17 @@ public class OpenSearchClient implements SearchClient {
   private RestClientBuilder getLowLevelRestClient(ElasticSearchConfiguration esConfig) {
     if (esConfig != null) {
       try {
-        RestClientBuilder restClientBuilder =
-            RestClient.builder(
-                new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
+        HttpHost[] httpHosts = buildHttpHosts(esConfig);
+        RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
 
-        // Configure connection pooling
+        AwsConfiguration awsConfig = esConfig.getAws();
+        boolean useIamAuth =
+            awsConfig != null
+                && awsConfig.getUseIamAuth() != null
+                && awsConfig.getUseIamAuth();
+
         restClientBuilder.setHttpClientConfigCallback(
             httpAsyncClientBuilder -> {
-              // Set connection pool sizes
               if (esConfig.getMaxConnTotal() != null && esConfig.getMaxConnTotal() > 0) {
                 httpAsyncClientBuilder.setMaxConnTotal(esConfig.getMaxConnTotal());
               }
@@ -624,8 +636,20 @@ public class OpenSearchClient implements SearchClient {
                 httpAsyncClientBuilder.setMaxConnPerRoute(esConfig.getMaxConnPerRoute());
               }
 
-              // Configure authentication if provided
-              if (StringUtils.isNotEmpty(esConfig.getUsername())
+              if (useIamAuth) {
+                AwsCredentialsProvider credentialsProvider = buildAwsCredentialsProvider(awsConfig);
+                Region region = Region.of(awsConfig.getRegion());
+                String serviceName =
+                    StringUtils.isNotEmpty(awsConfig.getServiceName())
+                        ? awsConfig.getServiceName()
+                        : "es";
+
+                httpAsyncClientBuilder.addInterceptorLast(
+                    new SigV4RequestSigningInterceptor(credentialsProvider, region, serviceName));
+                LOG.info(
+                    "AWS IAM authentication enabled for OpenSearch in region: {}",
+                    awsConfig.getRegion());
+              } else if (StringUtils.isNotEmpty(esConfig.getUsername())
                   && StringUtils.isNotEmpty(esConfig.getPassword())) {
                 CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
                 credentialsProvider.setCredentials(
@@ -635,7 +659,6 @@ public class OpenSearchClient implements SearchClient {
                 httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
               }
 
-              // Configure SSL if needed
               SSLContext sslContext = null;
               try {
                 sslContext = createElasticSearchSSLContext(esConfig);
@@ -646,7 +669,6 @@ public class OpenSearchClient implements SearchClient {
                 httpAsyncClientBuilder.setSSLContext(sslContext);
               }
 
-              // Enable TCP keep alive strategy
               if (esConfig.getKeepAliveTimeoutSecs() != null
                   && esConfig.getKeepAliveTimeoutSecs() > 0) {
                 httpAsyncClientBuilder.setKeepAliveStrategy(
@@ -656,14 +678,12 @@ public class OpenSearchClient implements SearchClient {
               return httpAsyncClientBuilder;
             });
 
-        // Configure request timeouts
         restClientBuilder.setRequestConfigCallback(
             requestConfigBuilder ->
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
 
-        // Enable compression and chunking for better network efficiency
         restClientBuilder.setCompressionEnabled(true);
         restClientBuilder.setChunkedEnabled(true);
         return restClientBuilder;
@@ -675,6 +695,54 @@ public class OpenSearchClient implements SearchClient {
       LOG.error("Failed to create low level rest client as esConfig is null");
       return null;
     }
+  }
+
+  private HttpHost[] buildHttpHosts(ElasticSearchConfiguration esConfig) {
+    List<HttpHost> hosts = new ArrayList<>();
+    String scheme = esConfig.getScheme();
+    int defaultPort = esConfig.getPort() != null ? esConfig.getPort() : 9200;
+
+    if (StringUtils.isNotEmpty(esConfig.getHost())) {
+      String hostConfig = esConfig.getHost();
+      if (hostConfig.contains(",")) {
+        for (String hostEntry : hostConfig.split(",")) {
+          hostEntry = hostEntry.trim();
+          String[] parts = hostEntry.split(":");
+          String host = parts[0];
+          int port = parts.length > 1 ? Integer.parseInt(parts[1]) : defaultPort;
+          hosts.add(new HttpHost(host, port, scheme));
+        }
+        LOG.info("Configured OpenSearch with {} hosts", hosts.size());
+      } else {
+        String[] parts = hostConfig.split(":");
+        String host = parts[0];
+        int port = parts.length > 1 ? Integer.parseInt(parts[1]) : defaultPort;
+        hosts.add(new HttpHost(host, port, scheme));
+        LOG.info("Configured OpenSearch with single host: {}:{}", host, port);
+      }
+    } else {
+      throw new IllegalArgumentException("'host' must be provided in OpenSearch configuration");
+    }
+
+    return hosts.toArray(new HttpHost[0]);
+  }
+
+  private AwsCredentialsProvider buildAwsCredentialsProvider(AwsConfiguration awsConfig) {
+    if (StringUtils.isNotEmpty(awsConfig.getAccessKeyId())
+        && StringUtils.isNotEmpty(awsConfig.getSecretAccessKey())) {
+      if (StringUtils.isNotEmpty(awsConfig.getSessionToken())) {
+        return StaticCredentialsProvider.create(
+            AwsSessionCredentials.create(
+                awsConfig.getAccessKeyId(),
+                awsConfig.getSecretAccessKey(),
+                awsConfig.getSessionToken()));
+      } else {
+        return StaticCredentialsProvider.create(
+            AwsBasicCredentials.create(
+                awsConfig.getAccessKeyId(), awsConfig.getSecretAccessKey()));
+      }
+    }
+    return DefaultCredentialsProvider.create();
   }
 
   @Override
