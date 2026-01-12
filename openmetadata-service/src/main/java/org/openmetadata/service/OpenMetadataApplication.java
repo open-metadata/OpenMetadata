@@ -390,7 +390,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         ServicesStatusJobHandler.create(
             catalogConfig.getEventMonitorConfiguration(),
             catalogConfig.getClusterName());
-    // Removed scheduled pipeline service health check - UI calls status when needed and OM health page provides visibility
     healthCheckStatusHandler.addDatabaseAndSearchStatusJobs();
   }
 
