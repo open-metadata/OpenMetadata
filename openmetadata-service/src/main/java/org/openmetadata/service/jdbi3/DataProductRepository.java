@@ -375,9 +375,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public ResultList<EntityInterface> getPaginatedInputPorts(
       UUID dataProductId, int limit, int offset) {
-    List<EntityReference> allPortRefs =
-        findTo(dataProductId, Entity.DATA_PRODUCT, Relationship.INPUT_PORT, null);
-    return paginateAndResolveEntities(allPortRefs, offset, limit);
+    return getPaginatedPorts(dataProductId, Relationship.INPUT_PORT, limit, offset);
   }
 
   public ResultList<EntityInterface> getPaginatedInputPortsByName(
@@ -388,9 +386,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public ResultList<EntityInterface> getPaginatedOutputPorts(
       UUID dataProductId, int limit, int offset) {
-    List<EntityReference> allPortRefs =
-        findTo(dataProductId, Entity.DATA_PRODUCT, Relationship.OUTPUT_PORT, null);
-    return paginateAndResolveEntities(allPortRefs, offset, limit);
+    return getPaginatedPorts(dataProductId, Relationship.OUTPUT_PORT, limit, offset);
   }
 
   public ResultList<EntityInterface> getPaginatedOutputPortsByName(
@@ -399,15 +395,70 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return getPaginatedOutputPorts(dataProduct.getId(), limit, offset);
   }
 
-  @SuppressWarnings("unchecked")
+  private ResultList<EntityInterface> getPaginatedPorts(
+      UUID dataProductId, Relationship relationship, int limit, int offset) {
+    List<CollectionDAO.EntityRelationshipRecord> relationshipRecords =
+        daoCollection
+            .relationshipDAO()
+            .findToWithOffset(
+                dataProductId, DATA_PRODUCT, List.of(relationship.ordinal()), offset, limit);
+
+    int total =
+        daoCollection
+            .relationshipDAO()
+            .countFindTo(dataProductId, DATA_PRODUCT, List.of(relationship.ordinal()));
+
+    if (relationshipRecords.isEmpty()) {
+      return new ResultList<>(Collections.emptyList(), offset, total);
+    }
+
+    // Group by entity type for bulk fetching
+    Map<String, List<EntityReference>> refsByType = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipRecord record : relationshipRecords) {
+      EntityReference ref = new EntityReference().withId(record.getId()).withType(record.getType());
+      refsByType.computeIfAbsent(record.getType(), k -> new ArrayList<>()).add(ref);
+    }
+
+    // Bulk fetch entities by type and collect in order
+    Map<UUID, EntityInterface> entitiesById = new HashMap<>();
+    for (Map.Entry<String, List<EntityReference>> entry : refsByType.entrySet()) {
+      List<EntityInterface> entitiesOfType = Entity.getEntities(entry.getValue(), "", NON_DELETED);
+      for (int i = 0; i < entitiesOfType.size(); i++) {
+        entitiesById.put(entry.getValue().get(i).getId(), entitiesOfType.get(i));
+      }
+    }
+
+    // Preserve original order from relationship records
+    List<EntityInterface> entities = new ArrayList<>();
+    for (CollectionDAO.EntityRelationshipRecord record : relationshipRecords) {
+      EntityInterface entity = entitiesById.get(record.getId());
+      if (entity != null) {
+        entities.add(entity);
+      }
+    }
+
+    return new ResultList<>(entities, offset, total);
+  }
+
   public DataProductPortsView getPortsView(
       UUID dataProductId, int inputLimit, int inputOffset, int outputLimit, int outputOffset) {
     DataProduct dataProduct = get(null, dataProductId, getFields("id,fullyQualifiedName"));
+    return buildPortsView(dataProduct, inputLimit, inputOffset, outputLimit, outputOffset);
+  }
 
+  public DataProductPortsView getPortsViewByName(
+      String dataProductName, int inputLimit, int inputOffset, int outputLimit, int outputOffset) {
+    DataProduct dataProduct = getByName(null, dataProductName, getFields("id,fullyQualifiedName"));
+    return buildPortsView(dataProduct, inputLimit, inputOffset, outputLimit, outputOffset);
+  }
+
+  @SuppressWarnings("unchecked")
+  private DataProductPortsView buildPortsView(
+      DataProduct dataProduct, int inputLimit, int inputOffset, int outputLimit, int outputOffset) {
     ResultList<EntityInterface> inputPorts =
-        getPaginatedInputPorts(dataProductId, inputLimit, inputOffset);
+        getPaginatedInputPorts(dataProduct.getId(), inputLimit, inputOffset);
     ResultList<EntityInterface> outputPorts =
-        getPaginatedOutputPorts(dataProductId, outputLimit, outputOffset);
+        getPaginatedOutputPorts(dataProduct.getId(), outputLimit, outputOffset);
 
     return new DataProductPortsView()
         .withEntity(dataProduct.getEntityReference())
@@ -419,29 +470,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
             new PaginatedEntities()
                 .withData((List) outputPorts.getData())
                 .withPaging(outputPorts.getPaging()));
-  }
-
-  public DataProductPortsView getPortsViewByName(
-      String dataProductName, int inputLimit, int inputOffset, int outputLimit, int outputOffset) {
-    DataProduct dataProduct = getByName(null, dataProductName, getFields("id,fullyQualifiedName"));
-    return getPortsView(dataProduct.getId(), inputLimit, inputOffset, outputLimit, outputOffset);
-  }
-
-  private ResultList<EntityInterface> paginateAndResolveEntities(
-      List<EntityReference> allRefs, int offset, int limit) {
-    int total = allRefs.size();
-    if (offset >= total) {
-      return new ResultList<>(Collections.emptyList(), offset, total);
-    }
-    int toIndex = Math.min(offset + limit, total);
-    List<EntityReference> pageRefs = allRefs.subList(offset, toIndex);
-
-    List<EntityInterface> entities = new ArrayList<>();
-    for (EntityReference ref : pageRefs) {
-      EntityInterface entity = Entity.getEntity(ref, "", Include.NON_DELETED);
-      entities.add(entity);
-    }
-    return new ResultList<>(entities, offset, total);
   }
 
   @Transaction

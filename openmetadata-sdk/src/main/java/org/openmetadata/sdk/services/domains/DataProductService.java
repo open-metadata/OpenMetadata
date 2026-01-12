@@ -121,7 +121,7 @@ public class DataProductService
     public BulkOperationResult add(BulkAssets request) throws OpenMetadataException {
       String path =
           byName
-              ? String.format("%s/%s/inputPorts/add", basePath, identifier)
+              ? String.format("%s/name/%s/inputPorts/add", basePath, identifier)
               : String.format("%s/%s/inputPorts/add", basePath, identifier);
       return httpClient.execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
     }
@@ -129,7 +129,7 @@ public class DataProductService
     public BulkOperationResult remove(BulkAssets request) throws OpenMetadataException {
       String path =
           byName
-              ? String.format("%s/%s/inputPorts/remove", basePath, identifier)
+              ? String.format("%s/name/%s/inputPorts/remove", basePath, identifier)
               : String.format("%s/%s/inputPorts/remove", basePath, identifier);
       return httpClient.execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
     }
@@ -172,7 +172,7 @@ public class DataProductService
     public BulkOperationResult add(BulkAssets request) throws OpenMetadataException {
       String path =
           byName
-              ? String.format("%s/%s/outputPorts/add", basePath, identifier)
+              ? String.format("%s/name/%s/outputPorts/add", basePath, identifier)
               : String.format("%s/%s/outputPorts/add", basePath, identifier);
       return httpClient.execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
     }
@@ -180,7 +180,7 @@ public class DataProductService
     public BulkOperationResult remove(BulkAssets request) throws OpenMetadataException {
       String path =
           byName
-              ? String.format("%s/%s/outputPorts/remove", basePath, identifier)
+              ? String.format("%s/name/%s/outputPorts/remove", basePath, identifier)
               : String.format("%s/%s/outputPorts/remove", basePath, identifier);
       return httpClient.execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
     }
