@@ -12,10 +12,7 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-} from '../../../../constants/constants';
+import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { CursorType } from '../../../../enums/pagination.enum';
 import { File } from '../../../../generated/entity/data/file';
 import {
@@ -232,10 +229,11 @@ describe('FilesTable', () => {
     await waitFor(() => {
       expect(mockHandleShowDeleted).toHaveBeenCalledWith(true);
       expect(mockPaging.handlePageChange).toHaveBeenCalledWith(
-        INITIAL_PAGING_VALUE
-      );
-      expect(mockPaging.handlePageSizeChange).toHaveBeenCalledWith(
-        PAGE_SIZE_BASE
+        INITIAL_PAGING_VALUE,
+        {
+          cursorType: null,
+          cursorValue: undefined,
+        }
       );
     });
   });
