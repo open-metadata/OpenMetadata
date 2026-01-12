@@ -10,11 +10,8 @@ source:
   sourceConfig:
     config:
       type: DatabaseMetadata
-      schemaFilterPattern:
-        excludes:
-          - information_schema.*
-          - _statistics_.*
-          - starrocks_audit_db__.*
+      # System schemas (information_schema, _statistics_, sys) are excluded by default.
+      # Add additional filters here if needed.
 sink:
   type: metadata-rest
   config: {}

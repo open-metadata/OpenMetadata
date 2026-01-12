@@ -61,6 +61,9 @@ RELKIND_MAP = {
     "HUDI": TableType.External,
 }
 
+# StarRocks system schemas to exclude by default
+STARROCKS_SYSTEM_SCHEMAS = {"information_schema", "_statistics_", "sys"}
+
 logger = ingestion_logger()
 
 
@@ -219,6 +222,17 @@ class StarRocksSource(CommonDbSourceService):
             )
 
         return cls(config, metadata)
+
+    def get_raw_database_schema_names(self) -> Iterable[str]:
+        """
+        Get schema names from StarRocks, excluding system schemas.
+        """
+        if self.service_connection.__dict__.get("databaseSchema"):
+            yield self.service_connection.databaseSchema
+        else:
+            for schema_name in self.inspector.get_schema_names():
+                if schema_name.lower() not in STARROCKS_SYSTEM_SCHEMAS:
+                    yield schema_name
 
     def query_table_names_and_types(
         self, schema_name: str

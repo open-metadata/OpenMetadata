@@ -76,8 +76,8 @@
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
     "schemaFilterPattern":{
-      "title": "Default Schema Filter Pattern",
-      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "title": "Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern. System schemas (information_schema, _statistics_, sys) are excluded by default.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
     },
     "tableFilterPattern": {

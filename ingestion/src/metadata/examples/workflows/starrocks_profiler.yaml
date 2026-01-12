@@ -10,12 +10,12 @@ source:
   sourceConfig:
     config:
       type: Profiler
+      # Use StarRocks system tables for statistics (row count, distinct count, etc.)
+      # Requires running ANALYZE TABLE for column-level statistics
+      useStatistics: true
       schemaFilterPattern:
         includes:
           - quickstart.*
-        excludes:
-          - information_schema.*
-          - _statistics_.*
       tableFilterPattern:
         includes:
           - customers
