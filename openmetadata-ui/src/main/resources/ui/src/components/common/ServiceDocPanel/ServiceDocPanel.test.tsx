@@ -13,7 +13,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
-import { getCompleteActiveFieldName } from '../../../utils/ServiceUtils';
+import { getActiveFieldNameForAppDocs } from '../../../utils/ServiceUtils';
 import ServiceDocPanel from './ServiceDocPanel';
 
 jest.mock('../Loader/Loader', () =>
@@ -41,7 +41,7 @@ jest.mock('../../../rest/miscAPI', () => ({
 }));
 
 jest.mock('../../../utils/ServiceUtils', () => ({
-  getCompleteActiveFieldName: jest.fn(),
+  getActiveFieldNameForAppDocs: jest.fn(),
 }));
 
 jest.mock('react-i18next', () => ({
@@ -55,9 +55,9 @@ jest.mock('react-i18next', () => ({
 const mockFetchMarkdownFile = fetchMarkdownFile as jest.MockedFunction<
   typeof fetchMarkdownFile
 >;
-const mockGetCompleteActiveFieldName =
-  getCompleteActiveFieldName as jest.MockedFunction<
-    typeof getCompleteActiveFieldName
+const mockGetActiveFieldNameForAppDocs =
+  getActiveFieldNameForAppDocs as jest.MockedFunction<
+    typeof getActiveFieldNameForAppDocs
   >;
 
 const mockScrollIntoView = jest.fn();
@@ -108,7 +108,7 @@ describe('ServiceDocPanel Component', () => {
     mockFetchMarkdownFile.mockResolvedValue('markdown content');
     mockQuerySelectorAll.mockReturnValue([]);
     mockQuerySelector.mockReturnValue(null);
-    mockGetCompleteActiveFieldName.mockReturnValue(undefined);
+    mockGetActiveFieldNameForAppDocs.mockReturnValue(undefined);
   });
 
   describe('Core Functionality', () => {
@@ -203,7 +203,7 @@ describe('ServiceDocPanel Component', () => {
     });
 
     it('should handle Applications service type with custom field processing', async () => {
-      mockGetCompleteActiveFieldName.mockReturnValue('config.database');
+      mockGetActiveFieldNameForAppDocs.mockReturnValue('config.database');
 
       render(
         <ServiceDocPanel
@@ -214,7 +214,7 @@ describe('ServiceDocPanel Component', () => {
       );
 
       await waitFor(() => {
-        expect(mockGetCompleteActiveFieldName).toHaveBeenCalledWith(
+        expect(mockGetActiveFieldNameForAppDocs).toHaveBeenCalledWith(
           'root/config/database'
         );
         expect(mockQuerySelector).toHaveBeenCalledWith(
@@ -279,7 +279,7 @@ describe('ServiceDocPanel Component', () => {
     it('should handle complete integration with entity and highlighting', async () => {
       const mockElement = createMockElement();
       mockQuerySelector.mockReturnValue(mockElement);
-      mockGetCompleteActiveFieldName.mockReturnValue('application.config');
+      mockGetActiveFieldNameForAppDocs.mockReturnValue('application.config');
 
       render(
         <ServiceDocPanel
@@ -293,7 +293,7 @@ describe('ServiceDocPanel Component', () => {
       await waitFor(() => {
         expect(screen.getByTestId('entity-summary-panel')).toBeInTheDocument();
         expect(screen.getByTestId('requirement-text')).toBeInTheDocument();
-        expect(mockGetCompleteActiveFieldName).toHaveBeenCalledWith(
+        expect(mockGetActiveFieldNameForAppDocs).toHaveBeenCalledWith(
           'root/application/config'
         );
         expect(mockQuerySelector).toHaveBeenCalledWith(

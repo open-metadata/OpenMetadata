@@ -21,7 +21,7 @@ import {
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
 import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
-import { getCompleteActiveFieldName } from '../../../utils/ServiceUtils';
+import { getActiveFieldNameForAppDocs } from '../../../utils/ServiceUtils';
 import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import Loader from '../Loader/Loader';
@@ -133,37 +133,34 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
       return;
     }
 
-    // Use requestAnimationFrame to ensure DOM is ready
-    requestAnimationFrame(() => {
-      // Remove all previous highlights first
-      const previousHighlighted = document.querySelectorAll(
-        '[data-highlighted="true"]'
-      );
-      previousHighlighted.forEach((el) => {
-        el.removeAttribute('data-highlighted');
-      });
+    const fieldName =
+      serviceType === 'Applications'
+        ? getActiveFieldNameForAppDocs(activeField)
+        : getActiveFieldName(activeField);
 
-      for (const fieldName of [
-        getCompleteActiveFieldName(activeField),
-        getActiveFieldName(activeField),
-      ]) {
-        if (fieldName) {
-          const element = document.querySelector(`[data-id="${fieldName}"]`);
+    if (fieldName) {
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        // Remove all previous highlights first
+        const previousHighlighted = document.querySelectorAll(
+          '[data-highlighted="true"]'
+        );
+        previousHighlighted.forEach((el) => {
+          el.removeAttribute('data-highlighted');
+        });
 
-          if (element) {
-            element.scrollIntoView({
-              block: fieldName === 'selected-entity' ? 'start' : 'center',
-              behavior: 'smooth',
-              inline: 'center',
-            });
-            element.setAttribute('data-highlighted', 'true');
-
-            break;
-          }
+        const element = document.querySelector(`[data-id="${fieldName}"]`);
+        if (element) {
+          element.scrollIntoView({
+            block: fieldName === 'selected-entity' ? 'start' : 'center',
+            behavior: 'smooth',
+            inline: 'center',
+          });
+          element.setAttribute('data-highlighted', 'true');
         }
-      }
-    });
-  }, [activeField, isMarkdownReady]);
+      });
+    }
+  }, [activeField, serviceType, isMarkdownReady]);
 
   const docsPanel = useMemo(() => {
     return (

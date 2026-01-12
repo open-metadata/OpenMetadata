@@ -68,7 +68,7 @@ List of service path prefixes for lineage matching. Supported formats:
 $$
 
 $$section
-### Query Parser Type $(id="queryParserConfig.type")
+### Query Parser Type $(id="type")
 
 Choose the SQL parser for lineage extraction:
 - **Auto** (default): Automatically tries SqlGlot first, falls back to SqlFluff, then SqlParse. Recommended for best results.
