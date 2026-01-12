@@ -19,6 +19,7 @@ import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -42,6 +43,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
     []
   );
   const [showAllTerms, setShowAllTerms] = useState(false);
+  const { entityRules } = useEntityRules(entityType);
 
   const {
     isEditing,
@@ -135,6 +137,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   const editingState = useMemo(
     () => (
       <GlossaryTermSelectableList
+        multiSelect={entityRules.canAddMultipleGlossaryTerm}
         popoverProps={{
           placement: 'bottomLeft',
           open: popoverOpen,
@@ -172,6 +175,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
       editingGlossaryTerms,
       handleCancel,
       handleGlossaryTermSelection,
+      entityRules.canAddMultipleGlossaryTerm,
       t,
     ]
   );

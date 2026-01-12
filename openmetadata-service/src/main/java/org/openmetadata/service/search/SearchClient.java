@@ -88,6 +88,52 @@ public interface SearchClient
 
   String REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT =
       "ctx._source.dataProducts.removeIf(product -> product.fullyQualifiedName == params.fqn)";
+
+  String UPDATE_DATA_PRODUCT_FQN_SCRIPT =
+      """
+      if (ctx._source.containsKey('dataProducts') && ctx._source.dataProducts != null) {
+        for (int i = 0; i < ctx._source.dataProducts.size(); i++) {
+          if (ctx._source.dataProducts[i].containsKey('fullyQualifiedName') &&
+              ctx._source.dataProducts[i].fullyQualifiedName == params.oldFqn) {
+            ctx._source.dataProducts[i].fullyQualifiedName = params.newFqn;
+          }
+        }
+      }
+      """;
+
+  /**
+   * Script to update domain references in an entity's domains array. Removes old domains and adds
+   * new domains. Used when a data product changes domain and its assets need to be migrated.
+   *
+   * <p>Params: - oldDomainFqns: List of old domain FQNs to remove - newDomains: List of new domain
+   * objects to add
+   */
+  String UPDATE_ASSET_DOMAIN_SCRIPT =
+      """
+      if (ctx._source.containsKey('domains') && ctx._source.domains != null) {
+        // Remove old domains
+        ctx._source.domains.removeIf(domain ->
+          domain.containsKey('fullyQualifiedName') &&
+          params.oldDomainFqns.contains(domain.fullyQualifiedName));
+        // Add new domains only if they don't already exist (check by ID)
+        for (def newDomain : params.newDomains) {
+          boolean exists = false;
+          for (def existingDomain : ctx._source.domains) {
+            if (existingDomain.containsKey('id') && existingDomain.id == newDomain.id) {
+              exists = true;
+              break;
+            }
+          }
+          if (!exists) {
+            ctx._source.domains.add(newDomain);
+          }
+        }
+      } else {
+        // If domains doesn't exist, create it with new domains
+        ctx._source.domains = params.newDomains;
+      }
+      """;
+
   String UPDATE_CERTIFICATION_SCRIPT =
       """
       if (ctx._source.certification != null && ctx._source.certification.tagLabel != null) {
@@ -112,6 +158,20 @@ public interface SearchClient
       }
       """;
 
+  String UPDATE_CLASSIFICATION_TAG_FQN_BY_PREFIX_SCRIPT =
+      """
+      if (ctx._source.containsKey('tags')) {
+        for (int i = 0; i < ctx._source.tags.size(); i++) {
+          if (ctx._source.tags[i].containsKey('tagFQN') &&
+              ctx._source.tags[i].containsKey('source') &&
+              ctx._source.tags[i].source == 'Classification' &&
+              ctx._source.tags[i].tagFQN.startsWith(params.oldParentFQN)) {
+            ctx._source.tags[i].tagFQN = ctx._source.tags[i].tagFQN.replace(params.oldParentFQN, params.newParentFQN);
+          }
+        }
+      }
+      """;
+
   String UPDATE_FQN_PREFIX_SCRIPT =
       """
                   String updatedFQN = ctx._source.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
@@ -121,6 +181,14 @@ public interface SearchClient
                     if (ctx._source.parent.containsKey('fullyQualifiedName')) {
                       String parentFQN = ctx._source.parent.fullyQualifiedName;
                       ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN);
+                    }
+                  }
+                  if (ctx._source.containsKey('classification')) {
+                    if (ctx._source.classification.containsKey('fullyQualifiedName')) {
+                      ctx._source.classification.fullyQualifiedName = ctx._source.classification.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
+                    }
+                    if (ctx._source.classification.containsKey('name')) {
+                      ctx._source.classification.name = params.newParentFQN;
                     }
                   }
                   if (ctx._source.containsKey('tags')) {
@@ -457,6 +525,14 @@ public interface SearchClient
 
   /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
   void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);
+
+  /**
+   * Update data product references in search indexes when a data product is renamed.
+   * This updates the fullyQualifiedName in the dataProducts array of all assets.
+   */
+  default void updateDataProductReferences(String oldFqn, String newFqn) {
+    // Default no-op implementation - override in concrete implementations
+  }
 
   void close();
 
