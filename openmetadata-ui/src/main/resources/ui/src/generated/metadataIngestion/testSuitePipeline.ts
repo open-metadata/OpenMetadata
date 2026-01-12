@@ -1047,6 +1047,9 @@ export interface ConfigObject {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      *
+     * Regex to only include/exclude schemas that matches the pattern. System schemas
+     * (information_schema, _statistics_, sys) are excluded by default.
+     *
      * Regex to include/exclude FHIR resource categories
      */
     schemaFilterPattern?: FilterPattern;
@@ -1309,7 +1312,14 @@ export interface ConfigObject {
      * Custom OpenMetadata Classification name for TimescaleDB policy tags.
      */
     classificationName?: string;
-    sslMode?:            SSLMode;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?: string;
+    sslMode?:              SSLMode;
     /**
      * Protocol ( Connection Argument ) to connect to Presto.
      */
@@ -2022,6 +2032,9 @@ export interface UsernamePasswordAuthentication {
  * Regex to only include/exclude schemas that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern. System schemas
+ * (information_schema, _statistics_, sys) are excluded by default.
  *
  * Regex to include/exclude FHIR resource categories
  *
@@ -3157,7 +3170,14 @@ export interface ConfigConnection {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      */
-    ingestAllDatabases?:      boolean;
+    ingestAllDatabases?: boolean;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?:    string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -3697,7 +3717,14 @@ export interface HiveMetastoreConnectionDetails {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      */
-    ingestAllDatabases?:      boolean;
+    ingestAllDatabases?: boolean;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?:    string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
