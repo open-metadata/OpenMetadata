@@ -14,6 +14,7 @@ Generic Delimiter-Separated-Values implementation
 """
 from __future__ import annotations
 
+import os
 from functools import singledispatchmethod
 from typing import TYPE_CHECKING
 
@@ -202,15 +203,42 @@ class ParquetDataFrameReader(DataFrameReader):
                 if self.config_source.securityConfig.awsRegion
                 else None
             ),
-            "access_key": self.config_source.securityConfig.awsAccessKeyId,
-            "session_token": self.config_source.securityConfig.awsSessionToken,
-            "role_arn": self.config_source.securityConfig.assumeRoleArn,
-            "session_name": self.config_source.securityConfig.assumeRoleSessionName,
         }
-        if self.config_source.securityConfig.awsSecretAccessKey:
-            client_kwargs[
-                "secret_key"
-            ] = self.config_source.securityConfig.awsSecretAccessKey.get_secret_value()
+
+        # In order to use S3FileSystem Refreshing mechanism when appropriate we are doing the following:
+        # If both assumeRoleArn and awsAccessKeyId are present, we are setting the credentials as environment variables in order for S3FileSystem to use them as source credentials when assuming the role.
+        if self.config_source.securityConfig.assumeRoleArn:
+            client_kwargs.update(
+                {
+                    "role_arn": self.config_source.securityConfig.assumeRoleArn,
+                    "session_name": self.config_source.securityConfig.assumeRoleSessionName,
+                }
+            )
+
+            if self.config_source.securityConfig.awsAccessKeyId:
+                os.environ[
+                    "AWS_ACCESS_KEY_ID"
+                ] = self.config_source.securityConfig.awsAccessKeyId
+                os.environ[
+                    "AWS_SECRET_ACCESS_KEY"
+                ] = (
+                    self.config_source.securityConfig.awsSecretAccessKey.get_secret_value()
+                )
+
+                if self.config_source.securityConfig.awsSessionToken:
+                    os.environ[
+                        "AWS_SESSION_TOKEN"
+                    ] = self.config_source.securityConfig.awsSessionToken
+
+        elif self.config_source.securityConfig.awsAccessKeyId:
+            client_kwargs.update(
+                {
+                    "access_key": self.config_source.securityConfig.awsAccessKeyId,
+                    "secret_key": self.config_source.securityConfig.awsSecretAccessKey.get_secret_value(),
+                    "session_token": self.config_source.securityConfig.awsSessionToken,
+                }
+            )
+
         s3_fs = S3FileSystem(**client_kwargs)
 
         bucket_uri = f"{bucket_name}/{key}"
@@ -247,7 +275,8 @@ class ParquetDataFrameReader(DataFrameReader):
     @_read_parquet_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         import pandas as pd  # pylint: disable=import-outside-toplevel
-        import pyarrow.fs as fs
+        from adlfs import AzureBlobFileSystem
+        from pyarrow.fs import FSSpecHandler, PyFileSystem
         from pyarrow.parquet import ParquetFile
 
         storage_options = return_azure_storage_options(self.config_source)
@@ -259,18 +288,18 @@ class ParquetDataFrameReader(DataFrameReader):
 
         # Check file size to determine reading strategy
         try:
-            # Try to get file size from Azure
-            azure_fs = fs.SubTreeFileSystem(
-                account_url, fs.AzureFileSystem(**storage_options)
+            # Use adlfs (fsspec-based) filesystem which supports service principal auth
+            adlfs_fs = AzureBlobFileSystem(
+                account_name=self.config_source.securityConfig.accountName,
+                **storage_options,
             )
-            file_info = azure_fs.get_file_info("/")
-            file_size = file_info.size if hasattr(file_info, "size") else 0
+            file_path = f"{bucket_name}/{key}"
+            file_info = adlfs_fs.info(file_path)
+            file_size = file_info.get("size", 0)
 
             if self._should_use_chunking(file_size):
-                # Use PyArrow ParquetFile for batched reading of large files
-                parquet_file = ParquetFile(
-                    account_url, filesystem=fs.AzureFileSystem(**storage_options)
-                )
+                pa_fs = PyFileSystem(FSSpecHandler(adlfs_fs))
+                parquet_file = ParquetFile(file_path, filesystem=pa_fs)
                 return self._read_parquet_in_batches(parquet_file)
             else:
                 # Use pandas for regular reading of smaller files
