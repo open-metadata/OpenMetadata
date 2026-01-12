@@ -633,7 +633,8 @@ export const updateDescriptionForChildren = async (
 
   await descriptionInput.click();
   await descriptionInput.focus();
-
+  // Needed to add small timeout as this test if unable to clear description field on CI
+  await page.waitForTimeout(500);
   await descriptionInput.clear();
 
   // Type new content directly (this replaces the selection)
