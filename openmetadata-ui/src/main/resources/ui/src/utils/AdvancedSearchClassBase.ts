@@ -129,9 +129,7 @@ class AdvancedSearchClassBase {
             return { [fieldName]: newValue };
           case 'regexp':
             return {
-              regexp: {
-                [fieldName]: { value: newValue, case_insensitive: true },
-              },
+              [fieldName]: { value: newValue, case_insensitive: true },
             };
           default:
             return { [fieldName]: { value: newValue } };

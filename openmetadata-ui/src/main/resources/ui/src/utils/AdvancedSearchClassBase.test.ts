@@ -269,3 +269,58 @@ describe('getCustomPropertiesSubFields', () => {
     });
   });
 });
+
+describe('elasticSearchFormatValue for text widget', () => {
+  let advancedSearchClassBase: AdvancedSearchClassBase;
+
+  beforeEach(() => {
+    advancedSearchClassBase = new AdvancedSearchClassBase();
+  });
+
+  it('should format regexp operator without double-nesting regexp key', () => {
+    const textWidget = advancedSearchClassBase.configWidgets.text;
+    const result = textWidget.elasticSearchFormatValue?.(
+      'regexp',
+      ['gold.*'],
+      'regexp',
+      'databaseSchema.displayName.keyword'
+    );
+
+    // Should return field parameters without outer 'regexp' wrapper
+    // The wrapper is added by buildEsRule in QueryBuilderElasticsearchFormatUtils.js
+    expect(result).toEqual({
+      'databaseSchema.displayName.keyword': {
+        value: 'gold.*',
+        case_insensitive: true,
+      },
+    });
+  });
+
+  it('should format like operator correctly', () => {
+    const textWidget = advancedSearchClassBase.configWidgets.text;
+    const result = textWidget.elasticSearchFormatValue?.(
+      'wildcard',
+      ['test'],
+      'like',
+      'name.keyword'
+    );
+
+    expect(result).toEqual({
+      'name.keyword': { value: '*test*' },
+    });
+  });
+
+  it('should format equal operator correctly', () => {
+    const textWidget = advancedSearchClassBase.configWidgets.text;
+    const result = textWidget.elasticSearchFormatValue?.(
+      'term',
+      ['testValue'],
+      'equal',
+      'field.keyword'
+    );
+
+    expect(result).toEqual({
+      'field.keyword': 'testValue',
+    });
+  });
+});
