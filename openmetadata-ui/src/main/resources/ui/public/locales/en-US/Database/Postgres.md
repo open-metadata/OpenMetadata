@@ -261,3 +261,13 @@ $$section
 
 Additional connection options to build the URL that can be sent to service during the connection.
 $$
+
+$$section
+### Query Statement Source $(id="queryStatementSource")
+
+Fully qualified name of the view or table to use for query logs. If not provided, defaults to `pg_stat_statements`. 
+
+Use this to configure a custom view (e.g., `my_schema.custom_pg_stat_statements`) when direct access to `pg_stat_statements` is restricted. This is useful in environments where security policies require exposing `pg_stat_statements` contents through a custom view rather than granting direct access.
+
+The custom view must have the same columns as `pg_stat_statements` (`query`, `dbid`, `userid`, `total_exec_time` or `total_time` depending on Postgres version).
+$$
