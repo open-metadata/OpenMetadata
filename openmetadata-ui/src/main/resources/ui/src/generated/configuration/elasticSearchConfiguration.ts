@@ -15,8 +15,9 @@
  */
 export interface ElasticSearchConfiguration {
     /**
-     * AWS IAM authentication configuration for OpenSearch. When useIamAuth is true, requests
-     * will be signed using AWS Signature Version 4.
+     * AWS IAM authentication configuration for OpenSearch. IAM auth is automatically enabled
+     * when region is configured. Uses standard AWS environment variables (AWS_DEFAULT_REGION,
+     * AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).
      */
     aws?: Aws;
     /**
@@ -97,8 +98,9 @@ export interface ElasticSearchConfiguration {
 }
 
 /**
- * AWS IAM authentication configuration for OpenSearch. When useIamAuth is true, requests
- * will be signed using AWS Signature Version 4.
+ * AWS IAM authentication configuration for OpenSearch. IAM auth is automatically enabled
+ * when region is configured. Uses standard AWS environment variables (AWS_DEFAULT_REGION,
+ * AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).
  */
 export interface Aws {
     /**
@@ -106,7 +108,7 @@ export interface Aws {
      */
     accessKeyId?: string;
     /**
-     * AWS Region for OpenSearch service
+     * AWS Region for OpenSearch service. When set, IAM authentication is automatically enabled.
      */
     region?: string;
     /**
@@ -122,10 +124,6 @@ export interface Aws {
      * AWS Session Token for temporary credentials
      */
     sessionToken?: string;
-    /**
-     * Enable AWS IAM authentication for OpenSearch
-     */
-    useIamAuth?: boolean;
 }
 
 /**
