@@ -103,10 +103,11 @@ class DSVDataFrameReader(DataFrameReader):
         if len(columns) == 1 and separator in str(columns[0]):
             parsed_columns = list(
                 csv.reader(StringIO(str(columns[0])), delimiter=separator)
-            )[0]
-            return self._reformat_malformed_csv_data(
-                chunk_list, parsed_columns, separator
             )
+            if parsed_columns:
+                return self._reformat_malformed_csv_data(
+                    chunk_list, parsed_columns[0], separator
+                )
         return chunk_list
 
     def __init__(
