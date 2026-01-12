@@ -33,7 +33,6 @@ import dbt from '../assets/img/service-icon-dbt.png';
 import deltalake from '../assets/img/service-icon-delta-lake.png';
 import domo from '../assets/img/service-icon-domo.png';
 import doris from '../assets/img/service-icon-doris.png';
-import starrocks from '../assets/img/service-icon-starrocks.png';
 import druid from '../assets/img/service-icon-druid.png';
 import dynamodb from '../assets/img/service-icon-dynamodb.png';
 import exasol from '../assets/img/service-icon-exasol.png';
@@ -83,6 +82,7 @@ import spark from '../assets/img/service-icon-spark.png';
 import spline from '../assets/img/service-icon-spline.png';
 import mysql from '../assets/img/service-icon-sql.png';
 import sqlite from '../assets/img/service-icon-sqlite.png';
+import starrocks from '../assets/img/service-icon-starrocks.png';
 import superset from '../assets/img/service-icon-superset.png';
 import synapse from '../assets/img/service-icon-synapse.png';
 import tableau from '../assets/img/service-icon-tableau.png';
@@ -455,25 +455,19 @@ export const BETA_SERVICES = [
   PipelineServiceType.Mulesoft,
 ];
 
-export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
-    'message.test-your-connection-before-creating-service'
-);
+export const TEST_CONNECTION_INITIAL_MESSAGE =
+  'message.test-your-connection-before-creating-service';
 
-export const TEST_CONNECTION_SUCCESS_MESSAGE = i18n.t(
-    'message.connection-test-successful'
-);
+export const TEST_CONNECTION_SUCCESS_MESSAGE =
+  'message.connection-test-successful';
 
-export const TEST_CONNECTION_FAILURE_MESSAGE = i18n.t(
-    'message.connection-test-failed'
-);
+export const TEST_CONNECTION_FAILURE_MESSAGE = 'message.connection-test-failed';
 
-export const TEST_CONNECTION_TESTING_MESSAGE = i18n.t(
-    'message.testing-your-connection-may-take-two-minutes'
-);
+export const TEST_CONNECTION_TESTING_MESSAGE =
+  'message.testing-your-connection-may-take-two-minutes';
 
-export const TEST_CONNECTION_WARNING_MESSAGE = i18n.t(
-    'message.connection-test-warning'
-);
+export const TEST_CONNECTION_WARNING_MESSAGE =
+  'message.connection-test-warning';
 
 export const ADVANCED_PROPERTIES = [
   'connectionArguments',

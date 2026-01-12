@@ -30,7 +30,7 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_url_common,
 )
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import test_connection_db_schema_sources
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.starrocks.queries import (
     STARROCKS_SQL_STATEMENT_TEST,
@@ -62,7 +62,7 @@ def test_connection(
     """
     queries = {"GetQueries": STARROCKS_SQL_STATEMENT_TEST}
 
-    return test_connection_db_common(
+    return test_connection_db_schema_sources(
         metadata=metadata,
         engine=engine,
         service_connection=service_connection,

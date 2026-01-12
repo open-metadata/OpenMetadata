@@ -262,11 +262,10 @@ class StarRocksSource(CommonDbSourceService):
     @staticmethod
     def get_table_description(
         schema_name: str, table_name: str, inspector: Inspector
-    ) -> str:
+    ) -> Optional[str]:
         description = None
         try:
             table_info: dict = inspector.get_table_comment(table_name, schema_name)
-        # Catch any exception without breaking the ingestion
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -275,7 +274,11 @@ class StarRocksSource(CommonDbSourceService):
         else:
             description = table_info.get("text")
 
-        return description[0]
+        if description is None:
+            return None
+        if isinstance(description, (list, tuple)) and len(description) > 0:
+            return description[0]
+        return description
 
     def _get_columns(self, table_name, schema=None):
         """Get column information and primary key columns of the specified table"""
