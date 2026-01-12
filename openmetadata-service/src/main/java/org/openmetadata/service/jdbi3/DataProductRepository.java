@@ -256,34 +256,20 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, false);
   }
 
-  public BulkOperationResult bulkAddInputPortsById(UUID dataProductId, BulkAssets request) {
-    return bulkPortsOperationById(dataProductId, request, Relationship.INPUT_PORT, true);
-  }
-
-  public BulkOperationResult bulkRemoveInputPortsById(UUID dataProductId, BulkAssets request) {
-    return bulkPortsOperationById(dataProductId, request, Relationship.INPUT_PORT, false);
-  }
-
-  public BulkOperationResult bulkAddOutputPortsById(UUID dataProductId, BulkAssets request) {
-    return bulkPortsOperationById(dataProductId, request, Relationship.OUTPUT_PORT, true);
-  }
-
-  public BulkOperationResult bulkRemoveOutputPortsById(UUID dataProductId, BulkAssets request) {
-    return bulkPortsOperationById(dataProductId, request, Relationship.OUTPUT_PORT, false);
-  }
-
   @Transaction
   private BulkOperationResult bulkPortsOperation(
-      String dataProductName, BulkAssets request, Relationship relationship, boolean isAdd) {
-    DataProduct dataProduct = getByName(null, dataProductName, getFields("id"));
+      String dataProductNameOrId, BulkAssets request, Relationship relationship, boolean isAdd) {
+    DataProduct dataProduct = resolveDataProduct(dataProductNameOrId);
     return executeBulkPortsOperation(dataProduct, request, relationship, isAdd);
   }
 
-  @Transaction
-  private BulkOperationResult bulkPortsOperationById(
-      UUID dataProductId, BulkAssets request, Relationship relationship, boolean isAdd) {
-    DataProduct dataProduct = get(null, dataProductId, getFields("id"));
-    return executeBulkPortsOperation(dataProduct, request, relationship, isAdd);
+  private DataProduct resolveDataProduct(String nameOrId) {
+    try {
+      UUID id = UUID.fromString(nameOrId);
+      return get(null, id, getFields("id"));
+    } catch (IllegalArgumentException e) {
+      return getByName(null, nameOrId, getFields("id"));
+    }
   }
 
   private BulkOperationResult executeBulkPortsOperation(

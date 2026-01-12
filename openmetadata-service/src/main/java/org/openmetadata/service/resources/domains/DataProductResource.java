@@ -391,130 +391,6 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   }
 
   @PUT
-  @Path("/{id}/inputPorts/add")
-  @Operation(
-      operationId = "bulkAddInputPortsById",
-      summary = "Bulk Add Input Ports by ID",
-      description = "Bulk Add Input Ports to a Data Product by ID",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = BulkOperationResult.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "DataProduct for instance {id} is not found")
-      })
-  public Response bulkAddInputPortsById(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Data Product", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id,
-      @Valid BulkAssets request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return Response.ok().entity(repository.bulkAddInputPortsById(id, request)).build();
-  }
-
-  @PUT
-  @Path("/{id}/inputPorts/remove")
-  @Operation(
-      operationId = "bulkRemoveInputPortsById",
-      summary = "Bulk Remove Input Ports by ID",
-      description = "Bulk Remove Input Ports from a Data Product by ID",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = BulkOperationResult.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "DataProduct for instance {id} is not found")
-      })
-  public Response bulkRemoveInputPortsById(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Data Product", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id,
-      @Valid BulkAssets request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return Response.ok().entity(repository.bulkRemoveInputPortsById(id, request)).build();
-  }
-
-  @PUT
-  @Path("/{id}/outputPorts/add")
-  @Operation(
-      operationId = "bulkAddOutputPortsById",
-      summary = "Bulk Add Output Ports by ID",
-      description = "Bulk Add Output Ports to a Data Product by ID",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = BulkOperationResult.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "DataProduct for instance {id} is not found")
-      })
-  public Response bulkAddOutputPortsById(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Data Product", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id,
-      @Valid BulkAssets request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return Response.ok().entity(repository.bulkAddOutputPortsById(id, request)).build();
-  }
-
-  @PUT
-  @Path("/{id}/outputPorts/remove")
-  @Operation(
-      operationId = "bulkRemoveOutputPortsById",
-      summary = "Bulk Remove Output Ports by ID",
-      description = "Bulk Remove Output Ports from a Data Product by ID",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = BulkOperationResult.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "DataProduct for instance {id} is not found")
-      })
-  public Response bulkRemoveOutputPortsById(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Data Product", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id,
-      @Valid BulkAssets request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return Response.ok().entity(repository.bulkRemoveOutputPortsById(id, request)).build();
-  }
-
-  @PUT
   @Path("/{name}/inputPorts/add")
   @Operation(
       operationId = "bulkAddInputPorts",
@@ -992,6 +868,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int offset) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     return Response.ok(repository.getDataProductAssets(id, limit, offset)).build();
   }
 
@@ -1036,6 +915,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int offset) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return Response.ok(repository.getDataProductAssetsByName(fqn, limit, offset)).build();
   }
 
@@ -1097,6 +979,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int offset) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     return Response.ok(repository.getPaginatedInputPorts(id, limit, offset)).build();
   }
 
@@ -1140,6 +1025,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int offset) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return Response.ok(repository.getPaginatedInputPortsByName(fqn, limit, offset)).build();
   }
 
@@ -1183,6 +1071,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int offset) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     return Response.ok(repository.getPaginatedOutputPorts(id, limit, offset)).build();
   }
 
@@ -1226,6 +1117,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int offset) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return Response.ok(repository.getPaginatedOutputPortsByName(fqn, limit, offset)).build();
   }
 
@@ -1285,6 +1179,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int outputOffset) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     return Response.ok(
             repository.getPortsView(id, inputLimit, inputOffset, outputLimit, outputOffset))
         .build();
@@ -1346,6 +1243,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int outputOffset) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return Response.ok(
             repository.getPortsViewByName(fqn, inputLimit, inputOffset, outputLimit, outputOffset))
         .build();
