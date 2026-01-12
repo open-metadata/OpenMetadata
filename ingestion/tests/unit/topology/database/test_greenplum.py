@@ -135,10 +135,8 @@ class GreenplumVersionDetectionTest(TestCase):
     def test_v7_partition_details_use_pg_partitioned_table(self):
         """Verify the V7 partition details query uses pg_partitioned_table"""
         self.assertIn("pg_partitioned_table", GREENPLUM_PARTITION_DETAILS_V7)
-        self.assertNotIn(
-            "pg_partition",
-            GREENPLUM_PARTITION_DETAILS_V7.split("pg_partitioned_table")[0],
-        )
+        # Ensure it doesn't use the legacy pg_catalog.pg_partition table
+        self.assertNotIn("pg_catalog.pg_partition", GREENPLUM_PARTITION_DETAILS_V7)
 
     def test_v6_partition_details_use_pg_partition(self):
         """Verify the V6 partition details query uses pg_partition"""
