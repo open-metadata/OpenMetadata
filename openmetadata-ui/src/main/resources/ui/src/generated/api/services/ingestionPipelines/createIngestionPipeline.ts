@@ -3185,6 +3185,9 @@ export interface ConfigObject {
      */
     siteName?: string;
     /**
+     * SSL Configuration details for DB2 connection. Provide CA certificate for server
+     * validation, and optionally client certificate and key for mutual TLS authentication.
+     *
      * SSL Configuration details.
      *
      * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
@@ -3543,6 +3546,7 @@ export interface ConfigObject {
      * License file name to connect to DB2.
      */
     licenseFileName?:               string;
+    sslMode?:                       SSLMode;
     supportsViewLineageExtraction?: boolean;
     /**
      * Available sources to fetch the metadata.
@@ -3625,7 +3629,6 @@ export interface ConfigObject {
      * restricted.
      */
     queryStatementSource?: string;
-    sslMode?:              SSLMode;
     /**
      * Protocol ( Connection Argument ) to connect to Presto.
      */
@@ -4966,6 +4969,9 @@ export interface QlikCertificatesBy {
  *
  * SSL Configuration details.
  *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
+ *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
  *
@@ -5413,6 +5419,9 @@ export enum ConnectionScheme {
  * OpenMetadata Client configured to validate SSL certificates.
  *
  * SSL Configuration details.
+ *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
  *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
@@ -6152,6 +6161,9 @@ export enum SpaceType {
  * Client SSL configuration
  *
  * SSL Configuration details.
+ *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
  *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
