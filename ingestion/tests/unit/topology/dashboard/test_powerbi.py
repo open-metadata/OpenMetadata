@@ -20,6 +20,9 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.powerbi.metadata import PowerbiSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataflow,
+    DataflowEntity,
+    DataflowEntityAttribute,
+    DataflowExportResponse,
     Dataset,
     PowerBIDashboard,
     PowerBIReport,
@@ -1142,3 +1145,107 @@ class PowerBIUnitTest(TestCase):
             ].get("fqn_search_string")
             self.assertIn("customers_clean", fqn_search_string)
             self.assertNotIn("powerbi_table_name", fqn_search_string)
+
+    @pytest.mark.order(25)
+    def test_get_dataflow_column_info(self):
+        """
+        Test that _get_dataflow_column_info correctly extracts tables and columns
+        from the dataflow export API response
+        """
+        dataflow_export = DataflowExportResponse(
+            name="test_dataflow",
+            description="Test dataflow description",
+            version="1.0",
+            entities=[
+                DataflowEntity(
+                    name="queryinsights exec_requests_history",
+                    description="Query insights table",
+                    attributes=[
+                        DataflowEntityAttribute(
+                            name="distributed_statement_id",
+                            dataType="string",
+                            description="Statement ID",
+                        ),
+                        DataflowEntityAttribute(
+                            name="submit_time",
+                            dataType="dateTime",
+                        ),
+                        DataflowEntityAttribute(
+                            name="total_elapsed_time_ms",
+                            dataType="int64",
+                        ),
+                    ],
+                ),
+                DataflowEntity(
+                    name="Query",
+                    description="",
+                    attributes=[
+                        DataflowEntityAttribute(
+                            name="Column1",
+                            dataType="string",
+                        ),
+                        DataflowEntityAttribute(
+                            name="Column2",
+                            dataType="string",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        result = self.powerbi._get_dataflow_column_info(dataflow_export)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 2)
+
+        first_table = result[0]
+        self.assertEqual(first_table.name.root, "queryinsights exec_requests_history")
+        self.assertEqual(first_table.dataType, DataType.TABLE)
+        self.assertEqual(first_table.description.root, "Query insights table")
+        self.assertEqual(len(first_table.children), 3)
+
+        first_column = first_table.children[0]
+        self.assertEqual(first_column.name.root, "distributed_statement_id")
+        self.assertEqual(first_column.description.root, "Statement ID")
+
+        second_table = result[1]
+        self.assertEqual(second_table.name.root, "Query")
+        self.assertEqual(len(second_table.children), 2)
+
+    @pytest.mark.order(26)
+    def test_get_dataflow_column_info_empty_entities(self):
+        """
+        Test that _get_dataflow_column_info handles empty entities list
+        """
+        dataflow_export = DataflowExportResponse(
+            name="empty_dataflow",
+            entities=[],
+        )
+
+        result = self.powerbi._get_dataflow_column_info(dataflow_export)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 0)
+
+    @pytest.mark.order(27)
+    def test_get_dataflow_column_info_entity_without_attributes(self):
+        """
+        Test that _get_dataflow_column_info handles entities without attributes
+        """
+        dataflow_export = DataflowExportResponse(
+            name="dataflow_no_attrs",
+            entities=[
+                DataflowEntity(
+                    name="EmptyTable",
+                    description="Table with no columns",
+                    attributes=[],
+                ),
+            ],
+        )
+
+        result = self.powerbi._get_dataflow_column_info(dataflow_export)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].name.root, "EmptyTable")
+        self.assertEqual(len(result[0].children), 0)
