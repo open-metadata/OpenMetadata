@@ -585,7 +585,7 @@ const SchemaTable = () => {
                   })}
                   <Typography.Text
                     className={classNames(
-                      'm-b-0 d-block break-wor cursor-pointer',
+                      'm-b-0 d-block break-word cursor-pointer',
                       {
                         'text-grey-600': !isEmpty(displayName),
                       }
