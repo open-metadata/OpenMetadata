@@ -89,6 +89,8 @@ const DataProductsPage = () => {
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
+
+        throw error;
       }
     }
   };
