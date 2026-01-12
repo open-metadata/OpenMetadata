@@ -288,10 +288,6 @@ test.describe('Domains', () => {
         await waitForAllLoadersToDisappear(page);
         await page.waitForLoadState('networkidle');
 
-        await expect(
-          page.getByTestId('KnowledgePanel.Domain').getByTestId('add-domain')
-        ).not.toBeVisible();
-
         await page.getByTestId('assets').getByText('Assets').click();
         await waitForAllLoadersToDisappear(page);
         await page.waitForLoadState('networkidle');

@@ -152,18 +152,27 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
+import { MlFeature } from '../generated/entity/data/mlmodel';
+import { Task } from '../generated/entity/data/pipeline';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import {
   Column,
   ConstraintType,
   DataType,
   JoinedWith,
+  Table,
   TableConstraint,
   TableJoins,
 } from '../generated/entity/data/table';
+import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../generated/system/ui/uiCustomization';
 import { Field } from '../generated/type/schema';
-import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../generated/type/tagLabel';
 import LimitWrapper from '../hoc/LimitWrapper';
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
@@ -179,14 +188,21 @@ import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
+import { extractApiEndpointFields } from './APIEndpoints/APIEndpointUtils';
+import { extractContainerColumns } from './ContainerDetailUtils';
+import { extractDataModelColumns } from './DashboardDataModelUtils';
 import EntityLink from './EntityLink';
 import { getEntityImportPath } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
+import { extractMlModelFeatures } from './MlModelDetailsUtils';
+import { extractPipelineTasks } from './PipelineDetailsUtils';
 import searchClassBase from './SearchClassBase';
+import { extractSearchIndexFields } from './SearchIndexUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { ordinalize } from './StringsUtils';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
+import { extractTopicFields } from './TopicDetailsUtils';
 
 const EntityLineageTab = lazy(() =>
   import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
@@ -1470,4 +1486,262 @@ export const getSafeExpandAllKeys = <
 
   // For large schemas, expand to exactly 2 levels deep
   return getExpandAllKeysToDepth(fields, 2);
+};
+
+/**
+ * Flattens a nested structure of columns/fields into a single array
+ * Recursively includes all children in the flattened result
+ */
+export const flattenColumns = <T extends { children?: T[] }>(
+  items: T[]
+): T[] => {
+  const result: T[] = [];
+  items.forEach((item) => {
+    result.push(item);
+    if (item.children && item.children.length > 0) {
+      result.push(...flattenColumns(item.children));
+    }
+  });
+
+  return result;
+};
+
+/**
+ * Finds a field/column by fullyQualifiedName in a nested structure
+ * Recursively searches through children
+ */
+export const findFieldByFQN = <
+  T extends { fullyQualifiedName?: string; children?: T[] }
+>(
+  items: T[],
+  targetFqn: string
+): T | undefined => {
+  for (const item of items) {
+    if (item.fullyQualifiedName === targetFqn) {
+      return item;
+    }
+    if (item.children && item.children.length > 0) {
+      const found = findFieldByFQN(item.children, targetFqn);
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return undefined;
+};
+
+/**
+ * Gets the data type display value for a column/field
+ * Returns dataTypeDisplay if available, otherwise falls back to dataType
+ */
+export const getDataTypeDisplay = (
+  column: { dataTypeDisplay?: string; dataType?: string } | null
+): string | undefined => {
+  if (!column) {
+    return undefined;
+  }
+
+  return column.dataTypeDisplay || String(column.dataType || '');
+};
+
+/**
+ * Normalize tags to ensure glossary terms don't have style property
+ * This prevents backend JSON patch errors when trying to remove non-existent style properties
+ * @param tags Array of tags to normalize
+ * @returns Normalized tags array
+ */
+export const normalizeTags = (tags: TagLabel[]): TagLabel[] => {
+  // Handle empty array case
+  if (!tags || tags.length === 0) {
+    return [];
+  }
+
+  return tags.map((tag) => {
+    if (tag.source === TagSource.Glossary) {
+      // Remove style property from glossary terms to avoid backend patch errors
+      return omit(tag, 'style') as TagLabel;
+    }
+
+    // Keep style property for classification tags
+    return tag;
+  });
+};
+
+/**
+ * Merge tags with glossary terms, preserving existing glossary terms
+ * Used when updating classification tags to ensure glossary terms are not lost
+ * @param columnTags Existing tags from the column
+ * @param updatedTags New tags to merge (classification tags)
+ * @returns Merged tags array with glossary terms preserved
+ */
+export const mergeTagsWithGlossary = (
+  columnTags: Column['tags'],
+  updatedTags: Column['tags']
+): Column['tags'] => {
+  const existingGlossaryTags =
+    columnTags?.filter((tag) => tag.source === TagSource.Glossary) || [];
+  const updatedTagsWithoutGlossary =
+    updatedTags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
+
+  // Normalize existing glossary tags to remove style property before merging
+  const normalizedExistingGlossaryTags = normalizeTags(existingGlossaryTags);
+  const normalizedUpdatedTags = normalizeTags(updatedTagsWithoutGlossary);
+
+  return [...normalizedUpdatedTags, ...normalizedExistingGlossaryTags];
+};
+
+/**
+ * Merge glossary terms with non-glossary tags
+ * Used when updating glossary terms to ensure classification tags are not lost
+ * @param columnTags Existing tags from the column
+ * @param updatedGlossaryTerms New glossary terms to merge
+ * @returns Merged tags array with classification tags preserved
+ */
+export const mergeGlossaryWithTags = (
+  columnTags: Column['tags'],
+  updatedGlossaryTerms: Column['tags']
+): Column['tags'] => {
+  const nonGlossaryTags =
+    columnTags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
+
+  // Normalize both arrays before merging to ensure consistent format
+  const normalizedNonGlossaryTags = normalizeTags(nonGlossaryTags);
+  const normalizedGlossaryTerms = normalizeTags(updatedGlossaryTerms || []);
+
+  return [...normalizedNonGlossaryTags, ...normalizedGlossaryTerms];
+};
+
+/**
+ * Find the original index of a column in the allColumns array
+ * @param column Column to find
+ * @param allColumns Array of all columns
+ * @returns Index of the column in allColumns, or -1 if not found
+ */
+export const findOriginalColumnIndex = <
+  T extends { fullyQualifiedName?: string }
+>(
+  column: T,
+  allColumns: T[]
+): number => {
+  return allColumns.findIndex(
+    (col) => col.fullyQualifiedName === column.fullyQualifiedName
+  );
+};
+
+/**
+ * Finds the parent column of a target column in a nested structure
+ * @param targetColumn The column to find the parent for
+ * @param columns Array of columns to search through
+ * @param parent Current parent column (used internally for recursion)
+ * @returns The parent column, null if no parent found, or undefined if column not found
+ */
+export const findParentColumn = <
+  T extends { fullyQualifiedName?: string; children?: T[] }
+>(
+  targetColumn: T,
+  columns: T[],
+  parent?: T | null
+): T | null | undefined => {
+  for (const col of columns) {
+    if (col.fullyQualifiedName === targetColumn.fullyQualifiedName) {
+      return parent ?? null;
+    }
+    if (col.children && col.children.length > 0) {
+      const found = findParentColumn(targetColumn, col.children, col);
+      if (found !== undefined) {
+        return found;
+      }
+    }
+  }
+
+  return undefined;
+};
+
+/**
+ * Builds a breadcrumb path from a column to its root parent
+ * Returns an array of columns representing the path from root to the target column
+ * @param column The column to build the breadcrumb path for
+ * @param allColumns Array of all columns to search through
+ * @returns Array of columns from root to target column
+ */
+export const buildColumnBreadcrumbPath = <
+  T extends { fullyQualifiedName?: string; children?: T[] }
+>(
+  column: T | null,
+  allColumns: T[]
+): T[] => {
+  if (!column?.fullyQualifiedName) {
+    return [];
+  }
+
+  const breadcrumbs: T[] = [column];
+  let currentColumn: T | null = column;
+  const visited = new Set<string>();
+  visited.add(column.fullyQualifiedName);
+
+  while (currentColumn) {
+    const parent: T | null | undefined = findParentColumn(
+      currentColumn,
+      allColumns
+    );
+    if (parent === undefined || parent === null) {
+      break;
+    }
+
+    // Prevent infinite loops by checking if we've already visited this parent
+    if (parent.fullyQualifiedName && visited.has(parent.fullyQualifiedName)) {
+      break;
+    }
+
+    breadcrumbs.unshift(parent);
+    if (parent.fullyQualifiedName) {
+      visited.add(parent.fullyQualifiedName);
+    }
+    currentColumn = parent;
+  }
+
+  return breadcrumbs;
+};
+
+export const extractTableColumns = <T extends Omit<EntityReference, 'type'>>(
+  data: T
+): Column[] => {
+  const table = data as Partial<Table>;
+
+  return (table.columns ?? []).map(
+    (column) => ({ ...column, tags: column.tags ?? [] } as Column)
+  );
+};
+
+/**
+ * Extract columns/fields from entity data based on entity type
+ * @param data Entity data
+ * @param entityType Type of entity
+ * @returns Array of columns/fields/tasks/features
+ */
+export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
+  data: T,
+  entityType: EntityType
+): Array<Column | SearchIndexField | Field | Task | MlFeature> => {
+  switch (entityType) {
+    case EntityType.TABLE:
+      return extractTableColumns(data);
+    case EntityType.API_ENDPOINT:
+      return extractApiEndpointFields(data);
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return extractDataModelColumns(data);
+    case EntityType.MLMODEL:
+      return extractMlModelFeatures(data);
+    case EntityType.PIPELINE:
+      return extractPipelineTasks(data);
+    case EntityType.TOPIC:
+      return extractTopicFields(data);
+    case EntityType.CONTAINER:
+      return extractContainerColumns(data);
+    case EntityType.SEARCH_INDEX:
+      return extractSearchIndexFields(data);
+    default:
+      return [];
+  }
 };
