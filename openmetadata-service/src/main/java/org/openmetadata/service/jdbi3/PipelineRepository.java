@@ -287,10 +287,27 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private PipelineStatus getPipelineStatus(Pipeline pipeline) {
-    return JsonUtils.readValue(
-        getLatestExtensionFromTimeSeries(
-            pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
-        PipelineStatus.class);
+    PipelineStatus status =
+        JsonUtils.readValue(
+            getLatestExtensionFromTimeSeries(
+                pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
+            PipelineStatus.class);
+
+    if (status != null && status.getTaskStatus() != null && !status.getTaskStatus().isEmpty()) {
+      status
+          .getTaskStatus()
+          .sort(
+              (t1, t2) -> {
+                Long start1 = t1.getStartTime();
+                Long start2 = t2.getStartTime();
+                if (start1 == null && start2 == null) return 0;
+                if (start1 == null) return 1;
+                if (start2 == null) return -1;
+                return start1.compareTo(start2);
+              });
+    }
+
+    return status;
   }
 
   public RestUtil.PutResponse<?> addPipelineStatus(String fqn, PipelineStatus pipelineStatus) {
@@ -408,6 +425,32 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             "Failed to find pipeline status for %s at %s", pipeline.getName(), timestamp));
   }
 
+  private Long calculateActualDuration(PipelineStatus pipelineStatus) {
+    if (pipelineStatus.getTaskStatus() == null || pipelineStatus.getTaskStatus().isEmpty()) {
+      return null;
+    }
+
+    Long minStartTime =
+        pipelineStatus.getTaskStatus().stream()
+            .map(task -> task.getStartTime())
+            .filter(java.util.Objects::nonNull)
+            .min(Long::compare)
+            .orElse(null);
+
+    Long maxEndTime =
+        pipelineStatus.getTaskStatus().stream()
+            .map(task -> task.getEndTime())
+            .filter(java.util.Objects::nonNull)
+            .max(Long::compare)
+            .orElse(null);
+
+    if (minStartTime != null && maxEndTime != null && maxEndTime >= minStartTime) {
+      return maxEndTime - minStartTime;
+    }
+
+    return null;
+  }
+
   public ResultList<PipelineStatus> getPipelineStatuses(
       String fqn,
       Long starTs,
@@ -463,18 +506,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               .collect(java.util.stream.Collectors.toList());
     }
 
-    // Apply duration filters
+    // Apply duration filters using task-level timings
     if (minDuration != null || maxDuration != null) {
       pipelineStatuses =
           pipelineStatuses.stream()
               .filter(
                   ps -> {
-                    if (ps.getEndTime() == null || ps.getTimestamp() == null) {
+                    Long actualDuration = calculateActualDuration(ps);
+                    if (actualDuration == null) {
                       return false;
                     }
-                    long duration = ps.getEndTime() - ps.getTimestamp();
-                    boolean meetsMin = minDuration == null || duration >= minDuration;
-                    boolean meetsMax = maxDuration == null || duration <= maxDuration;
+                    boolean meetsMin = minDuration == null || actualDuration >= minDuration;
+                    boolean meetsMax = maxDuration == null || actualDuration <= maxDuration;
                     return meetsMin && meetsMax;
                   })
               .collect(java.util.stream.Collectors.toList());
@@ -1157,6 +1200,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   JsonUtils.readValue(
                       record.getJson(), org.openmetadata.schema.type.PipelineObservability.class);
 
+              // Calculate and set average runtime
+              if (observability.getPipeline() != null) {
+                Double avgRuntime =
+                    calculateAverageRuntime(observability.getPipeline().getFullyQualifiedName());
+                observability.setAverageRunTime(avgRuntime);
+              }
+
               // Apply filters
               boolean matchesFilter = true;
 
@@ -1625,6 +1675,72 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         .withScheduleInterval(pipeline.getScheduleInterval())
         .withImpactedAssetsCount(0)
         .withImpactedAssets(Collections.emptyList());
+  }
+
+  private Double calculateAverageRuntime(String pipelineFqn) {
+    if (nullOrEmpty(pipelineFqn)) {
+      return null;
+    }
+
+    try {
+      long thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000);
+      long now = System.currentTimeMillis();
+
+      List<PipelineStatus> statuses =
+          JsonUtils.readObjects(
+              getResultsFromAndToTimestamps(
+                  pipelineFqn, PIPELINE_STATUS_EXTENSION, thirtyDaysAgo, now),
+              PipelineStatus.class);
+
+      if (statuses == null || statuses.isEmpty()) {
+        return null;
+      }
+
+      List<Double> runtimes = new ArrayList<>();
+
+      for (PipelineStatus status : statuses) {
+        Double runtime = null;
+
+        if (status.getTaskStatus() != null && !status.getTaskStatus().isEmpty()) {
+          Long minStart = null;
+          Long maxEnd = null;
+
+          for (org.openmetadata.schema.type.Status task : status.getTaskStatus()) {
+            if (task.getStartTime() != null && task.getEndTime() != null) {
+              if (minStart == null || task.getStartTime() < minStart) {
+                minStart = task.getStartTime();
+              }
+              if (maxEnd == null || task.getEndTime() > maxEnd) {
+                maxEnd = task.getEndTime();
+              }
+            }
+          }
+
+          if (minStart != null && maxEnd != null) {
+            runtime = (double) (maxEnd - minStart);
+          }
+        }
+
+        if (runtime == null && status.getEndTime() != null && status.getTimestamp() != null) {
+          runtime = (double) (status.getEndTime() - status.getTimestamp());
+        }
+
+        if (runtime != null && runtime > 0) {
+          runtimes.add(runtime);
+        }
+      }
+
+      if (runtimes.isEmpty()) {
+        return null;
+      }
+
+      return runtimes.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to calculate average runtime for pipeline {}: {}", pipelineFqn, e.getMessage());
+      return null;
+    }
   }
 
   private int getImpactedAssetsCount(String pipelineFqn) {
