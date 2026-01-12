@@ -157,17 +157,32 @@ public abstract class SecretsManager {
     return null;
   }
 
-  public Object encryptQueryRunnerConfig(Object authConfig, String configType, String configId) {
+  /**
+   * Encrypts QueryRunner config secrets using a path structure that groups secrets under the
+   * database service: /{cluster}/DatabaseService/{serviceName}/queryrunner/{configType}/{field}
+   *
+   * @param authConfig The auth config object containing password fields to encrypt
+   * @param serviceName The database service name (e.g., "my-snowflake-prod")
+   * @param configType The config type (ADMIN or USER)
+   * @return The auth config with password fields replaced by secret references
+   */
+  public Object encryptQueryRunnerConfig(
+      Object authConfig, String serviceName, String configType) {
     if (authConfig == null) {
       return null;
     }
     try {
+      // Path: /argo/DatabaseService/my-snowflake-prod/queryrunner/admin/clientsecret
       return encryptPasswordFields(
-          authConfig, buildSecretId(true, "queryrunner", configType, configId), true);
+          authConfig,
+          buildSecretId(true, "DatabaseService", serviceName, "queryrunner", configType),
+          true);
     } catch (Exception e) {
       throw new SecretsManagerException(
           Response.Status.BAD_REQUEST,
-          String.format("Failed to encrypt query runner config [%s]", configId));
+          String.format(
+              "Failed to encrypt query runner config for service [%s], type [%s]",
+              serviceName, configType));
     }
   }
 
@@ -183,14 +198,28 @@ public abstract class SecretsManager {
     }
   }
 
-  public void deleteQueryRunnerConfigSecrets(Object authConfig, String configType, String configId) {
+  /**
+   * Deletes QueryRunner config secrets from the secrets manager.
+   * Uses the same path structure as encryptQueryRunnerConfig:
+   * /{cluster}/DatabaseService/{serviceName}/queryrunner/{configType}/{field}
+   *
+   * @param authConfig The auth config object to identify which fields to delete
+   * @param serviceName The database service name
+   * @param configType The config type: "admin" or "user"
+   */
+  public void deleteQueryRunnerConfigSecrets(
+      Object authConfig, String serviceName, String configType) {
     if (authConfig != null) {
       try {
-        deleteSecrets(authConfig, buildSecretId(true, "queryrunner", configType, configId));
+        deleteSecrets(
+            authConfig,
+            buildSecretId(true, "DatabaseService", serviceName, "queryrunner", configType));
       } catch (Exception e) {
         throw new SecretsManagerException(
             Response.Status.BAD_REQUEST,
-            String.format("Failed to delete secrets for query runner config [%s]", configId));
+            String.format(
+                "Failed to delete secrets for query runner config, service [%s], type [%s]",
+                serviceName, configType));
       }
     }
   }
