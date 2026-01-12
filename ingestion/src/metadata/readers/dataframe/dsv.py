@@ -12,8 +12,10 @@
 """
 Generic Delimiter-Separated-Values implementation
 """
+import csv
 import functools
 from functools import singledispatchmethod
+from io import StringIO
 from typing import Any, Dict, Optional
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
@@ -36,6 +38,33 @@ from metadata.utils.constants import CHUNKSIZE
 
 TSV_SEPARATOR = "\t"
 CSV_SEPARATOR = ","
+
+
+def _fix_quoted_header_dataframe(
+    df: "DataFrame", separator: str
+) -> Optional["DataFrame"]:
+    """
+    Fix malformed CSV where the header row is wrapped in quotes as a single column.
+
+    Some CSV exports incorrectly wrap the entire header row in quotes, e.g.:
+    "col1,col2,col3" instead of col1,col2,col3
+
+    This causes pandas to parse it as a single column with the entire header
+    string as the column name.
+
+    Returns a new DataFrame with fixed columns, or None if no fix is needed.
+    """
+    import pandas as pd  # pylint: disable=import-outside-toplevel
+
+    columns = list(df.columns)
+
+    if len(columns) == 1:
+        single_col = str(columns[0])
+        if separator in single_col:
+            parsed_columns = next(csv.reader(StringIO(single_col), delimiter=separator))
+            return pd.DataFrame(columns=parsed_columns)
+
+    return None
 
 
 class DSVDataFrameReader(DataFrameReader):
@@ -76,6 +105,11 @@ class DSVDataFrameReader(DataFrameReader):
         ) as reader:
             for chunks in reader:
                 chunk_list.append(chunks)
+
+        if chunk_list:
+            fixed_df = _fix_quoted_header_dataframe(chunk_list[0], self.separator)
+            if fixed_df is not None:
+                chunk_list = [fixed_df]
 
         return DatalakeColumnWrapper(dataframes=chunk_list)
 
@@ -118,9 +152,15 @@ class DSVDataFrameReader(DataFrameReader):
             sep=self.separator,
             chunksize=CHUNKSIZE,
             compression=compression,
+            encoding_errors="ignore",
         ) as reader:
             for chunks in reader:
                 chunk_list.append(chunks)
+
+        if chunk_list:
+            fixed_df = _fix_quoted_header_dataframe(chunk_list[0], self.separator)
+            if fixed_df is not None:
+                chunk_list = [fixed_df]
 
         return DatalakeColumnWrapper(dataframes=chunk_list)
 
