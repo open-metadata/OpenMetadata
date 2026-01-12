@@ -13,6 +13,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -187,8 +188,8 @@ public class ServiceConnectionAccessIT {
                 p ->
                     p.getOperation() == MetadataOperation.VIEW_ALL
                         && p.getAccess() == Permission.Access.ALLOW);
-    assertTrue(
-        !hasServiceViewAll,
+    assertFalse(
+        hasServiceViewAll,
         "Data Consumer should NOT have VIEW_ALL permission on messaging services");
 
     cleanupUser(adminClient, dataConsumerUser);
