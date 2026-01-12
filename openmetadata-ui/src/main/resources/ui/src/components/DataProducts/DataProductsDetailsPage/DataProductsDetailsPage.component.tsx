@@ -411,18 +411,34 @@ const DataProductsDetailsPage = ({
     assetTabRef.current?.refreshAssets();
   };
 
-  const onNameSave = (obj: { name: string; displayName?: string }) => {
+  const onNameSave = async (obj: { name: string; displayName?: string }) => {
     if (dataProduct) {
-      const { displayName } = obj;
+      const { name, displayName } = obj;
       let updatedDetails = cloneDeep(dataProduct);
 
       updatedDetails = {
         ...dataProduct,
         displayName: displayName?.trim(),
+        name: name?.trim(),
       };
 
-      onUpdate(updatedDetails);
-      setIsNameEditing(false);
+      try {
+        await onUpdate(updatedDetails);
+
+        // If name changed, navigate to the new URL
+        if (name && name.trim() !== dataProduct.name) {
+          navigate(
+            getEntityDetailsPath(
+              EntityType.DATA_PRODUCT,
+              name.trim(),
+              activeTab
+            ),
+            { replace: true }
+          );
+        }
+      } finally {
+        setIsNameEditing(false);
+      }
     }
   };
 
@@ -754,9 +770,10 @@ const DataProductsDetailsPage = ({
       </Box>
 
       <EntityNameModal<DataProduct>
+        allowRename
         entity={dataProduct}
         title={t('label.edit-entity', {
-          entity: t('label.display-name'),
+          entity: t('label.name'),
         })}
         visible={isNameEditing}
         onCancel={() => setIsNameEditing(false)}
