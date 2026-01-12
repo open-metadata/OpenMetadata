@@ -67,6 +67,7 @@ from metadata.ingestion.source.dashboard.powerbi.databricks_parser import (
 )
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataflow,
+    DataflowExportResponse,
     Dataset,
     Group,
     PowerBIDashboard,
@@ -616,6 +617,56 @@ class PowerbiSource(DashboardServiceSource):
                 logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
 
+    def _get_dataflow_column_info(
+        self, dataflow_export: DataflowExportResponse
+    ) -> Optional[List[Column]]:
+        """Build columns from dataflow export response entities"""
+        datasource_columns = []
+        for entity in dataflow_export.entities or []:
+            try:
+                parsed_table = {
+                    "dataTypeDisplay": "PowerBI Table",
+                    "dataType": DataType.TABLE,
+                    "name": entity.name,
+                    "displayName": entity.name,
+                    "description": entity.description,
+                    "children": [],
+                }
+                child_columns = []
+                for attribute in entity.attributes or []:
+                    try:
+                        parsed_column = {
+                            "dataTypeDisplay": (
+                                attribute.dataType
+                                if attribute.dataType
+                                else DataType.UNKNOWN.value
+                            ),
+                            "dataType": ColumnTypeParser.get_column_type(
+                                attribute.dataType if attribute.dataType else None
+                            ),
+                            "name": attribute.name,
+                            "displayName": attribute.name,
+                            "description": attribute.description,
+                        }
+                        if (
+                            attribute.dataType
+                            and attribute.dataType == DataType.ARRAY.value
+                        ):
+                            parsed_column["arrayDataType"] = DataType.UNKNOWN
+                        child_columns.append(Column(**parsed_column))
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            f"Error processing dataflow entity attribute: {exc}"
+                        )
+                if child_columns:
+                    parsed_table["children"] = child_columns
+                datasource_columns.append(Column(**parsed_table))
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error to yield dataflow entity column: {exc}")
+        return datasource_columns
+
     def _get_datamodels_list(self) -> List[Union[Dataset, Dataflow]]:
         """
         Get All the Powerbi Datasets
@@ -654,6 +705,16 @@ class PowerbiSource(DashboardServiceSource):
                             workspace_id=self.context.get().workspace.id,
                             dataflow_id=dataset.id,
                         )
+                        # dataflow export api for detailed metadata
+                        # api: https://api.powerbi.com/v1.0/myorg/admin/dataflows/DATAFLOW_ID/export
+                        # doc: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin
+                        dataflow_export = self.client.api_client.fetch_dataflow_export(
+                            dataflow_id=dataset.id
+                        )
+                        if dataflow_export:
+                            datamodel_columns = self._get_dataflow_column_info(
+                                dataflow_export
+                            )
                     else:
                         logger.warning(
                             f"Unknown dataset type: {type(dataset)}, name: {dataset.name}"

@@ -9,9 +9,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.bootstrap.SharedEntities.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -36,6 +39,7 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -57,11 +61,10 @@ import org.openmetadata.sdk.network.HttpMethod;
 public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataProduct> {
 
   // DataProduct is itself a data product, so this field doesn't apply to it
-  // DataProduct domains cannot be changed via PATCH after creation
   // DataProduct API doesn't expose include parameter for soft delete operations
   {
     supportsDataProducts = false;
-    supportsPatchDomains = false;
+    supportsPatchDomains = true; // Domain change is now supported with asset migration
     supportsSoftDelete = false;
   }
 
@@ -795,5 +798,663 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     String responseJson =
         SdkClients.adminClient().getHttpClient().executeForString(HttpMethod.GET, path, null, null);
     return JsonUtils.readValue(responseJson, new TypeReference<Map<String, Integer>>() {});
+  }
+
+  private List<EntityReference> getEntityReferencesFromSearchIndex(
+      UUID entityId, String indexName, String fieldName) throws Exception {
+    String query = "id:" + entityId.toString();
+    String searchResponse =
+        SdkClients.adminClient().search().query(query).index(indexName).execute();
+
+    JsonNode root = JsonUtils.readTree(searchResponse);
+    JsonNode fieldNode = root.path("hits").path("hits").path(0).path("_source").path(fieldName);
+
+    if (fieldNode.isMissingNode() || !fieldNode.isArray()) {
+      return null;
+    }
+
+    return JsonUtils.readObjects(fieldNode.toString(), EntityReference.class);
+  }
+
+  // ===================================================================
+  // RENAME + CONSOLIDATION TESTS
+  // Tests that verify assets are preserved when:
+  // 1. DataProduct is renamed
+  // 2. Another field is updated within the same session (triggering consolidation)
+  // ===================================================================
+
+  @Test
+  void test_renameDataProduct(TestNamespace ns) {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_rename"))
+            .withDescription("Data product for rename test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    String oldName = dataProduct.getName();
+    String oldFqn = dataProduct.getFullyQualifiedName();
+    String newName = "renamed-" + oldName;
+
+    dataProduct.setName(newName);
+    DataProduct renamed = patchEntity(dataProduct.getId().toString(), dataProduct);
+
+    assertEquals(newName, renamed.getName());
+    assertNotEquals(oldFqn, renamed.getFullyQualifiedName());
+
+    DataProduct fetched = getEntityByName(renamed.getFullyQualifiedName());
+    assertEquals(newName, fetched.getName());
+  }
+
+  @Test
+  void test_renameDataProductWithAssets(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_rename_assets"))
+            .withDescription("Data product for rename with assets test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table = createTestTable(ns, "rename_table", domain);
+    BulkAssets addTable = new BulkAssets().withAssets(List.of(table.getEntityReference()));
+    bulkAddAssets(dataProduct.getFullyQualifiedName(), addTable);
+
+    // Wait for asset to be added (may be async)
+    UUID dataProductId = dataProduct.getId();
+    Awaitility.await("Wait for asset to be added before rename")
+        .pollDelay(Duration.ofMillis(100))
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<EntityReference> assets = getAssets(dataProductId, 10, 0);
+              assertEquals(1, assets.getPaging().getTotal(), "Should have 1 asset before rename");
+            });
+
+    String oldName = dataProduct.getName();
+    String newName = "renamed-" + oldName;
+
+    dataProduct.setName(newName);
+    DataProduct renamed = patchEntity(dataProduct.getId().toString(), dataProduct);
+    assertEquals(newName, renamed.getName());
+
+    // Wait for assets to be properly reflected after rename (may involve async processing)
+    UUID renamedId = renamed.getId();
+    UUID tableId = table.getId();
+    Awaitility.await("Wait for asset to be present after rename")
+        .pollDelay(Duration.ofMillis(100))
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<EntityReference> assets = getAssets(renamedId, 10, 0);
+              assertEquals(
+                  1, assets.getPaging().getTotal(), "Should still have 1 asset after rename");
+              assertEquals(tableId, assets.getData().get(0).getId());
+            });
+  }
+
+  /**
+   * Test that reproduces the consolidation bug when:
+   * 1. DataProduct is renamed
+   * 2. Another field (description) is updated within the same session
+   *
+   * The consolidation logic would revert to the previous version which has the OLD name/FQN,
+   * potentially causing asset relationships to be lost.
+   *
+   * Fix: Skip consolidation when name has changed.
+   */
+  @Test
+  void test_renameAndUpdateDescriptionPreservesAssets(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_rename_consolidate"))
+            .withDescription("Initial description")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table = createTestTable(ns, "consolidate_table", domain);
+    BulkAssets addTable = new BulkAssets().withAssets(List.of(table.getEntityReference()));
+    bulkAddAssets(dataProduct.getFullyQualifiedName(), addTable);
+
+    // Wait for asset to be added (may be async)
+    UUID dataProductId = dataProduct.getId();
+    Awaitility.await("Wait for asset to be added before rename")
+        .pollDelay(Duration.ofMillis(100))
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<EntityReference> assets = getAssets(dataProductId, 10, 0);
+              assertEquals(1, assets.getPaging().getTotal(), "Should have 1 asset before rename");
+            });
+
+    String oldName = dataProduct.getName();
+    String newName = "renamed-" + oldName;
+    dataProduct.setName(newName);
+    DataProduct renamed = patchEntity(dataProduct.getId().toString(), dataProduct);
+    assertEquals(newName, renamed.getName());
+
+    // Wait for assets to be properly reflected after rename
+    UUID renamedId = renamed.getId();
+    UUID tableId = table.getId();
+    Awaitility.await("Wait for asset to be present after rename")
+        .pollDelay(Duration.ofMillis(100))
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<EntityReference> assets = getAssets(renamedId, 10, 0);
+              assertEquals(1, assets.getPaging().getTotal(), "Should have 1 asset after rename");
+            });
+
+    renamed.setDescription("Updated description after rename");
+    DataProduct afterDescUpdate = patchEntity(renamed.getId().toString(), renamed);
+    assertEquals("Updated description after rename", afterDescUpdate.getDescription());
+
+    // Wait for assets after description update and consolidation
+    UUID afterDescUpdateId = afterDescUpdate.getId();
+    Awaitility.await("Wait for asset after consolidation")
+        .pollDelay(Duration.ofMillis(100))
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<EntityReference> assets = getAssets(afterDescUpdateId, 10, 0);
+              assertEquals(
+                  1,
+                  assets.getPaging().getTotal(),
+                  "CRITICAL: Assets should still be present after rename + description update consolidation");
+              assertEquals(
+                  tableId,
+                  assets.getData().get(0).getId(),
+                  "Asset should be the same table after consolidation");
+            });
+
+    Table tableWithDataProducts =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
+    assertNotNull(tableWithDataProducts.getDataProducts());
+    assertEquals(1, tableWithDataProducts.getDataProducts().size());
+    assertEquals(
+        afterDescUpdate.getFullyQualifiedName(),
+        tableWithDataProducts.getDataProducts().get(0).getFullyQualifiedName(),
+        "Table's dataProducts reference should have updated FQN after consolidation");
+  }
+
+  /**
+   * Test multiple renames followed by updates within the same session.
+   * This is a more complex scenario that tests the robustness of the consolidation fix.
+   */
+  @Test
+  void test_multipleRenamesWithUpdatesPreservesAssets(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_multi_rename"))
+            .withDescription("Initial description")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table = createTestTable(ns, "multi_rename_table", domain);
+    BulkAssets addTable = new BulkAssets().withAssets(List.of(table.getEntityReference()));
+    bulkAddAssets(dataProduct.getFullyQualifiedName(), addTable);
+
+    // Wait for asset to be added (may be async)
+    UUID dataProductId = dataProduct.getId();
+    Awaitility.await("Wait for asset to be added")
+        .pollDelay(Duration.ofMillis(100))
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<EntityReference> assets = getAssets(dataProductId, 10, 0);
+              assertEquals(1, assets.getPaging().getTotal());
+            });
+
+    String[] names = {"renamed-first", "renamed-second", "renamed-third"};
+
+    for (int i = 0; i < names.length; i++) {
+      String newName = names[i] + "-" + UUID.randomUUID().toString().substring(0, 8);
+
+      dataProduct.setName(newName);
+      dataProduct = patchEntity(dataProduct.getId().toString(), dataProduct);
+      assertEquals(newName, dataProduct.getName());
+
+      ResultList<EntityReference> assets = getAssets(dataProduct.getId(), 10, 0);
+      assertEquals(
+          1,
+          assets.getPaging().getTotal(),
+          "Assets should be preserved immediately after rename " + (i + 1));
+
+      dataProduct.setDescription("Description after rename " + (i + 1));
+      dataProduct = patchEntity(dataProduct.getId().toString(), dataProduct);
+
+      assets = getAssets(dataProduct.getId(), 10, 0);
+      assertEquals(
+          1,
+          assets.getPaging().getTotal(),
+          "Assets should be preserved after rename + update iteration " + (i + 1));
+    }
+
+    Table tableWithDataProducts =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
+    assertNotNull(tableWithDataProducts.getDataProducts());
+    assertEquals(1, tableWithDataProducts.getDataProducts().size());
+    assertEquals(
+        dataProduct.getFullyQualifiedName(),
+        tableWithDataProducts.getDataProducts().get(0).getFullyQualifiedName());
+  }
+
+  // ===================================================================
+  // DOMAIN CHANGE TESTS
+  // Tests that verify domain change works correctly including:
+  // 1. Basic domain change (no assets)
+  // 2. Domain change with asset migration
+  // 3. Domain change for input/output ports
+  // ===================================================================
+
+  @Test
+  void test_changeDataProductDomain_noAssets(TestNamespace ns) {
+    // Create two domains
+    Domain domain1 = createTestDomain(ns, "domain_change_1");
+    Domain domain2 = createTestDomain(ns, "domain_change_2");
+
+    // Create data product in domain1
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_domain_change"))
+            .withDescription("Data product for domain change test")
+            .withDomains(List.of(domain1.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    // Verify initial domain
+    assertEquals(1, dataProduct.getDomains().size());
+    assertEquals(domain1.getId(), dataProduct.getDomains().get(0).getId());
+
+    // Change domain to domain2
+    dataProduct.setDomains(List.of(domain2.getEntityReference()));
+    DataProduct updated = patchEntity(dataProduct.getId().toString(), dataProduct);
+
+    // Verify domain changed
+    assertEquals(1, updated.getDomains().size());
+    assertEquals(domain2.getId(), updated.getDomains().get(0).getId());
+
+    // Fetch fresh and verify
+    DataProduct fetched =
+        SdkClients.adminClient().dataProducts().get(updated.getId().toString(), "domains");
+    assertEquals(1, fetched.getDomains().size());
+    assertEquals(domain2.getId(), fetched.getDomains().get(0).getId());
+  }
+
+  @Test
+  void test_changeDataProductDomain_withAssetMigration(TestNamespace ns) throws Exception {
+    // Create two domains
+    Domain domain1 = createTestDomain(ns, "domain_migrate_1");
+    Domain domain2 = createTestDomain(ns, "domain_migrate_2");
+
+    // Create data product in domain1
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_domain_migrate"))
+            .withDescription("Data product for domain migration test")
+            .withDomains(List.of(domain1.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    // Create a table in domain1 and add it as asset to the data product
+    Table table = createTestTable(ns, "migrate_asset", domain1);
+    BulkAssets addTable = new BulkAssets().withAssets(List.of(table.getEntityReference()));
+    bulkAddAssets(dataProduct.getFullyQualifiedName(), addTable);
+
+    // Verify asset is linked
+    ResultList<EntityReference> assets = getAssets(dataProduct.getId(), 10, 0);
+    assertEquals(1, assets.getPaging().getTotal());
+
+    // Verify table is in domain1
+    Table tableBeforeChange =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "domains");
+    assertEquals(1, tableBeforeChange.getDomains().size());
+    assertEquals(domain1.getId(), tableBeforeChange.getDomains().get(0).getId());
+
+    // Change data product domain to domain2
+    dataProduct.setDomains(List.of(domain2.getEntityReference()));
+    DataProduct updated = patchEntity(dataProduct.getId().toString(), dataProduct);
+
+    // Verify data product is now in domain2
+    assertEquals(1, updated.getDomains().size());
+    assertEquals(domain2.getId(), updated.getDomains().get(0).getId());
+
+    // Verify asset is still linked
+    assets = getAssets(updated.getId(), 10, 0);
+    assertEquals(
+        1, assets.getPaging().getTotal(), "Asset should still be linked after domain change");
+
+    // Verify table's domain was migrated to domain2
+    Table tableAfterChange =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "domains");
+    assertEquals(1, tableAfterChange.getDomains().size());
+    assertEquals(
+        domain2.getId(),
+        tableAfterChange.getDomains().getFirst().getId(),
+        "Asset should have been migrated to the new domain");
+
+    long uniqueDomainIds =
+        tableAfterChange.getDomains().stream().map(EntityReference::getId).distinct().count();
+    assertEquals(
+        tableAfterChange.getDomains().size(),
+        uniqueDomainIds,
+        "No duplicate domains should exist in the asset's domains list");
+
+    assertEquals(
+        domain2.getFullyQualifiedName(),
+        tableAfterChange.getDomains().getFirst().getFullyQualifiedName(),
+        "Domain FQN should match the new domain");
+
+    waitForSearchIndexing();
+
+    List<EntityReference> searchIndexDomains =
+        getEntityReferencesFromSearchIndex(table.getId(), "table_search_index", "domains");
+    assertNotNull(searchIndexDomains, "Table should be present in search index with domains");
+    assertEquals(
+        1, searchIndexDomains.size(), "Search index should show exactly 1 domain after migration");
+
+    List<UUID> searchDomainIds = searchIndexDomains.stream().map(EntityReference::getId).toList();
+    long uniqueSearchDomainIds = searchDomainIds.stream().distinct().count();
+    assertEquals(
+        searchDomainIds.size(),
+        uniqueSearchDomainIds,
+        "No duplicate domains should exist in search index (all domain IDs should be unique)");
+
+    assertEquals(
+        domain2.getId(),
+        searchIndexDomains.getFirst().getId(),
+        "Search index should show the migrated domain2");
+  }
+
+  @Test
+  void test_changeDataProductDomain_multipleAssets(TestNamespace ns) throws Exception {
+    // Create two domains
+    Domain domain1 = createTestDomain(ns, "domain_multi_1");
+    Domain domain2 = createTestDomain(ns, "domain_multi_2");
+
+    // Create data product in domain1
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_domain_multi"))
+            .withDescription("Data product for multiple asset migration")
+            .withDomains(List.of(domain1.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    // Create multiple tables in domain1
+    Table table1 = createTestTable(ns, "multi_asset_1", domain1);
+    Table table2 = createTestTable(ns, "multi_asset_2", domain1);
+    Table table3 = createTestTable(ns, "multi_asset_3", domain1);
+
+    // Add all tables as assets
+    BulkAssets addTables =
+        new BulkAssets()
+            .withAssets(
+                List.of(
+                    table1.getEntityReference(),
+                    table2.getEntityReference(),
+                    table3.getEntityReference()));
+    bulkAddAssets(dataProduct.getFullyQualifiedName(), addTables);
+
+    // Verify all assets are linked
+    ResultList<EntityReference> assets = getAssets(dataProduct.getId(), 10, 0);
+    assertEquals(3, assets.getPaging().getTotal());
+
+    // Change data product domain to domain2
+    dataProduct.setDomains(List.of(domain2.getEntityReference()));
+    DataProduct updated = patchEntity(dataProduct.getId().toString(), dataProduct);
+
+    // Verify data product is now in domain2
+    assertEquals(domain2.getId(), updated.getDomains().get(0).getId());
+
+    // Verify all assets are still linked
+    assets = getAssets(updated.getId(), 10, 0);
+    assertEquals(3, assets.getPaging().getTotal(), "All assets should still be linked");
+
+    // Verify all tables' domains were migrated to domain2
+    for (Table table : List.of(table1, table2, table3)) {
+      Table tableAfterChange =
+          SdkClients.adminClient().tables().get(table.getId().toString(), "domains");
+      assertEquals(1, tableAfterChange.getDomains().size());
+      assertEquals(
+          domain2.getId(),
+          tableAfterChange.getDomains().get(0).getId(),
+          "Asset " + table.getName() + " should have been migrated to the new domain");
+
+      long uniqueDomainIds =
+          tableAfterChange.getDomains().stream().map(EntityReference::getId).distinct().count();
+      assertEquals(
+          tableAfterChange.getDomains().size(),
+          uniqueDomainIds,
+          "No duplicate domains should exist for asset " + table.getName());
+
+      assertEquals(
+          domain2.getFullyQualifiedName(),
+          tableAfterChange.getDomains().get(0).getFullyQualifiedName(),
+          "Domain FQN should match the new domain for asset " + table.getName());
+    }
+  }
+
+  @Test
+  void test_renameDataProductWithTags(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_rename_tags"))
+            .withDescription("Data product for rename with tags test")
+            .withDomains(List.of(domain.getFullyQualifiedName()))
+            .withTags(List.of(shared.PERSONAL_DATA_TAG_LABEL));
+    DataProduct dataProduct = createEntity(create);
+
+    assertNotNull(dataProduct.getTags());
+    assertEquals(1, dataProduct.getTags().size());
+    assertEquals(
+        shared.PERSONAL_DATA_TAG.getFullyQualifiedName(), dataProduct.getTags().get(0).getTagFQN());
+
+    String oldName = dataProduct.getName();
+    String oldFqn = dataProduct.getFullyQualifiedName();
+    String newName = "renamed-" + oldName;
+
+    dataProduct.setName(newName);
+    DataProduct renamed = patchEntity(dataProduct.getId().toString(), dataProduct);
+
+    assertEquals(newName, renamed.getName());
+    assertNotEquals(oldFqn, renamed.getFullyQualifiedName());
+
+    DataProduct fetchedWithTags = getEntityWithFields(renamed.getId().toString(), "tags");
+    assertNotNull(fetchedWithTags.getTags(), "Tags should not be null after rename");
+    assertEquals(1, fetchedWithTags.getTags().size(), "Tags should be preserved after rename");
+    assertEquals(
+        shared.PERSONAL_DATA_TAG.getFullyQualifiedName(),
+        fetchedWithTags.getTags().get(0).getTagFQN(),
+        "Tag FQN should remain unchanged after data product rename");
+  }
+
+  @Test
+  void test_renameDataProductWithGlossaryTerms(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_rename_glossary"))
+            .withDescription("Data product for rename with glossary terms test")
+            .withDomains(List.of(domain.getFullyQualifiedName()))
+            .withTags(List.of(shared.GLOSSARY1_TERM1_LABEL));
+    DataProduct dataProduct = createEntity(create);
+
+    assertNotNull(dataProduct.getTags());
+    assertEquals(1, dataProduct.getTags().size());
+    assertEquals(
+        shared.GLOSSARY1_TERM1.getFullyQualifiedName(), dataProduct.getTags().get(0).getTagFQN());
+    assertEquals(TagLabel.TagSource.GLOSSARY, dataProduct.getTags().get(0).getSource());
+
+    String oldName = dataProduct.getName();
+    String oldFqn = dataProduct.getFullyQualifiedName();
+    String newName = "renamed-" + oldName;
+
+    dataProduct.setName(newName);
+    DataProduct renamed = patchEntity(dataProduct.getId().toString(), dataProduct);
+
+    assertEquals(newName, renamed.getName());
+    assertNotEquals(oldFqn, renamed.getFullyQualifiedName());
+
+    DataProduct fetchedWithTags = getEntityWithFields(renamed.getId().toString(), "tags");
+    assertNotNull(fetchedWithTags.getTags(), "Glossary terms should not be null after rename");
+    assertEquals(
+        1, fetchedWithTags.getTags().size(), "Glossary terms should be preserved after rename");
+    assertEquals(
+        shared.GLOSSARY1_TERM1.getFullyQualifiedName(),
+        fetchedWithTags.getTags().getFirst().getTagFQN(),
+        "Glossary term FQN should remain unchanged after data product rename");
+    assertEquals(
+        TagLabel.TagSource.GLOSSARY,
+        fetchedWithTags.getTags().getFirst().getSource(),
+        "Tag source should remain GLOSSARY after rename");
+  }
+
+  @Test
+  void test_renameDataProductWithMultipleTagsAndGlossaryTerms(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_rename_mixed"))
+            .withDescription("Data product for rename with mixed tags/glossary terms test")
+            .withDomains(List.of(domain.getFullyQualifiedName()))
+            .withTags(
+                List.of(
+                    shared.PERSONAL_DATA_TAG_LABEL,
+                    shared.PII_SENSITIVE_TAG_LABEL,
+                    shared.GLOSSARY1_TERM1_LABEL));
+    DataProduct dataProduct = createEntity(create);
+
+    assertNotNull(dataProduct.getTags());
+    assertEquals(3, dataProduct.getTags().size());
+
+    String oldName = dataProduct.getName();
+    String newName = "renamed-" + oldName;
+
+    dataProduct.setName(newName);
+    DataProduct renamed = patchEntity(dataProduct.getId().toString(), dataProduct);
+
+    DataProduct fetchedWithTags = getEntityWithFields(renamed.getId().toString(), "tags");
+    assertNotNull(
+        fetchedWithTags.getTags(), "Tags and glossary terms should not be null after rename");
+    assertEquals(
+        3,
+        fetchedWithTags.getTags().size(),
+        "All tags and glossary terms should be preserved after rename");
+
+    List<String> tagFQNs = fetchedWithTags.getTags().stream().map(TagLabel::getTagFQN).toList();
+
+    assertTrue(
+        tagFQNs.contains(shared.PERSONAL_DATA_TAG.getFullyQualifiedName()),
+        "Classification tag 1 should be preserved");
+    assertTrue(
+        tagFQNs.contains(shared.SENSITIVE_TAG.getFullyQualifiedName()),
+        "Classification tag 2 should be preserved");
+    assertTrue(
+        tagFQNs.contains(shared.GLOSSARY1_TERM1.getFullyQualifiedName()),
+        "Glossary term should be preserved");
+
+    long classificationCount =
+        fetchedWithTags.getTags().stream()
+            .filter(t -> t.getSource() == TagLabel.TagSource.CLASSIFICATION)
+            .count();
+    long glossaryCount =
+        fetchedWithTags.getTags().stream()
+            .filter(t -> t.getSource() == TagLabel.TagSource.GLOSSARY)
+            .count();
+
+    assertEquals(2, classificationCount, "Should have 2 classification tags");
+    assertEquals(1, glossaryCount, "Should have 1 glossary term");
+  }
+
+  @Test
+  void test_changeDataProductDomain_andUpdateDescription(TestNamespace ns) throws Exception {
+    // Create two domains
+    Domain domain1 = createTestDomain(ns, "domain_desc_1");
+    Domain domain2 = createTestDomain(ns, "domain_desc_2");
+
+    // Create data product in domain1 with an asset
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_domain_desc"))
+            .withDescription("Initial description")
+            .withDomains(List.of(domain1.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table = createTestTable(ns, "desc_asset", domain1);
+    BulkAssets addTable = new BulkAssets().withAssets(List.of(table.getEntityReference()));
+    bulkAddAssets(dataProduct.getFullyQualifiedName(), addTable);
+
+    // Change domain
+    dataProduct.setDomains(List.of(domain2.getEntityReference()));
+    DataProduct afterDomainChange = patchEntity(dataProduct.getId().toString(), dataProduct);
+    assertEquals(domain2.getId(), afterDomainChange.getDomains().get(0).getId());
+
+    // Update description (triggers consolidation)
+    afterDomainChange.setDescription("Updated description after domain change");
+    DataProduct afterDescUpdate =
+        patchEntity(afterDomainChange.getId().toString(), afterDomainChange);
+    assertEquals("Updated description after domain change", afterDescUpdate.getDescription());
+
+    // Verify domain is still domain2 after consolidation
+    assertEquals(domain2.getId(), afterDescUpdate.getDomains().get(0).getId());
+
+    // Verify asset is still linked and in new domain
+    ResultList<EntityReference> assets = getAssets(afterDescUpdate.getId(), 10, 0);
+    assertEquals(1, assets.getPaging().getTotal());
+
+    Table tableAfter = SdkClients.adminClient().tables().get(table.getId().toString(), "domains");
+    assertEquals(1, tableAfter.getDomains().size(), "Asset should have exactly 1 domain");
+    assertEquals(domain2.getId(), tableAfter.getDomains().get(0).getId());
+
+    long uniqueDomainIds =
+        tableAfter.getDomains().stream().map(EntityReference::getId).distinct().count();
+    assertEquals(
+        tableAfter.getDomains().size(),
+        uniqueDomainIds,
+        "No duplicate domains should exist after domain change and consolidation");
+
+    assertEquals(
+        domain2.getFullyQualifiedName(),
+        tableAfter.getDomains().get(0).getFullyQualifiedName(),
+        "Domain FQN should match the new domain after consolidation");
+
+    waitForSearchIndexing();
+
+    List<EntityReference> searchIndexDomains =
+        getEntityReferencesFromSearchIndex(table.getId(), "table_search_index", "domains");
+    assertNotNull(
+        searchIndexDomains,
+        "Table should be present in search index with domains after consolidation");
+    assertEquals(
+        1,
+        searchIndexDomains.size(),
+        "Search index should show exactly 1 domain after consolidation");
+
+    List<UUID> searchDomainIds = searchIndexDomains.stream().map(EntityReference::getId).toList();
+    long uniqueSearchDomainIds = searchDomainIds.stream().distinct().count();
+    assertEquals(
+        searchDomainIds.size(),
+        uniqueSearchDomainIds,
+        "No duplicate domains in search index after domain change and consolidation");
+
+    assertEquals(
+        domain2.getId(),
+        searchIndexDomains.get(0).getId(),
+        "Search index should reflect domain2 after consolidation");
   }
 }

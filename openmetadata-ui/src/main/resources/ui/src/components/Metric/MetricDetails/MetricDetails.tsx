@@ -101,11 +101,21 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     isFollowing ? await onUnFollowMetric() : await onFollowMetric();
 
   const handleUpdateDisplayName = async (data: EntityName) => {
+    const { name, displayName } = data;
     const updatedData = {
       ...metricDetails,
-      displayName: data.displayName,
+      displayName: displayName?.trim(),
+      name: name?.trim(),
     };
     await onMetricUpdate(updatedData, 'displayName');
+
+    // If name changed, navigate to the new URL
+    if (name && name.trim() !== metricDetails.name) {
+      navigate(
+        getEntityDetailsPath(EntityType.METRIC, name.trim(), activeTab),
+        { replace: true }
+      );
+    }
   };
 
   const onCertificationUpdate = useCallback(
