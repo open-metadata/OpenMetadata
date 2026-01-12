@@ -795,6 +795,11 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     assertCommonFieldChange(fieldName, expected, actual);
   }
 
+  // Domain rename tests have been migrated to openmetadata-integration-tests/DomainResourceIT.java
+  // Tests: test_renameDomain, test_renameDomainWithDataProducts, test_renameDomainWithSubdomains,
+  //        test_renameDomainWithNestedSubdomains, test_renameAndUpdateDescriptionConsolidation,
+  //        test_multipleRenamesWithUpdatesConsolidation
+
   @Test
   void test_getAllDomainsWithAssetsCount(TestInfo test) throws IOException {
     Domain rootDomain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);

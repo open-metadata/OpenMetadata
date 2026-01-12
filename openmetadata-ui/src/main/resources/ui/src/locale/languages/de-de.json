@@ -2167,6 +2167,7 @@
     "disable-tag-description": "Durch Deaktivieren des Tags können Sie nicht mehr nach diesem suchen oder es einer Entität zuweisen.",
     "disabled-classification-actions-message": "Sie können diese Aktion auf deaktivierten Klassifikationen nicht ausführen.",
     "discover-your-data-and-unlock-the-value-of-data-assets": "Die Dinge werden einfacher mit Data Quality ohne Code. Einfache Schritte zum Testen, Bereitstellen und Sammeln von Ergebnissen mit sofortigen Benachrichtigungen bei Testfehlern. Bleiben Sie auf dem Laufenden mit zuverlässigen Daten, denen Sie vertrauen können.",
+    "domain-change-asset-migration-warning": "Changing the domain will move {{count}} asset(s) from the current domain to {{domain}}. Do you want to proceed?",
     "distinct-profile-metric-description": "Percentage of distinct values in the column",
     "domain-description": "Organisieren und verwalten Sie Datenbereiche in Ihrer Organisation.",
     "domain-does-not-have-assets": "Die Domäne {{name}} enthält keine Assets, die zum Datenprodukt hinzugefügt werden können.",
