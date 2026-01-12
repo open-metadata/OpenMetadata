@@ -227,7 +227,8 @@ test.describe('Pagination tests for all pages', () => {
           response.status() === 200
       );
       await page.getByTestId('insights').click();
-      await responsePromise;
+      const response = await responsePromise;
+      expect(response.status()).toBe(200);
 
       await page.getByTestId('databases').click();
       await page.waitForSelector('table', { state: 'visible' });
