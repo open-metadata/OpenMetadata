@@ -104,17 +104,12 @@
       "type": "string"
     },
     "aws": {
-      "description": "AWS IAM authentication configuration for OpenSearch. When useIamAuth is true, requests will be signed using AWS Signature Version 4.",
+      "description": "AWS IAM authentication configuration for OpenSearch. IAM auth is automatically enabled when region is configured. Uses standard AWS environment variables (AWS_DEFAULT_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).",
       "type": "object",
       "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.AwsConfiguration",
       "properties": {
-        "useIamAuth": {
-          "description": "Enable AWS IAM authentication for OpenSearch",
-          "type": "boolean",
-          "default": false
-        },
         "region": {
-          "description": "AWS Region for OpenSearch service",
+          "description": "AWS Region for OpenSearch service. When set, IAM authentication is automatically enabled.",
           "type": "string"
         },
         "accessKeyId": {

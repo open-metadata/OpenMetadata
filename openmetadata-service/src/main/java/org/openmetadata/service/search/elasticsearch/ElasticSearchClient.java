@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import static org.openmetadata.service.search.SearchUtils.buildHttpHosts;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 
@@ -20,7 +21,6 @@ import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.security.KeyStoreException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -639,7 +639,7 @@ public class ElasticSearchClient implements SearchClient {
   public RestClient getLowLevelRestClient(ElasticSearchConfiguration esConfig) {
     if (esConfig != null) {
       try {
-        HttpHost[] httpHosts = buildHttpHosts(esConfig);
+        HttpHost[] httpHosts = buildHttpHosts(esConfig, "Elasticsearch");
         RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
 
         restClientBuilder.setHttpClientConfigCallback(
@@ -705,36 +705,6 @@ public class ElasticSearchClient implements SearchClient {
       LOG.error("Failed to create low level rest client as esConfig is null");
       return null;
     }
-  }
-
-  private HttpHost[] buildHttpHosts(ElasticSearchConfiguration esConfig) {
-    List<HttpHost> hosts = new ArrayList<>();
-    String scheme = esConfig.getScheme();
-    int defaultPort = esConfig.getPort() != null ? esConfig.getPort() : 9200;
-
-    if (StringUtils.isNotEmpty(esConfig.getHost())) {
-      String hostConfig = esConfig.getHost();
-      if (hostConfig.contains(",")) {
-        for (String hostEntry : hostConfig.split(",")) {
-          hostEntry = hostEntry.trim();
-          String[] parts = hostEntry.split(":");
-          String host = parts[0];
-          int port = parts.length > 1 ? Integer.parseInt(parts[1]) : defaultPort;
-          hosts.add(new HttpHost(host, port, scheme));
-        }
-        LOG.info("Configured Elasticsearch with {} hosts", hosts.size());
-      } else {
-        String[] parts = hostConfig.split(":");
-        String host = parts[0];
-        int port = parts.length > 1 ? Integer.parseInt(parts[1]) : defaultPort;
-        hosts.add(new HttpHost(host, port, scheme));
-        LOG.info("Configured Elasticsearch with single host: {}:{}", host, port);
-      }
-    } else {
-      throw new IllegalArgumentException("'host' must be provided in Elasticsearch configuration");
-    }
-
-    return hosts.toArray(new HttpHost[0]);
   }
 
   @Override

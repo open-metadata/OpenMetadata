@@ -407,12 +407,14 @@ elasticsearch:
   searchIndexMappingLanguage : ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
   searchIndexFactoryClassName : org.openmetadata.service.search.SearchIndexFactory
   # AWS IAM Authentication for OpenSearch (only applicable when searchType is "opensearch")
+  # Uses standard AWS environment variables: https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-envvars.html
+  # IAM auth is automatically enabled when AWS_DEFAULT_REGION is set
+  # Credentials: Use AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or rely on AWS SDK default credential provider chain
   aws:
-    useIamAuth: ${SEARCH_AWS_IAM_AUTH:-false}
-    region: ${SEARCH_AWS_REGION:-""}
-    accessKeyId: ${SEARCH_AWS_ACCESS_KEY_ID:-""}
-    secretAccessKey: ${SEARCH_AWS_SECRET_ACCESS_KEY:-""}
-    sessionToken: ${SEARCH_AWS_SESSION_TOKEN:-""}
+    region: ${AWS_DEFAULT_REGION:-""}
+    accessKeyId: ${AWS_ACCESS_KEY_ID:-""}
+    secretAccessKey: ${AWS_SECRET_ACCESS_KEY:-""}
+    sessionToken: ${AWS_SESSION_TOKEN:-""}
     serviceName: ${SEARCH_AWS_SERVICE_NAME:-"es"}  # Use "es" for OpenSearch, "aoss" for OpenSearch Serverless
   naturalLanguageSearch:
     enabled: false

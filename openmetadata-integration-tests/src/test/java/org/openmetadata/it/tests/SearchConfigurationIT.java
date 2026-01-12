@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
-import java.util.Map;
 import org.apache.http.util.EntityUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -16,7 +15,6 @@ import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 
 /**
@@ -88,8 +86,7 @@ public class SearchConfigurationIT {
     assertEquals(200, response.getStatusLine().getStatusCode());
 
     String responseBody = EntityUtils.toString(response.getEntity());
-    assertTrue(
-        responseBody.contains("\"version\""), "Response should contain version information");
+    assertTrue(responseBody.contains("\"version\""), "Response should contain version information");
   }
 
   @Test

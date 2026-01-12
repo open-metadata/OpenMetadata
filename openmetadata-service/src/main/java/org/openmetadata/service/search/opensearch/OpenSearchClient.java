@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.opensearch;
 
+import static org.openmetadata.service.search.SearchUtils.buildHttpHosts;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 
@@ -15,7 +16,6 @@ import java.util.UUID;
 import javax.net.ssl.SSLContext;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import java.util.ArrayList;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpHost;
@@ -24,14 +24,6 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.jetbrains.annotations.NotNull;
-import org.openmetadata.schema.service.configuration.elasticsearch.AwsConfiguration;
-import org.openmetadata.service.search.SigV4RequestSigningInterceptor;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
@@ -47,6 +39,7 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultLi
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.service.configuration.elasticsearch.AwsConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
@@ -57,6 +50,7 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.search.SigV4RequestSigningInterceptor;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
@@ -74,6 +68,12 @@ import os.org.opensearch.client.opensearch.core.BulkResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
 import os.org.opensearch.client.transport.rest_client.RestClientTransport;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
@@ -618,14 +618,12 @@ public class OpenSearchClient implements SearchClient {
   private RestClientBuilder getLowLevelRestClient(ElasticSearchConfiguration esConfig) {
     if (esConfig != null) {
       try {
-        HttpHost[] httpHosts = buildHttpHosts(esConfig);
+        HttpHost[] httpHosts = buildHttpHosts(esConfig, "OpenSearch");
         RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
 
         AwsConfiguration awsConfig = esConfig.getAws();
-        boolean useIamAuth =
-            awsConfig != null
-                && awsConfig.getUseIamAuth() != null
-                && awsConfig.getUseIamAuth();
+        // Enable IAM auth if AWS region is configured (region is required for SigV4 signing)
+        boolean useIamAuth = awsConfig != null && StringUtils.isNotEmpty(awsConfig.getRegion());
 
         restClientBuilder.setHttpClientConfigCallback(
             httpAsyncClientBuilder -> {
@@ -697,36 +695,6 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
-  private HttpHost[] buildHttpHosts(ElasticSearchConfiguration esConfig) {
-    List<HttpHost> hosts = new ArrayList<>();
-    String scheme = esConfig.getScheme();
-    int defaultPort = esConfig.getPort() != null ? esConfig.getPort() : 9200;
-
-    if (StringUtils.isNotEmpty(esConfig.getHost())) {
-      String hostConfig = esConfig.getHost();
-      if (hostConfig.contains(",")) {
-        for (String hostEntry : hostConfig.split(",")) {
-          hostEntry = hostEntry.trim();
-          String[] parts = hostEntry.split(":");
-          String host = parts[0];
-          int port = parts.length > 1 ? Integer.parseInt(parts[1]) : defaultPort;
-          hosts.add(new HttpHost(host, port, scheme));
-        }
-        LOG.info("Configured OpenSearch with {} hosts", hosts.size());
-      } else {
-        String[] parts = hostConfig.split(":");
-        String host = parts[0];
-        int port = parts.length > 1 ? Integer.parseInt(parts[1]) : defaultPort;
-        hosts.add(new HttpHost(host, port, scheme));
-        LOG.info("Configured OpenSearch with single host: {}:{}", host, port);
-      }
-    } else {
-      throw new IllegalArgumentException("'host' must be provided in OpenSearch configuration");
-    }
-
-    return hosts.toArray(new HttpHost[0]);
-  }
-
   private AwsCredentialsProvider buildAwsCredentialsProvider(AwsConfiguration awsConfig) {
     if (StringUtils.isNotEmpty(awsConfig.getAccessKeyId())
         && StringUtils.isNotEmpty(awsConfig.getSecretAccessKey())) {
@@ -738,8 +706,7 @@ public class OpenSearchClient implements SearchClient {
                 awsConfig.getSessionToken()));
       } else {
         return StaticCredentialsProvider.create(
-            AwsBasicCredentials.create(
-                awsConfig.getAccessKeyId(), awsConfig.getSecretAccessKey()));
+            AwsBasicCredentials.create(awsConfig.getAccessKeyId(), awsConfig.getSecretAccessKey()));
       }
     }
     return DefaultCredentialsProvider.create();

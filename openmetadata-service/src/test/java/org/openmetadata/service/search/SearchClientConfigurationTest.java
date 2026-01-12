@@ -44,13 +44,11 @@ class SearchClientConfigurationTest {
     config.setSearchType(ElasticSearchConfiguration.SearchType.OPENSEARCH);
 
     AwsConfiguration awsConfig = new AwsConfiguration();
-    awsConfig.setUseIamAuth(true);
     awsConfig.setRegion("us-east-1");
     awsConfig.setServiceName("es");
     config.setAws(awsConfig);
 
     assertDoesNotThrow(() -> validateConfiguration(config));
-    assertTrue(config.getAws().getUseIamAuth());
     assertEquals("us-east-1", config.getAws().getRegion());
   }
 
@@ -65,7 +63,6 @@ class SearchClientConfigurationTest {
     config.setSearchType(ElasticSearchConfiguration.SearchType.OPENSEARCH);
 
     AwsConfiguration awsConfig = new AwsConfiguration();
-    awsConfig.setUseIamAuth(true);
     awsConfig.setRegion("us-east-1");
     awsConfig.setServiceName("aoss");
     config.setAws(awsConfig);
@@ -124,7 +121,6 @@ class SearchClientConfigurationTest {
     config.setSearchType(ElasticSearchConfiguration.SearchType.OPENSEARCH);
 
     AwsConfiguration awsConfig = new AwsConfiguration();
-    awsConfig.setUseIamAuth(true);
     awsConfig.setRegion("us-east-1");
     awsConfig.setAccessKeyId("AKIAIOSFODNN7EXAMPLE");
     awsConfig.setSecretAccessKey("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
@@ -147,7 +143,6 @@ class SearchClientConfigurationTest {
     config.setSearchType(ElasticSearchConfiguration.SearchType.OPENSEARCH);
 
     AwsConfiguration awsConfig = new AwsConfiguration();
-    awsConfig.setUseIamAuth(true);
     awsConfig.setRegion("us-east-1");
     awsConfig.setAccessKeyId("AKIAIOSFODNN7EXAMPLE");
     awsConfig.setSecretAccessKey("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");

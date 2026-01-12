@@ -2,9 +2,6 @@ package org.openmetadata.service.search;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpHost;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -67,8 +64,7 @@ class SearchHostParsingTest {
 
   @Test
   void testMultipleHostsWithoutPorts() {
-    ElasticSearchConfiguration config =
-        createConfig("es-node1,es-node2,es-node3", 9200, "http");
+    ElasticSearchConfiguration config = createConfig("es-node1,es-node2,es-node3", 9200, "http");
     HttpHost[] hosts = buildHttpHosts(config);
 
     assertEquals(3, hosts.length);
@@ -185,6 +181,27 @@ class SearchHostParsingTest {
     assertEquals("192.168.1.102", hosts[2].getHostName());
   }
 
+  @Test
+  void testInvalidPortFormatThrowsException() {
+    ElasticSearchConfiguration config = createConfig("localhost:abc", 9200, "http");
+
+    IllegalArgumentException exception =
+        assertThrows(IllegalArgumentException.class, () -> buildHttpHosts(config));
+    assertTrue(exception.getMessage().contains("Invalid port"));
+    assertTrue(exception.getMessage().contains("abc"));
+  }
+
+  @Test
+  void testInvalidPortInMultipleHostsThrowsException() {
+    ElasticSearchConfiguration config =
+        createConfig("es-node1:9200,es-node2:invalid,es-node3:9200", 9200, "http");
+
+    IllegalArgumentException exception =
+        assertThrows(IllegalArgumentException.class, () -> buildHttpHosts(config));
+    assertTrue(exception.getMessage().contains("Invalid port"));
+    assertTrue(exception.getMessage().contains("invalid"));
+  }
+
   private ElasticSearchConfiguration createConfig(String host, Integer port, String scheme) {
     ElasticSearchConfiguration config = new ElasticSearchConfiguration();
     config.setHost(host);
@@ -194,30 +211,6 @@ class SearchHostParsingTest {
   }
 
   private HttpHost[] buildHttpHosts(ElasticSearchConfiguration esConfig) {
-    List<HttpHost> hosts = new ArrayList<>();
-    String scheme = esConfig.getScheme();
-    int defaultPort = esConfig.getPort() != null ? esConfig.getPort() : 9200;
-
-    if (StringUtils.isNotEmpty(esConfig.getHost())) {
-      String hostConfig = esConfig.getHost();
-      if (hostConfig.contains(",")) {
-        for (String hostEntry : hostConfig.split(",")) {
-          hostEntry = hostEntry.trim();
-          String[] parts = hostEntry.split(":");
-          String host = parts[0];
-          int port = parts.length > 1 ? Integer.parseInt(parts[1]) : defaultPort;
-          hosts.add(new HttpHost(host, port, scheme));
-        }
-      } else {
-        String[] parts = hostConfig.split(":");
-        String host = parts[0];
-        int port = parts.length > 1 ? Integer.parseInt(parts[1]) : defaultPort;
-        hosts.add(new HttpHost(host, port, scheme));
-      }
-    } else {
-      throw new IllegalArgumentException("'host' must be provided in configuration");
-    }
-
-    return hosts.toArray(new HttpHost[0]);
+    return SearchUtils.buildHttpHosts(esConfig, "Test");
   }
 }
