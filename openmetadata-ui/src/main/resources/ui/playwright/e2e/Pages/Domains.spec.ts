@@ -1551,20 +1551,30 @@ test.describe('Domain Rename Comprehensive Tests', () => {
   }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
-    const subDomain = new SubDomain(domain);
 
     let currentDomainName = '';
 
     try {
       await domain.create(apiContext);
       currentDomainName = domain.responseData.name;
+
+      const subDomain = new SubDomain(domain);
       await subDomain.create(apiContext);
 
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain.data);
 
       // Verify subdomain exists before rename
+      const subdomainSearchResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain_search_index') &&
+          response.status() === 200
+      );
+
       await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await subdomainSearchResponse;
+
       await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -1595,7 +1605,16 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       );
 
       // Verify subdomain is still accessible after parent domain rename
+      const subdomainSearchResponseAfterRename = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain_search_index') &&
+          response.status() === 200
+      );
+
       await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await subdomainSearchResponseAfterRename;
+
       await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -1676,7 +1695,16 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       );
 
       // Navigate to subDomain1
+      const subdomainSearchResponse1 = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain_search_index') &&
+          response.status() === 200
+      );
+
       await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await subdomainSearchResponse1;
+
       await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -1692,7 +1720,16 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       );
 
       // Navigate to subDomain2 from subDomain1
+      const subdomainSearchResponse2 = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain_search_index') &&
+          response.status() === 200
+      );
+
       await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await subdomainSearchResponse2;
+
       await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -1708,7 +1745,16 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       );
 
       // Navigate to subDomain3 from subDomain2
+      const subdomainSearchResponse3 = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain_search_index') &&
+          response.status() === 200
+      );
+
       await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await subdomainSearchResponse3;
+
       await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -2121,7 +2167,16 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await selectDomain(page, domain.data);
 
       // Navigate to subDomain1
+      const subdomainSearchResponse1 = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain_search_index') &&
+          response.status() === 200
+      );
+
       await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await subdomainSearchResponse1;
+
       await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -2131,7 +2186,16 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       ]);
 
       // Verify subDomain2 exists under subDomain1 before rename
+      const subdomainSearchResponse2 = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain_search_index') &&
+          response.status() === 200
+      );
+
       await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await subdomainSearchResponse2;
+
       await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -2160,7 +2224,16 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       );
 
       // Verify subDomain2 is still accessible after parent subdomain rename
+      const subdomainSearchResponse3 = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain_search_index') &&
+          response.status() === 200
+      );
+
       await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await subdomainSearchResponse3;
+
       await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -2307,7 +2380,16 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await checkAssetsCount(page, assets.length);
 
       // 2. Verify subdomain
+      const subdomainSearchResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain_search_index') &&
+          response.status() === 200
+      );
+
       await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await subdomainSearchResponse;
+
       await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
       await expect(page.getByTestId(subDomain.data.name)).toBeVisible();
@@ -2416,7 +2498,16 @@ test.describe('Domain Rename Comprehensive Tests', () => {
         await checkAssetsCount(page, assets.length);
 
         // Verify subdomain is still accessible after each rename
+        const subdomainSearchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.url().includes('index=domain_search_index') &&
+            response.status() === 200
+        );
+
         await page.getByTestId('subdomains').getByText('Sub Domains').click();
+        await subdomainSearchResponse;
+
         await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
