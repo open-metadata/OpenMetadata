@@ -58,6 +58,9 @@ from metadata.generated.schema.entity.services.connections.database.redshiftConn
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.starrocksConnection import (
+    StarRocksConnection,
+)
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
@@ -120,9 +123,12 @@ class SSLManager:
 
     @setup_ssl.register(MysqlConnection)
     @setup_ssl.register(DorisConnection)
+    @setup_ssl.register(StarRocksConnection)
     def _(self, connection):
         # Use the temporary file paths for SSL configuration
-        connection = cast(Union[MysqlConnection, DorisConnection], connection)
+        connection = cast(
+            Union[MysqlConnection, DorisConnection, StarRocksConnection], connection
+        )
         connection.connectionArguments = (
             connection.connectionArguments or init_empty_connection_arguments()
         )
@@ -341,8 +347,11 @@ def _(connection) -> Union[SSLManager, None]:
 
 @check_ssl_and_init.register(MysqlConnection)
 @check_ssl_and_init.register(DorisConnection)
+@check_ssl_and_init.register(StarRocksConnection)
 def _(connection):
-    service_connection = cast(Union[MysqlConnection, DorisConnection], connection)
+    service_connection = cast(
+        Union[MysqlConnection, DorisConnection, StarRocksConnection], connection
+    )
     ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
     if ssl and (ssl.root.caCertificate or ssl.root.sslCertificate or ssl.root.sslKey):
         return SSLManager(
