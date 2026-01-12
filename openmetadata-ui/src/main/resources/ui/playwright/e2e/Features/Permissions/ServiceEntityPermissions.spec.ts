@@ -37,16 +37,16 @@ const adminUser = new UserClass();
 const testUser = new UserClass();
 
 // Service entity classes
-const serviceEntities = {
-  'Api Service': ApiServiceClass,
-  'Dashboard Service': DashboardServiceClass,
-  'Database Service': DatabaseServiceClass,
-  'Messaging Service': MessagingServiceClass,
-  'Mlmodel Service': MlmodelServiceClass,
-  'Pipeline Service': PipelineServiceClass,
-  'SearchIndex Service': SearchIndexServiceClass,
-  'Storage Service': StorageServiceClass,
-} as const;
+const serviceEntities = [
+  ApiServiceClass,
+  DashboardServiceClass,
+  DatabaseServiceClass,
+  MessagingServiceClass,
+  MlmodelServiceClass,
+  PipelineServiceClass,
+  SearchIndexServiceClass,
+  StorageServiceClass,
+] as const;
 
 const test = base.extend<{
   page: Page;
@@ -80,10 +80,11 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-Object.entries(serviceEntities).forEach(([key, EntityClass]) => {
+serviceEntities.forEach((EntityClass) => {
   const entity = new EntityClass();
+  const entityType = entity.getType();
 
-  test.describe(`${key} Permissions`, () => {
+  test.describe(`${entityType} Permissions`, () => {
     test.beforeAll('Setup entity', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await entity.create(apiContext);
@@ -106,13 +107,7 @@ Object.entries(serviceEntities).forEach(([key, EntityClass]) => {
         await page.close();
       });
 
-      /**
-       * Tests allow permissions for common service operations
-       * @description Verifies that a user with allow permissions can perform all common operations on the service,
-       * including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms,
-       * EditCustomFields, and Delete operations
-       */
-      test(`${key} allow common operations permissions`, async ({
+      test(`${entityType} allow common operations permissions`, async ({
         testUserPage,
       }) => {
         test.slow(true);
@@ -138,13 +133,7 @@ Object.entries(serviceEntities).forEach(([key, EntityClass]) => {
         await page.close();
       });
 
-      /**
-       * Tests deny permissions for common service operations
-       * @description Verifies that a user with deny permissions cannot perform common operations on the service,
-       * including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms,
-       * EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled
-       */
-      test(`${key} deny common operations permissions`, async ({
+      test(`${entityType} deny common operations permissions`, async ({
         testUserPage,
       }) => {
         test.slow(true);
