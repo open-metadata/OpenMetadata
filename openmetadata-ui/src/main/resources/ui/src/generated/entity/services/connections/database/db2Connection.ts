@@ -52,13 +52,7 @@ export interface Db2Connection {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?: Db2Scheme;
-    /**
-     * SSL Configuration details for DB2 connection. Provide CA certificate for server
-     * validation, and optionally client certificate and key for mutual TLS authentication.
-     */
-    sslConfig?:                     Config;
-    sslMode?:                       SSLMode;
+    scheme?:                        Db2Scheme;
     supportsDatabase?:              boolean;
     supportsDBTExtraction?:         boolean;
     supportsMetadataExtraction?:    boolean;
@@ -184,41 +178,6 @@ export interface AwsCredentials {
 export enum Db2Scheme {
     Db2IBMDB = "db2+ibm_db",
     Ibmi = "ibmi",
-}
-
-/**
- * SSL Configuration details for DB2 connection. Provide CA certificate for server
- * validation, and optionally client certificate and key for mutual TLS authentication.
- *
- * Client SSL configuration
- *
- * OpenMetadata Client configured to validate SSL certificates.
- */
-export interface Config {
-    /**
-     * The CA certificate used for SSL validation.
-     */
-    caCertificate?: string;
-    /**
-     * The SSL certificate used for client authentication.
-     */
-    sslCertificate?: string;
-    /**
-     * The private key associated with the SSL certificate.
-     */
-    sslKey?: string;
-}
-
-/**
- * SSL Mode to connect to database.
- */
-export enum SSLMode {
-    Allow = "allow",
-    Disable = "disable",
-    Prefer = "prefer",
-    Require = "require",
-    VerifyCA = "verify-ca",
-    VerifyFull = "verify-full",
 }
 
 /**
