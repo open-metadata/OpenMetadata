@@ -165,6 +165,8 @@ test.describe('Container entity specific tests ', () => {
   }) => {
     await container.visitEntityPage(page);
 
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
     await testCopyLinkButton({
       page,
       buttonTestId: 'copy-column-link-button',
@@ -211,9 +213,10 @@ test.describe('Container entity specific tests ', () => {
     // Verify side panel is open
     const sidePanel = page.locator('.column-detail-panel');
     await expect(sidePanel).toBeVisible();
-    
+
     // Verify the correct column is showing in the panel
-    const columnName = (container.entityResponseData as any)?.dataModel?.columns?.[0]?.name;
+    const columnName = (container.entityResponseData as any)?.dataModel
+      ?.columns?.[0]?.name;
     if (columnName) {
       await expect(sidePanel).toContainText(columnName);
     }

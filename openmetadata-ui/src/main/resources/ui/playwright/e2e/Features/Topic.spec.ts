@@ -13,7 +13,10 @@
 import test, { expect } from '@playwright/test';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
-import { testCopyLinkButton, validateCopiedLinkFormat } from '../../utils/entity';
+import {
+  testCopyLinkButton,
+  validateCopiedLinkFormat,
+} from '../../utils/entity';
 
 // use the admin user to login
 test.use({
@@ -58,6 +61,8 @@ test.describe('Topic entity specific tests ', () => {
     page,
   }) => {
     await topic.visitEntityPage(page);
+
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await testCopyLinkButton({
       page,
@@ -130,7 +135,7 @@ test.describe('Topic entity specific tests ', () => {
         await expect(nestedCopyButton).toBeVisible();
 
         // Click the nested field's copy button
-        await nestedCopyButton.click();        
+        await nestedCopyButton.click();
 
         // Read clipboard content
         const clipboardText = await page.evaluate(async () => {

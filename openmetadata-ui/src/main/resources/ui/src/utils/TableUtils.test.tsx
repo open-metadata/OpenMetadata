@@ -25,6 +25,7 @@ import {
   findColumnByEntityLink,
   getEntityIcon,
   getExpandAllKeysToDepth,
+  getHighlightedRowClassName,
   getParentKeysToExpand,
   getSafeExpandAllKeys,
   getSchemaDepth,
@@ -1693,6 +1694,123 @@ describe('TableUtils', () => {
       ];
 
       expect(getParentKeysToExpand(items, 'table.column1')).toEqual([]);
+    });
+  });
+
+  describe('getHighlightedRowClassName', () => {
+    it('should return "highlighted-row" when highlightedFqn matches record fullyQualifiedName', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+      };
+      const highlightedFqn = 'test.database.schema.table.column1';
+
+      const result = getHighlightedRowClassName(record, highlightedFqn);
+
+      expect(result).toBe('highlighted-row');
+    });
+
+    it('should return empty string when highlightedFqn does not match record fullyQualifiedName', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+      };
+      const highlightedFqn = 'test.database.schema.table.column2';
+
+      const result = getHighlightedRowClassName(record, highlightedFqn);
+
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when highlightedFqn is undefined', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+      };
+
+      const result = getHighlightedRowClassName(record, undefined);
+
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when highlightedFqn is empty string', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+      };
+
+      const result = getHighlightedRowClassName(record, '');
+
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when record fullyQualifiedName is undefined', () => {
+      const record = {
+        fullyQualifiedName: undefined,
+      };
+      const highlightedFqn = 'test.database.schema.table.column1';
+
+      const result = getHighlightedRowClassName(record, highlightedFqn);
+
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when both highlightedFqn and record fullyQualifiedName are undefined', () => {
+      const record = {
+        fullyQualifiedName: undefined,
+      };
+
+      const result = getHighlightedRowClassName(record, undefined);
+
+      expect(result).toBe('');
+    });
+
+    it('should work with Column type', () => {
+      const column = {
+        name: 'column1',
+        fullyQualifiedName: 'test.database.schema.table.column1',
+        dataType: 'STRING',
+      } as Column;
+
+      expect(
+        getHighlightedRowClassName(column, 'test.database.schema.table.column1')
+      ).toBe('highlighted-row');
+      expect(
+        getHighlightedRowClassName(column, 'test.database.schema.table.column2')
+      ).toBe('');
+    });
+
+    it('should work with SearchIndexField type', () => {
+      const field = {
+        name: 'field1',
+        fullyQualifiedName: 'test.index.field1',
+        dataType: 'TEXT',
+      };
+
+      expect(getHighlightedRowClassName(field, 'test.index.field1')).toBe(
+        'highlighted-row'
+      );
+      expect(getHighlightedRowClassName(field, 'test.index.field2')).toBe('');
+    });
+
+    it('should handle case-sensitive FQN matching', () => {
+      const record = {
+        fullyQualifiedName: 'Test.Database.Schema.Table.Column1',
+      };
+      const highlightedFqn = 'test.database.schema.table.column1';
+
+      const result = getHighlightedRowClassName(record, highlightedFqn);
+
+      expect(result).toBe('');
+    });
+
+    it('should handle records with additional properties', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+        name: 'column1',
+        description: 'Test column',
+        tags: [],
+      };
+
+      expect(
+        getHighlightedRowClassName(record, 'test.database.schema.table.column1')
+      ).toBe('highlighted-row');
     });
   });
 });

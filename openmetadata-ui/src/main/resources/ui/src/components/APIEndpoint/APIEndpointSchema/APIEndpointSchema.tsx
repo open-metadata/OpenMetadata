@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Segmented, Tooltip, Typography } from 'antd';
+import { Col, Row, Segmented, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -18,9 +18,10 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
-import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
-import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import {
+  HIGHLIGHTED_ROW_SELECTOR,
+  TABLE_SCROLL_VALUE,
+} from '../../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_API_ENDPOINT_SCHEMA_VISIBLE_COLUMNS,
@@ -37,10 +38,9 @@ import {
 import { APISchema } from '../../../generated/type/apiSchema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useCopyEntityLink } from '../../../hooks/useCopyEntityLink';
 import { useFqn } from '../../../hooks/useFqn';
-import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
+import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
@@ -51,10 +51,12 @@ import {
 import {
   fieldExistsByFQN,
   getAllRowKeysByKeyName,
+  getHighlightedRowClassName,
   getTableExpandableConfig,
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
+import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../common/Table/Table';
@@ -93,11 +95,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     onUpdate: onApiEndpointUpdate,
     openColumnDetailPanel,
   } = useGenericContext<APIEndpoint>();
-
-  const { copyEntityLink, copiedFqn: copiedFieldFqn } = useCopyEntityLink(
-    EntityType.API_ENDPOINT,
-    apiEndpointDetails?.fullyQualifiedName
-  );
 
   const { hash } = useLocation();
 
@@ -225,23 +222,14 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     openColumnDetailPanel,
   });
 
-  // Scroll to highlighted row when fields are loaded
   useScrollToElement(
-    '.highlighted-row',
+    HIGHLIGHTED_ROW_SELECTOR,
     Boolean(highlightedFieldFqn && activeSchemaFields?.length)
   );
 
   const getRowClassName = useCallback(
-    (record: Field) => {
-      if (highlightedFieldFqn && record.fullyQualifiedName) {
-        // Only highlight the exact target field, not parent rows
-        if (record.fullyQualifiedName === highlightedFieldFqn) {
-          return 'highlighted-row';
-        }
-      }
-
-      return '';
-    },
+    (record: Field) =>
+      getHighlightedRowClassName(record, highlightedFieldFqn),
     [highlightedFieldFqn]
   );
 
@@ -256,13 +244,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
       setExpandedRowKeys([]);
     }
   };
-
-  const handleCopyFieldLink = useCallback(
-    async (fieldFqn: string) => {
-      await copyEntityLink(fieldFqn);
-    },
-    [copyEntityLink]
-  );
 
   const handleFieldClick = useCallback(
     (field: Field, event: React.MouseEvent) => {
@@ -289,39 +270,15 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             )}
           </span>
         </Tooltip>
-        {!isVersionView && (
-          <Tooltip
-            placement="top"
-            title={
-              copiedFieldFqn === record.fullyQualifiedName
-                ? t('message.link-copy-to-clipboard')
-                : t('label.copy-item', { item: t('label.url-uppercase') })
-            }>
-            <Button
-              className="cursor-pointer hover-cell-icon flex-center"
-              data-testid="copy-field-link-button"
-              disabled={!record.fullyQualifiedName}
-              style={{
-                color: DE_ACTIVE_COLOR,
-                padding: 0,
-                border: 'none',
-                background: 'transparent',
-                width: '24px',
-                height: '24px',
-              }}
-              onClick={() =>
-                record.fullyQualifiedName &&
-                handleCopyFieldLink(record.fullyQualifiedName)
-              }>
-              <ShareIcon
-                style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-              />
-            </Button>
-          </Tooltip>
+        {!isVersionView && record.fullyQualifiedName && (
+          <CopyLinkButton
+            entityType={EntityType.API_ENDPOINT}
+            fieldFqn={record.fullyQualifiedName}
+          />
         )}
       </div>
     ),
-    [isVersionView, copiedFieldFqn, handleCopyFieldLink, t,handleFieldClick]
+    [isVersionView]
   );
 
   const renderDataType = useCallback(

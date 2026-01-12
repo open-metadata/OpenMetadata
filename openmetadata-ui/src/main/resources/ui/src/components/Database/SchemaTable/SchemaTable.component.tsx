@@ -20,8 +20,7 @@ import { groupBy, isEmpty, isEqual, isUndefined, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
@@ -52,7 +51,6 @@ import { TestSummary } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
-import { useCopyEntityLink } from '../../../hooks/useCopyEntityLink';
 import { useFqn } from '../../../hooks/useFqn';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
@@ -90,6 +88,7 @@ import {
   updateColumnInNestedStructure,
 } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -115,8 +114,6 @@ const SchemaTable = () => {
   const [searchText, setSearchText] = useState('');
   const [editColumn, setEditColumn] = useState<Column>();
   const [highlightedColumnFqn, setHighlightedColumnFqn] = useState<string>();
-
-
 
   const {
     currentPage,
@@ -145,13 +142,6 @@ const SchemaTable = () => {
     onThreadLinkSelect,
     openColumnDetailPanel,
   } = useGenericContext<TableType>();
-
-  const { copyEntityLink, copiedFqn: copiedColumnFqn } = useCopyEntityLink(
-    EntityType.TABLE,
-    table?.fullyQualifiedName
-  );
-
-  const { hash: locationHash } = useLocation();
 
   useFqnDeepLink({
     data: table.columns || [],
@@ -527,13 +517,6 @@ const SchemaTable = () => {
     setEditColumnDisplayName(record);
   };
 
-  const handleCopyColumnLink = useCallback(
-    async (columnFqn: string) => {
-      await copyEntityLink(columnFqn);
-    },
-    [copyEntityLink]
-  );
-
   const handleEditColumnData = async (data: EntityName) => {
     const { displayName, constraint } = data as EntityNameWithAdditionFields;
     if (
@@ -611,9 +594,12 @@ const SchemaTable = () => {
                     tableConstraints,
                   })}
                   <Typography.Text
-                    className={classNames('m-b-0 d-block break-wor cursor-pointer', {
-                      'text-grey-600': !isEmpty(displayName),
-                    })}
+                    className={classNames(
+                      'm-b-0 d-block break-wor cursor-pointer',
+                      {
+                        'text-grey-600': !isEmpty(displayName),
+                      }
+                    )}
                     data-testid="column-name">
                     {stringToHTML(highlightSearchText(name, searchText))}
                   </Typography.Text>
@@ -639,38 +625,13 @@ const SchemaTable = () => {
                       </Button>
                     </Tooltip>
                   )}
-                  <Tooltip
-                    placement="top"
-                    title={
-                      copiedColumnFqn === record.fullyQualifiedName
-                        ? t('message.link-copy-to-clipboard')
-                        : t('label.copy-item', {
-                            item: t('label.url-uppercase'),
-                          })
-                    }>
-                    <Button
-                      className="cursor-pointer hover-cell-icon flex-center"
-                      data-testid="copy-column-link-button"
-                      disabled={!record.fullyQualifiedName}
-                      style={{
-                        color: DE_ACTIVE_COLOR,
-                        padding: 0,
-                        border: 'none',
-                        background: 'transparent',
-                        width: '24px',
-                        height: '24px',
-                      }}
-                      onClick={() => {
-                        if (record.fullyQualifiedName) {
-                          handleCopyColumnLink(record.fullyQualifiedName);
-                        }
-                      }}
-                      >
-                      <ShareIcon
-                        style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                      />
-                    </Button>
-                  </Tooltip>
+                  {record.fullyQualifiedName && (
+                    <CopyLinkButton
+                      entityType={EntityType.TABLE}
+                      fieldFqn={record.fullyQualifiedName}
+                      testId="copy-column-link-button"
+                    />
+                  )}
                 </div>
               </div>
               {isEmpty(displayName) ? null : (
@@ -774,8 +735,6 @@ const SchemaTable = () => {
       editDisplayNamePermission,
       handleUpdate,
       handleTagSelection,
-      handleCopyColumnLink,
-      copiedColumnFqn,
       renderDataTypeDisplay,
       renderDescription,
       onThreadLinkSelect,

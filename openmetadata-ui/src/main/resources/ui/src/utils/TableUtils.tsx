@@ -1808,3 +1808,14 @@ export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
       return [];
   }
 };
+
+export const getHighlightedRowClassName = <T extends { fullyQualifiedName?: string }>(
+  record: T,
+  highlightedFqn?: string
+): string => {
+  if (highlightedFqn && record.fullyQualifiedName === highlightedFqn) {
+    return 'highlighted-row';
+  }
+
+  return '';
+};

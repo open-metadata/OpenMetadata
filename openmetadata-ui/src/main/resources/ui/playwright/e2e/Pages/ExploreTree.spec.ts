@@ -442,6 +442,8 @@ test.describe('Explore page', () => {
   }) => {
     await searchIndex.visitEntityPage(page);
 
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
     await testCopyLinkButton({
       page,
       buttonTestId: 'copy-field-link-button',
@@ -456,6 +458,8 @@ test.describe('Explore page', () => {
   }) => {
     await apiEndpoint.visitEntityPage(page);
 
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
     await testCopyLinkButton({
       page,
       buttonTestId: 'copy-field-link-button',
@@ -465,7 +469,9 @@ test.describe('Explore page', () => {
     });
   });
 
-  test('Copy field link should have valid URL format for SearchIndex', async ({ page }) => {
+  test('Copy field link should have valid URL format for SearchIndex', async ({
+    page,
+  }) => {
     await searchIndex.visitEntityPage(page);
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -495,7 +501,9 @@ test.describe('Explore page', () => {
     expect(validationResult.pathname).toContain('searchIndex');
   });
 
-  test('Copy field link should have valid URL format for APIEndpoint', async ({ page }) => {
+  test('Copy field link should have valid URL format for APIEndpoint', async ({
+    page,
+  }) => {
     await apiEndpoint.visitEntityPage(page);
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 

@@ -2204,11 +2204,6 @@ export const testCopyLinkButton = async ({
   expectedUrlPath: string;
   entityFqn: string;
 }) => {
-  // Wait for page to be fully loaded
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-  // Wait for the specific container to be visible
   await expect(page.getByTestId(containerTestId)).toBeVisible();
 
   // Find the first copy button and verify it's visible

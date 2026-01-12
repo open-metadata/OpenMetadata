@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tooltip, Typography } from 'antd';
+import { Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import {
   cloneDeep,
@@ -23,10 +23,10 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
-import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
-import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
-import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import {
+  HIGHLIGHTED_ROW_SELECTOR,
+  TABLE_SCROLL_VALUE,
+} from '../../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_CONTAINER_DATA_MODEL_VISIBLE_COLUMNS,
@@ -44,18 +44,19 @@ import {
   updateContainerColumnTags,
 } from '../../../utils/ContainerDetailUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { useCopyEntityLink } from '../../../hooks/useCopyEntityLink';
-import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
+import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
+  getHighlightedRowClassName,
   getTableExpandableConfig,
   pruneEmptyChildren,
 } from '../../../utils/TableUtils';
+import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
@@ -83,15 +84,8 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   const [highlightedColumnFqn, setHighlightedColumnFqn] = useState<string>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
-  const { copyEntityLink, copiedFqn: copiedColumnFqn } = useCopyEntityLink(
-    EntityType.CONTAINER,
-    entityFqn
-  );
-
-
-
   const schema = pruneEmptyChildren(dataModel?.columns ?? []);
-  
+
   useFqnDeepLink({
     data: dataModel?.columns || [],
     setHighlightedFqn: setHighlightedColumnFqn,
@@ -99,31 +93,14 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     openColumnDetailPanel,
   });
 
-  // Scroll to highlighted row when columns are loaded
   useScrollToElement(
-    '.highlighted-row',
+    HIGHLIGHTED_ROW_SELECTOR,
     Boolean(highlightedColumnFqn && schema.length > 0)
   );
 
   const getRowClassName = useCallback(
-    (record: Column) => {
-      if (highlightedColumnFqn && record.fullyQualifiedName) {
-        // Only highlight the exact target column, not parent rows
-        if (record.fullyQualifiedName === highlightedColumnFqn) {
-          return 'highlighted-row';
-        }
-      }
-
-      return '';
-    },
+    (record: Column) => getHighlightedRowClassName(record, highlightedColumnFqn),
     [highlightedColumnFqn]
-  );
-
-  const handleCopyColumnLink = useCallback(
-    async (columnFqn: string) => {
-      await copyEntityLink(columnFqn);
-    },
-    [copyEntityLink]
   );
 
   const handleFieldTagsChange = useCallback(
@@ -198,34 +175,13 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
               <Typography.Text>{getEntityName(record)}</Typography.Text>
             </Tooltip>
-            <Tooltip
-              placement="top"
-              title={
-                copiedColumnFqn === record.fullyQualifiedName
-                  ? t('message.link-copy-to-clipboard')
-                  : t('label.copy-item', { item: t('label.url-uppercase') })
-              }>
-              <Button
-                className="cursor-pointer hover-cell-icon flex-center"
-                data-testid="copy-column-link-button"
-                disabled={!record.fullyQualifiedName}
-                style={{
-                  color: DE_ACTIVE_COLOR,
-                  padding: 0,
-                  border: 'none',
-                  background: 'transparent',
-                  width: '24px',
-                  height: '24px',
-                }}
-                onClick={() =>
-                  record.fullyQualifiedName &&
-                  handleCopyColumnLink(record.fullyQualifiedName)
-                }>
-                <ShareIcon
-                  style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                />
-              </Button>
-            </Tooltip>
+            {record.fullyQualifiedName && (
+              <CopyLinkButton
+                entityType={EntityType.CONTAINER}
+                fieldFqn={record.fullyQualifiedName}
+                testId="copy-column-link-button"
+              />
+            )}
           </div>
         ),
       },
@@ -331,8 +287,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       editContainerColumnDescription,
       getEntityName,
       handleFieldTagsChange,
-      copiedColumnFqn,
-      handleCopyColumnLink,
       handleColumnClick,
     ]
   );
