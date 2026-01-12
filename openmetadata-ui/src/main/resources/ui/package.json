@@ -134,7 +134,7 @@
     "react-papaparse": "^4.1.0",
     "react-quill-new": "^3.4.0",
     "react-reflex": "^4.1.0",
-    "react-router-dom": "^6.22.1",
+    "react-router-dom": "^7.0.0",
     "reactflow": "^11.10.2",
     "reactjs-localstorage": "^1.0.1",
     "recharts": "2.10.3",
