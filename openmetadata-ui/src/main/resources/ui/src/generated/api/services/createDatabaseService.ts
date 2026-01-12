@@ -513,8 +513,8 @@ export interface ConfigObject {
      * Username to connect to Doris. This user should have privileges to read all the metadata
      * in Doris.
      *
-     * Username to connect to StarRocks. This user should have privileges to read all the metadata
-     * in StarRocks.
+     * Username to connect to StarRocks. This user should have privileges to read all the
+     * metadata in StarRocks.
      *
      * Username to connect to SAS Viya.
      *
@@ -2015,7 +2015,6 @@ export enum ConfigScheme {
     DatabricksConnector = "databricks+connector",
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
-    StarRocks = "starrocks",
     Druid = "druid",
     ExaWebsocket = "exa+websocket",
     Hana = "hana",
@@ -2089,7 +2088,6 @@ export enum ConfigType {
     DeltaLake = "DeltaLake",
     DomoDatabase = "DomoDatabase",
     Doris = "Doris",
-    StarRocks = "StarRocks",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     Epic = "Epic",
@@ -2117,6 +2115,7 @@ export enum ConfigType {
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
+    StarRocks = "StarRocks",
     Synapse = "Synapse",
     Teradata = "Teradata",
     Timescale = "Timescale",
@@ -2213,7 +2212,6 @@ export enum DatabaseServiceType {
     DeltaLake = "DeltaLake",
     DomoDatabase = "DomoDatabase",
     Doris = "Doris",
-    StarRocks = "StarRocks",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     Epic = "Epic",
@@ -2242,6 +2240,7 @@ export enum DatabaseServiceType {
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
+    StarRocks = "StarRocks",
     Synapse = "Synapse",
     Teradata = "Teradata",
     Timescale = "Timescale",

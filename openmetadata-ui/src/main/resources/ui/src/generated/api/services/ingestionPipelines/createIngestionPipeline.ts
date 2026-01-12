@@ -3064,8 +3064,8 @@ export interface ConfigObject {
      * Username to connect to Doris. This user should have privileges to read all the metadata
      * in Doris.
      *
-     * Username to connect to StarRocks. This user should have privileges to read all the metadata
-     * in StarRocks.
+     * Username to connect to StarRocks. This user should have privileges to read all the
+     * metadata in StarRocks.
      *
      * Username to connect to SAS Viya.
      *
@@ -6048,7 +6048,6 @@ export enum ConfigScheme {
     DatabricksConnector = "databricks+connector",
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
-    StarRocks = "starrocks",
     Druid = "druid",
     ExaWebsocket = "exa+websocket",
     Hana = "hana",
@@ -6375,7 +6374,6 @@ export enum PurpleType {
     DomoDatabase = "DomoDatabase",
     DomoPipeline = "DomoPipeline",
     Doris = "Doris",
-    StarRocks = "starrocks",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     ElasticSearch = "ElasticSearch",
@@ -6446,6 +6444,7 @@ export enum PurpleType {
     Spline = "Spline",
     Ssas = "SSAS",
     Ssis = "SSIS",
+    StarRocks = "StarRocks",
     Stitch = "Stitch",
     Superset = "Superset",
     Synapse = "Synapse",
