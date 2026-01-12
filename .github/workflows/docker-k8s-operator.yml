@@ -19,11 +19,6 @@ on:
       push_latest_tag_to_release:
         description: "Do you want to update docker image latest tag as well ?"
         type: boolean
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
-    paths:
-      - "openmetadata-k8s-operator/**"
-      - "pom.xml"
 
 permissions:
   contents: read
