@@ -14,7 +14,7 @@
 import { Col, Row, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -256,13 +256,13 @@ const TableDetailsPageV1: React.FC = () => {
         return;
       }
 
-      if (isUndefined(tableDetails?.testSuite?.id)) {
+      const testSuiteId = tableDetails?.testSuite?.id;
+
+      if (!testSuiteId) {
         await fetchDQUpstreamFailureCount();
 
         return;
       }
-
-      const testSuiteId = tableDetails?.testSuite?.id;
 
       const { data } = await fetchTestCaseResultByTestSuiteId(
         testSuiteId,
@@ -396,6 +396,7 @@ const TableDetailsPageV1: React.FC = () => {
 
   const onTableUpdate = async (updatedTable: Table, key?: keyof Table) => {
     try {
+      // Generate patch and update via API
       const res = await saveUpdatedTableData(updatedTable);
 
       setTableDetails((previous) => {
@@ -834,11 +835,7 @@ const TableDetailsPageV1: React.FC = () => {
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.table'),
-      })}
-      title="Table details">
+    <PageLayoutV1 pageTitle={entityName} title="Table details">
       <GenericProvider<Table>
         customizedPage={customizedPage}
         data={tableDetails}

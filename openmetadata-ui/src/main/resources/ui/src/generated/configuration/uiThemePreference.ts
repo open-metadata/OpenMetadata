@@ -59,6 +59,10 @@ export interface ThemeConfiguration {
      */
     errorColor: string;
     /**
+     * Hover color used in the UI, in hex code format or empty.
+     */
+    hoverColor?: string;
+    /**
      * Color used for informational messages in the UI, in hex code format or empty
      */
     infoColor: string;
@@ -66,6 +70,10 @@ export interface ThemeConfiguration {
      * Primary color used in the UI, in hex code format or empty.
      */
     primaryColor: string;
+    /**
+     * Selected color used in the UI, in hex code format or empty.
+     */
+    selectedColor?: string;
     /**
      * Color used to indicate success in the UI, in hex code format or empty
      */

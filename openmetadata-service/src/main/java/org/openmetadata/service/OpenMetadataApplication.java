@@ -25,13 +25,11 @@ import io.dropwizard.jersey.errors.EarlyEofExceptionMapper;
 import io.dropwizard.jersey.errors.LoggingExceptionMapper;
 import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
 import io.dropwizard.jetty.ConnectorFactory;
+import io.dropwizard.jetty.HttpConnectorFactory;
 import io.dropwizard.jetty.HttpsConnectorFactory;
 import io.dropwizard.jetty.MutableServletContextHandler;
 import io.dropwizard.lifecycle.Managed;
-import io.federecio.dropwizard.swagger.SwaggerBundle;
-import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import io.socket.engineio.server.EngineIoServerOptions;
-import io.socket.engineio.server.JettyWebSocketHandler;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.info.Contact;
@@ -52,16 +50,21 @@ import java.lang.reflect.InvocationTargetException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.util.Collections;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Objects;
 import javax.naming.ConfigurationException;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.jetty.server.session.SessionHandler;
-import org.eclipse.jetty.servlet.FilterHolder;
-import org.eclipse.jetty.servlet.ServletHolder;
-import org.eclipse.jetty.websocket.server.config.JettyWebSocketServletContainerInitializer;
+import org.eclipse.jetty.ee10.servlet.FilterHolder;
+import org.eclipse.jetty.ee10.servlet.ServletHandler;
+import org.eclipse.jetty.ee10.servlet.ServletHolder;
+import org.eclipse.jetty.ee10.servlet.ServletMapping;
+import org.eclipse.jetty.ee10.servlet.SessionHandler;
+import org.eclipse.jetty.ee10.websocket.server.config.JettyWebSocketServletContainerInitializer;
+import org.eclipse.jetty.http.UriCompliance;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.hibernate.validator.messageinterpolation.ResourceBundleMessageInterpolator;
@@ -74,11 +77,14 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.audit.AuditLogEventPublisher;
+import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
@@ -112,6 +118,7 @@ import org.openmetadata.service.monitoring.JettyMetricsIntegration;
 import org.openmetadata.service.monitoring.UserMetricsServlet;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
+import org.openmetadata.service.resources.audit.AuditLogResource;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.filters.ETagRequestFilter;
 import org.openmetadata.service.resources.filters.ETagResponseFilter;
@@ -147,9 +154,12 @@ import org.openmetadata.service.security.saml.SamlMetadataServlet;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.security.saml.SamlTokenRefreshServlet;
 import org.openmetadata.service.socket.FeedServlet;
+import org.openmetadata.service.socket.Jetty12WebSocketHandler;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.swagger.SwaggerBundle;
+import org.openmetadata.service.swagger.SwaggerBundleConfiguration;
 import org.openmetadata.service.util.CustomParameterNameProvider;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.quartz.SchedulerException;
@@ -186,6 +196,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   protected Jdbi jdbi;
   private Environment environment;
+  private AuditLogRepository auditLogRepository;
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
@@ -203,6 +214,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     this.environment = environment;
 
     OpenMetadataApplicationConfigHolder.initialize(catalogConfig);
+
+    // Configure URI compliance to LEGACY mode by default for Jetty 12
+    // This allows special characters in entity names that were permitted in Jetty 11
+    configureUriCompliance(catalogConfig);
+
+    // Configure ServletHandler to preserve encoded slashes in paths
+    // This is needed for entity names containing slashes (e.g., "domain.name/with-slash")
+    configureServletHandler(environment);
 
     validateConfiguration(catalogConfig);
 
@@ -227,6 +246,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
     // as first step register all the repositories
     Entity.initializeRepositories(catalogConfig, jdbi);
+    auditLogRepository = new AuditLogRepository(Entity.getCollectionDAO());
+    Entity.setAuditLogRepository(auditLogRepository);
+    ResourceRegistry.addResource(
+        Entity.AUDIT_LOG, List.of(MetadataOperation.AUDIT_LOGS), Collections.emptySet());
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
@@ -448,6 +471,56 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     return false;
   }
 
+  /**
+   * Configure URI compliance for Jetty 12. By default, Jetty 12 uses strict URI compliance which
+   * rejects special characters that were allowed in Jetty 11. OpenMetadata allows special
+   * characters in entity names (including encoded chars like %22 for double quotes), so we
+   * default to UNSAFE compliance mode unless explicitly configured otherwise.
+   * Note: For tests using DropwizardAppExtension, uriCompliance must be set in YAML config
+   * since the server is initialized before run() is called.
+   */
+  private void configureUriCompliance(OpenMetadataApplicationConfig configuration) {
+    if (configuration.getServerFactory() instanceof DefaultServerFactory serverFactory) {
+      // Configure application connectors - always set to UNSAFE for backward compatibility
+      for (ConnectorFactory connector : serverFactory.getApplicationConnectors()) {
+        if (connector instanceof HttpConnectorFactory httpConnector) {
+          httpConnector.setUriCompliance(UriCompliance.UNSAFE);
+          LOG.info("Set URI compliance to UNSAFE for application connector");
+        }
+      }
+      // Configure admin connectors - always set to UNSAFE for backward compatibility
+      for (ConnectorFactory connector : serverFactory.getAdminConnectors()) {
+        if (connector instanceof HttpConnectorFactory httpConnector) {
+          httpConnector.setUriCompliance(UriCompliance.UNSAFE);
+          LOG.info("Set URI compliance to UNSAFE for admin connector");
+        }
+      }
+    }
+  }
+
+  /**
+   * Configure the ServletHandler to allow ambiguous URIs in servlet API methods.
+   * In Jetty 12 / Servlet 6, methods like getServletPath() and getPathInfo() throw
+   * IllegalArgumentException for URIs containing ambiguous characters like %2F (encoded slash)
+   * or %22 (encoded quote). Setting setDecodeAmbiguousURIs(true) allows these methods to work.
+   *
+   * This is required because OpenMetadata entity names can contain special characters
+   * (e.g., "domain.name/with-slash") which get URL-encoded by clients.
+   *
+   * See: https://github.com/jetty/jetty.project/issues/12346
+   * See: https://jetty.org/docs/jetty/12/programming-guide/server/compliance.html
+   */
+  private void configureServletHandler(Environment environment) {
+    MutableServletContextHandler contextHandler = environment.getApplicationContext();
+    org.eclipse.jetty.ee10.servlet.ServletHandler servletHandler =
+        contextHandler.getServletHandler();
+    if (servletHandler != null) {
+      servletHandler.setDecodeAmbiguousURIs(true);
+      LOG.info(
+          "Configured ServletHandler to allow ambiguous URIs (required for %2F, %22 in paths)");
+    }
+  }
+
   protected void initializeSearchRepository(OpenMetadataApplicationConfig config) {
     // initialize Search Repository, all repositories use SearchRepository this line should always
     // before initializing repository
@@ -535,14 +608,52 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Initialize default SAML settings (e.g. IDP metadata, SP keys, etc.)
       SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
 
-      contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
-      contextHandler.addServlet(
-          new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
-      contextHandler.addServlet(
-          new ServletHolder(new SamlMetadataServlet()), "/api/v1/saml/metadata");
-      contextHandler.addServlet(
-          new ServletHolder(new SamlTokenRefreshServlet()), "/api/v1/saml/refresh");
-      contextHandler.addServlet(new ServletHolder(new SamlLogoutServlet()), "/api/v1/saml/logout");
+      // Only register servlets if they don't already exist to prevent duplicate registration
+      if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/login")) {
+        contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
+      }
+      if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/acs")) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
+      }
+      if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/metadata")) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlMetadataServlet()), "/api/v1/saml/metadata");
+      }
+      if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/refresh")) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlTokenRefreshServlet()), "/api/v1/saml/refresh");
+      }
+      if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/logout")) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlLogoutServlet()), "/api/v1/saml/logout");
+      }
+    }
+  }
+
+  private boolean isSamlServletRegistered(
+      MutableServletContextHandler contextHandler, String path) {
+    try {
+      ServletHandler servletHandler = contextHandler.getServletHandler();
+      ServletMapping[] servletMappings = servletHandler.getServletMappings();
+
+      if (servletMappings != null) {
+        for (ServletMapping mapping : servletMappings) {
+          if (mapping.getPathSpecs() != null) {
+            for (String pathSpec : mapping.getPathSpecs()) {
+              if (path.equals(pathSpec)) {
+                LOG.debug("SAML servlet already registered at path: {}", path);
+                return true;
+              }
+            }
+          }
+        }
+      }
+      return false;
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to check if SAML servlet is registered at path {}: {}", path, e.getMessage());
+      return false;
     }
   }
 
@@ -805,6 +916,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
 
+    EventPubSub.addEventHandler(new AuditLogEventPublisher(auditLogRepository));
+
     if (openMetadataApplicationConfig.getEventMonitorConfiguration() != null) {
       final EventMonitor eventMonitor =
           EventMonitorFactory.createEventMonitor(
@@ -828,6 +941,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             authorizer,
             SecurityConfigurationManager.getInstance().getAuthenticatorHandler(),
             limits);
+    environment.jersey().register(new AuditLogResource(authorizer, auditLogRepository));
     environment.jersey().register(new JsonPatchProvider());
     environment.jersey().register(new JsonPatchMessageBodyReader());
 
@@ -890,11 +1004,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             wsContainer.setMaxTextMessageSize(65535);
             wsContainer.setMaxBinaryMessageSize(65535);
 
-            // Register endpoint using Jetty WebSocket API
+            // Register endpoint using Jetty 12 WebSocket API
             wsContainer.addMapping(
                 pathSpec,
                 (req, resp) ->
-                    new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
+                    new Jetty12WebSocketHandler(
+                        WebSocketManager.getInstance().getEngineIoServer()));
           });
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());

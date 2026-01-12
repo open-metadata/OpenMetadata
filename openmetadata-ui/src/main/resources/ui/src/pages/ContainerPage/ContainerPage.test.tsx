@@ -13,6 +13,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ReactNode } from 'react';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
@@ -212,10 +213,15 @@ jest.mock('../../utils/StringsUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
 }));
 
-jest.mock('../../utils/TableUtils', () => ({
-  getTagsWithoutTier: jest.fn().mockReturnValue([]),
-  getTierTags: jest.fn().mockReturnValue([]),
-}));
+jest.mock('../../utils/TableUtils', () => {
+  const actual = jest.requireActual('../../utils/TableUtils');
+
+  return {
+    ...actual,
+    getTagsWithoutTier: jest.fn().mockReturnValue([]),
+    getTierTags: jest.fn().mockReturnValue([]),
+  };
+});
 
 jest.mock('../../utils/TagsUtils', () => ({
   createTagObject: jest.fn().mockImplementation((tagObject) => tagObject),
@@ -451,6 +457,23 @@ describe('Container Page Component', () => {
       {
         fields: 'children',
       }
+    );
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    (getContainerByName as jest.Mock).mockResolvedValueOnce(
+      MOCK_CONTAINER_DATA
+    );
+
+    render(<ContainerPage />);
+
+    await waitFor(() => expect(getContainerByName).toHaveBeenCalled());
+
+    expect(PageLayoutV1).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageTitle: MOCK_CONTAINER_DATA.name,
+      }),
+      expect.anything()
     );
   });
 });

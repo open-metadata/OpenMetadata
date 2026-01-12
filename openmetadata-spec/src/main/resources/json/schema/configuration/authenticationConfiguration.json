@@ -81,10 +81,11 @@
     },
     "jwtPrincipalClaimsMapping": {
       "title": "Jwt Principal Claims Mapping",
-      "description": "Jwt Principal Claim Mapping",
+      "description": "Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or 'email'. Both username and email mappings are required.",
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "pattern": "^(username|email):[a-zA-Z0-9_-]+$"
       }
     },
     "enableSelfSignup": {

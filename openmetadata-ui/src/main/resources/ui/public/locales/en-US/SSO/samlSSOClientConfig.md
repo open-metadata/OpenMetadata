@@ -13,20 +13,6 @@ SAML (Security Assertion Markup Language) SSO enables users to log in using SAML
 - **Why it matters:** Used to identify this specific SAML configuration.
 - **Note:** Optional for SAML, mainly used for tracking and configuration management
 
-## <span data-id="callbackUrl">Callback URL</span>
-
-- **Definition:** URL where users are redirected after SAML authentication (same as ACS URL).
-- **Example:** https://yourapp.company.com/api/v1/saml/acs
-- **Why it matters:** Defines where users land after successful SAML authentication.
-- **Note:** Should match the Assertion Consumer Service URL
-
-## <span data-id="authority">Authority</span>
-
-- **Definition:** Authentication authority URL for the SAML provider.
-- **Example:** https://yourapp.company.com/auth/saml
-- **Why it matters:** Specifies the authentication endpoint for SAML.
-- **Note:** Used by the authentication system to route SAML requests
-
 ## <span data-id="enableSelfSignup">Enable Self Signup</span>
 
 - **Definition:** Allows users to automatically create accounts on first SAML login.
@@ -61,13 +47,6 @@ SAML (Security Assertion Markup Language) SSO enables users to log in using SAML
   - Include the BEGIN/END lines
   - Can be multi-line
 
-### <span data-id="authorityUrl">Authority URL</span>
-
-- **Definition:** URL to redirect users to the Sign In page.
-- **Example:** https://adfs.company.com/adfs/ls/idpinitiatedsignon.aspx
-- **Why it matters:** Used for user-initiated sign-in flows.
-- **Note:** Optional, used for direct IdP-initiated logins
-
 ### <span data-id="nameId">Name ID Format</span>
 
 - **Definition:** Format of the SAML NameID element that identifies users.
@@ -81,14 +60,14 @@ SAML (Security Assertion Markup Language) SSO enables users to log in using SAML
 ### <span data-id="entityId">SP Entity ID</span>
 
 - **Definition:** Unique identifier for OpenMetadata as a Service Provider.
-- **Example:** https://openmetadata.company.com/saml/metadata
+- **Example:** https://openmetadata.company.com
 - **Why it matters:** IdP uses this to identify OpenMetadata in SAML exchanges.
 - **Note:** Must be configured in your IdP's trusted applications
 
 ### <span data-id="acs">Assertion Consumer Service (ACS) URL</span>
 
 - **Definition:** URL where the IdP sends SAML assertions after authentication.
-- **Example:** https://openmetadata.company.com/api/v1/saml/acs
+- **Example:** https://openmetadata.company.com/callback OR (https://openmetadata.company.com/api/v1/saml/acs)(OLD)
 - **Why it matters:** This is where SAML responses are posted after login.
 - **Note:** Must be registered in your IdP configuration
 
@@ -111,7 +90,7 @@ SAML (Security Assertion Markup Language) SSO enables users to log in using SAML
 ### <span data-id="callback">SP Callback URL</span>
 
 - **Definition:** URL where users are redirected after successful authentication.
-- **Example:** https://openmetadata.company.com/saml/callback
+- **Example:** https://openmetadata.company.com/callback
 - **Why it matters:** Where users land after successful SAML authentication.
 - **Note:** Usually your OpenMetadata application URL
 
@@ -242,13 +221,18 @@ SAML (Security Assertion Markup Language) SSO enables users to log in using SAML
 - **Example:** ["preferred_username", "email", "sub"]
 - **Why it matters:** Determines which claim from JWT tokens identifies the SAML user.
 - **Note:** Only applicable when SAML authentication generates JWT tokens for OpenMetadata
+  - Order matters; first matching claim is used
 
 ## <span data-id="jwtPrincipalClaimsMapping">JWT Principal Claims Mapping</span>
 
-- **Definition:** Maps JWT claims to OpenMetadata user attributes for SAML users.
-- **Example:** ["email:email", "name:displayName", "firstName:given_name"]
+- **Definition:** Maps JWT claims to OpenMetadata user attributes for SAML users. (Overrides JWT Principal Claims if set)
+- **Example:** ["email:email", "username:preferred_username"]
 - **Why it matters:** Controls how SAML user information maps to OpenMetadata user profiles.
 - **Note:** Format: "openmetadata_field:saml_claim" or "openmetadata_field:jwt_claim"
+- **Validation Requirements:**
+  - Both `username` and `email` mappings must be present when this field is used
+  - Only `username` and `email` keys are allowed; no other keys are permitted
+  - If validation fails, errors will be displayed on this specific field
 
 ## <span data-id="tokenValidationAlgorithm">Token Validation Algorithm</span>
 
