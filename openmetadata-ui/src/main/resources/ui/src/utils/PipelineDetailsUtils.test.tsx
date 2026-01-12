@@ -240,4 +240,3 @@ describe('PipelineDetailsUtils', () => {
     });
   });
 });
-
