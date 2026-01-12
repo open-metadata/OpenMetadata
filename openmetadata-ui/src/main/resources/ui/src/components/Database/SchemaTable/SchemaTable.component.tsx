@@ -302,15 +302,8 @@ const SchemaTable = () => {
       return;
     }
 
-    fetchPaginatedColumns(currentPage, searchText || undefined);
     setPrevTableColumns(table.columns);
-  }, [
-    table?.columns,
-    hasInitialLoad,
-    currentPage,
-    searchText,
-    fetchPaginatedColumns,
-  ]);
+  }, [table?.columns, hasInitialLoad]);
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {
