@@ -14,6 +14,7 @@ Generic Delimiter-Separated-Values implementation
 """
 from __future__ import annotations
 
+import os
 from functools import singledispatchmethod
 from typing import TYPE_CHECKING
 
@@ -205,15 +206,42 @@ class ParquetDataFrameReader(DataFrameReader):
                 if self.config_source.securityConfig.awsRegion
                 else None
             ),
-            "access_key": self.config_source.securityConfig.awsAccessKeyId,
-            "session_token": self.config_source.securityConfig.awsSessionToken,
-            "role_arn": self.config_source.securityConfig.assumeRoleArn,
-            "session_name": self.config_source.securityConfig.assumeRoleSessionName,
         }
-        if self.config_source.securityConfig.awsSecretAccessKey:
-            client_kwargs[
-                "secret_key"
-            ] = self.config_source.securityConfig.awsSecretAccessKey.get_secret_value()
+
+        # In order to use S3FileSystem Refreshing mechanism when appropriate we are doing the following:
+        # If both assumeRoleArn and awsAccessKeyId are present, we are setting the credentials as environment variables in order for S3FileSystem to use them as source credentials when assuming the role.
+        if self.config_source.securityConfig.assumeRoleArn:
+            client_kwargs.update(
+                {
+                    "role_arn": self.config_source.securityConfig.assumeRoleArn,
+                    "session_name": self.config_source.securityConfig.assumeRoleSessionName,
+                }
+            )
+
+            if self.config_source.securityConfig.awsAccessKeyId:
+                os.environ[
+                    "AWS_ACCESS_KEY_ID"
+                ] = self.config_source.securityConfig.awsAccessKeyId
+                os.environ[
+                    "AWS_SECRET_ACCESS_KEY"
+                ] = (
+                    self.config_source.securityConfig.awsSecretAccessKey.get_secret_value()
+                )
+
+                if self.config_source.securityConfig.awsSessionToken:
+                    os.environ[
+                        "AWS_SESSION_TOKEN"
+                    ] = self.config_source.securityConfig.awsSessionToken
+
+        elif self.config_source.securityConfig.awsAccessKeyId:
+            client_kwargs.update(
+                {
+                    "access_key": self.config_source.securityConfig.awsAccessKeyId,
+                    "secret_key": self.config_source.securityConfig.awsSecretAccessKey.get_secret_value(),
+                    "session_token": self.config_source.securityConfig.awsSessionToken,
+                }
+            )
+
         s3_fs = S3FileSystem(**client_kwargs)
 
         bucket_uri = f"{bucket_name}/{key}"

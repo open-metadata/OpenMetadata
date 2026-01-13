@@ -22,6 +22,7 @@ import {
   screen,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Column } from '../../../generated/entity/data/container';
 import { Topic } from '../../../generated/entity/data/topic';
 import { MESSAGE_SCHEMA } from '../TopicDetails/TopicDetails.mock';
 import TopicSchema from './TopicSchema';
@@ -42,24 +43,45 @@ jest.mock('../../Database/TableDescription/TableDescription.component', () =>
   ))
 );
 
-jest.mock('../../../utils/TableUtils', () => ({
-  ...jest.requireActual('../../../utils/TableUtils'),
-  getTableExpandableConfig: jest.fn().mockImplementation(() => ({
-    expandIcon: jest.fn(({ onExpand, expandable, record }) =>
-      expandable ? (
-        <button data-testid="expand-icon" onClick={(e) => onExpand(record, e)}>
-          ExpandIcon
-        </button>
-      ) : null
-    ),
-  })),
-  getTableColumnConfigSelections: jest
-    .fn()
-    .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
-  handleUpdateTableColumnSelections: jest
-    .fn()
-    .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
-}));
+jest.mock('../../../utils/TableUtils', () => {
+  const actual = jest.requireActual('../../../utils/TableUtils');
+  const flattenColumnsMock = (items: Column[]): Column[] => {
+    if (!items || items.length === 0) {
+      return [];
+    }
+    const result: Column[] = [];
+    items.forEach((item) => {
+      result.push(item);
+      if (item.children && item.children.length > 0) {
+        result.push(...flattenColumnsMock(item.children));
+      }
+    });
+
+    return result;
+  };
+
+  return {
+    ...actual,
+    flattenColumns: jest.fn().mockImplementation(flattenColumnsMock),
+    getTableExpandableConfig: jest.fn().mockImplementation(() => ({
+      expandIcon: jest.fn(({ onExpand, expandable, record }) =>
+        expandable ? (
+          <button
+            data-testid="expand-icon"
+            onClick={(e) => onExpand(record, e)}>
+            ExpandIcon
+          </button>
+        ) : null
+      ),
+    })),
+    getTableColumnConfigSelections: jest
+      .fn()
+      .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
+    handleUpdateTableColumnSelections: jest
+      .fn()
+      .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
+  };
+});
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest
@@ -78,14 +100,6 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
   getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
-
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
-  jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="description-preview">Description Preview</div>
-    )
-);
 
 jest.mock(
   '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
@@ -148,6 +162,8 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
     },
     onUpdate: mockOnUpdate,
     type: 'topic',
+    currentVersionData: undefined,
+    openColumnDetailPanel: jest.fn(),
   })),
 }));
 

@@ -12,9 +12,9 @@
  */
 import {
   APIRequestContext,
+  test as base,
   expect,
   Page,
-  test as base,
 } from '@playwright/test';
 import { ECustomizedGovernance } from '../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../constant/settings';
@@ -52,7 +52,6 @@ const test = base.extend<{
     const page = await browser.newPage();
     await user.login(page);
     await use(page);
-    await page.close();
   },
 });
 

@@ -88,7 +88,7 @@ public class OIDCAuthCompleteFlowTest extends OpenMetadataApplicationTest {
 
     try {
       // Test with a simple HTTP client first
-      Response response = APP.client().target(discoveryUrl).request().get();
+      Response response = client.target(discoveryUrl).request().get();
       if (response.getStatus() == 200) {
         LOG.info("Mock OAuth2 server discovery endpoint is accessible");
         Map<String, Object> discovery = response.readEntity(Map.class);
@@ -171,7 +171,7 @@ public class OIDCAuthCompleteFlowTest extends OpenMetadataApplicationTest {
 
     // Update the security configuration via API
     Invocation.Builder request =
-        APP.client()
+        client
             .target(getServerUrl() + "/api/v1/system/security/config")
             .request(MediaType.APPLICATION_JSON);
 
@@ -221,7 +221,7 @@ public class OIDCAuthCompleteFlowTest extends OpenMetadataApplicationTest {
 
     // Test discovery endpoint
     String discoveryUrl = mockOAuth2ServerUrl + "/default/.well-known/openid-configuration";
-    Response response = APP.client().target(discoveryUrl).request().get();
+    Response response = client.target(discoveryUrl).request().get();
     assertEquals(200, response.getStatus());
     LOG.info("Mock OAuth2 server discovery endpoint is accessible");
   }
@@ -234,7 +234,7 @@ public class OIDCAuthCompleteFlowTest extends OpenMetadataApplicationTest {
     // The configuration should have been updated in setupOIDCConfiguration
     // Verify by checking if login redirects to the mock OAuth2 server
     Response loginResponse =
-        APP.client()
+        client
             .target(getServerUrl() + AUTH_LOGIN_ENDPOINT)
             .queryParam("redirectUri", "http://localhost:3000")
             .request(MediaType.APPLICATION_JSON)
@@ -258,7 +258,7 @@ public class OIDCAuthCompleteFlowTest extends OpenMetadataApplicationTest {
   void testCompleteOIDCFlow() {
     // First, initiate a login to get a valid state parameter
     Response loginResponse =
-        APP.client()
+        client
             .target(getServerUrl() + AUTH_LOGIN_ENDPOINT)
             .queryParam("redirectUri", "http://localhost:3000")
             .request(MediaType.APPLICATION_JSON)
@@ -287,7 +287,7 @@ public class OIDCAuthCompleteFlowTest extends OpenMetadataApplicationTest {
     // Actually call the mock OAuth2 server's authorization endpoint
     // The mock OAuth2 server will automatically redirect with an authorization code
     Response authResponse =
-        APP.client()
+        client
             .target(authorizationUrl)
             .request()
             .property(ClientProperties.FOLLOW_REDIRECTS, false)
@@ -325,7 +325,7 @@ public class OIDCAuthCompleteFlowTest extends OpenMetadataApplicationTest {
 
     // Step 4: Call the callback endpoint with the authorization code and state
     Invocation.Builder callbackRequest =
-        APP.client()
+        client
             .target(getServerUrl() + AUTH_CALLBACK_ENDPOINT)
             .queryParam("code", authCode)
             .queryParam("state", returnedState)
