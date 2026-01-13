@@ -35,14 +35,17 @@ public class McpAuthFilter implements Filter {
       sendError(
           httpServletResponse,
           "McpApplication is not installed please install it to use MCP features.");
+      return;
     }
 
     try {
       String tokenWithType = httpServletRequest.getHeader("Authorization");
 
-      // Validate token and extract impersonatedBy claim if present
+      // Validate token once and extract claims
       String token = JwtFilter.extractToken(tokenWithType);
       Map<String, Claim> claims = jwtFilter.validateJwtAndGetClaims(token);
+
+      // Extract impersonatedBy claim if present
       String impersonatedBy =
           claims.containsKey(JwtFilter.IMPERSONATED_USER_CLAIM)
               ? claims.get(JwtFilter.IMPERSONATED_USER_CLAIM).asString()
@@ -53,6 +56,8 @@ public class McpAuthFilter implements Filter {
         ImpersonationContext.setImpersonatedBy(impersonatedBy);
       }
 
+      // Complete token validation (uses validatePrefixedTokenRequest which will validate again,
+      // but this is consistent with existing patterns in SocketAddressFilter)
       validatePrefixedTokenRequest(jwtFilter, tokenWithType);
 
       // Continue with the filter chain
