@@ -15,15 +15,7 @@ import { Form, Select } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import {
-  isEqual,
-  isString,
-  isUndefined,
-  omit,
-  parseInt,
-  pick,
-  startCase,
-} from 'lodash';
+import { isEqual, isString, isUndefined, omit, parseInt, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -35,6 +27,7 @@ import {
   PAGE_SIZE_BASE,
 } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
+import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -464,12 +457,18 @@ const IncidentManager = ({
   );
 
   const searchTestCases = async (searchValue = WILD_CARD_CHAR) => {
+    // Encode the search value to handle special characters like #, %, $, etc.
+    // Preserve wildcard character to maintain default search behavior
+    const encodedSearchValue: string =
+      searchValue === WILD_CARD_CHAR
+        ? searchValue
+        : encodeURIComponent(searchValue);
     try {
       const response = await searchQuery({
         pageNumber: 1,
         pageSize: PAGE_SIZE_BASE,
         searchIndex: SearchIndex.TEST_CASE,
-        query: searchValue,
+        query: encodedSearchValue,
         fetchSource: true,
         includeFields: ['name', 'displayName', 'fullyQualifiedName'],
       });
@@ -752,7 +751,9 @@ const IncidentManager = ({
                   updateFilters({ testCaseResolutionStatusType: value })
                 }>
                 {Object.values(TestCaseResolutionStatusTypes).map((value) => (
-                  <Select.Option key={value}>{startCase(value)}</Select.Option>
+                  <Select.Option key={value}>
+                    {TEST_CASE_RESOLUTION_STATUS_LABELS[value]}
+                  </Select.Option>
                 ))}
               </Select>
             </Form.Item>

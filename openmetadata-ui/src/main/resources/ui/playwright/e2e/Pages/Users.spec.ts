@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   DATA_CONSUMER_RULES,
   DATA_STEWARD_RULES,
@@ -212,6 +212,12 @@ test.describe('User with Admin Roles', () => {
       user2.responseData.name,
       user2.responseData.displayName
     );
+
+    const fetchUsers = adminPage.waitForResponse(
+      '/api/v1/users?**include=non-deleted'
+    );
+    await adminPage.fill('[data-testid="searchbar"]', '');
+    await fetchUsers
 
     await restoreUser(
       adminPage,
@@ -894,9 +900,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     await adminPage.waitForSelector(
       '[data-testid="default-persona-select-list"]'
     );
-    await adminPage
-      .locator('[data-testid="default-persona-select-list"]')
-      .click();
+    
     await adminPage.waitForSelector('.ant-select-dropdown', {
       state: 'visible',
     });
@@ -1139,11 +1143,6 @@ test.describe('User Profile Persona Interactions', () => {
       await adminPage.waitForSelector(
         '[data-testid="default-persona-select-list"]'
       );
-
-      // Open the default persona select dropdown
-      await adminPage
-        .locator('[data-testid="default-persona-select-list"]')
-        .click();
 
       // Wait for dropdown to open and options to load
       await adminPage.waitForSelector('.ant-select-dropdown', {

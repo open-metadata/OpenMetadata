@@ -29,6 +29,10 @@ server:
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_PORT:-8585}
 
+      # Jetty 12 URI Compliance - UNSAFE allows all special characters in entity names
+      # Required for backward compatibility with entity names containing /, ", etc.
+      uriCompliance: UNSAFE
+
       # Jetty Acceptor and Selector threads for high concurrency
       acceptorThreads: ${SERVER_ACCEPTOR_THREADS:-2}  # 1-2 per CPU core
       selectorThreads: ${SERVER_SELECTOR_THREADS:-8}  # 2-4 per CPU core
@@ -64,11 +68,18 @@ server:
   gzip:
     enabled: false
 
+  # Thread pool configuration
+  # With virtual threads enabled (Java 21+), these settings become less critical
+  # as blocking operations are handled efficiently by the JVM
   maxThreads: ${SERVER_MAX_THREADS:-150}
   minThreads: ${SERVER_MIN_THREADS:-100}
   idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-1 minute}
+
+  # Virtual Threads (Project Loom) - Recommended for Java 21+
+  # Jetty 12 uses AdaptiveExecutionStrategy to route blocking tasks to virtual threads
+  # while keeping non-blocking I/O on platform threads for optimal cache locality
   enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-false}
-  maxQueuedRequests: ${SERVER_REQUEST_QUEUE:-1024}
+  # Note: maxQueuedRequests removed in Dropwizard 5.0/Jetty 12
 
   # Request/Response logging (disable in production for performance)
   requestLog:
@@ -322,7 +333,6 @@ authenticationConfiguration:
       entityId: ${SAML_IDP_ENTITY_ID:-""}
       ssoLoginUrl: ${SAML_IDP_SSO_LOGIN_URL:-""}
       idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""}
-      authorityUrl: ${SAML_AUTHORITY_URL:-"http://localhost:8585/api/v1/saml/login"}
       nameId: ${SAML_IDP_NAME_ID:-"urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress"}
     sp:
       entityId: ${SAML_SP_ENTITY_ID:-"http://localhost:8585/api/v1/saml/metadata"}

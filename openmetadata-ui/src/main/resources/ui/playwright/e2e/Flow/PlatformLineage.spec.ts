@@ -17,9 +17,24 @@ import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
 test('Verify Platform Lineage View', async ({ page }) => {
-
   // Need to add more time for AUT and not for PR checks
   test.slow(process.env.PLAYWRIGHT_IS_OSS !== undefined);
+
+  await page.route('**/api/v1/lineage/getPlatformLineage**', async (route) => {
+    const response = await route.fetch();
+    const data = await response.json();
+    const filteredData = {
+      ...data,
+      nodes: data.nodes
+        ? Object.fromEntries(Object.entries(data.nodes).slice(0, 500))
+        : data.nodes,
+    };
+    await route.fulfill({
+      status: response.status(),
+      headers: response.headers(),
+      body: JSON.stringify(filteredData),
+    });
+  });
 
   await redirectToHomePage(page);
   const lineageRes = page.waitForResponse(

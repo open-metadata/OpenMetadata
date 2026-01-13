@@ -483,6 +483,7 @@ EXPTECTED_TABLE = [
                     dataType=DataType.INT,
                     dataLength=1,
                     dataTypeDisplay="int",
+                    ordinalPosition=0,
                     tags=None,
                 ),
                 Column(
@@ -491,6 +492,7 @@ EXPTECTED_TABLE = [
                     arrayDataType=DataType.INT,
                     dataLength=1,
                     dataTypeDisplay="array<int>",
+                    ordinalPosition=1,
                     tags=None,
                 ),
                 Column(
@@ -498,6 +500,7 @@ EXPTECTED_TABLE = [
                     dataType=DataType.MAP,
                     dataLength=1,
                     dataTypeDisplay="map<string,int>",
+                    ordinalPosition=2,
                     tags=None,
                 ),
                 Column(
@@ -505,6 +508,7 @@ EXPTECTED_TABLE = [
                     dataType=DataType.STRUCT,
                     dataLength=1,
                     dataTypeDisplay="struct<a:int,b:string,c:array<string>,d:struct<abc:int>>",
+                    ordinalPosition=3,
                     tags=None,
                     children=[
                         Column(
@@ -553,6 +557,7 @@ EXPTECTED_TABLE = [
                 root="local_unitycatalog.hive_metastore.do_it_all_with_default_schema"
             ),
             tags=None,
+            locationPath="s3://awsdatalake-testing/databricks-new-metastore/3849887a-24ae-4b8e-a470-9d953589f80e/tables/fe201793-8483-4edd-90a7-d27332d1418a",
         ),
         left=None,
     )

@@ -156,7 +156,8 @@ class TagUsageCleanupTest extends OpenMetadataApplicationTest {
             targetFQNHash,
             TagLabel.LabelType.MANUAL.ordinal(),
             TagLabel.State.CONFIRMED.ordinal(),
-            null);
+            null,
+            "john.doe");
 
     // Delete the tag
     collectionDAO.tagDAO().delete(tagToDelete.getId());
@@ -201,7 +202,8 @@ class TagUsageCleanupTest extends OpenMetadataApplicationTest {
             targetFQNHash,
             TagLabel.LabelType.MANUAL.ordinal(),
             TagLabel.State.CONFIRMED.ordinal(),
-            null);
+            null,
+            "john.doe");
 
     // Delete the glossary term
     collectionDAO.glossaryTermDAO().delete(termToDelete.getId());
@@ -243,7 +245,8 @@ class TagUsageCleanupTest extends OpenMetadataApplicationTest {
             targetFQNHash,
             TagLabel.LabelType.MANUAL.ordinal(),
             TagLabel.State.CONFIRMED.ordinal(),
-            null);
+            null,
+            "john.doe");
 
     // Dry run
     TagUsageCleanup dryRunCleanup = new TagUsageCleanup(collectionDAO, true);
@@ -286,7 +289,8 @@ class TagUsageCleanupTest extends OpenMetadataApplicationTest {
             testTables.getFirst().getFullyQualifiedName(),
             TagLabel.LabelType.MANUAL.ordinal(),
             TagLabel.State.CONFIRMED.ordinal(),
-            null);
+            null,
+            "john.doe");
 
     cleanup = new TagUsageCleanup(collectionDAO, true);
     TagUsageCleanup.TagCleanupResult result = cleanup.performCleanup(100);
@@ -326,7 +330,8 @@ class TagUsageCleanupTest extends OpenMetadataApplicationTest {
             targetFQNHash,
             TagLabel.LabelType.MANUAL.ordinal(),
             TagLabel.State.CONFIRMED.ordinal(),
-            null);
+            null,
+            "john.doe");
 
     // Create orphaned glossary term usage
     collectionDAO
@@ -338,7 +343,8 @@ class TagUsageCleanupTest extends OpenMetadataApplicationTest {
             targetFQNHash,
             TagLabel.LabelType.MANUAL.ordinal(),
             TagLabel.State.CONFIRMED.ordinal(),
-            null);
+            null,
+            "john.doe");
 
     cleanup = new TagUsageCleanup(collectionDAO, true);
     TagUsageCleanup.TagCleanupResult result = cleanup.performCleanup(100);
@@ -414,7 +420,8 @@ class TagUsageCleanupTest extends OpenMetadataApplicationTest {
               targetFQNHash,
               TagLabel.LabelType.MANUAL.ordinal(),
               TagLabel.State.CONFIRMED.ordinal(),
-              null);
+              null,
+              "john.doe");
     }
 
     TagUsageCleanup cleanup1 = new TagUsageCleanup(collectionDAO, false);
@@ -457,7 +464,8 @@ class TagUsageCleanupTest extends OpenMetadataApplicationTest {
             targetFQNHash,
             TagLabel.LabelType.MANUAL.ordinal(),
             TagLabel.State.CONFIRMED.ordinal(),
-            null);
+            null,
+            "john.doe");
 
     TagUsageCleanup dryRunCleanup = new TagUsageCleanup(collectionDAO, true);
     TagUsageCleanup.TagCleanupResult result = dryRunCleanup.performCleanup(100);
@@ -488,7 +496,8 @@ class TagUsageCleanupTest extends OpenMetadataApplicationTest {
             targetFQNHash,
             TagLabel.LabelType.MANUAL.ordinal(),
             TagLabel.State.CONFIRMED.ordinal(),
-            null);
+            null,
+            "john.doe");
 
     TagUsageCleanup deleteCleanup = new TagUsageCleanup(collectionDAO, false);
     TagUsageCleanup.TagCleanupResult result = deleteCleanup.performCleanup(100);
@@ -525,7 +534,8 @@ class TagUsageCleanupTest extends OpenMetadataApplicationTest {
             targetFQNHash,
             TagLabel.LabelType.MANUAL.ordinal(),
             TagLabel.State.CONFIRMED.ordinal(),
-            null);
+            null,
+            "john.doe");
 
     cleanup = new TagUsageCleanup(collectionDAO, true);
     TagUsageCleanup.TagCleanupResult result = cleanup.performCleanup(100);
@@ -557,7 +567,8 @@ class TagUsageCleanupTest extends OpenMetadataApplicationTest {
             targetFQNHash,
             TagLabel.LabelType.MANUAL.ordinal(),
             TagLabel.State.CONFIRMED.ordinal(),
-            null);
+            null,
+            "john.doe");
 
     cleanup = new TagUsageCleanup(collectionDAO, true);
     TagUsageCleanup.TagCleanupResult result = cleanup.performCleanup(100);

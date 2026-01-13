@@ -55,6 +55,7 @@ export enum SettingType {
     SlackEventPublishers = "slackEventPublishers",
     SlackInstaller = "slackInstaller",
     SlackState = "slackState",
+    TeamsAppConfiguration = "teamsAppConfiguration",
     WorkflowSettings = "workflowSettings",
 }
 
@@ -84,6 +85,8 @@ export enum SettingType {
  * This schema defines the OpenMetadata base URL configuration
  *
  * This schema defines the Slack App Information
+ *
+ * This schema defines the Microsoft Teams App configuration
  *
  * This schema defines the profiler configuration. It is used to configure globally the
  * metrics to compute for specific data types.
@@ -202,7 +205,8 @@ export interface PipelineServiceClientConfiguration {
      */
     jwtPrincipalClaims?: string[];
     /**
-     * Jwt Principal Claim Mapping
+     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
+     * 'email'. Both username and email mappings are required.
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
@@ -423,8 +427,20 @@ export interface PipelineServiceClientConfiguration {
     /**
      * User Token
      */
-    userToken?:           string;
-    metricConfiguration?: MetricConfigurationDefinition[];
+    userToken?: string;
+    /**
+     * Azure AD Application (Client) ID for the Teams bot
+     */
+    microsoftAppId?: string;
+    /**
+     * Azure AD Client Secret for the Teams bot
+     */
+    microsoftAppPassword?: string;
+    /**
+     * Azure AD Tenant ID (optional, for single-tenant bots). Use 'common' for multi-tenant.
+     */
+    microsoftAppTenantId?: string;
+    metricConfiguration?:  MetricConfigurationDefinition[];
     /**
      * Configurations of allowed searchable fields for each entity type
      */
@@ -996,7 +1012,8 @@ export interface AuthenticationConfiguration {
      */
     jwtPrincipalClaims: string[];
     /**
-     * Jwt Principal Claim Mapping
+     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
+     * 'email'. Both username and email mappings are required.
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
@@ -1346,7 +1363,7 @@ export interface SamlSSOClientConfig {
  */
 export interface Idp {
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Authority URL (deprecated, use entityId instead).
      */
     authorityUrl?: string;
     /**
@@ -1358,7 +1375,7 @@ export interface Idp {
      */
     idpX509Certificate?: string;
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Name ID format for SAML assertions
      */
     nameId?: string;
     /**
