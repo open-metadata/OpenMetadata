@@ -2,6 +2,7 @@ package org.openmetadata.mcp;
 
 import static org.openmetadata.service.socket.SocketAddressFilter.validatePrefixedTokenRequest;
 
+import com.auth0.jwt.interfaces.Claim;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -14,6 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.ApplicationContext;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.JwtFilter;
 
 public class McpAuthFilter implements Filter {
@@ -35,11 +37,30 @@ public class McpAuthFilter implements Filter {
           "McpApplication is not installed please install it to use MCP features.");
     }
 
-    String tokenWithType = httpServletRequest.getHeader("Authorization");
-    validatePrefixedTokenRequest(jwtFilter, tokenWithType);
+    try {
+      String tokenWithType = httpServletRequest.getHeader("Authorization");
 
-    // Continue with the filter chain
-    filterChain.doFilter(servletRequest, servletResponse);
+      // Validate token and extract impersonatedBy claim if present
+      String token = JwtFilter.extractToken(tokenWithType);
+      Map<String, Claim> claims = jwtFilter.validateJwtAndGetClaims(token);
+      String impersonatedBy =
+          claims.containsKey(JwtFilter.IMPERSONATED_USER_CLAIM)
+              ? claims.get(JwtFilter.IMPERSONATED_USER_CLAIM).asString()
+              : null;
+
+      // Set impersonatedBy in thread-local context for MCP tools to use
+      if (impersonatedBy != null) {
+        ImpersonationContext.setImpersonatedBy(impersonatedBy);
+      }
+
+      validatePrefixedTokenRequest(jwtFilter, tokenWithType);
+
+      // Continue with the filter chain
+      filterChain.doFilter(servletRequest, servletResponse);
+    } finally {
+      // Always clear the impersonation context after request processing
+      ImpersonationContext.clear();
+    }
   }
 
   private void sendError(HttpServletResponse response, String errorMessage) throws IOException {
