@@ -1374,7 +1374,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     if (
       searchValue &&
       serviceCategory !== ServiceCategory.DRIVE_SERVICES &&
-      !isInitialPaginationLoadRef &&
+      !isInitialPaginationLoadRef.current &&
       [EntityTabs.FILES, EntityTabs.SPREADSHEETS].includes(
         activeTab as EntityTabs
       )
@@ -1383,7 +1383,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }
     getOtherDetails({ limit: pageSize });
     isInitialPaginationLoadRef.current = false;
-  }, [searchValue]);
+  }, [searchValue, activeTab, serviceCategory, pageSize, getOtherDetails]);
 
   useEffect(() => {
     if (
@@ -1451,6 +1451,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
     spreadsheetsPagingInfo?.pagingCursor,
     filesPagingInfo?.pagingCursor,
     activeTab,
+    filesPageSize,
+    spreadsheetsPageSize,
+    fetchFiles,
+    fetchSpreadsheets,
   ]);
 
   useEffect(() => {
@@ -1472,6 +1476,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
     filesPageSize,
     fileSearchValue,
     activeTab,
+    serviceCategory,
+    fetchFiles,
   ]);
 
   useEffect(() => {
@@ -1497,6 +1503,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
     spreadsheetsPageSize,
     spreadSheetSearchValue,
     activeTab,
+    serviceCategory,
+    fetchSpreadsheets,
   ]);
 
   useEffect(() => {
