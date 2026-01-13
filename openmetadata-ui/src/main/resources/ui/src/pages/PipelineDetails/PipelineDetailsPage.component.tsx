@@ -42,6 +42,7 @@ import {
 } from '../../rest/pipelineAPI';
 import {
   addToRecentViewed,
+  extractEntityFqnAndColumnPart,
   getEntityMissingError,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -59,7 +60,14 @@ const PipelineDetailsPage = () => {
   const USERId = currentUser?.id ?? '';
   const navigate = useNavigate();
 
-  const { fqn: decodedPipelineFQN } = useFqn();
+  const { fqn: urlFqn } = useFqn();
+
+  const decodedPipelineFQN = useMemo(() => {
+    const { entityFqn } = extractEntityFqnAndColumnPart(urlFqn, undefined, 2);
+
+    return entityFqn;
+  }, [urlFqn]);
+
   const [pipelineDetails, setPipelineDetails] = useState<Pipeline>(
     {} as Pipeline
   );

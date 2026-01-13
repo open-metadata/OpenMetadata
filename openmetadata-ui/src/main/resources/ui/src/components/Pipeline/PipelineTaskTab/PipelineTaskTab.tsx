@@ -37,6 +37,7 @@ import {
 } from '../../../generated/entity/data/pipeline';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
+import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import {
   columnFilterIcon,
@@ -62,8 +63,9 @@ export const PipelineTaskTab = () => {
     permissions,
     onUpdate,
     openColumnDetailPanel,
+    selectedColumn,
   } = useGenericContext<Pipeline>();
-  const { fqn: pipelineFQN } = useFqn();
+  const { fqn: pipelineFQN, columnPart } = useFqn();
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState(PIPELINE_TASK_TABS.LIST_VIEW);
   const [selectedExecution] = useState<PipelineStatus | undefined>(
@@ -74,6 +76,16 @@ export const PipelineTaskTab = () => {
     index: number;
   }>();
   const { deleted } = pipelineDetails ?? {};
+  const [_expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+
+  useFqnDeepLink({
+    data: pipelineDetails.tasks ?? [],
+    tableFqn: pipelineFQN,
+    columnPart,
+    setExpandedRowKeys,
+    openColumnDetailPanel,
+    selectedColumn: selectedColumn as Task | null,
+  });
 
   const {
     editDescriptionPermission,
