@@ -172,24 +172,7 @@ export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
   );
 };
 
-export const getColumnPartFromFqn = (
-  fullColumnFqn: string,
-  tableFqn: string
-): string => {
-  if (!fullColumnFqn || !tableFqn) {
-    return '';
-  }
 
-  if (fullColumnFqn.startsWith(tableFqn + FQN_SEPARATOR_CHAR)) {
-    return fullColumnFqn.substring(tableFqn.length + 1);
-  }
-
-  return getPartialNameFromTableFQN(
-    fullColumnFqn,
-    [FqnPart.NestedColumn],
-    FQN_SEPARATOR_CHAR
-  );
-};
 
 
 

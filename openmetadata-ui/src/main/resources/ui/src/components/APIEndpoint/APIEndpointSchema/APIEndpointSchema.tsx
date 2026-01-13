@@ -217,12 +217,16 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     return activeSchemaDiff?.schemaFields ?? [];
   }, [activeSchema, apiEndpointDetails]);
 
-  // Detect if URL contains a field FQN and switch view type
+  // Detect if URL contains a field FQN or hash and switch view type
   useEffect(() => {
-    if (hash) {
-      const fqn = decodeURIComponent(hash.slice(1));
-      const isInRequestSchema = fieldExistsByFQN(requestSchemaFields, fqn);
-      const isInResponseSchema = fieldExistsByFQN(responseSchemaFields, fqn);
+    const fqnToSearch = hash ? decodeURIComponent(hash.slice(1)) : fqn;
+
+    if (fqnToSearch) {
+      const isInRequestSchema = fieldExistsByFQN(requestSchemaFields, fqnToSearch);
+      const isInResponseSchema = fieldExistsByFQN(
+        responseSchemaFields,
+        fqnToSearch
+      );
 
       if (isInRequestSchema) {
         setViewType(SchemaViewType.REQUEST_SCHEMA);
@@ -230,7 +234,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         setViewType(SchemaViewType.RESPONSE_SCHEMA);
       }
     }
-  }, [hash, requestSchemaFields, responseSchemaFields]);
+  }, [hash, fqn, requestSchemaFields, responseSchemaFields]);
 
   useFqnDeepLink({
     data: activeSchemaFields,

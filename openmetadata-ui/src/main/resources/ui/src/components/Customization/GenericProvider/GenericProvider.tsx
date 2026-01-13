@@ -38,10 +38,7 @@ import {
   getLayoutFromCustomizedPage,
   updateWidgetHeightRecursively,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
-import {
-  getEntityDetailsPath,
-  getEntityDetailsPathWithColumn,
-} from '../../../utils/RouterUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   extractColumnsFromData,
   findFieldByFQN,
@@ -202,12 +199,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       
       // Update URL to include column FQN if the column has a fullyQualifiedName
       if (columnFqn && data.fullyQualifiedName) {
-        const newPath = getEntityDetailsPathWithColumn(
-          type,
-          data.fullyQualifiedName,
-          columnFqn,
-          tab
-        );
+        const newPath = getEntityDetailsPath(type, columnFqn, tab);
         
         // Only navigate if the path is different from current path to avoid loops
         if (location.pathname !== newPath) {
@@ -268,12 +260,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       setSelectedColumn(column);
 
       if (columnFqn && data.fullyQualifiedName) {
-        const newPath = getEntityDetailsPathWithColumn(
-          type,
-          data.fullyQualifiedName,
-          columnFqn,
-          tab
-        );
+        const newPath = getEntityDetailsPath(type, columnFqn, tab);
 
         if (location.pathname !== newPath) {
           navigate(newPath, { replace: true });
