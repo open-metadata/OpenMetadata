@@ -79,9 +79,9 @@ services:
       SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT:-8586}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
 
-      # Migration 
+      # Migration
       MIGRATION_LIMIT_PARAM: ${MIGRATION_LIMIT_PARAM:-1200}
-      
+
       # OpenMetadata Server Authentication Configuration
       AUTHORIZER_CLASS_NAME: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
       AUTHORIZER_REQUEST_FILTER: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
@@ -301,6 +301,7 @@ services:
       SERVER_PORT: ${SERVER_PORT:-8585}
       SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT:-8586}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
       # OpenMetadata Server Authentication Configuration
       AUTHORIZER_CLASS_NAME: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
       AUTHORIZER_REQUEST_FILTER: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
