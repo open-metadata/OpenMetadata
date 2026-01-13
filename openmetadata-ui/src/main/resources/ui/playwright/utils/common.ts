@@ -691,6 +691,7 @@ export const testPaginationNavigation = async (
     const url = response.url();
     return (
       url.includes(apiEndpointPattern) &&
+      !url.includes('limit=0') &&
       (url.includes('limit=') || url.includes('after=') || url.includes('before='))
     );
   };
@@ -722,7 +723,7 @@ export const testPaginationNavigation = async (
   if (!isNextButtonEnabled) {
     return;
   }
-
+  await page.waitForLoadState('networkidle');
   const page2ResponsePromise = page.waitForResponse(responseMatcher);
 
   await nextButton.click();

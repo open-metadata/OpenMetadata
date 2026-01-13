@@ -140,10 +140,13 @@ const TableVersion: React.FC<TableVersionProp> = ({
     [tableFqn, pageSize]
   );
 
-  const handleSearchAction = useCallback((searchValue: string) => {
-    setSearchText(searchValue);
-    handlePageChange(INITIAL_PAGING_VALUE);
-  }, []);
+  const handleSearchAction = useCallback(
+    (searchValue: string) => {
+      setSearchText(searchValue);
+      handlePageChange(INITIAL_PAGING_VALUE);
+    },
+    [handlePageChange]
+  );
 
   const handleColumnsPageChange = useCallback(
     ({ currentPage }: PagingHandlerParams) => {
