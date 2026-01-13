@@ -42,8 +42,6 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
 
   const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
 
-
-
   const handleDisplayNameUpdate = async (data: EntityName) => {
     setIsDisplayNameEditing(true);
     try {

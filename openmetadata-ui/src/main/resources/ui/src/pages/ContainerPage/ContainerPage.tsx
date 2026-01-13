@@ -100,7 +100,6 @@ const ContainerPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [hasError, setHasError] = useState<boolean>(false);
 
-  // Local states
   const [containerData, setContainerData] = useState<Container>();
   const [containerPermissions, setContainerPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);

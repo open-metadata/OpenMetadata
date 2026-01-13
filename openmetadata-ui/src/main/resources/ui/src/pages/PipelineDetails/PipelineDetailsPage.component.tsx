@@ -59,8 +59,6 @@ const PipelineDetailsPage = () => {
   const USERId = currentUser?.id ?? '';
   const navigate = useNavigate();
 
-
-
   const { entityFqn: decodedPipelineFQN } = useFqn({
     type: EntityType.PIPELINE,
   });

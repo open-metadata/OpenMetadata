@@ -68,7 +68,7 @@ const ModelTab = () => {
   const { t } = useTranslation();
 
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
-  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const [_expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
   const { openColumnDetailPanel, selectedColumn } =
     useGenericContext<DashboardDataModel>();
@@ -460,19 +460,6 @@ const ModelTab = () => {
         data-testid="data-model-column-table"
         dataSource={data}
         defaultVisibleColumns={DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS}
-        expandable={{
-          rowExpandable: (record) => !isEmpty(record.children),
-          expandedRowKeys: expandedRowKeys,
-          onExpand: (expanded, record) => {
-            setExpandedRowKeys(
-              expanded
-                ? [...expandedRowKeys, record.fullyQualifiedName ?? '']
-                : expandedRowKeys.filter(
-                    (key) => key !== record.fullyQualifiedName
-                  )
-            );
-          },
-        }}
         loading={columnsLoading}
         locale={{
           emptyText: <FilterTablePlaceHolder />,

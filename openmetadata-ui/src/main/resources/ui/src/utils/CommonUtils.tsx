@@ -172,12 +172,6 @@ export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
   );
 };
 
-
-
-
-
-
-
 export const pluralize = (count: number, noun: string, suffix = 's') => {
   const countString = count.toLocaleString();
   if (count !== 1 && count !== 0 && !noun.endsWith(suffix)) {
