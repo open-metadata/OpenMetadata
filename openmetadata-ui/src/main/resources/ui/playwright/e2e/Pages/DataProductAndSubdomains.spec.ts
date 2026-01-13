@@ -123,7 +123,7 @@ test.describe('Data Product Comprehensive Tests', () => {
 
       // Verify description was updated
       await expect(
-        page.getByText('Updated data product description')
+        page.getByTestId('markdown-parser').getByText('Updated data product description')
       ).toBeVisible({ timeout: 10000 });
     } finally {
       await dataProduct.delete(apiContext);
