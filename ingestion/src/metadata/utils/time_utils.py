@@ -18,6 +18,7 @@ from math import floor
 from typing import Optional, Union
 
 from pytz import timezone
+
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.utils.deprecation import deprecated
 from metadata.utils.helpers import datetime_to_ts
@@ -26,7 +27,9 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 
-def datetime_to_timestamp(datetime_value: datetime, milliseconds=False, timezone_str: str = "UTC") -> int:
+def datetime_to_timestamp(
+    datetime_value: datetime, milliseconds=False, timezone_str: str = "UTC"
+) -> int:
     """Convert a datetime object to timestamp integer.
 
     Args:
@@ -66,8 +69,14 @@ def timestamp_to_datetime(ts: Timestamp, timezone_str: str = "UTC") -> datetime:
 
 
 def get_beginning_of_day_timestamp_mill(
-    days=0, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=0, weeks=0, 
-    timezone_str: str = "UTC"
+    days=0,
+    seconds=0,
+    microseconds=0,
+    milliseconds=0,
+    minutes=0,
+    hours=0,
+    weeks=0,
+    timezone_str: str = "UTC",
 ) -> Optional[int]:
     """Get the beginning of day timestamp
 
@@ -85,7 +94,7 @@ def get_beginning_of_day_timestamp_mill(
         int: timestamp milliseconds
     """
     tz = timezone(timezone_str)
-    now_tz= datetime.now(tz)
+    now_tz = datetime.now(tz)
     delta = timedelta(
         weeks=weeks,
         days=days,
@@ -95,12 +104,19 @@ def get_beginning_of_day_timestamp_mill(
         microseconds=microseconds,
         milliseconds=milliseconds,
     )
-    datetime_value = datetime.combine(now_tz- delta, time.min)
+    datetime_value = datetime.combine(now_tz - delta, time.min)
     return datetime_to_ts(tz.localize(datetime_value))
 
 
 def get_end_of_day_timestamp_mill(
-    days=0, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=0, weeks=0, timezone_str: str = "UTC"
+    days=0,
+    seconds=0,
+    microseconds=0,
+    milliseconds=0,
+    minutes=0,
+    hours=0,
+    weeks=0,
+    timezone_str: str = "UTC",
 ) -> Optional[int]:
     """Get the end of day timestamp
 
@@ -118,7 +134,7 @@ def get_end_of_day_timestamp_mill(
         int: timestamp milliseconds
     """
     tz = timezone(timezone_str)
-    now_tz= datetime.now(tz)
+    now_tz = datetime.now(tz)
     delta = timedelta(
         weeks=weeks,
         days=days,
@@ -129,7 +145,7 @@ def get_end_of_day_timestamp_mill(
         milliseconds=milliseconds,
     )
 
-    datetime_value = datetime.combine(now_tz- delta, time.max)
+    datetime_value = datetime.combine(now_tz - delta, time.max)
     return datetime_to_ts(tz.localize(datetime_value))
 
 
