@@ -86,6 +86,7 @@ const CreateUser = ({
     Array<EntityReference | undefined>
   >([]);
   const [personaOptions, setPersonaOptions] = useState<EntityReference[]>([]);
+  const [isLoadingPersonas, setIsLoadingPersonas] = useState(false);
   const [isPasswordGenerating, setIsPasswordGenerating] = useState(false);
   const { activeDomainEntityRef } = useDomainStore();
   const selectedDomain =
@@ -219,6 +220,7 @@ const CreateUser = ({
   );
 
   const fetchPersonas = async () => {
+    setIsLoadingPersonas(true);
     try {
       const { data } = await getAllPersonas({
         limit: PAGE_SIZE_LARGE,
@@ -229,7 +231,12 @@ const CreateUser = ({
       );
       setPersonaOptions(personaRefs);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', { entity: t('label.persona-plural') })
+      );
+    } finally {
+      setIsLoadingPersonas(false);
     }
   };
 
@@ -432,6 +439,7 @@ const CreateUser = ({
                   disabled={isEmpty(personaOptions)}
                   filterOption={handleSearchFilterOption}
                   getPopupContainer={(triggerNode) => triggerNode.parentElement}
+                  loading={isLoadingPersonas}
                   mode="multiple"
                   options={personaOptionsMapped}
                   placeholder={t('label.please-select-entity', {
