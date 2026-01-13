@@ -336,7 +336,8 @@ SELECT /* sqlalchemy:_get_schema_columns */
         ic.is_identity,
         ic.comment,
         ic.identity_start,
-        ic.identity_increment
+        ic.identity_increment,
+        ic.ordinal_position
     FROM information_schema.columns ic
     WHERE ic.table_schema=:table_schema
     ORDER BY ic.ordinal_position
