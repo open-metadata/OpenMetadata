@@ -168,16 +168,6 @@
       "deprecated": true,
       "$comment": "@deprecated Use GET /v1/dataProducts/{id}/assets API endpoint for paginated access to data product assets"
     },
-    "inputPorts": {
-      "description": "Input ports - data assets consumed by this data product",
-      "$ref": "../../type/entityReferenceList.json",
-      "default": null
-    },
-    "outputPorts": {
-      "description": "Output ports - data assets produced/exposed by this data product",
-      "$ref": "../../type/entityReferenceList.json",
-      "default": null
-    },
     "lifecycleStage": {
       "description": "Current lifecycle stage of the data product",
       "$ref": "#/definitions/lifecycleStage"
