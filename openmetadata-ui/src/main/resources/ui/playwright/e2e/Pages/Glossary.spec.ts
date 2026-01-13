@@ -550,8 +550,8 @@ test.describe('Glossary tests', () => {
         await page.getByText(glossaryTerm1.data.displayName).click();
         await page.waitForSelector(
           '[data-testid="tag-selector"]:has-text("' +
-            glossaryTerm1.data.displayName +
-            '")'
+          glossaryTerm1.data.displayName +
+          '")'
         );
 
         // Select 2nd term
@@ -570,8 +570,8 @@ test.describe('Glossary tests', () => {
 
         await page.waitForSelector(
           '[data-testid="tag-selector"]:has-text("' +
-            glossaryTerm2.data.displayName +
-            '")'
+          glossaryTerm2.data.displayName +
+          '")'
         );
 
         const patchRequest = page.waitForResponse(`/api/v1/dashboards/*`);
@@ -606,8 +606,8 @@ test.describe('Glossary tests', () => {
         await page.getByText(glossaryTerm3.data.displayName).click();
         await page.waitForSelector(
           '[data-testid="tag-selector"]:has-text("' +
-            glossaryTerm3.data.displayName +
-            '")'
+          glossaryTerm3.data.displayName +
+          '")'
         );
 
         // Select 2nd term
@@ -626,8 +626,8 @@ test.describe('Glossary tests', () => {
 
         await page.waitForSelector(
           '[data-testid="tag-selector"]:has-text("' +
-            glossaryTerm4.data.displayName +
-            '")'
+          glossaryTerm4.data.displayName +
+          '")'
         );
 
         const patchRequest2 = page.waitForResponse(`/api/v1/dashboards/*`);
@@ -683,8 +683,8 @@ test.describe('Glossary tests', () => {
 
         await page.waitForSelector(
           '[data-testid="tag-selector"]:has-text("' +
-            glossaryTerm3.data.displayName +
-            '")'
+          glossaryTerm3.data.displayName +
+          '")'
         );
 
         const patchRequest3 = page.waitForResponse(`/api/v1/charts/*`);
@@ -1859,36 +1859,32 @@ test.describe('Glossary tests', () => {
     );
     await glossary1.create(apiContext);
 
-    try {
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary1.data.displayName);
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(page, glossary1.data.displayName);
 
-      await test.step('Create Glossary Term One', async () => {
-        await fillGlossaryTermDetails(page, glossaryTerm1.data, false, false);
+    await test.step('Create Glossary Term One', async () => {
+      await fillGlossaryTermDetails(page, glossaryTerm1.data, false, false);
 
-        const glossaryTermResponse = page.waitForResponse(
-          '/api/v1/glossaryTerms'
-        );
-        await page.click('[data-testid="save-glossary-term"]');
-        await glossaryTermResponse;
-      });
+      const glossaryTermResponse = page.waitForResponse(
+        '/api/v1/glossaryTerms'
+      );
+      await page.click('[data-testid="save-glossary-term"]');
+      await glossaryTermResponse;
+    });
 
-      await test.step('Create Glossary Term Two', async () => {
-        await fillGlossaryTermDetails(page, glossaryTerm2.data, false, false);
+    await test.step('Create Glossary Term Two', async () => {
+      await fillGlossaryTermDetails(page, glossaryTerm2.data, false, false);
 
-        const glossaryTermResponse = page.waitForResponse(
-          '/api/v1/glossaryTerms'
-        );
-        await page.click('[data-testid="save-glossary-term"]');
-        await glossaryTermResponse;
+      const glossaryTermResponse = page.waitForResponse(
+        '/api/v1/glossaryTerms'
+      );
+      await page.click('[data-testid="save-glossary-term"]');
+      await glossaryTermResponse;
 
-        await expect(page.locator('#name_help')).toHaveText(
-          `A term with the name '${glossaryTerm2.data.name}' already exists in '${glossary1.responseData.fullyQualifiedName}' glossary.`
-        );
-      });
-    } finally {
-      await afterAction();
-    }
+      await expect(page.locator('#name_help')).toHaveText(
+        `A term with the name '${glossaryTerm2.data.name}' already exists in '${glossary1.responseData.fullyQualifiedName}' glossary.`
+      );
+    });
   });
 
   test('Verify Glossary Deny Permission', async ({ browser }) => {
