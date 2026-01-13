@@ -254,11 +254,10 @@ export const getLayoutedElements = (
 const layoutOptions = {
   'elk.algorithm': 'layered',
   'elk.direction': 'RIGHT',
-  'elk.spacing.nodeNode': 100,
-  'elk.layered.spacing.nodeNodeBetweenLayers': 50,
+  'elk.spacing.nodeNode': '100',
+  'elk.layered.spacing.nodeNodeBetweenLayers': '50',
   'elk.layered.nodePlacement.strategy': 'SIMPLE',
   'elk.partitioning.activate': 'true',
-  'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
 };
 
 const elk = new ELK();
