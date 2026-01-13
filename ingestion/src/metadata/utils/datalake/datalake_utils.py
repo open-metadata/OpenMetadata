@@ -40,7 +40,8 @@ def fetch_dataframe(
     **kwargs,
 ) -> Optional[List["DataFrame"]]:
     """
-    Method to get dataframe for profiling
+    Method to get dataframe generator for profiling.
+    Returns a generator that yields DataFrame chunks.
     """
     # dispatch to handle fetching of data from multiple file formats (csv, tsv, json, avro and parquet)
     key: str = file_fqn.key
@@ -77,6 +78,58 @@ def fetch_dataframe(
             f"Error fetching file [{bucket_name}/{key}] using [{config_source.__class__.__name__}] due to: [{err}]"
         )
         # Here we need to blow things up. Without the dataframe we cannot move forward
+        raise err
+
+    if fetch_raw_data:
+        return None, None
+    return None
+
+
+def fetch_dataframe_first_chunk(
+    config_source,
+    client,
+    file_fqn: DatalakeTableSchemaWrapper,
+    fetch_raw_data: bool = False,
+    **kwargs,
+) -> Optional["DataFrame"]:
+    """
+    Method to get only the first chunk of a dataframe for schema inference.
+    Avoids loading the entire file into memory.
+    """
+    key: str = file_fqn.key
+    bucket_name: str = file_fqn.bucket_name
+    try:
+        file_extension: Optional[SupportedTypes] = file_fqn.file_extension or next(
+            supported_type or None
+            for supported_type in SupportedTypes
+            if key.endswith(supported_type.value)
+        )
+        if file_extension and not key.endswith("/"):
+            df_reader = get_df_reader(
+                type_=file_extension,
+                config_source=config_source,
+                client=client,
+                separator=file_fqn.separator,
+            )
+            try:
+                df_wrapper: DatalakeColumnWrapper = df_reader.read_first_chunk(
+                    key=key, bucket_name=bucket_name, **kwargs
+                )
+                if fetch_raw_data:
+                    return df_wrapper.dataframes, df_wrapper.raw_data
+                return df_wrapper.dataframes
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Error fetching first chunk of file [{bucket_name}/{key}] using "
+                    f"[{config_source.__class__.__name__}] due to: [{err}]"
+                )
+    except Exception as err:
+        logger.debug(traceback.format_exc())
+        logger.error(
+            f"Error fetching first chunk of file [{bucket_name}/{key}] using "
+            f"[{config_source.__class__.__name__}] due to: [{err}]"
+        )
         raise err
 
     if fetch_raw_data:
@@ -156,14 +209,8 @@ class DataFrameColumnParser:
         data_frame: Union[List["DataFrame"], "DataFrame"], sample: bool, shuffle: bool
     ):
         """Return the dataframe to use for parsing"""
-        from collections.abc import Iterator
 
         import pandas as pd
-
-        if isinstance(data_frame, Iterator):
-            if sample:
-                return next(data_frame)
-            data_frame = list(data_frame)
 
         if not isinstance(data_frame, list):
             return data_frame
@@ -588,7 +635,6 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
     def _parse_iceberg_delta_schema(self, data: dict) -> List[Column]:
         """
         Parse Iceberg/Delta Lake metadata file schema to extract columns.
-        These files have structure: {"schema": {"fields": [{"id": ..., "name": ..., "type": ..., "required": ...}, ...]}}
         """
         columns = []
         schema = data.get("schema", {})

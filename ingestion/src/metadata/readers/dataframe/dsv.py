@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 from metadata.readers.dataframe.base import DataFrameReader, FileFormatException
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.readers.file.adls import AZURE_PATH, return_azure_storage_options
+from metadata.readers.file.s3 import return_s3_storage_options
 from metadata.readers.models import ConfigSource
 from metadata.utils.constants import CHUNKSIZE
 
@@ -100,28 +101,13 @@ class DSVDataFrameReader(DataFrameReader):
 
     @_read_dsv_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
-        import pandas as pd  # pylint: disable=import-outside-toplevel
+        compression = "gzip" if key.endswith(".gz") else None
 
-        # Determine compression based on file extension
-        compression = None
-        if key.endswith(".gz"):
-            compression = "gzip"
-
-        # Get the file content from S3
-        response = self.client.get_object(Bucket=bucket_name, Key=key)
-        file_content = response["Body"]
-
-        def chunk_generator():
-            with pd.read_csv(
-                file_content,
-                sep=self.separator,
-                chunksize=CHUNKSIZE,
-                compression=compression,
-            ) as reader:
-                for chunks in reader:
-                    yield chunks
-
-        return DatalakeColumnWrapper(dataframes=chunk_generator())
+        storage_options = return_s3_storage_options(self.config_source)
+        path = f"s3://{bucket_name}/{key}"
+        return self.read_from_pandas(
+            path=path, storage_options=storage_options, compression=compression
+        )
 
     @_read_dsv_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
