@@ -177,6 +177,10 @@ export const tokenExpirationForDays = async (page: Page) => {
 
     await page.click('[data-testid="save-edit"]');
 
+    await page
+      .getByTestId('save-edit').locator('.ant-btn-loading')
+      .waitFor({ state: 'detached' });
+
     await expect(
       page.locator('[data-testid="center-panel"] [data-testid="revoke-button"]')
     ).toBeVisible();
