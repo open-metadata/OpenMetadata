@@ -694,9 +694,8 @@ export const testPaginationNavigation = async (
 
     return (
       url.includes(apiEndpointPattern) &&
-      (url.includes('limit=') ||
-        url.includes('after=') ||
-        url.includes('before='))
+      !url.includes('limit=0') &&
+      (url.includes('limit=') || url.includes('after=') || url.includes('before='))
     );
   };
 
@@ -717,6 +716,7 @@ export const testPaginationNavigation = async (
       (item: { fullyQualifiedName: string }) => item.fullyQualifiedName
     ) || [];
 
+  await expect(page.getByTestId('previous')).toBeDisabled();
   const nextButton = page.locator('[data-testid="next"]');
 
   const nextButtonCount = await nextButton.count();
@@ -730,7 +730,7 @@ export const testPaginationNavigation = async (
   if (!isNextButtonEnabled) {
     return;
   }
-
+  await page.waitForLoadState('networkidle');
   const page2ResponsePromise = page.waitForResponse(responseMatcher);
 
   await nextButton.click();
@@ -761,6 +761,7 @@ export const testPaginationNavigation = async (
       (item: { fullyQualifiedName: string }) => item.fullyQualifiedName
     ) || [];
 
+  await expect(page.getByTestId('previous')).toBeEnabled();
   expect(page2Items.length).toBeGreaterThan(0);
 
   const hasOverlap = page1Items.some((fqn: string) => page2Items.includes(fqn));
@@ -793,6 +794,7 @@ export const testPaginationNavigation = async (
 
   const paginationTextContent = await paginationText.textContent();
 
+  await expect(page.getByTestId('previous')).toBeEnabled();
   expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
 };
 
@@ -826,6 +828,7 @@ export const testCompletePaginationWithSearch = async (
 
   const nextButton = page.locator('[data-testid="next"]');
   const isNextEnabled = await nextButton.isEnabled();
+  await expect(page.getByTestId('previous')).toBeDisabled();
 
   if (isNextEnabled) {
     const page2ResponsePromise = page.waitForResponse((response) =>
@@ -846,6 +849,7 @@ export const testCompletePaginationWithSearch = async (
     const page2Content = await paginationPage2.textContent();
 
     expect(page2Content).toMatch(/2\s*of\s*\d+/);
+    await expect(page.getByTestId('previous')).toBeEnabled();
   }
 
   const searchResponsePromise = page.waitForResponse((response) =>
@@ -870,6 +874,7 @@ export const testCompletePaginationWithSearch = async (
   const searchPage1Content = await paginationAfterSearch.textContent();
 
   expect(searchPage1Content).toMatch(/1\s*of\s*\d+/);
+  await expect(page.getByTestId('previous')).toBeDisabled();
 
   const nextButtonAfterSearch = page.locator('[data-testid="next"]');
   const isNextEnabledAfterSearch = await nextButtonAfterSearch.isEnabled();
@@ -895,6 +900,7 @@ export const testCompletePaginationWithSearch = async (
     const searchPage2Content = await paginationSearchPage2.textContent();
 
     expect(searchPage2Content).toMatch(/2\s*of\s*\d+/);
+    await expect(page.getByTestId('previous')).toBeEnabled();
 
     const reloadPromise = page.waitForResponse((response) =>
       response.url().includes(searchApiPattern)
@@ -922,6 +928,7 @@ export const testCompletePaginationWithSearch = async (
     const refreshPage2Content = await paginationAfterRefresh.textContent();
 
     expect(refreshPage2Content).toMatch(/2\s*of\s*\d+/);
+    await expect(page.getByTestId('previous')).toBeEnabled();
 
     const searchValueAfterRefresh = await page
       .getByTestId('searchbar')
@@ -965,6 +972,7 @@ export const testCompletePaginationWithSearch = async (
         await paginationAfterToggleWithSearch.textContent();
 
       expect(toggleSearchContent).toMatch(/1\s*of\s*\d+/);
+      await expect(page.getByTestId('previous')).toBeDisabled();
 
       const urlAfterToggle = new URL(page.url());
 
