@@ -16,13 +16,30 @@ import * as os from 'os';
 import * as path from 'path';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage } from '../../../utils/common';
+import { performAdminLogin } from '../../../utils/admin';
+import { redirectToHomePage } from '../../../utils/common';
+import { validateImportStatus } from '../../../utils/importUtils';
+import {
+  cancelBulkEditAndVerifyRedirect,
+  clickManageButton,
+  navigateToBulkEditPage,
+  navigateToGlobalDataQuality,
+  navigateToImportPage,
+  performTestCaseExport,
+  uploadCSVFile,
+  validateImportGrid,
+  verifyButtonVisibility,
+  verifyPageAccessDenied,
+  visitDataQualityTab,
+  waitForImportAsyncResponse
+} from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
 
 // CSV test data as constants
-const VALID_TEST_CASES_CSV = `name,displayName,description,testDefinition,entityFQN,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms
-test_row_count,Row Count Check,Validates row count,tableRowCountToBeBetween,sample_data.ecommerce_db.shopify.dim_customer,,"{""name"":""minValue"",""value"":100};{""name"":""maxValue"",""value"":10000}",false,false,,,
-test_null_check,Null Check,Check for nulls,columnValuesToBeNotNull,sample_data.ecommerce_db.shopify.dim_customer.customer_id,,,false,false,,PII.Sensitive,`;
+const VALID_TEST_CASES_CSV = `name*,displayName,description,testDefinition*,entityFQN*,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms
+column_value_max_to_be_between,Column value max to be between,test the value of a column is between x and y,columnValueMaxToBeBetween,sample_data.ecommerce_db.shopify.dim_address.shop_id,sample_data.ecommerce_db.shopify.dim_address.testSuite,"{""name"":""minValueForMaxInCol"",""value"":""50""};{""name"":""maxValueForMaxInCol"",""value"":""100""}",false,false,,,
+column_values_to_be_between,,test the number of column in table is between x and y,columnValuesToBeBetween,sample_data.ecommerce_db.shopify.dim_address.zip,sample_data.ecommerce_db.shopify.dim_address.testSuite,,false,true,,,
+table_column_count_equals,,test the number of column in table,tableColumnCountToEqual,sample_data.ecommerce_db.shopify.dim_address,sample_data.ecommerce_db.shopify.dim_address.testSuite,"{""name"":""columnCount"",""value"":""10""}",false,false,,,`;
 
 const INVALID_TEST_CASES_CSV = `name,displayName,testDefinition
 incomplete_test,Incomplete Test,columnValuesToBeNotNull`;
@@ -49,35 +66,25 @@ test.describe(
     const table = new TableClass();
 
     base.beforeAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);
       await afterAction();
     });
 
     base.afterAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.delete(apiContext);
       await afterAction();
     });
 
     test('should export test cases from Data Quality tab', async ({ page }) => {
       await redirectToHomePage(page);
-      await table.visitEntityPage(page);
 
       // Navigate to Data Quality tab
-      await page.click('[data-testid="profiler"]');
-      await page.waitForSelector('[data-testid="manage-button"]', {
-        state: 'visible',
-      });
+      await visitDataQualityTab(page, table);
 
-      await page.getByTestId('manage-button').click();
-      await expect(page.getByTestId('export-button')).toBeVisible();
-      await page.getByTestId('export-button').click();
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
-
-      const downloadPromise = page.waitForEvent('download');
-      await page.getByTestId('export-modal-submit').click();
-      const download = await downloadPromise;
+      await clickManageButton(page, 'table');
+      const download = await performTestCaseExport(page);
       expect(download.suggestedFilename()).toContain('.csv');
     });
 
@@ -85,33 +92,21 @@ test.describe(
       page,
     }) => {
       await redirectToHomePage(page);
-      await table.visitEntityPage(page);
 
       // Navigate to Data Quality tab
-      await page.click('[data-testid="profiler"]');
-      await page.waitForSelector('[data-testid="manage-button"]', {
-        state: 'visible',
-      });
+      await visitDataQualityTab(page, table);
 
-      await page.getByTestId('manage-button').click();
-      await expect(page.getByTestId('import-button')).toBeVisible();
-      await page.getByTestId('import-button').click();
-      await expect(page).toHaveURL(/\/bulk\/import\/testCase/);
+      await clickManageButton(page, 'table');
+      await navigateToImportPage(page);
     });
 
     test('should export all test cases from global data quality page', async ({
       page,
     }) => {
       await redirectToHomePage(page);
-      await page.goto('/data-quality');
-      await page.waitForSelector('[data-testid="manage-button"]');
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('export-button').click();
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
-
-      const downloadPromise = page.waitForEvent('download');
-      await page.getByTestId('export-modal-submit').click();
-      const download = await downloadPromise;
+      await navigateToGlobalDataQuality(page);
+      await clickManageButton(page, 'global');
+      const download = await performTestCaseExport(page);
       expect(download.suggestedFilename()).toMatch(/.*\.csv/i);
     });
 
@@ -119,11 +114,9 @@ test.describe(
       page,
     }) => {
       await redirectToHomePage(page);
-      await page.goto('/data-quality');
-      await page.waitForSelector('[data-testid="manage-button"]');
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('import-button').click();
-      await expect(page).toHaveURL(/\/bulk\/import\/testCase\/\*/);
+      await navigateToGlobalDataQuality(page);
+      await clickManageButton(page, 'global');
+      await navigateToImportPage(page, /\/bulk\/import\/testCase\/\*/);
     });
 
     test('should upload and validate CSV file', async ({ page }) => {
@@ -134,31 +127,26 @@ test.describe(
       );
 
       try {
-        await table.visitEntityPage(page);
-
         // Navigate to Data Quality tab
-        await page.click('[data-testid="profiler"]');
-        await page.waitForSelector('[data-testid="manage-button"]', {
-          state: 'visible',
+        await visitDataQualityTab(page, table);
+
+        await clickManageButton(page, 'table');
+        await navigateToImportPage(page);
+        await uploadCSVFile(page, csvFilePath);
+        await validateImportGrid(page);
+        await waitForImportAsyncResponse(page);
+
+        await validateImportStatus(page, {
+          passed: '4',
+          processed: '4',
+          failed: '0',
         });
 
-        await page.getByTestId('manage-button').click();
-        await page.getByTestId('import-button').click();
-        await expect(page).toHaveURL(/\/bulk\/import\/testCase/);
-
-        await page.waitForSelector('[type="file"]', { state: 'visible' });
-        await page.setInputFiles('[type="file"]', csvFilePath);
-        await page.waitForSelector('[data-testid="upload-file-widget"]', {
-          state: 'hidden',
-          timeout: 10000,
-        });
-        await expect(page.getByText(/uploaded/i)).toBeVisible({
-          timeout: 15000,
-        });
       } finally {
         cleanupTempFile(csvFilePath);
       }
     });
+
 
     test('should show validation errors for invalid CSV', async ({ page }) => {
       await redirectToHomePage(page);
@@ -168,129 +156,26 @@ test.describe(
       );
 
       try {
-        await table.visitEntityPage(page);
-
         // Navigate to Data Quality tab
-        await page.click('[data-testid="profiler"]');
-        await page.waitForSelector('[data-testid="manage-button"]', {
-          state: 'visible',
-        });
+        await visitDataQualityTab(page, table);
 
-        await page.getByTestId('manage-button').click();
-        await page.getByTestId('import-button').click();
+        await page
+          .getByTestId('table-profiler-container')
+          .getByTestId('manage-button')
+          .click();
 
-        await page.waitForSelector('[type="file"]', { state: 'visible' });
-        await page.setInputFiles('[type="file"]', csvFilePath);
-        await page.waitForSelector('[data-testid="upload-file-widget"]', {
-          state: 'hidden',
-          timeout: 10000,
-        });
-        await expect(
-          page.getByText(/error|failed|invalid/i).first()
-        ).toBeVisible({ timeout: 15000 });
-      } finally {
-        cleanupTempFile(csvFilePath);
-      }
-    });
-
-    test('should allow editing test cases in import grid', async ({ page }) => {
-      await redirectToHomePage(page);
-      const csvFilePath = createTempCSVFile(
-        VALID_TEST_CASES_CSV,
-        'editable-test-cases.csv'
-      );
-
-      try {
-        await table.visitEntityPage(page);
-
-        // Navigate to Data Quality tab
-        await page.click('[data-testid="profiler"]');
-        await page.waitForSelector('[data-testid="manage-button"]', {
-          state: 'visible',
-        });
-
-        await page.getByTestId('manage-button').click();
         await page.getByTestId('import-button').click();
         await expect(page).toHaveURL(/\/bulk\/import\/testCase/);
 
-        // Upload CSV
-        await page.waitForSelector('[type="file"]', { state: 'visible' });
+        await page.waitForSelector('[type="file"]', { state: 'attached' });
         await page.setInputFiles('[type="file"]', csvFilePath);
         await page.waitForSelector('[data-testid="upload-file-widget"]', {
           state: 'hidden',
           timeout: 10000,
         });
-
-        // Wait for the grid to be ready (validation complete)
-        await page.waitForTimeout(2000);
-
-        // Verify we're in the Edit/Preview step (step 2)
-        await expect(page.locator('.rdg')).toBeVisible({ timeout: 10000 });
-
-        // Verify grid has data rows
-        const gridRows = page.locator('.rdg-row');
-        const rowCount = await gridRows.count();
-        expect(rowCount).toBeGreaterThan(0);
-
-        // Verify we can see the "Add Row" button (edit functionality)
-        const addRowButton = page.getByText(/add.*row/i);
-        if (await addRowButton.isVisible()) {
-          await expect(addRowButton).toBeVisible();
-        }
-
-        // Verify the import/update button is available
         await expect(
-          page
-            .getByTestId('import-submit-btn')
-            .or(page.getByRole('button', { name: /import|update/i }))
-        ).toBeVisible({ timeout: 5000 });
-      } finally {
-        cleanupTempFile(csvFilePath);
-      }
-    });
-
-    test('should navigate through all import steps', async ({ page }) => {
-      await redirectToHomePage(page);
-      const csvFilePath = createTempCSVFile(
-        VALID_TEST_CASES_CSV,
-        'full-flow-test-cases.csv'
-      );
-
-      try {
-        await table.visitEntityPage(page);
-
-        // Navigate to Data Quality tab
-        await page.click('[data-testid="profiler"]');
-        await page.waitForSelector('[data-testid="manage-button"]', {
-          state: 'visible',
-        });
-
-        await page.getByTestId('manage-button').click();
-        await page.getByTestId('import-button').click();
-
-        // Step 1: Upload
-        await page.waitForSelector('[type="file"]', { state: 'visible' });
-        await page.setInputFiles('[type="file"]', csvFilePath);
-        await page.waitForSelector('[data-testid="upload-file-widget"]', {
-          state: 'hidden',
-          timeout: 10000,
-        });
-
-        // Wait for validation
-        await page.waitForTimeout(3000);
-
-        // Verify stepper shows current step
-        const stepper = page.locator(
-          '.ant-steps-item-active, .stepper-item-active'
-        );
-        await expect(stepper.first()).toBeVisible({ timeout: 5000 });
-
-        // Verify we can see step indicators (Upload -> Preview/Edit -> Update)
-        const stepLabels = page.locator(
-          '.ant-steps-item-title, .stepper-item-title'
-        );
-        const stepCount = await stepLabels.count();
-        expect(stepCount).toBeGreaterThanOrEqual(3);
+          page.getByText(/INVALID_HEADER/i).first()
+        ).toBeVisible({ timeout: 15000 });
       } finally {
         cleanupTempFile(csvFilePath);
       }
@@ -299,94 +184,96 @@ test.describe(
 );
 
 test.describe(
-  'Test Case Import/Export - Permissions',
+  'Test Case Import/Export/Edits - Permissions',
   { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
   () => {
     const table = new TableClass();
 
     base.beforeAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);
       await afterAction();
     });
 
     base.afterAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.delete(apiContext);
       await afterAction();
     });
 
-    test('Data Consumer should see export but not import options', async ({
+    test('Data Consumer should see export but not import & edit options', async ({
       dataConsumerPage,
     }) => {
       await redirectToHomePage(dataConsumerPage);
 
-      // Test at Table Level - Data Quality tab
-      await table.visitEntityPage(dataConsumerPage);
-      await dataConsumerPage.click('[data-testid="profiler"]');
-      await dataConsumerPage.waitForSelector('[data-testid="manage-button"]', {
-        state: 'visible',
+      // Navigate to Data Quality tab
+      await visitDataQualityTab(dataConsumerPage, table);
+
+      await clickManageButton(dataConsumerPage, 'table');
+      await verifyButtonVisibility(dataConsumerPage, {
+        export: true,
+        import: false,
+        bulkEdit: false,
       });
-      await dataConsumerPage.getByTestId('manage-button').click();
-      await expect(dataConsumerPage.getByTestId('export-button')).toBeVisible();
-      await expect(
-        dataConsumerPage.getByTestId('import-button')
-      ).not.toBeVisible();
       await dataConsumerPage.keyboard.press('Escape');
 
-      // Test at Global Data Quality Level
-      await dataConsumerPage.goto('/data-quality');
-      await dataConsumerPage.waitForSelector('[data-testid="manage-button"]');
-      await dataConsumerPage.getByTestId('manage-button').click();
-      await expect(dataConsumerPage.getByTestId('export-button')).toBeVisible();
-      await expect(
-        dataConsumerPage.getByTestId('import-button')
-      ).not.toBeVisible();
+      await navigateToGlobalDataQuality(dataConsumerPage);
+      await clickManageButton(dataConsumerPage, 'global');
+      await verifyButtonVisibility(dataConsumerPage, {
+        export: true,
+        import: false,
+        bulkEdit: false,
+      });
     });
 
-    test('Data Steward should see both import and export options', async ({
+    test('Data Steward should see export but not import & edit options', async ({
       dataStewardPage,
     }) => {
       await redirectToHomePage(dataStewardPage);
 
-      // Test at Table Level - Data Quality tab
-      await table.visitEntityPage(dataStewardPage);
-      await dataStewardPage.click('[data-testid="profiler"]');
-      await dataStewardPage.waitForSelector('[data-testid="manage-button"]', {
-        state: 'visible',
+      // Navigate to Data Quality tab
+      await visitDataQualityTab(dataStewardPage, table);
+
+      await clickManageButton(dataStewardPage, 'table');
+      await verifyButtonVisibility(dataStewardPage, {
+        export: true,
+        import: false,
+        bulkEdit: false,
       });
-      await dataStewardPage.getByTestId('manage-button').click();
-      await expect(dataStewardPage.getByTestId('export-button')).toBeVisible();
-      await expect(dataStewardPage.getByTestId('import-button')).toBeVisible();
       await dataStewardPage.keyboard.press('Escape');
 
-      // Test at Global Data Quality Level
-      await dataStewardPage.goto('/data-quality');
-      await dataStewardPage.waitForSelector('[data-testid="manage-button"]');
-      await dataStewardPage.getByTestId('manage-button').click();
-      await expect(dataStewardPage.getByTestId('export-button')).toBeVisible();
-      await expect(dataStewardPage.getByTestId('import-button')).toBeVisible();
+      await navigateToGlobalDataQuality(dataStewardPage);
+      await clickManageButton(dataStewardPage, 'global');
+      await verifyButtonVisibility(dataStewardPage, {
+        export: true,
+        import: false,
+        bulkEdit: false,
+      });
     });
 
     test('Data Consumer can successfully export test cases', async ({
       dataConsumerPage,
     }) => {
       await redirectToHomePage(dataConsumerPage);
-      await table.visitEntityPage(dataConsumerPage);
 
       // Navigate to Data Quality tab
-      await dataConsumerPage.click('[data-testid="profiler"]');
-      await dataConsumerPage.waitForSelector('[data-testid="manage-button"]', {
-        state: 'visible',
-      });
+      await visitDataQualityTab(dataConsumerPage, table);
 
-      await dataConsumerPage.getByTestId('manage-button').click();
-      await dataConsumerPage.getByTestId('export-button').click();
-      await expect(dataConsumerPage.locator('[role="dialog"]')).toBeVisible();
+      await clickManageButton(dataConsumerPage, 'table');
+      const download = await performTestCaseExport(dataConsumerPage);
+      expect(download.suggestedFilename()).toContain('.csv');
+    });
 
-      const downloadPromise = dataConsumerPage.waitForEvent('download');
-      await dataConsumerPage.getByTestId('export-modal-submit').click();
-      const download = await downloadPromise;
+    test('Data Steward can successfully export test cases', async ({
+      dataStewardPage,
+    }) => {
+      await redirectToHomePage(dataStewardPage);
+
+      // Navigate to Data Quality tab
+      await visitDataQualityTab(dataStewardPage, table);
+
+      await clickManageButton(dataStewardPage, 'table');
+      const download = await performTestCaseExport(dataStewardPage);
       expect(download.suggestedFilename()).toContain('.csv');
     });
 
@@ -398,327 +285,20 @@ test.describe(
       const encodedFqn = encodeURIComponent(
         table.entityResponseData.fullyQualifiedName
       );
-      await dataConsumerPage.goto(`/bulk/import/testCase/${encodedFqn}`);
-      await dataConsumerPage.waitForTimeout(2000);
-      const currentUrl = dataConsumerPage.url();
-
-      const isRedirected =
-        currentUrl.includes('not-found') || currentUrl.includes('403');
-      const hasPermissionError =
-        (await dataConsumerPage
-          .getByText(/permission|access denied|unauthorized/i)
-          .count()) > 0;
-      expect(isRedirected || hasPermissionError).toBeTruthy();
+      const url = `/bulk/import/testCase/${encodedFqn}?sourceEntityType=table`;
+      await verifyPageAccessDenied(dataConsumerPage, url);
     });
 
-    test('Data Steward can access import page and upload CSV', async ({
+    test('Data Steward should be blocked from import page', async ({
       dataStewardPage,
     }) => {
       await redirectToHomePage(dataStewardPage);
-      const csvFilePath = createTempCSVFile(
-        VALID_TEST_CASES_CSV,
-        'steward-test-cases.csv'
+
+      const encodedFqn = encodeURIComponent(
+        table.entityResponseData.fullyQualifiedName
       );
-
-      try {
-        await table.visitEntityPage(dataStewardPage);
-
-        // Navigate to Data Quality tab
-        await dataStewardPage.click('[data-testid="profiler"]');
-        await dataStewardPage.waitForSelector('[data-testid="manage-button"]', {
-          state: 'visible',
-        });
-
-        await dataStewardPage.getByTestId('manage-button').click();
-        await dataStewardPage.getByTestId('import-button').click();
-        await expect(dataStewardPage).toHaveURL(/\/bulk\/import\/testCase/);
-
-        await dataStewardPage.waitForSelector('[type="file"]', {
-          state: 'visible',
-        });
-        await dataStewardPage.setInputFiles('[type="file"]', csvFilePath);
-        await dataStewardPage.waitForSelector(
-          '[data-testid="upload-file-widget"]',
-          { state: 'hidden', timeout: 10000 }
-        );
-        await expect(dataStewardPage.getByText(/uploaded/i)).toBeVisible({
-          timeout: 15000,
-        });
-      } finally {
-        cleanupTempFile(csvFilePath);
-      }
-    });
-  }
-);
-
-test.describe(
-  'Test Case Bulk Edit - Admin User',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
-  () => {
-    const table = new TableClass();
-
-    base.beforeAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
-      await table.create(apiContext);
-      await afterAction();
-    });
-
-    base.afterAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
-      await table.delete(apiContext);
-      await afterAction();
-    });
-
-    test('should navigate to bulk edit from Data Quality tab', async ({
-      page,
-    }) => {
-      await redirectToHomePage(page);
-      await table.visitEntityPage(page);
-
-      await page.click('[data-testid="profiler"]');
-      await page.waitForSelector('[data-testid="manage-button"]', {
-        state: 'visible',
-      });
-
-      await page.getByTestId('manage-button').click();
-      await expect(page.getByTestId('bulk-edit-button')).toBeVisible();
-      await page.getByTestId('bulk-edit-button').click();
-      await expect(page).toHaveURL(/\/bulk\/testCase/);
-    });
-
-    test('should navigate to bulk edit from global data quality page', async ({
-      page,
-    }) => {
-      await redirectToHomePage(page);
-      await page.goto('/data-quality');
-      await page.waitForSelector('[data-testid="manage-button"]');
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('bulk-edit-button').click();
-      await expect(page).toHaveURL(/\/bulk\/testCase\/\*/);
-    });
-
-    test('should load bulk edit grid with hidden columns', async ({ page }) => {
-      await redirectToHomePage(page);
-      await table.visitEntityPage(page);
-
-      await page.click('[data-testid="profiler"]');
-      await page.waitForSelector('[data-testid="manage-button"]', {
-        state: 'visible',
-      });
-
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('bulk-edit-button').click();
-
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-        timeout: 15000,
-      });
-
-      await expect(page.locator('.rdg-header-row')).toBeVisible({
-        timeout: 10000,
-      });
-
-      const hiddenColumns = [
-        'testSuiteFullyQualifiedName',
-        'entityLink',
-        'testCaseResult',
-        'testDefinition',
-      ];
-
-      for (const column of hiddenColumns) {
-        const columnHeader = page.locator(
-          `.rdg-header-row >> text="${column}"`
-        );
-        await expect(columnHeader).not.toBeVisible();
-      }
-
-      const visibleColumns = [
-        'name',
-        'displayName',
-        'description',
-        'parameterValues',
-      ];
-
-      for (const column of visibleColumns) {
-        const columnHeader = page.locator(
-          `.rdg-header-row >> text="${column}"`
-        );
-        await expect(columnHeader).toBeVisible();
-      }
-    });
-
-    test('should allow editing test cases in bulk edit grid', async ({
-      page,
-    }) => {
-      await redirectToHomePage(page);
-      await table.visitEntityPage(page);
-
-      await page.click('[data-testid="profiler"]');
-      await page.waitForSelector('[data-testid="manage-button"]', {
-        state: 'visible',
-      });
-
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('bulk-edit-button').click();
-
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-        timeout: 15000,
-      });
-
-      await expect(page.locator('.rdg')).toBeVisible({ timeout: 10000 });
-
-      const gridRows = page.locator('.rdg-row');
-      const rowCount = await gridRows.count();
-      expect(rowCount).toBeGreaterThan(0);
-
-      const nextButton = page.getByRole('button', { name: /next/i });
-      await expect(nextButton).toBeVisible({ timeout: 5000 });
-    });
-  }
-);
-
-test.describe(
-  'Test Case Bulk Edit - Cancel Redirect',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
-  () => {
-    const table = new TableClass();
-
-    base.beforeAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
-      await table.create(apiContext);
-      await afterAction();
-    });
-
-    base.afterAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
-      await table.delete(apiContext);
-      await afterAction();
-    });
-
-    test('should redirect to Data Quality page when canceling global bulk edit', async ({
-      page,
-    }) => {
-      await redirectToHomePage(page);
-      await page.goto('/data-quality');
-      await page.waitForSelector('[data-testid="manage-button"]');
-
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('bulk-edit-button').click();
-
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-        timeout: 15000,
-      });
-
-      await expect(page.locator('.rdg-header-row')).toBeVisible({
-        timeout: 10000,
-      });
-
-      const cancelButton = page.getByRole('button', { name: /cancel/i });
-      await cancelButton.click();
-
-      await page.waitForLoadState('networkidle');
-      expect(page.url()).toContain('/data-quality');
-    });
-
-    test('should redirect to Table Data Quality tab when canceling table-level bulk edit', async ({
-      page,
-    }) => {
-      await redirectToHomePage(page);
-      await table.visitEntityPage(page);
-
-      await page.click('[data-testid="profiler"]');
-      await page.waitForSelector('[data-testid="manage-button"]', {
-        state: 'visible',
-      });
-
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('bulk-edit-button').click();
-
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-        timeout: 15000,
-      });
-
-      await expect(page.locator('.rdg-header-row')).toBeVisible({
-        timeout: 10000,
-      });
-
-      const cancelButton = page.getByRole('button', { name: /cancel/i });
-      await cancelButton.click();
-
-      await page.waitForLoadState('networkidle');
-      expect(page.url()).toContain('/profiler');
-      expect(page.url()).toContain(table.entity.name);
-    });
-  }
-);
-
-test.describe(
-  'Test Case Bulk Edit - Permissions',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
-  () => {
-    const table = new TableClass();
-
-    base.beforeAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
-      await table.create(apiContext);
-      await afterAction();
-    });
-
-    base.afterAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
-      await table.delete(apiContext);
-      await afterAction();
-    });
-
-    test('Data Consumer should not see bulk edit option', async ({
-      dataConsumerPage,
-    }) => {
-      await redirectToHomePage(dataConsumerPage);
-
-      await table.visitEntityPage(dataConsumerPage);
-      await dataConsumerPage.click('[data-testid="profiler"]');
-      await dataConsumerPage.waitForSelector('[data-testid="manage-button"]', {
-        state: 'visible',
-      });
-      await dataConsumerPage.getByTestId('manage-button').click();
-      await expect(
-        dataConsumerPage.getByTestId('bulk-edit-button')
-      ).not.toBeVisible();
-      await dataConsumerPage.keyboard.press('Escape');
-
-      await dataConsumerPage.goto('/data-quality');
-      await dataConsumerPage.waitForSelector('[data-testid="manage-button"]');
-      await dataConsumerPage.getByTestId('manage-button').click();
-      await expect(
-        dataConsumerPage.getByTestId('bulk-edit-button')
-      ).not.toBeVisible();
-    });
-
-    test('Data Steward should see bulk edit option', async ({
-      dataStewardPage,
-    }) => {
-      await redirectToHomePage(dataStewardPage);
-
-      await table.visitEntityPage(dataStewardPage);
-      await dataStewardPage.click('[data-testid="profiler"]');
-      await dataStewardPage.waitForSelector('[data-testid="manage-button"]', {
-        state: 'visible',
-      });
-      await dataStewardPage.getByTestId('manage-button').click();
-      await expect(
-        dataStewardPage.getByTestId('bulk-edit-button')
-      ).toBeVisible();
-      await dataStewardPage.keyboard.press('Escape');
-
-      await dataStewardPage.goto('/data-quality');
-      await dataStewardPage.waitForSelector('[data-testid="manage-button"]');
-      await dataStewardPage.getByTestId('manage-button').click();
-      await expect(
-        dataStewardPage.getByTestId('bulk-edit-button')
-      ).toBeVisible();
+      const url = `/bulk/import/testCase/${encodedFqn}?sourceEntityType=table`;
+      await verifyPageAccessDenied(dataStewardPage, url);
     });
 
     test('Data Consumer should be blocked from bulk edit page', async ({
@@ -729,42 +309,62 @@ test.describe(
       const encodedFqn = encodeURIComponent(
         table.entityResponseData.fullyQualifiedName
       );
-      await dataConsumerPage.goto(`/bulk/testCase/${encodedFqn}`);
-      await dataConsumerPage.waitForTimeout(2000);
-      const currentUrl = dataConsumerPage.url();
-
-      const isRedirected =
-        currentUrl.includes('not-found') || currentUrl.includes('403');
-      const hasPermissionError =
-        (await dataConsumerPage
-          .getByText(/permission|access denied|unauthorized/i)
-          .count()) > 0;
-      expect(isRedirected || hasPermissionError).toBeTruthy();
+      const url = `/bulk/edit/testCase/${encodedFqn}?sourceEntityType=table`;
+      await verifyPageAccessDenied(dataConsumerPage, url);
     });
 
-    test('Data Steward can access bulk edit page', async ({
+    test('Data Steward should be blocked from bulk edit page', async ({
       dataStewardPage,
     }) => {
       await redirectToHomePage(dataStewardPage);
-      await table.visitEntityPage(dataStewardPage);
 
-      await dataStewardPage.click('[data-testid="profiler"]');
-      await dataStewardPage.waitForSelector('[data-testid="manage-button"]', {
-        state: 'visible',
-      });
+      const encodedFqn = encodeURIComponent(
+        table.entityResponseData.fullyQualifiedName
+      );
+      const url = `/bulk/edit/testCase/${encodedFqn}?sourceEntityType=table`;
+      await verifyPageAccessDenied(dataStewardPage, url);
+    });
 
-      await dataStewardPage.getByTestId('manage-button').click();
-      await dataStewardPage.getByTestId('bulk-edit-button').click();
-      await expect(dataStewardPage).toHaveURL(/\/bulk\/testCase/);
+  }
+);
 
-      await dataStewardPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-        timeout: 15000,
-      });
+test.describe(
+  'Test Case Bulk Edit - Cancel Redirect',
+  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
+  () => {
+    const table = new TableClass();
 
-      await expect(dataStewardPage.locator('.rdg-header-row')).toBeVisible({
-        timeout: 10000,
-      });
+    base.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await table.create(apiContext);
+      await afterAction();
+    });
+
+    base.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await table.delete(apiContext);
+      await afterAction();
+    });
+
+    test('should redirect to Data Quality page when canceling global bulk edit', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await navigateToGlobalDataQuality(page);
+      await clickManageButton(page, 'global');
+      await navigateToBulkEditPage(page);
+      await cancelBulkEditAndVerifyRedirect(page, '/data-quality/test-cases');
+    });
+
+    test('should redirect to Table Data Quality tab when canceling table-level bulk edit', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await visitDataQualityTab(page, table);
+      await clickManageButton(page, 'table');
+      await navigateToBulkEditPage(page);
+      await cancelBulkEditAndVerifyRedirect(page, '/profiler');
+      expect(page.url()).toContain(table.entity.name);
     });
   }
 );

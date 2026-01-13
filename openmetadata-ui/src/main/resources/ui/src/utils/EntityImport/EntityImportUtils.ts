@@ -68,7 +68,8 @@ export const getImportedEntityType = (entityType: EntityType) => {
 export const getBulkEntityBreadcrumbList = (
   entityType: EntityType,
   entity: DataAssetsHeaderProps['dataAsset'],
-  isBulkEdit: boolean
+  isBulkEdit: boolean,
+  additionalBreadCrumb?: TitleBreadcrumbProps['titleLinks']
 ): TitleBreadcrumbProps['titleLinks'] => {
   return [
     ...(entityType === EntityType.GLOSSARY_TERM ||
@@ -85,6 +86,7 @@ export const getBulkEntityBreadcrumbList = (
           },
         ]
       : getEntityBreadcrumbs(entity, entityType, true)),
+    ...(additionalBreadCrumb ? additionalBreadCrumb : []),
     {
       name: i18n.t(`label.${isBulkEdit ? 'bulk-edit' : 'import'}`),
       url: '',

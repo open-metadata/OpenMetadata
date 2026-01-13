@@ -23,6 +23,7 @@ import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { ExportTypes } from '../../constants/Export.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
+import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
 import { getBulkEditCSVExportEntityApi } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
@@ -75,7 +76,7 @@ const BulkEditEntity = ({
 
     if (entityType === EntityType.TEST_CASE) {
       if (fqn === WILD_CARD_CHAR) {
-        navigate(getDataQualityPagePath());
+        navigate(getDataQualityPagePath(DataQualityPageTabs.TEST_CASES));
       } else if (sourceEntityType === EntityType.TABLE) {
         navigate(
           entityUtilClassBase.getEntityLink(
@@ -88,7 +89,7 @@ const BulkEditEntity = ({
       } else if (sourceEntityType === EntityType.TEST_SUITE) {
         navigate(entityUtilClassBase.getEntityLink(EntityType.TEST_SUITE, fqn));
       } else {
-        navigate(getDataQualityPagePath());
+        navigate(getDataQualityPagePath(DataQualityPageTabs.TEST_CASES));
       }
     } else {
       navigate(entityUtilClassBase.getEntityLink(entityType, fqn));

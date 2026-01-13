@@ -446,10 +446,12 @@ export const QualityTab = () => {
                 <ManageButton
                   canDelete={false}
                   deleted={table?.deleted ?? false}
-                  displayName={t('label.manage')}
+                  displayName={t('label.manage-entity', {
+                    entity: t('label.test-case-plural'),
+                  })}
                   entityId={table?.id}
                   entityName={getEntityName(table)}
-                  entityType={EntityType.TABLE}
+                  entityType={EntityType.TEST_CASE}
                   extraDropdownContent={extraDropdownContent}
                   isRecursiveDelete={false}
                 />

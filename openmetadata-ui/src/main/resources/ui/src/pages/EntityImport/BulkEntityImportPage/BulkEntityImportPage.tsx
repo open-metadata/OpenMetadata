@@ -204,7 +204,7 @@ const BulkEntityImportPage = () => {
       return [
         {
           name: t('label.data-quality'),
-          url: getDataQualityPagePath(),
+          url: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
         },
       ];
     }
@@ -222,21 +222,21 @@ const BulkEntityImportPage = () => {
       const baseBreadcrumb = getBulkEntityBreadcrumbList(
         EntityType.TABLE,
         entity,
-        isBulkEdit
+        isBulkEdit,
+        [
+          {
+            name: t('label.data-quality'),
+            url: getEntityDetailsPath(
+              EntityType.TABLE,
+              entity.fullyQualifiedName ?? '',
+              EntityTabs.PROFILER,
+              ProfilerTabPath.DATA_QUALITY
+            ),
+          },
+        ]
       );
 
-      return [
-        ...baseBreadcrumb,
-        {
-          name: t('label.data-quality'),
-          url: getEntityDetailsPath(
-            EntityType.TABLE,
-            entity.fullyQualifiedName ?? '',
-            EntityTabs.PROFILER,
-            ProfilerTabPath.DATA_QUALITY
-          ),
-        },
-      ];
+      return baseBreadcrumb;
     }
 
     if (
@@ -413,7 +413,7 @@ const BulkEntityImportPage = () => {
 
           if (entityType === EntityType.TEST_CASE) {
             if (fqn === WILD_CARD_CHAR) {
-              navigate(getDataQualityPagePath());
+              navigate(getDataQualityPagePath(DataQualityPageTabs.TEST_CASES));
             } else {
               const redirectSourceType =
                 sourceEntityType ?? sourceEntityTypeFromURL;
@@ -430,7 +430,9 @@ const BulkEntityImportPage = () => {
               } else if (redirectSourceType === EntityType.TEST_SUITE) {
                 navigate(getTestSuitePath(fqn));
               } else {
-                navigate(getDataQualityPagePath());
+                navigate(
+                  getDataQualityPagePath(DataQualityPageTabs.TEST_CASES)
+                );
               }
             }
           } else {

@@ -76,3 +76,205 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
     state: 'detached',
   });
 };
+
+/**
+ * Click the manage button in the Data Quality tab
+ * @param page - Playwright page object
+ * @param context - 'table' for table-level or 'global' for global data quality page
+ */
+export const clickManageButton = async (
+  page: Page,
+  context: 'table' | 'global' = 'table'
+) => {
+  if (context === 'table') {
+    await page
+      .getByTestId('table-profiler-container')
+      .getByTestId('manage-button')
+      .click();
+  } else {
+    await page.waitForSelector('[data-testid="manage-button"]', {
+      state: 'visible',
+    });
+    await page.getByTestId('manage-button').click();
+  }
+};
+
+/**
+ * Navigate to global data quality test cases page
+ * @param page - Playwright page object
+ */
+export const navigateToGlobalDataQuality = async (page: Page) => {
+  await page.goto('/data-quality/test-cases');
+  await page.waitForSelector('[data-testid="manage-button"]');
+};
+
+/**
+ * Perform complete export workflow for test cases
+ * @param page - Playwright page object
+ * @returns Download object from Playwright
+ */
+export const performTestCaseExport = async (page: Page) => {
+  await expect(page.getByTestId('export-button')).toBeVisible();
+  await page.getByTestId('export-button').click();
+  await page.waitForSelector('#export-form', {
+    state: 'visible',
+  });
+  await expect(page.locator('#export-form')).toBeVisible();
+  await expect(page.locator('#submit-button')).not.toBeDisabled();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#submit-button').click();
+  const download = await downloadPromise;
+
+  return download;
+};
+
+/**
+ * Navigate to import page and validate URL
+ * @param page - Playwright page object
+ * @param expectedUrlPattern - Expected URL pattern (default for table-level import)
+ */
+export const navigateToImportPage = async (
+  page: Page,
+  expectedUrlPattern: RegExp = /\/bulk\/import\/testCase/
+) => {
+  await expect(page.getByTestId('import-button')).toBeVisible();
+  await page.getByTestId('import-button').click();
+  await expect(page).toHaveURL(expectedUrlPattern);
+};
+
+/**
+ * Upload CSV file and wait for processing
+ * @param page - Playwright page object
+ * @param filePath - Path to CSV file
+ */
+export const uploadCSVFile = async (page: Page, filePath: string) => {
+  await page.waitForSelector('[type="file"]', { state: 'attached' });
+  await page.setInputFiles('[type="file"]', filePath);
+  await page.waitForSelector('[data-testid="upload-file-widget"]', {
+    state: 'hidden',
+    timeout: 10000,
+  });
+};
+
+/**
+ * Validate import grid is visible with all expected elements
+ * @param page - Playwright page object
+ */
+export const validateImportGrid = async (page: Page) => {
+  await expect(page.getByRole('grid')).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Previous' })).toBeVisible();
+  await expect(page.getByTestId('add-row-btn')).toBeVisible();
+};
+
+/**
+ * Wait for async import response and proceed to validation
+ * @param page - Playwright page object
+ */
+export const waitForImportAsyncResponse = async (page: Page) => {
+  const asyncImportResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testCases/name') &&
+      response.url().includes('importAsync') &&
+      response.url().includes('dryRun=true') &&
+      response.url().includes('recursive=true') &&
+      response.request().method() === 'PUT'
+  );
+  await page.getByRole('button', { name: 'Next' }).click();
+  await asyncImportResponse;
+};
+
+/**
+ * Verify user is blocked from accessing a page (404 redirect)
+ * @param page - Playwright page object
+ * @param url - URL to navigate to
+ */
+export const verifyPageAccessDenied = async (page: Page, url: string) => {
+  const permissionResponse = page.waitForResponse((response) =>
+    response.url().includes('api/v1/permissions')
+  );
+  await page.goto(url);
+  await permissionResponse;
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
+  await page.getByText('Page Not FoundThe page you').waitFor({ state: 'visible' });
+
+  expect(page.url()).not.toContain(url);
+  const currentUrl = page.url();
+  const isRedirected = currentUrl.includes('404');
+  expect(isRedirected).toBeTruthy();
+};
+
+/**
+ * Verify button visibility in manage menu
+ * @param page - Playwright page object
+ * @param buttons - Object specifying which buttons should be visible
+ */
+export const verifyButtonVisibility = async (
+  page: Page,
+  buttons: {
+    export?: boolean;
+    import?: boolean;
+    bulkEdit?: boolean;
+  }
+) => {
+  if (buttons.export !== undefined) {
+    if (buttons.export) {
+      await expect(page.getByTestId('export-button')).toBeVisible();
+    } else {
+      await expect(page.getByTestId('export-button')).not.toBeVisible();
+    }
+  }
+
+  if (buttons.import !== undefined) {
+    if (buttons.import) {
+      await expect(page.getByTestId('import-button')).toBeVisible();
+    } else {
+      await expect(page.getByTestId('import-button')).not.toBeVisible();
+    }
+  }
+
+  if (buttons.bulkEdit !== undefined) {
+    if (buttons.bulkEdit) {
+      await expect(page.getByTestId('bulk-edit-button')).toBeVisible();
+    } else {
+      await expect(page.getByTestId('bulk-edit-button')).not.toBeVisible();
+    }
+  }
+};
+
+/**
+ * Navigate to bulk edit page and wait for grid to load
+ * @param page - Playwright page object
+ */
+export const navigateToBulkEditPage = async (page: Page) => {
+  await page.getByTestId('bulk-edit-button').click();
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+    timeout: 15000,
+  });
+  await expect(page.locator('.rdg-header-row')).toBeVisible({
+    timeout: 10000,
+  });
+};
+
+/**
+ * Cancel bulk edit and wait for redirect
+ * @param page - Playwright page object
+ * @param expectedUrl - Expected URL after cancel
+ */
+export const cancelBulkEditAndVerifyRedirect = async (
+  page: Page,
+  expectedUrl: string
+) => {
+  const cancelButton = page.getByRole('button', { name: /cancel/i });
+  const testCaseListResponse = page.waitForResponse(
+    '/api/v1/dataQuality/testCases/search/list*'
+  );
+  await cancelButton.click();
+  await testCaseListResponse;
+
+  expect(page.url()).toContain(expectedUrl);
+};
