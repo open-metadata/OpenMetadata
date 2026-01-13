@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.events;
 
 import static jakarta.ws.rs.client.Entity.entity;
+import static jakarta.ws.rs.client.Entity.json;
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.CONFLICT;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
@@ -231,12 +232,12 @@ public class NotificationTemplateResourceTest
 
   public final Response resetTemplate(UUID id, Map<String, String> authHeaders) {
     WebTarget target = getResource(id).path("reset");
-    return SecurityUtil.addHeaders(target, authHeaders).put(null);
+    return SecurityUtil.addHeaders(target, authHeaders).put(json("{}"));
   }
 
   public final Response resetTemplateByName(String fqn, Map<String, String> authHeaders) {
     WebTarget target = getResourceByName(fqn).path("reset");
-    return SecurityUtil.addHeaders(target, authHeaders).put(null);
+    return SecurityUtil.addHeaders(target, authHeaders).put(json("{}"));
   }
 
   private NotificationTemplate getSystemTemplate() {

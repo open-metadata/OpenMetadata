@@ -13,8 +13,8 @@
 import { Box, Chip, IconButton, useTheme } from '@mui/material';
 import {
   ChevronDown,
-  ChevronUp,
   ChevronRight,
+  ChevronUp,
   XClose,
 } from '@untitledui/icons';
 import { Card, Drawer, Space, Tooltip, Typography } from 'antd';
