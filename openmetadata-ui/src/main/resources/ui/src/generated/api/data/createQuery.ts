@@ -27,7 +27,8 @@ export interface CreateQuery {
      */
     displayName?: string;
     /**
-     * Fully qualified names of the domains the Query belongs to.
+     * Fully qualified names of the domains the Query belongs to. This field is auto-computed
+     * from the entities referenced in queryUsedIn and any values provided here will be ignored.
      */
     domains?: string[];
     /**
