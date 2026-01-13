@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { DataType, SearchIndex, TagSource } from '../generated/entity/data/searchIndex';
+import {
+  DataType,
+  SearchIndex,
+  TagSource,
+} from '../generated/entity/data/searchIndex';
 import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State } from '../generated/type/tagLabel';
 import { extractSearchIndexFields } from './SearchIndexUtils';

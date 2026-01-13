@@ -620,14 +620,28 @@ export const updateDescriptionForChildren = async (
 ) => {
   await page
     .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('description')
     .getByTestId('edit-button')
     .click();
 
   await page.waitForSelector('[role="dialog"]', { state: 'visible' });
 
-  await page.locator(descriptionBox).first().click();
-  await page.locator(descriptionBox).first().clear();
-  await page.locator(descriptionBox).first().fill(description);
+  const descriptionInput = page.locator(descriptionBox).first();
+
+  await descriptionInput.waitFor({ state: 'visible' });
+  await expect(descriptionInput).toBeEditable();
+
+  await descriptionInput.click();
+  await descriptionInput.focus();
+  // Needed to add small timeout as this test if unable to clear description field on CI
+  await page.waitForTimeout(500);
+  await descriptionInput.clear();
+
+  // Type new content directly (this replaces the selection)
+  await descriptionInput.fill(description);
+
+  // Verify final state only - skip intermediate empty assertion for rich text editors
+  await expect(descriptionInput).toHaveText(description);
   let updateRequest;
   if (
     entityEndpoint === 'tables' ||
@@ -668,6 +682,7 @@ export const assignTag = async (
     .getByTestId(parentId)
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
+    .first()
     .click();
 
   // Wait for the form to be visible and stable
@@ -823,6 +838,7 @@ export const removeTagsFromChildren = async ({
       .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('tags-container')
       .getByTestId('edit-button')
+      .first()
       .click();
 
     await page
@@ -1478,9 +1494,8 @@ export const updateDisplayNameForEntity = async (
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="rename-button"]');
 
-  const nameInputIsDisabled = await page.locator('#name').isEnabled();
-
-  expect(nameInputIsDisabled).toBe(false);
+  const nameInputIsDisabled = await page.locator('#name').isDisabled();
+  expect(nameInputIsDisabled).toBe(true);
 
   await expect(page.locator('#displayName')).toBeVisible();
 
