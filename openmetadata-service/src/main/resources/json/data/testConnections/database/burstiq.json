@@ -1,0 +1,21 @@
+{
+  "name": "BurstIQ",
+  "fullyQualifiedName": "BurstIQ",
+  "displayName": "BurstIQ Test Connection",
+  "description": "This Test Connection validates the access against BurstIQ LifeGraph and basic metadata extraction of dictionaries.",
+  "steps": [
+    {
+      "name": "CheckAccess",
+      "description": "Validate that we can properly authenticate with BurstIQ using the provided credentials and access the LifeGraph API.",
+      "errorMessage": "Failed to connect to BurstIQ LifeGraph. Please validate the username, password, and realm name.",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetDictionaries",
+      "description": "List all the data dictionaries available to the user in the BurstIQ LifeGraph platform.",
+      "errorMessage": "Failed to fetch dictionaries. Please validate that the user has sufficient privileges to read metadata from BurstIQ LifeGraph.",
+      "mandatory": true
+    }
+  ]
+}

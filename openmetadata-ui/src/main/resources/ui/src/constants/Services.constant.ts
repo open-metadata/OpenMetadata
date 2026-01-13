@@ -451,6 +451,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Timescale,
   MetadataServiceType.Collibra,
   PipelineServiceType.Mulesoft,
+  DatabaseServiceType.BurstIQ,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
