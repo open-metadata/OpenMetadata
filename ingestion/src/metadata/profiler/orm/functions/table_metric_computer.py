@@ -28,6 +28,7 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.profiler.registry import MetricRegistry
+from metadata.utils.constants import BYTES_PER_MB
 from metadata.utils.dependency_injector.dependency_injector import (
     DependencyNotFoundError,
     Inject,
@@ -411,7 +412,9 @@ class RedshiftTableMetricComputer(BaseTableMetricComputer):
         """compute table metrics for redshift"""
         columns = [
             Column("estimated_visible_rows").label(ROW_COUNT),
-            Column("size").label(SIZE_IN_BYTES),
+            (Column("size") * BYTES_PER_MB).label(
+                SIZE_IN_BYTES
+            ),  # Redshift svv_talbe_info.size returns MB. Converting to Bytes.
             Column("create_time").label(CREATE_DATETIME),
             *self._get_col_names_and_count(),
         ]

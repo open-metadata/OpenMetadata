@@ -22,11 +22,11 @@ import {
   screen,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Column } from '../../../generated/entity/data/container';
 import { Topic } from '../../../generated/entity/data/topic';
 import { MESSAGE_SCHEMA } from '../TopicDetails/TopicDetails.mock';
 import TopicSchema from './TopicSchema';
 import { TopicSchemaFieldsProps } from './TopicSchema.interface';
-import { Column } from '../../../generated/entity/data/container';
 
 const mockProps: TopicSchemaFieldsProps = {};
 

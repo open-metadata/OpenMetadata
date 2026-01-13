@@ -621,16 +621,19 @@ public final class TestUtils {
   public static <K> void put(
       WebTarget target, K request, Status expectedStatus, Map<String, String> headers)
       throws HttpResponseException {
+    // Use empty string when request is null - Jersey requires non-null entity for PUT
+    Object body = request != null ? request : "";
     Response response =
         SecurityUtil.addHeaders(target, headers)
-            .method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
+            .method("PUT", Entity.entity(body, MediaType.APPLICATION_JSON));
     readResponse(response, expectedStatus.getStatusCode());
   }
 
   public static void put(WebTarget target, Status expectedStatus, Map<String, String> headers)
       throws HttpResponseException {
     Invocation.Builder builder = SecurityUtil.addHeaders(target, headers);
-    Response response = builder.method("PUT");
+    // Send empty string entity for PUT without body - Jersey requires entity for PUT method
+    Response response = builder.method("PUT", Entity.entity("", MediaType.APPLICATION_JSON));
     readResponse(response, expectedStatus.getStatusCode());
   }
 
