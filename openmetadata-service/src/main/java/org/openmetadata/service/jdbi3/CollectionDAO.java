@@ -3364,6 +3364,7 @@ public interface CollectionDAO {
 
     // Batch insert for successful events - reduces connection pool contention
     // from N connections to 1 when processing multiple events
+    @Transaction
     @ConnectionAwareSqlBatch(
         value =
             "INSERT INTO successful_sent_change_events (change_event_id, event_subscription_id, json, timestamp) "
