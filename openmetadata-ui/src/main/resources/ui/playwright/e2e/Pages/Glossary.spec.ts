@@ -1839,7 +1839,6 @@ test.describe('Glossary tests', () => {
         );
       });
     } finally {
-      await glossaryTerm1.delete(apiContext);
       await glossary1.delete(apiContext);
       await afterAction();
     }
@@ -2056,8 +2055,8 @@ test.describe('Glossary tests', () => {
         ).toBeVisible();
       });
     } finally {
-      await glossary.delete(apiContext);
       await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
       await afterAction();
       await reviewerAfterAction();
     }

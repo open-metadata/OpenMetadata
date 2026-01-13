@@ -100,6 +100,14 @@ export class Glossary extends EntityClass {
       )}?recursive=true&hardDelete=true`
     );
 
+    if (!response.ok()) {
+      const errorText = await response.text();
+
+      throw new Error(
+        `Failed to delete glossary "${fqn}": ${response.status()} ${response.statusText()} - ${errorText}`
+      );
+    }
+
     return await response.json();
   }
 }
