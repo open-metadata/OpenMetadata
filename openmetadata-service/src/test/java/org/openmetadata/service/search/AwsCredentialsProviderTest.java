@@ -1,10 +1,12 @@
 package org.openmetadata.service.search;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.service.configuration.elasticsearch.AwsConfiguration;
+import org.openmetadata.service.util.AwsCredentialsUtil;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -20,13 +22,13 @@ class AwsCredentialsProviderTest {
     awsConfig.setAccessKeyId("AKIAIOSFODNN7EXAMPLE");
     awsConfig.setSecretAccessKey("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
 
-    AwsCredentialsProvider provider = buildAwsCredentialsProvider(awsConfig);
+    AwsCredentialsProvider provider = AwsCredentialsUtil.buildCredentialsProvider(awsConfig);
 
     assertNotNull(provider);
-    assertTrue(provider instanceof StaticCredentialsProvider);
+    assertInstanceOf(StaticCredentialsProvider.class, provider);
 
     AwsCredentials credentials = provider.resolveCredentials();
-    assertTrue(credentials instanceof AwsBasicCredentials);
+    assertInstanceOf(AwsBasicCredentials.class, credentials);
     assertEquals("AKIAIOSFODNN7EXAMPLE", credentials.accessKeyId());
     assertEquals("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", credentials.secretAccessKey());
   }
@@ -38,13 +40,13 @@ class AwsCredentialsProviderTest {
     awsConfig.setSecretAccessKey("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
     awsConfig.setSessionToken("FwoGZXIvYXdzEBYaDKTsessiontoken123");
 
-    AwsCredentialsProvider provider = buildAwsCredentialsProvider(awsConfig);
+    AwsCredentialsProvider provider = AwsCredentialsUtil.buildCredentialsProvider(awsConfig);
 
     assertNotNull(provider);
-    assertTrue(provider instanceof StaticCredentialsProvider);
+    assertInstanceOf(StaticCredentialsProvider.class, provider);
 
     AwsCredentials credentials = provider.resolveCredentials();
-    assertTrue(credentials instanceof AwsSessionCredentials);
+    assertInstanceOf(AwsSessionCredentials.class, credentials);
     assertEquals("AKIAIOSFODNN7EXAMPLE", credentials.accessKeyId());
     assertEquals("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", credentials.secretAccessKey());
 
@@ -57,10 +59,10 @@ class AwsCredentialsProviderTest {
     AwsConfiguration awsConfig = new AwsConfiguration();
     awsConfig.setRegion("us-east-1");
 
-    AwsCredentialsProvider provider = buildAwsCredentialsProvider(awsConfig);
+    AwsCredentialsProvider provider = AwsCredentialsUtil.buildCredentialsProvider(awsConfig);
 
     assertNotNull(provider);
-    assertTrue(provider instanceof DefaultCredentialsProvider);
+    assertInstanceOf(DefaultCredentialsProvider.class, provider);
   }
 
   @Test
@@ -68,10 +70,10 @@ class AwsCredentialsProviderTest {
     AwsConfiguration awsConfig = new AwsConfiguration();
     awsConfig.setAccessKeyId("AKIAIOSFODNN7EXAMPLE");
 
-    AwsCredentialsProvider provider = buildAwsCredentialsProvider(awsConfig);
+    AwsCredentialsProvider provider = AwsCredentialsUtil.buildCredentialsProvider(awsConfig);
 
     assertNotNull(provider);
-    assertTrue(provider instanceof DefaultCredentialsProvider);
+    assertInstanceOf(DefaultCredentialsProvider.class, provider);
   }
 
   @Test
@@ -79,10 +81,10 @@ class AwsCredentialsProviderTest {
     AwsConfiguration awsConfig = new AwsConfiguration();
     awsConfig.setSecretAccessKey("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
 
-    AwsCredentialsProvider provider = buildAwsCredentialsProvider(awsConfig);
+    AwsCredentialsProvider provider = AwsCredentialsUtil.buildCredentialsProvider(awsConfig);
 
     assertNotNull(provider);
-    assertTrue(provider instanceof DefaultCredentialsProvider);
+    assertInstanceOf(DefaultCredentialsProvider.class, provider);
   }
 
   @Test
@@ -91,20 +93,20 @@ class AwsCredentialsProviderTest {
     awsConfig.setAccessKeyId("");
     awsConfig.setSecretAccessKey("");
 
-    AwsCredentialsProvider provider = buildAwsCredentialsProvider(awsConfig);
+    AwsCredentialsProvider provider = AwsCredentialsUtil.buildCredentialsProvider(awsConfig);
 
     assertNotNull(provider);
-    assertTrue(provider instanceof DefaultCredentialsProvider);
+    assertInstanceOf(DefaultCredentialsProvider.class, provider);
   }
 
   @Test
   void testNullAwsConfig() {
     AwsConfiguration awsConfig = new AwsConfiguration();
 
-    AwsCredentialsProvider provider = buildAwsCredentialsProvider(awsConfig);
+    AwsCredentialsProvider provider = AwsCredentialsUtil.buildCredentialsProvider(awsConfig);
 
     assertNotNull(provider);
-    assertTrue(provider instanceof DefaultCredentialsProvider);
+    assertInstanceOf(DefaultCredentialsProvider.class, provider);
   }
 
   @Test
@@ -112,26 +114,24 @@ class AwsCredentialsProviderTest {
     AwsConfiguration awsConfig = new AwsConfiguration();
     awsConfig.setSessionToken("FwoGZXIvYXdzEBYaDKTsessiontoken123");
 
-    AwsCredentialsProvider provider = buildAwsCredentialsProvider(awsConfig);
+    AwsCredentialsProvider provider = AwsCredentialsUtil.buildCredentialsProvider(awsConfig);
 
     assertNotNull(provider);
-    assertTrue(provider instanceof DefaultCredentialsProvider);
+    assertInstanceOf(DefaultCredentialsProvider.class, provider);
   }
 
-  private AwsCredentialsProvider buildAwsCredentialsProvider(AwsConfiguration awsConfig) {
-    if (StringUtils.isNotEmpty(awsConfig.getAccessKeyId())
-        && StringUtils.isNotEmpty(awsConfig.getSecretAccessKey())) {
-      if (StringUtils.isNotEmpty(awsConfig.getSessionToken())) {
-        return StaticCredentialsProvider.create(
-            AwsSessionCredentials.create(
-                awsConfig.getAccessKeyId(),
-                awsConfig.getSecretAccessKey(),
-                awsConfig.getSessionToken()));
-      } else {
-        return StaticCredentialsProvider.create(
-            AwsBasicCredentials.create(awsConfig.getAccessKeyId(), awsConfig.getSecretAccessKey()));
-      }
-    }
-    return DefaultCredentialsProvider.create();
+  @Test
+  void testAwsConfigurationWithServiceName() {
+    AwsConfiguration awsConfig = new AwsConfiguration();
+    awsConfig.setRegion("us-east-1");
+    awsConfig.setAccessKeyId("AKIAIOSFODNN7EXAMPLE");
+    awsConfig.setSecretAccessKey("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+    awsConfig.setServiceName("aoss");
+
+    AwsCredentialsProvider provider = AwsCredentialsUtil.buildCredentialsProvider(awsConfig);
+
+    assertNotNull(provider);
+    assertInstanceOf(StaticCredentialsProvider.class, provider);
+    assertEquals("aoss", awsConfig.getServiceName());
   }
 }

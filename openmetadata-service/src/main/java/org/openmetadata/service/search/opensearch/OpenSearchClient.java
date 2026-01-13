@@ -3,6 +3,8 @@ package org.openmetadata.service.search.opensearch;
 import static org.openmetadata.service.search.SearchUtils.buildHttpHosts;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
+import static org.openmetadata.service.util.AwsCredentialsUtil.buildCredentialsProvider;
+import static org.openmetadata.service.util.AwsCredentialsUtil.isAwsConfigured;
 
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
@@ -68,11 +70,7 @@ import os.org.opensearch.client.opensearch.core.BulkResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
 import os.org.opensearch.client.transport.rest_client.RestClientTransport;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 
 @Slf4j
@@ -623,7 +621,7 @@ public class OpenSearchClient implements SearchClient {
 
         AwsConfiguration awsConfig = esConfig.getAws();
         // Enable IAM auth if AWS region is configured (region is required for SigV4 signing)
-        boolean useIamAuth = awsConfig != null && StringUtils.isNotEmpty(awsConfig.getRegion());
+        boolean useIamAuth = isAwsConfigured(awsConfig);
 
         restClientBuilder.setHttpClientConfigCallback(
             httpAsyncClientBuilder -> {
@@ -635,7 +633,7 @@ public class OpenSearchClient implements SearchClient {
               }
 
               if (useIamAuth) {
-                AwsCredentialsProvider credentialsProvider = buildAwsCredentialsProvider(awsConfig);
+                AwsCredentialsProvider credentialsProvider = buildCredentialsProvider(awsConfig);
                 Region region = Region.of(awsConfig.getRegion());
                 String serviceName =
                     StringUtils.isNotEmpty(awsConfig.getServiceName())
@@ -693,23 +691,6 @@ public class OpenSearchClient implements SearchClient {
       LOG.error("Failed to create low level rest client as esConfig is null");
       return null;
     }
-  }
-
-  private AwsCredentialsProvider buildAwsCredentialsProvider(AwsConfiguration awsConfig) {
-    if (StringUtils.isNotEmpty(awsConfig.getAccessKeyId())
-        && StringUtils.isNotEmpty(awsConfig.getSecretAccessKey())) {
-      if (StringUtils.isNotEmpty(awsConfig.getSessionToken())) {
-        return StaticCredentialsProvider.create(
-            AwsSessionCredentials.create(
-                awsConfig.getAccessKeyId(),
-                awsConfig.getSecretAccessKey(),
-                awsConfig.getSessionToken()));
-      } else {
-        return StaticCredentialsProvider.create(
-            AwsBasicCredentials.create(awsConfig.getAccessKeyId(), awsConfig.getSecretAccessKey()));
-      }
-    }
-    return DefaultCredentialsProvider.create();
   }
 
   @Override
