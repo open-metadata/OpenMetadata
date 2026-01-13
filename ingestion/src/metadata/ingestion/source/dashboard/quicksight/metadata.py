@@ -291,6 +291,7 @@ class QuicksightSource(DashboardServiceSource):
                     if db_service_entity
                     else Dialect.ANSI
                 ),
+                parser_type=self.get_query_parser_type(),
             )
             query_hash = lineage_parser.query_hash
             lineage_details = LineageDetails(
