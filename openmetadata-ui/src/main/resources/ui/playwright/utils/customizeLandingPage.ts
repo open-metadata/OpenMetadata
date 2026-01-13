@@ -188,26 +188,32 @@ export const setUserDefaultPersona = async (
 ) => {
   await visitOwnProfilePage(page);
 
-  await page.locator('[data-testid="default-edit-user-persona"]').click();
+  const currentPersonaCard = page.locator('[data-testid="persona-details-card"]');
+  const currentPersonaText = await currentPersonaCard.textContent();
 
-  await expect(
-    page.locator('[data-testid="default-persona-select-list"]')
-  ).toBeVisible();
+  if (!currentPersonaText?.includes(personaName)) {
+    await page.locator('[data-testid="default-edit-user-persona"]').click();
 
-  const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
+    await expect(
+      page.locator('[data-testid="default-persona-select-list"]')
+    ).toBeVisible();
 
-  // Click on the persona option by text within the dropdown
-  await page.click(`.ant-select-dropdown:visible [title="${personaName}"]`);
+    await page.waitForSelector('.ant-select-dropdown:visible', {
+      state: 'visible',
+    });
 
-  await page
-    .locator('[data-testid="user-profile-default-persona-edit-save"]')
-    .click();
+    const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
 
-  await setDefaultPersona;
+    await page.locator(`.ant-select-dropdown:visible [title="${personaName}"]`).click({force: true});
 
-  await expect(
-    page.locator('[data-testid="persona-details-card"]')
-  ).toContainText(personaName);
+    await page
+      .locator('[data-testid="user-profile-default-persona-edit-save"]')
+      .click();
+
+    await setDefaultPersona;
+
+    await expect(currentPersonaCard).toContainText(personaName);
+  }
 };
 
 export const openAddCustomizeWidgetModal = async (page: Page) => {

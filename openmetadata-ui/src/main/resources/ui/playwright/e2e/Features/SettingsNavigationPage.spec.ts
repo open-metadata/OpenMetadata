@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { test as base, expect, Page } from '@playwright/test';
+import { Browser, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
+import { expect, test } from '../../support/fixtures/userPages';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage, reloadAndWaitForNetworkIdle } from '../../utils/common';
 import { setUserDefaultPersona } from '../../utils/customizeLandingPage';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
@@ -24,16 +25,7 @@ import { settingClick } from '../../utils/sidebar';
 const adminUser = new UserClass();
 const persona = new PersonaClass();
 
-const test = base.extend<{ page: Page }>({
-  page: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-    await use(page);
-    await page.close();
-  },
-});
-
-base.beforeAll('Setup pre-requests', async ({ browser }) => {
+test.beforeAll('Setup pre-requests', async ({ browser }: { browser: Browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
@@ -41,7 +33,7 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-base.afterAll('Cleanup', async ({ browser }) => {
+test.afterAll('Cleanup', async ({ browser }: { browser: Browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await persona.delete(apiContext);
   await afterAction();
@@ -55,81 +47,84 @@ const navigateToPersonaNavigation = async (page: Page) => {
 
   await navigateToPersonaWithPagination(page, persona.data.name, true);
 
+  const getDocStore = page.waitForResponse((response: { url: () => string; request: () => { method: () => string } }) =>
+    response.url().includes('/api/v1/docStore/name/') && response.request().method() === 'GET'
+  );
   await page.getByTestId('navigation').click();
+  await getDocStore;
   await page.waitForLoadState('networkidle');
+
+  const escapedPersonaName = persona.data.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '%25');
+  await expect(page).toHaveURL(new RegExp(escapedPersonaName));
 };
 
-test.describe('Settings Navigation Page Tests', () => {
-  test('should update navigation sidebar', async ({ page }) => {
-    // Create and set default persona
+test.describe.serial('Settings Navigation Page Tests', () => {
+  test('should update navigation sidebar', async ({ browser }: { browser: Browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await adminUser.login(page);
+
     await redirectToHomePage(page);
     await setUserDefaultPersona(page, persona.responseData.displayName);
 
-    // Go to navigation in persona
     await navigateToPersonaNavigation(page);
 
-    // Verify page loads with expected elements
     await expect(page.getByRole('tree')).toBeVisible();
     await expect(page.getByTestId('save-button')).toBeVisible();
     await expect(page.getByTestId('reset-button')).toBeVisible();
 
-    // Save button should be disabled initially
     await expect(page.getByTestId('save-button')).toBeEnabled();
 
-    // Make changes to enable save button
     const exploreSwitch = page
       .locator('.ant-tree-title:has-text("Explore")')
       .locator('.ant-switch');
 
     await exploreSwitch.click();
 
-    // Check save is enabled and click save
     await expect(page.getByTestId('save-button')).toBeEnabled();
 
     const saveResponse = page.waitForResponse('api/v1/docStore');
     await page.getByTestId('save-button').click();
     await saveResponse;
 
-    // Check the navigation bar if the changes reflect
     await redirectToHomePage(page);
 
-    // Verify the navigation change is reflected in the sidebar
     await expect(page.getByTestId('app-bar-item-explore')).not.toBeVisible();
 
-    // Clean up: Restore original state
     await navigateToPersonaNavigation(page);
     await exploreSwitch.click();
 
     const restoreResponse = page.waitForResponse('api/v1/docStore/*');
     await page.getByTestId('save-button').click();
     await restoreResponse;
+
+    await context.close();
   });
 
   test('should show navigation blocker when leaving with unsaved changes', async ({
-    page,
-  }) => {
-    // Create persona and navigate to navigation page
+    browser,
+  }: { browser: Browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await adminUser.login(page);
+
     await redirectToHomePage(page);
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await navigateToPersonaNavigation(page);
 
-    // Make changes to trigger unsaved state
     const navigateSwitch = page
       .locator('.ant-tree-title:has-text("Explore")')
       .locator('.ant-switch');
 
     await navigateSwitch.click();
 
-    // Verify save button is enabled
     await expect(page.getByTestId('save-button')).toBeEnabled();
 
-    // Try to navigate away - should show navigation blocker
     await page
       .getByTestId('left-sidebar')
       .getByTestId('app-bar-item-settings')
       .click();
 
-    // Verify navigation blocker modal appears
     await expect(page.getByTestId('unsaved-changes-modal-title')).toContainText(
       'Unsaved changes'
     );
@@ -137,54 +132,53 @@ test.describe('Settings Navigation Page Tests', () => {
       page.getByTestId('unsaved-changes-modal-description')
     ).toContainText('Do you want to save or discard changes?');
 
-    // Verify modal buttons
     await expect(page.getByTestId('unsaved-changes-modal-save')).toBeVisible();
     await expect(
       page.getByTestId('unsaved-changes-modal-discard')
     ).toBeVisible();
 
-    // Test discard changes
     await page.getByTestId('unsaved-changes-modal-discard').click();
     await page.waitForLoadState('networkidle');
 
-    // Should navigate away and changes should be discarded
     await expect(page).toHaveURL(/.*settings.*/);
+
+    await context.close();
   });
 
   test('should save changes and navigate when "Save changes" is clicked in blocker', async ({
-    page,
-  }) => {
-    // Create persona and navigate to navigation page
+    browser,
+  }: { browser: Browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await adminUser.login(page);
+
     await redirectToHomePage(page);
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await navigateToPersonaNavigation(page);
 
-    //   Make changes
     const navigateSwitch = page
       .locator('.ant-tree-title:has-text("Insights")')
       .locator('.ant-switch');
 
     await navigateSwitch.click();
 
-    // Try to navigate away
     await page
       .getByTestId('left-sidebar')
       .getByTestId('app-bar-item-settings')
       .click();
 
-    // Click "Save changes" to save and navigate
-    const saveResponse = page.waitForResponse('api/v1/docStore');
+    const saveResponse = page.waitForResponse((response: { url: () => string; request: () => { method: () => string } }) =>
+      response.url().includes('api/v1/docStore') && response.request().method() === 'PATCH'
+    );
+    await page.getByTestId('unsaved-changes-modal-save').locator('.ant-btn-loading').waitFor({ state: 'detached' });;
     await page.getByTestId('unsaved-changes-modal-save').click();
     await saveResponse;
     await page.waitForLoadState('networkidle');
 
-    // Should navigate to settings page
     await expect(page).toHaveURL(/.*settings.*/);
 
-    //   Verify changes were saved by checking navigation bar
     await redirectToHomePage(page);
 
-    // Check if Insights navigation item visibility changed
     const insightsVisible = await page
       .getByTestId('left-sidebar')
       .getByTestId('app-bar-item-insights')
@@ -192,24 +186,29 @@ test.describe('Settings Navigation Page Tests', () => {
 
     expect(insightsVisible).toBe(false);
 
-    // Clean up: Restore original state
     await navigateToPersonaNavigation(page);
     await navigateSwitch.click();
 
-    const restoreResponse = page.waitForResponse('api/v1/docStore/*');
+    const restoreResponse = page.waitForResponse((response: { url: () => string; request: () => { method: () => string } }) =>
+      response.url().includes('api/v1/docStore') && response.request().method() === 'PATCH'
+    );
     await page.getByTestId('save-button').click();
     await restoreResponse;
+
+    await context.close();
   });
 
   test('should handle reset functionality and prevent navigation blocker after save', async ({
-    page,
-  }) => {
-    //  Create persona and navigate to navigation page
+    browser,
+  }: { browser: Browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await adminUser.login(page);
+
     await redirectToHomePage(page);
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await navigateToPersonaNavigation(page);
 
-    //   Make changes
     const domainSwitch = page
       .locator('.ant-tree-title:has-text("Domains")')
       .first()
@@ -217,15 +216,12 @@ test.describe('Settings Navigation Page Tests', () => {
 
     await domainSwitch.click();
 
-    // Verify save button is enabled
     await expect(page.getByTestId('save-button')).toBeEnabled();
 
     expect(await domainSwitch.isChecked()).toBeFalsy();
 
-    // Test reset functionality
     await page.getByTestId('reset-button').click();
 
-    // Verify navigation blocker modal appears
     await expect(page.getByTestId('unsaved-changes-modal-title')).toContainText(
       'Reset Default Layout'
     );
@@ -233,24 +229,29 @@ test.describe('Settings Navigation Page Tests', () => {
       page.getByTestId('unsaved-changes-modal-description')
     ).toContainText('Are you sure you want to apply the "Default Layout"?');
 
-    // Verify modal buttons
     await expect(page.getByTestId('unsaved-changes-modal-save')).toBeVisible();
     await expect(
       page.getByTestId('unsaved-changes-modal-discard')
     ).toBeVisible();
 
-    // Test discard changes
+    await page.getByTestId('unsaved-changes-modal-save').locator('.ant-btn-loading').waitFor({ state: 'detached' });;
+
     await page.getByTestId('unsaved-changes-modal-save').click();
     await page.waitForLoadState('networkidle');
 
-    // Verify reset worked - save button disabled and state reverted
     expect(await domainSwitch.isChecked()).toBeTruthy();
-    await expect(page.getByTestId('save-button')).toBeEnabled();
+    await expect(page.getByTestId('save-button')).toBeDisabled();
+
+    await context.close();
   });
 
   test('should support drag and drop reordering of navigation items', async ({
-    page,
-  }) => {
+    browser,
+  }: { browser: Browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await adminUser.login(page);
+
     await redirectToHomePage(page);
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await navigateToPersonaNavigation(page);
@@ -279,7 +280,6 @@ test.describe('Settings Navigation Page Tests', () => {
       );
       await page.mouse.up();
 
-      // Adding wait so that drop action can complete
       await page.waitForTimeout(500);
 
       await expect(page.getByTestId('save-button')).toBeEnabled();
@@ -288,13 +288,20 @@ test.describe('Settings Navigation Page Tests', () => {
 
       expect(newFirstItemText).not.toBe(firstItemText);
     }
+
+    await context.close();
   });
 
   test('should handle multiple items being hidden at once', async ({
-    page,
-  }) => {
+    browser,
+  }: { browser: Browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await adminUser.login(page);
+
     await redirectToHomePage(page);
     await setUserDefaultPersona(page, persona.responseData.displayName);
+
     await navigateToPersonaNavigation(page);
 
     const exploreSwitchLocator = page
@@ -307,26 +314,60 @@ test.describe('Settings Navigation Page Tests', () => {
     const exploreSwitch = exploreSwitchLocator.first();
     const insightsSwitch = insightsSwitchLocator.first();
 
+    const exploreInitialState = await exploreSwitch.isChecked();
+    const insightsInitialState = await insightsSwitch.isChecked();
+
     await exploreSwitch.click();
+    await expect(exploreSwitch).toBeChecked({ checked: !exploreInitialState });
+
     await insightsSwitch.click();
+    await expect(insightsSwitch).toBeChecked({ checked: !insightsInitialState });
 
     await expect(page.getByTestId('save-button')).toBeEnabled();
 
-    const saveResponse = page.waitForResponse('api/v1/docStore');
+    const saveResponse = page.waitForResponse((response: { url: () => string; request: () => { method: () => string } }) =>
+      response.url().includes('api/v1/docStore') && response.request().method() === 'PATCH'
+    );
     await page.getByTestId('save-button').click();
     await saveResponse;
 
     await redirectToHomePage(page);
 
-    await expect(page.getByTestId('app-bar-item-explore')).not.toBeVisible();
-    await expect(page.getByTestId('app-bar-item-insights')).not.toBeVisible();
+    if (exploreInitialState) {
+      await expect(page.getByTestId('app-bar-item-explore')).not.toBeVisible();
+    } else {
+      await expect(page.getByTestId('app-bar-item-explore')).toBeVisible();
+    }
+
+    if (insightsInitialState) {
+      await expect(page.getByTestId('app-bar-item-insights')).not.toBeVisible();
+    } else {
+      await expect(page.getByTestId('app-bar-item-insights')).toBeVisible();
+    }
 
     await navigateToPersonaNavigation(page);
-    await exploreSwitch.click();
-    await insightsSwitch.click();
 
-    const restoreResponse = page.waitForResponse('api/v1/docStore/*');
+    const exploreSwitchAfterNav = page
+      .locator('.ant-tree-title:has-text("Explore")')
+      .locator('.ant-switch')
+      .first();
+    const insightsSwitchAfterNav = page
+      .locator('.ant-tree-title:has-text("Insights")')
+      .locator('.ant-switch')
+      .first();
+
+    await exploreSwitchAfterNav.click();
+    await expect(exploreSwitchAfterNav).toBeChecked({ checked: exploreInitialState });
+
+    await insightsSwitchAfterNav.click();
+    await expect(insightsSwitchAfterNav).toBeChecked({ checked: insightsInitialState });
+
+    const restoreResponse = page.waitForResponse((response: { url: () => string; request: () => { method: () => string } }) =>
+      response.url().includes('api/v1/docStore') && response.request().method() === 'PATCH'
+    );
     await page.getByTestId('save-button').click();
     await restoreResponse;
+
+    await context.close();
   });
 });
