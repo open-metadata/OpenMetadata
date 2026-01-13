@@ -114,7 +114,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Migrated from: org.openmetadata.service.resources.governance.WorkflowDefinitionResourceTest
  */
-@Execution(ExecutionMode.SAME_THREAD)
+@Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class WorkflowDefinitionResourceIT {
 
@@ -2505,12 +2505,12 @@ public class WorkflowDefinitionResourceIT {
 
     // Update glossary terms to trigger events
     String termToMatchPatchStr =
-        "[{\"op\":\"replace\",\"path\":\"/synonyms\",\"value\":[\"complete_synonym\"]}]";
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"This term has a description with the word workflow and is being updated.\"}]";
     JsonNode termToMatchPatch = MAPPER.readTree(termToMatchPatchStr);
     client.glossaryTerms().patch(termToMatchId, termToMatchPatch);
 
     String termNotToMatchPatchStr =
-        "[{\"op\":\"replace\",\"path\":\"/synonyms\",\"value\":[\"incomplete_synonym\"]}]";
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"This term is being updated but should not match.\"}]";
     JsonNode termNotToMatchPatch = MAPPER.readTree(termNotToMatchPatchStr);
     client.glossaryTerms().patch(termNotToMatchId, termNotToMatchPatch);
 
@@ -4678,6 +4678,7 @@ public class WorkflowDefinitionResourceIT {
     org.openmetadata.schema.entity.data.DataContract dataContract =
         client.dataContracts().create(createDataContract);
     LOG.debug("Created data contract: {} with initial description", dataContract.getName());
+    java.lang.Thread.sleep(2000);
 
     // Step 4: Create classification and tag with reviewers (USER1 as reviewer)
     CreateClassification createClassification =
@@ -4694,6 +4695,7 @@ public class WorkflowDefinitionResourceIT {
             .withReviewers(List.of(reviewerRef));
     Tag tag = client.tags().create(createTag);
     LOG.debug("Created tag: {} with initial description", tag.getName());
+    java.lang.Thread.sleep(2000);
 
     // Step 5: Create dataProduct with reviewers (dedicated reviewer)
     org.openmetadata.schema.api.domains.CreateDataProduct createDataProduct =
@@ -4706,6 +4708,7 @@ public class WorkflowDefinitionResourceIT {
     org.openmetadata.schema.entity.domains.DataProduct dataProduct =
         client.dataProducts().create(createDataProduct);
     LOG.debug("Created data product: {} with initial description", dataProduct.getName());
+    java.lang.Thread.sleep(2000);
 
     // Add asset using bulk API
     org.openmetadata.schema.type.api.BulkAssets bulkAssets =
@@ -4723,6 +4726,7 @@ public class WorkflowDefinitionResourceIT {
             .withReviewers(List.of(reviewerRef));
     Metric metric = client.metrics().create(createMetric);
     LOG.debug("Created metric: {} with initial description", metric.getName());
+    java.lang.Thread.sleep(2000);
 
     // Step 5.6: Create testCase with reviewers
     CreateTestDefinition createTestDef =
@@ -4747,6 +4751,7 @@ public class WorkflowDefinitionResourceIT {
 
     TestCase testCase = client.testCases().create(createTestCase);
     LOG.debug("Created test case: {} with initial description", testCase.getName());
+    java.lang.Thread.sleep(2000);
 
     // Step 6: Find and resolve approval tasks for each entity
     LOG.debug("Finding and resolving approval tasks");
@@ -4833,6 +4838,7 @@ public class WorkflowDefinitionResourceIT {
                 dataContract.getId(),
                 JsonUtils.readTree(
                     JsonUtils.getJsonPatch(dataContract, updatedContract).toString()));
+    java.lang.Thread.sleep(2000);
 
     // Update tag description
     Tag updatedTagObj = JsonUtils.deepCopy(tag, Tag.class);
@@ -4843,6 +4849,7 @@ public class WorkflowDefinitionResourceIT {
             .patch(
                 tag.getId(),
                 JsonUtils.readTree(JsonUtils.getJsonPatch(tag, updatedTagObj).toString()));
+    java.lang.Thread.sleep(2000);
 
     // Update dataProduct description
     org.openmetadata.schema.entity.domains.DataProduct updatedDataProduct =
@@ -4855,6 +4862,7 @@ public class WorkflowDefinitionResourceIT {
                 dataProduct.getId(),
                 JsonUtils.readTree(
                     JsonUtils.getJsonPatch(dataProduct, updatedDataProduct).toString()));
+    java.lang.Thread.sleep(2000);
 
     // Update metric description
     Metric updatedMetric = JsonUtils.deepCopy(metric, Metric.class);
@@ -4865,6 +4873,7 @@ public class WorkflowDefinitionResourceIT {
             .patch(
                 metric.getId(),
                 JsonUtils.readTree(JsonUtils.getJsonPatch(metric, updatedMetric).toString()));
+    java.lang.Thread.sleep(2000);
 
     // Update testCase description
     TestCase updatedTestCase = JsonUtils.deepCopy(testCase, TestCase.class);

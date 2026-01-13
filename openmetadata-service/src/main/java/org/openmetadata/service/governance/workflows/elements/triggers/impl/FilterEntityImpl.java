@@ -156,7 +156,7 @@ public class FilterEntityImpl implements JavaDelegate {
                         String fieldName = field.getName();
                         boolean isTriggerField =
                             Arrays.stream(WorkflowTriggerFields.values())
-                                .map(Enum::name)
+                                .map(WorkflowTriggerFields::value)
                                 .anyMatch(fieldName::equals);
                         boolean isNotExcluded =
                             excludedFilter == null || !excludedFilter.contains(fieldName);
