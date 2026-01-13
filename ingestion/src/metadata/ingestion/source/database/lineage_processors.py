@@ -25,6 +25,9 @@ from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
 from metadata.generated.schema.type.basic import SqlQuery, Timestamp
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -116,6 +119,7 @@ def _yield_procedure_lineage(
     procedure: StoredProcedure,
     procedure_graph_map: Dict[str, ProcedureAndProcedureGraph],
     enableTempTableLineage: bool,
+    parser_type: QueryParserType,
 ) -> Iterable[Either[AddLineageRequest]]:
     """Add procedure lineage from its query"""
     graph = None
@@ -147,6 +151,7 @@ def _yield_procedure_lineage(
             timeout_seconds=parsingTimeoutLimit,
             lineage_source=LineageSource.QueryLineage,
             graph=graph,
+            parser_type=parser_type,
         ):
             if either_lineage.left is None and either_lineage.right.edge.lineageDetails:
                 either_lineage.right.edge.lineageDetails.pipeline = EntityReference(
@@ -168,6 +173,7 @@ def procedure_lineage_processor(
     parsingTimeoutLimit: int,
     procedure_graph_map: Dict[str, ProcedureAndProcedureGraph],
     enableTempTableLineage: bool,
+    parser_type: QueryParserType,
 ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
     """
     Process the procedure and its queries to add lineage
@@ -185,6 +191,7 @@ def procedure_lineage_processor(
                 parsingTimeoutLimit=parsingTimeoutLimit,
                 procedure_graph_map=procedure_graph_map,
                 enableTempTableLineage=enableTempTableLineage,
+                parser_type=parser_type,
             ):
                 if lineage and lineage.right is not None:
                     queue.put(
@@ -290,6 +297,7 @@ def query_lineage_processor(
     crossDatabaseServiceNames: List[str],
     parsingTimeoutLimit: int,
     serviceName: str,
+    parser_type: QueryParserType,
 ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
     """
     Generate lineage for a list of table queries
@@ -311,6 +319,7 @@ def query_lineage_processor(
                 dialect=dialect,
                 timeout_seconds=parsingTimeoutLimit,
                 graph=graph,
+                parser_type=parser_type,
             )
 
             for lineage_request in lineages or []:
@@ -341,6 +350,7 @@ def view_lineage_processor(
     crossDatabaseServiceNames: List[str],
     parsingTimeoutLimit: int,
     overrideViewLineage: bool,
+    parser_type: QueryParserType,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     Generate lineage for a list of views
@@ -358,6 +368,7 @@ def view_lineage_processor(
                 service_names=service_names,
                 connection_type=connectionType,
                 timeout_seconds=parsingTimeoutLimit,
+                parser_type=parser_type,
             ):
                 if lineage.right is not None:
                     view_fqn = fqn.build(

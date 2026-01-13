@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { DataType, DashboardDataModel, TagSource } from '../generated/entity/data/dashboardDataModel';
+import {
+  DashboardDataModel,
+  DataType,
+  TagSource,
+} from '../generated/entity/data/dashboardDataModel';
 import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State } from '../generated/type/tagLabel';
 import { extractDataModelColumns } from './DashboardDataModelUtils';
