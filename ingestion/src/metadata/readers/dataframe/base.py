@@ -133,15 +133,22 @@ class DataFrameReader(ABC):
         """
         Returns only the first chunk of data. Used for schema inference
         without loading the entire file into memory.
+        Properly closes the generator to release file handles and connections.
         """
         try:
             wrapper = self._read(key=key, bucket_name=bucket_name, **kwargs)
             first_chunk = None
-            if wrapper.dataframes is not None:
+            dataframes_gen = wrapper.dataframes
+
+            if dataframes_gen is not None:
                 try:
-                    first_chunk = next(iter(wrapper.dataframes))
+                    first_chunk = next(dataframes_gen)
                 except StopIteration:
                     first_chunk = None
+                finally:
+                    if hasattr(dataframes_gen, "close"):
+                        dataframes_gen.close()
+
             return DatalakeColumnWrapper(
                 columns=wrapper.columns,
                 dataframes=iter([first_chunk]) if first_chunk is not None else None,
