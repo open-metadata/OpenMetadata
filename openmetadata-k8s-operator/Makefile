@@ -34,8 +34,8 @@ package:
 .PHONY: docker
 docker: package
 	@echo "Building Docker image: $(IMAGE_NAME):$(VERSION)"
-	docker build -t $(IMAGE_NAME):$(VERSION) .
-	docker tag $(IMAGE_NAME):$(VERSION) $(IMAGE_NAME):latest
+	docker build -t $(IMAGE_NAME):$(VERSION)-fixed3 .
+	docker tag $(IMAGE_NAME):$(VERSION)-fixed3 $(IMAGE_NAME):latest
 
 .PHONY: push
 push:

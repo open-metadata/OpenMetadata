@@ -2,6 +2,45 @@
 
 This module provides Kubernetes-native pipeline execution for OpenMetadata ingestion pipelines. It implements the `PipelineServiceClient` interface to run ingestion workflows as Kubernetes Jobs instead of using external orchestrators like Airflow.
 
+## Architecture Overview
+
+The K8s Pipeline Client provides a clean, unified architecture for running OpenMetadata pipelines on Kubernetes with two execution modes:
+
+1. **Standard Mode**: Uses native Kubernetes Jobs and CronJobs with preStop lifecycle hooks
+2. **Operator Mode**: Uses custom OMJob and CronOMJob resources with guaranteed exit handler execution
+
+### Core Components
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   K8sPipelineClient                        │
+├─────────────────────────────────────────────────────────────┤
+│ • Unified client interface for both modes                  │
+│ • ConfigMap/Secret management for configuration            │
+│ • Pipeline deployment and execution                        │
+│ • Status tracking and monitoring                           │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                ┌─────────────┴─────────────┐
+                ▼                           ▼
+┌───────────────────────────┐   ┌───────────────────────────┐
+│    Standard Resources     │   │    Custom Resources       │
+├───────────────────────────┤   ├───────────────────────────┤
+│ • Job                     │   │ • OMJob                   │
+│ • CronJob                 │   │ • CronOMJob               │
+│ • preStop hooks           │   │ • Two-stage execution     │
+└───────────────────────────┘   └───────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      K8sJobUtils                           │
+├─────────────────────────────────────────────────────────────┤
+│ • Centralized environment variable serialization           │
+│ • Pod spec building utilities                              │
+│ • Handles all K8s env var types (valueFrom, etc.)         │
+└─────────────────────────────────────────────────────────────┘
+```
+
 ## Why Kubernetes-Native Architecture?
 
 ### Design Philosophy: Jobs > Pods
@@ -28,15 +67,6 @@ Managing Pods directly would require implementing:
 - Error handling for Pod evictions and node failures
 
 Jobs encapsulate all this complexity in Kubernetes-native primitives.
-
-### Architecture Choice: PreStop Lifecycle Hooks
-
-The architecture uses Kubernetes `preStop` lifecycle hooks for automatic failure diagnostics rather than separate jobs because:
-
-1. **Immediate Execution**: Diagnostics run immediately when containers terminate (success or failure)
-2. **No Additional Resources**: Runs in the same container without creating separate pods
-3. **Reliable Triggering**: Kubernetes guarantees preStop hook execution before container termination
-4. **Automatic Context**: Has access to all the same environment variables and configuration as the main process
 
 ### Why ConfigMaps for Pipeline Configuration?
 
@@ -124,17 +154,6 @@ The main client class that implements the OpenMetadata `PipelineServiceClient` i
 4. **Kill**: `killIngestion()` → Graceful termination with exit handler
 5. **Cleanup**: `deletePipeline()` → Removes all resources
 
-#### Exit Handler Integration
-
-All containers include a `preStop` lifecycle hook that automatically runs the exit handler when containers terminate for any reason:
-
-This ensures proper status reporting for:
-- Manual `killIngestion()` calls
-- Pod evictions (resource pressure, node draining)  
-- Job timeouts or failures
-- Cluster scaling events
-- Node failures or SIGTERM/SIGKILL signals
-
 ### 2. K8sPipelineClientConfig
 
 Centralized configuration management with validation and type-safe parsing.
@@ -168,29 +187,6 @@ resources:
     cpu: "500m"
     memory: "1Gi"
 ```
-
-### 3. PreStop Lifecycle Hooks
-
-Automatic failure diagnostics and status reporting using Kubernetes `preStop` lifecycle hooks.
-
-#### How PreStop Hooks Work
-
-All containers include a `preStop` lifecycle hook that automatically executes when containers terminate:
-
-```yaml
-lifecycle:
-  preStop:
-    exec:
-      command: ["python", "exit_handler.py"]
-```
-
-This ensures **automatic execution** for all termination scenarios:
-- Normal completion (success or failure)
-- Manual `killIngestion()` calls  
-- Pod evictions (resource pressure, node draining)
-- Job timeouts (`activeDeadlineSeconds`)
-- Cluster scaling events
-- Node failures (SIGTERM/SIGKILL)
 
 #### Exit Handler Process
 
@@ -562,236 +558,61 @@ The ConfigMap-based configuration approach provides:
 
 This results in a **simpler, more maintainable architecture** that requires less custom code and leverages battle-tested Kubernetes features.
 
-## PreStop Hook Validation and Debugging
+## Simplified Implementation Details
 
-The preStop lifecycle hooks provide automatic failure diagnostics for all pipeline runs. This section explains how to validate that the hooks are working correctly and troubleshoot issues.
+### Environment Variable Handling
 
-### How to Verify PreStop Hook Execution
+The K8s Pipeline Client uses a **unified approach** for handling environment variables across all resource types (Job, CronJob, OMJob, CronOMJob) through the `K8sJobUtils` utility class.
 
-#### 1. Check Pod Lifecycle Configuration
+#### Problem Solved
 
-Verify that pods have the preStop hook configured:
+Kubernetes requires environment variables with `valueFrom` fields (ConfigMapKeyRef, SecretKeyRef, etc.) to be properly serialized as nested Maps. Previously, duplicate serialization logic in OMJob and CronOMJob led to:
+- Code duplication and maintenance overhead
+- Potential serialization errors (`spec.containers[0].env[3].valueFrom: Invalid value`)
+- Inconsistent handling across resource types
 
-```bash
-# Check a specific pod's lifecycle configuration
-kubectl get pod <pod-name> -n <namespace> -o yaml | grep -A 10 -B 5 lifecycle
+#### Solution
 
-# Expected output should show:
-# lifecycle:
-#   preStop:
-#     exec:
-#       command:
-#       - python
-#       - exit_handler.py
+The `K8sJobUtils` class provides centralized serialization:
+
+```java
+// Converts V1EnvVar objects to Maps for K8s API
+public static List<Map<String, Object>> convertEnvVarsToMap(List<V1EnvVar> envVars)
+
+// Builds pod spec Maps from OMJobPodSpec
+public static Map<String, Object> buildPodSpecMap(OMJob.OMJobPodSpec podSpec)
 ```
 
-#### 2. Monitor Kubernetes Events
+This handles all environment variable types:
+- Direct values: `V1EnvVar.name("KEY").value("value")`
+- ConfigMap references: `valueFrom.configMapKeyRef`
+- Secret references: `valueFrom.secretKeyRef`
+- Field references: `valueFrom.fieldRef`
+- Resource field references: `valueFrom.resourceFieldRef`
 
-The most reliable way to check if preStop hooks execute is through Kubernetes events:
+### Resource Structure
 
-```bash
-# Check for preStop hook events (success or failure)
-kubectl get events -n <namespace> --sort-by='.lastTimestamp' | grep -i prestop
-
-# Look for these event types:
-# - Normal: No events (successful execution)
-# - Warning: "FailedPreStopHook" (hook failed to execute)
+#### OMJob Structure
+```java
+OMJob:
+  metadata:    // Standard K8s metadata
+  spec:
+    mainPodSpec:        // Main ingestion pod
+    exitHandlerSpec:    // Exit handler pod
+    ttlSecondsAfterFinished: // Cleanup time
 ```
 
-#### 3. Check Termination Timing
-
-PreStop hooks cause pods to spend more time in `Terminating` status:
-
-```bash
-# Watch pod termination timing
-kubectl describe pod <pod-name> -n <namespace> | grep -A 5 -B 5 "Terminated\|Finished"
-
-# Check termination grace period (should be 60 seconds)
-kubectl get pod <pod-name> -n <namespace> -o yaml | grep terminationGracePeriodSeconds
+#### CronOMJob Structure
+```java
+CronOMJob:
+  metadata:    // Standard K8s metadata
+  spec:
+    schedule:   // Cron expression
+    timeZone:   // Optional timezone
+    omJobSpec:  // OMJob template for runs
 ```
 
-#### 4. Validate Environment Variables
-
-Ensure pods have required environment variables for exit_handler.py:
-
-```bash
-# Check environment variables in running or failed pods
-kubectl get pod <pod-name> -n <namespace> -o yaml | grep -A 20 "env:"
-
-# Required variables:
-# - config: Pipeline configuration YAML (includes server connection details)
-# - jobName: Kubernetes job name (om-job-{pipeline}-{runId})
-# - namespace: Kubernetes namespace
-# - pipelineRunId: Unique run identifier
-```
-
-### Troubleshooting PreStop Hook Issues
-
-#### Common Problems and Solutions
-
-**1. FailedPreStopHook Events**
-
-```bash
-# Check for failed preStop hooks
-kubectl get events -n <namespace> | grep FailedPreStopHook
-
-# Common causes:
-# - exit_handler.py script missing or not executable
-# - Environment variables not set correctly
-# - Permission issues accessing OpenMetadata server
-# - Network connectivity problems
-```
-
-**2. Missing Environment Variables**
-
-If `exit_handler.py` fails with environment variable errors:
-
-```bash
-# Verify jobName format matches actual job name
-kubectl get jobs -n <namespace> | grep om-job-
-kubectl get pod <pod-name> -n <namespace> -o yaml | grep "jobName\|value:"
-
-# jobName should be: om-job-{pipeline-name}-{8-char-runId}
-# NOT the full UUID runId
-```
-
-**3. Hook Timeout Issues**
-
-PreStop hooks have a maximum execution time based on `terminationGracePeriodSeconds`:
-
-```bash
-# Check if hooks are timing out (default: 60 seconds)
-kubectl describe pod <pod-name> -n <namespace> | grep -i "grace\|timeout"
-
-# If needed, increase termination grace period in job template
-```
-
-**4. Permission Issues**
-
-Verify service account has required permissions:
-
-```bash
-# Check service account permissions
-kubectl auth can-i get pods --as=system:serviceaccount:<namespace>:<service-account>
-kubectl auth can-i list jobs --as=system:serviceaccount:<namespace>:<service-account>
-kubectl auth can-i get pods/log --as=system:serviceaccount:<namespace>:<service-account>
-```
-
-#### Debug PreStop Hook Execution
-
-**1. Test Exit Handler Manually**
-
-```bash
-# Create a test pod with same environment to test exit_handler.py
-kubectl run debug-exit-handler \
-  --image=<ingestion-image> \
-  --restart=Never \
-  -n <namespace> \
-  --env="config=<config-yaml>" \
-  --env="jobName=test-job" \
-  --env="namespace=<namespace>" \
-  --env="pipelineRunId=test-run" \
-  --command -- python exit_handler.py
-
-# Check logs
-kubectl logs debug-exit-handler -n <namespace>
-kubectl delete pod debug-exit-handler -n <namespace>
-```
-
-**2. Verify Exit Handler Script**
-
-```bash
-# Check if exit_handler.py exists in the container
-kubectl run debug-script-check \
-  --image=<ingestion-image> \
-  --restart=Never \
-  -n <namespace> \
-  --rm \
-  --command -- ls -la /ingestion/exit_handler.py
-
-# Verify script is executable
-kubectl run debug-script-exec \
-  --image=<ingestion-image> \
-  --restart=Never \
-  -n <namespace> \
-  --rm \
-  --command -- python -c "import sys; print(sys.executable); import exit_handler"
-```
-
-**3. Test PreStop Hook with Custom Pod**
-
-```yaml
-# test-prestop.yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: test-prestop
-  namespace: <namespace>
-spec:
-  containers:
-  - name: test
-    image: <ingestion-image>
-    command: ["sleep", "30"]
-    env:
-    - name: config
-      value: |
-        workflowConfig:
-          loggerLevel: "INFO"
-        ingestionPipelineFQN: "test.pipeline"
-    - name: jobName
-      value: "test-job"
-    - name: namespace
-      value: "<namespace>"
-    - name: pipelineRunId
-      value: "test-run"
-    lifecycle:
-      preStop:
-        exec:
-          command: ["sh", "-c", "echo 'PreStop starting'; python exit_handler.py; echo 'PreStop done'"]
-  restartPolicy: Never
-```
-
-```bash
-# Deploy test pod
-kubectl apply -f test-prestop.yaml
-
-# Kill pod to trigger preStop hook
-kubectl delete pod test-prestop -n <namespace> --grace-period=30
-
-# Check events for hook execution
-kubectl get events -n <namespace> --sort-by='.lastTimestamp' | tail -10
-```
-
-### Expected Behavior
-
-**Successful PreStop Hook Execution:**
-- No `FailedPreStopHook` events in `kubectl get events`
-- Pod spends ~5-10 seconds in `Terminating` status
-- Exit handler updates pipeline status in OpenMetadata
-- No error logs related to missing environment variables
-
-**Failed PreStop Hook Execution:**
-- `FailedPreStopHook` warning event appears
-- Pod may terminate immediately or after full grace period
-- Pipeline status may not be updated in OpenMetadata
-- Manual status checking required
-
-### Monitoring PreStop Hook Health
-
-Set up monitoring to track preStop hook execution:
-
-```bash
-# Create alert for failed preStop hooks
-kubectl get events --all-namespaces --watch | grep FailedPreStopHook
-
-# Monitor termination grace period usage
-kubectl get events --all-namespaces | grep -i "grace\|terminated" | head -20
-
-# Check for pods stuck in terminating state
-kubectl get pods --all-namespaces | grep Terminating
-```
-
-This ensures reliable pipeline status reporting and early detection of issues with the automatic failure diagnostics system.
+Both use `K8sJobUtils` for consistent serialization to Maps before sending to the Kubernetes API.
 
 ## OMJob Operator: Guaranteed Exit Handler Execution
 
@@ -1050,3 +871,52 @@ The OMJob operator is located in the `openmetadata-k8s-operator` module and impl
 - **Configuration**: Operator settings and resource defaults
 
 See `openmetadata-k8s-operator/README.md` for implementation details and development setup.
+
+## Testing
+
+The implementation includes comprehensive test coverage to ensure reliable serialization and execution:
+
+### Test Suite
+
+1. **K8sJobUtilsTest**: Tests centralized utilities
+   - Environment variable serialization (all types)
+   - Pod spec building
+   - Edge cases (null values, empty valueFrom)
+
+2. **OMJobSerializationTest**: Tests OMJob serialization
+   - ConfigMapKeyRef environment variables
+   - SecretKeyRef environment variables
+   - Mixed environment variable types
+   - Empty valueFrom handling
+
+3. **CronOMJobSerializationTest**: Tests CronOMJob serialization
+   - Schedule and timezone handling
+   - OMJobSpec template serialization
+   - Environment variable propagation
+
+4. **K8sPipelineClientTest**: Integration tests
+   - Pipeline deployment and execution
+   - Status monitoring
+   - Resource cleanup
+
+### Running Tests
+
+```bash
+# Run all K8s-related tests
+mvn test -Dtest="K8sJobUtilsTest,OMJobSerializationTest,CronOMJobSerializationTest,K8sPipelineClientTest" -pl openmetadata-service
+
+# Run with spotless formatting
+mvn spotless:apply test -pl openmetadata-service
+```
+
+## Summary
+
+The K8s Pipeline Client architecture has been **simplified and unified** through:
+
+1. **Centralized Utilities**: `K8sJobUtils` eliminates code duplication
+2. **Consistent Serialization**: All resources use the same env var handling
+3. **Comprehensive Testing**: Full test coverage for critical paths
+4. **Clear Separation**: Standard mode vs Operator mode with shared utilities
+5. **Maintainability**: Single source of truth for K8s resource building
+
+This results in a more **reliable, maintainable, and testable** implementation that properly handles all Kubernetes environment variable types and prevents serialization errors.

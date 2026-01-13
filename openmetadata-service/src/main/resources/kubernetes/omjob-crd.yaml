@@ -33,11 +33,7 @@ spec:
                 type: array
                 items:
                   type: object
-                  properties:
-                    name:
-                      type: string
-                    value:
-                      type: string
+                  x-kubernetes-preserve-unknown-fields: true
                 description: Environment variables for the container
               resources:
                 type: object

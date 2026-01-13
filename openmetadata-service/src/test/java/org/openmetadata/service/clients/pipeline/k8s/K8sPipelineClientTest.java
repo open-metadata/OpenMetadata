@@ -292,7 +292,7 @@ class K8sPipelineClientTest {
   }
 
   @Test
-  void testCronScheduleConversion() {
+  void testOMCronScheduleConversion() {
     K8sPipelineClient clientWithOMJob = createClientWithUseOMJobOperator(true);
 
     // Test daily schedule

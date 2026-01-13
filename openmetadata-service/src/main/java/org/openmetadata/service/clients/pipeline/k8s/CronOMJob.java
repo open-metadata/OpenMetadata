@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.clients.pipeline.k8s;
 
+import java.util.HashMap;
 import java.util.Map;
 import lombok.Builder;
 import lombok.Data;
@@ -61,7 +62,7 @@ public class CronOMJob {
   }
 
   private Map<String, Object> buildMetadataMap() {
-    var metadataMap = new java.util.HashMap<String, Object>();
+    Map<String, Object> metadataMap = new HashMap<>();
     metadataMap.put("name", metadata.getName());
     metadataMap.put("namespace", metadata.getNamespace());
     metadataMap.put("labels", metadata.getLabels() != null ? metadata.getLabels() : Map.of());
@@ -74,7 +75,7 @@ public class CronOMJob {
   }
 
   private Map<String, Object> buildSpecMap() {
-    var specMap = new java.util.HashMap<String, Object>();
+    Map<String, Object> specMap = new HashMap<>();
     specMap.put("schedule", spec.getSchedule());
     if (spec.getTimeZone() != null) {
       specMap.put("timeZone", spec.getTimeZone());
@@ -96,43 +97,11 @@ public class CronOMJob {
   }
 
   private Map<String, Object> buildOMJobSpecMap(OMJob.OMJobSpec omJobSpec) {
-    var omJobSpecMap = new java.util.HashMap<String, Object>();
-    omJobSpecMap.put("mainPodSpec", buildPodSpecMap(omJobSpec.getMainPodSpec()));
-    omJobSpecMap.put("exitHandlerSpec", buildPodSpecMap(omJobSpec.getExitHandlerSpec()));
+    Map<String, Object> omJobSpecMap = new HashMap<>();
+    omJobSpecMap.put("mainPodSpec", K8sJobUtils.buildPodSpecMap(omJobSpec.getMainPodSpec()));
+    omJobSpecMap.put(
+        "exitHandlerSpec", K8sJobUtils.buildPodSpecMap(omJobSpec.getExitHandlerSpec()));
     omJobSpecMap.put("ttlSecondsAfterFinished", omJobSpec.getTtlSecondsAfterFinished());
     return omJobSpecMap;
-  }
-
-  private Map<String, Object> buildPodSpecMap(OMJob.OMJobPodSpec podSpec) {
-    var podSpecMap = new java.util.HashMap<String, Object>();
-
-    podSpecMap.put("image", podSpec.getImage());
-    podSpecMap.put("imagePullPolicy", podSpec.getImagePullPolicy());
-    podSpecMap.put("command", podSpec.getCommand());
-    podSpecMap.put("env", podSpec.getEnv());
-
-    if (podSpec.getServiceAccountName() != null) {
-      podSpecMap.put("serviceAccountName", podSpec.getServiceAccountName());
-    }
-    if (podSpec.getResources() != null) {
-      podSpecMap.put("resources", podSpec.getResources());
-    }
-    if (podSpec.getImagePullSecrets() != null && !podSpec.getImagePullSecrets().isEmpty()) {
-      podSpecMap.put("imagePullSecrets", podSpec.getImagePullSecrets());
-    }
-    if (podSpec.getNodeSelector() != null && !podSpec.getNodeSelector().isEmpty()) {
-      podSpecMap.put("nodeSelector", podSpec.getNodeSelector());
-    }
-    if (podSpec.getSecurityContext() != null) {
-      podSpecMap.put("securityContext", podSpec.getSecurityContext());
-    }
-    if (podSpec.getLabels() != null && !podSpec.getLabels().isEmpty()) {
-      podSpecMap.put("labels", podSpec.getLabels());
-    }
-    if (podSpec.getAnnotations() != null && !podSpec.getAnnotations().isEmpty()) {
-      podSpecMap.put("annotations", podSpec.getAnnotations());
-    }
-
-    return podSpecMap;
   }
 }

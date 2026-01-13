@@ -17,6 +17,7 @@ import io.kubernetes.client.openapi.models.V1EnvVar;
 import io.kubernetes.client.openapi.models.V1LocalObjectReference;
 import io.kubernetes.client.openapi.models.V1PodSecurityContext;
 import io.kubernetes.client.openapi.models.V1ResourceRequirements;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.Builder;
@@ -93,70 +94,25 @@ public class OMJob {
    * Convert OMJob to a Map for Kubernetes API
    */
   public Map<String, Object> toMap() {
+    Map<String, Object> metadataMap = new HashMap<>();
+    metadataMap.put("name", metadata.getName());
+    metadataMap.put("namespace", metadata.getNamespace());
+    metadataMap.put("labels", metadata.getLabels() != null ? metadata.getLabels() : Map.of());
+    metadataMap.put(
+        "annotations", metadata.getAnnotations() != null ? metadata.getAnnotations() : Map.of());
+
     return Map.of(
-        "apiVersion",
-        apiVersion,
-        "kind",
-        kind,
-        "metadata",
-        Map.of(
-            "name",
-            metadata.getName(),
-            "namespace",
-            metadata.getNamespace(),
-            "labels",
-            metadata.getLabels() != null ? metadata.getLabels() : Map.of(),
-            "annotations",
-            metadata.getAnnotations() != null ? metadata.getAnnotations() : Map.of()),
-        "spec",
-        buildSpecMap());
+        "apiVersion", apiVersion,
+        "kind", kind,
+        "metadata", metadataMap,
+        "spec", buildSpecMap());
   }
 
   private Map<String, Object> buildSpecMap() {
-    var specMap = new java.util.HashMap<String, Object>();
-
-    // Main pod spec
-    specMap.put("mainPodSpec", buildPodSpecMap(spec.getMainPodSpec()));
-
-    // Exit handler spec
-    specMap.put("exitHandlerSpec", buildPodSpecMap(spec.getExitHandlerSpec()));
-
-    // TTL
+    Map<String, Object> specMap = new HashMap<>();
+    specMap.put("mainPodSpec", K8sJobUtils.buildPodSpecMap(spec.getMainPodSpec()));
+    specMap.put("exitHandlerSpec", K8sJobUtils.buildPodSpecMap(spec.getExitHandlerSpec()));
     specMap.put("ttlSecondsAfterFinished", spec.getTtlSecondsAfterFinished());
-
     return specMap;
-  }
-
-  private Map<String, Object> buildPodSpecMap(OMJobPodSpec podSpec) {
-    var podSpecMap = new java.util.HashMap<String, Object>();
-
-    podSpecMap.put("image", podSpec.getImage());
-    podSpecMap.put("imagePullPolicy", podSpec.getImagePullPolicy());
-    podSpecMap.put("command", podSpec.getCommand());
-    podSpecMap.put("env", podSpec.getEnv());
-
-    if (podSpec.getServiceAccountName() != null) {
-      podSpecMap.put("serviceAccountName", podSpec.getServiceAccountName());
-    }
-    if (podSpec.getResources() != null) {
-      podSpecMap.put("resources", podSpec.getResources());
-    }
-    if (podSpec.getImagePullSecrets() != null && !podSpec.getImagePullSecrets().isEmpty()) {
-      podSpecMap.put("imagePullSecrets", podSpec.getImagePullSecrets());
-    }
-    if (podSpec.getNodeSelector() != null && !podSpec.getNodeSelector().isEmpty()) {
-      podSpecMap.put("nodeSelector", podSpec.getNodeSelector());
-    }
-    if (podSpec.getSecurityContext() != null) {
-      podSpecMap.put("securityContext", podSpec.getSecurityContext());
-    }
-    if (podSpec.getLabels() != null && !podSpec.getLabels().isEmpty()) {
-      podSpecMap.put("labels", podSpec.getLabels());
-    }
-    if (podSpec.getAnnotations() != null && !podSpec.getAnnotations().isEmpty()) {
-      podSpecMap.put("annotations", podSpec.getAnnotations());
-    }
-
-    return podSpecMap;
   }
 }

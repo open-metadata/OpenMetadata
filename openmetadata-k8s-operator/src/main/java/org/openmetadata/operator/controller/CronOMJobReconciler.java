@@ -37,6 +37,7 @@ import org.openmetadata.operator.model.CronOMJobResource;
 import org.openmetadata.operator.model.CronOMJobSpec;
 import org.openmetadata.operator.model.CronOMJobStatus;
 import org.openmetadata.operator.model.OMJobResource;
+import org.openmetadata.operator.model.OMJobSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -160,7 +161,34 @@ public class CronOMJobReconciler
 
     OMJobResource omJob = new OMJobResource();
     omJob.setMetadata(metadata);
-    omJob.setSpec(cronOMJob.getSpec().getOmJobSpec());
+
+    // Get the spec and log env vars for debugging
+    OMJobSpec spec = cronOMJob.getSpec().getOmJobSpec();
+    if (spec != null && spec.getMainPodSpec() != null && spec.getMainPodSpec().getEnv() != null) {
+      LOG.info(
+          "Building OMJob from CronOMJob: {} env vars found",
+          spec.getMainPodSpec().getEnv().size());
+      spec.getMainPodSpec()
+          .getEnv()
+          .forEach(
+              env -> {
+                if ("config".equals(env.getName())) {
+                  LOG.info(
+                      "Config env var: value={}, valueFrom={}", env.getValue(), env.getValueFrom());
+                  if (env.getValueFrom() != null) {
+                    LOG.info("  ConfigMapKeyRef: {}", env.getValueFrom().getConfigMapKeyRef());
+                    if (env.getValueFrom().getConfigMapKeyRef() != null) {
+                      LOG.info(
+                          "    Name: {}, Key: {}",
+                          env.getValueFrom().getConfigMapKeyRef().getName(),
+                          env.getValueFrom().getConfigMapKeyRef().getKey());
+                    }
+                  }
+                }
+              });
+    }
+
+    omJob.setSpec(spec);
     return omJob;
   }
 

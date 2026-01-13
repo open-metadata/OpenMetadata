@@ -47,18 +47,13 @@ openmetadata:
             cpu: "100m"
             memory: "512Mi"
 
-        # Testing environment variables
-        extraEnvVars:
-          - "LOG_LEVEL:DEBUG"
-          - "PYTHONDONTWRITEBYTECODE:1"
-        
         # Enable OMJob operator for guaranteed exit handler execution
         useOMJobOperator: true
 
 # Local image configuration
 image:
   repository: openmetadata/server
-  tag: "20260108-19"
+  tag: "20260108-23"
   pullPolicy: IfNotPresent
 
 # Service configuration for local access
@@ -68,10 +63,10 @@ service:
 # OMJob Operator configuration
 omjobOperator:
   enabled: true
-  # Use locally built image
+  # Use locally built fixed image
   image:
     repository: docker.getcollate.io/openmetadata/omjob-operator
-    tag: "1.12.0-SNAPSHOT"
+    tag: "1.12.0-SNAPSHOT-fixed3"
     pullPolicy: IfNotPresent
   # Adjusted resources for Java application (was OOMKilled at 128Mi)
   resources:

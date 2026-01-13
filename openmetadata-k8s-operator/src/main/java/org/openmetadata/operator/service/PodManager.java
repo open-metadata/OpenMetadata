@@ -23,6 +23,7 @@ import java.util.Optional;
 import org.openmetadata.operator.model.OMJobResource;
 import org.openmetadata.operator.model.OMJobSpec;
 import org.openmetadata.operator.model.OMJobStatus;
+import org.openmetadata.operator.util.EnvVarUtils;
 import org.openmetadata.operator.util.LabelBuilder;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.slf4j.Logger;
@@ -247,18 +248,57 @@ public class PodManager {
                 .withImagePullSecrets(podSpec.getImagePullSecrets())
                 .withNodeSelector(podSpec.getNodeSelector())
                 .withSecurityContext(podSpec.getSecurityContext())
-                .withContainers(buildContainer(podSpec, envOverride))
+                .withContainers(buildContainer(omJob, podSpec, envOverride))
                 .build())
         .build();
   }
 
-  private Container buildContainer(OMJobSpec.OMJobPodSpec podSpec, List<EnvVar> envOverride) {
+  private Container buildContainer(
+      OMJobResource omJob, OMJobSpec.OMJobPodSpec podSpec, List<EnvVar> envOverride) {
+    List<EnvVar> envVars = envOverride != null ? envOverride : podSpec.getEnv();
+
+    // Log env vars before sanitization
+    if (envVars != null) {
+      LOG.debug("Building container with {} env vars", envVars.size());
+      envVars.forEach(
+          env -> {
+            if ("config".equals(env.getName())) {
+              LOG.info(
+                  "Config env var before sanitization: value={}, valueFrom={}",
+                  env.getValue(),
+                  env.getValueFrom());
+              if (env.getValueFrom() != null) {
+                LOG.info("  ConfigMapKeyRef: {}", env.getValueFrom().getConfigMapKeyRef());
+              }
+            }
+          });
+    }
+
+    // Sanitize environment variables to remove empty valueFrom fields
+    List<EnvVar> sanitizedEnvVars = EnvVarUtils.sanitizeEnvVars(envVars);
+
+    // Log env vars after sanitization
+    if (sanitizedEnvVars != null) {
+      sanitizedEnvVars.forEach(
+          env -> {
+            if ("config".equals(env.getName())) {
+              LOG.info(
+                  "Config env var after sanitization: value={}, valueFrom={}",
+                  env.getValue(),
+                  env.getValueFrom());
+              if (env.getValueFrom() != null) {
+                LOG.info("  ConfigMapKeyRef: {}", env.getValueFrom().getConfigMapKeyRef());
+              }
+            }
+          });
+    }
+
     return new ContainerBuilder()
         .withName("main")
         .withImage(podSpec.getImage())
         .withImagePullPolicy(podSpec.getImagePullPolicy())
         .withCommand(podSpec.getCommand())
-        .withEnv(envOverride != null ? envOverride : podSpec.getEnv())
+        .withEnv(sanitizedEnvVars)
         .withResources(podSpec.getResources())
         .withSecurityContext(
             new SecurityContextBuilder()
