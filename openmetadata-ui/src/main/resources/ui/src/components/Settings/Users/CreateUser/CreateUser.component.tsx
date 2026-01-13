@@ -85,9 +85,6 @@ const CreateUser = ({
   const [selectedTeams, setSelectedTeams] = useState<
     Array<EntityReference | undefined>
   >([]);
-  const [selectedPersonas, setSelectedPersonas] = useState<EntityReference[]>(
-    []
-  );
   const [personaOptions, setPersonaOptions] = useState<EntityReference[]>([]);
   const [isPasswordGenerating, setIsPasswordGenerating] = useState(false);
   const { activeDomainEntityRef } = useDomainStore();
@@ -130,6 +127,7 @@ const CreateUser = ({
   );
 
   const selectedRoles = Form.useWatch('roles', form);
+  const selectedPersonas = Form.useWatch('personas', form);
 
   const roleOptions = useMemo(() => {
     return map(roles, (role) => ({
@@ -170,7 +168,6 @@ const CreateUser = ({
     const isPasswordGenerated =
       passwordGenerator === CreatePasswordGenerator.AutomaticGenerate;
     const validTeam = compact(selectedTeams).map((team) => team.id);
-    const validPersonas = selectedPersonas.map((persona) => persona.id);
 
     const { email, displayName, tokenExpiry, confirmPassword, description } =
       values;
@@ -181,7 +178,7 @@ const CreateUser = ({
       displayName: trim(displayName),
       roles: selectedRoles,
       teams: validTeam.length ? validTeam : undefined,
-      personas: validPersonas.length ? validPersonas : undefined,
+      personas: selectedPersonas,
       email: email,
       isAdmin: isAdmin,
       domains: selectedDomain.map((domain) => domain.fullyQualifiedName ?? ''),
@@ -440,12 +437,6 @@ const CreateUser = ({
                   placeholder={t('label.please-select-entity', {
                     entity: t('label.persona-plural'),
                   })}
-                  onChange={(selectedIds) => {
-                    const selected = personaOptions.filter((persona) =>
-                      selectedIds.includes(persona.id)
-                    );
-                    setSelectedPersonas(selected);
-                  }}
                 />
               </Form.Item>
             </>
