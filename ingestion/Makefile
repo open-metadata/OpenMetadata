@@ -71,7 +71,7 @@ py_format_check:  ## Check if Python sources are correctly formatted
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
-	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml -a --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-unit.xml $(INGESTION_DIR)/tests/unit/test_version.py
+	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml -a --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-unit.xml $(INGESTION_DIR)/tests/unit
 
 # FIXME: This is a workaround to exclude the tests that require dependencies that are not straightforward to install
 # and might be omitted in unless the we are developing them. This only must be used for local development!
@@ -93,9 +93,9 @@ run_ometa_integration_tests:  ## Run Python integration tests
 .PHONY: run_python_tests
 run_python_tests:  ## Run all Python tests with coverage
 	coverage erase
-	# $(MAKE) static-checks
+	$(MAKE) static-checks
 	$(MAKE) unit_ingestion
-	# $(MAKE) run_ometa_integration_tests
+	$(MAKE) run_ometa_integration_tests
 	coverage report --rcfile $(INGESTION_DIR)/pyproject.toml || true
 
 .PHONY: sonar_ingestion
