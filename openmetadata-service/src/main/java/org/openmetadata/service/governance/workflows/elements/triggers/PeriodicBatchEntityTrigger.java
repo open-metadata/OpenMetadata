@@ -1,5 +1,6 @@
 package org.openmetadata.service.governance.workflows.elements.triggers;
 
+import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
@@ -135,11 +136,17 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     inputParameter.setSource(RELATED_ENTITY_VARIABLE);
     inputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
 
+    // Pass the entire entity list to the main workflow for batch sink operations
+    IOParameter entityListParameter = new IOParameter();
+    entityListParameter.setSource(COLLECTION_VARIABLE);
+    entityListParameter.setTarget(
+        getNamespacedVariableName(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE));
+
     IOParameter outputParameter = new IOParameter();
     outputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE));
     outputParameter.setTarget(EXCEPTION_VARIABLE);
 
-    workflowTrigger.setInParameters(List.of(inputParameter));
+    workflowTrigger.setInParameters(List.of(inputParameter, entityListParameter));
     workflowTrigger.setOutParameters(List.of(outputParameter));
     workflowTrigger.setLoopCharacteristics(multiInstance);
 

@@ -143,7 +143,7 @@
     "input": {
       "type": "array",
       "items": { "type": "string" },
-      "default": ["relatedEntity"],
+      "default": ["relatedEntity", "updatedBy"],
       "additionalItems": false,
       "minItems": 1
     },
@@ -151,6 +151,10 @@
       "type": "object",
       "properties": {
         "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        },
+        "updatedBy": {
           "type": "string",
           "default": "global"
         }

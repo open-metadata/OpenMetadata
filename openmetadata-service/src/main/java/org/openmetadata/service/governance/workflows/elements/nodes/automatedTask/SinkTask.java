@@ -13,9 +13,12 @@
 
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask;
 
+import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
 import java.util.HashMap;
+import java.util.Map;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
@@ -149,14 +152,23 @@ public class SinkTask implements NodeInterface {
                     taskConfig.getTimeoutSeconds() != null ? taskConfig.getTimeoutSeconds() : 300))
             .build();
 
+    // Build input namespace map, ensuring entityList is mapped to global namespace for batch mode
+    Map<String, String> inputNamespaceMap = new HashMap<>();
+    if (nodeDefinition.getInputNamespaceMap() != null) {
+      @SuppressWarnings("unchecked")
+      Map<String, String> converted =
+          JsonUtils.convertValue(nodeDefinition.getInputNamespaceMap(), Map.class);
+      if (converted != null) {
+        inputNamespaceMap.putAll(converted);
+      }
+    }
+    // Always include entityList mapping for batch sink support
+    inputNamespaceMap.putIfAbsent(ENTITY_LIST_VARIABLE, GLOBAL_NAMESPACE);
+
     FieldExtension inputNamespaceMapExpr =
         new FieldExtensionBuilder()
             .fieldName("inputNamespaceMapExpr")
-            .fieldValue(
-                JsonUtils.pojoToJson(
-                    nodeDefinition.getInputNamespaceMap() != null
-                        ? nodeDefinition.getInputNamespaceMap()
-                        : new HashMap<>()))
+            .fieldValue(JsonUtils.pojoToJson(inputNamespaceMap))
             .build();
 
     return new ServiceTaskBuilder()

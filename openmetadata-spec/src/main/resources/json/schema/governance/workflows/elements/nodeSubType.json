@@ -18,7 +18,6 @@
     "rollbackEntityTask",
     "dataCompletenessTask",
     "parallelGateway",
-    "sinkTask",
-    "gitSinkTask"
+    "sinkTask"
   ]
 }

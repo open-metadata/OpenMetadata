@@ -16,11 +16,15 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 
 import java.util.List;
 import org.flowable.bpmn.model.BpmnModel;
+import org.flowable.bpmn.model.FieldExtension;
 import org.flowable.bpmn.model.FlowElement;
 import org.flowable.bpmn.model.Process;
+import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.SubProcess;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
@@ -186,6 +190,163 @@ class SinkTaskTest {
         "boundaryTestSink",
         sinkTask.getRuntimeExceptionBoundaryEvent().getAttachedToRef().getId(),
         "Attached subprocess should have correct ID");
+  }
+
+  @Test
+  void testEntityListVariableInInputNamespaceMap() {
+    SinkTaskDefinition definition = createSinkTaskDefinition("batchSink", "git");
+    WorkflowConfiguration config = createWorkflowConfiguration(false);
+
+    SinkTask sinkTask = new SinkTask(definition, config);
+
+    BpmnModel model = new BpmnModel();
+    Process process = new Process();
+    process.setId("testProcess");
+    model.addProcess(process);
+
+    sinkTask.addToWorkflow(model, process);
+
+    SubProcess subProcess = findSubProcess(process, "batchSink");
+    assertNotNull(subProcess, "Subprocess should exist");
+
+    ServiceTask serviceTask = (ServiceTask) subProcess.getFlowElement("batchSink.executeSink");
+    assertNotNull(serviceTask, "Service task should exist");
+
+    // Find the inputNamespaceMapExpr field extension
+    FieldExtension namespaceMapExt =
+        serviceTask.getFieldExtensions().stream()
+            .filter(ext -> "inputNamespaceMapExpr".equals(ext.getFieldName()))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(namespaceMapExt, "inputNamespaceMapExpr field should exist");
+
+    String namespaceMapJson = namespaceMapExt.getStringValue();
+    assertNotNull(namespaceMapJson, "Namespace map should not be null");
+    assertTrue(
+        namespaceMapJson.contains(ENTITY_LIST_VARIABLE),
+        "Namespace map should contain entityList variable");
+    assertTrue(
+        namespaceMapJson.contains(GLOBAL_NAMESPACE),
+        "entityList should be mapped to global namespace");
+  }
+
+  @Test
+  void testBatchModeFieldExtension() {
+    SinkTaskDefinition definition = createSinkTaskDefinition("batchModeSink", "git");
+    WorkflowConfiguration config = createWorkflowConfiguration(false);
+
+    SinkTask sinkTask = new SinkTask(definition, config);
+
+    BpmnModel model = new BpmnModel();
+    Process process = new Process();
+    process.setId("testProcess");
+    model.addProcess(process);
+
+    sinkTask.addToWorkflow(model, process);
+
+    SubProcess subProcess = findSubProcess(process, "batchModeSink");
+    assertNotNull(subProcess, "Subprocess should exist");
+
+    ServiceTask serviceTask = (ServiceTask) subProcess.getFlowElement("batchModeSink.executeSink");
+    assertNotNull(serviceTask, "Service task should exist");
+
+    // Find the batchModeExpr field extension
+    FieldExtension batchModeExt =
+        serviceTask.getFieldExtensions().stream()
+            .filter(ext -> "batchModeExpr".equals(ext.getFieldName()))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(batchModeExt, "batchModeExpr field should exist");
+    assertEquals("true", batchModeExt.getStringValue(), "batchMode should be true");
+  }
+
+  @Test
+  void testBatchModeFalse() {
+    SinkTaskDefinition definition = createSinkTaskDefinition("singleModeSink", "webhook");
+    // Set batch mode to false
+    definition.getConfig().setBatchMode(false);
+    WorkflowConfiguration config = createWorkflowConfiguration(false);
+
+    SinkTask sinkTask = new SinkTask(definition, config);
+
+    BpmnModel model = new BpmnModel();
+    Process process = new Process();
+    process.setId("testProcess");
+    model.addProcess(process);
+
+    sinkTask.addToWorkflow(model, process);
+
+    SubProcess subProcess = findSubProcess(process, "singleModeSink");
+    assertNotNull(subProcess, "Subprocess should exist");
+
+    ServiceTask serviceTask = (ServiceTask) subProcess.getFlowElement("singleModeSink.executeSink");
+    assertNotNull(serviceTask, "Service task should exist");
+
+    FieldExtension batchModeExt =
+        serviceTask.getFieldExtensions().stream()
+            .filter(ext -> "batchModeExpr".equals(ext.getFieldName()))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(batchModeExt, "batchModeExpr field should exist");
+    assertEquals("false", batchModeExt.getStringValue(), "batchMode should be false");
+  }
+
+  @Test
+  void testEntityListDefaultsToGlobalNamespace() {
+    SinkTaskDefinition definition = new SinkTaskDefinition();
+    definition.setName("noNamespaceMapSink");
+
+    Config__6 taskConfig = new Config__6();
+    taskConfig.setSinkType(Config__6.SinkType.GIT);
+    taskConfig.setSyncMode(Config__6.SyncMode.OVERWRITE);
+    taskConfig.setOutputFormat(Config__6.OutputFormat.YAML);
+    taskConfig.setBatchMode(true);
+    taskConfig.setTimeoutSeconds(300);
+
+    SinkConfig sinkConfig = new SinkConfig();
+    sinkConfig.setAdditionalProperty("repositoryUrl", "https://github.com/org/repo.git");
+    taskConfig.setSinkConfig(sinkConfig);
+
+    definition.setConfig(taskConfig);
+    // Note: No inputNamespaceMap set
+
+    WorkflowConfiguration config = createWorkflowConfiguration(false);
+    SinkTask sinkTask = new SinkTask(definition, config);
+
+    BpmnModel model = new BpmnModel();
+    Process process = new Process();
+    process.setId("testProcess");
+    model.addProcess(process);
+
+    sinkTask.addToWorkflow(model, process);
+
+    SubProcess subProcess = findSubProcess(process, "noNamespaceMapSink");
+    ServiceTask serviceTask =
+        (ServiceTask) subProcess.getFlowElement("noNamespaceMapSink.executeSink");
+
+    FieldExtension namespaceMapExt =
+        serviceTask.getFieldExtensions().stream()
+            .filter(ext -> "inputNamespaceMapExpr".equals(ext.getFieldName()))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(
+        namespaceMapExt, "inputNamespaceMapExpr field should exist even without explicit map");
+    assertTrue(
+        namespaceMapExt.getStringValue().contains(ENTITY_LIST_VARIABLE),
+        "entityList should be auto-added to namespace map");
+  }
+
+  private SubProcess findSubProcess(Process process, String id) {
+    for (FlowElement element : process.getFlowElements()) {
+      if (id.equals(element.getId()) && element instanceof SubProcess) {
+        return (SubProcess) element;
+      }
+    }
+    return null;
   }
 
   private SinkTaskDefinition createSinkTaskDefinition(String name, String sinkType) {

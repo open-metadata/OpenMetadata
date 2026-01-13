@@ -2,15 +2,16 @@
   "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/sinkConfig/gitSinkConfig.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "GitSinkConfig",
-  "description": "Configuration for Git-based sinks. Works with any Git provider (GitHub, GitLab, Bitbucket).",
+  "description": "Configuration for Git-based sinks using REST/GraphQL APIs. Supports GitHub (GraphQL), GitLab (REST), and Bitbucket (REST).",
   "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.sinkConfig.GitSinkConfig",
   "type": "object",
   "definitions": {
     "gitCredentialsType": {
       "title": "Credentials Type",
-      "description": "Type of authentication for Git operations.",
+      "description": "Type of authentication for Git API operations.",
       "type": "string",
-      "enum": ["token", "ssh"]
+      "enum": ["token"],
+      "default": "token"
     },
     "conflictResolution": {
       "title": "Conflict Resolution",
@@ -23,9 +24,9 @@
   "properties": {
     "repositoryUrl": {
       "title": "Repository URL",
-      "description": "Git repository URL (HTTPS or SSH format).",
+      "description": "Git repository URL (HTTPS format). Example: https://github.com/org/repo.git",
       "type": "string",
-      "examples": ["https://github.com/org/repo.git", "git@github.com:org/repo.git"]
+      "examples": ["https://github.com/org/repo.git", "https://github.mycompany.com/org/repo.git"]
     },
     "branch": {
       "title": "Branch",
@@ -39,9 +40,14 @@
       "type": "string",
       "default": "metadata"
     },
+    "apiBaseUrl": {
+      "title": "API Base URL",
+      "description": "Custom API base URL for GitHub Enterprise. Leave empty for github.com. Example: https://github.mycompany.com/api",
+      "type": "string"
+    },
     "credentials": {
       "title": "Git Credentials",
-      "description": "Authentication credentials for Git operations.",
+      "description": "Authentication credentials for Git API operations.",
       "type": "object",
       "properties": {
         "type": {
@@ -49,24 +55,12 @@
         },
         "token": {
           "title": "Access Token",
-          "description": "Personal access token or app token for authentication.",
-          "type": "string",
-          "format": "password"
-        },
-        "privateKey": {
-          "title": "SSH Private Key",
-          "description": "SSH private key content for authentication.",
-          "type": "string",
-          "format": "password"
-        },
-        "passphrase": {
-          "title": "SSH Key Passphrase",
-          "description": "Passphrase for encrypted SSH private key.",
+          "description": "Personal access token or GitHub App token for authentication. Supports secret references (e.g., secret:/path/to/token).",
           "type": "string",
           "format": "password"
         }
       },
-      "required": ["type"],
+      "required": ["type", "token"],
       "additionalProperties": false
     },
     "commitConfig": {
@@ -115,17 +109,29 @@
     },
     "retryConfig": {
       "title": "Retry Configuration",
+      "description": "Configuration for retrying failed API calls.",
       "type": "object",
       "properties": {
         "maxRetries": {
+          "title": "Max Retries",
+          "description": "Maximum number of retry attempts for transient failures.",
           "type": "integer",
           "default": 3,
           "minimum": 0,
           "maximum": 10
         },
         "retryDelaySeconds": {
+          "title": "Initial Retry Delay",
+          "description": "Initial delay in seconds before first retry (doubles with each attempt).",
           "type": "integer",
           "default": 5,
+          "minimum": 1
+        },
+        "maxRetryDelaySeconds": {
+          "title": "Max Retry Delay",
+          "description": "Maximum delay in seconds between retries (caps exponential backoff).",
+          "type": "integer",
+          "default": 60,
           "minimum": 1
         }
       },
@@ -133,7 +139,7 @@
     },
     "timeout": {
       "title": "Timeout",
-      "description": "Timeout in seconds for Git operations.",
+      "description": "Timeout in seconds for API operations.",
       "type": "integer",
       "default": 300
     }
