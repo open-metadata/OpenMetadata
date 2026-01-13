@@ -110,14 +110,14 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   };
 
   const handleColumnClick = useCallback(
-      (column: Column, event: React.MouseEvent) => {
-        const target = event.target as HTMLElement;
-        const isExpandIcon = target.closest('.table-expand-icon') !== null;
+    (column: Column, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const isExpandIcon = target.closest('.table-expand-icon') !== null;
 
-        if (!isExpandIcon) {
-          openColumnDetailPanel(column);
-        }
-      },
+      if (!isExpandIcon) {
+        openColumnDetailPanel(column);
+      }
+    },
     [openColumnDetailPanel]
   );
 
@@ -140,7 +140,8 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         width: 300,
         className: 'cursor-pointer',
         onCell: (record: Column) => ({
-          onClick: (event: React.MouseEvent) => handleColumnClick(record, event),
+          onClick: (event: React.MouseEvent) =>
+            handleColumnClick(record, event),
           'data-testid': 'column-name-cell',
         }),
         render: (_, record: Column) => (
