@@ -91,13 +91,6 @@ test.describe('Data Products', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow(true);
-
-    const { afterAction } = await performAdminLogin(browser);
-    await afterAction();
-  });
-
   test.beforeEach('Visit home page', async ({ page }) => {
     await redirectToHomePage(page);
   });
