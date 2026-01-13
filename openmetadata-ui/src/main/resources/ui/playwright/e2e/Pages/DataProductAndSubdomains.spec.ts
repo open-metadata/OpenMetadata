@@ -24,6 +24,7 @@ import {
   toastNotification,
   uuid,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   checkAssetsCount,
   selectDataProduct,
@@ -146,7 +147,7 @@ test.describe('Data Product Comprehensive Tests', () => {
       await selectDataProduct(page, dataProduct.data);
 
       // Click add expert button
-      await page.getByTestId('Add').click();
+      await page.getByTestId('domain-expert-name').getByTestId('Add').click();
 
       // Wait for the popover to appear
       await page.waitForSelector('[data-testid="selectable-list"]', {
@@ -815,9 +816,27 @@ test.describe('Data Product Search and Filter', () => {
 
       // Select domain1 from global dropdown
       await page.getByTestId('domain-dropdown').click();
+      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+        state: 'visible',
+      });
+
+      const searchDomainRes = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('domain_search_index')
+      );
       await page
-        .getByTestId(`tag-${domain1.responseData.fullyQualifiedName}`)
-        .click();
+        .getByTestId('domain-selectable-tree')
+        .getByTestId('searchbar')
+        .fill(domain1.responseData.displayName);
+      await searchDomainRes;
+
+      const tagSelector = page.getByTestId(
+        `tag-${domain1.responseData.fullyQualifiedName}`
+      );
+      await tagSelector.waitFor({ state: 'visible' });
+      await tagSelector.click();
+      await waitForAllLoadersToDisappear(page);
       await page.waitForLoadState('networkidle');
 
       // Verify only dp1 is visible (from domain1)

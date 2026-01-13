@@ -94,13 +94,7 @@ test.describe('Data Products', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     test.slow(true);
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await user.delete(apiContext);
-    await classification.delete(apiContext);
-    await tag.delete(apiContext);
-    await glossary.delete(apiContext);
-    await glossaryTerm.delete(apiContext);
-    await domain.delete(apiContext);
+    const { afterAction } = await performAdminLogin(browser);
     await afterAction();
   });
 
