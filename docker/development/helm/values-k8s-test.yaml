@@ -35,7 +35,7 @@ openmetadata:
         serviceAccountName: "openmetadata-ingestion-test"
         
         # Local ingestion image
-        ingestionImage: "openmetadata/ingestion-base:20260109"
+        ingestionImage: "openmetadata/ingestion-base:1.12.0-SNAPSHOT"
         imagePullPolicy: "IfNotPresent"
         
         # Reduced resources for local testing
@@ -53,7 +53,7 @@ openmetadata:
 # Local image configuration
 image:
   repository: openmetadata/server
-  tag: "20260108-23"
+  tag: "1.12.0-SNAPSHOT"
   pullPolicy: IfNotPresent
 
 # Service configuration for local access
@@ -66,7 +66,7 @@ omjobOperator:
   # Use locally built fixed image
   image:
     repository: docker.getcollate.io/openmetadata/omjob-operator
-    tag: "1.12.0-SNAPSHOT-fixed3"
+    tag: "1.12.0-SNAPSHOT"
     pullPolicy: IfNotPresent
   # Adjusted resources for Java application (was OOMKilled at 128Mi)
   resources:

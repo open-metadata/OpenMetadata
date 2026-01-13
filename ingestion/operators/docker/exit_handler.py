@@ -105,34 +105,76 @@ def get_kubernetes_client() -> Optional[client.CoreV1Api]:
         return None
 
 
+LABEL_JOB_NAME = "job-name"
+LABEL_OMJOB_NAME = "omjob.pipelines.openmetadata.org/name"
+LABEL_POD_TYPE = "omjob.pipelines.openmetadata.org/pod-type"
+LABEL_APP_RUN_ID = "app.kubernetes.io/run-id"
+POD_TYPE_MAIN = "main"
+
+
 def find_main_pod(
-    k8s_client: client.CoreV1Api, job_name: str, namespace: str
+    k8s_client: client.CoreV1Api,
+    job_name: Optional[str],
+    namespace: str,
+    pipeline_run_id: Optional[str] = None,
 ) -> Optional[V1Pod]:
     """
     Find the main ingestion pod for the given Kubernetes job.
     This function is fault-tolerant and will not raise exceptions.
     """
     try:
-        if not job_name or not namespace:
+        if not namespace or (not job_name and not pipeline_run_id):
             logger.warning(
-                f"Invalid parameters: job_name={job_name}, namespace={namespace}"
+                "Invalid parameters: job_name=%s, pipeline_run_id=%s, namespace=%s",
+                job_name,
+                pipeline_run_id,
+                namespace,
             )
             return None
 
-        label_selector = f"job-name={job_name}"
-        pods = k8s_client.list_namespaced_pod(
-            namespace=namespace, label_selector=label_selector
-        )
+        label_selectors = []
 
-        # Find the first pod from the job
-        for pod in pods.items:
+        if job_name:
+            label_selectors.extend(
+                [
+                    f"{LABEL_JOB_NAME}={job_name}",
+                    f"{LABEL_OMJOB_NAME}={job_name},{LABEL_POD_TYPE}={POD_TYPE_MAIN}",
+                    f"{LABEL_OMJOB_NAME}={job_name}",
+                ]
+            )
+
+        if pipeline_run_id:
+            label_selectors.extend(
+                [
+                    f"{LABEL_APP_RUN_ID}={pipeline_run_id},{LABEL_POD_TYPE}={POD_TYPE_MAIN}",
+                    f"{LABEL_APP_RUN_ID}={pipeline_run_id}",
+                ]
+            )
+
+        for label_selector in label_selectors:
             try:
-                if pod.metadata and pod.metadata.name and job_name in pod.metadata.name:
-                    logger.info(f"Found main pod: {pod.metadata.name}")
-                    return pod
-            except Exception as pod_error:
-                logger.warning(f"Error checking pod metadata: {pod_error}")
+                pods = k8s_client.list_namespaced_pod(
+                    namespace=namespace, label_selector=label_selector
+                )
+            except Exception as list_error:
+                logger.warning(
+                    f"Failed to list pods with selector '{label_selector}': {list_error}"
+                )
                 continue
+
+            if not pods or not pods.items:
+                continue
+
+            for pod in pods.items:
+                try:
+                    if pod.metadata and pod.metadata.name:
+                        logger.info(
+                            f"Found main pod: {pod.metadata.name} (selector: {label_selector})"
+                        )
+                        return pod
+                except Exception as pod_error:
+                    logger.warning(f"Error checking pod metadata: {pod_error}")
+                    continue
 
         logger.warning(f"No main pod found for job {job_name}")
         return None
@@ -381,7 +423,9 @@ def get_or_create_pipeline_status(
     return pipeline_status
 
 
-def gather_failure_diagnostics(job_name: str, namespace: str) -> FailureDiagnostics:
+def gather_failure_diagnostics(
+    job_name: Optional[str], namespace: str, pipeline_run_id: Optional[str] = None
+) -> FailureDiagnostics:
     """
     Gather diagnostic information from failed Kubernetes job pods.
     This function is fault-tolerant and will never raise exceptions.
@@ -409,7 +453,7 @@ def gather_failure_diagnostics(job_name: str, namespace: str) -> FailureDiagnost
 
         # Try to find main pod - fail gracefully if not found
         try:
-            main_pod = find_main_pod(k8s_client, job_name, namespace)
+            main_pod = find_main_pod(k8s_client, job_name, namespace, pipeline_run_id)
         except Exception as e:
             logger.warning(f"Failed to find main pod for job {job_name}: {e}")
             return FailureDiagnostics()
@@ -554,7 +598,9 @@ def main():
         if raw_pipeline_status not in SUCCESS_STATES and job_name:
             try:
                 logger.info("Attempting to gather failure diagnostics")
-                diagnostics = gather_failure_diagnostics(job_name, namespace)
+                diagnostics = gather_failure_diagnostics(
+                    job_name, namespace, pipeline_run_id
+                )
                 update_pipeline_status_with_diagnostics(pipeline_status, diagnostics)
             except Exception as e:
                 # Log the error but continue - diagnostics should never prevent status updates

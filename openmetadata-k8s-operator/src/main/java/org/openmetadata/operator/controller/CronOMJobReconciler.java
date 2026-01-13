@@ -32,7 +32,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.openmetadata.operator.model.CronOMJobResource;
 import org.openmetadata.operator.model.CronOMJobSpec;
 import org.openmetadata.operator.model.CronOMJobStatus;
@@ -151,6 +155,11 @@ public class CronOMJobReconciler
       name = name.substring(0, 253);
     }
 
+    final String finalName = name; // Make final for use in lambda
+
+    // Generate unique run ID for this execution
+    String runId = UUID.randomUUID().toString();
+
     ObjectMeta metadata =
         new ObjectMetaBuilder()
             .withName(name)
@@ -159,14 +168,22 @@ public class CronOMJobReconciler
             .withAnnotations(cronOMJob.getMetadata().getAnnotations())
             .build();
 
+    // Add run ID to labels for tracking
+    if (metadata.getLabels() != null) {
+      metadata.getLabels().put("app.kubernetes.io/run-id", runId);
+    }
+
     OMJobResource omJob = new OMJobResource();
     omJob.setMetadata(metadata);
 
-    // Get the spec and log env vars for debugging
-    OMJobSpec spec = cronOMJob.getSpec().getOmJobSpec();
+    // Deep copy the spec and update pipelineRunId
+    OMJobSpec spec = deepCopyOMJobSpec(cronOMJob.getSpec().getOmJobSpec(), runId, name);
+
+    // Log env vars for debugging
     if (spec != null && spec.getMainPodSpec() != null && spec.getMainPodSpec().getEnv() != null) {
       LOG.info(
-          "Building OMJob from CronOMJob: {} env vars found",
+          "Building OMJob {} from CronOMJob: {} env vars found",
+          finalName,
           spec.getMainPodSpec().getEnv().size());
       spec.getMainPodSpec()
           .getEnv()
@@ -174,14 +191,28 @@ public class CronOMJobReconciler
               env -> {
                 if ("config".equals(env.getName())) {
                   LOG.info(
-                      "Config env var: value={}, valueFrom={}", env.getValue(), env.getValueFrom());
+                      "Config env var in OMJob {}: value={}, valueFrom={}",
+                      finalName,
+                      env.getValue(),
+                      env.getValueFrom());
                   if (env.getValueFrom() != null) {
-                    LOG.info("  ConfigMapKeyRef: {}", env.getValueFrom().getConfigMapKeyRef());
+                    LOG.info("  Has valueFrom object");
                     if (env.getValueFrom().getConfigMapKeyRef() != null) {
                       LOG.info(
-                          "    Name: {}, Key: {}",
+                          "    ConfigMapKeyRef - Name: {}, Key: {}",
                           env.getValueFrom().getConfigMapKeyRef().getName(),
                           env.getValueFrom().getConfigMapKeyRef().getKey());
+                    } else {
+                      LOG.warn("    ConfigMapKeyRef is null despite valueFrom being present");
+                    }
+                    if (env.getValueFrom().getSecretKeyRef() != null) {
+                      LOG.info("    Has SecretKeyRef");
+                    }
+                    if (env.getValueFrom().getFieldRef() != null) {
+                      LOG.info("    Has FieldRef");
+                    }
+                    if (env.getValueFrom().getResourceFieldRef() != null) {
+                      LOG.info("    Has ResourceFieldRef");
                     }
                   }
                 }
@@ -190,6 +221,114 @@ public class CronOMJobReconciler
 
     omJob.setSpec(spec);
     return omJob;
+  }
+
+  private OMJobSpec deepCopyOMJobSpec(OMJobSpec source, String runId, String jobName) {
+    if (source == null) {
+      return null;
+    }
+
+    OMJobSpec copy = new OMJobSpec();
+    copy.setMainPodSpec(deepCopyPodSpec(source.getMainPodSpec(), runId, jobName));
+    copy.setExitHandlerSpec(deepCopyPodSpec(source.getExitHandlerSpec(), runId, jobName));
+    copy.setTtlSecondsAfterFinished(source.getTtlSecondsAfterFinished());
+    return copy;
+  }
+
+  private OMJobSpec.OMJobPodSpec deepCopyPodSpec(
+      OMJobSpec.OMJobPodSpec source, String runId, String jobName) {
+    if (source == null) {
+      return null;
+    }
+
+    OMJobSpec.OMJobPodSpec copy = new OMJobSpec.OMJobPodSpec();
+    copy.setImage(source.getImage());
+    copy.setImagePullPolicy(source.getImagePullPolicy());
+    copy.setImagePullSecrets(
+        source.getImagePullSecrets() != null
+            ? new ArrayList<>(source.getImagePullSecrets())
+            : null);
+    copy.setServiceAccountName(source.getServiceAccountName());
+    copy.setCommand(source.getCommand() != null ? new ArrayList<>(source.getCommand()) : null);
+
+    // Deep copy environment variables to preserve valueFrom references
+    if (source.getEnv() != null) {
+      List<io.fabric8.kubernetes.api.model.EnvVar> copiedEnvVars = new ArrayList<>();
+      for (io.fabric8.kubernetes.api.model.EnvVar sourceEnv : source.getEnv()) {
+        io.fabric8.kubernetes.api.model.EnvVarBuilder envBuilder =
+            new io.fabric8.kubernetes.api.model.EnvVarBuilder();
+        envBuilder.withName(sourceEnv.getName());
+
+        // Replace placeholders with runtime values
+        if ("pipelineRunId".equals(sourceEnv.getName())
+            && "{{ omjob.uid }}".equals(sourceEnv.getValue())) {
+          envBuilder.withValue(runId);
+        } else if ("jobName".equals(sourceEnv.getName())
+            && "{{ omjob.name }}".equals(sourceEnv.getValue())) {
+          envBuilder.withValue(jobName);
+        } else {
+          envBuilder.withValue(sourceEnv.getValue());
+        }
+
+        // Preserve valueFrom if it exists
+        if (sourceEnv.getValueFrom() != null) {
+          io.fabric8.kubernetes.api.model.EnvVarSourceBuilder valueFromBuilder =
+              new io.fabric8.kubernetes.api.model.EnvVarSourceBuilder();
+
+          if (sourceEnv.getValueFrom().getConfigMapKeyRef() != null) {
+            valueFromBuilder.withConfigMapKeyRef(
+                new io.fabric8.kubernetes.api.model.ConfigMapKeySelectorBuilder()
+                    .withName(sourceEnv.getValueFrom().getConfigMapKeyRef().getName())
+                    .withKey(sourceEnv.getValueFrom().getConfigMapKeyRef().getKey())
+                    .withOptional(sourceEnv.getValueFrom().getConfigMapKeyRef().getOptional())
+                    .build());
+          }
+
+          if (sourceEnv.getValueFrom().getSecretKeyRef() != null) {
+            valueFromBuilder.withSecretKeyRef(
+                new io.fabric8.kubernetes.api.model.SecretKeySelectorBuilder()
+                    .withName(sourceEnv.getValueFrom().getSecretKeyRef().getName())
+                    .withKey(sourceEnv.getValueFrom().getSecretKeyRef().getKey())
+                    .withOptional(sourceEnv.getValueFrom().getSecretKeyRef().getOptional())
+                    .build());
+          }
+
+          if (sourceEnv.getValueFrom().getFieldRef() != null) {
+            valueFromBuilder.withFieldRef(
+                new io.fabric8.kubernetes.api.model.ObjectFieldSelectorBuilder()
+                    .withApiVersion(sourceEnv.getValueFrom().getFieldRef().getApiVersion())
+                    .withFieldPath(sourceEnv.getValueFrom().getFieldRef().getFieldPath())
+                    .build());
+          }
+
+          if (sourceEnv.getValueFrom().getResourceFieldRef() != null) {
+            valueFromBuilder.withResourceFieldRef(
+                new io.fabric8.kubernetes.api.model.ResourceFieldSelectorBuilder()
+                    .withContainerName(
+                        sourceEnv.getValueFrom().getResourceFieldRef().getContainerName())
+                    .withDivisor(sourceEnv.getValueFrom().getResourceFieldRef().getDivisor())
+                    .withResource(sourceEnv.getValueFrom().getResourceFieldRef().getResource())
+                    .build());
+          }
+
+          envBuilder.withValueFrom(valueFromBuilder.build());
+        }
+
+        copiedEnvVars.add(envBuilder.build());
+      }
+      copy.setEnv(copiedEnvVars);
+    } else {
+      copy.setEnv(null);
+    }
+
+    copy.setResources(source.getResources());
+    copy.setNodeSelector(
+        source.getNodeSelector() != null ? new HashMap<>(source.getNodeSelector()) : null);
+    copy.setSecurityContext(source.getSecurityContext());
+    copy.setLabels(source.getLabels() != null ? new HashMap<>(source.getLabels()) : null);
+    copy.setAnnotations(
+        source.getAnnotations() != null ? new HashMap<>(source.getAnnotations()) : null);
+    return copy;
   }
 
   @Override

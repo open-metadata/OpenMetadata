@@ -151,6 +151,9 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private static final String LABEL_VALUE_APPLICATION = "application";
   private static final String LABEL_APP_NAME = "app.kubernetes.io/app-name";
   private static final String SCHEDULED_RUN_ID = "scheduled";
+  // Placeholders for dynamic values - will be replaced by CronOMJobReconciler at runtime
+  private static final String CRONOMJOB_DYNAMIC_RUN_ID = "{{ omjob.uid }}";
+  private static final String CRONOMJOB_DYNAMIC_JOB_NAME = "{{ omjob.name }}";
 
   // Kubernetes resource values
   private static final String RESTART_POLICY_NEVER = "Never";
@@ -179,7 +182,6 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private static final String K8S_API_CALL_FAILED = "K8s API call failed: ";
   private static final String FAILED_TO_INITIALIZE_K8S_CLIENT =
       "Failed to initialize Kubernetes client: ";
-  private static final String FAILED_TO_BUILD_OMJOB = "Failed to build OMJob: ";
   private static final String FAILED_OPERATION_FORMAT =
       "Failed to %s '%s' in namespace '%s': HTTP %d - %s.%s";
   private static final String FAILED_TO_CONNECT_K8S_FORMAT =
@@ -1229,8 +1231,11 @@ public class K8sPipelineClient extends PipelineServiceClient {
     String pipelineName = sanitizeName(pipeline.getName());
     String configMapName = CONFIG_MAP_PREFIX + pipelineName;
     Map<String, String> labels = buildLabels(pipeline, "scheduled");
+    // Use dynamic placeholder for pipelineRunId that will be replaced by CronOMJobReconciler at
+    // runtime
     OMJob.OMJobSpec omJobSpec =
-        buildIngestionOMJobSpec(pipeline, SCHEDULED_RUN_ID, null, null, configMapName, labels);
+        buildIngestionOMJobSpec(
+            pipeline, CRONOMJOB_DYNAMIC_RUN_ID, null, null, configMapName, labels);
 
     return CronOMJob.builder()
         .apiVersion(OMJOB_GROUP + "/" + OMJOB_VERSION)
@@ -1307,7 +1312,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     envVars.add(
         new V1EnvVar().name(ENV_PIPELINE_TYPE).value(pipeline.getPipelineType().toString()));
-    envVars.add(new V1EnvVar().name(ENV_PIPELINE_RUN_ID).value(SCHEDULED_RUN_ID));
+    // Use placeholder that will be replaced by CronOMJobReconciler at runtime with unique UUID
+    envVars.add(new V1EnvVar().name(ENV_PIPELINE_RUN_ID).value(CRONOMJOB_DYNAMIC_RUN_ID));
     envVars.add(
         new V1EnvVar().name(ENV_INGESTION_PIPELINE_FQN).value(pipeline.getFullyQualifiedName()));
     envVars.add(
@@ -1332,9 +1338,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   private List<V1EnvVar> buildExitHandlerEnvVarsForCronOMJob(
       IngestionPipeline pipeline, String configMapName) {
-    String pipelineName = sanitizeName(pipeline.getName());
     List<V1EnvVar> envVars = new ArrayList<>(buildEnvVarsForCronJob(pipeline, configMapName));
-    envVars.add(new V1EnvVar().name("jobName").value(CRONOMJOB_PREFIX + pipelineName));
+    envVars.add(new V1EnvVar().name("jobName").value(CRONOMJOB_DYNAMIC_JOB_NAME));
     envVars.add(new V1EnvVar().name("namespace").value(k8sConfig.getNamespace()));
     return envVars;
   }
