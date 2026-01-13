@@ -35,11 +35,15 @@
       "type": "string",
       "enum": [
         "Successful",
-        "Failed", 
+        "Failed",
         "Pending",
         "Skipped",
         "Running"
       ]
+    },
+    "averageRunTime": {
+      "description": "Average runtime of the pipeline in milliseconds.",
+      "type": "number"
     }
   },
   "required": ["pipeline"],

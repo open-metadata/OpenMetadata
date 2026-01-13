@@ -400,6 +400,7 @@ def get_schema_columns(self, connection, schema, **kw):
         comment,
         identity_start,
         identity_increment,
+        ordinal_position,
     ) in result:
         table_name = self.normalize_name(fqn.quote_name(table_name))
         column_name = self.normalize_name(column_name)
@@ -450,6 +451,7 @@ def get_schema_columns(self, connection, schema, **kw):
                     if current_table_pks
                     else False
                 ),
+                "ordinal_position": ordinal_position,
             }
         )
         if is_identity == "YES":

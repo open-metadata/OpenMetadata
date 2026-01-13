@@ -32,7 +32,14 @@ import {
 import './EntityRightPanelVerticalNav.less';
 
 const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
-  ({ isSideDrawer = false, activeTab, entityType, onTabChange }) => {
+  ({
+    activeTab,
+    entityType,
+    onTabChange,
+    verticalNavConatinerclassName,
+    isSideDrawer = false,
+    isColumnDetailPanel = false,
+  }) => {
     const { t } = useTranslation();
 
     const getTabItems = () => {
@@ -46,7 +53,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       ];
 
       // Add schema tab for entities that have schema
-      if (hasSchemaTab(entityType)) {
+      if (hasSchemaTab(entityType) && !isColumnDetailPanel) {
         items.push({
           key: EntityRightPanelTab.SCHEMA,
           icon: <SchemaIcon height={16} width={16} />,
@@ -55,7 +62,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
         });
       }
       // Add lineage tab for most entities
-      if (hasLineageTab(entityType)) {
+      if (hasLineageTab(entityType) && !isColumnDetailPanel) {
         items.push({
           key: EntityRightPanelTab.LINEAGE,
           icon: <PlatformLineageIcon height={16} width={16} />,
@@ -89,9 +96,11 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
 
     return (
       <div
-        className={classNames('entity-right-panel-vertical-nav', {
-          'drawer-entity-right-panel-vertical-nav': isSideDrawer,
-        })}>
+        className={classNames(
+          'entity-right-panel-vertical-nav',
+          verticalNavConatinerclassName,
+          { 'drawer-entity-right-panel-vertical-nav': isSideDrawer }
+        )}>
         <Menu
           className="vertical-nav-menu"
           items={getTabItems()}

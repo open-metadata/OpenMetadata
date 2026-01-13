@@ -1122,6 +1122,10 @@ export interface AccessDetails {
  */
 export interface PipelineObservability {
     /**
+     * Average runtime of the pipeline in milliseconds.
+     */
+    averageRunTime?: number;
+    /**
      * End time of the pipeline schedule.
      */
     endTime?: number;
@@ -1285,6 +1289,7 @@ export enum DatabaseServiceType {
     DeltaLake = "DeltaLake",
     DomoDatabase = "DomoDatabase",
     Doris = "Doris",
+    Dremio = "Dremio",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     Epic = "Epic",

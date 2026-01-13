@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   DATA_CONSUMER_RULES,
   DATA_STEWARD_RULES,
@@ -212,6 +212,12 @@ test.describe('User with Admin Roles', () => {
       user2.responseData.name,
       user2.responseData.displayName
     );
+
+    const fetchUsers = adminPage.waitForResponse(
+      '/api/v1/users?**include=non-deleted'
+    );
+    await adminPage.fill('[data-testid="searchbar"]', '');
+    await fetchUsers
 
     await restoreUser(
       adminPage,
