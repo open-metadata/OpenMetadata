@@ -68,7 +68,7 @@ VERSIONS = {
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.0",
-    "s3fs": "s3fs~=2026.1.0",
+    "s3fs": "s3fs>=2023.12.0,<2024.3.0",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery~=1.15.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
     "asammdf": "asammdf~=7.4.5",
