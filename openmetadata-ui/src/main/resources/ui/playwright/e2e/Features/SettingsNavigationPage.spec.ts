@@ -17,7 +17,7 @@ import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { expect, test } from '../../support/fixtures/userPages';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, reloadAndWaitForNetworkIdle } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
 import { setUserDefaultPersona } from '../../utils/customizeLandingPage';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
@@ -25,13 +25,16 @@ import { settingClick } from '../../utils/sidebar';
 const adminUser = new UserClass();
 const persona = new PersonaClass();
 
-test.beforeAll('Setup pre-requests', async ({ browser }: { browser: Browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-  await adminUser.create(apiContext);
-  await adminUser.setAdminRole(apiContext);
-  await persona.create(apiContext, [adminUser.responseData.id]);
-  await afterAction();
-});
+test.beforeAll(
+  'Setup pre-requests',
+  async ({ browser }: { browser: Browser }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+    await adminUser.create(apiContext);
+    await adminUser.setAdminRole(apiContext);
+    await persona.create(apiContext, [adminUser.responseData.id]);
+    await afterAction();
+  }
+);
 
 test.afterAll('Cleanup', async ({ browser }: { browser: Browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
@@ -47,19 +50,30 @@ const navigateToPersonaNavigation = async (page: Page) => {
 
   await navigateToPersonaWithPagination(page, persona.data.name, true);
 
-  const getDocStore = page.waitForResponse((response: { url: () => string; request: () => { method: () => string } }) =>
-    response.url().includes('/api/v1/docStore/name/') && response.request().method() === 'GET'
+  const getDocStore = page.waitForResponse(
+    (response: {
+      url: () => string;
+      request: () => { method: () => string };
+    }) =>
+      response.url().includes('/api/v1/docStore/name/') &&
+      response.request().method() === 'GET'
   );
   await page.getByTestId('navigation').click();
   await getDocStore;
   await page.waitForLoadState('networkidle');
 
-  const escapedPersonaName = persona.data.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '%25');
+  const escapedPersonaName = persona.data.name
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/%/g, '%25');
   await expect(page).toHaveURL(new RegExp(escapedPersonaName));
 };
 
 test.describe.serial('Settings Navigation Page Tests', () => {
-  test('should update navigation sidebar', async ({ browser }: { browser: Browser }) => {
+  test('should update navigation sidebar', async ({
+    browser,
+  }: {
+    browser: Browser;
+  }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
     await adminUser.login(page);
@@ -103,7 +117,9 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
   test('should show navigation blocker when leaving with unsaved changes', async ({
     browser,
-  }: { browser: Browser }) => {
+  }: {
+    browser: Browser;
+  }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
     await adminUser.login(page);
@@ -147,7 +163,9 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
   test('should save changes and navigate when "Save changes" is clicked in blocker', async ({
     browser,
-  }: { browser: Browser }) => {
+  }: {
+    browser: Browser;
+  }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
     await adminUser.login(page);
@@ -167,10 +185,18 @@ test.describe.serial('Settings Navigation Page Tests', () => {
       .getByTestId('app-bar-item-settings')
       .click();
 
-    const saveResponse = page.waitForResponse((response: { url: () => string; request: () => { method: () => string } }) =>
-      response.url().includes('api/v1/docStore') && response.request().method() === 'PATCH'
+    const saveResponse = page.waitForResponse(
+      (response: {
+        url: () => string;
+        request: () => { method: () => string };
+      }) =>
+        response.url().includes('api/v1/docStore') &&
+        response.request().method() === 'PATCH'
     );
-    await page.getByTestId('unsaved-changes-modal-save').locator('.ant-btn-loading').waitFor({ state: 'detached' });;
+    await page
+      .getByTestId('unsaved-changes-modal-save')
+      .locator('.ant-btn-loading')
+      .waitFor({ state: 'detached' });
     await page.getByTestId('unsaved-changes-modal-save').click();
     await saveResponse;
     await page.waitForLoadState('networkidle');
@@ -189,8 +215,13 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await navigateToPersonaNavigation(page);
     await navigateSwitch.click();
 
-    const restoreResponse = page.waitForResponse((response: { url: () => string; request: () => { method: () => string } }) =>
-      response.url().includes('api/v1/docStore') && response.request().method() === 'PATCH'
+    const restoreResponse = page.waitForResponse(
+      (response: {
+        url: () => string;
+        request: () => { method: () => string };
+      }) =>
+        response.url().includes('api/v1/docStore') &&
+        response.request().method() === 'PATCH'
     );
     await page.getByTestId('save-button').click();
     await restoreResponse;
@@ -200,7 +231,9 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
   test('should handle reset functionality and prevent navigation blocker after save', async ({
     browser,
-  }: { browser: Browser }) => {
+  }: {
+    browser: Browser;
+  }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
     await adminUser.login(page);
@@ -234,7 +267,10 @@ test.describe.serial('Settings Navigation Page Tests', () => {
       page.getByTestId('unsaved-changes-modal-discard')
     ).toBeVisible();
 
-    await page.getByTestId('unsaved-changes-modal-save').locator('.ant-btn-loading').waitFor({ state: 'detached' });;
+    await page
+      .getByTestId('unsaved-changes-modal-save')
+      .locator('.ant-btn-loading')
+      .waitFor({ state: 'detached' });
 
     await page.getByTestId('unsaved-changes-modal-save').click();
     await page.waitForLoadState('networkidle');
@@ -247,7 +283,9 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
   test('should support drag and drop reordering of navigation items', async ({
     browser,
-  }: { browser: Browser }) => {
+  }: {
+    browser: Browser;
+  }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
     await adminUser.login(page);
@@ -294,7 +332,9 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
   test('should handle multiple items being hidden at once', async ({
     browser,
-  }: { browser: Browser }) => {
+  }: {
+    browser: Browser;
+  }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
     await adminUser.login(page);
@@ -321,12 +361,19 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await expect(exploreSwitch).toBeChecked({ checked: !exploreInitialState });
 
     await insightsSwitch.click();
-    await expect(insightsSwitch).toBeChecked({ checked: !insightsInitialState });
+    await expect(insightsSwitch).toBeChecked({
+      checked: !insightsInitialState,
+    });
 
     await expect(page.getByTestId('save-button')).toBeEnabled();
 
-    const saveResponse = page.waitForResponse((response: { url: () => string; request: () => { method: () => string } }) =>
-      response.url().includes('api/v1/docStore') && response.request().method() === 'PATCH'
+    const saveResponse = page.waitForResponse(
+      (response: {
+        url: () => string;
+        request: () => { method: () => string };
+      }) =>
+        response.url().includes('api/v1/docStore') &&
+        response.request().method() === 'PATCH'
     );
     await page.getByTestId('save-button').click();
     await saveResponse;
@@ -357,13 +404,22 @@ test.describe.serial('Settings Navigation Page Tests', () => {
       .first();
 
     await exploreSwitchAfterNav.click();
-    await expect(exploreSwitchAfterNav).toBeChecked({ checked: exploreInitialState });
+    await expect(exploreSwitchAfterNav).toBeChecked({
+      checked: exploreInitialState,
+    });
 
     await insightsSwitchAfterNav.click();
-    await expect(insightsSwitchAfterNav).toBeChecked({ checked: insightsInitialState });
+    await expect(insightsSwitchAfterNav).toBeChecked({
+      checked: insightsInitialState,
+    });
 
-    const restoreResponse = page.waitForResponse((response: { url: () => string; request: () => { method: () => string } }) =>
-      response.url().includes('api/v1/docStore') && response.request().method() === 'PATCH'
+    const restoreResponse = page.waitForResponse(
+      (response: {
+        url: () => string;
+        request: () => { method: () => string };
+      }) =>
+        response.url().includes('api/v1/docStore') &&
+        response.request().method() === 'PATCH'
     );
     await page.getByTestId('save-button').click();
     await restoreResponse;
