@@ -65,6 +65,7 @@
         "SSAS",
         "Epic",
         "ServiceNow",
+        "Dremio",
         "BurstIQ"
       ],
       "javaEnums": [
@@ -217,6 +218,9 @@
         },
         {
           "name": "ServiceNow"
+        },
+        {
+          "name": "Dremio"
         },
         {
           "name": "BurstIQ"
@@ -376,6 +380,9 @@
             },
             {
               "$ref": "./connections/database/serviceNowConnection.json"
+            },
+            {
+              "$ref": "./connections/database/dremioConnection.json"
             },
             {
               "$ref": "./connections/database/burstIQConnection.json"
