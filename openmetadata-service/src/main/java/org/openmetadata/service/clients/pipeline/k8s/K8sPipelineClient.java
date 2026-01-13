@@ -1607,7 +1607,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
       return WorkflowConfigBuilder.buildIngestionStringYaml(pipeline, service, configOverride);
     } catch (Exception e) {
       LOG.error("Failed to build workflow config with overrides: {}", e.getMessage(), e);
-      throw new RuntimeException(WORKFLOW_CONFIG_BUILD_WITH_OVERRIDES_FAILED, e);
+      throw new IngestionPipelineDeploymentException(
+          WORKFLOW_CONFIG_BUILD_WITH_OVERRIDES_FAILED + ": " + e.getMessage());
     }
   }
 
