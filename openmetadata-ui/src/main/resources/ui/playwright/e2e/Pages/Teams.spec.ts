@@ -503,7 +503,7 @@ test.describe('Teams Page', () => {
       }
 
       // Should not find the organization team and show errorPlaceholder
-      await searchTeam(page, 'Organization', true);
+      await searchTeam(page, 'OrganizationSearchTest', true);
     } finally {
       await team1.delete(apiContext);
       await team2.delete(apiContext);

@@ -1887,8 +1887,6 @@ test.describe('Glossary tests', () => {
         );
       });
     } finally {
-      await glossaryTerm1.delete(apiContext);
-      await glossary1.delete(apiContext);
       await afterAction();
     }
   });
