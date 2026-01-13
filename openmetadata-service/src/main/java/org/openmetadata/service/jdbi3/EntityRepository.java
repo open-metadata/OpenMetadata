@@ -208,6 +208,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
@@ -6703,9 +6704,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private static final ExecutorService BULK_PROCESSING_EXECUTOR =
       Executors.newVirtualThreadPerTaskExecutor();
 
-  private static final ExecutorService BOUNDED_BULK_EXECUTOR =
-      Executors.newFixedThreadPool(20, Thread.ofVirtual().factory());
-
   private static final ConcurrentHashMap<String, CompletableFuture<BulkOperationResult>> BULK_JOBS =
       new ConcurrentHashMap<>();
 
@@ -6873,18 +6871,57 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     List<CompletableFuture<Void>> futures = new ArrayList<>();
 
+    // Capture the request latency context from the parent thread for propagation to virtual threads
+    RequestLatencyContext.RequestContext parentLatencyContext = RequestLatencyContext.getContext();
+
+    // Get the semaphore for connection-aware throttling
+    BulkOperationSemaphore semaphore = BulkOperationSemaphore.getInstance();
+
+    LOG.info(
+        "Starting bulk operation for {} entities with {}/{} permits available",
+        entities.size(),
+        semaphore.availablePermits(),
+        semaphore.getMaxPermits());
+
     for (T entity : entities) {
       CompletableFuture<Void> future =
           CompletableFuture.runAsync(
               () -> {
+                // Propagate the latency context to this virtual thread for accurate metrics
+                RequestLatencyContext.setContext(parentLatencyContext);
                 try {
-                  PutResponse<T> putResponse = bulkCreateOrUpdateEntity(uriInfo, entity, userName);
-                  successRequests.add(
+                  // Acquire permit before DB operations to prevent connection pool exhaustion
+                  semaphore.acquire();
+                  try {
+                    PutResponse<T> putResponse =
+                        bulkCreateOrUpdateEntity(uriInfo, entity, userName);
+                    successRequests.add(
+                        new BulkResponse()
+                            .withRequest(entity.getFullyQualifiedName())
+                            .withStatus(Status.OK.getStatusCode()));
+                    createChangeEventForBulkOperation(
+                        putResponse.getEntity(), putResponse.getChangeType(), userName);
+                  } finally {
+                    semaphore.release();
+                  }
+                } catch (java.util.concurrent.TimeoutException e) {
+                  LOG.warn(
+                      "Timeout waiting for bulk operation permit for entity: {}",
+                      entity.getFullyQualifiedName());
+                  failedRequests.add(
                       new BulkResponse()
                           .withRequest(entity.getFullyQualifiedName())
-                          .withStatus(Status.OK.getStatusCode()));
-                  createChangeEventForBulkOperation(
-                      putResponse.getEntity(), putResponse.getChangeType(), userName);
+                          .withStatus(Status.SERVICE_UNAVAILABLE.getStatusCode())
+                          .withMessage("System overloaded, please retry later: " + e.getMessage()));
+                } catch (InterruptedException e) {
+                  Thread.currentThread().interrupt();
+                  LOG.warn(
+                      "Interrupted while processing entity: {}", entity.getFullyQualifiedName());
+                  failedRequests.add(
+                      new BulkResponse()
+                          .withRequest(entity.getFullyQualifiedName())
+                          .withStatus(Status.SERVICE_UNAVAILABLE.getStatusCode())
+                          .withMessage("Operation interrupted"));
                 } catch (Exception e) {
                   LOG.warn("Failed to process entity in bulk operation", e);
                   failedRequests.add(
@@ -6892,9 +6929,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
                           .withRequest(entity.getFullyQualifiedName())
                           .withStatus(Status.BAD_REQUEST.getStatusCode())
                           .withMessage(e.getMessage()));
+                } finally {
+                  // Clear the context to prevent memory leaks
+                  RequestLatencyContext.clearContext();
                 }
               },
-              BOUNDED_BULK_EXECUTOR);
+              BULK_PROCESSING_EXECUTOR);
 
       futures.add(future);
     }

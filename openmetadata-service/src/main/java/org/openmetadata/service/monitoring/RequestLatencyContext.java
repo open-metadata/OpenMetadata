@@ -7,6 +7,8 @@ import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -96,12 +98,13 @@ public class RequestLatencyContext {
       return null;
     }
 
-    if (context.internalTimerStartNanos > 0) {
-      context.internalTime += System.nanoTime() - context.internalTimerStartNanos;
+    long internalStart = context.internalTimerStartNanos;
+    if (internalStart > 0) {
+      context.internalTime.addAndGet(System.nanoTime() - internalStart);
       context.internalTimerStartNanos = 0;
     }
 
-    context.dbOperationCount++;
+    context.dbOperationCount.incrementAndGet();
     return Timer.start(Metrics.globalRegistry);
   }
 
@@ -115,7 +118,7 @@ public class RequestLatencyContext {
 
     // Use the shared dummy timer to measure elapsed time without recording
     long duration = timerSample.stop(DUMMY_TIMER);
-    context.dbTime += duration;
+    context.dbTime.addAndGet(duration);
 
     context.internalTimerStartNanos = System.nanoTime();
   }
@@ -125,12 +128,13 @@ public class RequestLatencyContext {
     if (context == null) {
       return null;
     }
-    if (context.internalTimerStartNanos > 0) {
-      context.internalTime += System.nanoTime() - context.internalTimerStartNanos;
+    long internalStart = context.internalTimerStartNanos;
+    if (internalStart > 0) {
+      context.internalTime.addAndGet(System.nanoTime() - internalStart);
       context.internalTimerStartNanos = 0;
     }
 
-    context.searchOperationCount++;
+    context.searchOperationCount.incrementAndGet();
     return Timer.start(Metrics.globalRegistry);
   }
 
@@ -144,7 +148,7 @@ public class RequestLatencyContext {
 
     // Use the shared dummy timer to measure elapsed time without recording
     long duration = timerSample.stop(DUMMY_TIMER);
-    context.searchTime += duration;
+    context.searchTime.addAndGet(duration);
 
     // Resume internal timer
     context.internalTimerStartNanos = System.nanoTime();
@@ -173,8 +177,15 @@ public class RequestLatencyContext {
       }
 
       if (context.internalTimerStartNanos > 0) {
-        context.internalTime += System.nanoTime() - context.internalTimerStartNanos;
+        context.internalTime.addAndGet(System.nanoTime() - context.internalTimerStartNanos);
       }
+
+      // Get final values from atomic fields
+      long dbTimeNanos = context.dbTime.get();
+      long searchTimeNanos = context.searchTime.get();
+      long internalTimeNanos = context.internalTime.get();
+      int dbOps = context.dbOperationCount.get();
+      int searchOps = context.searchOperationCount.get();
 
       // Record per-request timers (not per-operation)
       // This gives us the total DB time for THIS request
@@ -200,8 +211,8 @@ public class RequestLatencyContext {
                           Duration.ofSeconds(1),
                           Duration.ofSeconds(2))
                       .register(Metrics.globalRegistry));
-      if (context.dbTime > 0) {
-        dbTimer.record(context.dbTime, java.util.concurrent.TimeUnit.NANOSECONDS);
+      if (dbTimeNanos > 0) {
+        dbTimer.record(dbTimeNanos, java.util.concurrent.TimeUnit.NANOSECONDS);
       }
 
       // Record total search time for THIS request
@@ -227,8 +238,8 @@ public class RequestLatencyContext {
                           Duration.ofSeconds(1),
                           Duration.ofSeconds(2))
                       .register(Metrics.globalRegistry));
-      if (context.searchTime > 0) {
-        searchTimer.record(context.searchTime, java.util.concurrent.TimeUnit.NANOSECONDS);
+      if (searchTimeNanos > 0) {
+        searchTimer.record(searchTimeNanos, java.util.concurrent.TimeUnit.NANOSECONDS);
       }
 
       // Record internal processing time for THIS request
@@ -254,28 +265,28 @@ public class RequestLatencyContext {
                           Duration.ofMillis(500),
                           Duration.ofSeconds(1))
                       .register(Metrics.globalRegistry));
-      if (context.internalTime > 0) {
-        internalTimer.record(context.internalTime, java.util.concurrent.TimeUnit.NANOSECONDS);
+      if (internalTimeNanos > 0) {
+        internalTimer.record(internalTimeNanos, java.util.concurrent.TimeUnit.NANOSECONDS);
       }
 
       // Record operation counts as distribution summaries to get avg/max/percentiles
-      if (context.dbOperationCount > 0) {
+      if (dbOps > 0) {
         Metrics.summary(
                 "request.operations.database", ENDPOINT, normalizedEndpoint, METHOD, context.method)
-            .record(context.dbOperationCount);
+            .record(dbOps);
       }
 
-      if (context.searchOperationCount > 0) {
+      if (searchOps > 0) {
         Metrics.summary(
                 "request.operations.search", ENDPOINT, normalizedEndpoint, METHOD, context.method)
-            .record(context.searchOperationCount);
+            .record(searchOps);
       }
 
       if (context.totalTime > 0) {
         long totalNanos = context.totalTime;
-        double dbPercent = (context.dbTime * 100.0) / totalNanos;
-        double searchPercent = (context.searchTime * 100.0) / totalNanos;
-        double internalPercent = (context.internalTime * 100.0) / totalNanos;
+        double dbPercent = (dbTimeNanos * 100.0) / totalNanos;
+        double searchPercent = (searchTimeNanos * 100.0) / totalNanos;
+        double internalPercent = (internalTimeNanos * 100.0) / totalNanos;
 
         // Get or create percentage holder for this endpoint and method
         PercentageHolder holder =
@@ -315,15 +326,17 @@ public class RequestLatencyContext {
       // Log slow requests (over 1 second)
       if (context.totalTime > 1_000_000_000L) {
         LOG.warn(
-            "Slow request detected - endpoint: {}, total: {}ms, db: {}ms ({}%), search: {}ms ({}%), internal: {}ms ({}%)",
+            "Slow request detected - endpoint: {}, total: {}ms, db: {}ms ({}%), search: {}ms ({}%), internal: {}ms ({}%), dbOps: {}, searchOps: {}",
             context.endpoint,
             context.totalTime / 1_000_000,
-            context.dbTime / 1_000_000,
-            (context.dbTime * 100) / context.totalTime,
-            context.searchTime / 1_000_000,
-            (context.searchTime * 100) / context.totalTime,
-            context.internalTime / 1_000_000,
-            (context.internalTime * 100) / context.totalTime);
+            dbTimeNanos / 1_000_000,
+            (dbTimeNanos * 100) / context.totalTime,
+            searchTimeNanos / 1_000_000,
+            (searchTimeNanos * 100) / context.totalTime,
+            internalTimeNanos / 1_000_000,
+            (internalTimeNanos * 100) / context.totalTime,
+            dbOps,
+            searchOps);
       }
 
     } finally {
@@ -331,20 +344,64 @@ public class RequestLatencyContext {
     }
   }
 
+  /**
+   * Get the current request context for propagation to child threads. This allows virtual threads
+   * or async tasks to share the same timing context as the parent request thread.
+   *
+   * @return the current RequestContext, or null if not in a request context
+   */
+  public static RequestContext getContext() {
+    return requestContext.get();
+  }
+
+  /**
+   * Set the request context in the current thread. Used by child threads to inherit the parent's
+   * timing context for accurate metrics tracking across thread boundaries.
+   *
+   * @param context the RequestContext to set (obtained from parent thread via getContext())
+   */
+  public static void setContext(RequestContext context) {
+    if (context != null) {
+      requestContext.set(context);
+    }
+  }
+
+  /**
+   * Clear the request context from the current thread. Should be called in finally blocks by child
+   * threads that received context via setContext() to prevent memory leaks in pooled threads.
+   */
+  public static void clearContext() {
+    requestContext.remove();
+  }
+
+  /**
+   * Reset all static state. This is primarily for testing to ensure clean state between tests. This
+   * clears all timer maps so that new timers will be created and registered with the current
+   * registry.
+   */
+  public static void reset() {
+    requestContext.remove();
+    requestTimers.clear();
+    databaseTimers.clear();
+    searchTimers.clear();
+    internalTimers.clear();
+    percentageHolders.clear();
+  }
+
   @Getter
-  private static class RequestContext {
+  public static class RequestContext {
     final String endpoint;
     final String method;
-    Timer.Sample requestTimerSample;
-    long internalTimerStartNanos = 0;
+    volatile Timer.Sample requestTimerSample;
+    volatile long internalTimerStartNanos = 0;
 
-    long totalTime = 0;
-    long dbTime = 0;
-    long searchTime = 0;
-    long internalTime = 0;
+    volatile long totalTime = 0;
+    final AtomicLong dbTime = new AtomicLong(0);
+    final AtomicLong searchTime = new AtomicLong(0);
+    final AtomicLong internalTime = new AtomicLong(0);
 
-    int dbOperationCount = 0;
-    int searchOperationCount = 0;
+    final AtomicInteger dbOperationCount = new AtomicInteger(0);
+    final AtomicInteger searchOperationCount = new AtomicInteger(0);
 
     RequestContext(String endpoint, String method) {
       this.endpoint = endpoint;
