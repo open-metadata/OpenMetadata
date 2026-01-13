@@ -24,10 +24,6 @@ CREATE TABLE IF NOT EXISTS audit_log_event (
   KEY idx_audit_log_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Add indexes for efficient filtering
-CREATE INDEX idx_audit_log_actor_type_ts ON audit_log_event (actor_type, event_ts DESC);
-CREATE INDEX idx_audit_log_service_name_ts ON audit_log_event (service_name, event_ts DESC);
-CREATE INDEX idx_audit_log_created_at ON audit_log_event (created_at);
 
 
 -- Add enabled field to test_definition table for Rules Library feature
