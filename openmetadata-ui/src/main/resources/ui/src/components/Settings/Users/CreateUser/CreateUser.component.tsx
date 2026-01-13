@@ -165,25 +165,30 @@ const CreateUser = ({
   /**
    * Form submit handler
    */
-  const handleSave: FormProps['onFinish'] = (values) => {
-    const isPasswordGenerated =
-      passwordGenerator === CreatePasswordGenerator.AutomaticGenerate;
-    const validTeam = compact(selectedTeams).map((team) => team.id);
+    const handleSave: FormProps['onFinish'] = (values) => {
+      const isPasswordGenerated =
+        passwordGenerator === CreatePasswordGenerator.AutomaticGenerate;
+      const validTeam = compact(selectedTeams).map((team) => team.id);
+      const validPersonas = selectedPersonas
+        ? personaOptions.filter((persona) =>
+            selectedPersonas.includes(persona.id)
+          )
+        : undefined;
 
-    const { email, displayName, tokenExpiry, confirmPassword, description } =
-      values;
+      const { email, displayName, tokenExpiry, confirmPassword, description } =
+        values;
 
-    const userProfile: CreateUserSchema = {
-      description,
-      name: email.split('@')[0],
-      displayName: trim(displayName),
-      roles: selectedRoles,
-      teams: validTeam.length ? validTeam : undefined,
-      personas: selectedPersonas,
-      email: email,
-      isAdmin: isAdmin,
-      domains: selectedDomain.map((domain) => domain.fullyQualifiedName ?? ''),
-      isBot: isBot,
+      const userProfile: CreateUserSchema = {
+        description,
+        name: email.split('@')[0],
+        displayName: trim(displayName),
+        roles: selectedRoles,
+        teams: validTeam.length ? validTeam : undefined,
+        personas: validPersonas,
+        email: email,
+        isAdmin: isAdmin,
+        domains: selectedDomain.map((domain) => domain.fullyQualifiedName ?? ''),
+        isBot: isBot,
       ...(forceBot
         ? {
             authenticationMechanism: {
