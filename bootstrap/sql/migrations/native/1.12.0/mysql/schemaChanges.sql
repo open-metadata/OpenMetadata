@@ -47,4 +47,3 @@ CREATE INDEX idx_test_definition_enabled ON test_definition(enabled);
 UPDATE test_definition
   SET json = JSON_SET(json, '$.enabled', true)
   WHERE json_extract(json, '$.enabled') IS NULL;
-
