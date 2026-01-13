@@ -708,7 +708,7 @@ export const testPaginationNavigation = async (
   const page1Data = await page1Response.json();
   const page1Items = page1Data.data?.map((item: { fullyQualifiedName: string }) => item.fullyQualifiedName) || [];
 
-  expect(page.getByTestId('previous')).toBeDisabled();
+  await expect(page.getByTestId('previous')).toBeDisabled();
   const nextButton = page.locator('[data-testid="next"]');
 
   const nextButtonCount = await nextButton.count();
@@ -748,7 +748,7 @@ export const testPaginationNavigation = async (
   const page2Data = await page2Response.json();
   const page2Items = page2Data.data?.map((item: { fullyQualifiedName: string }) => item.fullyQualifiedName) || [];
 
-  expect(page.getByTestId('previous')).toBeEnabled();
+  await expect(page.getByTestId('previous')).toBeEnabled();
   expect(page2Items.length).toBeGreaterThan(0);
   const hasOverlap = page1Items.some((fqn: string) => page2Items.includes(fqn));
   expect(hasOverlap).toBe(false);
@@ -778,7 +778,7 @@ export const testPaginationNavigation = async (
 
   const paginationTextContent = await paginationText.textContent();
 
-  expect(page.getByTestId('previous')).toBeEnabled();
+  await expect(page.getByTestId('previous')).toBeEnabled();
   expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
 };
 
@@ -810,7 +810,7 @@ export const testCompletePaginationWithSearch = async (config: PaginationTestCon
 
   const nextButton = page.locator('[data-testid="next"]');
   const isNextEnabled = await nextButton.isEnabled();
-  expect(page.getByTestId('previous')).toBeDisabled();
+  await expect(page.getByTestId('previous')).toBeDisabled();
 
   if (isNextEnabled) {
     const page2ResponsePromise = page.waitForResponse(
@@ -826,7 +826,7 @@ export const testCompletePaginationWithSearch = async (config: PaginationTestCon
     await expect(paginationPage2).toBeVisible();
     const page2Content = await paginationPage2.textContent();
     expect(page2Content).toMatch(/2\s*of\s*\d+/);
-    expect(page.getByTestId('previous')).toBeEnabled();
+    await expect(page.getByTestId('previous')).toBeEnabled();
   }
 
   const searchResponsePromise = page.waitForResponse(
@@ -845,7 +845,7 @@ export const testCompletePaginationWithSearch = async (config: PaginationTestCon
   await expect(paginationAfterSearch).toBeVisible();
   const searchPage1Content = await paginationAfterSearch.textContent();
   expect(searchPage1Content).toMatch(/1\s*of\s*\d+/);
-  expect(page.getByTestId('previous')).toBeDisabled();
+  await expect(page.getByTestId('previous')).toBeDisabled();
 
   const nextButtonAfterSearch = page.locator('[data-testid="next"]');
   const isNextEnabledAfterSearch = await nextButtonAfterSearch.isEnabled();
@@ -864,7 +864,7 @@ export const testCompletePaginationWithSearch = async (config: PaginationTestCon
     await expect(paginationSearchPage2).toBeVisible();
     const searchPage2Content = await paginationSearchPage2.textContent();
     expect(searchPage2Content).toMatch(/2\s*of\s*\d+/);
-    expect(page.getByTestId('previous')).toBeEnabled();
+    await expect(page.getByTestId('previous')).toBeEnabled();
 
     const reloadPromise = page.waitForResponse(
       (response) => response.url().includes(searchApiPattern)
@@ -882,7 +882,7 @@ export const testCompletePaginationWithSearch = async (config: PaginationTestCon
     await expect(paginationAfterRefresh).toBeVisible();
     const refreshPage2Content = await paginationAfterRefresh.textContent();
     expect(refreshPage2Content).toMatch(/2\s*of\s*\d+/);
-    expect(page.getByTestId('previous')).toBeEnabled();
+    await expect(page.getByTestId('previous')).toBeEnabled();
 
     const searchValueAfterRefresh = await page.getByTestId('searchbar').inputValue();
     expect(searchValueAfterRefresh).toBe(searchTestTerm);
@@ -913,7 +913,7 @@ export const testCompletePaginationWithSearch = async (config: PaginationTestCon
       await expect(paginationAfterToggleWithSearch).toBeVisible();
       const toggleSearchContent = await paginationAfterToggleWithSearch.textContent();
       expect(toggleSearchContent).toMatch(/1\s*of\s*\d+/);
-      expect(page.getByTestId('previous')).toBeDisabled();
+      await expect(page.getByTestId('previous')).toBeDisabled();
 
       const urlAfterToggle = new URL(page.url());
       expect(urlAfterToggle.searchParams.get(searchParamName)).toBe(searchTestTerm);

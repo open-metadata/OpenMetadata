@@ -235,8 +235,8 @@ test.describe('Pagination tests for all pages', () => {
           response.url().includes('/api/v1/databases')
       );
       await page.getByTestId('databases').click();
-      const response2 = await databaseResponsePromise
-       expect(response2.status()).toBe(200);
+      const response2 = await databaseResponsePromise;
+      expect(response2.status()).toBe(200);
       await page.waitForSelector('table', { state: 'visible' });
 
       const paginationText = page.locator('[data-testid="page-indicator"]');
