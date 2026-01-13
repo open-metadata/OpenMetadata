@@ -25,6 +25,7 @@ import io.dropwizard.jersey.errors.ErrorMessage;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.ProcessingException;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import java.sql.SQLIntegrityConstraintViolationException;
@@ -65,6 +66,17 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
       return getResponse(FORBIDDEN, ex.getLocalizedMessage());
     } else if (ex instanceof WebServiceException webServiceException) {
       final Response response = webServiceException.getResponse();
+      Family family = response.getStatusInfo().getFamily();
+      if (family.equals(Response.Status.Family.REDIRECTION)) {
+        return response;
+      }
+      if (family.equals(Family.SERVER_ERROR)) {
+        throwException(ex);
+      }
+
+      return getResponse(response, ex);
+    } else if (ex instanceof WebApplicationException webApplicationException) {
+      final Response response = webApplicationException.getResponse();
       Family family = response.getStatusInfo().getFamily();
       if (family.equals(Response.Status.Family.REDIRECTION)) {
         return response;
