@@ -128,6 +128,12 @@ public class AzureKVSecretsManager extends ExternalSecretsManager {
                 getSecretsConfig().parameters().getAdditionalProperties().get(EXPIRES_AFTER_DAYS);
         if (!Strings.isBlank(expiresAfterDaysStr)) {
           long expiresAfterDays = Long.parseLong(expiresAfterDaysStr);
+          if (expiresAfterDays <= 0) {
+            throw new SecretsManagerException(
+                String.format(
+                    "Invalid value for '%s' parameter. Expected a positive number but got: %s",
+                    EXPIRES_AFTER_DAYS, expiresAfterDays));
+          }
           OffsetDateTime expiresOn = OffsetDateTime.now().plusDays(expiresAfterDays);
           properties.setExpiresOn(expiresOn);
         }
