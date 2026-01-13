@@ -281,6 +281,8 @@ export interface DatabaseConnection {
  *
  * Dremio Connection Config supporting both Dremio Cloud (SaaS) and Dremio Software
  * (self-hosted)
+ *
+ * BurstIQ LifeGraph Database Connection Config
  */
 export interface ConfigObject {
     /**
@@ -413,6 +415,8 @@ export interface ConfigObject {
      * Regex to include/exclude FHIR resource types
      *
      * Regex to only include/exclude tables that match the pattern.
+     *
+     * Regex to only include/exclude dictionaries (tables) that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -1896,6 +1900,8 @@ export interface GCPCredentials {
  * are mapped as schemas.
  *
  * Regex to only include/exclude tables that match the pattern.
+ *
+ * Regex to only include/exclude dictionaries (tables) that matches the pattern.
  */
 export interface FilterPattern {
     /**
