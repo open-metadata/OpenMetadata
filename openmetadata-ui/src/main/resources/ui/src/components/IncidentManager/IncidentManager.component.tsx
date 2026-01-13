@@ -458,7 +458,11 @@ const IncidentManager = ({
 
   const searchTestCases = async (searchValue = WILD_CARD_CHAR) => {
     // Encode the search value to handle special characters like #, %, $, etc.
-    const encodedSearchValue: string = encodeURIComponent(searchValue);
+    // Preserve wildcard character to maintain default search behavior
+    const encodedSearchValue: string =
+      searchValue === WILD_CARD_CHAR
+        ? searchValue
+        : encodeURIComponent(searchValue);
     try {
       const response = await searchQuery({
         pageNumber: 1,
