@@ -1372,25 +1372,19 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   useEffect(() => {
     if (
-      searchValue &&
-      serviceCategory !== ServiceCategory.DRIVE_SERVICES &&
-      !isInitialPaginationLoadRef.current &&
-      [EntityTabs.FILES, EntityTabs.SPREADSHEETS].includes(
-        activeTab as EntityTabs
-      )
+      !searchValue &&
+      isInitialPaginationLoadRef.current &&
+      activeTab !== getCountLabel(serviceCategory).toLowerCase()
     ) {
-      return;
+      getOtherDetails({ limit: pageSize });
+      isInitialPaginationLoadRef.current = false;
     }
-    getOtherDetails({ limit: pageSize });
-    isInitialPaginationLoadRef.current = false;
   }, [searchValue, activeTab, serviceCategory, pageSize, getOtherDetails]);
 
   useEffect(() => {
     if (
       searchValue ||
-      [EntityTabs.FILES, EntityTabs.SPREADSHEETS].includes(
-        activeTab as EntityTabs
-      )
+      activeTab !== getCountLabel(serviceCategory).toLowerCase()
     ) {
       return;
     }
@@ -1409,6 +1403,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     searchValue,
     pagingInfo?.pagingCursor,
     activeTab,
+    serviceCategory,
   ]);
 
   useEffect(() => {

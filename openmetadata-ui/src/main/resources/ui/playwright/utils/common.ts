@@ -778,6 +778,7 @@ export const testPaginationNavigation = async (
 
   const paginationTextContent = await paginationText.textContent();
 
+  expect(page.getByTestId('previous')).toBeEnabled();
   expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
 };
 
