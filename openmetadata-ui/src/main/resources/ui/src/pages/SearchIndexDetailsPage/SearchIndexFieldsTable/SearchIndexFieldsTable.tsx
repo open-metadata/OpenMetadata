@@ -184,7 +184,7 @@ const SearchIndexFieldsTable = ({
       }
     },
     [openColumnDetailPanel, hasViewPermission]
-  ); 
+  );
 
   const renderDataTypeDisplay: SearchIndexCellRendered<
     SearchIndexField,

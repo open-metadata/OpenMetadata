@@ -502,8 +502,9 @@ test.describe('Teams Page', () => {
         await searchTeam(page, team.responseData?.['displayName']);
       }
 
-      // Should not find the organization team and show errorPlaceholder
-      await searchTeam(page, 'Organization', true);
+      // Should not find the organization team
+      await searchTeam(page, 'Organization', { expectNotFound: true });
+      await searchTeam(page, 'OrganizationSearchTest', { expectEmptyResults: true });
     } finally {
       await team1.delete(apiContext);
       await team2.delete(apiContext);
@@ -834,7 +835,6 @@ test.describe('Teams Page', () => {
       await afterAction();
     }
   });
-
 });
 
 test.describe('Teams Page with EditUser Permission', () => {

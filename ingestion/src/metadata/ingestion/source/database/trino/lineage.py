@@ -12,7 +12,9 @@
 Trino lineage module
 """
 import traceback
-from typing import Iterable, List
+from typing import Iterable, Iterator, List
+
+from sqlalchemy import text
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
@@ -20,10 +22,17 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.trino.queries import TRINO_SQL_STATEMENT
-from metadata.ingestion.source.database.trino.query_parser import TrinoQueryParserSource
+from metadata.ingestion.source.database.trino.query_parser import (
+    TRINO_QUERY_BATCH_SIZE,
+    TrinoQueryParserSource,
+)
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
@@ -41,6 +50,53 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
             OR lower("query") LIKE '%%merge%%'
         )
     """
+
+    def yield_table_query(self) -> Iterator[TableQuery]:
+        """
+        Given an engine, iterate over the query results to
+        yield a TableQuery with query parsing info with pagination
+        """
+        for engine in self.get_engine():
+            offset = 0
+            total_fetched = 0
+            max_results = self.source_config.resultLimit
+            while total_fetched < max_results:
+                batch_size = min(TRINO_QUERY_BATCH_SIZE, max_results - total_fetched)
+                row_count = 0
+                with engine.connect() as conn:
+                    sql_statement = self.get_sql_statement(
+                        start_time=self.start,
+                        end_time=self.end,
+                        offset=offset,
+                        limit=batch_size,
+                    )
+                    logger.debug(f"Executing lineage query: {sql_statement}")
+                    rows = conn.execute(text(sql_statement))
+                    for row in rows:
+                        query_dict = dict(row)
+                        query_dict.update({k.lower(): v for k, v in query_dict.items()})
+                        row_count += 1
+                        try:
+                            yield TableQuery(
+                                dialect=self.dialect.value,
+                                query=query_dict["query_text"],
+                                databaseName=self.get_database_name(query_dict),
+                                serviceName=self.config.serviceName,
+                                databaseSchema=self.get_schema_name(query_dict),
+                            )
+                        except Exception as exc:
+                            logger.debug(traceback.format_exc())
+                            logger.warning(
+                                f"Error processing query_dict {query_dict}: {exc}"
+                            )
+                total_fetched += row_count
+                if row_count < batch_size:
+                    break
+                offset += batch_size
+                logger.info(
+                    f"Fetching next page with offset {offset} (fetched {total_fetched}/{max_results}) "
+                    f"for lineage queries"
+                )
 
     def get_cross_database_fqn_from_service_names(self) -> List[str]:
         database_service_names = self.source_config.crossDatabaseServiceNames

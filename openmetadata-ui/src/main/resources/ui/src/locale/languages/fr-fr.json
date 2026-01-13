@@ -2168,6 +2168,7 @@
     "disabled-classification-actions-message": "Vous ne pouvez pas effectuer cette action sur des classifications désactivées.",
     "discover-your-data-and-unlock-the-value-of-data-assets": "Découvrez vos données et libérez la valeur de vos actifs de données",
     "distinct-profile-metric-description": "Percentage of distinct values in the column",
+    "domain-change-asset-migration-warning": "Changing the domain will move {{count}} asset(s) from the current domain to {{domain}}. Do you want to proceed?",
     "domain-description": "Organisez et gérez les domaines de données dans votre organisation.",
     "domain-does-not-have-assets": "Le domaine {{name}} ne possède aucun actif à ajouter au Data Product",
     "domain-type-guide": "Il existe trois types de domaines : Agrégat, Aligné consommateur et Aligné source.",

@@ -14,8 +14,8 @@
 import { expect, Page } from '@playwright/test';
 import { ALERT_UPDATED_DESCRIPTION } from '../constant/alert';
 import {
-    AlertDetails,
-    ObservabilityCreationDetails
+  AlertDetails,
+  ObservabilityCreationDetails,
 } from '../constant/alert.interface';
 import { SidebarItem } from '../constant/sidebar';
 import { Domain } from '../support/domain/Domain';
@@ -24,15 +24,15 @@ import { PipelineClass } from '../support/entity/PipelineClass';
 import { TableClass } from '../support/entity/TableClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-    addDomainFilter,
-    addEntityFQNFilter,
-    addOwnerFilter,
-    addPipelineStatusUpdatesAction,
-    checkRecentEventDetails,
-    inputBasicAlertInformation,
-    visitAlertDetailsPage,
-    visitEditAlertPage,
-    waitForRecentEventsToFinishExecution
+  addDomainFilter,
+  addEntityFQNFilter,
+  addOwnerFilter,
+  addPipelineStatusUpdatesAction,
+  checkRecentEventDetails,
+  inputBasicAlertInformation,
+  visitAlertDetailsPage,
+  visitEditAlertPage,
+  waitForRecentEventsToFinishExecution,
 } from './alert';
 import { clickOutside, descriptionBox, redirectToHomePage } from './common';
 import { addMultiOwner, updateDescription } from './entity';

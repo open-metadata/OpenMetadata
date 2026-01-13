@@ -296,12 +296,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
     // Add search value conditions for name and displayName using wildcard
     if (searchValue) {
-      mustClauses.push(
-        getSearchNameEsQuery(
-          searchValue,
-          impactLevel === EImpactLevel.ColumnLevel
-        )
-      );
+      mustClauses.push(getSearchNameEsQuery(searchValue));
     }
 
     // Build final query only if we have conditions
@@ -311,7 +306,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         : undefined;
 
     return JSON.stringify(query);
-  }, [selectedQuickFilters, searchValue, impactLevel]);
+  }, [selectedQuickFilters, searchValue]);
 
   // Define table columns
   const extraTableFilters = useMemo(() => {
