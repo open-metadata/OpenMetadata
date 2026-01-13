@@ -28,7 +28,10 @@ import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
-import { SearchIndexField, SearchIndex as SearchIndexEntity } from '../generated/entity/data/searchIndex';
+import {
+  SearchIndex as SearchIndexEntity,
+  SearchIndexField,
+} from '../generated/entity/data/searchIndex';
 import { PageType } from '../generated/system/ui/page';
 import { EntityReference } from '../generated/type/entityReference';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
@@ -214,7 +217,9 @@ export const getSearchIndexWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   );
 };
 
-export const extractSearchIndexFields = <T extends Omit<EntityReference, 'type'>>(
+export const extractSearchIndexFields = <
+  T extends Omit<EntityReference, 'type'>
+>(
   data: T
 ): SearchIndexField[] => {
   const searchIndex = data as Partial<SearchIndexEntity>;
