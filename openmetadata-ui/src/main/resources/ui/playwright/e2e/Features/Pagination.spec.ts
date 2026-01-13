@@ -26,6 +26,7 @@ import {
   testPaginationNavigation,
   uuid,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -662,6 +663,14 @@ test.describe('Pagination tests for Drive Service Files page', () => {
       });
     }
 
+    await apiContext.post('/api/v1/drives/spreadsheets', {
+      data: {
+        name: `pw_spreadsheet_${uuid()}_1`,
+        service: serviceFqn,
+        description: 'Test spreadsheet for tab switching',
+      },
+    });
+
     await afterAction();
   });
 
@@ -684,6 +693,108 @@ test.describe('Pagination tests for Drive Service Files page', () => {
       searchParamName: 'file',
       waitForLoadSelector: 'table',
     });
+  });
+
+  test('should reset pagination when switching between Files and Spreadsheets tabs and also verify the api is called with correct payload', async ({ page }) => {
+    test.slow(true);
+
+    await page.goto(`/service/driveServices/${serviceFqn}/files?pageSize=15`);
+    await page.waitForSelector('table', { state: 'visible' });
+
+    let paginationText = page.locator('[data-testid="page-indicator"]');
+    await expect(paginationText).toBeVisible();
+
+    let paginationTextContent = await paginationText.textContent();
+    expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
+
+    const nextButton = page.locator('[data-testid="next"]');
+    await expect(nextButton).toBeEnabled();
+
+    const filesResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/drives/files')
+    );
+    await nextButton.click();
+    await filesResponsePromise;
+    await page.waitForSelector('table', { state: 'visible' });
+
+    paginationTextContent = await paginationText.textContent();
+    expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
+
+    const spreadsheetsResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/drives/spreadsheets')
+    );
+    await page.getByTestId('spreadsheets').click();
+    const spreadsheetsResponse = await spreadsheetsResponsePromise;
+
+    expect(spreadsheetsResponse.status()).toBe(200);
+    const spreadsheetsUrl = spreadsheetsResponse.url();
+    expect(spreadsheetsUrl).not.toContain('before=');
+    expect(spreadsheetsUrl).not.toContain('after=');
+
+    await waitForAllLoadersToDisappear(page);
+
+    const filesTabResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/drives/files')
+    );
+    await page.getByTestId('files').click();
+    const filesTabResponse = await filesTabResponsePromise;
+    expect(filesTabResponse.status()).toBe(200);
+    await page.waitForSelector('table', { state: 'visible' });
+
+    paginationText = page.locator('[data-testid="page-indicator"]');
+    await expect(paginationText).toBeVisible();
+
+    paginationTextContent = await paginationText.textContent();
+    expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
+
+    await page.getByTestId('files').click();
+    await page.waitForSelector('table', { state: 'visible' });
+
+    await nextButton.click();
+    const filesPage2Response = await page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/drives/files')
+    );
+    expect(filesPage2Response.status()).toBe(200);
+    await page.waitForSelector('table', { state: 'visible' });
+
+    paginationTextContent = await paginationText.textContent();
+    expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
+
+    const directoriesResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/drives/directories')
+    );
+    const reloadSpreadsheetsResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/drives/spreadsheets')
+    );
+
+    await page.reload();
+
+    const directoriesResponse = await directoriesResponsePromise;
+    const reloadSpreadsheetsResponse = await reloadSpreadsheetsResponsePromise;
+
+    expect(directoriesResponse.status()).toBe(200);
+    const directoriesUrl = directoriesResponse.url();
+    expect(directoriesUrl).not.toContain('before=');
+    expect(directoriesUrl).not.toContain('after=');
+
+    expect(reloadSpreadsheetsResponse.status()).toBe(200);
+    const reloadSpreadsheetsUrl = reloadSpreadsheetsResponse.url();
+    expect(reloadSpreadsheetsUrl).not.toContain('before=');
+    expect(reloadSpreadsheetsUrl).not.toContain('after=');
+
+    await page.waitForSelector('table', { state: 'visible' });
+
+    paginationText = page.locator('[data-testid="page-indicator"]');
+    await expect(paginationText).toBeVisible();
+
+    paginationTextContent = await paginationText.textContent();
+    expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
   });
 });
 
