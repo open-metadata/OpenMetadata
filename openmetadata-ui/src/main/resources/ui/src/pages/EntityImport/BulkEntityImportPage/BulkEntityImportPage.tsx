@@ -663,6 +663,7 @@ const BulkEntityImportPage = () => {
             isValidating={isValidating}
             pushToUndoStack={pushToUndoStack}
             setGridContainer={setGridContainer}
+            sourceEntityType={sourceEntityType ?? sourceEntityTypeFromURL}
             validateCSVData={validateCSVData}
             validationData={validationData}
             onCSVReadComplete={onCSVReadComplete}

@@ -19,16 +19,19 @@ import { useTranslation } from 'react-i18next';
 import { readString } from 'react-papaparse';
 import { useNavigate } from 'react-router-dom';
 import { ENTITY_BULK_EDIT_STEPS } from '../../constants/BulkEdit.constants';
+import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { ExportTypes } from '../../constants/Export.constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
 import { getBulkEditCSVExportEntityApi } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import Banner from '../common/Banner/Banner';
 import { ImportStatus } from '../common/EntityImport/ImportStatus/ImportStatus.component';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { ProfilerTabPath } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import Stepper from '../Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import { BulkEditEntityProps } from './BulkEditEntity.interface';
@@ -49,6 +52,7 @@ const BulkEditEntity = ({
   handleCopy,
   handlePaste,
   handleOnRowsChange,
+  sourceEntityType,
 }: BulkEditEntityProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -68,7 +72,27 @@ const BulkEditEntity = ({
 
   const handleCancel = () => {
     clearCSVExportData();
-    navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
+
+    if (entityType === EntityType.TEST_CASE) {
+      if (fqn === WILD_CARD_CHAR) {
+        navigate(getDataQualityPagePath());
+      } else if (sourceEntityType === EntityType.TABLE) {
+        navigate(
+          entityUtilClassBase.getEntityLink(
+            EntityType.TABLE,
+            fqn,
+            EntityTabs.PROFILER,
+            ProfilerTabPath.DATA_QUALITY
+          )
+        );
+      } else if (sourceEntityType === EntityType.TEST_SUITE) {
+        navigate(entityUtilClassBase.getEntityLink(EntityType.TEST_SUITE, fqn));
+      } else {
+        navigate(getDataQualityPagePath());
+      }
+    } else {
+      navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
+    }
   };
 
   useEffect(() => {

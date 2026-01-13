@@ -25,6 +25,7 @@ import {
 } from '../../rest/glossaryAPI';
 import { exportDatabaseServiceDetailsInCSV } from '../../rest/serviceAPI';
 import { exportTableDetailsInCSV } from '../../rest/tableAPI';
+import { exportTestCasesInCSV } from '../../rest/testAPI';
 import { t } from '../i18next/LocalUtil';
 
 export const isBulkEditRoute = (pathname: string) => {
@@ -50,6 +51,9 @@ export const getBulkEditCSVExportEntityApi = (entityType: EntityType) => {
 
     case EntityType.TABLE:
       return exportTableDetailsInCSV;
+
+    case EntityType.TEST_CASE:
+      return exportTestCasesInCSV;
 
     default:
       return exportTableDetailsInCSV;

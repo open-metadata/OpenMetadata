@@ -13,6 +13,7 @@
 
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { NavigateFunction } from 'react-router-dom';
+import { ReactComponent as IconEdit } from '../assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -21,7 +22,7 @@ import { ExportTypes } from '../constants/Export.constants';
 import { EntityType } from '../enums/entity.enum';
 import LimitWrapper from '../hoc/LimitWrapper';
 import { exportTestCasesInCSV } from '../rest/testAPI';
-import { getEntityImportPath } from './EntityUtils';
+import { getEntityBulkEditPath, getEntityImportPath } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 
 interface TestCasePermission {
@@ -90,6 +91,35 @@ export const ExtraTestCaseDropdownOptions = (
               />
             ),
             key: 'export-button',
+          },
+        ]
+      : []),
+    ...(EditAll && !deleted
+      ? [
+          {
+            label: (
+              <LimitWrapper resource="testCase">
+                <ManageButtonItemLabel
+                  description={t('message.bulk-edit-entity-help', {
+                    entity: t('label.test-case-lowercase-plural'),
+                  })}
+                  icon={IconEdit}
+                  id="bulk-edit-button"
+                  name={t('label.bulk-edit')}
+                  onClick={() => {
+                    const bulkEditPath = getEntityBulkEditPath(
+                      EntityType.TEST_CASE,
+                      fqn
+                    );
+                    const pathWithSource = sourceEntityType
+                      ? `${bulkEditPath}?sourceEntityType=${sourceEntityType}`
+                      : bulkEditPath;
+                    navigate(pathWithSource);
+                  }}
+                />
+              </LimitWrapper>
+            ),
+            key: 'bulk-edit-button',
           },
         ]
       : []),
