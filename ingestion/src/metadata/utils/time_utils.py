@@ -13,10 +13,11 @@
 Time utility functions
 """
 
-from datetime import datetime, time, timedelta, timezone
+from datetime import datetime, time, timedelta
 from math import floor
 from typing import Union
 
+from pytz import timezone
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.utils.deprecation import deprecated
 from metadata.utils.helpers import datetime_to_ts
@@ -25,7 +26,7 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 
-def datetime_to_timestamp(datetime_value: datetime, milliseconds=False) -> int:
+def datetime_to_timestamp(datetime_value: datetime, milliseconds=False, timezone_str: str="UTC") -> int:
     """Convert a datetime object to timestamp integer. If datetime is timezone aware, it will be converted to UTC.
     If it is naive it will be assumed to be in UTC.
 
@@ -44,9 +45,9 @@ def datetime_to_timestamp(datetime_value: datetime, milliseconds=False) -> int:
         )
 
     datetime_value = (
-        datetime_value.replace(tzinfo=timezone.utc)
+        datetime_value.replace(tzinfo=timezone(timezone_str))
         if datetime_value.tzinfo is None
-        else datetime_value.astimezone(timezone.utc)
+        else datetime_value.astimezone(timezone(timezone_str))
     )
     tmsap = datetime_value.timestamp()
     if milliseconds:
@@ -54,7 +55,7 @@ def datetime_to_timestamp(datetime_value: datetime, milliseconds=False) -> int:
     return int(tmsap)
 
 
-def timestamp_to_datetime(ts: Timestamp) -> datetime:
+def timestamp_to_datetime(ts: Timestamp, timezone_str: str = "UTC") -> datetime:
     """Convert a timestamp to datetime object in UTC.
 
     Args:
@@ -63,11 +64,12 @@ def timestamp_to_datetime(ts: Timestamp) -> datetime:
     Returns:
         datetime: datetime object
     """
-    return datetime.fromtimestamp(ts.root / 1000, tz=timezone.utc)
+    return datetime.fromtimestamp(ts.root / 1000, tz=timezone(timezone_str))
 
 
 def get_beginning_of_day_timestamp_mill(
-    days=0, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=0, weeks=0
+    days=0, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=0, weeks=0, 
+    timezone_str: str="UTC"
 ) -> int:
     """Get the beginning of day timestamp
 
@@ -83,7 +85,7 @@ def get_beginning_of_day_timestamp_mill(
     Returns:
         int: timestamp milliseconds
     """
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(timezone(timezone_str))
     delta = timedelta(
         weeks=weeks,
         days=days,
@@ -94,12 +96,12 @@ def get_beginning_of_day_timestamp_mill(
         milliseconds=milliseconds,
     )
     return datetime_to_ts(
-        datetime.combine(now_utc - delta, time.min, tzinfo=timezone.utc),
+        datetime.combine(now_utc - delta, time.min, tzinfo=timezone(timezone_str)),
     )
 
 
 def get_end_of_day_timestamp_mill(
-    days=0, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=0, weeks=0
+    days=0, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=0, weeks=0, timezone_str: str="UTC"
 ) -> int:
     """Get the end of day timestamp
 
@@ -115,7 +117,7 @@ def get_end_of_day_timestamp_mill(
     Returns:
         int: timestamp milliseconds
     """
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(timezone(timezone_str))
     delta = timedelta(
         weeks=weeks,
         days=days,
@@ -126,7 +128,7 @@ def get_end_of_day_timestamp_mill(
         milliseconds=milliseconds,
     )
     return datetime_to_ts(
-        datetime.combine(now_utc - delta, time.max, tzinfo=timezone.utc),
+        datetime.combine(now_utc - delta, time.max, tzinfo=timezone(timezone_str)),
     )
 
 
