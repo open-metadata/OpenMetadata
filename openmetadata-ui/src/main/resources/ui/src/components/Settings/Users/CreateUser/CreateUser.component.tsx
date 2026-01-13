@@ -29,7 +29,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { ReactComponent as IconSync } from '../../../../assets/svg/ic-sync.svg';
-import { VALIDATION_MESSAGES } from '../../../../constants/constants';
+import { PAGE_SIZE_LARGE, VALIDATION_MESSAGES } from '../../../../constants/constants';
 import {
   EMAIL_REG_EX,
   passwordRegex,
@@ -51,9 +51,10 @@ import {
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
 import { generateRandomPwd } from '../../../../rest/auth-API';
+import { getAllPersonas } from '../../../../rest/PersonaAPI';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
 import { handleSearchFilterOption } from '../../../../utils/CommonUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName, getEntityReferenceListFromEntities } from '../../../../utils/EntityUtils';
 import { getField } from '../../../../utils/formUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
@@ -84,6 +85,10 @@ const CreateUser = ({
   const [selectedTeams, setSelectedTeams] = useState<
     Array<EntityReference | undefined>
   >([]);
+  const [selectedPersonas, setSelectedPersonas] = useState<EntityReference[]>(
+    []
+  );
+  const [personaOptions, setPersonaOptions] = useState<EntityReference[]>([]);
   const [isPasswordGenerating, setIsPasswordGenerating] = useState(false);
   const { activeDomainEntityRef } = useDomainStore();
   const selectedDomain =
@@ -133,6 +138,13 @@ const CreateUser = ({
     }));
   }, [roles]);
 
+  const personaOptionsMapped = useMemo(() => {
+    return personaOptions.map((persona) => ({
+      label: getEntityName(persona),
+      value: persona.id,
+    }));
+  }, [personaOptions]);
+
   const generatedPassword = Form.useWatch('generatedPassword', form);
   const passwordGenerator = Form.useWatch('passwordGenerator', form);
   const password = Form.useWatch('password', form);
@@ -158,6 +170,7 @@ const CreateUser = ({
     const isPasswordGenerated =
       passwordGenerator === CreatePasswordGenerator.AutomaticGenerate;
     const validTeam = compact(selectedTeams).map((team) => team.id);
+    const validPersonas = selectedPersonas.map((persona) => persona.id);
 
     const { email, displayName, tokenExpiry, confirmPassword, description } =
       values;
@@ -168,6 +181,7 @@ const CreateUser = ({
       displayName: trim(displayName),
       roles: selectedRoles,
       teams: validTeam.length ? validTeam : undefined,
+      personas: validPersonas.length ? validPersonas : undefined,
       email: email,
       isAdmin: isAdmin,
       domains: selectedDomain.map((domain) => domain.fullyQualifiedName ?? ''),
@@ -207,8 +221,24 @@ const CreateUser = ({
     []
   );
 
+  const fetchPersonas = async () => {
+    try {
+      const { data } = await getAllPersonas({
+        limit: PAGE_SIZE_LARGE,
+      });
+      const personaRefs = getEntityReferenceListFromEntities(
+        data,
+        EntityType.PERSONA
+      );
+      setPersonaOptions(personaRefs);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
     generateRandomPassword();
+    fetchPersonas();
   }, []);
 
   return (
@@ -397,6 +427,25 @@ const CreateUser = ({
                   placeholder={t('label.please-select-entity', {
                     entity: t('label.role-plural'),
                   })}
+                />
+              </Form.Item>
+              <Form.Item label={t('label.persona-plural')} name="personas">
+                <Select
+                  data-testid="personas-dropdown"
+                  disabled={isEmpty(personaOptions)}
+                  filterOption={handleSearchFilterOption}
+                  getPopupContainer={(triggerNode) => triggerNode.parentElement}
+                  mode="multiple"
+                  options={personaOptionsMapped}
+                  placeholder={t('label.please-select-entity', {
+                    entity: t('label.persona-plural'),
+                  })}
+                  onChange={(selectedIds) => {
+                    const selected = personaOptions.filter((persona) =>
+                      selectedIds.includes(persona.id)
+                    );
+                    setSelectedPersonas(selected);
+                  }}
                 />
               </Form.Item>
             </>
