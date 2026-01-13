@@ -17,6 +17,7 @@ import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
@@ -70,6 +71,14 @@ public class QueryRepository extends EntityRepository<Query> {
     entity.setQueryUsedIn(
         fields.contains(QUERY_USED_IN_FIELD) ? getQueryUsage(entity) : entity.getQueryUsedIn());
     entity.withUsers(fields.contains("users") ? getQueryUsers(entity) : entity.getUsers());
+  }
+
+  @Override
+  public void setInheritedFields(Query entity, EntityUtil.Fields fields) {
+    super.setInheritedFields(entity, fields);
+    if (entity.getDomains() == null) {
+      entity.setDomains(Collections.emptyList());
+    }
   }
 
   @Override
@@ -191,6 +200,28 @@ public class QueryRepository extends EntityRepository<Query> {
         : findFrom(queryEntity.getId(), Entity.QUERY, Relationship.USES, USER);
   }
 
+  public List<EntityReference> computeDomainsFromQueryUsage(Query queryEntity) {
+    if (queryEntity == null || nullOrEmpty(queryEntity.getQueryUsedIn())) {
+      return Collections.emptyList();
+    }
+
+    Map<String, EntityReference> uniqueDomains = new HashMap<>();
+    for (EntityReference entityRef : queryEntity.getQueryUsedIn()) {
+      try {
+        EntityInterface entity = Entity.getEntity(entityRef, "domains", Include.NON_DELETED);
+        List<EntityReference> entityDomains = entity.getDomains();
+        if (!nullOrEmpty(entityDomains)) {
+          for (EntityReference domain : entityDomains) {
+            uniqueDomains.putIfAbsent(domain.getId().toString(), domain);
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn("Could not fetch domains for entity: {}", entityRef.getId(), e);
+      }
+    }
+    return new ArrayList<>(uniqueDomains.values());
+  }
+
   @Override
   @SneakyThrows
   public void prepare(Query entity, boolean update) {
@@ -202,6 +233,15 @@ public class QueryRepository extends EntityRepository<Query> {
     entity.setUsers(EntityUtil.populateEntityReferences(entity.getUsers()));
     DatabaseService service = Entity.getEntity(entity.getService(), "", Include.ALL);
     entity.setService(service.getEntityReference());
+
+    if (!update && entity.getQueryUsedIn() != null) {
+      List<EntityReference> computedDomains = computeDomainsFromQueryUsage(entity);
+      entity.setDomains(computedDomains);
+    }
+    //    else if (update && entity.getDomains() == null) {
+    //
+    //      entity.setDomains(Collections.emptyList());
+    //    }
   }
 
   @Override
@@ -387,6 +427,17 @@ public class QueryRepository extends EntityRepository<Query> {
       // Store Query Used in Relation
       recordChange("usedBy", original.getUsedBy(), updated.getUsedBy(), true);
       storeQueryUsedIn(updated.getId(), added, deleted);
+
+      List<EntityReference> originalDomains =
+          original.getDomains() != null ? original.getDomains() : Collections.emptyList();
+      if (!added.isEmpty() || !deleted.isEmpty()) {
+        List<EntityReference> recomputedDomains = computeDomainsFromQueryUsage(updated);
+        updateDomains(updated, originalDomains, recomputedDomains);
+        updated.setDomains(recomputedDomains);
+      } else {
+        updated.setDomains(originalDomains);
+      }
+
       // Query is a required field. Cannot be removed.
       if (updated.getQuery() != null) {
         String originalChecksum = EntityUtil.hash(original.getQuery());

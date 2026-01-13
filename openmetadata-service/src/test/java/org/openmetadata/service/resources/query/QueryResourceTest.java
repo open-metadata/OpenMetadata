@@ -54,6 +54,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     super(
         Entity.QUERY, Query.class, QueryResource.QueryList.class, "queries", QueryResource.FIELDS);
     supportsSearchIndex = true;
+    supportsPatchDomains = false;
     EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG = false;
   }
 
@@ -441,5 +442,184 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
       target = target.queryParam("include", "all");
     }
     return TestUtils.get(target, QueryResource.QueryList.class, authHeaders);
+  }
+
+  @Test
+  void test_queryInheritsDomainsFromQueryUsedIn(TestInfo test) throws IOException {
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    List<Column> columns = List.of(TableResourceTest.getColumn(C1, ColumnDataType.INT, null));
+
+    CreateTable table1Create =
+        tableResourceTest
+            .createRequest(test)
+            .withName(getEntityName(test) + "_table1")
+            .withColumns(columns)
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName()));
+    Table table1 = tableResourceTest.createAndCheckEntity(table1Create, ADMIN_AUTH_HEADERS);
+
+    CreateQuery queryCreate =
+        createRequest(getEntityName(test)).withQueryUsedIn(List.of(table1.getEntityReference()));
+    Query query = createAndCheckEntity(queryCreate, ADMIN_AUTH_HEADERS);
+
+    Query fetchedQuery = getEntity(query.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertNotNull(fetchedQuery.getDomains());
+    assertEquals(1, fetchedQuery.getDomains().size());
+    assertEquals(DOMAIN.getId(), fetchedQuery.getDomains().get(0).getId());
+
+    tableResourceTest.deleteEntity(table1.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(query.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_queryInheritsMultipleDomainsFromQueryUsedIn(TestInfo test) throws IOException {
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    List<Column> columns = List.of(TableResourceTest.getColumn(C1, ColumnDataType.INT, null));
+
+    CreateTable table1Create =
+        tableResourceTest
+            .createRequest(test)
+            .withName(getEntityName(test) + "_table1")
+            .withColumns(columns)
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName()));
+    Table table1 = tableResourceTest.createAndCheckEntity(table1Create, ADMIN_AUTH_HEADERS);
+
+    CreateTable table2Create =
+        tableResourceTest
+            .createRequest(test)
+            .withName(getEntityName(test) + "_table2")
+            .withColumns(columns)
+            .withDomains(List.of(DOMAIN1.getFullyQualifiedName()));
+    Table table2 = tableResourceTest.createAndCheckEntity(table2Create, ADMIN_AUTH_HEADERS);
+
+    CreateQuery queryCreate =
+        createRequest(getEntityName(test))
+            .withQueryUsedIn(List.of(table1.getEntityReference(), table2.getEntityReference()));
+    Query query = createAndCheckEntity(queryCreate, ADMIN_AUTH_HEADERS);
+
+    Query fetchedQuery = getEntity(query.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertNotNull(fetchedQuery.getDomains());
+    assertEquals(2, fetchedQuery.getDomains().size());
+
+    tableResourceTest.deleteEntity(table1.getId(), ADMIN_AUTH_HEADERS);
+    tableResourceTest.deleteEntity(table2.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(query.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_queryDomainsUpdatedWhenQueryUsedInChanges(TestInfo test) throws IOException {
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    List<Column> columns = List.of(TableResourceTest.getColumn(C1, ColumnDataType.INT, null));
+
+    CreateTable table1Create =
+        tableResourceTest
+            .createRequest(test)
+            .withName(getEntityName(test) + "_table1")
+            .withColumns(columns)
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName()));
+    Table table1 = tableResourceTest.createAndCheckEntity(table1Create, ADMIN_AUTH_HEADERS);
+
+    CreateTable table2Create =
+        tableResourceTest
+            .createRequest(test)
+            .withName(getEntityName(test) + "_table2")
+            .withColumns(columns)
+            .withDomains(List.of(DOMAIN1.getFullyQualifiedName()));
+    Table table2 = tableResourceTest.createAndCheckEntity(table2Create, ADMIN_AUTH_HEADERS);
+
+    CreateQuery queryCreate =
+        createRequest(getEntityName(test)).withQueryUsedIn(List.of(table1.getEntityReference()));
+    Query query = createAndCheckEntity(queryCreate, ADMIN_AUTH_HEADERS);
+
+    Query fetchedQuery = getEntity(query.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertNotNull(fetchedQuery.getDomains());
+    assertEquals(1, fetchedQuery.getDomains().size());
+    assertEquals(DOMAIN.getId(), fetchedQuery.getDomains().get(0).getId());
+
+    String origJson = JsonUtils.pojoToJson(query);
+    query.setQueryUsedIn(List.of(table2.getEntityReference()));
+    patchEntity(query.getId(), origJson, query, ADMIN_AUTH_HEADERS);
+
+    Query updatedQuery = getEntity(query.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertNotNull(updatedQuery.getDomains());
+    assertEquals(1, updatedQuery.getDomains().size());
+    assertEquals(DOMAIN1.getId(), updatedQuery.getDomains().get(0).getId());
+
+    tableResourceTest.deleteEntity(table1.getId(), ADMIN_AUTH_HEADERS);
+    tableResourceTest.deleteEntity(table2.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(query.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_queryDomainsClearedWhenQueryUsedInEmpty(TestInfo test) throws IOException {
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    List<Column> columns = List.of(TableResourceTest.getColumn(C1, ColumnDataType.INT, null));
+
+    CreateTable table1Create =
+        tableResourceTest
+            .createRequest(test)
+            .withName(getEntityName(test) + "_table1")
+            .withColumns(columns)
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName()));
+    Table table1 = tableResourceTest.createAndCheckEntity(table1Create, ADMIN_AUTH_HEADERS);
+
+    CreateQuery queryCreate =
+        createRequest(getEntityName(test)).withQueryUsedIn(List.of(table1.getEntityReference()));
+    Query query = createAndCheckEntity(queryCreate, ADMIN_AUTH_HEADERS);
+
+    Query fetchedQuery = getEntity(query.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertNotNull(fetchedQuery.getDomains());
+    assertEquals(1, fetchedQuery.getDomains().size());
+
+    String origJson = JsonUtils.pojoToJson(query);
+    query.setQueryUsedIn(List.of());
+    patchEntity(query.getId(), origJson, query, ADMIN_AUTH_HEADERS);
+
+    Query updatedQuery = getEntity(query.getId(), "domains", ADMIN_AUTH_HEADERS);
+    if (updatedQuery.getDomains() != null) {
+      assertEquals(0, updatedQuery.getDomains().size());
+    }
+
+    tableResourceTest.deleteEntity(table1.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(query.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_manualDomainAssignmentsIgnored(TestInfo test) throws IOException {
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    List<Column> columns = List.of(TableResourceTest.getColumn(C1, ColumnDataType.INT, null));
+
+    CreateTable table1Create =
+        tableResourceTest
+            .createRequest(test)
+            .withName(getEntityName(test) + "_table1")
+            .withColumns(columns)
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName()));
+    Table table1 = tableResourceTest.createAndCheckEntity(table1Create, ADMIN_AUTH_HEADERS);
+
+    CreateQuery queryCreate =
+        createRequest(getEntityName(test))
+            .withQueryUsedIn(List.of(table1.getEntityReference()))
+            .withDomains(List.of(DOMAIN1.getFullyQualifiedName()));
+    Query query = createAndCheckEntity(queryCreate, ADMIN_AUTH_HEADERS);
+
+    Query fetchedQuery = getEntity(query.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertNotNull(fetchedQuery.getDomains());
+    assertEquals(1, fetchedQuery.getDomains().size());
+    assertEquals(DOMAIN.getId(), fetchedQuery.getDomains().get(0).getId());
+
+    String origJson = JsonUtils.pojoToJson(query);
+    query.setDomains(List.of(DOMAIN1.getEntityReference()));
+    patchEntity(query.getId(), origJson, query, ADMIN_AUTH_HEADERS);
+
+    Query patchedQuery = getEntity(query.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertNotNull(patchedQuery.getDomains());
+    assertEquals(1, patchedQuery.getDomains().size());
+    assertEquals(
+        DOMAIN.getId(),
+        patchedQuery.getDomains().get(0).getId(),
+        "Domain should remain DOMAIN (from queryUsedIn), not DOMAIN1 (from manual patch)");
+
+    tableResourceTest.deleteEntity(table1.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(query.getId(), ADMIN_AUTH_HEADERS);
   }
 }
