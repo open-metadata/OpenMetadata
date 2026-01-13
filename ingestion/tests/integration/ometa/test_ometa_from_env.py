@@ -13,17 +13,31 @@
 We can load OpenMetadata from the environment variables
 """
 
+import pytest
+
 from _openmetadata_testutils.ometa import OM_JWT
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
-def test_ometa_from_env(monkeypatch):
+@pytest.mark.parametrize(
+    "env_vars",
+    [
+        [
+            ("OPENMETADATA__connection__hostPort", "http://localhost:8585/api"),
+            ("OPENMETADATA__connection__authProvider", "openmetadata"),
+            ("OPENMETADATA__connection__securityConfig__jwtToken", OM_JWT),
+        ],
+        [
+            ("OPENMETADATA__CONNECTION__HOSTPORT", "http://localhost:8585/api"),
+            ("OPENMETADATA__CONNECTION__AUTHPROVIDER", "openmetadata"),
+            ("OPENMETADATA__CONNECTION__SECURITYCONFIG__JWTTOKEN", OM_JWT),
+        ],
+    ],
+)
+def test_ometa_from_env(monkeypatch, env_vars):
     # Set environment variables
-    monkeypatch.setenv(
-        "OPENMETADATA__connection__hostPort", "http://localhost:8585/api"
-    )
-    monkeypatch.setenv("OPENMETADATA__connection__authProvider", "openmetadata")
-    monkeypatch.setenv("OPENMETADATA__connection__securityConfig__jwtToken", OM_JWT)
+    for var, value in env_vars:
+        monkeypatch.setenv(var, value)
 
     ometa = OpenMetadata.from_env()
     assert ometa.health_check()
