@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PagingWithoutTotal } from 'Models';
 import { Dispatch, SetStateAction } from 'react';
 import { File } from '../../../../generated/entity/data/file';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
@@ -23,7 +22,6 @@ export interface FilesTableProps {
   handlePageChange: (data: PagingHandlerParams) => void;
   files: File[];
   isLoading: boolean;
-  fetchFiles: (paging?: PagingWithoutTotal) => void;
   setFiles: Dispatch<SetStateAction<File[]>>;
   setIsLoading: Dispatch<SetStateAction<boolean>>;
   serviceFqn: string;

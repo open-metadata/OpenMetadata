@@ -270,7 +270,7 @@ export const performExpand = async (
     .getByTestId('plus-icon');
 
   if (newNode) {
-    const expandRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+    const expandRes = page.waitForResponse('/api/v1/lineage/getLineage/*?*');
     await expandBtn.click();
     await expandRes;
     await verifyNodePresent(page, newNode);
@@ -299,6 +299,35 @@ export const performCollapse = async (
     );
 
     await expect(hiddenNode).not.toBeVisible();
+  }
+};
+
+export const verifyExpandHandleHover = async (
+  page: Page,
+  node: EntityClass,
+  upstream: boolean
+) => {
+  const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
+  const handleDirection = upstream ? 'left' : 'right';
+  const handle = page
+    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .locator(
+      `.react-flow__handle-${handleDirection}.lineage-node-handle-expand-all`
+    );
+
+  await handle.hover();
+
+  const expandBtn = handle.getByTestId('lineage-expand-all-btn');
+  await expect(expandBtn).toBeVisible();
+
+  const plusIcon = handle.getByTestId('plus-icon');
+  const plusBox = await plusIcon.boundingBox();
+  const expandBox = await expandBtn.boundingBox();
+
+  if (upstream) {
+    expect(expandBox?.x).toBeLessThan(plusBox?.x ?? Number.MAX_VALUE);
+  } else {
+    expect(expandBox?.x).toBeGreaterThan(plusBox?.x ?? 0);
   }
 };
 

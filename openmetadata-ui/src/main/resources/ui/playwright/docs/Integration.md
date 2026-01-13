@@ -2,7 +2,7 @@
 
 # Integration
 
-> **1 Components** | **5 Files** | **52 Tests** | **55 Scenarios** 🚀
+> **1 Components** | **6 Files** | **53 Tests** | **57 Scenarios** 🚀
 
 ## Table of Contents
 - [Connectors](#connectors)
@@ -138,6 +138,21 @@
 | 2 | **Service form functionality** - Verify SSL cert upload with long filename and UI overflow handling | SSL cert upload with long filename and UI overflow handling |
 | 3 | **Service form functionality** - Verify service name field validation errors | Service name field validation errors |
 | 4 | **Service form functionality** - Verify if string input inside oneOf config works properly | If string input inside oneOf config works properly |
+
+</details>
+
+<details open>
+<summary>📄 <b>ApiCollection.spec.ts</b> (1 tests, 2 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/ApiCollection.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ApiCollection.spec.ts)
+
+### API Collection Entity Special Test Cases
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **API Collection Entity Special Test Cases** - Verify Owner Propagation: owner should be propagated to the API Collection's API Endpoint | Owner Propagation: owner should be propagated to the API Collection's API Endpoint |
+| | ↳ *Verify user Owner Propagation: owner should be propagated to the API Collection's API Endpoint* | |
+| | ↳ *Verify team Owner Propagation: owner should be propagated to the API Collection's API Endpoint* | |
 
 </details>
 

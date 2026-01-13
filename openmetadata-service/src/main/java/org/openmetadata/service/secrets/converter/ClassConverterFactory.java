@@ -33,6 +33,7 @@ import org.openmetadata.schema.services.connections.database.CockroachConnection
 import org.openmetadata.schema.services.connections.database.DatabricksConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.DeltaLakeConnection;
+import org.openmetadata.schema.services.connections.database.DremioConnection;
 import org.openmetadata.schema.services.connections.database.GreenplumConnection;
 import org.openmetadata.schema.services.connections.database.HiveConnection;
 import org.openmetadata.schema.services.connections.database.IcebergConnection;
@@ -78,6 +79,7 @@ public final class ClassConverterFactory {
             Map.entry(BigTableConnection.class, new BigTableConnectionClassConverter()),
             Map.entry(DatalakeConnection.class, new DatalakeConnectionClassConverter()),
             Map.entry(DeltaLakeConnection.class, new DeltaLakeConnectionClassConverter()),
+            Map.entry(DremioConnection.class, new DremioConnectionClassConverter()),
             Map.entry(DbtGCSConfig.class, new DbtGCSConfigClassConverter()),
             Map.entry(DbtPipeline.class, new DbtPipelineClassConverter()),
             Map.entry(ElasticSearchConnection.class, new ElasticSearchConnectionClassConverter()),

@@ -38,6 +38,7 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
 
 const adminUser = new UserClass();
+
 const persona = new PersonaClass();
 const domain = new Domain();
 const subDomain = new SubDomain(domain);

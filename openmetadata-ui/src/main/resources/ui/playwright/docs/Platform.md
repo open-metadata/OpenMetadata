@@ -2,7 +2,7 @@
 
 # Platform
 
-> **12 Components** | **69 Files** | **1246 Tests** | **1626 Scenarios** 🚀
+> **12 Components** | **69 Files** | **1274 Tests** | **1668 Scenarios** 🚀
 
 ## Table of Contents
 - [Other](#other)
@@ -104,6 +104,45 @@
 |---|-----------|-------------|
 | 1 | **Airflow** - Create Service and check the AutoPilot status | Create Service and check the AutoPilot status |
 | 2 | **Airflow** - Agents created by AutoPilot should be deleted | Agents created by AutoPilot should be deleted |
+
+</details>
+
+<details open>
+<summary>📄 <b>AuditLogs.spec.ts</b> (8 tests, 19 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/AuditLogs.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/AuditLogs.spec.ts)
+
+### Audit Logs Page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Audit Logs Page** - should display page header with correct title and subtitle | Display page header with correct title and subtitle |
+| | ↳ *Verify page header* | |
+| | ↳ *Verify page sub-header* | |
+| 2 | **Audit Logs Page** - should display all filter buttons | Display all filter buttons |
+| | ↳ *Verify User filter is visible* | |
+| | ↳ *Verify Bot filter is visible* | |
+| | ↳ *Verify Service filter is visible* | |
+| | ↳ *Verify Asset filter is visible* | |
+| 3 | **Audit Logs Page** - should display audit logs table with correct columns | Display audit logs table with correct columns |
+| | ↳ *Verify table is visible* | |
+| | ↳ *Verify table has correct columns* | |
+| 4 | **Audit Logs Page** - should open and close User filter popover | Open and close User filter popover |
+| | ↳ *Verify filter popover opens with search input* | |
+| | ↳ *Close popover by clicking filter button again* | |
+| 5 | **Audit Logs Page** - should open and close Bot filter popover | Open and close Bot filter popover |
+| | ↳ *Verify filter popover opens* | |
+| | ↳ *Close popover by clicking filter button again* | |
+| 6 | **Audit Logs Page** - should open and close Service filter popover | Open and close Service filter popover |
+| | ↳ *Verify filter popover opens* | |
+| | ↳ *Close popover by clicking filter button again* | |
+| 7 | **Audit Logs Page** - should open and close Asset filter popover | Open and close Asset filter popover |
+| | ↳ *Verify filter popover opens* | |
+| | ↳ *Close popover by clicking filter button again* | |
+| 8 | **Audit Logs Page** - should show Clear button when filter is active and clear filters | Show Clear button when filter is active and clear filters |
+| | ↳ *Clear button should not be visible initially* | |
+| | ↳ *Select a user from filter* | |
+| | ↳ *Verify Clear button appears and works* | |
 
 </details>
 
@@ -262,21 +301,6 @@
 </details>
 
 <details open>
-<summary>📄 <b>ApiCollection.spec.ts</b> (1 tests, 2 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/ApiCollection.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ApiCollection.spec.ts)
-
-### API Collection Entity Special Test Cases
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **API Collection Entity Special Test Cases** - Verify Owner Propagation: owner should be propagated to the API Collection's API Endpoint | Owner Propagation: owner should be propagated to the API Collection's API Endpoint |
-| | ↳ *Verify user Owner Propagation: owner should be propagated to the API Collection's API Endpoint* | |
-| | ↳ *Verify team Owner Propagation: owner should be propagated to the API Collection's API Endpoint* | |
-
-</details>
-
-<details open>
 <summary>📄 <b>ApiDocs.spec.ts</b> (1 tests, 1 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/ApiDocs.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ApiDocs.spec.ts)
@@ -354,7 +378,7 @@
 ## Entities
 
 <details open>
-<summary>📄 <b>Entity.spec.ts</b> (321 tests, 352 scenarios)</summary>
+<summary>📄 <b>Entity.spec.ts</b> (335 tests, 366 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts)
 
@@ -374,17 +398,24 @@
 | 10 | **Api Endpoint** - Glossary Term Add, Update and Remove | Tests glossary term management on entities  Tests assigning glossary terms to an entity, updating term selection, and removing glossary terms |
 | 11 | **Api Endpoint** - Tag and Glossary Selector should close vice versa | Tests tag and glossary selector mutual exclusivity  Verifies that opening the tag selector closes the glossary selector and vice versa |
 | 12 | **Api Endpoint** - Tag Add, Update and Remove for child entities | Tag Add, Update and Remove for child entities |
-| 13 | **Api Endpoint** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
-| 14 | **Api Endpoint** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
-| 15 | **Api Endpoint** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
-| 16 | **Api Endpoint** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
-| 17 | **Api Endpoint** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
-| 18 | **Api Endpoint** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 19 | **Api Endpoint** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Add and remove tags via column detail panel* | |
+| 13 | **Api Endpoint** - Tag and Glossary Term preservation in column detail panel | Tag and Glossary Term preservation in column detail panel |
+| | ↳ *Verify tag updates preserve glossary terms* | |
+| 14 | **Api Endpoint** - Column detail panel data type display and nested column navigation | Column detail panel data type display and nested column navigation |
+| | ↳ *Verify data type display and nested column counting* | |
+| 15 | **Api Endpoint** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
+| | ↳ *Add and remove glossary terms via column detail panel* | |
+| 16 | **Api Endpoint** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
+| | ↳ *Update description via column detail panel and test panel features* | |
+| 17 | **Api Endpoint** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
+| 18 | **Api Endpoint** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
+| 19 | **Api Endpoint** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
+| 20 | **Api Endpoint** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
+| 21 | **Api Endpoint** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
-| 20 | **Api Endpoint** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 21 | **Api Endpoint** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 22 | **Api Endpoint** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
+| 23 | **Api Endpoint** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
 ### Table
 
@@ -402,24 +433,31 @@
 | 10 | **Table** - Glossary Term Add, Update and Remove | Tests glossary term management on entities  Tests assigning glossary terms to an entity, updating term selection, and removing glossary terms |
 | 11 | **Table** - Tag and Glossary Selector should close vice versa | Tests tag and glossary selector mutual exclusivity  Verifies that opening the tag selector closes the glossary selector and vice versa |
 | 12 | **Table** - Tag Add, Update and Remove for child entities | Tag Add, Update and Remove for child entities |
-| 13 | **Table** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
-| 14 | **Table** - DisplayName Add, Update and Remove for child entities | DisplayName Add, Update and Remove for child entities |
-| 15 | **Table** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
-| 16 | **Table** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
-| 17 | **Table** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
-| 18 | **Table** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
-| 19 | **Table** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 20 | **Table** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Add and remove tags via column detail panel* | |
+| 13 | **Table** - Tag and Glossary Term preservation in column detail panel | Tag and Glossary Term preservation in column detail panel |
+| | ↳ *Verify tag updates preserve glossary terms* | |
+| 14 | **Table** - Column detail panel data type display and nested column navigation | Column detail panel data type display and nested column navigation |
+| | ↳ *Verify data type display and nested column counting* | |
+| 15 | **Table** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
+| | ↳ *Add and remove glossary terms via column detail panel* | |
+| 16 | **Table** - DisplayName Add, Update and Remove for child entities | DisplayName Add, Update and Remove for child entities |
+| 17 | **Table** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
+| | ↳ *Update description via column detail panel and test panel features* | |
+| 18 | **Table** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
+| 19 | **Table** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
+| 20 | **Table** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
+| 21 | **Table** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
+| 22 | **Table** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
-| 21 | **Table** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 22 | **Table** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
-| 23 | **Table** - Switch from Data Observability tab to Activity Feed tab and verify data appears | Switch from Data Observability tab to Activity Feed tab and verify data appears |
+| 23 | **Table** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
+| 24 | **Table** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 25 | **Table** - Switch from Data Observability tab to Activity Feed tab and verify data appears | Switch from Data Observability tab to Activity Feed tab and verify data appears |
 | | ↳ *Navigate to Data Observability tab* | |
 | | ↳ *Verify tabs UI component is rendered in Data Observability tab* | |
 | | ↳ *Switch to Activity Feed tab* | |
 | | ↳ *Verify tabs or left component is rendered in Activity Feed tab* | |
-| 24 | **Table** - Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level | Tests access control for table-level data access with deny policy  Tests that a data consumer assigned a role with deny rules for ViewQueries and ViewSampleData cannot access those tabs on table entities |
+| 26 | **Table** - Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level | Tests access control for table-level data access with deny policy  Tests that a data consumer assigned a role with deny rules for ViewQueries and ViewSampleData cannot access those tabs on table entities |
 
 ### Stored Procedure
 
@@ -487,17 +525,24 @@
 | 10 | **Pipeline** - Glossary Term Add, Update and Remove | Tests glossary term management on entities  Tests assigning glossary terms to an entity, updating term selection, and removing glossary terms |
 | 11 | **Pipeline** - Tag and Glossary Selector should close vice versa | Tests tag and glossary selector mutual exclusivity  Verifies that opening the tag selector closes the glossary selector and vice versa |
 | 12 | **Pipeline** - Tag Add, Update and Remove for child entities | Tag Add, Update and Remove for child entities |
-| 13 | **Pipeline** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
-| 14 | **Pipeline** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
-| 15 | **Pipeline** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
-| 16 | **Pipeline** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
-| 17 | **Pipeline** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
-| 18 | **Pipeline** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 19 | **Pipeline** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Add and remove tags via column detail panel* | |
+| 13 | **Pipeline** - Tag and Glossary Term preservation in column detail panel | Tag and Glossary Term preservation in column detail panel |
+| | ↳ *Verify tag updates preserve glossary terms* | |
+| 14 | **Pipeline** - Column detail panel data type display and nested column navigation | Column detail panel data type display and nested column navigation |
+| | ↳ *Verify data type display and nested column counting* | |
+| 15 | **Pipeline** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
+| | ↳ *Add and remove glossary terms via column detail panel* | |
+| 16 | **Pipeline** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
+| | ↳ *Update description via column detail panel and test panel features* | |
+| 17 | **Pipeline** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
+| 18 | **Pipeline** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
+| 19 | **Pipeline** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
+| 20 | **Pipeline** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
+| 21 | **Pipeline** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
-| 20 | **Pipeline** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 21 | **Pipeline** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 22 | **Pipeline** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
+| 23 | **Pipeline** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
 ### Topic
 
@@ -515,17 +560,24 @@
 | 10 | **Topic** - Glossary Term Add, Update and Remove | Tests glossary term management on entities  Tests assigning glossary terms to an entity, updating term selection, and removing glossary terms |
 | 11 | **Topic** - Tag and Glossary Selector should close vice versa | Tests tag and glossary selector mutual exclusivity  Verifies that opening the tag selector closes the glossary selector and vice versa |
 | 12 | **Topic** - Tag Add, Update and Remove for child entities | Tag Add, Update and Remove for child entities |
-| 13 | **Topic** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
-| 14 | **Topic** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
-| 15 | **Topic** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
-| 16 | **Topic** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
-| 17 | **Topic** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
-| 18 | **Topic** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 19 | **Topic** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Add and remove tags via column detail panel* | |
+| 13 | **Topic** - Tag and Glossary Term preservation in column detail panel | Tag and Glossary Term preservation in column detail panel |
+| | ↳ *Verify tag updates preserve glossary terms* | |
+| 14 | **Topic** - Column detail panel data type display and nested column navigation | Column detail panel data type display and nested column navigation |
+| | ↳ *Verify data type display and nested column counting* | |
+| 15 | **Topic** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
+| | ↳ *Add and remove glossary terms via column detail panel* | |
+| 16 | **Topic** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
+| | ↳ *Update description via column detail panel and test panel features* | |
+| 17 | **Topic** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
+| 18 | **Topic** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
+| 19 | **Topic** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
+| 20 | **Topic** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
+| 21 | **Topic** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
-| 20 | **Topic** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 21 | **Topic** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 22 | **Topic** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
+| 23 | **Topic** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
 ### Ml Model
 
@@ -543,17 +595,24 @@
 | 10 | **Ml Model** - Glossary Term Add, Update and Remove | Tests glossary term management on entities  Tests assigning glossary terms to an entity, updating term selection, and removing glossary terms |
 | 11 | **Ml Model** - Tag and Glossary Selector should close vice versa | Tests tag and glossary selector mutual exclusivity  Verifies that opening the tag selector closes the glossary selector and vice versa |
 | 12 | **Ml Model** - Tag Add, Update and Remove for child entities | Tag Add, Update and Remove for child entities |
-| 13 | **Ml Model** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
-| 14 | **Ml Model** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
-| 15 | **Ml Model** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
-| 16 | **Ml Model** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
-| 17 | **Ml Model** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
-| 18 | **Ml Model** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 19 | **Ml Model** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Add and remove tags via column detail panel* | |
+| 13 | **Ml Model** - Tag and Glossary Term preservation in column detail panel | Tag and Glossary Term preservation in column detail panel |
+| | ↳ *Verify tag updates preserve glossary terms* | |
+| 14 | **Ml Model** - Column detail panel data type display and nested column navigation | Column detail panel data type display and nested column navigation |
+| | ↳ *Verify data type display and nested column counting* | |
+| 15 | **Ml Model** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
+| | ↳ *Add and remove glossary terms via column detail panel* | |
+| 16 | **Ml Model** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
+| | ↳ *Update description via column detail panel and test panel features* | |
+| 17 | **Ml Model** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
+| 18 | **Ml Model** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
+| 19 | **Ml Model** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
+| 20 | **Ml Model** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
+| 21 | **Ml Model** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
-| 20 | **Ml Model** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 21 | **Ml Model** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 22 | **Ml Model** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
+| 23 | **Ml Model** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
 ### Container
 
@@ -596,17 +655,24 @@
 | 10 | **Search Index** - Glossary Term Add, Update and Remove | Tests glossary term management on entities  Tests assigning glossary terms to an entity, updating term selection, and removing glossary terms |
 | 11 | **Search Index** - Tag and Glossary Selector should close vice versa | Tests tag and glossary selector mutual exclusivity  Verifies that opening the tag selector closes the glossary selector and vice versa |
 | 12 | **Search Index** - Tag Add, Update and Remove for child entities | Tag Add, Update and Remove for child entities |
-| 13 | **Search Index** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
-| 14 | **Search Index** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
-| 15 | **Search Index** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
-| 16 | **Search Index** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
-| 17 | **Search Index** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
-| 18 | **Search Index** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 19 | **Search Index** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Add and remove tags via column detail panel* | |
+| 13 | **Search Index** - Tag and Glossary Term preservation in column detail panel | Tag and Glossary Term preservation in column detail panel |
+| | ↳ *Verify tag updates preserve glossary terms* | |
+| 14 | **Search Index** - Column detail panel data type display and nested column navigation | Column detail panel data type display and nested column navigation |
+| | ↳ *Verify data type display and nested column counting* | |
+| 15 | **Search Index** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
+| | ↳ *Add and remove glossary terms via column detail panel* | |
+| 16 | **Search Index** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
+| | ↳ *Update description via column detail panel and test panel features* | |
+| 17 | **Search Index** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
+| 18 | **Search Index** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
+| 19 | **Search Index** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
+| 20 | **Search Index** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
+| 21 | **Search Index** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
-| 20 | **Search Index** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 21 | **Search Index** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 22 | **Search Index** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
+| 23 | **Search Index** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
 ### Dashboard Data Model
 
@@ -625,18 +691,25 @@
 | 11 | **Dashboard Data Model** - Glossary Term Add, Update and Remove | Tests glossary term management on entities  Tests assigning glossary terms to an entity, updating term selection, and removing glossary terms |
 | 12 | **Dashboard Data Model** - Tag and Glossary Selector should close vice versa | Tests tag and glossary selector mutual exclusivity  Verifies that opening the tag selector closes the glossary selector and vice versa |
 | 13 | **Dashboard Data Model** - Tag Add, Update and Remove for child entities | Tag Add, Update and Remove for child entities |
-| 14 | **Dashboard Data Model** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
-| 15 | **Dashboard Data Model** - DisplayName Add, Update and Remove for child entities | DisplayName Add, Update and Remove for child entities |
-| 16 | **Dashboard Data Model** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
-| 17 | **Dashboard Data Model** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
-| 18 | **Dashboard Data Model** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
-| 19 | **Dashboard Data Model** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
-| 20 | **Dashboard Data Model** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 21 | **Dashboard Data Model** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Add and remove tags via column detail panel* | |
+| 14 | **Dashboard Data Model** - Tag and Glossary Term preservation in column detail panel | Tag and Glossary Term preservation in column detail panel |
+| | ↳ *Verify tag updates preserve glossary terms* | |
+| 15 | **Dashboard Data Model** - Column detail panel data type display and nested column navigation | Column detail panel data type display and nested column navigation |
+| | ↳ *Verify data type display and nested column counting* | |
+| 16 | **Dashboard Data Model** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
+| | ↳ *Add and remove glossary terms via column detail panel* | |
+| 17 | **Dashboard Data Model** - DisplayName Add, Update and Remove for child entities | DisplayName Add, Update and Remove for child entities |
+| 18 | **Dashboard Data Model** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
+| | ↳ *Update description via column detail panel and test panel features* | |
+| 19 | **Dashboard Data Model** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
+| 20 | **Dashboard Data Model** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
+| 21 | **Dashboard Data Model** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
+| 22 | **Dashboard Data Model** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
+| 23 | **Dashboard Data Model** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
-| 22 | **Dashboard Data Model** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 23 | **Dashboard Data Model** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 24 | **Dashboard Data Model** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
+| 25 | **Dashboard Data Model** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
 ### Metric
 
@@ -2250,7 +2323,7 @@
 ## Personas & Customizations
 
 <details open>
-<summary>📄 <b>CustomizeDetailPage.spec.ts</b> (24 tests, 79 scenarios)</summary>
+<summary>📄 <b>CustomizeDetailPage.spec.ts</b> (25 tests, 83 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts)
 
@@ -2340,25 +2413,30 @@
 | | ↳ *should show all the tabs & widget as default when no customization is done* | |
 | | ↳ *apply customization* | |
 | | ↳ *Validate customization* | |
-| 15 | **Persona customization** - Glossary - customization should work | Glossary - customization should work |
+| 15 | **Persona customization** - Data Product - customization should work | Data Product - customization should work |
 | | ↳ *pre-requisite* | |
 | | ↳ *should show all the tabs & widget as default when no customization is done* | |
 | | ↳ *apply customization* | |
 | | ↳ *Validate customization* | |
-| 16 | **Persona customization** - Glossary Term - customization should work | Glossary Term - customization should work |
+| 16 | **Persona customization** - Glossary - customization should work | Glossary - customization should work |
 | | ↳ *pre-requisite* | |
 | | ↳ *should show all the tabs & widget as default when no customization is done* | |
 | | ↳ *apply customization* | |
 | | ↳ *Validate customization* | |
-| 17 | **Persona customization** - Validate Glossary Term details page after customization of tabs | Validate Glossary Term details page after customization of tabs |
+| 17 | **Persona customization** - Glossary Term - customization should work | Glossary Term - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 18 | **Persona customization** - Validate Glossary Term details page after customization of tabs | Validate Glossary Term details page after customization of tabs |
 | | ↳ *pre-requisite* | |
 | | ↳ *apply customization* | |
 | | ↳ *Validate customization* | |
-| 18 | **Persona customization** - customize tab label should only render if it's customize by user | Customize tab label should only render if it's customize by user |
+| 19 | **Persona customization** - customize tab label should only render if it's customize by user | Customize tab label should only render if it's customize by user |
 | | ↳ *pre-requisite* | |
 | | ↳ *apply tab label customization for Table* | |
 | | ↳ *validate applied label change and language support for page* | |
-| 19 | **Persona customization** - Domain - customize tab label should only render if it's customized by user | Domain - customize tab label should only render if it's customized by user |
+| 20 | **Persona customization** - Domain - customize tab label should only render if it's customized by user | Domain - customize tab label should only render if it's customized by user |
 | | ↳ *pre-requisite* | |
 | | ↳ *apply tab label customization for Domain* | |
 | | ↳ *validate applied label change for Domain Documentation tab* | |
@@ -2613,7 +2691,7 @@
 ## Lineage (UI)
 
 <details open>
-<summary>📄 <b>Lineage.spec.ts</b> (22 tests, 77 scenarios)</summary>
+<summary>📄 <b>Lineage.spec.ts</b> (41 tests, 97 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Lineage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Lineage.spec.ts)
 
@@ -2644,6 +2722,33 @@
 | | ↳ *5. Enable the filter for table2 by clicking filter button* | |
 | | ↳ *6. Verify that only columns with lineage are visible in table2* | |
 | | ↳ *7. Verify new edges are now visible.* | |
+
+### Verify custom properties tab visibility logic for supported entity types
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: table | Custom properties tab IS visible for supported type: table |
+| 2 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: topic | Custom properties tab IS visible for supported type: topic |
+| 3 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: dashboard | Custom properties tab IS visible for supported type: dashboard |
+| 4 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: pipeline | Custom properties tab IS visible for supported type: pipeline |
+| 5 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: mlmodel | Custom properties tab IS visible for supported type: mlmodel |
+| 6 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: container | Custom properties tab IS visible for supported type: container |
+| 7 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: searchIndex | Custom properties tab IS visible for supported type: searchIndex |
+| 8 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: apiEndpoint | Custom properties tab IS visible for supported type: apiEndpoint |
+| 9 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: metric | Custom properties tab IS visible for supported type: metric |
+| 10 | **Verify custom properties tab visibility logic for supported entity types** - Verify custom properties tab IS visible for supported type: chart | Custom properties tab IS visible for supported type: chart |
+
+### Verify custom properties tab is NOT visible for unsupported entity types in platform lineage
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Verify custom properties tab is NOT visible for unsupported entity types in platform lineage** - Verify custom properties tab is NOT visible for databaseService in platform lineage | Custom properties tab is NOT visible for databaseService in platform lineage |
+| 2 | **Verify custom properties tab is NOT visible for unsupported entity types in platform lineage** - Verify custom properties tab is NOT visible for messagingService in platform lineage | Custom properties tab is NOT visible for messagingService in platform lineage |
+| 3 | **Verify custom properties tab is NOT visible for unsupported entity types in platform lineage** - Verify custom properties tab is NOT visible for dashboardService in platform lineage | Custom properties tab is NOT visible for dashboardService in platform lineage |
+| 4 | **Verify custom properties tab is NOT visible for unsupported entity types in platform lineage** - Verify custom properties tab is NOT visible for pipelineService in platform lineage | Custom properties tab is NOT visible for pipelineService in platform lineage |
+| 5 | **Verify custom properties tab is NOT visible for unsupported entity types in platform lineage** - Verify custom properties tab is NOT visible for mlmodelService in platform lineage | Custom properties tab is NOT visible for mlmodelService in platform lineage |
+| 6 | **Verify custom properties tab is NOT visible for unsupported entity types in platform lineage** - Verify custom properties tab is NOT visible for storageService in platform lineage | Custom properties tab is NOT visible for storageService in platform lineage |
+| 7 | **Verify custom properties tab is NOT visible for unsupported entity types in platform lineage** - Verify custom properties tab is NOT visible for apiService in platform lineage | Custom properties tab is NOT visible for apiService in platform lineage |
 
 ### Standalone Tests
 
@@ -2718,6 +2823,10 @@
 | 17 | Verify there is no traced nodes and columns on exiting edit mode | There is no traced nodes and columns on exiting edit mode |
 | | ↳ *Verify node tracing is cleared on exiting edit mode* | |
 | | ↳ *Verify column tracing is cleared on exiting edit mode* | |
+| 18 | Verify node full path is present as breadcrumb in lineage node | Node full path is present as breadcrumb in lineage node |
+| 19 | Verify custom properties tab visibility in lineage sidebar | Custom properties tab visibility in lineage sidebar |
+| | ↳ *Create lineage connections* | |
+| | ↳ *Navigate to lineage tab and verify custom properties tab in sidebar* | |
 
 </details>
 
@@ -2922,7 +3031,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>UserDetails.spec.ts</b> (8 tests, 8 scenarios)</summary>
+<summary>📄 <b>UserDetails.spec.ts</b> (9 tests, 9 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/UserDetails.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/UserDetails.spec.ts)
 
@@ -2938,6 +3047,7 @@
 | 6 | **User with different Roles** - Admin user can get all the roles hierarchy and edit roles | Admin user can get all the roles hierarchy and edit roles |
 | 7 | **User with different Roles** - Non admin user should be able to edit display name and description on own profile | Non admin user should be able to edit display name and description on own profile |
 | 8 | **User with different Roles** - Non admin user should not be able to edit the persona or roles | Non admin user should not be able to edit the persona or roles |
+| 9 | **User with different Roles** - My Data Tab - AssetsTabs search functionality | My Data Tab - AssetsTabs search functionality |
 
 </details>
 

@@ -2,13 +2,13 @@
 
 # Governance
 
-> **6 Components** | **41 Files** | **669 Tests** | **1104 Scenarios** 🚀
+> **6 Components** | **44 Files** | **688 Tests** | **1159 Scenarios** 🚀
 
 ## Table of Contents
 - [Custom Properties](#custom-properties)
 - [Metrics](#metrics)
-- [Glossary](#glossary)
 - [Domains & Data Products](#domains-data-products)
+- [Glossary](#glossary)
 - [Tags](#tags)
 - [Data Contracts](#data-contracts)
 
@@ -451,6 +451,254 @@
 | | ↳ *Remove unit of measurement* | |
 | | ↳ *Set unit back to Percentage* | |
 | | ↳ *Clean up - delete the metric* | |
+
+</details>
+
+
+---
+
+<div id="domains-data-products"></div>
+
+## Domains & Data Products
+
+<details open>
+<summary>📄 <b>Domains.spec.ts</b> (27 tests, 46 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts)
+
+### Domains
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domains** - Create domains and add assets | Create domains and add assets |
+| | ↳ *Create domain* | |
+| | ↳ *Add assets to domain* | |
+| | ↳ *Delete domain using delete modal* | |
+| 2 | **Domains** - Create DataProducts and add remove assets | Create DataProducts and add remove assets |
+| | ↳ *Add assets to domain* | |
+| | ↳ *Create DataProducts* | |
+| | ↳ *Follow & Un-follow DataProducts* | |
+| | ↳ *Verify empty assets message and Add Asset button* | |
+| | ↳ *Add assets to DataProducts* | |
+| | ↳ *Remove assets from DataProducts* | |
+| 3 | **Domains** - Follow & Un-follow domain | Follow & Un-follow domain |
+| 4 | **Domains** - Add, Update custom properties for data product | Add, Update custom properties for data product |
+| | ↳ *Create DataProduct and custom properties for it* | |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
+| 5 | **Domains** - Rename domain | Rename domain |
+| 6 | **Domains** - Follow/unfollow subdomain and create nested sub domain | Follow/unfollow subdomain and create nested sub domain |
+| 7 | **Domains** - Should clear assets from data products after deletion of data product in Domain | Clear assets from data products after deletion of data product in Domain |
+| | ↳ *Delete domain & recreate the same domain and data product* | |
+| 8 | **Domains** - Should inherit owners and experts from parent domain | Inherit owners and experts from parent domain |
+| 9 | **Domains** - Domain owner should able to edit description of domain | Domain owner should able to edit description of domain |
+| 10 | **Domains** - Verify domain and subdomain asset count accuracy | Domain and subdomain asset count accuracy |
+| | ↳ *Create domain and subdomain via API* | |
+| | ↳ *Add assets to domain* | |
+| | ↳ *Add assets to subdomain* | |
+| | ↳ *Verify domain asset count matches displayed cards* | |
+| | ↳ *Verify subdomain asset count matches displayed cards* | |
+| 11 | **Domains** - Verify domain tags and glossary terms | Domain tags and glossary terms |
+| 12 | **Domains** - Verify data product tags and glossary terms | Data product tags and glossary terms |
+| 13 | **Domains** - Verify clicking All Domains sets active domain to default value | Clicking All Domains sets active domain to default value |
+| 14 | **Domains** - Verify redirect path on data product delete | Redirect path on data product delete |
+| 15 | **Domains** - Verify duplicate domain creation | Duplicate domain creation |
+| 16 | **Domains** - Create domain custom property and verify value persistence | Create domain custom property and verify value persistence |
+| | ↳ *Create custom property for domain entity* | |
+| | ↳ *Navigate to domain and assign custom property value* | |
+| | ↳ *Reload and verify custom property value persists* | |
+| | ↳ *Cleanup custom property* | |
+| 17 | **Domains** - Domain announcement create, edit & delete | Domain announcement create, edit & delete |
+| 18 | **Domains** - Data Product announcement create, edit & delete | Data Product announcement create, edit & delete |
+| 19 | **Domains** - should handle domain after description is deleted | Tests that verify UI handles entities with deleted descriptions gracefully. The issue occurs when: 1. An entity is created with a description 2. The description is later deleted/cleared via API patch 3. The API returns the entity without a description field (due to @JsonInclude(NON_NULL)) 4. UI should handle this gracefully instead of crashing |
+| 20 | **Domains** - should handle data product after description is deleted | Handle data product after description is deleted |
+
+### Domains Rbac
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domains Rbac** - Domain Rbac | Domain Rbac |
+| | ↳ *Assign assets to domains* | |
+| | ↳ *User with access to multiple domains* | |
+
+### Data Consumer Domain Ownership
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Consumer Domain Ownership** - Data consumer can manage domain as owner | Data consumer can manage domain as owner |
+| | ↳ *Check domain management permissions for data consumer owner* | |
+
+### Domain Access with hasDomain() Rule
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain Access with hasDomain() Rule** - User with hasDomain() rule can access domain and subdomain assets | User with hasDomain() rule can access domain and subdomain assets |
+| | ↳ *Verify user can access domain assets* | |
+| | ↳ *Verify user can access subdomain assets* | |
+
+### Domain Access with noDomain() Rule
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain Access with noDomain() Rule** - User with noDomain() rule cannot access tables without domain | User with noDomain() rule cannot access tables without domain |
+| | ↳ *Verify user can access domain-assigned table* | |
+| | ↳ *Verify user gets permission error for table without domain* | |
+
+### Domain Tree View Functionality
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain Tree View Functionality** - should render the domain tree view with correct details | Render the domain tree view with correct details |
+| 2 | **Domain Tree View Functionality** - Verify Domain entity API calls do not include invalid domains field in glossary term assets | Domain entity API calls do not include invalid domains field in glossary term assets |
+| 3 | **Domain Tree View Functionality** - Verify Domain entity API calls do not include invalid domains field in tag assets | Domain entity API calls do not include invalid domains field in tag assets |
+
+</details>
+
+<details open>
+<summary>📄 <b>DomainFilterQueryFilter.spec.ts</b> (9 tests, 9 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DomainFilterQueryFilter.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DomainFilterQueryFilter.spec.ts)
+
+### Domain Filter - User Behavior Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain Filter - User Behavior Tests** - Assets from selected domain should be visible in explore page | Assets from selected domain should be visible in explore page |
+| 2 | **Domain Filter - User Behavior Tests** - Subdomain assets should be visible when parent domain is selected | Subdomain assets should be visible when parent domain is selected |
+| 3 | **Domain Filter - User Behavior Tests** - Domain filter should persist across page navigation | Domain filter should persist across page navigation |
+| 4 | **Domain Filter - User Behavior Tests** - Domain filter should work with different asset types | Domain filter should work with different asset types |
+| 5 | **Domain Filter - User Behavior Tests** - Domain page assets tab should show only domain assets | Domain page assets tab should show only domain assets |
+| 6 | **Domain Filter - User Behavior Tests** - 3-level domain hierarchy: SubSubDomain assets visible when SubDomain selected | 3-level domain hierarchy: SubSubDomain assets visible when SubDomain selected |
+| 7 | **Domain Filter - User Behavior Tests** - Search suggestions should be filtered by selected domain | Search suggestions should be filtered by selected domain |
+| 8 | **Domain Filter - User Behavior Tests** - Domain filter should use exact match and prefix with dot to prevent false positives | Domain filter should use exact match and prefix with dot to prevent false positives |
+| 9 | **Domain Filter - User Behavior Tests** - Quick filters should persist when domain filter is applied and cleared | Quick filters should persist when domain filter is applied and cleared |
+
+</details>
+
+<details open>
+<summary>📄 <b>DataProducts.spec.ts</b> (7 tests, 38 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/DataProducts.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DataProducts.spec.ts)
+
+### Data Products
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Products** - Data Product List Page - Initial Load | Data Product List Page - Initial Load |
+| | ↳ *Navigate to Data Products page* | |
+| | ↳ *Verify page header and controls* | |
+| | ↳ *Verify view toggle buttons* | |
+| 2 | **Data Products** - Create Data Product and Manage Assets | Create Data Product and Manage Assets |
+| | ↳ *Setup test assets* | |
+| | ↳ *Navigate to Data Products page* | |
+| | ↳ *Create new data product* | |
+| | ↳ *Open data product details* | |
+| | ↳ *Add assets to data product* | |
+| | ↳ *Verify asset count* | |
+| | ↳ *Remove assets from data product* | |
+| | ↳ *Delete data product* | |
+| | ↳ *Cleanup test assets* | |
+| 3 | **Data Products** - Search Data Products | Search Data Products |
+| | ↳ *Create test data products* | |
+| | ↳ *Navigate to Data Products page* | |
+| | ↳ *Search for specific data product* | |
+| | ↳ *Clear search* | |
+| | ↳ *Cleanup test data products* | |
+| 4 | **Data Products** - View Toggle - Table and Card Views | View Toggle - Table and Card Views |
+| | ↳ *Create test data product* | |
+| | ↳ *Navigate to Data Products page* | |
+| | ↳ *Verify table view is default* | |
+| | ↳ *Switch to card view* | |
+| | ↳ *Switch back to table view* | |
+| | ↳ *Cleanup test data product* | |
+| 5 | **Data Products** - Pagination | Pagination |
+| | ↳ *Create 30 test data products* | |
+| | ↳ *Navigate to Data Products page* | |
+| | ↳ *Verify pagination controls are visible* | |
+| | ↳ *Navigate to page 2* | |
+| | ↳ *Navigate back to page 1* | |
+| | ↳ *Cleanup test data products* | |
+| 6 | **Data Products** - Empty State - No Data Products | Empty State - No Data Products |
+| | ↳ *Mock API to return empty data products list* | |
+| | ↳ *Navigate to Data Products page* | |
+| | ↳ *Verify empty state is shown* | |
+| | ↳ *Click add button from empty state* | |
+| 7 | **Data Products** - Data Product - Follow/Unfollow | Data Product - Follow/Unfollow |
+| | ↳ *Create test data product* | |
+| | ↳ *Navigate to data product details* | |
+| | ↳ *Follow data product* | |
+| | ↳ *Verify follow button is changed to unfollow* | |
+| | ↳ *Cleanup test data product* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>DomainDataProductsWidgets.spec.ts</b> (6 tests, 6 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts)
+
+### Domain and Data Product Asset Counts
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain and Data Product Asset Counts** - Assign Widgets | Assign Widgets |
+| 2 | **Domain and Data Product Asset Counts** - Verify Widgets are having 0 count initially | Widgets are having 0 count initially |
+| 3 | **Domain and Data Product Asset Counts** - Domain asset count should update when assets are added | Domain asset count should update when assets are added |
+| 4 | **Domain and Data Product Asset Counts** - Data Product asset count should update when assets are added | Data Product asset count should update when assets are added |
+| 5 | **Domain and Data Product Asset Counts** - Domain asset count should update when assets are removed | Domain asset count should update when assets are removed |
+| 6 | **Domain and Data Product Asset Counts** - Data Product asset count should update when assets are removed | Data Product asset count should update when assets are removed |
+
+</details>
+
+<details open>
+<summary>📄 <b>DataProductPersonaCustomization.spec.ts</b> (2 tests, 7 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataProductPersonaCustomization.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataProductPersonaCustomization.spec.ts)
+
+### Data Product Persona customization
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Product Persona customization** - Data Product - customization should work | Data Product - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 2 | **Data Product Persona customization** - Data Product - customize tab label should only render if it's customized by user | Data Product - customize tab label should only render if it's customized by user |
+| | ↳ *pre-requisite* | |
+| | ↳ *apply tab label customization for Data Product* | |
+| | ↳ *validate applied label change for Data Product Documentation tab* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>DomainPermissions.spec.ts</b> (2 tests, 2 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Permissions/DomainPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permissions/DomainPermissions.spec.ts)
+
+### Standalone Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | Domain allow operations | Domain allow operations |
+| 2 | Domain deny operations | Domain deny operations |
+
+</details>
+
+<details open>
+<summary>📄 <b>SubDomainPagination.spec.ts</b> (1 tests, 4 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/SubDomainPagination.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/SubDomainPagination.spec.ts)
+
+### SubDomain Pagination
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **SubDomain Pagination** - Verify subdomain count and pagination functionality | Subdomain count and pagination functionality |
+| | ↳ *Verify subdomain count in tab label* | |
+| | ↳ *Navigate to subdomains tab and verify initial data load* | |
+| | ↳ *Test pagination navigation* | |
+| | ↳ *Create new subdomain and verify count updates* | |
 
 </details>
 
@@ -987,154 +1235,6 @@
 | 1 | **Glossary Voting** - should upvote, downvote, and remove vote on glossary | Upvote, downvote, and remove vote on glossary |
 | 2 | **Glossary Voting** - should upvote, downvote, and remove vote on glossary term | Upvote, downvote, and remove vote on glossary term |
 | 3 | **Glossary Voting** - should persist vote after page reload | Persist vote after page reload |
-
-</details>
-
-
----
-
-<div id="domains-data-products"></div>
-
-## Domains & Data Products
-
-<details open>
-<summary>📄 <b>Domains.spec.ts</b> (26 tests, 45 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts)
-
-### Domains
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Domains** - Create domains and add assets | Create domains and add assets |
-| | ↳ *Create domain* | |
-| | ↳ *Add assets to domain* | |
-| | ↳ *Delete domain using delete modal* | |
-| 2 | **Domains** - Create DataProducts and add remove assets | Create DataProducts and add remove assets |
-| | ↳ *Add assets to domain* | |
-| | ↳ *Create DataProducts* | |
-| | ↳ *Follow & Un-follow DataProducts* | |
-| | ↳ *Verify empty assets message and Add Asset button* | |
-| | ↳ *Add assets to DataProducts* | |
-| | ↳ *Remove assets from DataProducts* | |
-| 3 | **Domains** - Follow & Un-follow domain | Follow & Un-follow domain |
-| 4 | **Domains** - Add, Update custom properties for data product | Add, Update custom properties for data product |
-| | ↳ *Create DataProduct and custom properties for it* | |
-| | ↳ *Set ${...} Custom Property* | |
-| | ↳ *Update ${...} Custom Property* | |
-| 5 | **Domains** - Switch domain from navbar and check domain query call wrap in quotes | Switch domain from navbar and check domain query call wrap in quotes |
-| 6 | **Domains** - Rename domain | Rename domain |
-| 7 | **Domains** - Follow/unfollow subdomain and create nested sub domain | Follow/unfollow subdomain and create nested sub domain |
-| 8 | **Domains** - Should clear assets from data products after deletion of data product in Domain | Clear assets from data products after deletion of data product in Domain |
-| | ↳ *Delete domain & recreate the same domain and data product* | |
-| 9 | **Domains** - Should inherit owners and experts from parent domain | Inherit owners and experts from parent domain |
-| 10 | **Domains** - Domain owner should able to edit description of domain | Domain owner should able to edit description of domain |
-| 11 | **Domains** - Verify domain and subdomain asset count accuracy | Domain and subdomain asset count accuracy |
-| | ↳ *Create domain and subdomain via API* | |
-| | ↳ *Add assets to domain* | |
-| | ↳ *Add assets to subdomain* | |
-| | ↳ *Verify domain asset count matches displayed cards* | |
-| | ↳ *Verify subdomain asset count matches displayed cards* | |
-| 12 | **Domains** - Verify domain tags and glossary terms | Domain tags and glossary terms |
-| 13 | **Domains** - Verify data product tags and glossary terms | Data product tags and glossary terms |
-| 14 | **Domains** - Verify clicking All Domains sets active domain to default value | Clicking All Domains sets active domain to default value |
-| 15 | **Domains** - Verify redirect path on data product delete | Redirect path on data product delete |
-| 16 | **Domains** - Verify duplicate domain creation | Duplicate domain creation |
-| 17 | **Domains** - Create domain custom property and verify value persistence | Create domain custom property and verify value persistence |
-| | ↳ *Create custom property for domain entity* | |
-| | ↳ *Navigate to domain and assign custom property value* | |
-| | ↳ *Reload and verify custom property value persists* | |
-| | ↳ *Cleanup custom property* | |
-| 18 | **Domains** - Domain announcement create, edit & delete | Domain announcement create, edit & delete |
-| 19 | **Domains** - Data Product announcement create, edit & delete | Data Product announcement create, edit & delete |
-| 20 | **Domains** - should handle domain after description is deleted | Tests that verify UI handles entities with deleted descriptions gracefully. The issue occurs when: 1. An entity is created with a description 2. The description is later deleted/cleared via API patch 3. The API returns the entity without a description field (due to @JsonInclude(NON_NULL)) 4. UI should handle this gracefully instead of crashing |
-| 21 | **Domains** - should handle data product after description is deleted | Handle data product after description is deleted |
-
-### Domains Rbac
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Domains Rbac** - Domain Rbac | Domain Rbac |
-| | ↳ *Assign assets to domains* | |
-| | ↳ *User with access to multiple domains* | |
-
-### Data Consumer Domain Ownership
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Consumer Domain Ownership** - Data consumer can manage domain as owner | Data consumer can manage domain as owner |
-| | ↳ *Check domain management permissions for data consumer owner* | |
-
-### Domain Access with hasDomain() Rule
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Domain Access with hasDomain() Rule** - User with hasDomain() rule can access domain and subdomain assets | User with hasDomain() rule can access domain and subdomain assets |
-| | ↳ *Verify user can access domain assets* | |
-| | ↳ *Verify user can access subdomain assets* | |
-
-### Domain Access with noDomain() Rule
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Domain Access with noDomain() Rule** - User with noDomain() rule cannot access tables without domain | User with noDomain() rule cannot access tables without domain |
-| | ↳ *Verify user can access domain-assigned table* | |
-| | ↳ *Verify user gets permission error for table without domain* | |
-
-### Domain Tree View Functionality
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Domain Tree View Functionality** - should render the domain tree view with correct details | Render the domain tree view with correct details |
-
-</details>
-
-<details open>
-<summary>📄 <b>DomainDataProductsWidgets.spec.ts</b> (6 tests, 6 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts)
-
-### Domain and Data Product Asset Counts
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Domain and Data Product Asset Counts** - Assign Widgets | Assign Widgets |
-| 2 | **Domain and Data Product Asset Counts** - Verify Widgets are having 0 count initially | Widgets are having 0 count initially |
-| 3 | **Domain and Data Product Asset Counts** - Domain asset count should update when assets are added | Domain asset count should update when assets are added |
-| 4 | **Domain and Data Product Asset Counts** - Data Product asset count should update when assets are added | Data Product asset count should update when assets are added |
-| 5 | **Domain and Data Product Asset Counts** - Domain asset count should update when assets are removed | Domain asset count should update when assets are removed |
-| 6 | **Domain and Data Product Asset Counts** - Data Product asset count should update when assets are removed | Data Product asset count should update when assets are removed |
-
-</details>
-
-<details open>
-<summary>📄 <b>DomainPermissions.spec.ts</b> (2 tests, 2 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/Permissions/DomainPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permissions/DomainPermissions.spec.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | Domain allow operations | Domain allow operations |
-| 2 | Domain deny operations | Domain deny operations |
-
-</details>
-
-<details open>
-<summary>📄 <b>SubDomainPagination.spec.ts</b> (1 tests, 4 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/SubDomainPagination.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/SubDomainPagination.spec.ts)
-
-### SubDomain Pagination
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **SubDomain Pagination** - Verify subdomain count and pagination functionality | Subdomain count and pagination functionality |
-| | ↳ *Verify subdomain count in tab label* | |
-| | ↳ *Navigate to subdomains tab and verify initial data load* | |
-| | ↳ *Test pagination navigation* | |
-| | ↳ *Create new subdomain and verify count updates* | |
 
 </details>
 

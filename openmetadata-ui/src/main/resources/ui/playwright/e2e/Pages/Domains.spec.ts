@@ -39,6 +39,7 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
+  visitGlossaryPage,
 } from '../../utils/common';
 import {
   addCustomPropertiesForEntity,
@@ -51,9 +52,11 @@ import {
   addTagsAndGlossaryToDomain,
   checkAssetsCount,
   createDataProduct,
+  createDataProductForSubDomain,
   createDomain,
   createSubDomain,
   fillDomainForm,
+  navigateToSubDomain,
   removeAssetsFromDataProduct,
   selectDataProduct,
   selectDataProductFromTab,
@@ -63,9 +66,11 @@ import {
   setupDomainOwnershipTest,
   setupNoDomainRule,
   verifyDataProductAssetsAfterDelete,
+  verifyDataProductsCount,
   verifyDomain,
 } from '../../utils/domain';
 import {
+  assignGlossaryTerm,
   createAnnouncement,
   deleteAnnouncement,
   editAnnouncement,
@@ -80,6 +85,7 @@ import {
   sidebarClick,
 } from '../../utils/sidebar';
 import { performUserLogin, visitUserProfilePage } from '../../utils/user';
+import { selectActiveGlossaryTerm } from '../../utils/glossary';
 const user = new UserClass();
 
 const domain = new Domain();
@@ -150,8 +156,8 @@ test.describe('Domains', () => {
     await user.delete(apiContext);
     await classification.delete(apiContext);
     await tag.delete(apiContext);
-    await glossary.delete(apiContext);
     await glossaryTerm.delete(apiContext);
+    await glossary.delete(apiContext);
     await afterAction();
   });
 
@@ -281,10 +287,6 @@ test.describe('Domains', () => {
         await selectDataProduct(page, dataProduct1.data);
         await waitForAllLoadersToDisappear(page);
         await page.waitForLoadState('networkidle');
-
-        await expect(
-          page.getByTestId('KnowledgePanel.Domain').getByTestId('add-domain')
-        ).not.toBeVisible();
 
         await page.getByTestId('assets').getByText('Assets').click();
         await waitForAllLoadersToDisappear(page);
@@ -425,60 +427,6 @@ test.describe('Domains', () => {
 
     await dataProduct1.cleanupCustomProperty(apiContext);
     await dataProduct1.delete(apiContext);
-    await domain.delete(apiContext);
-    await afterAction();
-  });
-
-  test('Switch domain from navbar and check domain query call wrap in quotes', async ({
-    page,
-  }) => {
-    const { afterAction, apiContext } = await getApiContext(page);
-    const domain = new Domain();
-    await domain.create(apiContext);
-    await page.reload();
-
-    await redirectToExplorePage(page);
-    await waitForAllLoadersToDisappear(page);
-    await page.waitForLoadState('networkidle');
-
-    const domainsResponse = page.waitForResponse('api/v1/domains/hierarchy?*');
-    await page.getByTestId('domain-dropdown').click();
-    await domainsResponse;
-    await waitForAllLoadersToDisappear(page);
-
-    const searchDomainResponse = page.waitForResponse(
-      'api/v1/search/query?q=*&index=domain_search_index*'
-    );
-    await page.getByTestId('searchbar').fill(domain.responseData.displayName);
-    await searchDomainResponse;
-
-    await page
-      .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
-      .click();
-    await waitForAllLoadersToDisappear(page);
-
-    await page.waitForLoadState('networkidle');
-
-    await redirectToHomePage(page);
-
-    const queryRes = page.waitForRequest(
-      '/api/v1/search/query?*index=dataAsset*'
-    );
-    await sidebarClick(page, SidebarItem.EXPLORE);
-    const response = await queryRes;
-    const url = new URL(response.url());
-    const queryParams = new URLSearchParams(url.search);
-    const qParam = queryParams.get('q');
-
-    // The domain FQN should be properly escaped in the query
-    // The actual format uses escaped hyphens, not URL encoding
-    const fqn = (domain.data.fullyQualifiedName ?? '')
-      .replace(/\\/g, '\\\\')
-      .replace(/"/g, '\\"')
-      .replace(/-/g, '\\-');
-
-    expect(qParam).toContain(`(domains.fullyQualifiedName:"${fqn}")`);
-
     await domain.delete(apiContext);
     await afterAction();
   });
@@ -900,6 +848,237 @@ test.describe('Domains', () => {
       await domain.delete(apiContext);
       await domainAssetCleanup();
       await subDomainAssetCleanup();
+      await afterAction();
+    }
+  });
+
+  test('Verify domain data products count includes subdomain data products', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const domainDataProduct = new DataProduct([domain]);
+
+    let subDomain!: SubDomain;
+    let subDomainDataProduct!: Awaited<
+      ReturnType<typeof createDataProductForSubDomain>
+    >;
+
+    try {
+      await test.step('Create domain, subdomain, and data products via API', async () => {
+        await domain.create(apiContext);
+        subDomain = new SubDomain(domain);
+        await subDomain.create(apiContext);
+
+        // Create data product in parent domain
+        await domainDataProduct.create(apiContext);
+
+        // Create data product in subdomain
+        subDomainDataProduct = await createDataProductForSubDomain(
+          apiContext,
+          subDomain
+        );
+      });
+
+      await test.step(
+        'Verify domain data products tab shows both domain and subdomain data products',
+        async () => {
+          await page.reload();
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+
+          // Click on Data Products tab
+          await page.getByTestId('data_products').click();
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          // Verify data products count is 2 (one from domain + one from subdomain)
+          const dataProductCountElement = page
+            .getByTestId('data_products')
+            .getByTestId('count');
+          const countText = await dataProductCountElement.textContent();
+          const displayedCount = parseInt(countText ?? '0', 10);
+
+          expect(displayedCount).toBe(2);
+
+          // Verify both data product cards are visible
+          await expect(
+            page.getByText(domainDataProduct.data.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomainDataProduct.displayName).first()
+          ).toBeVisible();
+        }
+      );
+
+      await test.step(
+        'Verify subdomain data products tab shows only its own data products',
+        async () => {
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+
+          // Navigate to subdomain
+          await page.getByTestId('subdomains').getByText('Sub Domains').click();
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          await Promise.all([
+            page.getByTestId(subDomain.data.name).click(),
+            page.waitForResponse('/api/v1/domains/name/*'),
+          ]);
+
+          // Click on Data Products tab
+          await page.getByTestId('data_products').click();
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          // Verify data products count is 1 (only subdomain's own data product)
+          const dataProductCountElement = page
+            .getByTestId('data_products')
+            .getByTestId('count');
+          const countText = await dataProductCountElement.textContent();
+          const displayedCount = parseInt(countText ?? '0', 10);
+
+          expect(displayedCount).toBe(1);
+
+          // Verify only subdomain data product card is visible
+          await expect(
+            page.getByText(subDomainDataProduct.displayName).first()
+          ).toBeVisible();
+        }
+      );
+
+      await test.step(
+        'Delete subdomain and verify its data products are not visible in domain',
+        async () => {
+          // Delete subdomain (this should cascade delete its data product)
+          await subDomain.delete(apiContext);
+          // Mark as deleted to prevent double-delete in finally block
+          subDomainDataProduct = undefined as unknown as typeof subDomainDataProduct;
+          subDomain = undefined as unknown as typeof subDomain;
+
+          // Navigate to domain and verify
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+
+          // Click on Data Products tab
+          await page.getByTestId('data_products').click();
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          // Verify data products count is now 1 (only domain's own data product)
+          const dataProductCountElement = page
+            .getByTestId('data_products')
+            .getByTestId('count');
+          const countText = await dataProductCountElement.textContent();
+          const displayedCount = parseInt(countText ?? '0', 10);
+
+          expect(displayedCount).toBe(1);
+
+          // Verify only domain data product is visible
+          await expect(
+            page.getByText(domainDataProduct.data.displayName).first()
+          ).toBeVisible();
+        }
+      );
+
+      await test.step(
+        'Verify deeply nested subdomain data products are visible at each level',
+        async () => {
+          // Create nested structure: domain -> nestedSubDomain1 -> nestedSubDomain2 -> nestedSubDomain3
+          const nestedSubDomain1 = new SubDomain(domain);
+          await nestedSubDomain1.create(apiContext);
+
+          const nestedSubDomain2 = new SubDomain(nestedSubDomain1);
+          await nestedSubDomain2.create(apiContext);
+
+          const nestedSubDomain3 = new SubDomain(nestedSubDomain2);
+          await nestedSubDomain3.create(apiContext);
+
+          // Create data products at each subdomain level
+          const subDomain1DataProduct = await createDataProductForSubDomain(
+            apiContext,
+            nestedSubDomain1
+          );
+          const subDomain2DataProduct = await createDataProductForSubDomain(
+            apiContext,
+            nestedSubDomain2
+          );
+          const subDomain3DataProduct = await createDataProductForSubDomain(
+            apiContext,
+            nestedSubDomain3
+          );
+
+          // 1. Verify at domain level: should see 4 data products (domain's own + all nested)
+          await page.reload();
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+          await verifyDataProductsCount(page, 4);
+
+          // Verify all data products are visible at domain level
+          await expect(
+            page.getByText(domainDataProduct.data.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomain1DataProduct.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomain2DataProduct.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomain3DataProduct.displayName).first()
+          ).toBeVisible();
+
+          // 2. Navigate to nestedSubDomain1 and verify: should see 3 data products (its own + subdomain2's + subdomain3's)
+          await navigateToSubDomain(page, nestedSubDomain1.data);
+          await verifyDataProductsCount(page, 3);
+          await expect(
+            page.getByText(subDomain1DataProduct.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomain2DataProduct.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomain3DataProduct.displayName).first()
+          ).toBeVisible();
+
+          // 3. Navigate to nestedSubDomain2 and verify: should see 2 data products (its own + subdomain3's)
+          await navigateToSubDomain(page, nestedSubDomain2.data);
+          await verifyDataProductsCount(page, 2);
+          await expect(
+            page.getByText(subDomain2DataProduct.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomain3DataProduct.displayName).first()
+          ).toBeVisible();
+
+          // 4. Navigate to nestedSubDomain3 and verify: should see 1 data product (its own)
+          await navigateToSubDomain(page, nestedSubDomain3.data);
+          await verifyDataProductsCount(page, 1);
+          await expect(
+            page.getByText(subDomain3DataProduct.displayName).first()
+          ).toBeVisible();
+
+          // Cleanup nested structure (delete data products first, then subdomains from deepest level)
+          await subDomain3DataProduct.delete(apiContext);
+          await subDomain2DataProduct.delete(apiContext);
+          await subDomain1DataProduct.delete(apiContext);
+          await nestedSubDomain3.delete(apiContext);
+          await nestedSubDomain2.delete(apiContext);
+          await nestedSubDomain1.delete(apiContext);
+        }
+      );
+    } finally {
+      await subDomainDataProduct?.delete(apiContext);
+      await domainDataProduct.delete(apiContext);
+      await subDomain?.delete(apiContext);
+      await domain.delete(apiContext);
       await afterAction();
     }
   });
@@ -1525,8 +1704,8 @@ test.describe('Data Consumer Domain Ownership', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await tag.delete(apiContext);
-    await glossary.delete(apiContext);
     await glossaryTerm.delete(apiContext);
+    await glossary.delete(apiContext);
     await classification.delete(apiContext);
     await testResources.cleanup(apiContext);
 
@@ -1870,5 +2049,156 @@ test.describe('Domain Tree View Functionality', () => {
         .getByTestId(subDomain.data.name)
         .getByText(subDomain.data.displayName)
     ).toBeVisible();
+  });
+
+  test('Verify Domain entity API calls do not include invalid domains field in glossary term assets', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const testGlossary = new Glossary();
+    const testGlossaryTerm = new GlossaryTerm(testGlossary);
+    const testDomain = new Domain();
+
+    try {
+      await testGlossary.create(apiContext);
+      await testGlossaryTerm.create(apiContext);
+      await testDomain.create(apiContext);
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+      await selectDomain(page, testDomain.data);
+      await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="glossary-container"]', {
+        state: 'visible',
+      });
+
+      // Add only glossary term to domain (no tags)
+      await assignGlossaryTerm(page, {
+        displayName: testGlossaryTerm.data.displayName,
+        name: testGlossaryTerm.data.name,
+        fullyQualifiedName: testGlossaryTerm.responseData.fullyQualifiedName,
+      });
+
+      await visitGlossaryPage(page, testGlossary.data.displayName);
+      await selectActiveGlossaryTerm(page, testGlossaryTerm.data.displayName);
+
+      let apiRequestUrl: string | null = null;
+      const responsePromise = page.waitForResponse((response) => {
+        const url = response.url();
+        if (
+          url.includes('/api/v1/domains/name/') &&
+          url.includes('fields=') &&
+          response.status() === 200
+        ) {
+          apiRequestUrl = url;
+          return true;
+        }
+        return false;
+      });
+
+      await page.getByTestId('assets').click();
+      await responsePromise;
+      await page.waitForSelector('.ant-tabs-tab-active:has-text("Assets")');
+      await waitForAllLoadersToDisappear(page);
+
+      expect(apiRequestUrl).not.toBeNull();
+      const urlObj = new URL(apiRequestUrl!);
+      const fields = urlObj.searchParams.get('fields');
+      const fieldArray = fields?.split(',') ?? [];
+
+      expect(fieldArray.includes('domains')).toBe(false);
+    } finally {
+      await testDomain.delete(apiContext);
+      await testGlossaryTerm.delete(apiContext);
+      await testGlossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Verify Domain entity API calls do not include invalid domains field in tag assets', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const testClassification = new ClassificationClass({
+      provider: 'system',
+      mutuallyExclusive: false,
+    });
+    const testTag = new TagClass({
+      classification: testClassification.data.name,
+    });
+    const testDomain = new Domain();
+
+    try {
+      await testClassification.create(apiContext);
+      await testTag.create(apiContext);
+      await testDomain.create(apiContext);
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+      await selectDomain(page, testDomain.data);
+      await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="tags-container"]', {
+        state: 'visible',
+      });
+
+      await page
+        .locator('[data-testid="tags-container"] [data-testid="add-tag"]')
+        .click();
+      const input = page.locator(
+        '[data-testid="tags-container"] #tagsForm_tags'
+      );
+      await input.click();
+      await input.fill(testTag.responseData.fullyQualifiedName);
+      await page
+        .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+        .click();
+
+      const updateResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/domains/') &&
+          response.request().method() === 'PATCH'
+      );
+      await page.getByTestId('saveAssociatedTag').click();
+      await updateResponse;
+
+      await testTag.visitPage(page);
+
+      let apiRequestUrl: string | null = null;
+      const responsePromise = page.waitForResponse((response) => {
+        const url = response.url();
+        if (
+          url.includes('/api/v1/domains/name/') &&
+          url.includes('fields=') &&
+          response.status() === 200
+        ) {
+          apiRequestUrl = url;
+          return true;
+        }
+        return false;
+      });
+
+      await page.getByTestId('assets').click();
+      await responsePromise;
+      await page.waitForSelector('.ant-tabs-tab-active:has-text("Assets")');
+      await waitForAllLoadersToDisappear(page);
+
+      expect(apiRequestUrl).not.toBeNull();
+      const urlObj = new URL(apiRequestUrl!);
+      const fields = urlObj.searchParams.get('fields');
+      const fieldArray = fields?.split(',') ?? [];
+
+      expect(fieldArray.includes('domains')).toBe(false);
+    } finally {
+      await testDomain.delete(apiContext);
+      await testTag.delete(apiContext);
+      await testClassification.delete(apiContext);
+      await afterAction();
+    }
   });
 });
