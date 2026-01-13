@@ -61,6 +61,7 @@ export const PipelineTaskTab = () => {
     data: pipelineDetails,
     permissions,
     onUpdate,
+    openColumnDetailPanel,
   } = useGenericContext<Pipeline>();
   const { fqn: pipelineFQN } = useFqn();
   const { t } = useTranslation();
@@ -85,6 +86,8 @@ export const PipelineTaskTab = () => {
       editTagsPermission: permissions?.EditAll || permissions?.EditTags,
       editGlossaryTermsPermission:
         permissions?.EditAll || permissions?.EditGlossaryTerms,
+      viewCustomPropertiesPermission:
+        permissions?.ViewAll || permissions?.ViewCustomFields,
     }),
     [permissions]
   );
@@ -127,6 +130,15 @@ export const PipelineTaskTab = () => {
 
   const closeEditTaskModal = (): void => {
     setEditTask(undefined);
+  };
+
+  const handleTaskClick = (task: Task, event: React.MouseEvent) => {
+    const target = event.target as HTMLElement;
+    const isExpandIcon = target.closest('.table-expand-icon') !== null;
+
+    if (!isExpandIcon) {
+      openColumnDetailPanel(task);
+    }
   };
 
   const onTaskUpdate = async (taskDescription: string) => {
@@ -183,7 +195,13 @@ export const PipelineTaskTab = () => {
         title: t('label.name'),
         width: 220,
         fixed: 'left',
+        className: 'cursor-pointer',
         sorter: getColumnSorter<Task, 'name'>('name'),
+        onCell: (record: Task) => ({
+          onClick: (event) =>
+            isEmpty(record.sourceUrl) && handleTaskClick(record, event),
+          'data-testid': 'column-name-cell',
+        }),
         render: (_, record) =>
           isEmpty(record.sourceUrl) ? (
             <span>{getEntityName(record)}</span>

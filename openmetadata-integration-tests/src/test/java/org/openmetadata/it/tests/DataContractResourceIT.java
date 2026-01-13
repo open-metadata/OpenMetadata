@@ -110,7 +110,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   private Table createTestTable(TestNamespace ns, List<Column> columns) {
-    String shortId = ns.shortPrefix();
+    String shortId = ns.uniqueShortId();
 
     org.openmetadata.schema.services.connections.database.PostgresConnection conn =
         org.openmetadata.sdk.fluent.DatabaseServices.postgresConnection()

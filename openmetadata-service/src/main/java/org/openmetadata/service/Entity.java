@@ -220,6 +220,12 @@ public final class Entity {
   public static final String PAGE = "page";
 
   //
+  // Column entity types (for custom properties)
+  //
+  public static final String TABLE_COLUMN = "tableColumn";
+  public static final String DASHBOARD_DATA_MODEL_COLUMN = "dashboardDataModelColumn";
+
+  //
   // Policy entity
   //
   public static final String POLICY = "policy";

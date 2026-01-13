@@ -30,7 +30,11 @@ import {
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { Column, TagLabel } from '../../../generated/entity/data/container';
+import {
+  Column,
+  Container,
+  TagLabel,
+} from '../../../generated/entity/data/container';
 import { TagSource } from '../../../generated/type/tagLabel';
 import {
   updateContainerColumnDescription,
@@ -49,6 +53,7 @@ import {
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
@@ -65,6 +70,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   entityFqn,
 }) => {
   const { t } = useTranslation();
+  const { openColumnDetailPanel } = useGenericContext<Container>();
 
   const [editContainerColumnDescription, setEditContainerColumnDescription] =
     useState<Column>();
@@ -103,6 +109,18 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     setEditContainerColumnDescription(undefined);
   };
 
+  const handleColumnClick = useCallback(
+    (column: Column, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const isExpandIcon = target.closest('.table-expand-icon') !== null;
+
+      if (!isExpandIcon) {
+        openColumnDetailPanel(column);
+      }
+    },
+    [openColumnDetailPanel]
+  );
+
   const tagFilter = useMemo(() => {
     const tags = getAllTags(schema);
 
@@ -120,6 +138,12 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         key: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 300,
+        className: 'cursor-pointer',
+        onCell: (record: Column) => ({
+          onClick: (event: React.MouseEvent) =>
+            handleColumnClick(record, event),
+          'data-testid': 'column-name-cell',
+        }),
         render: (_, record: Column) => (
           <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
             <Typography.Text>{getEntityName(record)}</Typography.Text>
@@ -228,6 +252,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       editContainerColumnDescription,
       getEntityName,
       handleFieldTagsChange,
+      handleColumnClick,
     ]
   );
 

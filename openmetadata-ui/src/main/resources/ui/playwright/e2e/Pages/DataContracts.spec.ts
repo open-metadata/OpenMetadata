@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
@@ -543,7 +543,7 @@ test.describe('Data Contracts', () => {
           async () => {
             await entity.visitEntityPage(page);
 
-            await page.getByTestId('contract').click();
+            await page.getByRole('tab').getByTestId('contract').click();
 
             await page.getByTestId('manage-contract-actions').click();
 
@@ -590,7 +590,7 @@ test.describe('Data Contracts', () => {
       await test.step('Verify YAML view', async () => {
         await entity.visitEntityPage(page);
 
-        await page.getByTestId('contract').click();
+        await page.getByRole('tab').getByTestId('contract').click();
 
         await page.getByTestId('contract-view-switch-tab-yaml').click();
 
@@ -2704,7 +2704,9 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               });
 
               // Verify Contract tab is not visible (should be hidden by persona customization)
-              await expect(page.getByTestId('contract')).toBeVisible();
+              await expect(
+                page.getByRole('tab').getByTestId('contract')
+              ).toBeVisible();
 
               // Verify Contract status badge is not visible in header
               await expect(
@@ -2786,7 +2788,9 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               });
 
               // Verify Contract tab is not visible (should be hidden by persona customization)
-              await expect(page.getByTestId('contract')).not.toBeVisible();
+              await expect(
+                page.getByRole('tab').getByTestId('contract')
+              ).not.toBeVisible();
 
               // Verify Contract status badge is not visible in header
               await expect(
