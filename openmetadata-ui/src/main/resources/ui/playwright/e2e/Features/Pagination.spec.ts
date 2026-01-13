@@ -224,14 +224,19 @@ test.describe('Pagination tests for all pages', () => {
 
       const responsePromise = page.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/analytics/dataInsights/system/charts/listChartData') &&
-          response.status() === 200
+          response.url().includes('/api/v1/analytics/dataInsights/system/charts/listChartData')
       );
       await page.getByTestId('insights').click();
       const response = await responsePromise;
       expect(response.status()).toBe(200);
 
+      const databaseResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/databases')
+      );
       await page.getByTestId('databases').click();
+      const response2 = await databaseResponsePromise
+       expect(response2.status()).toBe(200);
       await page.waitForSelector('table', { state: 'visible' });
 
       const paginationText = page.locator('[data-testid="page-indicator"]');
