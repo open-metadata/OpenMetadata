@@ -802,6 +802,10 @@ export interface Pipeline {
      */
     apiCollectionFilterPattern?: FilterPattern;
     /**
+     * Regex to only fetch api endpoints with names matching the pattern.
+     */
+    apiEndpointFilterPattern?: FilterPattern;
+    /**
      * Optional configuration to soft delete api collections in OpenMetadata if the source
      * collections are deleted. Also, if the collection is deleted, all the associated entities
      * like endpoints, etc., with that collection will be deleted
@@ -868,6 +872,8 @@ export interface Pipeline {
  * Regex to only fetch search indexes that matches the pattern.
  *
  * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to only fetch api endpoints with names matching the pattern.
  *
  * Regex to include/exclude FHIR resource categories
  *
@@ -2714,6 +2720,10 @@ export interface ConfigObject {
      * Regex to only fetch api collections with names matching the pattern.
      */
     apiCollectionFilterPattern?: FilterPattern;
+    /**
+     * Regex to only fetch api endpoints with names matching the pattern.
+     */
+    apiEndpointFilterPattern?: FilterPattern;
     /**
      * Documentation URL for the schema.
      */

@@ -393,6 +393,8 @@ export enum AuthProvider {
  *
  * Regex to only fetch api collections with names matching the pattern.
  *
+ * Regex to only fetch api endpoints with names matching the pattern.
+ *
  * Regex to include/exclude FHIR resource categories
  *
  * Regex to include/exclude FHIR resource types
@@ -931,6 +933,10 @@ export interface ConfigObject {
      * Regex to only fetch api collections with names matching the pattern.
      */
     apiCollectionFilterPattern?: FilterPattern;
+    /**
+     * Regex to only fetch api endpoints with names matching the pattern.
+     */
+    apiEndpointFilterPattern?: FilterPattern;
     /**
      * Documentation URL for the schema.
      */
