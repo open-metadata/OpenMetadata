@@ -708,6 +708,7 @@ export const testPaginationNavigation = async (
   const page1Data = await page1Response.json();
   const page1Items = page1Data.data?.map((item: { fullyQualifiedName: string }) => item.fullyQualifiedName) || [];
 
+  expect(page.getByTestId('previous')).toBeDisabled();
   const nextButton = page.locator('[data-testid="next"]');
 
   const nextButtonCount = await nextButton.count();
@@ -747,6 +748,7 @@ export const testPaginationNavigation = async (
   const page2Data = await page2Response.json();
   const page2Items = page2Data.data?.map((item: { fullyQualifiedName: string }) => item.fullyQualifiedName) || [];
 
+  expect(page.getByTestId('previous')).toBeEnabled();
   expect(page2Items.length).toBeGreaterThan(0);
   const hasOverlap = page1Items.some((fqn: string) => page2Items.includes(fqn));
   expect(hasOverlap).toBe(false);
